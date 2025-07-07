@@ -4,6 +4,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { formatAsExpression, parseFromExpression } from '@/utils/nodeSettingsUtils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
@@ -158,7 +159,7 @@ function optionSelected(command: string) {
 			);
 
 		case 'addExpression': {
-			const newValue = nodeSettingsParameters.formatAsExpression(
+			const newValue = formatAsExpression(
 				resolvedParameter.value.value,
 				resolvedParameter.value.parameter.type,
 			);
@@ -169,7 +170,7 @@ function optionSelected(command: string) {
 
 		case 'removeExpression': {
 			// isFocused.value = false;
-			const newValue = nodeSettingsParameters.parseFromExpression(
+			const newValue = parseFromExpression(
 				resolvedParameter.value.value,
 				resolvedExpression.value,
 				resolvedParameter.value.parameter.type,
