@@ -26,6 +26,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { isPresent } from '@/utils/typesUtils';
+import { omitKey } from '@/utils/objectUtils';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -82,9 +83,7 @@ export function useNodeSettingsParameters() {
 			if (value === null) {
 				// Property should be deleted
 				if (lastNamePart) {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = nodeValues.value;
-					nodeValues.value = remainingNodeValues;
+					nodeValues.value = omitKey(nodeValues.value, lastNamePart);
 				}
 			} else {
 				// Value should be set
@@ -102,9 +101,7 @@ export function useNodeSettingsParameters() {
 					| INodeParameters[];
 
 				if (lastNamePart && !Array.isArray(tempValue)) {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { [lastNamePart]: _removedNodeValue, ...remainingNodeValues } = tempValue;
-					tempValue = remainingNodeValues;
+					tempValue = omitKey(tempValue, lastNamePart);
 				}
 
 				if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
@@ -113,10 +110,7 @@ export function useNodeSettingsParameters() {
 					lastNamePart = nameParts.pop();
 					tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 					if (lastNamePart) {
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { [lastNamePart]: _removedArrayNodeValue, ...remainingArrayNodeValues } =
-							tempValue;
-						tempValue = remainingArrayNodeValues;
+						tempValue = omitKey(tempValue, lastNamePart);
 					}
 				}
 			} else {
@@ -277,7 +271,7 @@ export function useNodeSettingsParameters() {
 		}
 
 		if (isNumber || isBoolean || typeof value !== 'string') {
-			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string -- stringified intentionally
 			return `={{ ${String(value)} }}`;
 		}
 

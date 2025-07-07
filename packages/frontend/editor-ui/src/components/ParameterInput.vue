@@ -561,8 +561,7 @@ const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
 const isDropDisabled = computed(
 	() =>
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean OR logic is intentional
-		props.parameter.noDataExpression ||
+		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
 		isResourceLocatorParameter.value ||
 		isModelValueExpression.value,
@@ -808,17 +807,35 @@ function trackWorkflowInputModeEvent(value: string) {
 	});
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-function valueChanged(value: NodeParameterValueType | {} | Date) {
+function valueChanged(untypedValue: unknown) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
 
 	const oldValue = get(node.value, props.path) as unknown;
-
-	if (oldValue !== undefined && oldValue === value) {
-		// Only update the value if it has changed
+	if (oldValue !== undefined && oldValue === untypedValue) {
+		// Skip emit if value hasn't changed
 		return;
+	}
+
+	let value: NodeParameterValueType;
+
+	if (untypedValue instanceof Date) {
+		value = untypedValue.toISOString();
+	} else if (
+		typeof untypedValue === 'string' ||
+		typeof untypedValue === 'number' ||
+		typeof untypedValue === 'boolean' ||
+		untypedValue === null ||
+		Array.isArray(untypedValue)
+	) {
+		value = untypedValue;
+	} else if (typeof untypedValue === 'object' && untypedValue !== null && '__rl' in untypedValue) {
+		// likely INodeParameterResourceLocator
+		value = untypedValue as NodeParameterValueType;
+	} else {
+		// fallback
+		value = untypedValue as NodeParameterValueType;
 	}
 
 	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
@@ -829,7 +846,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		shouldConvertToExpression(value, isSpecializedEditor)
 	) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
-		value = '=' + (value as string);
+		value = '=' + value;
 	}
 
 	if (props.parameter.name === 'nodeCredentialType') {
@@ -837,10 +854,6 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	}
 
 	value = completeExpressionSyntax(value, isSpecializedEditor);
-
-	if (value instanceof Date) {
-		value = value.toISOString();
-	}
 
 	if (
 		props.parameter.type === 'color' &&
@@ -856,7 +869,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		}
 	}
 
-	const parameterData = {
+	const parameterData: IUpdateInformation = {
 		node: node.value ? node.value.name : nodeName.value,
 		name: props.path,
 		value,
