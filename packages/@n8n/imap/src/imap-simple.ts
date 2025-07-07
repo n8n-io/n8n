@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
 import { type ImapMessage } from 'imap';
