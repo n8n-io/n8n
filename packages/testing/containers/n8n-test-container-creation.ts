@@ -35,7 +35,7 @@ const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE || N8N_E2E_IMAGE;
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
 	N8N_ENCRYPTION_KEY: 'test-encryption-key',
-	E2E_TESTS: 'true',
+	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
