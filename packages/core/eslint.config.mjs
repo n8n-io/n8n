@@ -27,6 +27,16 @@ export default defineConfig(
 		},
 	},
 	{
+		rules: {
+			'jest/valid-expect': [
+				'error',
+				{
+					maxArgs: 2,
+				},
+			],
+		},
+	},
+	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],
 		rules: {
 			// TODO: Remove these
