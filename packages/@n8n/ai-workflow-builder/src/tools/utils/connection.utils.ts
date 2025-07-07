@@ -5,8 +5,60 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { isSubNode } from '../../utils/node-helpers';
+
+/**
+ * Extract connection types from an expression string
+ * Looks for patterns like type: "ai_embedding", type: 'main', etc.
+ * Also detects array patterns like ["main", ...] or ['main', ...]
+ * @param expression - The expression string to parse
+ * @returns Array of unique connection types found
+ */
+function extractConnectionTypesFromExpression(expression: string): NodeConnectionType[] {
+	const types = new Set<string>();
+
+	// Pattern to match type: "value" or type: 'value' or type: NodeConnectionTypes.Value
+	const patterns = [/type\s*:\s*["']([^"']+)["']/g, /type\s*:\s*NodeConnectionTypes\.(\w+)/g];
+
+	// Additional patterns to detect "main" in arrays
+	const arrayMainPatterns = [
+		/\[\s*["']main["']/i, // ["main" or ['main'
+		/\[\s*NodeConnectionTypes\.Main/i, // [NodeConnectionTypes.Main
+		/return\s+\[\s*["']main["']/i, // return ["main" or return ['main'
+		/return\s+\[\s*NodeConnectionTypes\.Main/i, // return [NodeConnectionTypes.Main
+	];
+
+	// Check for array patterns containing "main"
+	for (const pattern of arrayMainPatterns) {
+		if (pattern.test(expression)) {
+			types.add(NodeConnectionTypes.Main);
+			console.log('[Expression Parser] Found "main" in array pattern');
+			break;
+		}
+	}
+
+	for (const pattern of patterns) {
+		let match;
+		pattern.lastIndex = 0; // Reset regex state
+		while ((match = pattern.exec(expression)) !== null) {
+			const type = match[1];
+			if (type) {
+				// Convert lowercase 'main' to proper case if needed
+				const normalizedType = type.toLowerCase() === 'main' ? NodeConnectionTypes.Main : type;
+				types.add(normalizedType);
+			}
+		}
+	}
+
+	// Log what we found
+	if (types.size > 0) {
+		console.log(`[Expression Parser] Found connection types: [${Array.from(types).join(', ')}]`);
+	}
+
+	return Array.from(types) as NodeConnectionType[];
+}
 
 /**
  * Result of connection validation
@@ -329,4 +381,241 @@ export function formatConnectionMessage(
 		return `Auto-corrected connection: ${sourceNode} (${connectionType}) → ${targetNode}. (Note: Swapped nodes to ensure sub-node is the source)`;
 	}
 	return `Connected: ${sourceNode} → ${targetNode} (${connectionType})`;
+}
+
+/**
+ * Get all output types from a node
+ * @param nodeType - The node type description
+ * @returns Array of output types the node supports
+ */
+function getNodeOutputTypes(nodeType: INodeTypeDescription): NodeConnectionType[] {
+	// Handle expression-based outputs
+	if (typeof nodeType.outputs === 'string') {
+		console.log(`[getNodeOutputTypes] Expression-based outputs for ${nodeType.name}`);
+		const extracted = extractConnectionTypesFromExpression(nodeType.outputs);
+		if (extracted.length > 0) {
+			return extracted;
+		}
+		// If no types found in expression, return empty array
+		console.log('[getNodeOutputTypes] No types found in expression');
+		return [];
+	}
+
+	if (!nodeType.outputs || !Array.isArray(nodeType.outputs)) {
+		return [];
+	}
+
+	return nodeType.outputs.map((output) => {
+		if (typeof output === 'string') {
+			return output;
+		}
+		return output.type;
+	});
+}
+
+/**
+ * Get all input types from a node
+ * @param nodeType - The node type description
+ * @returns Array of input types the node accepts
+ */
+function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeConnectionType[] {
+	// Handle expression-based inputs
+	if (typeof nodeType.inputs === 'string') {
+		console.log(`[getNodeInputTypes] Expression-based inputs for ${nodeType.name}`);
+
+		// Special handling for Vector Store in retrieve-as-tool mode
+		// When in this mode, it only accepts AI inputs (no main input)
+		if (
+			node &&
+			nodeType.name.includes('vectorStore') &&
+			node.parameters?.mode === 'retrieve-as-tool'
+		) {
+			console.log('[getNodeInputTypes] Vector Store in retrieve-as-tool mode - only AI inputs');
+			// Extract only AI connection types from the expression
+			const extracted = extractConnectionTypesFromExpression(nodeType.inputs);
+			return extracted.filter((type) => type.startsWith('ai_'));
+		}
+
+		const extracted = extractConnectionTypesFromExpression(nodeType.inputs);
+		if (extracted.length > 0) {
+			return extracted;
+		}
+		// If no types found in expression, return empty array
+		console.log('[getNodeInputTypes] No types found in expression');
+		return [];
+	}
+
+	if (!nodeType.inputs || !Array.isArray(nodeType.inputs)) {
+		return [];
+	}
+
+	return nodeType.inputs.map((input) => {
+		if (typeof input === 'string') {
+			return input;
+		}
+		return input.type;
+	});
+}
+
+/**
+ * Result of inferring connection type
+ */
+export interface InferConnectionTypeResult {
+	connectionType?: NodeConnectionType;
+	possibleTypes?: NodeConnectionType[];
+	requiresSwap?: boolean;
+	error?: string;
+}
+
+/**
+ * Infer the connection type between two nodes based on their inputs and outputs
+ * @param sourceNode - The source node
+ * @param targetNode - The target node
+ * @param sourceNodeType - The source node type description
+ * @param targetNodeType - The target node type description
+ * @returns The inferred connection type or possible types
+ */
+export function inferConnectionType(
+	sourceNode: INode,
+	targetNode: INode,
+	sourceNodeType: INodeTypeDescription,
+	targetNodeType: INodeTypeDescription,
+): InferConnectionTypeResult {
+	console.log('=== Inferring Connection Type ===');
+	console.log(`Source Node: ${sourceNode.name} (type: ${sourceNode.type})`);
+	console.log(`Target Node: ${targetNode.name} (type: ${targetNode.type})`);
+
+	// Get available output and input types
+	const sourceOutputTypes = getNodeOutputTypes(sourceNodeType);
+	const targetInputTypes = getNodeInputTypes(targetNodeType, targetNode);
+	const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
+
+	// For nodes with dynamic inputs/outputs, check if they're currently acting as sub-nodes
+	// A node acts as a sub-node if it currently has no main inputs based on its parameters
+	const sourceHasMainInput = sourceInputTypes.includes(NodeConnectionTypes.Main);
+	const targetHasMainInput = targetInputTypes.includes(NodeConnectionTypes.Main);
+
+	// Use the dynamic check for nodes with expression-based inputs
+	const sourceIsSubNode =
+		isSubNode(sourceNodeType) || (typeof sourceNodeType.inputs === 'string' && !sourceHasMainInput);
+
+	const targetIsSubNode =
+		isSubNode(targetNodeType) || (typeof targetNodeType.inputs === 'string' && !targetHasMainInput);
+
+	console.log(`Source has main input: ${sourceHasMainInput}, is sub-node: ${sourceIsSubNode}`);
+	console.log(`Target has main input: ${targetHasMainInput}, is sub-node: ${targetIsSubNode}`);
+
+	console.log(`Source output types: [${sourceOutputTypes.join(', ')}]`);
+	console.log(`Target input types: [${targetInputTypes.join(', ')}]`);
+
+	// Find matching connection types
+	const matchingTypes = sourceOutputTypes.filter((outputType) =>
+		targetInputTypes.includes(outputType),
+	);
+
+	console.log(`Matching types: [${matchingTypes.join(', ')}]`);
+
+	// Handle AI connections (sub-node to main node)
+	if (sourceIsSubNode && !targetIsSubNode) {
+		console.log('Scenario: Sub-node to main node (AI connection)');
+		// Find AI connection types in the matches
+		const aiConnectionTypes = matchingTypes.filter((type) => type.startsWith('ai_'));
+		console.log(`AI connection types found: [${aiConnectionTypes.join(', ')}]`);
+
+		if (aiConnectionTypes.length === 1) {
+			console.log(`Selected connection type: ${aiConnectionTypes[0]}`);
+			return { connectionType: aiConnectionTypes[0] };
+		} else if (aiConnectionTypes.length > 1) {
+			// Multiple AI connection types possible
+			console.log('Multiple AI connection types found');
+			return {
+				possibleTypes: aiConnectionTypes,
+				error: `Multiple AI connection types possible: ${aiConnectionTypes.join(', ')}. Please specify which one to use.`,
+			};
+		}
+		console.log('No AI connection types found in matches');
+	}
+
+	// Handle reversed AI connections (main node to sub-node - needs swap)
+	if (!sourceIsSubNode && targetIsSubNode) {
+		console.log('Scenario: Main node to sub-node (needs swap)');
+		// Check if target has any AI outputs that source accepts as inputs
+		const targetOutputTypes = getNodeOutputTypes(targetNodeType);
+		const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
+
+		console.log(`Target output types: [${targetOutputTypes.join(', ')}]`);
+		console.log(`Source input types: [${sourceInputTypes.join(', ')}]`);
+
+		const reverseAiMatches = targetOutputTypes
+			.filter((type) => type.startsWith('ai_'))
+			.filter((type) => sourceInputTypes.includes(type));
+
+		console.log(`Reverse AI matches: [${reverseAiMatches.join(', ')}]`);
+
+		if (reverseAiMatches.length === 1) {
+			console.log(`Selected connection type (with swap): ${reverseAiMatches[0]}`);
+			return {
+				connectionType: reverseAiMatches[0],
+				requiresSwap: true,
+			};
+		} else if (reverseAiMatches.length > 1) {
+			console.log('Multiple reverse AI matches found');
+			return {
+				possibleTypes: reverseAiMatches,
+				requiresSwap: true,
+				error: `Multiple AI connection types possible (requires swap): ${reverseAiMatches.join(', ')}. Please specify which one to use.`,
+			};
+		}
+		console.log('No reverse AI matches found');
+	}
+
+	// Handle main connections
+	if (!sourceIsSubNode && !targetIsSubNode) {
+		console.log('Scenario: Main node to main node');
+		if (matchingTypes.includes(NodeConnectionTypes.Main)) {
+			console.log('Selected connection type: main');
+			return { connectionType: NodeConnectionTypes.Main };
+		}
+		console.log('No main connection type found in matches');
+	}
+
+	// Handle sub-node to sub-node connections
+	if (sourceIsSubNode && targetIsSubNode) {
+		console.log('Scenario: Sub-node to sub-node');
+		// Check for AI document connections or other specific sub-node to sub-node connections
+		const subNodeConnections = matchingTypes.filter((type) => type.startsWith('ai_'));
+		console.log(`Sub-node connection types found: [${subNodeConnections.join(', ')}]`);
+
+		if (subNodeConnections.length === 1) {
+			console.log(`Selected connection type: ${subNodeConnections[0]}`);
+			return { connectionType: subNodeConnections[0] };
+		} else if (subNodeConnections.length > 1) {
+			console.log('Multiple sub-node connection types found');
+			return {
+				possibleTypes: subNodeConnections,
+				error: `Multiple connection types possible between sub-nodes: ${subNodeConnections.join(', ')}. Please specify which one to use.`,
+			};
+		}
+		console.log('No AI connection types found for sub-node to sub-node');
+	}
+
+	// No valid connection found
+	if (matchingTypes.length === 0) {
+		console.log('ERROR: No matching connection types found');
+		return {
+			error: `No compatible connection types found between "${sourceNode.name}" (outputs: ${sourceOutputTypes.join(', ') || 'none'}) and "${targetNode.name}" (inputs: ${targetInputTypes.join(', ') || 'none'})`,
+		};
+	}
+
+	// If we have other matching types but couldn't determine the best one
+	if (matchingTypes.length === 1) {
+		console.log(`Fallback: Using single matching type: ${matchingTypes[0]}`);
+		return { connectionType: matchingTypes[0] };
+	}
+
+	console.log(`ERROR: Multiple matching types found: [${matchingTypes.join(', ')}]`);
+	return {
+		possibleTypes: matchingTypes,
+		error: `Multiple connection types possible: ${matchingTypes.join(', ')}. Please specify which one to use.`,
+	};
 }

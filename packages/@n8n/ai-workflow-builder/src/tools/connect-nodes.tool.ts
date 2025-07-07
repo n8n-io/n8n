@@ -1,5 +1,5 @@
 import { tool } from '@langchain/core/tools';
-import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createProgressReporter, reportProgress } from './helpers/progress';
@@ -10,6 +10,7 @@ import {
 	validateConnection,
 	createConnection,
 	formatConnectionMessage,
+	inferConnectionType,
 } from './utils/connection.utils';
 
 /**
@@ -47,11 +48,6 @@ export const nodeConnectionSchema = z.object({
 		.describe(
 			'The ID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
-	connectionType: z
-		.nativeEnum(NodeConnectionTypes)
-		.describe(
-			'The type of connection: "main" for regular data flow, or sub-node types like "ai_languageModel" (for LLM models), "ai_tool" (for agent tools), "ai_memory" (for chat memory) etc.',
-		),
 	sourceOutputIndex: z
 		.number()
 		.optional()
@@ -85,8 +81,8 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				reportProgress(reporter, 'Finding nodes to connect...');
 
 				// Find source and target nodes
-				const matchedSourceNode = validateNodeExists(validatedInput.sourceNodeId, workflow.nodes);
-				const matchedTargetNode = validateNodeExists(validatedInput.targetNodeId, workflow.nodes);
+				let matchedSourceNode = validateNodeExists(validatedInput.sourceNodeId, workflow.nodes);
+				let matchedTargetNode = validateNodeExists(validatedInput.targetNodeId, workflow.nodes);
 
 				// Check if both nodes exist
 				if (!matchedSourceNode || !matchedTargetNode) {
@@ -104,6 +100,84 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 					return createErrorResponse(config, error);
 				}
 
+				// Find node type descriptions
+				const sourceNodeType = nodeTypes.find((nt) => nt.name === matchedSourceNode!.type);
+				const targetNodeType = nodeTypes.find((nt) => nt.name === matchedTargetNode!.type);
+
+				if (!sourceNodeType || !targetNodeType) {
+					const error = {
+						message: 'One or both node types not found in registry',
+						code: 'NODE_TYPE_NOT_FOUND',
+						details: {
+							sourceType: matchedSourceNode.type,
+							targetType: matchedTargetNode.type,
+						},
+					};
+					reporter.error(error);
+					return createErrorResponse(config, error);
+				}
+
+				// Determine connection type
+				reportProgress(reporter, 'Inferring connection type...');
+
+				console.log('\n=== Connect Nodes Tool ===');
+				console.log(
+					`Attempting to connect: ${matchedSourceNode.name} -> ${matchedTargetNode.name}`,
+				);
+
+				const inferResult = inferConnectionType(
+					matchedSourceNode,
+					matchedTargetNode,
+					sourceNodeType,
+					targetNodeType,
+				);
+
+				if (inferResult.error) {
+					const error = {
+						message: inferResult.error,
+						code: 'CONNECTION_TYPE_INFERENCE_ERROR',
+						details: {
+							sourceNode: matchedSourceNode.name,
+							targetNode: matchedTargetNode.name,
+							possibleTypes: inferResult.possibleTypes,
+						},
+					};
+					reporter.error(error);
+					return createErrorResponse(config, error);
+				}
+
+				if (!inferResult.connectionType) {
+					const error = {
+						message: 'Could not infer connection type',
+						code: 'CONNECTION_TYPE_INFERENCE_FAILED',
+						details: {
+							sourceNode: matchedSourceNode.name,
+							targetNode: matchedTargetNode.name,
+						},
+					};
+					reporter.error(error);
+					return createErrorResponse(config, error);
+				}
+
+				const connectionType = inferResult.connectionType;
+				const inferredSwap = inferResult.requiresSwap ?? false;
+
+				// If swap is required from inference, swap the nodes
+				if (inferredSwap) {
+					console.log('Swapping nodes based on inference result');
+					const temp = matchedSourceNode;
+					matchedSourceNode = matchedTargetNode;
+					matchedTargetNode = temp;
+				}
+
+				reportProgress(
+					reporter,
+					`Inferred connection type: ${connectionType}${inferredSwap ? ' (swapped nodes)' : ''}`,
+				);
+				console.log(
+					`Final connection: ${matchedSourceNode.name} -> ${matchedTargetNode.name} (${connectionType})\n`,
+				);
+
 				// Report progress
 				reportProgress(
 					reporter,
@@ -114,7 +188,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				const validation = validateConnection(
 					matchedSourceNode,
 					matchedTargetNode,
-					validatedInput.connectionType,
+					connectionType,
 					nodeTypes,
 				);
 
@@ -125,7 +199,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 						details: {
 							sourceNode: matchedSourceNode.name,
 							targetNode: matchedTargetNode.name,
-							connectionType: validatedInput.connectionType,
+							connectionType,
 						},
 					};
 					reporter.error(error);
@@ -135,14 +209,15 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				// Use potentially swapped nodes
 				const actualSourceNode = validation.swappedSource ?? matchedSourceNode;
 				const actualTargetNode = validation.swappedTarget ?? matchedTargetNode;
-				const swapped = !!validation.shouldSwap;
+				// Track if nodes were swapped either during inference or validation
+				const swapped = inferredSwap || !!validation.shouldSwap;
 
 				// Create the connection
 				const updatedConnections = createConnection(
 					{ ...workflow.connections },
 					actualSourceNode.name,
 					actualTargetNode.name,
-					validatedInput.connectionType,
+					connectionType,
 					validatedInput.sourceOutputIndex,
 					validatedInput.targetInputIndex,
 				);
@@ -151,7 +226,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				const message = formatConnectionMessage(
 					actualSourceNode.name,
 					actualTargetNode.name,
-					validatedInput.connectionType,
+					connectionType,
 					swapped,
 				);
 
@@ -159,7 +234,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				const output: ConnectNodesOutput = {
 					sourceNode: actualSourceNode.name,
 					targetNode: actualTargetNode.name,
-					connectionType: validatedInput.connectionType,
+					connectionType,
 					swapped,
 					message,
 					found: {
@@ -186,27 +261,32 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 		},
 		{
 			name: 'connect_nodes',
-			description: `Connect two nodes in the workflow. The tool will automatically ensure correct connection direction.
+			description: `Connect two nodes in the workflow. The tool automatically determines the connection type based on node capabilities and ensures correct connection direction.
 
 UNDERSTANDING CONNECTIONS:
 - SOURCE NODE: The node that PRODUCES output/provides capability
 - TARGET NODE: The node that RECEIVES input/uses capability
 - Flow direction: Source → Target
 
+AUTOMATIC CONNECTION TYPE DETECTION:
+- The tool analyzes the nodes' inputs and outputs to determine the appropriate connection type
+- If multiple connection types are possible, the tool will provide an error with the available options
+- The connection type is determined by matching compatible input/output types between nodes
+
 For ai_* connections (ai_languageModel, ai_tool, ai_memory, ai_embedding, etc.):
 - Sub-nodes are ALWAYS the source (they provide capabilities)
 - Main nodes are ALWAYS the target (they use capabilities)
 - The tool will AUTO-CORRECT if you specify them backwards
 
-CORRECT CONNECTION EXAMPLES:
-- OpenAI Chat Model (SOURCE) → AI Agent (TARGET) [ai_languageModel]
-- Calculator Tool (SOURCE) → AI Agent (TARGET) [ai_tool]
-- Simple Memory (SOURCE) → Basic LLM Chain (TARGET) [ai_memory]
-- Embeddings OpenAI (SOURCE) → Vector Store (TARGET) [ai_embedding]
-- Document Loader (SOURCE) → Embeddings OpenAI (TARGET) [ai_document]
-- HTTP Request (SOURCE) → Set (TARGET) [main]
+CONNECTION EXAMPLES:
+- OpenAI Chat Model → AI Agent (detects ai_languageModel)
+- Calculator Tool → AI Agent (detects ai_tool)
+- Simple Memory → Basic LLM Chain (detects ai_memory)
+- Embeddings OpenAI → Vector Store (detects ai_embedding)
+- Document Loader → Embeddings OpenAI (detects ai_document)
+- HTTP Request → Set (detects main)
 
-Note: If you specify nodes in the wrong order for ai_* connections, they will be automatically swapped to ensure correctness.`,
+Note: The tool automatically swaps nodes if needed to ensure correct connection direction.`,
 			schema: nodeConnectionSchema,
 		},
 	);

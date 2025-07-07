@@ -8,7 +8,7 @@ import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { ILicenseService } from './interfaces';
-import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
+import { anthropicClaudeSonnet4, gpt41, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
@@ -132,18 +132,18 @@ export class AiWorkflowBuilderService {
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
 			createRemoveNodeTool(),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmSimpleTask!),
 		];
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmComplexTask, 'LLM not setup');
-			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
+			assert(this.llmSimpleTask, 'LLM not setup');
+			assert(typeof this.llmSimpleTask.bindTools === 'function', 'LLM does not support tools');
 
 			const prompt = await mainAgentPrompt.invoke(state);
-			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
+			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
 		};

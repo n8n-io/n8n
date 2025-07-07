@@ -1,5 +1,5 @@
 import { tool } from '@langchain/core/tools';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
@@ -30,6 +30,17 @@ export const nodeCreationSchema = z.object({
 	name: z
 		.string()
 		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
+	connectionParametersReasoning: z
+		.string()
+		.describe(
+			'REQUIRED: Explain your reasoning about connection parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "HTTP Request has static inputs, so no special parameters needed"',
+		),
+	connectionParameters: z
+		.object({})
+		.passthrough()
+		.describe(
+			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
+		),
 });
 
 /**
@@ -47,6 +58,7 @@ export interface AddedNode {
 	name: string;
 	type: string;
 	displayName?: string;
+	parameters?: INodeParameters;
 	position: [number, number];
 }
 
@@ -58,6 +70,7 @@ function createNode(
 	customName: string,
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
+	connectionParameters?: INodeParameters,
 ): INode {
 	// Generate unique name
 	const baseName = customName ?? nodeType.defaults?.name ?? nodeType.displayName;
@@ -66,8 +79,18 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Create the node instance
-	return createNodeInstance(nodeType, uniqueName, position);
+	// Validate and filter connection parameters if provided
+	let parameters = {};
+	if (connectionParameters) {
+		// const validation = validateConnectionParameters(connectionParameters);
+		// if (validation.warnings.length > 0) {
+		// 	logConnectionParameterWarnings(validation.warnings, nodeType.name);
+		// }
+		parameters = connectionParameters;
+	}
+
+	// Create the node instance with connection parameters
+	return createNodeInstance(nodeType, uniqueName, position, parameters);
 }
 
 /**
@@ -137,10 +160,10 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				// Process each node in the array
 				for (let i = 0; i < nodes.length; i++) {
 					const nodeInput = nodes[i];
-					const { nodeType, name } = nodeInput;
+					const { nodeType, name, connectionParametersReasoning, connectionParameters } = nodeInput;
 
-					// Report progress
-					batchReporter.next(name);
+					// Report progress with reasoning
+					batchReporter.next(`${name} (${connectionParametersReasoning})`);
 
 					// Find the node type
 					const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
@@ -150,7 +173,13 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 					}
 
 					// Create the new node
-					const newNode = createNode(nodeTypeDesc, name, currentNodes, nodeTypes);
+					const newNode = createNode(
+						nodeTypeDesc,
+						name,
+						currentNodes,
+						nodeTypes,
+						connectionParameters as INodeParameters,
+					);
 
 					addedNodes.push(newNode);
 					addedNodeInfo.push({
@@ -159,6 +188,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 						type: newNode.type,
 						displayName: nodeTypeDesc.displayName,
 						position: newNode.position,
+						parameters: newNode.parameters,
 					});
 					currentNodes.push(newNode);
 				}
@@ -207,8 +237,35 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 		},
 		{
 			name: 'add_nodes',
-			description:
-				'Add one or more nodes to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what each node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.',
+			description: `Add one or more nodes to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what each node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.
+
+CRITICAL: For EVERY node, you MUST provide:
+1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using {}
+2. connectionParameters - The actual parameters (use {} for nodes without special needs)
+
+IMPORTANT: DO NOT rely on default values! Always explicitly set connection-affecting parameters when they exist.
+
+REASONING EXAMPLES:
+- "Vector Store has dynamic inputs that change based on mode parameter, setting mode:insert to accept document inputs"
+- "HTTP Request has static inputs/outputs, no connection parameters needed"
+- "Document Loader needs textSplittingMode:custom to accept text splitter connections"
+- "AI Agent has dynamic inputs, setting hasOutputParser:true to enable output parser connections"
+- "Set node has standard main connections only, using empty parameters"
+
+CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
+- AI Agent (@n8n/n8n-nodes-langchain.agent):
+  - For output parser support: { hasOutputParser: true }
+  - Without output parser: { hasOutputParser: false }
+- Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
+  - For document input: { mode: "insert" }
+  - For querying: { mode: "retrieve" }
+  - For AI tool use: { mode: "retrieve-as-tool" }
+- Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
+  - For text splitter input: { textSplittingMode: "custom" }
+  - For built-in splitting: { textSplittingMode: "simple" }
+- Regular nodes (HTTP Request, Set, Code, etc.): {}
+
+Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
 			schema: addNodesSchema,
 		},
 	);

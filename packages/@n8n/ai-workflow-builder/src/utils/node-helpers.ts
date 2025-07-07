@@ -7,8 +7,12 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
  * @returns true if the node is a sub-node, false otherwise
  */
 export function isSubNode(nodeType: INodeTypeDescription): boolean {
+	console.log(`[isSubNode] Checking node type: ${nodeType.name}`);
+	console.log('[isSubNode] Inputs:', nodeType.inputs);
+
 	// If no inputs at all, it's definitely a sub-node
 	if (!nodeType.inputs || (Array.isArray(nodeType.inputs) && nodeType.inputs.length === 0)) {
+		console.log('[isSubNode] Result: true (no inputs)');
 		return true;
 	}
 
@@ -23,6 +27,8 @@ export function isSubNode(nodeType: INodeTypeDescription): boolean {
 			return input.type === NodeConnectionTypes.Main || input.type.toLowerCase() === 'main';
 		});
 
+		console.log(`[isSubNode] Has main input: ${hasMainInput}`);
+		console.log(`[isSubNode] Result: ${!hasMainInput}`);
 		return !hasMainInput;
 	}
 	// Handle expression-based inputs (dynamic)
@@ -42,6 +48,17 @@ export function isSubNode(nodeType: INodeTypeDescription): boolean {
 			"{ displayName: '', type: 'main'",
 			'{ displayName: "", type: NodeConnectionTypes.Main',
 			"{ displayName: '', type: NodeConnectionTypes.Main",
+			// Patterns for arrays that include "main" as first element
+			'return ["main"',
+			"return ['main'",
+			'return [`main`',
+			'return[["main"',
+			"return[['main'",
+			'return [[`main`',
+			// Pattern for spread operations that include main
+			'["main", ...',
+			"['main', ...",
+			'[`main`, ...',
 		];
 
 		// If any main input pattern is found, it's NOT a sub-node
@@ -51,8 +68,11 @@ export function isSubNode(nodeType: INodeTypeDescription): boolean {
 				nodeType.inputs.toLowerCase().includes(pattern.toLowerCase()),
 		);
 
+		console.log(`[isSubNode] Expression has main input: ${hasMainInput}`);
+		console.log(`[isSubNode] Result: ${!hasMainInput}`);
 		return !hasMainInput;
 	}
 	// If we can't determine, assume it's not a sub-node (safer default)
+	console.log('[isSubNode] Result: false (default)');
 	return false;
 }
