@@ -23,6 +23,8 @@ import IconLucideArrowDown from '~icons/lucide/arrow-down';
 import IconLucideArrowLeft from '~icons/lucide/arrow-left';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
 import IconLucideArrowRight from '~icons/lucide/arrow-right';
+import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
+import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
 import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
@@ -414,6 +416,8 @@ export const updatedIconSet = {
 	'arrow-left': IconLucideArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
 	'arrow-right': IconLucideArrowRight,
+	'arrow-right-from-line': IconLucideArrowRightFromLine,
+	'arrow-right-to-line': IconLucideArrowRightToLine,
 	'arrow-up': IconLucideArrowUp,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
