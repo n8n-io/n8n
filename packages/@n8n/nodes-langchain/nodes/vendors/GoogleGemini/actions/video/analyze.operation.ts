@@ -5,7 +5,7 @@ import { baseAnalyze } from '../../helpers/baseAnalyze';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('videoModelSearch'),
+	modelRLC('modelSearch'),
 	{
 		displayName: 'Text Input',
 		name: 'text',

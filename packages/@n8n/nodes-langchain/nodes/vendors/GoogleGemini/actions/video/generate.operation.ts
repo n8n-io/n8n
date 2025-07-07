@@ -7,7 +7,7 @@ import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('videoModelSearch'),
+	modelRLC('videoGenerationModelSearch'),
 	{
 		displayName: 'Prompt',
 		name: 'prompt',

@@ -58,34 +58,20 @@ export async function audioModelSearch(
 	);
 }
 
-export async function imageModelSearch(
+export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	return await baseModelSearch.call(
 		this,
-		(model) =>
-			!model.includes('embedding') &&
-			!model.includes('vision') && // `vision` models are deprecated
-			!model.includes('veo') &&
-			!model.includes('audio') &&
-			!model.includes('tts'),
+		(model) => model.includes('imagen') || model.includes('image-generation'),
 		filter,
 	);
 }
 
-export async function videoModelSearch(
+export async function videoGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(
-		this,
-		(model) =>
-			!model.includes('embedding') &&
-			!model.includes('image') &&
-			!model.includes('vision') &&
-			!model.includes('audio') &&
-			!model.includes('tts'),
-		filter,
-	);
+	return await baseModelSearch.call(this, (model) => model.includes('veo'), filter);
 }
