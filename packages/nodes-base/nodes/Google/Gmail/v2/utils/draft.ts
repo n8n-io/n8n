@@ -4,6 +4,13 @@ import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import { googleApiRequest } from '../../GenericFunctions';
 
+function setEmailReplyHeaders(email: IEmail, messageId: string | undefined): void {
+	if (messageId) {
+		email.inReplyTo = messageId;
+		email.reference = messageId;
+	}
+}
+
 function setThreadHeaders(
 	email: IEmail,
 	thread: { messages: Array<{ payload: { headers: Array<{ name: string; value: string }> } }> },
@@ -14,8 +21,7 @@ function setThreadHeaders(
 			(header: { name: string; value: string }) => header.name === 'Message-ID',
 		)?.value;
 
-		email.inReplyTo = messageId;
-		email.reference = messageId;
+		setEmailReplyHeaders(email, messageId);
 	}
 }
 
