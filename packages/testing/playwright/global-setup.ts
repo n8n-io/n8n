@@ -1,10 +1,21 @@
 import { request } from '@playwright/test';
 
 import { ApiHelpers } from './services/api-helper';
+import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 
 async function globalSetup() {
 	console.log('🚀 Starting global setup...');
 
+	// Create stack to force pull images required before tests
+	console.log(`🔄 Pulling images for ${process.env.N8N_DOCKER_IMAGE}...`);
+
+	const stack = await createN8NStack({
+		postgres: true,
+	});
+
+	console.log(`🔄 Images pulled for ${process.env.N8N_DOCKER_IMAGE}...`);
+
+	await stack.stop();
 	// Check if N8N_BASE_URL is set
 	const n8nBaseUrl = process.env.N8N_BASE_URL;
 	if (!n8nBaseUrl) {
