@@ -8,13 +8,11 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import userEvent from '@testing-library/user-event';
-import { useNDVStore } from '@/stores/ndv.store';
 
 const renderComponent = createComponentRenderer(NodeErrorView);
 
 let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
-let mockNdvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
@@ -24,7 +22,6 @@ describe('NodeErrorView.vue', () => {
 
 		mockAiAssistantStore = mockedStore(useAssistantStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNdvStore = mockedStore(useNDVStore);
 		//@ts-expect-error
 		error = {
 			name: 'NodeOperationError',
@@ -181,7 +178,14 @@ describe('NodeErrorView.vue', () => {
 
 		await userEvent.click(getByTestId('node-error-view-open-node-button'));
 
-		expect(emitted().click).toHaveLength(1);
-		expect(mockNdvStore.activeNodeName).toBe(error.node.name);
+		expect(emitted('openErrorNode')).toEqual([
+			[
+				{
+					...error,
+					name: 'NodeOperationError',
+					functionality: 'configuration-node',
+				},
+			],
+		]);
 	});
 });

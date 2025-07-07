@@ -4,7 +4,6 @@ import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -15,6 +14,7 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -31,6 +31,8 @@ type Props = {
 	error: NodeError | NodeApiError | NodeOperationError;
 	showDetails?: boolean;
 	compact?: boolean;
+	activeNode?: INodeUi | null;
+	inputDataLength?: number;
 };
 
 const emit = defineEmits<{
@@ -44,7 +46,6 @@ const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
@@ -54,7 +55,7 @@ const displayCause = computed(() => {
 });
 
 const node = computed(() => {
-	return props.error.node || ndvStore.activeNode;
+	return props.error.node || props.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
@@ -82,7 +83,7 @@ const n8nVersion = computed(() => {
 });
 
 const hasManyInputItems = computed(() => {
-	return ndvStore.ndvInputData.length > 1;
+	return (props.inputDataLength ?? 0) > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -134,7 +135,7 @@ const isAskAssistantAvailable = computed(() => {
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
-		node: props.error.node || ndvStore.activeNode,
+		node: props.error.node || props.activeNode,
 	});
 });
 

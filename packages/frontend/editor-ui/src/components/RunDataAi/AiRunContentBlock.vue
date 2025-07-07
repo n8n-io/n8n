@@ -72,7 +72,14 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 				[$style.blockContentExpanded]: isExpanded,
 			}"
 		>
-			<NodeErrorView v-if="error" :error="error" :class="$style.error" show-details />
+			<NodeErrorView
+				v-if="error"
+				:error="error"
+				:class="$style.error"
+				:active-node="null"
+				:input-data-length="0"
+				show-details
+			/>
 			<RunDataAi
 				v-else
 				:data="runData.data"
