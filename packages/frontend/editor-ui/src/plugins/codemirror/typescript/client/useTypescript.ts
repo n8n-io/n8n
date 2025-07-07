@@ -47,7 +47,7 @@ export function useTypescript(
 			{
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
-				allNodeNames: autocompletableNodeNames(),
+				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().variables.map((v) => v.key),
 				inputNodeNames: activeNodeName
 					? workflowsStore
