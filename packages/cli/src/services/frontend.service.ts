@@ -343,20 +343,20 @@ export class FrontendService {
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
-				loginEnabled: Container.get(GlobalConfig).sso.ldap.loginEnabled,
+				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
 
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
-				loginEnabled: Container.get(GlobalConfig).sso.saml.loginEnabled,
+				loginEnabled: this.globalConfig.sso.saml.loginEnabled,
 			});
 		}
 
 		if (this.licenseState.isOidcLicensed()) {
 			Object.assign(this.settings.sso.oidc, {
-				loginEnabled: Container.get(GlobalConfig).sso.oidc.loginEnabled,
+				loginEnabled: this.globalConfig.sso.oidc.loginEnabled,
 			});
 		}
 
