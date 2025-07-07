@@ -669,7 +669,7 @@ async function onFilterExecutionBy(input: { ids: string[] }) {
 
 	emit('filter-executions-by', input.ids);
 
-	router.push({
+	void router.push({
 		path: `/workflow/${workflowId}/executions/`,
 		query: { custom_filter: customFilter },
 	});
