@@ -11,7 +11,7 @@ if [ -z "$HTTPS_PROXY" ] && [ -z "$HTTP_PROXY" ]; then
 else
 	echo "proxy=$HTTP_PROXY" >> /home/node/.npmrc
 	echo "https-proxy=$HTTPS_PROXY" >> /home/node/.npmrc
-	[ -z "$NO_PROXY" ] || echo "noproxy=$NO_PROXY" >> /home/node/.npmrc
+	[ -n "$NO_PROXY" ] && echo "noproxy=$NO_PROXY" >> /home/node/.npmrc
 fi
 
 if [ "$#" -gt 0 ]; then
