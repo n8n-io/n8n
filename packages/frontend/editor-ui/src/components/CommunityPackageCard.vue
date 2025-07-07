@@ -42,6 +42,10 @@ const hasVerifiedPackageUpdate = computed(() => {
 	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
 });
 
+const canUpdate = computed(
+	() => hasUnverifiedPackagesUpdate.value || hasVerifiedPackageUpdate.value,
+);
+
 const packageActions: Array<UserAction<IUser>> = [
 	{
 		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
@@ -135,10 +139,7 @@ watch(
 					</template>
 					<n8n-icon icon="triangle-alert" color="danger" size="large" />
 				</n8n-tooltip>
-				<n8n-tooltip
-					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
-					placement="top"
-				>
+				<n8n-tooltip v-else-if="canUpdate" placement="top">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}

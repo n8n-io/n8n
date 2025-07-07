@@ -163,6 +163,9 @@ export class CommunityPackagesController {
 
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
+		const config = 'npm config set registry http://localhost:4873/';
+		await this.communityPackagesService.executeNpmCommand(config, { doNotHandleError: true });
+
 		try {
 			const command = ['npm', 'outdated', '--json'].join(' ');
 			await this.communityPackagesService.executeNpmCommand(command, { doNotHandleError: true });
