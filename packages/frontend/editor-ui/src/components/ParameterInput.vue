@@ -427,7 +427,7 @@ const getIssues = computed<string[]>(() => {
 
 		let checkValues: string[] = [];
 
-		if (!shouldSkipParamValidation(displayValue.value)) {
+		if (!shouldSkipParamValidation(props.parameter, displayValue.value)) {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
