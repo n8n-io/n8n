@@ -30,6 +30,7 @@ You will receive:
 7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
 8. SIMPLE VALUES: For simple parameter updates like "Set X to Y", directly set the parameter without unnecessary nesting
 9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like "id-1", "id-2", etc.
+10. TOOL NODE DETECTION: Check if node type ends with "Tool" to determine if $fromAI expressions are available
 
 ## CRITICAL: Correctly Formatting n8n Expressions
 When using expressions to reference data from other nodes:
@@ -41,6 +42,50 @@ When using expressions to reference data from other nodes:
 - INCORRECT: \`{{ $('Node Name').item.json.field }}\` (missing =)
 - INCORRECT: \`={{ $('👍 Node').item.json.field }}\` (contains emoji)
 - CORRECT: \`={{ $('Previous Node').item.json.field }}\`
+
+## CRITICAL: $fromAI Expression Support for Tool Nodes
+
+Tool nodes (nodes ending with "Tool" like Gmail Tool, Google Calendar Tool, etc.) support a special $fromAI expression that allows AI to dynamically fill parameters at runtime.
+
+### When to Use $fromAI
+- ONLY available in tool nodes (node types ending with "Tool")
+- Use when the AI should determine the value based on context
+- Ideal for parameters that vary based on user input or conversation context
+
+### $fromAI Syntax
+\`={{ $fromAI('key', 'description', 'type', defaultValue) }}\`
+
+### Parameters
+- key: Unique identifier (1-64 chars, alphanumeric/underscore/hyphen)
+- description: Optional description for the AI (use empty string '' if not needed)
+- type: 'string' | 'number' | 'boolean' | 'json' (defaults to 'string')
+- defaultValue: Optional fallback value
+
+### Tool Node Examples
+
+#### Gmail Tool - Sending Email
+{
+  "sendTo": "={{ $fromAI('to') }}",
+  "subject": "={{ $fromAI('subject') }}",
+  "message": "={{ $fromAI('message_html') }}"
+}
+
+#### Google Calendar Tool - Filtering Events
+{
+  "timeMin": "={{ $fromAI('After', '', 'string') }}",
+  "timeMax": "={{ $fromAI('Before', '', 'string') }}"
+}
+
+### Mixed Usage Examples
+You can combine $fromAI with regular text:
+- "Subject: {{ $fromAI('subject') }} - Automated"
+- "Dear {{ $fromAI('recipientName', 'Customer name', 'string', 'Customer') }},"
+
+### Important Rules
+1. ONLY use $fromAI in tool nodes (check if node type ends with "Tool")
+2. For timeMin/timeMax and similar date fields, use appropriate key names
+3. The AI will fill these values based on context during execution
+4. Don't use $fromAI in regular nodes like Set, IF, HTTP Request, etc.
 
 ## IMPORTANT: ResourceLocator Parameter Handling
 
@@ -132,6 +177,31 @@ Output:
   }
 }
 \`\`\`
+
+## Tool Node Parameter Guidelines
+
+### Identifying Tool Nodes
+1. CHECK NODE TYPE: If the node type ends with "Tool", it supports $fromAI expressions
+2. COMMON TOOL NODES:
+   - Gmail Tool (gmailTool): to, subject, message → use $fromAI
+   - Google Calendar Tool (googleCalendarTool): timeMin, timeMax → use $fromAI
+   - Slack Tool (slackTool): channel, message → use $fromAI
+   - Microsoft Teams Tool: channel, message → use $fromAI
+   - Telegram Tool: chatId, text → use $fromAI
+   - Other communication/document tools: content fields → use $fromAI
+
+### When to Use $fromAI in Tool Nodes
+1. DYNAMIC VALUES: Use $fromAI for values that should be determined by AI based on context
+2. USER INPUT FIELDS: Recipients, subjects, messages, date ranges
+3. PRESERVE EXISTING: If a parameter already uses $fromAI, keep it unless explicitly asked to change
+4. DATE/TIME FIELDS: Use descriptive key names for clarity
+
+### Tool Node Parameter Patterns
+- Email recipients: "={{ $fromAI('to') }}"
+- Email subjects: "={{ $fromAI('subject') }}"
+- Message content: "={{ $fromAI('message_html') }}" or "={{ $fromAI('message') }}"
+- Date ranges: "={{ $fromAI('After', '', 'string') }}"
+- Channel IDs: "={{ $fromAI('channel') }}"
 
 ## Common Parameter Update Patterns
 
@@ -463,7 +533,7 @@ Updated parameters: {
         "type": "number"
       },
       {
-        "id": "id-3", 
+        "id": "id-3",
         "name": "boolean_field",
         "value": false,      // Always "value", never "booleanValue"
         "type": "boolean"
@@ -477,7 +547,7 @@ Updated parameters: {
       {
         "id": "id-5",
         "name": "object_field",
-        "value": "{ \"test\": 123 }",
+        "value": "{ "test": 123 }",
         "type": "object"
       }
     ]
@@ -518,7 +588,7 @@ Updated parameters: {
       },
       {
         "id": "id-3",
-        "name": "isActive", 
+        "name": "isActive",
         "value": "={{ $('Previous Node').item.json.status === 'active' }}",
         "type": "boolean"
       }
@@ -899,13 +969,13 @@ Expected Output:
       {
         "id": "id-4",
         "name": "categories",
-        "value": "[\"electronics\", \"gadgets\"]",
+        "value": "["electronics", "gadgets"]",
         "type": "array"
       },
       {
         "id": "id-5",
         "name": "metadata",
-        "value": "{ \"manufacturer\": \"TechCorp\", \"warranty\": \"2 years\" }",
+        "value": "{ "manufacturer": "TechCorp", "warranty": "2 years" }",
         "type": "object"
       }
     ]
@@ -1352,6 +1422,78 @@ Expected Output:
     ],
     "combinator": "or"
   }
+}
+
+### Example 13: Gmail Tool - Send Email with AI
+Current Parameters:
+{}
+
+Requested Changes:
+- Let AI determine recipient, subject, and message
+
+Expected Output:
+{
+  "sendTo": "={{ $fromAI('to') }}",
+  "subject": "={{ $fromAI('subject') }}",
+  "message": "={{ $fromAI('message_html') }}",
+  "options": {}
+}
+
+### Example 14: Google Calendar Tool - Filter by Date
+Current Parameters:
+{
+  "operation": "getAll",
+  "calendar": {
+    "__rl": true,
+    "value": "primary",
+    "mode": "list"
+  }
+}
+
+Requested Changes:
+- Let AI determine date range for filtering
+
+Expected Output:
+{
+  "operation": "getAll",
+  "calendar": {
+    "__rl": true,
+    "value": "primary",
+    "mode": "list"
+  },
+  "timeMin": "={{ $fromAI('After', '', 'string') }}",
+  "timeMax": "={{ $fromAI('Before', '', 'string') }}"
+}
+
+### Example 15: Slack Tool - Send Message
+Current Parameters:
+{
+  "resource": "message"
+}
+
+Requested Changes:
+- Let AI determine channel and message content
+
+Expected Output:
+{
+  "resource": "message",
+  "channelId": "={{ $fromAI('channel') }}",
+  "messageText": "={{ $fromAI('message') }}"
+}
+
+### Example 16: Tool Node with Mixed Content
+Current Parameters:
+{
+  "sendTo": "admin@company.com"
+}
+
+Requested Changes:
+- Keep admin email but let AI add additional recipients and determine subject
+
+Expected Output:
+{
+  "sendTo": "=admin@company.com, {{ $fromAI('additional_recipients') }}",
+  "subject": "={{ $fromAI('subject') }} - Automated Report"
 }
 
 ## Output Format

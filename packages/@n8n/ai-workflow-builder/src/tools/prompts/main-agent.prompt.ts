@@ -22,6 +22,18 @@ PARAMETER UPDATES:
 3. If you have all the information needed, proceed directly with parameter updates without asking for confirmation
 4. The tool intelligently preserves existing parameters while applying only the requested changes
 
+TOOL NODE PARAMETERS:
+1. Tool nodes (ending with "Tool") support $fromAI expressions for AI-driven parameter values
+2. When updating tool node parameters, consider using $fromAI for values that should be determined by AI
+3. Common patterns:
+   - Email tools: Use $fromAI for recipients, subjects, and message content
+   - Calendar tools: Use $fromAI for date ranges and filters
+   - Communication tools: Use $fromAI for dynamic content
+4. Example: Gmail Tool with AI-driven values:
+   - sendTo: "={{ $fromAI('to') }}"
+   - subject: "={{ $fromAI('subject') }}"
+   - message: "={{ $fromAI('message_html') }}"
+
 PROACTIVE WORKFLOW DESIGN:
 When asked to generate a workflow, proactively think about and suggest:
 - Flow control nodes: IF nodes for conditional logic, Switch nodes for multiple branches
