@@ -44,6 +44,7 @@ import IconLucideChevronDown from '~icons/lucide/chevron-down';
 import IconLucideChevronLeft from '~icons/lucide/chevron-left';
 import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
+import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
 import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
@@ -438,6 +439,8 @@ export const updatedIconSet = {
 	'chevron-right': IconLucideChevronRight,
 	'chevron-up': IconLucideChevronUp,
 	'chevrons-left': IconLucideChevronsLeft,
+	'chevrons-down-up': IconLucideChevronsDownUp,
+	'chevrons-up-down': IconLucideChevronsUpDown,
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
