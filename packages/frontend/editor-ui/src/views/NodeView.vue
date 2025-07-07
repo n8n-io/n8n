@@ -849,7 +849,7 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	const workflowIsSaved = !uiStore.stateIsDirty;
+	const workflowIsSaved = !uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
 	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
 	if (workflowIsSaved || workflowIsArchived) {
