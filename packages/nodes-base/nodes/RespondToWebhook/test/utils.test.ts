@@ -1,8 +1,9 @@
 import type { IDataObject } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
-import { configuredOutputs } from '../utils/outputs';
-import { replaceSingleQuotes, sandboxResponseData } from '../utils/sandbox';
+
 import { getBinaryResponse } from '../utils/binary';
+import { configuredOutputs } from '../utils/outputs';
+import { sandboxResponseData } from '../utils/sandbox';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {
@@ -58,7 +59,6 @@ describe('sanitizeResponseData', () => {
 		},
 	])('wraps the response body in an iframe', ({ srcdoc }) => {
 		const result = sandboxResponseData(srcdoc);
-		const singleQuoteReplaced = replaceSingleQuotes(srcdoc);
 
 		expect(result).toMatchSnapshot();
 	});
