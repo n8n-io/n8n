@@ -20,6 +20,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -115,6 +116,14 @@ const resolvedAdditionalExpressionData = computed(() => {
 		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && isForCredential
 			? { $secrets: externalSecretsStore.secretsAsObject }
 			: {}),
+	};
+});
+
+const targetNodeParameterContext = computed<TargetNodeParameterContext | undefined>(() => {
+	if (!resolvedParameter.value) return undefined;
+	return {
+		nodeName: resolvedParameter.value.node.name,
+		parameterPath: resolvedParameter.value.parameterPath,
 	};
 });
 
@@ -232,10 +241,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 						:is-read-only="isReadOnly"
 						:path="resolvedParameter.parameterPath"
 						data-test-id="expression-modal-input"
-						:target-node-parameter-context="{
-							nodeName: resolvedParameter.node.name,
-							parameterPath: resolvedParameter.parameterPath,
-						}"
+						:target-node-parameter-context="targetNodeParameterContext"
 						@change="valueChangedDebounced($event.value)"
 					/>
 					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
@@ -247,6 +253,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 							:default-value="resolvedParameter.parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
+							:target-node-parameter-context="targetNodeParameterContext"
 							fill-parent
 							@update:model-value="valueChangedDebounced" />
 						<HtmlEditor
