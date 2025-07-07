@@ -813,8 +813,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	.icon-button {
 		position: absolute;
 		opacity: 0;
-		top: 0;
-		left: calc(-0.5 * var(--spacing-2xs));
+		top: -3px;
+		left: calc(-0.5 * var(--spacing-xs));
 		transition: opacity 100ms ease-in;
 		Button {
 			color: var(--color-icon-base);

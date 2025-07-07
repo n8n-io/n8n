@@ -1591,6 +1591,7 @@ const onNameSubmit = async (name: string) => {
 				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				icon="bot"
+				:stroke-width="1.5"
 				:class="$style['easy-ai-workflow-callout']"
 			>
 				{{ i18n.baseText('workflows.list.easyAI') }}
@@ -1774,7 +1775,7 @@ const onNameSubmit = async (name: string) => {
 								:class="$style.emptyStateCardIcon"
 								icon="file"
 								color="foreground-dark"
-								:stroke-width="1"
+								:stroke-width="1.5"
 							/>
 							<N8nText size="large" class="mt-xs">
 								{{ i18n.baseText('workflows.empty.startFromScratch') }}
