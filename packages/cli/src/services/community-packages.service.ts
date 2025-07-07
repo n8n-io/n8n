@@ -6,6 +6,7 @@ import { InstalledPackagesRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { exec } from 'child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
@@ -245,7 +246,12 @@ export class CommunityPackagesService {
 			const response = await axios.post<CommunityPackages.PackageStatusCheck>(
 				N8N_BACKEND_SERVICE_URL,
 				{ name: packageName },
-				{ method: 'POST' },
+				{
+					method: 'POST',
+					...(process.env.HTTPS_PROXY
+						? { httpsAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+						: {}),
+				},
 			);
 
 			if (response.data.status !== NPM_PACKAGE_STATUS_GOOD) return response.data;
