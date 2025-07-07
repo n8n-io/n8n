@@ -20,8 +20,10 @@ export type StrapiCommunityNodeType = {
 	nodeDescription: INodeTypeDescription;
 };
 
-const N8N_VETTED_NODE_TYPES_STAGING_URL = 'https://api-staging.n8n.io/api/community-nodes';
-const N8N_VETTED_NODE_TYPES_PRODUCTION_URL = 'https://api.n8n.io/api/community-nodes';
+const N8N_VETTED_NODE_TYPES_STAGING_URL =
+	'https://alive-direct-hippo.ngrok-free.app/api/community-nodes';
+const N8N_VETTED_NODE_TYPES_PRODUCTION_URL =
+	'https://alive-direct-hippo.ngrok-free.app/api/community-nodes';
 
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
