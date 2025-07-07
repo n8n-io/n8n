@@ -1038,12 +1038,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+
 		if (query.nodesExecuted && query.nodesExecuted.length > 0) {
 			const idConditions: string[] = [];
 			query.nodesExecuted.forEach((node, idx) => {
-				idConditions.push(
-					`json_type(json_extract(execution_data.data, '$[4].' || :nodeName${idx})) IS NOT NULL`,
-				);
+				const fragment = isPostgres
+					? `(execution_data.data->4 ? :nodeName${idx})`
+					: `json_type(json_extract(execution_data.data, '$[4].' || :nodeName${idx})) IS NOT NULL`;
+				idConditions.push(fragment);
 				qb.setParameter(`nodeName${idx}`, node);
 			});
 			qb.andWhere('(' + idConditions.join(' OR ') + ')');
