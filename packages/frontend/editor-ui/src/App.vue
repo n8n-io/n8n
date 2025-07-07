@@ -17,6 +17,7 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useZenModeStore } from '@/stores/zenMode.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
@@ -29,6 +30,7 @@ const builderStore = useBuilderStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const zenModeStore = useZenModeStore();
 
 const { setAppZIndexes } = useStyles();
 
@@ -100,16 +102,27 @@ watch(
 		:class="{
 			[$style.container]: true,
 			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+			[$style.zenMode]: zenModeStore.isZenModeActive,
 		}"
 	>
 		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
-			<div id="banners" :class="$style.banners">
+			<div
+				id="banners"
+				:class="[$style.banners, { [$style.zenModeHidden]: zenModeStore.isZenModeActive }]"
+			>
 				<BannerStack v-if="!isDemoMode" />
 			</div>
-			<div id="header" :class="$style.header">
+			<div
+				id="header"
+				:class="[$style.header, { [$style.zenModeHidden]: zenModeStore.isZenModeActive }]"
+			>
 				<RouterView name="header" />
 			</div>
-			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+			<div
+				v-if="usersStore.currentUser"
+				id="sidebar"
+				:class="[$style.sidebar, { [$style.zenModeHidden]: zenModeStore.isZenModeActive }]"
+			>
 				<RouterView name="sidebar" />
 			</div>
 			<div id="content" :class="$style.content">
@@ -156,6 +169,39 @@ watch(
 		'sidebar content';
 	grid-template-columns: auto 1fr;
 	grid-template-rows: auto auto 1fr;
+}
+
+// Focus mode styles
+.zenMode {
+	.app-grid {
+		grid-template-areas: 'content';
+		grid-template-columns: 1fr;
+		grid-template-rows: 1fr;
+	}
+
+	.content {
+		position: fixed !important;
+		top: 0 !important;
+		left: 0 !important;
+		width: 100vw !important;
+		height: 100vh !important;
+		overflow: hidden !important;
+		z-index: 1000;
+	}
+
+	.contentWrapper {
+		width: 100vw !important;
+		height: 100vh !important;
+		overflow: hidden !important;
+	}
+}
+
+.zenModeHidden {
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity 0.2s ease-in-out,
+		visibility 0.2s ease-in-out;
 }
 
 .banners {

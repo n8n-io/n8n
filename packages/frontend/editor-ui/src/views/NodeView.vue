@@ -136,6 +136,7 @@ import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
+import { useZenModeStore } from '@/stores/zenMode.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 defineOptions({
@@ -197,6 +198,7 @@ const foldersStore = useFoldersStore();
 const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
+const zenModeStore = useZenModeStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -679,6 +681,14 @@ const allTriggerNodesDisabled = computed(() => {
 
 function onTidyUp(event: CanvasLayoutEvent) {
 	tidyUp(event);
+}
+
+function onToggleZenMode() {
+	zenModeStore.toggleZenMode();
+	toast.showMessage({
+		title: zenModeStore.isZenModeActive ? 'Zen Mode Enabled' : 'Zen Mode Disabled',
+		type: 'info',
+	});
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
@@ -2054,6 +2064,7 @@ onBeforeUnmount(() => {
 			@selection:end="onSelectionEnd"
 			@drag-and-drop="onDragAndDrop"
 			@tidy-up="onTidyUp"
+			@toggle-zen-mode="onToggleZenMode"
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
