@@ -1,9 +1,16 @@
 import 'reflect-metadata';
-import { inDevelopment, inTest, LicenseState, Logger } from '@n8n/backend-common';
+import {
+	inDevelopment,
+	inTest,
+	LicenseState,
+	Logger,
+	ModuleRegistry,
+	ModulesConfig,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -12,13 +19,12 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ensureError, sleep, UserError } from 'n8n-workflow';
+import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -27,14 +33,14 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ModuleRegistry } from '@/modules/module-registry';
-import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
-export abstract class BaseCommand extends Command {
+export abstract class BaseCommand<F = never> {
+	readonly flags: F;
+
 	protected logger = Container.get(Logger);
 
 	protected dbConnection: DbConnection;
@@ -70,22 +76,6 @@ export abstract class BaseCommand extends Command {
 
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
-
-	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			// add module to the registry for dependency injection
-			try {
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-			} catch {
-				await import(`../modules/${moduleName}.ee/${moduleName}.module`);
-			}
-
-			this.modulesConfig.addLoadedModule(moduleName);
-			this.logger.debug(`Loaded module "${moduleName}"`);
-		}
-
-		this.moduleRegistry.addEntities();
-	}
 
 	async init(): Promise<void> {
 		this.dbConnection = Container.get(DbConnection);
@@ -148,7 +138,15 @@ export abstract class BaseCommand extends Command {
 			await Container.get(CommunityPackagesService).init();
 		}
 
-		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+		const taskRunnersConfig = this.globalConfig.taskRunners;
+
+		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+			if (taskRunnersConfig.insecureMode) {
+				this.logger.warn(
+					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
+				);
+			}
+
 			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			await Container.get(TaskRunnerModule).start();
 		}
@@ -182,6 +180,14 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
+	protected log(message: string) {
+		this.logger.info(message);
+	}
+
+	protected error(message: string) {
+		throw new UnexpectedError(message);
+	}
+
 	async initObjectStoreService() {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const isSelected = binaryDataConfig.mode === 's3';
@@ -200,7 +206,7 @@ export abstract class BaseCommand extends Command {
 			this.logger.error(
 				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 			);
-			return this.exit(1);
+			return process.exit(1);
 		}
 
 		this.logger.debug('License found for external storage - Initializing object store service');
@@ -271,13 +277,12 @@ export abstract class BaseCommand extends Command {
 
 	async finally(error: Error | undefined) {
 		if (error?.message) this.logger.error(error.message);
-		if (inTest || this.id === 'start') return;
+		if (inTest || this.constructor.name === 'Start') return;
 		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
 		}
-		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
-		this.exit(exitCode);
+		process.exit();
 	}
 
 	protected onTerminationSignal(signal: string) {

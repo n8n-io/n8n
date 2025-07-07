@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "0.9.0",
+  "version": "0.11.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
@@ -23,6 +23,7 @@
   "dependencies": {
     "@n8n/config": "workspace:^",
     "@n8n/constants": "workspace:^",
+    "@n8n/decorators": "workspace:^",
     "@n8n/di": "workspace:^",
     "callsites": "catalog:",
     "n8n-workflow": "workspace:^",

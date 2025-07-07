@@ -79,12 +79,11 @@ export const executionFilterToQueryFilter = (
 	if (!isEmpty(filter.nodesExecuted)) {
 		queryFilter.nodesExecuted = filter.nodesExecuted;
 	}
-
-	if (!!filter.startDate) {
+	if (filter.startDate) {
 		queryFilter.startedAfter = filter.startDate;
 	}
 
-	if (!!filter.endDate) {
+	if (filter.endDate) {
 		queryFilter.startedBefore = filter.endDate;
 	}
 
@@ -151,7 +150,7 @@ export async function displayForm({
 	for (const node of nodes) {
 		if (triggerNode !== undefined && triggerNode !== node.name) continue;
 
-		const hasNodeRun = runData && runData?.hasOwnProperty(node.name);
+		const hasNodeRun = runData?.hasOwnProperty(node.name);
 
 		if (hasNodeRun || pinData[node.name]) continue;
 

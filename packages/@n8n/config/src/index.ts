@@ -25,6 +25,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -167,6 +168,9 @@ export class GlobalConfig {
 	@Nested
 	personalization: PersonalizationConfig;
 
+	@Nested
+	sso: SsoConfig;
+
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
@@ -178,4 +182,16 @@ export class GlobalConfig {
 	/** Number of reverse proxies n8n is running behind. */
 	@Env('N8N_PROXY_HOPS')
 	proxy_hops: number = 0;
+
+	/** SSL key for HTTPS protocol. */
+	@Env('N8N_SSL_KEY')
+	ssl_key: string = '';
+
+	/** SSL cert for HTTPS protocol. */
+	@Env('N8N_SSL_CERT')
+	ssl_cert: string = '';
+
+	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
+	@Env('N8N_EDITOR_BASE_URL')
+	editorBaseUrl: string = '';
 }

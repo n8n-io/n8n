@@ -42,7 +42,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import type { ExportableCredential } from './types/exportable-credential';
+import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
@@ -663,6 +663,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -676,6 +677,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -689,6 +691,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -719,11 +722,7 @@ export class SourceControlService {
 		);
 
 		// only compares the name, since that is the only change synced for credentials
-		const credModifiedInEither: Array<
-			ExportableCredential & {
-				filename: string;
-			}
-		> = [];
+		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
@@ -746,6 +745,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -759,6 +759,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -772,6 +773,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 		return {
@@ -867,6 +869,8 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
+		const lastUpdatedDate = lastUpdatedTag[0]?.updatedAt ?? new Date();
+
 		const tagMappingsRemote =
 			await this.sourceControlImportService.getRemoteTagsAndMappingsFromFile(context);
 		const tagMappingsLocal =
@@ -914,7 +918,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: false,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 		tagsMissingInRemote.forEach((item) => {
@@ -926,7 +930,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -939,7 +943,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -1026,7 +1030,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 

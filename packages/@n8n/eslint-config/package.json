@@ -1,33 +1,57 @@
 {
-  "name": "@n8n/eslint-config",
   "private": true,
+  "name": "@n8n/eslint-config",
+  "type": "module",
   "version": "0.0.1",
   "exports": {
-    "./base": "./base.js",
-    "./frontend": "./frontend.js",
-    "./local-rules": "./local-rules.js",
-    "./node": "./node.js",
-    "./shared": "./shared.js"
-  },
-  "devDependencies": {
-    "@types/eslint": "^8.56.5",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
-    "@vue/eslint-config-typescript": "^13.0.0",
-    "eslint": "^8.57.0",
-    "eslint-config-airbnb-typescript": "^18.0.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-lodash": "^7.4.0",
-    "eslint-plugin-n8n-local-rules": "^1.0.0",
-    "eslint-plugin-unicorn": "^51.0.1",
-    "eslint-plugin-unused-imports": "^3.1.0",
-    "eslint-plugin-vue": "^9.23.0",
-    "vue-eslint-parser": "^9.4.2"
+    "./base": {
+      "default": "./dist/configs/base.js",
+      "types": "./dist/configs/base.d.js"
+    },
+    "./frontend": {
+      "default": "./dist/configs/frontend.js",
+      "types": "./dist/configs/frontend.d.js"
+    },
+    "./node": {
+      "default": "./dist/configs/node.js",
+      "types": "./dist/configs/node.d.js"
+    }
   },
   "scripts": {
-    "clean": "rimraf .turbo",
-    "test": "jest"
+    "build": "tsc",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@stylistic/eslint-plugin": "^5.0.0",
+    "@types/eslint": "^9.6.1",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript-eslint/utils": "^8.35.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-import-resolver-typescript": "^4.4.3",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-x": "^4.15.2",
+    "eslint-plugin-lodash": "^8.0.0",
+    "eslint-plugin-unicorn": "^59.0.1",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "eslint-plugin-vue": "^10.2.0",
+    "globals": "^16.2.0",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "eslint": ">= 9"
   }
 }

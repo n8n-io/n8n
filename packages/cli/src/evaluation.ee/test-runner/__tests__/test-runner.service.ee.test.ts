@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { TestRun } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
@@ -18,7 +19,6 @@ import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
@@ -1183,33 +1183,6 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetOutputsNodes(workflow);
 			}).not.toThrow();
-		});
-
-		it('should throw SET_OUTPUTS_NODE_NOT_FOUND when no outputs nodes exist', () => {
-			const workflow = mock<IWorkflowBase>({
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Regular Node',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			expect(() => {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			}).toThrow(TestRunError);
-
-			try {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			} catch (error) {
-				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_FOUND');
-			}
 		});
 
 		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when outputs node has no parameters', () => {

@@ -1,5 +1,6 @@
 import type { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { PublicUser, SettingsRepository } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
@@ -11,7 +12,6 @@ import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 import type { BannerService } from '@/services/banner.service';
 import type { PasswordUtility } from '@/services/password.utility';
 import type { UserService } from '@/services/user.service';
@@ -66,7 +66,7 @@ describe('OwnerController', () => {
 				authIdentities: [],
 			});
 			const browserId = 'test-browser-id';
-			const req = mock<AuthenticatedRequest>({ user, browserId });
+			const req = mock<AuthenticatedRequest>({ user, browserId, authInfo: { usedMfa: false } });
 			const res = mock<Response>();
 			const payload = mock<OwnerSetupRequestDto>({
 				email: 'valid@email.com',
@@ -85,7 +85,7 @@ describe('OwnerController', () => {
 				where: { role: 'global:owner' },
 			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, false, browserId);
 			expect(settingsRepository.update).toHaveBeenCalledWith(
 				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },

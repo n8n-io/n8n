@@ -9,7 +9,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -24,7 +24,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
+import type { WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -406,6 +406,11 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		await router.push(item.href);
 	}
 };
+
+const tags = computed(
+	() =>
+		props.data.tags?.map((tag) => (typeof tag === 'string' ? { id: tag, name: tag } : tag)) ?? [],
+);
 </script>
 
 <template>
@@ -448,7 +453,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					:class="$style.cardTags"
 				>
 					<n8n-tags
-						:tags="data.tags"
+						:tags="tags"
 						:truncate-at="3"
 						truncate
 						data-test-id="workflow-card-tags"

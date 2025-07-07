@@ -48,6 +48,9 @@ describe('GlobalConfig', () => {
 			enabled: true,
 		},
 		proxy_hops: 0,
+		ssl_key: '',
+		ssl_cert: '',
+		editorBaseUrl: '',
 		database: {
 			logging: {
 				enabled: false,
@@ -118,6 +121,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-shared': '',
+					'project-shared': '',
 				},
 			},
 		},
@@ -158,6 +162,8 @@ describe('GlobalConfig', () => {
 		versionNotifications: {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',
+			whatsNewEnabled: true,
+			whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
 		workflows: {
@@ -249,6 +255,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			heartbeatInterval: 30,
+			insecureMode: false,
 		},
 		sentry: {
 			backendDsn: '',
@@ -323,6 +330,21 @@ describe('GlobalConfig', () => {
 		workflowHistory: {
 			enabled: true,
 			pruneTime: -1,
+		},
+		sso: {
+			justInTimeProvisioning: true,
+			redirectLoginToSso: true,
+			saml: {
+				loginEnabled: false,
+				loginLabel: '',
+			},
+			oidc: {
+				loginEnabled: false,
+			},
+			ldap: {
+				loginEnabled: false,
+				loginLabel: '',
+			},
 		},
 	};
 

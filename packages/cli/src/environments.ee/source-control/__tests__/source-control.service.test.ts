@@ -14,7 +14,7 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlImportService } from '../source-control-import.service.ee';
-import type { ExportableCredential } from '../types/exportable-credential';
+import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 describe('SourceControlService', () => {
@@ -139,6 +139,119 @@ describe('SourceControlService', () => {
 	});
 
 	describe('getStatus', () => {
+		it('ensure updatedAt field for last deleted tag', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:admin';
+
+			sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
+			sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+
+			tagRepository.find.mockResolvedValue([]);
+
+			// Define a tag that does only exist remotely.
+			// Pushing this means it was deleted.
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [
+					{
+						id: 'tag-id',
+						name: 'some name',
+					} as TagEntity,
+				],
+				mappings: [],
+			});
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+
+			folderRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [],
+			});
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+
+			if (!Array.isArray(pushResult)) {
+				fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'tags')?.updatedAt).toBeDefined();
+		});
+
+		it('ensure updatedAt field for last deleted folder', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:admin';
+
+			sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
+			sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+
+			tagRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+
+			// Define a folder that does only exist remotely.
+			// Pushing this means it was deleted.
+			folderRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [
+					{
+						id: 'test-folder',
+						name: 'test folder name',
+						homeProjectId: 'some-id',
+						parentFolderId: null,
+						createdAt: '',
+						updatedAt: '',
+					},
+				],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [],
+			});
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+
+			if (!Array.isArray(pushResult)) {
+				fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'folders')?.updatedAt).toBeDefined();
+		});
+
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
 			const user = mock<User>();
@@ -157,7 +270,7 @@ describe('SourceControlService', () => {
 			// Pushing this is conflict free.
 			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
 			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([
-				mock<ExportableCredential & { filename: string }>(),
+				mock<StatusExportableCredential>(),
 			]);
 
 			// Define a variable that does only exist locally.

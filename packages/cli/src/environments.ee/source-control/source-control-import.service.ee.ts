@@ -41,13 +41,66 @@ import {
 } from './constants';
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import type { ExportableCredential } from './types/exportable-credential';
+import type {
+	ExportableCredential,
+	StatusExportableCredential,
+} from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableTags } from './types/exportable-tags';
-import type { ResourceOwner } from './types/resource-owner';
+import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
+
+const findOwnerProject = (
+	owner: RemoteResourceOwner,
+	accessibleProjects: Project[],
+): Project | undefined => {
+	if (typeof owner === 'string') {
+		return accessibleProjects.find((project) =>
+			project.projectRelations.some(
+				(r) => r.role === 'project:personalOwner' && r.user.email === owner,
+			),
+		);
+	}
+	if (owner.type === 'personal') {
+		return accessibleProjects.find(
+			(project) =>
+				project.type === 'personal' &&
+				project.projectRelations.some(
+					(r) => r.role === 'project:personalOwner' && r.user.email === owner.personalEmail,
+				),
+		);
+	}
+	return accessibleProjects.find(
+		(project) => project.type === 'team' && project.id === owner.teamId,
+	);
+};
+
+const getOwnerFromProject = (remoteOwnerProject: Project): StatusResourceOwner | undefined => {
+	let owner: StatusResourceOwner | undefined = undefined;
+
+	if (remoteOwnerProject?.type === 'personal') {
+		const personalEmail = remoteOwnerProject.projectRelations?.find(
+			(r) => r.role === 'project:personalOwner',
+		)?.user?.email;
+
+		if (personalEmail) {
+			owner = {
+				type: 'personal',
+				projectId: remoteOwnerProject.id,
+				projectName: remoteOwnerProject.name,
+			};
+		}
+	} else if (remoteOwnerProject?.type === 'team') {
+		owner = {
+			type: 'team',
+			projectId: remoteOwnerProject.id,
+			projectName: remoteOwnerProject.name,
+		};
+	}
+	return owner;
+};
 
 @Service()
 export class SourceControlImportService {
@@ -109,26 +162,21 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				if (Array.isArray(accessibleProjects)) {
-					const owner = remote.owner;
-					// The workflow `remote` belongs not to a project, that the context has access to
-					return (
-						typeof owner === 'object' &&
-						owner?.type === 'team' &&
-						accessibleProjects.some((project) => project.id === owner.teamId)
-					);
-				}
-				return true;
+				return (
+					context.hasAccessToAllProjects() || findOwnerProject(remote.owner, accessibleProjects)
+				);
 			})
 			.map((remote) => {
+				const project = findOwnerProject(remote.owner, accessibleProjects);
 				return {
 					id: remote.id,
-					versionId: remote.versionId,
+					versionId: remote.versionId ?? '',
 					name: remote.name,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-				} as SourceControlWorkflowVersionId;
+					owner: project ? getOwnerFromProject(project) : undefined,
+				};
 			});
 
 		return remoteWorkflowFilesParsed;
@@ -178,6 +226,13 @@ export class SourceControlImportService {
 		const localWorkflows = await this.workflowRepository.find({
 			relations: {
 				parentFolder: true,
+				shared: {
+					project: {
+						projectRelations: {
+							user: true,
+						},
+					},
+				},
 			},
 			select: {
 				id: true,
@@ -187,9 +242,24 @@ export class SourceControlImportService {
 				parentFolder: {
 					id: true,
 				},
+				shared: {
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							role: true,
+							user: {
+								email: true,
+							},
+						},
+					},
+					role: true,
+				},
 			},
 			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 		});
+
 		return localWorkflows.map((local) => {
 			let updatedAt: Date;
 			if (local.updatedAt instanceof Date) {
@@ -203,6 +273,8 @@ export class SourceControlImportService {
 				});
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
+			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
+
 			return {
 				id: local.id,
 				versionId: local.versionId,
@@ -211,13 +283,14 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
+				owner: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
 			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getRemoteCredentialsFromFiles(
 		context: SourceControlContext,
-	): Promise<Array<ExportableCredential & { filename: string }>> {
+	): Promise<StatusExportableCredential[]> {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
@@ -241,43 +314,79 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				if (Array.isArray(accessibleProjects)) {
-					const owner = remote.ownedBy;
-					// The credential `remote` belongs not to a project, that the context has access to
-					return (
-						typeof owner === 'object' &&
-						owner?.type === 'team' &&
-						accessibleProjects.some((project) => project.id === owner.teamId)
-					);
-				}
-				return true;
+				const owner = remote.ownedBy;
+				// The credential `remote` belongs not to a project, that the context has access to
+				return (
+					!owner || context.hasAccessToAllProjects() || findOwnerProject(owner, accessibleProjects)
+				);
 			})
 			.map((remote) => {
+				const project = remote.ownedBy
+					? findOwnerProject(remote.ownedBy, accessibleProjects)
+					: null;
 				return {
 					...remote,
+					ownedBy: project
+						? {
+								type: project.type,
+								projectId: project.id,
+								projectName: project.name,
+							}
+						: undefined,
 					filename: getCredentialExportPath(remote.id, this.credentialExportFolder),
 				};
 			});
 
-		return remoteCredentialFilesParsed.filter((e) => e !== undefined) as Array<
-			ExportableCredential & { filename: string }
-		>;
+		return remoteCredentialFilesParsed.filter(
+			(e) => e !== undefined,
+		) as StatusExportableCredential[];
 	}
 
 	async getLocalCredentialsFromDb(
 		context: SourceControlContext,
-	): Promise<Array<ExportableCredential & { filename: string }>> {
+	): Promise<StatusExportableCredential[]> {
 		const localCredentials = await this.credentialsRepository.find({
-			select: ['id', 'name', 'type'],
+			relations: {
+				shared: {
+					project: {
+						projectRelations: {
+							user: true,
+						},
+					},
+				},
+			},
+			select: {
+				id: true,
+				name: true,
+				type: true,
+				shared: {
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							role: true,
+							user: {
+								email: true,
+							},
+						},
+					},
+					role: true,
+				},
+			},
 			where:
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
-		return localCredentials.map((local) => ({
-			id: local.id,
-			name: local.name,
-			type: local.type,
-			filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-		})) as Array<ExportableCredential & { filename: string }>;
+		return localCredentials.map((local) => {
+			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+			return {
+				id: local.id,
+				name: local.name,
+				type: local.type,
+				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
+				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+			};
+		}) as StatusExportableCredential[];
 	}
 
 	async getRemoteVariablesFromFile(): Promise<Variables[]> {
@@ -316,11 +425,11 @@ export class SourceControlImportService {
 			const accessibleProjects =
 				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
 
-			if (Array.isArray(accessibleProjects)) {
-				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
+			mappedFolders.folders = mappedFolders.folders.filter(
+				(folder) =>
+					context.hasAccessToAllProjects() ||
 					accessibleProjects.some((project) => project.id === folder.homeProjectId),
-				);
-			}
+			);
 
 			return mappedFolders;
 		}
@@ -796,7 +905,7 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async findOrCreateOwnerProject(owner: ResourceOwner): Promise<Project | null> {
+	private async findOrCreateOwnerProject(owner: RemoteResourceOwner): Promise<Project | null> {
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
 			const user = await this.userRepository.findOne({
@@ -834,7 +943,7 @@ export class SourceControlImportService {
 
 		assertNever(owner);
 
-		const errorOwner = owner as ResourceOwner;
+		const errorOwner = owner as RemoteResourceOwner;
 		throw new UnexpectedError(
 			`Unknown resource owner type "${
 				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'

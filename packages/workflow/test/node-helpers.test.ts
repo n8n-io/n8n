@@ -7,7 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
-} from '@/interfaces';
+} from '../src/interfaces';
 import {
 	getNodeParameters,
 	isSubNodeType,
@@ -21,8 +21,10 @@ import {
 	isDefaultNodeName,
 	makeNodeName,
 	isTool,
-} from '@/node-helpers';
-import type { Workflow } from '@/workflow';
+	getNodeWebhookPath,
+} from '../src/node-helpers';
+import type { Workflow } from '../src/workflow';
+import { mock } from 'vitest-mock-extended';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -4226,7 +4228,7 @@ describe('NodeHelpers', () => {
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
-				getSimpleParameterValue: jest.fn().mockReturnValue([NodeConnectionTypes.Main]),
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
 			},
 		} as unknown as Workflow;
 
@@ -4382,7 +4384,8 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					(workflowMock.expression.getSimpleParameterValue as jest.Mock).mockReturnValueOnce(
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);
 				}
@@ -5609,6 +5612,50 @@ describe('NodeHelpers', () => {
 			const parameters = { mode: 'retrieve-as-tool' };
 			const result = isTool(description, parameters);
 			expect(result).toBe(false);
+		});
+	});
+	describe('getNodeWebhookPath', () => {
+		const mockWorkflowId = 'workflow-123';
+		const mockPath = 'test-path';
+
+		it('should return path when restartWebhook is true', () => {
+			const node = mock<INode>({ name: 'TestNode' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, true);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return path when node has webhookId and isFullPath is true', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, true, false);
+
+			expect(result).toBe(mockPath);
+		});
+
+		it('should return webhookId when node has webhookId, isFullPath is true, and path is empty', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, '', true, false);
+
+			expect(result).toBe('webhook-456');
+		});
+
+		it('should return webhookId/path when node has webhookId and isFullPath is false', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: 'webhook-456' });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('webhook-456/test-path');
+		});
+
+		it('should return workflowId/nodename/path when node has no webhookId', () => {
+			const node = mock<INode>({ name: 'TestNode', webhookId: undefined });
+
+			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
+
+			expect(result).toBe('workflow-123/testnode/test-path');
 		});
 	});
 });

@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import type { ChatOllamaInput } from '@langchain/ollama';
 import { ChatOllama } from '@langchain/ollama';
 import {
@@ -19,7 +17,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatOllama',
 		icon: 'file:ollama.svg',
 		group: ['transform'],
@@ -42,9 +40,9 @@ export class LmChatOllama implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		...ollamaDescription,

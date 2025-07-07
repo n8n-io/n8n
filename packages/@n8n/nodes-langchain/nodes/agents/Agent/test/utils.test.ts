@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ZodObjectAny } from '../../../../types/types';
 import { checkForStructuredTools } from '../agents/utils';
 
 describe('checkForStructuredTools', () => {
@@ -41,7 +42,7 @@ describe('checkForStructuredTools', () => {
 			func: async () => 'result',
 		});
 
-		const tools: Array<Tool | DynamicStructuredTool> = [dynamicTool];
+		const tools: Array<Tool | DynamicStructuredTool<ZodObjectAny>> = [dynamicTool];
 
 		await expect(checkForStructuredTools(tools, mockNode, 'Conversation Agent')).rejects.toThrow(
 			NodeOperationError,

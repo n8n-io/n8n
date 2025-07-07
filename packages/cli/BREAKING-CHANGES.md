@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.102.0
+
+### What changed?
+
+The `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag has been replaced with `N8N_RUNNERS_INSECURE_MODE`. The new flag
+disables all task runner security measures and is intended as an escape hatch for users who value compatibility
+with libraries like `puppeteer` at the cost of security.
+
+### When is action necessary?
+
+If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not 
+currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`, 
+at your own risk.
+
 ## 1.98.0
 
 ### What changed?

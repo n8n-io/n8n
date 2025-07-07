@@ -7,7 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { transformInsightsSummary } from '@/features/insights/insights.utils';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
@@ -19,7 +19,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const isInsightsEnabled = computed(() =>
-		settingsStore.settings.loadedModules.includes('insights'),
+		settingsStore.settings.activeModules.includes('insights'),
 	);
 
 	const isDashboardEnabled = computed(

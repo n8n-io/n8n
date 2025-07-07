@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import type {
 	DefaultEdge,

@@ -135,7 +135,7 @@ export const isIpWhitelisted = (
 	}
 
 	for (const address of whitelist) {
-		if (ip && ip.includes(address)) {
+		if (ip?.includes(address)) {
 			return true;
 		}
 

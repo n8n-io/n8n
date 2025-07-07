@@ -88,15 +88,24 @@ async function executeSimpleChain({
 	llm,
 	query,
 	prompt,
+	fallbackLlm,
 }: {
 	context: IExecuteFunctions;
 	llm: BaseLanguageModel;
 	query: string;
 	prompt: ChatPromptTemplate | PromptTemplate;
+	fallbackLlm?: BaseLanguageModel | null;
 }) {
 	const outputParser = getOutputParserForLLM(llm);
+	let model;
 
-	const chain = prompt.pipe(llm).pipe(outputParser).withConfig(getTracingConfig(context));
+	if (fallbackLlm) {
+		model = llm.withFallbacks([fallbackLlm]);
+	} else {
+		model = llm;
+	}
+
+	const chain = prompt.pipe(model).pipe(outputParser).withConfig(getTracingConfig(context));
 
 	// Execute the chain
 	const response = await chain.invoke({
@@ -118,6 +127,7 @@ export async function executeChain({
 	llm,
 	outputParser,
 	messages,
+	fallbackLlm,
 }: ChainExecutionParams): Promise<unknown[]> {
 	// If no output parsers provided, use a simple chain with basic prompt template
 	if (!outputParser) {
@@ -134,6 +144,7 @@ export async function executeChain({
 			llm,
 			query,
 			prompt: promptTemplate,
+			fallbackLlm,
 		});
 	}
 

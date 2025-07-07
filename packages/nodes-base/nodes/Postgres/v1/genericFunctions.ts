@@ -93,7 +93,7 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
  * @param {input[]} input The Node's input data
  */
 export async function pgQuery(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: PgpDatabase,
@@ -279,7 +279,7 @@ export async function pgQueryV2(
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsert(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: PgpDatabase,
@@ -480,7 +480,7 @@ export async function pgInsertV2(
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdate(
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: PgpDatabase,

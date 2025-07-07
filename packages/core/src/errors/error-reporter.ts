@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
@@ -81,6 +81,8 @@ export class ErrorReporter {
 		serverName,
 		releaseDate,
 	}: ErrorReporterInitOptions) {
+		if (inTest) return;
+
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});

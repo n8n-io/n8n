@@ -88,6 +88,8 @@ describe('LogDetailsPanel', () => {
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -109,6 +111,8 @@ describe('LogDetailsPanel', () => {
 				runData: { ...aiNodeRunData, executionStatus: 'running' },
 			}),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
 		});
 
 		const inputPanel = within(rendered.getByTestId('log-details-input'));
@@ -123,6 +127,8 @@ describe('LogDetailsPanel', () => {
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -138,6 +144,8 @@ describe('LogDetailsPanel', () => {
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -164,6 +172,8 @@ describe('LogDetailsPanel', () => {
 				execution: { resultData: { runData: { A: [runDataA], B: [runDataB] } } },
 			}),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
 		});
 
 		expect(

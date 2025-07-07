@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, onBeforeMount } from 'vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
 type Props = {
 	collapsed: boolean;
@@ -20,15 +21,19 @@ const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
+const hasMultipleVerifiedUsers = computed(
+	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
+);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
 	label: locale.baseText('projects.menu.overview'),
-	icon: 'home',
+	icon: 'house',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
 	},
@@ -43,10 +48,10 @@ const shared = computed<IMenuItem>(() => ({
 	},
 }));
 
-const getProjectMenuItem = (project: ProjectListItem) => ({
+const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
-	label: project.name,
-	icon: project.icon,
+	label: project.name ?? '',
+	icon: project.icon as IMenuItem['icon'],
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -70,6 +75,18 @@ const personalProject = computed<IMenuItem>(() => ({
 const showAddFirstProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
 );
+
+const activeTabId = computed(() => {
+	return (
+		(Array.isArray(projectsStore.projectNavActiveId)
+			? projectsStore.projectNavActiveId[0]
+			: projectsStore.projectNavActiveId) ?? undefined
+	);
+});
+
+onBeforeMount(async () => {
+	await usersStore.fetchUsers();
+});
 </script>
 
 <template>
@@ -78,7 +95,7 @@ const showAddFirstProject = computed(
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-home-menu-item"
 			/>
@@ -86,15 +103,18 @@ const showAddFirstProject = computed(
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+					hasMultipleVerifiedUsers
+				"
 				:item="shared"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-shared-menu-item"
 			/>
@@ -136,7 +156,7 @@ const showAddFirstProject = computed(
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
+				:active-tab="activeTabId"
 				mode="tabs"
 				data-test-id="project-menu-item"
 			/>

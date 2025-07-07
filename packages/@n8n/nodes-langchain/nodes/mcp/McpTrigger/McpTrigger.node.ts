@@ -125,6 +125,16 @@ export class McpTrigger extends Node {
 				ndvHideMethod: true,
 				ndvHideUrl: true,
 			},
+			{
+				name: 'default',
+				httpMethod: 'DELETE',
+				responseMode: 'onReceived',
+				isFullPath: true,
+				path: '={{$parameter["path"]}}',
+				nodeType: 'mcp',
+				ndvHideMethod: true,
+				ndvHideUrl: true,
+			},
 		],
 	};
 
@@ -162,22 +172,30 @@ export class McpTrigger extends Node {
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// Here we handle POST requests. These can be either
+			// Here we handle POST and DELETE requests.
+			// POST can be either:
 			// 1) Client calls in an established session using the SSE transport, or
 			// 2) Client calls in an established session using the StreamableHTTPServerTransport
 			// 3) Session setup requests using the StreamableHTTPServerTransport
+			// DELETE is used to terminate the session using the StreamableHTTPServerTransport
 
-			// Check if there is a session and a transport is already established
-			const sessionId = mcpServerManager.getSessionId(req);
-			if (sessionId && mcpServerManager.getTransport(sessionId)) {
-				const connectedTools = await getConnectedTools(context, true);
-				const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-				if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+			if (req.method === 'DELETE') {
+				await mcpServerManager.handleDeleteRequest(req, resp);
 			} else {
-				// If no session is established, this is a setup request
-				// for the StreamableHTTPServerTransport, so we create a new transport
-				await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+				// Check if there is a session and a transport is already established
+				const sessionId = mcpServerManager.getSessionId(req);
+
+				if (sessionId && mcpServerManager.getTransport(sessionId)) {
+					const connectedTools = await getConnectedTools(context, true);
+					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
+					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+				} else {
+					// If no session is established, this is a setup request
+					// for the StreamableHTTPServerTransport, so we create a new transport
+					await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+				}
 			}
+
 			return { noWebhookResponse: true };
 		}
 

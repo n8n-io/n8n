@@ -19,7 +19,6 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	APP_MODALS_ELEMENT_ID,
 	BASE_NODE_SURVEY_URL,
-	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
@@ -31,7 +30,6 @@ import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
@@ -46,7 +44,11 @@ const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
-	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [
+		nodeTypeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex?: number,
+	];
 	redrawNode: [nodeName: string];
 	stopExecution: [];
 }>();
@@ -72,7 +74,6 @@ const pinnedData = usePinnedData(activeNode);
 const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -95,7 +96,7 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 
-//computed
+// computed
 
 const pushRef = computed(() => ndvStore.pushRef);
 
@@ -275,7 +276,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 
@@ -329,25 +330,9 @@ const blockUi = computed(
 	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
 );
 
-const foreignCredentials = computed(() => {
-	const credentials = activeNode.value?.credentials;
-	const usedCredentials = workflowsStore.usedCredentials;
-
-	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-		Object.values(credentials).forEach((credential) => {
-			if (
-				credential.id &&
-				usedCredentials[credential.id] &&
-				!usedCredentials[credential.id].currentUserHasAccess
-			) {
-				foreignCredentialsArray.push(credential.id);
-			}
-		});
-	}
-
-	return foreignCredentialsArray;
-});
+const foreignCredentials = computed(() =>
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+);
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
@@ -500,8 +485,12 @@ const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
+const onOpenConnectionNodeCreator = (
+	nodeTypeName: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) => {
+	emit('openConnectionNodeCreator', nodeTypeName, connectionType, connectionIndex);
 };
 
 const close = async () => {
@@ -842,7 +831,6 @@ onBeforeUnmount(() => {
 						:event-bus="settingsEventBus"
 						:dragging="isDragging"
 						:push-ref="pushRef"
-						:node-type="activeNodeType"
 						:foreign-credentials="foreignCredentials"
 						:read-only="readOnly"
 						:block-u-i="blockUi && showTriggerPanel"
@@ -862,7 +850,7 @@ onBeforeUnmount(() => {
 						target="_blank"
 						@click="onFeatureRequestClick"
 					>
-						<font-awesome-icon icon="lightbulb" />
+						<n8n-icon icon="lightbulb" />
 						{{ i18n.baseText('ndv.featureRequest') }}
 					</a>
 				</template>
