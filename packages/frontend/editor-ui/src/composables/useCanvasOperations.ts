@@ -2126,7 +2126,7 @@ export function useCanvasOperations() {
 		deleteNodes(ids);
 	}
 
-	async function openExecution(executionId: string) {
+	async function openExecution(executionId: string, nodeId?: string) {
 		let data: IExecutionResponse | undefined;
 		try {
 			data = await workflowsStore.getExecution(executionId);
@@ -2153,6 +2153,14 @@ export function useCanvasOperations() {
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});
+		}
+
+		if (nodeId) {
+			const node = workflowsStore.getNodeById(nodeId);
+			if (!node) {
+				throw new Error(`Node with id "${nodeId}" could not be found!`);
+			}
+			ndvStore.activeNodeName = node.name;
 		}
 
 		uiStore.stateIsDirty = false;

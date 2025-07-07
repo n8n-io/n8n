@@ -33,6 +33,10 @@ type Props = {
 	compact?: boolean;
 };
 
+const emit = defineEmits<{
+	openErrorNode: [error: NodeError | NodeApiError | NodeOperationError];
+}>();
+
 const props = defineProps<Props>();
 const clipboard = useClipboard();
 const toast = useToast();
@@ -384,7 +388,7 @@ function nodeIsHidden() {
 }
 
 const onOpenErrorNodeDetailClick = () => {
-	ndvStore.activeNodeName = props.error.node.name;
+	emit('openErrorNode', props.error);
 };
 
 async function onAskAssistantClick() {

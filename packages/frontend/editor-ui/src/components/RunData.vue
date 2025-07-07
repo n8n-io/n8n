@@ -12,6 +12,8 @@ import type {
 	IRunExecutionData,
 	ITaskMetadata,
 	NodeError,
+	NodeApiError,
+	NodeOperationError,
 	NodeHint,
 	Workflow,
 	NodeConnectionType,
@@ -43,6 +45,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	TEST_PIN_DATA,
+	VIEWS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -85,7 +88,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
+import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
@@ -232,6 +235,7 @@ const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
 const route = useRoute();
+const router = useRouter();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -620,6 +624,9 @@ const parsedAiContent = computed(() =>
 const hasParsedAiContent = computed(() =>
 	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
 );
+
+const workflowId = computed(() => props.workflow.id);
+const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 function setInputBranchIndex(value: number) {
 	if (props.paneType === 'input') {
@@ -1339,6 +1346,46 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+const onOpenErrorNode = (error: NodeError | NodeApiError | NodeOperationError) => {
+	if (!error.node) {
+		return;
+	}
+
+	if (
+		'workflowId' in error &&
+		workflowId.value &&
+		typeof error.workflowId === 'string' &&
+		workflowId.value !== error.workflowId
+	) {
+		const resolvableRoute: RouteLocationRaw = {
+			name: VIEWS.WORKFLOW,
+			params: {
+				name: error.workflowId,
+				nodeId: error.node.id,
+			},
+		};
+
+		if (
+			'executionId' in error &&
+			executionId.value &&
+			typeof error.executionId === 'string' &&
+			executionId.value !== error.executionId
+		) {
+			resolvableRoute.name = VIEWS.EXECUTION_PREVIEW;
+			resolvableRoute.params = {
+				...resolvableRoute.params,
+				executionId: error.executionId,
+				nodeId: error.node.id,
+			};
+		}
+
+		const link = router.resolve(resolvableRoute);
+		window.open(link.href, '_blank');
+	} else {
+		ndvStore.activeNodeName = error.node.name;
+	}
+};
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1639,6 +1686,7 @@ defineExpose({ enterEditMode });
 					:error="subworkflowExecutionError"
 					:class="$style.errorDisplay"
 					show-details
+					@open-error-node="onOpenErrorNode"
 				/>
 			</div>
 
@@ -1702,6 +1750,7 @@ defineExpose({ enterEditMode });
 						:error="workflowRunErrorAsNodeError"
 						:class="$style.inlineError"
 						:compact="compact"
+						@open-error-node="onOpenErrorNode"
 					/>
 					<slot name="content"></slot>
 				</div>
@@ -1711,6 +1760,7 @@ defineExpose({ enterEditMode });
 					:class="$style.dataDisplay"
 					:compact="compact"
 					show-details
+					@open-error-node="onOpenErrorNode"
 				/>
 			</div>
 
