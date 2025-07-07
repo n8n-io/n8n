@@ -1,3 +1,4 @@
+import type { SupplyDataContext } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -13,7 +14,7 @@ export type N8nOutputParser =
 export { N8nOutputFixingParser, N8nItemListOutputParser, N8nStructuredOutputParser };
 
 export async function getOptionalOutputParser(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | SupplyDataContext,
 	index: number = 0,
 ): Promise<N8nOutputParser | undefined> {
 	let outputParser: N8nOutputParser | undefined;

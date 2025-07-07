@@ -1,3 +1,4 @@
+import type { SupplyDataContext } from 'n8n-core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
@@ -200,7 +201,7 @@ export class AgentV2 implements INodeType {
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions | SupplyDataContext): Promise<INodeExecutionData[][]> {
 		return await toolsAgentExecute.call(this);
 	}
 }
