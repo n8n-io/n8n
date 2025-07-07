@@ -1,4 +1,10 @@
-import type { INode, INodeTypeDescription, IConnections, IConnection } from 'n8n-workflow';
+import type {
+	INode,
+	INodeTypeDescription,
+	IConnections,
+	IConnection,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import { isSubNode } from '../../utils/node-helpers';
 
@@ -143,7 +149,7 @@ export function createConnection(
 	connections: IConnections,
 	sourceNodeName: string,
 	targetNodeName: string,
-	connectionType: string,
+	connectionType: NodeConnectionType,
 	sourceOutputIndex: number = 0,
 	targetInputIndex: number = 0,
 ): IConnections {
@@ -167,14 +173,12 @@ export function createConnection(
 	// Add the connection
 	const newConnection: IConnection = {
 		node: targetNodeName,
-		type: connectionType as any,
+		type: connectionType,
 		index: targetInputIndex,
 	};
 
 	// Ensure the array at sourceOutputIndex exists
-	if (!connectionArray[sourceOutputIndex]) {
-		connectionArray[sourceOutputIndex] = [];
-	}
+	connectionArray[sourceOutputIndex] ??= [];
 
 	// Check if connection already exists
 	const existingConnection = connectionArray[sourceOutputIndex].find(

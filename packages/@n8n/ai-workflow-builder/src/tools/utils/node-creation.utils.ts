@@ -1,4 +1,4 @@
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
 
 /**
  * Generate a unique node name by appending numbers if necessary
@@ -25,7 +25,7 @@ export function generateUniqueName(baseName: string, existingNodes: INode[]): st
  */
 export function getLatestVersion(nodeType: INodeTypeDescription): number {
 	return (
-		nodeType.defaultVersion ||
+		nodeType.defaultVersion ??
 		(typeof nodeType.version === 'number'
 			? nodeType.version
 			: nodeType.version[nodeType.version.length - 1])
@@ -69,7 +69,7 @@ export function createNodeInstance(
 	nodeType: INodeTypeDescription,
 	name: string,
 	position: [number, number],
-	parameters: Record<string, any> = {},
+	parameters: Record<string, NodeParameterValueType> = {},
 ): INode {
 	const node: INode = {
 		id: generateNodeId(),
@@ -82,7 +82,7 @@ export function createNodeInstance(
 
 	// Add webhook ID if required
 	if (requiresWebhook(nodeType)) {
-		(node as any).webhookId = generateWebhookId();
+		node.webhookId = generateWebhookId();
 	}
 
 	return node;
@@ -95,9 +95,9 @@ export function createNodeInstance(
  * @returns Merged parameters
  */
 export function mergeWithDefaults(
-	parameters: Record<string, any>,
+	parameters: Record<string, NodeParameterValueType>,
 	nodeType: INodeTypeDescription,
-): Record<string, any> {
+): Record<string, NodeParameterValueType> {
 	const defaults = nodeType.defaults || {};
 	return { ...defaults, ...parameters };
 }

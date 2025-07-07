@@ -1,4 +1,4 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 /**
@@ -8,7 +8,7 @@ export interface NodeDetails {
 	name: string;
 	displayName: string;
 	description: string;
-	properties: any[];
+	properties: INodeProperties[];
 	subtitle?: string;
 	inputs: INodeTypeDescription['inputs'];
 	outputs: INodeTypeDescription['outputs'];
@@ -87,7 +87,7 @@ export const nodeConnectionSchema = z.object({
 			'The ID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
 	connectionType: z
-		.string()
+		.nativeEnum(NodeConnectionTypes)
 		.describe(
 			'The type of connection: "main" for regular data flow, or sub-node types like "ai_languageModel" (for LLM models), "ai_tool" (for agent tools), "ai_memory" (for chat memory) etc.',
 		),
@@ -104,15 +104,23 @@ export const nodeConnectionSchema = z.object({
 /**
  * Type guards
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isNodeDetails(obj: any): obj is NodeDetails {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return (
 		obj &&
 		typeof obj === 'object' &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		typeof obj.name === 'string' &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		typeof obj.displayName === 'string' &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		typeof obj.description === 'string' &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		Array.isArray(obj.properties) &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		obj.inputs !== undefined &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		obj.outputs !== undefined
 	);
 }

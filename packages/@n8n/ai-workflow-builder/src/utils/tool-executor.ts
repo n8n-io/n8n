@@ -1,4 +1,5 @@
-import { isAIMessage } from '@langchain/core/messages';
+import { BaseMessage, isAIMessage } from '@langchain/core/messages';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
 import type { SimpleWorkflow } from '../types';
@@ -36,11 +37,11 @@ import type { WorkflowState } from '../workflow-state';
 
 export interface ToolExecutorOptions {
 	state: typeof WorkflowState.State;
-	toolMap: Map<string, any>;
+	toolMap: Map<string, DynamicStructuredTool>;
 }
 
 export interface ToolResultWithName {
-	result: any;
+	result: Record<string, unknown>;
 	toolName: string;
 }
 
@@ -167,11 +168,14 @@ export async function executeToolsInParallel(
 			}
 			console.log(`Executing tool: ${toolCall.name}`);
 			// Pass the tool call arguments and tool call ID in config
-			const result = await tool.invoke(toolCall.args, {
+
+			const result = (await tool.invoke(toolCall.args, {
 				toolCall: {
 					id: toolCall.id,
+					name: toolCall.name,
+					args: toolCall.args,
 				},
-			});
+			})) as Record<string, unknown>;
 			console.log(`Tool ${toolCall.name} completed`);
 			return { result, toolName: toolCall.name };
 		}),
@@ -180,7 +184,7 @@ export async function executeToolsInParallel(
 	// Process results and track which tool generated each update
 	// This is crucial for applying tool-specific merge strategies
 	const stateUpdatesWithTools: StateUpdateWithTool[] = [];
-	const regularResults: any[] = [];
+	const regularResults: BaseMessage[] = [];
 
 	toolResultsWithNames.forEach(({ result, toolName }: ToolResultWithName) => {
 		if (isCommand(result)) {
@@ -193,7 +197,7 @@ export async function executeToolsInParallel(
 			}
 		} else {
 			// Tool returned a regular result (not a state update)
-			regularResults.push(result);
+			regularResults.push(result as unknown as BaseMessage);
 		}
 	});
 
@@ -228,7 +232,7 @@ export async function executeToolsInParallel(
 			if (update.workflowJSON?.nodes) {
 				// Find which nodes were removed by comparing with the initial state
 				const removedNodeIds = state.workflowJSON.nodes
-					.filter((node) => !update.workflowJSON!.nodes.some((n: any) => n.id === node.id))
+					.filter((node) => !update.workflowJSON!.nodes.some((n) => n.id === node.id))
 					.map((node) => node.id);
 				removedNodeIds.forEach((id) => nodesToRemove.add(id));
 			}
@@ -253,7 +257,7 @@ export async function executeToolsInParallel(
 			for (const [, nodeConnections] of Object.entries(cleanedConnections)) {
 				for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
 					if (Array.isArray(outputs)) {
-						(nodeConnections as any)[connectionType] = outputs.map((outputConnections) => {
+						nodeConnections[connectionType] = outputs.map((outputConnections) => {
 							if (Array.isArray(outputConnections)) {
 								return outputConnections.filter((conn) => !nodesToRemove.has(conn.node));
 							}

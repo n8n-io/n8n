@@ -1,7 +1,11 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { tool } from '@langchain/core/tools';
+import type { IConnections } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
-import type { WorkflowState } from '../workflow-state';
+import { createProgressReporter, reportProgress } from './helpers/progress';
+import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state';
+import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
 
 /**
  * Schema for the remove node tool
@@ -9,11 +13,6 @@ import type { WorkflowState } from '../workflow-state';
 const removeNodeSchema = z.object({
 	nodeId: z.string().describe('The ID of the node to remove from the workflow'),
 });
-
-/**
- * Inferred type from schema
- */
-type RemoveNodeInput = z.infer<typeof removeNodeSchema>;
 
 /**
  * Output type for the remove node tool
@@ -27,142 +26,129 @@ interface RemoveNodeOutput {
 }
 
 /**
- * Remove node tool implementation using the base infrastructure
+ * Count connections that will be removed for a node
  */
-export class RemoveNodeTool extends BaseWorkflowBuilderTool<
-	typeof removeNodeSchema,
-	RemoveNodeOutput
-> {
-	protected readonly schema = removeNodeSchema;
-	protected readonly name = 'remove_node' as const;
-	protected readonly description =
-		'Remove a node from the workflow by its ID. This will also remove all connections to and from the node. Use this tool when you need to delete a node that is no longer needed in the workflow.';
+function countNodeConnections(nodeId: string, connections: IConnections): number {
+	let count = 0;
 
-	/**
-	 * Execute the remove node tool
-	 */
-	protected async execute(
-		input: RemoveNodeInput,
-		context: ToolContext,
-	): Promise<ToolResult<RemoveNodeOutput>> {
-		const { nodeId } = input;
-		const state = context.getCurrentTaskInput() as typeof WorkflowState.State;
-
-		// Report progress
-		context.reporter.progress(`Removing node ${nodeId}`);
-
-		// Find the node to remove
-		const nodeToRemove = state.workflowJSON.nodes.find((node) => node.id === nodeId);
-
-		if (!nodeToRemove) {
-			return {
-				success: false,
-				error: {
-					message: `Node with ID "${nodeId}" not found in the workflow`,
-					code: 'NODE_NOT_FOUND',
-					details: { nodeId },
-				},
-			};
-		}
-
-		// Filter out the node from the nodes array
-		const updatedNodes = state.workflowJSON.nodes.filter((node) => node.id !== nodeId);
-
-		// Count connections that will be removed
-		let connectionsRemoved = 0;
-		const updatedConnections = { ...state.workflowJSON.connections };
-
-		// Remove connections where the node is the source
-		if (updatedConnections[nodeId]) {
-			// Count all connections from this node
-			for (const connectionType of Object.values(updatedConnections[nodeId])) {
-				if (Array.isArray(connectionType)) {
-					for (const outputs of connectionType) {
-						if (Array.isArray(outputs)) {
-							connectionsRemoved += outputs.length;
-						}
+	// Count outgoing connections
+	if (connections[nodeId]) {
+		for (const connectionType of Object.values(connections[nodeId])) {
+			if (Array.isArray(connectionType)) {
+				for (const outputs of connectionType) {
+					if (Array.isArray(outputs)) {
+						count += outputs.length;
 					}
 				}
 			}
-			delete updatedConnections[nodeId];
 		}
+	}
 
-		// Remove connections where the node is the target
-		for (const [_sourceNodeId, nodeConnections] of Object.entries(updatedConnections)) {
-			for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
-				if (Array.isArray(outputs)) {
-					const updatedOutputs = outputs.map((outputConnections) => {
-						if (Array.isArray(outputConnections)) {
-							const filtered = outputConnections.filter((conn) => conn.node !== nodeId);
-							connectionsRemoved += outputConnections.length - filtered.length;
-							return filtered;
-						}
-						return outputConnections;
-					});
-
-					// Update the connections
-					(nodeConnections as any)[connectionType] = updatedOutputs;
+	// Count incoming connections
+	for (const [_sourceNodeId, nodeConnections] of Object.entries(connections)) {
+		for (const outputs of Object.values(nodeConnections)) {
+			if (Array.isArray(outputs)) {
+				for (const outputConnections of outputs) {
+					if (Array.isArray(outputConnections)) {
+						count += outputConnections.filter((conn) => conn.node === nodeId).length;
+					}
 				}
 			}
 		}
-
-		// Build success message
-		const message = this.buildResponseMessage(
-			nodeToRemove.name,
-			nodeToRemove.type,
-			connectionsRemoved,
-		);
-
-		// Return success with state updates
-		return {
-			success: true,
-			data: {
-				removedNodeId: nodeId,
-				removedNodeName: nodeToRemove.name,
-				removedNodeType: nodeToRemove.type,
-				connectionsRemoved,
-				message,
-			},
-			stateUpdates: {
-				workflowJSON: {
-					...state.workflowJSON,
-					nodes: updatedNodes,
-					connections: updatedConnections,
-				},
-			},
-		};
 	}
 
-	/**
-	 * Build the response message for the removed node
-	 */
-	private buildResponseMessage(
-		nodeName: string,
-		nodeType: string,
-		connectionsRemoved: number,
-	): string {
-		const parts: string[] = [`Successfully removed node "${nodeName}" (${nodeType})`];
+	return count;
+}
 
-		if (connectionsRemoved > 0) {
-			parts.push(`Removed ${connectionsRemoved} connection${connectionsRemoved > 1 ? 's' : ''}`);
-		}
+/**
+ * Build the response message for the removed node
+ */
+function buildResponseMessage(
+	nodeName: string,
+	nodeType: string,
+	connectionsRemoved: number,
+): string {
+	const parts: string[] = [`Successfully removed node "${nodeName}" (${nodeType})`];
 
-		return parts.join('\n');
+	if (connectionsRemoved > 0) {
+		parts.push(`Removed ${connectionsRemoved} connection${connectionsRemoved > 1 ? 's' : ''}`);
 	}
 
-	/**
-	 * Override to provide custom success message
-	 */
-	protected formatSuccessMessage(output: RemoveNodeOutput): string {
-		return output.message;
-	}
+	return parts.join('\n');
 }
 
 /**
  * Factory function to create the remove node tool
- * Maintains backward compatibility with existing code
  */
-export function createRemoveNodeTool(nodeTypes: INodeTypeDescription[]) {
-	const tool = new RemoveNodeTool(nodeTypes);
-	return tool.createLangChainTool();
+export function createRemoveNodeTool() {
+	return tool(
+		async (input, config) => {
+			const reporter = createProgressReporter(config, 'remove_node');
+
+			try {
+				// Validate input using Zod schema
+				const validatedInput = removeNodeSchema.parse(input);
+				const { nodeId } = validatedInput;
+
+				// Report tool start
+				reporter.start(validatedInput);
+
+				// Get current state
+				const state = getWorkflowState();
+				const workflow = getCurrentWorkflow(state);
+
+				// Report progress
+				reportProgress(reporter, `Removing node ${nodeId}`);
+
+				// Find the node to remove
+				const nodeToRemove = validateNodeExists(nodeId, workflow.nodes);
+
+				if (!nodeToRemove) {
+					const error = createNodeNotFoundError(nodeId);
+					reporter.error(error);
+					return createErrorResponse(config, error);
+				}
+
+				// Count connections that will be removed
+				const connectionsRemoved = countNodeConnections(nodeId, workflow.connections);
+
+				// Build success message
+				const message = buildResponseMessage(
+					nodeToRemove.name,
+					nodeToRemove.type,
+					connectionsRemoved,
+				);
+
+				// Report completion
+				const output: RemoveNodeOutput = {
+					removedNodeId: nodeId,
+					removedNodeName: nodeToRemove.name,
+					removedNodeType: nodeToRemove.type,
+					connectionsRemoved,
+					message,
+				};
+				reporter.complete(output);
+
+				// Return success with state updates
+				const stateUpdates = removeNodeFromWorkflow(state, nodeId);
+				return createSuccessResponse(config, message, stateUpdates);
+			} catch (error) {
+				// Handle validation or unexpected errors
+				const toolError = {
+					message: error instanceof Error ? error.message : 'Unknown error occurred',
+					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
+					details: error instanceof z.ZodError ? error.errors : undefined,
+				};
+
+				reporter.error(toolError);
+				return createErrorResponse(config, toolError);
+			}
+		},
+		{
+			name: 'remove_node',
+			description:
+				'Remove a node from the workflow by its ID. This will also remove all connections to and from the node. Use this tool when you need to delete a node that is no longer needed in the workflow.',
+			schema: removeNodeSchema,
+		},
+	);
 }

@@ -1,6 +1,10 @@
+import { tool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { BaseWorkflowBuilderTool, z, type ToolContext, type ToolResult } from './base';
+import { createProgressReporter, reportProgress } from './helpers/progress';
+import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import { type NodeDetails, extractNodeDetails } from './types/node.types';
 
 /**
@@ -21,11 +25,6 @@ const nodeDetailsSchema = z.object({
 });
 
 /**
- * Inferred type from schema
- */
-type NodeDetailsInput = z.infer<typeof nodeDetailsSchema>;
-
-/**
  * Output type for the node details tool
  */
 interface NodeDetailsOutput {
@@ -35,154 +34,148 @@ interface NodeDetailsOutput {
 }
 
 /**
- * Node details tool implementation using the base infrastructure
+ * Format node inputs
  */
-export class NodeDetailsTool extends BaseWorkflowBuilderTool<
-	typeof nodeDetailsSchema,
-	NodeDetailsOutput
-> {
-	protected readonly schema = nodeDetailsSchema;
-	protected readonly name = 'get_node_details' as const;
-	protected readonly description =
-		'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.';
-
-	/**
-	 * Execute the node details tool
-	 */
-	protected async execute(
-		input: NodeDetailsInput,
-		context: ToolContext,
-	): Promise<ToolResult<NodeDetailsOutput>> {
-		const { nodeName, withParameters, withConnections } = input;
-
-		// Report progress
-		context.reporter.progress(`Looking up details for ${nodeName}...`);
-
-		// Find the node type
-		const nodeType = context.nodeTypes.find((nt) => nt.name === nodeName);
-
-		if (!nodeType) {
-			return {
-				success: false,
-				error: {
-					message: `Node type "${nodeName}" not found`,
-					code: 'NODE_NOT_FOUND',
-					details: { nodeName },
-				},
-			};
+function formatInputs(inputs: INodeTypeDescription['inputs']): string {
+	if (!inputs || inputs.length === 0) {
+		return '<inputs>none</inputs>';
+	}
+	if (typeof inputs === 'string') {
+		return `<input>${inputs}</input>`;
+	}
+	const formattedInputs = inputs.map((input) => {
+		if (typeof input === 'string') {
+			return `<input>${input}</input>`;
 		}
 
-		// Extract node details
-		const details = extractNodeDetails(nodeType);
+		return `<input>${JSON.stringify(input)}</input>`;
+	});
+	return formattedInputs.join('\n');
+}
 
-		// Format the output message
-		const message = this.formatNodeDetails(details, withParameters, withConnections);
+/**
+ * Format node outputs
+ */
+function formatOutputs(outputs: INodeTypeDescription['outputs']): string {
+	if (!outputs || outputs.length === 0) {
+		return '<outputs>none</outputs>';
+	}
+	if (typeof outputs === 'string') {
+		return `<output>${outputs}</output>`;
+	}
+	const formattedOutputs = outputs.map((output) => {
+		if (typeof output === 'string') {
+			return `<output>${output}</output>`;
+		}
 
-		return {
-			success: true,
-			data: {
-				details,
-				found: true,
-				message,
-			},
-		};
+		return `<output>${JSON.stringify(output)}</output>`;
+	});
+	return formattedOutputs.join('\n');
+}
+
+/**
+ * Format node details into a structured message
+ */
+function formatNodeDetails(
+	details: NodeDetails,
+	withParameters: boolean = false,
+	withConnections: boolean = true,
+): string {
+	const parts: string[] = [];
+
+	// Basic details
+	parts.push('<node_details>');
+	parts.push(`<name>${details.name}</name>`);
+	parts.push(`<display_name>${details.displayName}</display_name>`);
+	parts.push(`<description>${details.description}</description>`);
+
+	if (details.subtitle) {
+		parts.push(`  <subtitle>${details.subtitle}</subtitle>`);
 	}
 
-	/**
-	 * Format node details into a structured message
-	 */
-	private formatNodeDetails(
-		details: NodeDetails,
-		withParameters: boolean = false,
-		withConnections: boolean = true,
-	): string {
-		const parts: string[] = [];
-
-		// Basic details
-		parts.push('<node_details>');
-		parts.push(`<name>${details.name}</name>`);
-		parts.push(`<display_name>${details.displayName}</display_name>`);
-		parts.push(`<description>${details.description}</description>`);
-
-		if (details.subtitle) {
-			parts.push(`  <subtitle>${details.subtitle}</subtitle>`);
+	// Parameters
+	if (withParameters && details.properties.length > 0) {
+		parts.push('<properties>');
+		for (const prop of details.properties) {
+			parts.push(`<property>${JSON.stringify(prop)}</property>`);
 		}
-
-		// Parameters
-		if (withParameters && details.properties.length > 0) {
-			parts.push('<properties>');
-			for (const prop of details.properties) {
-				parts.push(`<property>${JSON.stringify(prop)}</property>`);
-			}
-			parts.push('</properties>');
-		}
-
-		// Connections
-		if (withConnections) {
-			parts.push('<connections>');
-			parts.push(this.formatInputs(details.inputs));
-			parts.push(this.formatOutputs(details.outputs));
-			parts.push('</connections>');
-		}
-
-		parts.push('</node_details>');
-
-		return parts.join('\n');
+		parts.push('</properties>');
 	}
 
-	/**
-	 * Format node inputs
-	 */
-	private formatInputs(inputs: INodeTypeDescription['inputs']): string {
-		if (!inputs || inputs.length === 0) {
-			return '<inputs>none</inputs>';
-		}
-		if (typeof inputs === 'string') {
-			return `<input>${inputs}</input>`;
-		}
-		const formattedInputs = inputs.map((input) => {
-			if (typeof input === 'string') {
-				return `<input>${input}</input>`;
-			}
-
-			return `<input>${JSON.stringify(input)}</input>`;
-		});
-		return formattedInputs.join('\n');
+	// Connections
+	if (withConnections) {
+		parts.push('<connections>');
+		parts.push(formatInputs(details.inputs));
+		parts.push(formatOutputs(details.outputs));
+		parts.push('</connections>');
 	}
 
-	/**
-	 * Format node outputs
-	 */
-	private formatOutputs(outputs: INodeTypeDescription['outputs']): string {
-		if (!outputs || outputs.length === 0) {
-			return '<outputs>none</outputs>';
-		}
-		if (typeof outputs === 'string') {
-			return `<output>${outputs}</output>`;
-		}
-		const formattedOutputs = outputs.map((output) => {
-			if (typeof output === 'string') {
-				return `<output>${output}</output>`;
-			}
+	parts.push('</node_details>');
 
-			return `<output>${JSON.stringify(output)}</output>`;
-		});
-		return formattedOutputs.join('\n');
-	}
-
-	/**
-	 * Override to provide custom success message
-	 */
-	protected formatSuccessMessage(output: NodeDetailsOutput): string {
-		return output.message;
-	}
+	return parts.join('\n');
 }
 
 /**
  * Factory function to create the node details tool
- * Maintains backward compatibility with existing code
  */
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
-	const tool = new NodeDetailsTool(nodeTypes);
-	return tool.createLangChainTool();
+	return tool(
+		async (input: unknown, config) => {
+			const reporter = createProgressReporter(config, 'get_node_details');
+
+			try {
+				// Validate input using Zod schema
+				const validatedInput = nodeDetailsSchema.parse(input);
+				const { nodeName, withParameters, withConnections } = validatedInput;
+
+				// Report tool start
+				reporter.start(validatedInput);
+
+				// Report progress
+				reportProgress(reporter, `Looking up details for ${nodeName}...`);
+
+				// Find the node type
+				const nodeType = findNodeType(nodeName, nodeTypes);
+
+				if (!nodeType) {
+					const error = createNodeTypeNotFoundError(nodeName);
+					reporter.error(error);
+					return createErrorResponse(config, error);
+				}
+
+				// Extract node details
+				const details = extractNodeDetails(nodeType);
+
+				// Format the output message
+				const message = formatNodeDetails(details, withParameters, withConnections);
+
+				// Report completion
+				const output: NodeDetailsOutput = {
+					details,
+					found: true,
+					message,
+				};
+				reporter.complete(output);
+
+				// Return success response
+				return createSuccessResponse(config, message);
+			} catch (error) {
+				// Handle validation or unexpected errors
+				const toolError = {
+					message: error instanceof Error ? error.message : 'Unknown error occurred',
+					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
+					details: error instanceof z.ZodError ? error.errors : undefined,
+				};
+
+				reporter.error(toolError);
+				return createErrorResponse(config, toolError);
+			}
+		},
+		{
+			name: 'get_node_details',
+			description:
+				'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.',
+			schema: nodeDetailsSchema,
+		},
+	);
 }

@@ -4,7 +4,7 @@ import { StateGraph, MemorySaver } from '@langchain/langgraph';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { assert, INodeTypes } from 'n8n-workflow';
+import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { ILicenseService } from './interfaces';
@@ -13,9 +13,10 @@ import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
 import { createNodeSearchTool } from './tools/node-search.tool';
-import { mainAgentPrompt } from './tools/prompts/mainAgent.prompt';
+import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
+import { SimpleWorkflow } from './types';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -122,17 +123,13 @@ export class AiWorkflowBuilderService {
 			await this.setupModels(user);
 		}
 
-		const updateNodeParametersTool = createUpdateNodeParametersTool(this.parsedNodeTypes)
-			.withLlm(this.llmComplexTask!)
-			.createLangChainTool();
-
 		const tools = [
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
-			createRemoveNodeTool(this.parsedNodeTypes),
-			updateNodeParametersTool,
+			createRemoveNodeTool(),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!),
 		];
 
 		// Create a map for quick tool lookup
@@ -140,10 +137,9 @@ export class AiWorkflowBuilderService {
 
 		const callModel = async (state: typeof WorkflowState.State) => {
 			assert(this.llmComplexTask, 'LLM not setup');
-			assert(this.llmComplexTask.bindTools, 'LLM does not support tools');
+			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
 
 			const prompt = await mainAgentPrompt.invoke(state);
-			// @ts-ignore
 			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
@@ -196,7 +192,7 @@ export class AiWorkflowBuilderService {
 			messages: [new HumanMessage({ content: payload.question })],
 			prompt: payload.question,
 			workflowJSON: payload.currentWorkflowJSON
-				? JSON.parse(payload.currentWorkflowJSON)
+				? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
 				: { nodes: [], connections: {} },
 			isWorkflowPrompt: false,
 		};
@@ -207,19 +203,22 @@ export class AiWorkflowBuilderService {
 			recursionLimit: 80,
 		});
 
+		// TODO: Extract this to a separate function
 		for await (const [streamMode, chunk] of stream) {
 			if (streamMode === 'updates') {
+				const agentChunk = chunk as { agent: { messages: Array<{ content: string }> } };
 				// Handle final messages
-				if ((chunk?.agent?.messages ?? [])?.length > 0) {
-					const lastMessage = chunk.agent.messages[chunk.agent.messages.length - 1];
+				if ((agentChunk?.agent?.messages ?? [])?.length > 0) {
+					const lastMessage = agentChunk.agent.messages[agentChunk.agent.messages.length - 1];
 					if (lastMessage.content) {
 						let content = lastMessage.content;
 
 						if (Array.isArray(lastMessage.content)) {
-							// @ts-ignore
 							content = lastMessage.content
-								.filter((c: any) => c.type === 'text')
-								.map((b: any) => b.text)
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								.filter((c) => c.type === 'text')
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+								.map((b) => b.text)
 								.join('\n');
 						}
 						const messageChunk = {
@@ -231,16 +230,17 @@ export class AiWorkflowBuilderService {
 					}
 				}
 			} else if (streamMode === 'custom') {
+				const toolChunk = chunk as { type: 'tool'; toolName: string; status: string };
 				// Handle custom tool updates
-				if (chunk?.type === 'tool') {
+				if (toolChunk?.type === 'tool') {
 					yield {
 						messages: [chunk],
 					};
 					if (
 						['add_nodes', 'connect_nodes', 'update_node_parameters', 'remove_node'].includes(
-							chunk.toolName,
+							toolChunk.toolName,
 						) &&
-						chunk.status === 'completed'
+						toolChunk.status === 'completed'
 					) {
 						const currentState = await agent.getState(threadConfig);
 						// console.log('Updating WF', currentState);
@@ -249,7 +249,11 @@ export class AiWorkflowBuilderService {
 								{
 									role: 'assistant',
 									type: 'workflow-updated',
-									codeSnippet: JSON.stringify(currentState.values.workflowJSON, null, 2),
+									codeSnippet: JSON.stringify(
+										(currentState.values as typeof WorkflowState.State).workflowJSON,
+										null,
+										2,
+									),
 								},
 							],
 						};

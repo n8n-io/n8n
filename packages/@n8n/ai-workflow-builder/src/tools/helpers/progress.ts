@@ -1,0 +1,187 @@
+import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import { ZodIssue } from 'zod';
+
+export type ProgressUpdateType = 'input' | 'output' | 'progress' | 'error';
+
+export interface ProgressUpdate<T = Record<string, unknown>> {
+	type: ProgressUpdateType;
+	data: T;
+	timestamp?: string;
+}
+
+export interface ToolProgressMessage<TToolName extends string = string> {
+	type: 'tool';
+	toolName: TToolName;
+	toolCallId?: string;
+	status: 'running' | 'completed' | 'error';
+	updates: ProgressUpdate[];
+}
+
+export interface ToolError {
+	message: string;
+	code?: string;
+	details?: ZodIssue[] | Record<string, unknown>;
+}
+
+export interface ProgressReporter {
+	start: <T>(input: T) => void;
+	progress: (message: string, data?: Record<string, unknown>) => void;
+	complete: <T>(output: T) => void;
+	error: (error: ToolError) => void;
+	createBatchReporter: (scope: string) => BatchReporter;
+}
+
+export interface BatchReporter {
+	init: (total: number) => void;
+	next: (itemDescription: string) => void;
+	complete: () => void;
+}
+
+/**
+ * Create a progress reporter for a tool execution
+ */
+export function createProgressReporter<TToolName extends string = string>(
+	config: LangGraphRunnableConfig,
+	toolName: TToolName,
+): ProgressReporter {
+	// @ts-expect-error - toolCall exists but not in types
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	const toolCallId = config.toolCall?.id as string;
+
+	const emit = (message: ToolProgressMessage<TToolName>): void => {
+		config.writer?.(message);
+	};
+
+	const start = <T extends Record<string, unknown>>(input: T): void => {
+		emit({
+			type: 'tool',
+			toolName,
+			toolCallId,
+			status: 'running',
+			updates: [
+				{
+					type: 'input',
+					data: input,
+				},
+			],
+		});
+	};
+
+	const progress = (message: string, data?: Record<string, unknown>): void => {
+		emit({
+			type: 'tool',
+			toolName,
+			toolCallId,
+			status: 'running',
+			updates: [
+				{
+					type: 'progress',
+					data: data ?? message,
+				},
+			],
+		});
+	};
+
+	const complete = <T extends Record<string, unknown>>(output: T): void => {
+		emit({
+			type: 'tool',
+			toolName,
+			toolCallId,
+			status: 'completed',
+			updates: [
+				{
+					type: 'output',
+					data: output,
+				},
+			],
+		});
+	};
+
+	const error = (error: ToolError): void => {
+		emit({
+			type: 'tool',
+			toolName,
+			toolCallId,
+			status: 'error',
+			updates: [
+				{
+					type: 'error',
+					data: {
+						message: error.message,
+						code: error.code,
+						details: error.details,
+					},
+				},
+			],
+		});
+	};
+
+	const createBatchReporter = (scope: string): BatchReporter => {
+		let currentIndex = 0;
+		let totalItems = 0;
+
+		return {
+			init: (total: number) => {
+				totalItems = total;
+				currentIndex = 0;
+			},
+			next: (itemDescription: string) => {
+				currentIndex++;
+				progress(`${scope}: Processing item ${currentIndex} of ${totalItems}: ${itemDescription}`);
+			},
+			complete: () => {
+				progress(`${scope}: Completed all ${totalItems} items`);
+			},
+		};
+	};
+
+	return {
+		start,
+		progress,
+		complete,
+		error,
+		createBatchReporter,
+	};
+}
+
+/**
+ * Helper function to report start of tool execution
+ */
+export function reportStart<T>(reporter: ProgressReporter, input: T): void {
+	reporter.start(input);
+}
+
+/**
+ * Helper function to report progress during tool execution
+ */
+export function reportProgress(
+	reporter: ProgressReporter,
+	message: string,
+	data?: Record<string, unknown>,
+): void {
+	reporter.progress(message, data);
+}
+
+/**
+ * Helper function to report successful completion
+ */
+export function reportComplete<T>(reporter: ProgressReporter, output: T): void {
+	reporter.complete(output);
+}
+
+/**
+ * Helper function to report error during execution
+ */
+export function reportError(reporter: ProgressReporter, error: ToolError): void {
+	reporter.error(error);
+}
+
+/**
+ * Create a batch progress reporter for multi-item operations
+ */
+export function createBatchProgressReporter(
+	reporter: ProgressReporter,
+	scope: string,
+): BatchReporter {
+	return reporter.createBatchReporter(scope);
+}
