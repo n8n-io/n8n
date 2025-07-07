@@ -26,7 +26,7 @@ import type { TargetNodeParameterContext } from '@/Interface';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
-	executable: boolean;
+	isCanvasReadOnly: boolean;
 }>();
 
 const locale = useI18n();
@@ -55,7 +55,7 @@ const isExecutable = computed(() => {
 	);
 	return nodeHelpers.isNodeExecutable(
 		resolvedParameter.value.node,
-		props.executable,
+		!props.isCanvasReadOnly,
 		foreignCredentials,
 	);
 });
@@ -106,8 +106,8 @@ const shouldCaptureForPosthog = computed(
 	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
 );
 
-// TODO: get correct value
-const isReadOnly = false;
+const isReadOnly = computed(() => props.isCanvasReadOnly);
+
 // TODO: get correct value
 const isForCredential = false;
 
@@ -397,7 +397,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 				display: flex;
 				height: 100%;
 				width: 100%;
-				font-size: var(--font-size-xs);
+				font-size: var(--font-size-2xs);
 
 				:global(.cm-editor) {
 					width: 100%;
