@@ -178,6 +178,8 @@
     "xss": "catalog:",
     "yamljs": "0.3.0",
     "yargs-parser": "21.1.1",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@modelcontextprotocol/sdk": "1.12.3",
+    "zod-to-json-schema": "catalog:"
   }
 }

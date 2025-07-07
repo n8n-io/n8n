@@ -1,7 +1,7 @@
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { ApiKey, User, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -20,6 +20,7 @@ import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
+import { UserService } from './services/user.service';
 
 @Service()
 export class ControllerRegistry {
@@ -29,6 +30,7 @@ export class ControllerRegistry {
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
+		private readonly userService: UserService,
 	) {}
 
 	activate(app: Application) {
@@ -92,6 +94,7 @@ export class ControllerRegistry {
 						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
+				...(route.apiKeyAuth ? [this.createApiKeyMiddleware()] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
 				route.usesTemplates
@@ -103,6 +106,40 @@ export class ControllerRegistry {
 					: send(handler),
 			);
 		}
+	}
+
+	private createApiKeyMiddleware(): RequestHandler {
+		return async (req, res, next) => {
+			const apiKey = req.headers['x-api-key'] as string | undefined;
+			if (!apiKey) {
+				res.status(401).json({ status: 'error', message: 'API key is required' });
+				return;
+			}
+
+			try {
+				const user = await this.getUserForApiKey(apiKey);
+				if (!user) {
+					res.status(401).json({ status: 'error', message: 'Invalid API key' });
+					return;
+				}
+
+				(req as AuthenticatedRequest).user = user;
+				next();
+			} catch (error) {
+				res.status(500).json({ status: 'error', message: 'Internal server error' });
+			}
+		};
+	}
+
+	private async getUserForApiKey(apiKey: string) {
+		return await this.userService
+			.getManager()
+			.getRepository(User)
+			.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select('user')
+			.getOne();
 	}
 
 	private createRateLimitMiddleware(rateLimit: true | RateLimit): RequestHandler {

@@ -18,6 +18,7 @@ import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+import type { UserService } from '@/services/user.service';
 import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
@@ -26,6 +27,7 @@ describe('ControllerRegistry', () => {
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
+	const userService = mock<UserService>();
 	let agent: SuperAgentTest;
 	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
 
@@ -39,6 +41,7 @@ describe('ControllerRegistry', () => {
 			globalConfig,
 			metadata,
 			lastActiveAtService,
+			userService,
 		).activate(app);
 		agent = testAgent(app);
 	});
