@@ -1,12 +1,11 @@
 import { tool } from '@langchain/core/tools';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateWorkflowConnections } from './helpers/state';
 import { validateNodeExists } from './helpers/validation';
-import { nodeConnectionSchema, type ConnectionResult } from './types/node.types';
 import {
 	validateConnection,
 	createConnection,
@@ -22,6 +21,46 @@ interface ConnectNodesOutput extends ConnectionResult {
 		targetNode: boolean;
 	};
 }
+
+/**
+ * Result of creating a connection
+ */
+export interface ConnectionResult {
+	sourceNode: string;
+	targetNode: string;
+	connectionType: string;
+	swapped: boolean;
+	message: string;
+}
+
+/**
+ * Schema for node connection
+ */
+export const nodeConnectionSchema = z.object({
+	sourceNodeId: z
+		.string()
+		.describe(
+			'The ID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+		),
+	targetNodeId: z
+		.string()
+		.describe(
+			'The ID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+		),
+	connectionType: z
+		.nativeEnum(NodeConnectionTypes)
+		.describe(
+			'The type of connection: "main" for regular data flow, or sub-node types like "ai_languageModel" (for LLM models), "ai_tool" (for agent tools), "ai_memory" (for chat memory) etc.',
+		),
+	sourceOutputIndex: z
+		.number()
+		.optional()
+		.describe('The index of the output to connect from (default: 0)'),
+	targetInputIndex: z
+		.number()
+		.optional()
+		.describe('The index of the input to connect to (default: 0)'),
+});
 
 /**
  * Factory function to create the connect nodes tool

@@ -2,7 +2,6 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { addNodesSchema, type AddedNode } from './types/node.types';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
@@ -21,6 +20,34 @@ interface AddNodesOutput {
 	totalRequested: number;
 	successCount: number;
 	message: string;
+}
+
+/**
+ * Schema for node creation input
+ */
+export const nodeCreationSchema = z.object({
+	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
+	name: z
+		.string()
+		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
+});
+
+/**
+ * Schema for batch node creation
+ */
+export const addNodesSchema = z.object({
+	nodes: z.array(nodeCreationSchema).describe('Array of nodes to add to the workflow'),
+});
+
+/**
+ * Result of adding a node
+ */
+export interface AddedNode {
+	id: string;
+	name: string;
+	type: string;
+	displayName?: string;
+	position: [number, number];
 }
 
 /**
