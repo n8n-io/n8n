@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
+import type { File } from '../../helpers/interfaces';
 import { downloadFile, uploadFile } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
@@ -80,30 +81,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const credentials = await this.getCredentials('anthropicApi');
 	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
 
+	let response: File;
 	if (inputType === 'url') {
 		const fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
 		const { fileContent, mimeType } = await downloadFile.call(this, fileUrl);
-		const response = await uploadFile.call(this, fileContent, mimeType, fileName);
-		return [
-			{
-				json: { ...response, url: `${baseUrl}/v1/files/${response.id}` },
-				pairedItem: {
-					item: i,
-				},
-			},
-		];
+		response = await uploadFile.call(this, fileContent, mimeType, fileName);
 	} else {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
 		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		const response = await uploadFile.call(this, buffer, binaryData.mimeType, fileName);
-		return [
-			{
-				json: { ...response, url: `${baseUrl}/v1/files/${response.id}` },
-				pairedItem: {
-					item: i,
-				},
-			},
-		];
+		response = await uploadFile.call(this, buffer, binaryData.mimeType, fileName);
 	}
+
+	return [
+		{
+			json: { ...response, url: `${baseUrl}/v1/files/${response.id}` },
+			pairedItem: {
+				item: i,
+			},
+		},
+	];
 }
