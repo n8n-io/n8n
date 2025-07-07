@@ -42,6 +42,9 @@ ${colors.yellow}Options:${colors.reset}
   --env KEY=VALUE   Set environment variables
   --help, -h        Show this help
 
+${colors.yellow}Environment Variables:${colors.reset}
+  • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
+
 ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Simple SQLite instance${colors.reset}
   npm run stack
