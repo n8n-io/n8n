@@ -1,0 +1,43 @@
+name: Test Playwright (Docker Build)
+
+on:
+  workflow_dispatch:
+    inputs:
+      containers:
+        description: 'Shard containers to use'
+        required: false
+        default: '[1, 2]'
+        type: string
+
+  push:
+    branches:
+      - playwright-ci-test
+
+env:
+  TESTCONTAINERS_RYUK_DISABLED: true
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+
+jobs:
+  build-and-test:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Build and Test
+        uses: ./.github/actions/setup-blacksmith
+        with:
+          build-command: pnpm build:docker:test
+          enable-docker-cache: true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            packages/testing/playwright/playwright-report/
+            packages/testing/playwright/test-results/
+          retention-days: 3

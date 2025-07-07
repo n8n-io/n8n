@@ -1,0 +1,23 @@
+name: E2E Tests - On-Demand
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: playwright-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
+  cancel-in-progress: true
+
+jobs:
+  eligibility_check:
+    name: Check Eligibility for Test Run
+    if: github.event.review && github.event.review.state == 'approved'
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      is_pr_approved_by_maintainer: true
+
+  run-e2e-tests:
+    name: Playwright E2E
+    uses: ./.github/workflows/playwright-test.yml
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
