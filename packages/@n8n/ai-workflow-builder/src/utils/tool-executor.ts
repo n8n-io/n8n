@@ -44,11 +44,13 @@ export interface ToolExecutorOptions {
 export interface ToolResultWithName {
 	result: Record<string, unknown>;
 	toolName: string;
+	toolArgs?: Record<string, unknown>;
 }
 
 export interface StateUpdateWithTool {
 	update: Partial<typeof WorkflowState.State>;
 	toolName: string;
+	toolArgs?: Record<string, unknown>;
 }
 
 /**
@@ -178,7 +180,8 @@ export async function executeToolsInParallel(
 				},
 			})) as Record<string, unknown>;
 			console.log(`Tool ${toolCall.name} completed`);
-			return { result, toolName: toolCall.name };
+			console.log(`Tool args: ${JSON.stringify(toolCall.args)}`);
+			return { result, toolName: toolCall.name, toolArgs: toolCall.args };
 		}),
 	);
 
@@ -187,14 +190,14 @@ export async function executeToolsInParallel(
 	const stateUpdatesWithTools: StateUpdateWithTool[] = [];
 	const regularResults: BaseMessage[] = [];
 
-	toolResultsWithNames.forEach(({ result, toolName }: ToolResultWithName) => {
+	toolResultsWithNames.forEach(({ result, toolName, toolArgs }: ToolResultWithName) => {
 		if (isCommand(result)) {
 			// Tool returned a Command with state updates
 			const cmd = result;
 			const update = cmd.update as Partial<typeof WorkflowState.State>;
 			if (update) {
 				// Track which tool produced this update for context-aware merging
-				stateUpdatesWithTools.push({ update, toolName });
+				stateUpdatesWithTools.push({ update, toolName, toolArgs });
 			}
 		} else {
 			// Tool returned a regular result (not a state update)
@@ -279,11 +282,22 @@ export async function executeToolsInParallel(
 	// These operations are additive and can be merged more straightforwardly
 	// than removals. The main challenge here is handling cases where multiple
 	// tools modify the same node (e.g., parallel parameter updates).
-	otherOperations.forEach(({ update, toolName }) => {
-		if (!update || typeof update !== 'object' || Array.isArray(update)) return;
+	console.log('\n=== Processing other operations ===');
+	console.log(`Total operations to process: ${otherOperations.length}`);
+
+	otherOperations.forEach(({ update, toolName, toolArgs }, index) => {
+		console.log(`\n--- Processing operation ${index + 1}/${otherOperations.length} ---`);
+		console.log(`Tool name: ${toolName}`);
+		console.log(`Tool args: ${JSON.stringify(toolArgs)}`);
+
+		if (!update || typeof update !== 'object' || Array.isArray(update)) {
+			console.log('Skipping invalid update');
+			return;
+		}
 
 		// Collect messages from all tools - these accumulate naturally
 		if (update.messages && Array.isArray(update.messages)) {
+			console.log(`Adding ${update.messages.length} messages from ${toolName}`);
 			allMessages.push(...update.messages);
 		}
 
@@ -292,34 +306,55 @@ export async function executeToolsInParallel(
 			const beforeNodeCount = mergedWorkflowJSON.nodes.length;
 			const beforeConnectionCount = Object.keys(mergedWorkflowJSON.connections).length;
 
+			console.log(
+				`\nBefore merge - Node count: ${beforeNodeCount}, Connection groups: ${beforeConnectionCount}`,
+			);
+
 			// Deep merge nodes using a Map for efficient lookups
 			const nodeMap = new Map(mergedWorkflowJSON.nodes.map((node) => [node.id, node]));
 
 			// Add or update nodes from the update
 			if (update.workflowJSON.nodes && Array.isArray(update.workflowJSON.nodes)) {
-				update.workflowJSON.nodes.forEach((node) => {
-					const existingNode = nodeMap.get(node.id);
-					if (!existingNode) {
-						// This is a new node added by this tool
-						nodeMap.set(node.id, node);
-					} else if (toolName === 'update_node_parameters') {
-						// Special handling for parameter updates: merge parameters deeply
-						// This ensures that parallel parameter updates to the same node
-						// don't overwrite each other
-						console.log(`Merging node ${node.id} - updating parameters`);
-						const mergedNode = {
-							...existingNode,
-							...node,
-							parameters: {
-								...existingNode.parameters,
-								...node.parameters,
-							},
-						};
-						nodeMap.set(node.id, mergedNode);
+				console.log(`Update contains ${update.workflowJSON.nodes.length} nodes`);
+
+				if (toolName === 'update_node_parameters' && toolArgs?.nodeId) {
+					// For update_node_parameters, only update the specific target node
+					const targetNodeId = toolArgs.nodeId as string;
+					console.log(`\nProcessing update_node_parameters for target node: ${targetNodeId}`);
+
+					// Find the target node in the update
+					const updatedNode = update.workflowJSON.nodes.find((node) => node.id === targetNodeId);
+					if (updatedNode) {
+						const existingNode = nodeMap.get(targetNodeId);
+						if (existingNode) {
+							console.log(`\nUpdating parameters for node ${targetNodeId}:`);
+							console.log(
+								`Existing node parameters: ${JSON.stringify(existingNode.parameters, null, 2)}`,
+							);
+							console.log(`New parameters: ${JSON.stringify(updatedNode.parameters, null, 2)}`);
+
+							// Replace the node with the updated version
+							nodeMap.set(targetNodeId, updatedNode);
+							console.log(`Node ${targetNodeId} parameters updated successfully`);
+						} else {
+							console.log(`Warning: Target node ${targetNodeId} not found in existing workflow`);
+						}
+					} else {
+						console.log(`Warning: Target node ${targetNodeId} not found in update`);
 					}
-					// Note: For other operations on existing nodes, we don't merge
-					// to avoid unexpected behavior
-				});
+				} else {
+					// For other operations, process all nodes as before
+					update.workflowJSON.nodes.forEach((node) => {
+						const existingNode = nodeMap.get(node.id);
+						if (!existingNode) {
+							// This is a new node added by this tool
+							console.log(`Adding new node: ${node.id} (type: ${node.type})`);
+							nodeMap.set(node.id, node);
+						}
+						// Note: For other operations on existing nodes, we don't merge
+						// to avoid unexpected behavior
+					});
+				}
 			}
 
 			const mergedNodes = Array.from(nodeMap.values());
@@ -339,6 +374,12 @@ export async function executeToolsInParallel(
 				`Update from ${toolName}: Added ${mergedNodes.length - beforeNodeCount} nodes, ` +
 					`${Object.keys(mergedConnections).length - beforeConnectionCount} connection groups`,
 			);
+
+			console.log(`\nAfter merge - Total nodes: ${mergedNodes.length}`);
+			console.log('Current nodes in workflow:');
+			mergedNodes.forEach((node) => {
+				console.log(`  - ${node.id} (${node.type}): ${JSON.stringify(node.parameters)}`);
+			});
 		}
 	});
 
@@ -349,10 +390,17 @@ export async function executeToolsInParallel(
 		}
 	});
 
+	console.log(`\n=== Final merge results ===`);
 	console.log(`Final workflow has ${mergedWorkflowJSON.nodes.length} nodes`);
 	console.log(
 		`Final workflow has ${Object.keys(mergedWorkflowJSON.connections).length} connection groups`,
 	);
+
+	console.log('\nFinal nodes with parameters:');
+	mergedWorkflowJSON.nodes.forEach((node) => {
+		console.log(`  ${node.id} (${node.type}):`);
+		console.log('    Parameters: ' + JSON.stringify(node.parameters, null, 4));
+	});
 
 	// Add any regular tool results as messages
 	allMessages.push(...regularResults);
@@ -361,8 +409,14 @@ export async function executeToolsInParallel(
 	// This object will be used by LangGraph to update the workflow state.
 	// By returning a single merged update instead of individual tool updates,
 	// we ensure all parallel modifications are preserved.
-	return {
+	const finalUpdate = {
 		messages: allMessages,
 		workflowJSON: mergedWorkflowJSON,
 	};
+
+	console.log('\n=== Returning state update ===');
+	console.log(`Message count: ${allMessages.length}`);
+	console.log(`Node count: ${mergedWorkflowJSON.nodes.length}`);
+
+	return finalUpdate;
 }
