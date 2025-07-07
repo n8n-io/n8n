@@ -26,6 +26,7 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 function getInputs(
 	hasOutputParser?: boolean,
 	needsFallback?: boolean,
+	isTool?: boolean,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
@@ -102,7 +103,8 @@ function getInputs(
 	if (needsFallback === false) {
 		specialInputs = specialInputs.filter((input) => input.displayName !== 'Fallback Model');
 	}
-	return ['main', ...getInputData(specialInputs)];
+	const mainInputs: Array<NodeConnectionType | INodeInputConfiguration> = !isTool ? ['main'] : [];
+	return [...mainInputs, ...getInputData(specialInputs)];
 }
 
 export class AgentV2 implements INodeType {
@@ -116,10 +118,10 @@ export class AgentV2 implements INodeType {
 				color: '#404040',
 			},
 			inputs: `={{
-				((hasOutputParser, needsFallback) => {
+				((hasOutputParser, needsFallback, isTool) => {
 					${getInputs.toString()};
-					return getInputs(hasOutputParser, needsFallback)
-				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
+					return getInputs(hasOutputParser, needsFallback, isTool)
+				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true, ${isTool === true})
 			}}`,
 			outputs: [isTool ? NodeConnectionTypes.AiTool : NodeConnectionTypes.Main],
 			properties: [
