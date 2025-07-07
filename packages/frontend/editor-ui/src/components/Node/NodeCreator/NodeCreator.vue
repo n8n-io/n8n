@@ -3,6 +3,7 @@ import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useZenModeStore } from '@/stores/zenMode.store';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import { useViewStacks } from './composables/useViewStacks';
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
+const zenModeStore = useZenModeStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -46,8 +48,20 @@ const showScrim = computed(() => useNodeCreatorStore().showScrim);
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 const nodeCreatorInlineStyle = computed(() => {
+	const zenModeActive = zenModeStore.isZenModeActive;
 	const rightPosition = getRightOffset();
-	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px`, right: `${rightPosition}px` };
+	return {
+		top: zenModeActive ? '0px' : `${uiStore.bannersHeight + uiStore.headerHeight}px`,
+		right: `${rightPosition}px`,
+	};
+});
+
+const scrimInlineStyle = computed(() => {
+	const zenModeActive = zenModeStore.isZenModeActive;
+	return {
+		top: zenModeActive ? '0px' : `${uiStore.bannersHeight + uiStore.headerHeight}px`,
+		left: zenModeActive ? '0px' : '65px', // Use the SCSS variable value directly
+	};
 });
 
 function getRightOffset() {
@@ -160,6 +174,7 @@ onBeforeUnmount(() => {
 				[$style.nodeCreatorScrim]: true,
 				[$style.active]: showScrim,
 			}"
+			:style="scrimInlineStyle"
 		/>
 		<N8nIconButton
 			v-if="active"
@@ -195,9 +210,9 @@ onBeforeUnmount(() => {
 	--node-creator-width: #{$node-creator-width};
 	--node-icon-color: var(--color-text-base);
 	position: fixed;
-	top: $header-height;
+	top: 0; /* Will be overridden by inline styles */
 	bottom: 0;
-	right: 0;
+	right: 0; /* Will be overridden by inline styles */
 	z-index: var(--z-index-node-creator);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;
@@ -205,10 +220,10 @@ onBeforeUnmount(() => {
 
 .nodeCreatorScrim {
 	position: fixed;
-	top: $header-height;
+	top: 0; /* Will be overridden by inline styles */
 	right: 0;
 	bottom: 0;
-	left: $sidebar-width;
+	left: 65px; /* Will be overridden by inline styles */
 	opacity: 0;
 	z-index: 1;
 	background: var(--color-dialog-overlay-background);
