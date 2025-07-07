@@ -1,0 +1,53 @@
+name: Test Playwright (Docker Pull)
+
+on:
+  push:
+    branches:
+      - playwright-ci-test
+
+env:
+  TESTCONTAINERS_RYUK_DISABLED: true
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+
+jobs:
+  build-and-test:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - uses: useblacksmith/build-push-action@v1
+        with:
+          setup-only: true
+
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+      - name: Setup Node.js
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
+        with:
+          node-version: 22.x
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Configure Turborepo Cache
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for Playwright
+        run: pnpm turbo install-browsers:ci
+
+      - name: Run Playwright tests
+        env:
+          N8N_DOCKER_IMAGE: n8nio/n8n:nightly
+        run: pnpm --filter=n8n-playwright run test:standard --workers=2
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright/playwright-report/
+            playwright/test-results/
+          retention-days: 3

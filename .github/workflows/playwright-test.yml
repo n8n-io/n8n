@@ -11,7 +11,7 @@ on:
 
   push:
     branches:
-      - playwright-ci-test
+      - playwright-ci-test-disabled
 
 env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
