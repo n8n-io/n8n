@@ -17,6 +17,7 @@ import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { SimpleWorkflow } from './types';
+import { createStreamProcessor, DEFAULT_WORKFLOW_UPDATE_TOOLS } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -69,6 +70,7 @@ export class AiWorkflowBuilderService {
 				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
 				apiKey: '-',
 				headers: {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					Authorization: authHeaders.apiKey,
 				},
 			});
@@ -76,6 +78,7 @@ export class AiWorkflowBuilderService {
 				baseUrl: baseUrl + '/v1/api-proxy/anthropic',
 				apiKey: '-',
 				headers: {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					Authorization: authHeaders.apiKey,
 				},
 			});
@@ -203,63 +206,14 @@ export class AiWorkflowBuilderService {
 			recursionLimit: 80,
 		});
 
-		// TODO: Extract this to a separate function
-		for await (const [streamMode, chunk] of stream) {
-			if (streamMode === 'updates') {
-				const agentChunk = chunk as { agent: { messages: Array<{ content: string }> } };
-				// Handle final messages
-				if ((agentChunk?.agent?.messages ?? [])?.length > 0) {
-					const lastMessage = agentChunk.agent.messages[agentChunk.agent.messages.length - 1];
-					if (lastMessage.content) {
-						let content = lastMessage.content;
+		// Use the stream processor utility to handle chunk processing
+		const streamProcessor = createStreamProcessor(stream, agent, {
+			threadConfig,
+			workflowUpdateTools: DEFAULT_WORKFLOW_UPDATE_TOOLS,
+		});
 
-						if (Array.isArray(lastMessage.content)) {
-							content = lastMessage.content
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-								.filter((c) => c.type === 'text')
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-								.map((b) => b.text)
-								.join('\n');
-						}
-						const messageChunk = {
-							role: 'assistant',
-							type: 'message',
-							text: content,
-						};
-						yield { messages: [messageChunk] };
-					}
-				}
-			} else if (streamMode === 'custom') {
-				const toolChunk = chunk as { type: 'tool'; toolName: string; status: string };
-				// Handle custom tool updates
-				if (toolChunk?.type === 'tool') {
-					yield {
-						messages: [chunk],
-					};
-					if (
-						['add_nodes', 'connect_nodes', 'update_node_parameters', 'remove_node'].includes(
-							toolChunk.toolName,
-						) &&
-						toolChunk.status === 'completed'
-					) {
-						const currentState = await agent.getState(threadConfig);
-						// console.log('Updating WF', currentState);
-						yield {
-							messages: [
-								{
-									role: 'assistant',
-									type: 'workflow-updated',
-									codeSnippet: JSON.stringify(
-										(currentState.values as typeof WorkflowState.State).workflowJSON,
-										null,
-										2,
-									),
-								},
-							],
-						};
-					}
-				}
-			}
+		for await (const output of streamProcessor) {
+			yield output;
 		}
 	}
 }
