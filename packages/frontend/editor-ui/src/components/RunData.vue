@@ -1355,31 +1355,20 @@ const onOpenErrorNode = (error: NodeError | NodeApiError | NodeOperationError) =
 		'workflowId' in error &&
 		workflowId.value &&
 		typeof error.workflowId === 'string' &&
-		workflowId.value !== error.workflowId
+		workflowId.value !== error.workflowId &&
+		'executionId' in error &&
+		executionId.value &&
+		typeof error.executionId === 'string' &&
+		executionId.value !== error.executionId
 	) {
-		const resolvableRoute: RouteLocationRaw = {
-			name: VIEWS.WORKFLOW,
+		const link = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
 				name: error.workflowId,
-				nodeId: error.node.id,
-			},
-		};
-
-		if (
-			'executionId' in error &&
-			executionId.value &&
-			typeof error.executionId === 'string' &&
-			executionId.value !== error.executionId
-		) {
-			resolvableRoute.name = VIEWS.EXECUTION_PREVIEW;
-			resolvableRoute.params = {
-				...resolvableRoute.params,
 				executionId: error.executionId,
 				nodeId: error.node.id,
-			};
-		}
-
-		const link = router.resolve(resolvableRoute);
+			},
+		});
 		window.open(link.href, '_blank');
 	} else {
 		ndvStore.activeNodeName = error.node.name;

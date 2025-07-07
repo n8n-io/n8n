@@ -1,11 +1,14 @@
+import type { MockInstance } from 'vitest';
 import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import type { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 import RunData from '@/components/RunData.vue';
 import { STORES } from '@n8n/stores';
 import { SET_NODE_TYPE } from '@/constants';
-import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -22,7 +25,11 @@ const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(
 
 vi.mock('vue-router', () => {
 	return {
-		useRouter: () => ({}),
+		useRouter: () => ({
+			resolve: vi.fn(() => ({
+				href: '',
+			})),
+		}),
 		useRoute: () => ({ meta: {} }),
 		RouterLink: vi.fn(),
 	};
@@ -41,6 +48,9 @@ vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
 });
 
 describe('RunData', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let ndvStore: ReturnType<typeof useNDVStore>;
+
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
 	});
@@ -597,6 +607,170 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-items-count')).toBeInTheDocument();
 	});
 
+	describe('onOpenErrorNode', () => {
+		let windowOpenSpy: MockInstance;
+
+		beforeEach(() => {
+			windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		});
+
+		afterEach(() => {
+			windowOpenSpy.mockRestore();
+		});
+
+		it('should set ndvStore.activeNodeName when error has same workflowId and no executionId', async () => {
+			const { getByTestId } = render({
+				workflowId: '1',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: { main: [[]] },
+						source: [null],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeOperationError',
+							functionality: 'configuration-node',
+							level: 'error',
+							node: {
+								id: 'test-node-id',
+								name: 'Error Node',
+								type: 'n8n-nodes-base.test',
+								typeVersion: 1,
+								position: [100, 100],
+								parameters: {},
+							},
+							message: 'Test error message',
+							workflowId: '1', // Same as current workflow
+						} as never,
+					},
+				],
+				defaultRunItems: [],
+				displayMode: 'table',
+			});
+
+			// Find and click the NodeErrorView button to trigger onOpenErrorNode
+			const errorButton = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(errorButton);
+
+			expect(ndvStore.activeNodeName).toBe('Error Node');
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should set ndvStore.activeNodeName when error has same workflowId and same executionId', async () => {
+			const { getByTestId } = render({
+				workflowId: '1',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: { main: [[]] },
+						source: [null],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeOperationError',
+							functionality: 'configuration-node',
+							level: 'error',
+							node: {
+								id: 'test-node-id',
+								name: 'Error Node',
+								type: 'n8n-nodes-base.test',
+								typeVersion: 1,
+								position: [100, 100],
+								parameters: {},
+							},
+							message: 'Test error message',
+							workflowId: '1',
+							executionId: '1',
+						} as never,
+					},
+				],
+				defaultRunItems: [],
+				displayMode: 'table',
+			});
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				id: '1',
+			} as unknown as IExecutionResponse);
+
+			// Find and click the NodeErrorView button to trigger onOpenErrorNode
+			const errorButton = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(errorButton);
+
+			expect(ndvStore.activeNodeName).toBe('Error Node');
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should open execution preview when error has different workflowId and executionId', async () => {
+			const { getByTestId } = render({
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: { main: [[]] },
+						source: [null],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeOperationError',
+							functionality: 'configuration-node',
+							level: 'error',
+							node: {
+								id: 'test-node-id',
+								name: 'Error Node',
+								type: 'n8n-nodes-base.test',
+								typeVersion: 1,
+								position: [100, 100],
+								parameters: {},
+							},
+							message: 'Test error message',
+							workflowId: 'different-workflow-id',
+							executionId: 'different-execution-id',
+						} as never,
+					},
+				],
+				defaultRunItems: [],
+				displayMode: 'table',
+			});
+
+			// Find and click the NodeErrorView button to trigger onOpenErrorNode
+			const errorButton = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(errorButton);
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(expect.any(String), '_blank');
+			expect(ndvStore.activeNodeName).not.toBe('Error Node');
+		});
+
+		it('should not render button when error type functionality is regular', async () => {
+			const { queryByTestId } = render({
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: { main: [[]] },
+						source: [null],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeOperationError',
+							functionality: 'regula',
+							level: 'error',
+							message: 'Test error message without node',
+							// No node property
+						} as unknown as NodeError | NodeApiError | NodeOperationError,
+					},
+				],
+				defaultRunItems: [],
+				displayMode: 'table',
+			});
+
+			// Should not render button when there's no node
+			const errorButton = queryByTestId('node-error-view-open-node-button');
+			expect(errorButton).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -611,6 +785,7 @@ describe('RunData', () => {
 
 	const render = ({
 		defaultRunItems,
+		workflowId,
 		workflowNodes = nodes,
 		displayMode,
 		pinnedData,
@@ -619,6 +794,7 @@ describe('RunData', () => {
 		runs,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
+		workflowId?: string;
 		workflowNodes?: INodeUi[];
 		displayMode: IRunDataDisplayMode;
 		pinnedData?: INodeExecutionData[];
@@ -677,8 +853,9 @@ describe('RunData', () => {
 
 		setActivePinia(pinia);
 
-		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
+		workflowsStore = useWorkflowsStore();
+		ndvStore = useNDVStore();
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(workflowNodes[0]);
@@ -693,8 +870,8 @@ describe('RunData', () => {
 					name: 'Test Node',
 				},
 				workflow: createTestWorkflowObject({
-					// @ts-expect-error allow missing properties in test
-					workflowNodes,
+					id: workflowId,
+					nodes: workflowNodes,
 				}),
 				displayMode,
 			},
