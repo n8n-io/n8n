@@ -8,10 +8,15 @@ import {
 	type INode,
 	type INodeParameters,
 	type NodeParameterValue,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type INodePropertyCollection,
+	type NodePropertyTypes,
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
 	isINodePropertyOptionsList,
 	displayParameter,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { SWITCH_NODE_TYPE } from '@/constants';
@@ -21,6 +26,7 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
+import { isPresent } from './typesUtils';
 
 export function updateDynamicConnections(
 	node: INodeUi,
@@ -234,4 +240,100 @@ export function updateParameterByPath(
 	}
 
 	return parameterPath;
+}
+
+export function getParameterTypeOption<T = string | number | boolean | undefined>(
+	parameter: INodeProperties,
+	optionName: string,
+): T {
+	return parameter.typeOptions?.[optionName] as T;
+}
+
+export function isResourceLocatorParameterType(type: NodePropertyTypes) {
+	return type === 'resourceLocator' || type === 'workflowSelector';
+}
+
+export function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return 'value' in option && isPresent(option.value) && isPresent(option.name);
+}
+
+export function nameIsParameter(
+	parameterData: IUpdateInformation,
+): parameterData is IUpdateInformation & { name: `parameters.${string}` } {
+	return parameterData.name.startsWith('parameters.');
+}
+
+export function formatAsExpression(
+	value: NodeParameterValueType,
+	parameterType: NodePropertyTypes,
+) {
+	if (isResourceLocatorParameterType(parameterType)) {
+		if (isResourceLocatorValue(value)) {
+			return {
+				__rl: true,
+				value: `=${value.value}`,
+				mode: value.mode,
+			};
+		}
+
+		return { __rl: true, value: `=${value as string}`, mode: '' };
+	}
+
+	const isNumber = parameterType === 'number';
+	const isBoolean = parameterType === 'boolean';
+	const isMultiOptions = parameterType === 'multiOptions';
+
+	if (isNumber && (!value || value === '[Object: null]')) {
+		return '={{ 0 }}';
+	}
+
+	if (isMultiOptions) {
+		return `={{ ${JSON.stringify(value)} }}`;
+	}
+
+	if (isNumber || isBoolean || typeof value !== 'string') {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string -- stringified intentionally
+		return `={{ ${String(value)} }}`;
+	}
+
+	return `=${value}`;
+}
+
+export function parseFromExpression(
+	currentParameterValue: NodeParameterValueType,
+	evaluatedExpressionValue: unknown,
+	parameterType: NodePropertyTypes,
+	defaultValue: NodeParameterValueType,
+	parameterOptions: INodePropertyOptions[] = [],
+) {
+	if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
+		return evaluatedExpressionValue
+			.split(',')
+			.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
+	}
+
+	if (
+		isResourceLocatorParameterType(parameterType) &&
+		isResourceLocatorValue(currentParameterValue)
+	) {
+		return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
+	}
+
+	if (parameterType === 'string') {
+		return currentParameterValue
+			? (currentParameterValue as string).toString().replace(/^=+/, '')
+			: null;
+	}
+
+	if (typeof evaluatedExpressionValue !== 'undefined') {
+		return evaluatedExpressionValue;
+	}
+
+	if (['number', 'boolean'].includes(parameterType)) {
+		return defaultValue;
+	}
+
+	return null;
 }
