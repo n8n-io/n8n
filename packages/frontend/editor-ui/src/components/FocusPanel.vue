@@ -20,7 +20,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
-import { TargetNodeParameterContext } from '@/Interface';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 defineOptions({ name: 'FocusPanel' });
 
