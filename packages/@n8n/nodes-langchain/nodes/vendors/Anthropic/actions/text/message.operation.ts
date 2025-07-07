@@ -175,8 +175,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		description: t.description,
 	}));
 
-	console.log('tools', JSON.stringify(tools, null, 2));
-
 	const body = {
 		model,
 		messages,
@@ -186,7 +184,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.top_p,
 		top_k: options.top_k,
-		max_tools_iterations: options.maxToolsIterations,
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
