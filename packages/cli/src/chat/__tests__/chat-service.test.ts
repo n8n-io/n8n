@@ -217,7 +217,7 @@ describe('ChatService', () => {
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 
-			const data = JSON.stringify({ action: 'user', chatInput: 'hello', sessionId: 'abc' });
+			const data = JSON.stringify({ action: 'sendMessage', chatInput: 'hello', sessionId: 'abc' });
 			mockExecutionManager.findExecution.mockResolvedValue({
 				id: '123',
 				status: 'waiting',
