@@ -270,6 +270,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 							read,
 						});
 					}
+
+					// Check if all tools are completed and show processing message
+					if (msg.status === 'completed') {
+						const hasRunningTools = messages.some(
+							(m) => m.type === 'tool' && m.status === 'running',
+						);
+						if (!hasRunningTools) {
+							// All tools completed, show processing results message
+							assistantThinkingMessage.value = locale.baseText(
+								'aiAssistant.thinkingSteps.processingResults',
+							);
+						}
+					}
 				}
 			}
 		});
