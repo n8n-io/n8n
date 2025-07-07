@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export type FileSource =
 	| {
 			type: 'base64';
@@ -25,11 +27,22 @@ export type Content =
 	| {
 			type: 'document';
 			source: FileSource;
+	  }
+	| {
+			type: 'tool_use';
+			id: string;
+			name: string;
+			input: IDataObject;
+	  }
+	| {
+			type: 'tool_result';
+			tool_use_id: string;
+			content: string;
 	  };
 
 export interface Message {
 	role: 'user' | 'assistant';
-	content: Content[];
+	content: string | Content[];
 }
 
 export interface File {

@@ -9,6 +9,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
+import type { Content, Message } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -53,8 +54,8 @@ const properties: INodeProperties[] = [
 								description: 'Send a message as a user and get a response from the model',
 							},
 							{
-								name: 'Model',
-								value: 'model',
+								name: 'Assistant',
+								value: 'assistant',
 								description: 'Tell the model to adopt a specific tone or personality',
 							},
 						],
@@ -72,13 +73,6 @@ const properties: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Output Content as JSON',
-		name: 'jsonOutput',
-		type: 'boolean',
-		description: 'Whether to attempt to return the response in JSON format',
-		default: false,
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -87,66 +81,20 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'System Message',
-				name: 'systemMessage',
+				name: 'system',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
-				displayName: 'Code Execution',
-				name: 'codeExecution',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
-			},
-			{
-				displayName: 'Frequency Penalty',
-				name: 'frequencyPenalty',
-				default: 0,
-				description:
-					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
-				type: 'number',
-				typeOptions: {
-					minValue: -2,
-					maxValue: 2,
-					numberPrecision: 1,
-				},
-			},
-			{
 				displayName: 'Maximum Number of Tokens',
-				name: 'maxOutputTokens',
-				default: 16,
+				name: 'max_tokens',
+				default: 1024,
 				description: 'The maximum number of tokens to generate in the completion',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
 					numberPrecision: 0,
-				},
-			},
-			{
-				displayName: 'Number of Completions',
-				name: 'candidateCount',
-				default: 1,
-				description: 'How many completions to generate for each prompt',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 8, // Google Gemini supports up to 8 candidates
-					numberPrecision: 0,
-				},
-			},
-			{
-				displayName: 'Presence Penalty',
-				name: 'presencePenalty',
-				default: 0,
-				description:
-					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-				type: 'number',
-				typeOptions: {
-					minValue: -2,
-					maxValue: 2,
-					numberPrecision: 1,
 				},
 			},
 			{
@@ -158,14 +106,14 @@ const properties: INodeProperties[] = [
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 2,
+					maxValue: 1,
 					numberPrecision: 1,
 				},
 			},
 			{
 				displayName: 'Output Randomness (Top P)',
-				name: 'topP',
-				default: 1,
+				name: 'top_p',
+				default: 0.7,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
 				type: 'number',
 				typeOptions: {
@@ -176,12 +124,12 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Output Randomness (Top K)',
-				name: 'topK',
-				default: 1,
+				name: 'top_k',
+				default: 5,
 				description: 'The maximum number of tokens to consider when sampling',
 				type: 'number',
 				typeOptions: {
-					minValue: 1,
+					minValue: 0,
 					numberPrecision: 0,
 				},
 			},
@@ -210,75 +158,46 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-function getToolCalls(response: any) {
-	return response.candidates
-		.flatMap((c: any) => c.content.parts)
-		.filter((p: any) => 'functionCall' in p);
+function getToolCalls(contents: Content[]) {
+	return contents.filter((c) => c.type === 'tool_use');
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-	const messages = this.getNodeParameter('messages.values', i, []) as Array<{
-		content: string;
-		role: string;
-	}>;
+	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
 
-	const generationConfig = {
-		frequencyPenalty: options.frequencyPenalty,
-		maxOutputTokens: options.maxOutputTokens,
-		candidateCount: options.candidateCount,
-		presencePenalty: options.presencePenalty,
-		temperature: options.temperature,
-		topP: options.topP,
-		topK: options.topK,
-		responseMimeType: jsonOutput ? 'application/json' : undefined,
-	};
-
 	const availableTools = await getConnectedTools(this, true);
-	const tools = [
-		{
-			functionDeclarations: availableTools.map((t) => ({
-				name: t.name,
-				description: t.description,
-				parameters: {
-					...zodToJsonSchema(t.schema, { target: 'openApi3' }),
-					// Google Gemini API throws an error if `additionalProperties` field is present
-					additionalProperties: undefined,
-				},
-			})),
-		},
-	] as IDataObject[];
-	if (options.codeExecution) {
-		tools.push({
-			code_execution: {},
-		});
-	}
-
-	const contents: any[] = messages.map((m) => ({
-		parts: [{ text: m.content }],
-		role: m.role,
+	const tools = availableTools.map((t) => ({
+		name: t.name,
+		input_schema: zodToJsonSchema(t.schema),
+		description: t.description,
 	}));
+
+	console.log('tools', JSON.stringify(tools, null, 2));
+
 	const body = {
+		model,
+		messages,
 		tools,
-		contents,
-		generationConfig,
-		systemInstruction: options.systemMessage
-			? { parts: [{ text: options.systemMessage }] }
-			: undefined,
+		max_tokens: options.max_tokens ?? 1024,
+		system: options.system,
+		temperature: options.temperature,
+		top_p: options.top_p,
+		top_k: options.top_k,
+		max_tools_iterations: options.maxToolsIterations,
 	};
 
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
+	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
-	})) as any;
+	})) as { content: Content[]; stop_reason: string };
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
 	let currentIteration = 1;
-	let toolCalls = getToolCalls(response);
-	while (toolCalls.length) {
+	let toolCalls = getToolCalls(response.content);
+	while (response.stop_reason === 'tool_use' && toolCalls.length) {
 		if (
 			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations) ||
 			abortSignal?.aborted
@@ -286,42 +205,43 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push(...response.candidates.map((c: any) => c.content));
+		messages.push({
+			role: 'assistant',
+			content: response.content,
+		});
 
-		for (const { functionCall } of toolCalls) {
+		const toolResults = {
+			role: 'user' as const,
+			content: [] as Content[],
+		};
+		for (const toolCall of toolCalls) {
 			let toolResponse;
 			for (const availableTool of availableTools) {
-				if (availableTool.name === functionCall.name) {
-					toolResponse = (await availableTool.invoke(functionCall.args)) as IDataObject;
+				if (availableTool.name === toolCall.name) {
+					toolResponse = (await availableTool.invoke(toolCall.input)) as IDataObject;
 				}
 			}
 
-			contents.push({
-				parts: [
-					{
-						functionResponse: {
-							id: functionCall.id,
-							name: functionCall.name,
-							response: {
-								result: toolResponse,
-							},
-						},
-					},
-				],
-				role: 'tool',
+			toolResults.content.push({
+				type: 'tool_result',
+				tool_use_id: toolCall.id,
+				content:
+					typeof toolResponse === 'object' ? JSON.stringify(toolResponse) : (toolResponse ?? ''),
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
+		messages.push(toolResults);
+
+		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 			body,
-		})) as any;
-		toolCalls = getToolCalls(response);
+		})) as { content: Content[]; stop_reason: string };
+		toolCalls = getToolCalls(response.content);
 		currentIteration++;
 	}
 
 	if (simplify) {
-		return response.candidates.map((candidate: any) => ({
-			json: candidate,
+		return response.content.map((content) => ({
+			json: content,
 			pairedItem: { item: i },
 		}));
 	}
