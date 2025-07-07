@@ -18,7 +18,8 @@ function setThreadHeaders(
 	if (thread?.messages) {
 		const lastMessage = thread.messages.length - 1;
 		const messageId = thread.messages[lastMessage].payload.headers.find(
-			(header: { name: string; value: string }) => header.name === 'Message-ID',
+			(header: { name: string; value: string }) =>
+				header.name.toLowerCase().includes('message') && header.name.toLowerCase().includes('id'),
 		)?.value;
 
 		setEmailReplyHeaders(email, messageId);
