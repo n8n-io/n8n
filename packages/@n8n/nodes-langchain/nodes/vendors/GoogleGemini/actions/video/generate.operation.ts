@@ -20,6 +20,24 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Return As',
+		name: 'returnAs',
+		type: 'options',
+		options: [
+			{
+				name: 'Video',
+				value: 'video',
+			},
+			{
+				name: 'URL',
+				value: 'url',
+			},
+		],
+		description:
+			'Whether to return the video as a binary file or a URL that can be used to download the video later',
+		default: 'video',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -112,6 +130,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const prompt = this.getNodeParameter('prompt', i, '') as string;
+	const returnAs = this.getNodeParameter('returnAs', i, 'video');
 	const options = this.getNodeParameter('options', i, {});
 	const binaryPropertyOutput = this.getNodeParameter(
 		'options.binaryPropertyOutput',
@@ -158,20 +177,36 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const promises = response.response.generateVideoResponse.generatedSamples.map(async (sample) => {
-		const { fileContent, mimeType } = await downloadFile.call(this, sample.video.uri, 'video/mp4', {
-			key: credentials.apiKey as string,
-		});
-		const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', mimeType);
-		return {
-			binary: { [binaryPropertyOutput]: binaryData },
+	if (returnAs === 'video') {
+		const promises = response.response.generateVideoResponse.generatedSamples.map(
+			async (sample) => {
+				const { fileContent, mimeType } = await downloadFile.call(
+					this,
+					sample.video.uri,
+					'video/mp4',
+					{
+						key: credentials.apiKey as string,
+					},
+				);
+				const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', mimeType);
+				return {
+					binary: { [binaryPropertyOutput]: binaryData },
+					json: {
+						...binaryData,
+						data: undefined,
+					},
+					pairedItem: { item: i },
+				};
+			},
+		);
+
+		return await Promise.all(promises);
+	} else {
+		return response.response.generateVideoResponse.generatedSamples.map((sample) => ({
 			json: {
-				...binaryData,
-				data: undefined,
+				url: sample.video.uri,
 			},
 			pairedItem: { item: i },
-		};
-	});
-
-	return await Promise.all(promises);
+		}));
+	}
 }
