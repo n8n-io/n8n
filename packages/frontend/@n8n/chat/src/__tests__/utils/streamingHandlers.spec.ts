@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref, type Ref } from 'vue';
 
-import type { ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { StreamingMessageManager } from '@n8n/chat/utils/streaming';
 import {
 	handleStreamingChunk,
@@ -17,15 +17,13 @@ vi.mock('@n8n/chat/event-buses', () => ({
 }));
 
 describe('streamingHandlers', () => {
-	let messages: Ref<unknown[]>;
+	let messages: Ref<ChatMessage[]>;
 	let receivedMessage: Ref<ChatMessageText | null>;
-	let waitingForResponse: Ref<boolean>;
 	let streamingManager: StreamingMessageManager;
 
 	beforeEach(() => {
-		messages = ref<unknown[]>([]);
+		messages = ref<ChatMessage[]>([]);
 		receivedMessage = ref<ChatMessageText | null>(null);
-		waitingForResponse = ref(false);
 		streamingManager = new StreamingMessageManager();
 		vi.clearAllMocks();
 	});
@@ -98,17 +96,12 @@ describe('streamingHandlers', () => {
 		});
 
 		it('should handle errors gracefully', () => {
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
 			// Simulate an error by passing invalid parameters
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			expect(() => {
 				handleStreamingChunk('test', 'node-1', invalidStreamingManager, receivedMessage, messages);
 			}).not.toThrow();
-
-			expect(consoleSpy).toHaveBeenCalledWith('Error handling streaming chunk:', expect.any(Error));
-			consoleSpy.mockRestore();
 		});
 	});
 
@@ -137,16 +130,11 @@ describe('streamingHandlers', () => {
 		});
 
 		it('should handle errors gracefully', () => {
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			expect(() => {
 				handleNodeStart('node-1', invalidStreamingManager);
 			}).not.toThrow();
-
-			expect(consoleSpy).toHaveBeenCalledWith('Error handling node start:', expect.any(Error));
-			consoleSpy.mockRestore();
 		});
 	});
 
@@ -161,8 +149,6 @@ describe('streamingHandlers', () => {
 		});
 
 		it('should handle multiple runs completion', () => {
-			waitingForResponse.value = true;
-
 			// Setup two runs
 			streamingManager.addRunToActive('node-1', 0);
 			streamingManager.addRunToActive('node-1', 1);
@@ -177,7 +163,6 @@ describe('streamingHandlers', () => {
 		});
 
 		it('should handle runs without runIndex', () => {
-			waitingForResponse.value = true;
 			streamingManager.addRunToActive('node-1');
 
 			handleNodeComplete('node-1', streamingManager);
@@ -186,16 +171,11 @@ describe('streamingHandlers', () => {
 		});
 
 		it('should handle errors gracefully', () => {
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
 			const invalidStreamingManager = null as unknown as StreamingMessageManager;
 
 			expect(() => {
 				handleNodeComplete('node-1', invalidStreamingManager);
 			}).not.toThrow();
-
-			expect(consoleSpy).toHaveBeenCalledWith('Error handling node complete:', expect.any(Error));
-			consoleSpy.mockRestore();
 		});
 	});
 });

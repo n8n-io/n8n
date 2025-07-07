@@ -114,8 +114,8 @@ export async function sendMessageStreaming(
 
 	if (!response.ok) {
 		const errorText = await response.text();
-		console.error('HTTP error response:', errorText);
-		throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+		console.error('HTTP error response:', response.status, errorText);
+		throw new Error(`Error while sending message. Error: ${errorText}`);
 	}
 
 	const reader = response.body?.getReader();
@@ -162,8 +162,6 @@ export async function sendMessageStreaming(
 							onEndMessage(nodeId, runIndex);
 						}
 					} catch (error) {
-						console.warn('Failed to parse JSON line:', line, error);
-						// Fallback: treat as plain text chunk without nodeId
 						onChunk(line, undefined);
 					}
 				}
@@ -180,7 +178,6 @@ export async function sendMessageStreaming(
 					onChunk(decoded?.content ?? '', nodeId, runIndex);
 				}
 			} catch (error) {
-				console.warn('Failed to parse remaining buffer as JSON, treating as plain text:', buffer);
 				onChunk(buffer, undefined);
 			}
 		}

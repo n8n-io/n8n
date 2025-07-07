@@ -2,7 +2,7 @@ import { nextTick } from 'vue';
 import type { Ref } from 'vue';
 
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import type { StreamingMessageManager } from './streaming';
 import { createBotMessage, updateMessageInArray } from './streaming';
@@ -12,7 +12,7 @@ export function handleStreamingChunk(
 	nodeId: string | undefined,
 	streamingManager: StreamingMessageManager,
 	receivedMessage: Ref<ChatMessageText | null>,
-	messages: Ref<unknown[]>,
+	messages: Ref<ChatMessage[]>,
 	runIndex?: number,
 ): void {
 	try {
@@ -55,7 +55,7 @@ export function handleStreamingChunk(
 			chatEventBus.emit('scrollToBottom');
 		});
 	} catch (error) {
-		console.error('Error handling streaming chunk:', error);
+		console.error('Error handling stream chunk:', error);
 		// Continue gracefully without breaking the stream
 	}
 }

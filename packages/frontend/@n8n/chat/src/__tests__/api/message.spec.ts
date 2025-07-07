@@ -21,7 +21,7 @@ describe('sendMessageStreaming', () => {
 	};
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should call the webhook URL with correct parameters', async () => {
@@ -357,7 +357,7 @@ describe('sendMessageStreaming', () => {
 				vi.fn(),
 				vi.fn(),
 			),
-		).rejects.toThrow('HTTP error! status: 500');
+		).rejects.toThrow('Error while sending message. Error: Internal Server Error');
 	});
 
 	it('should handle missing response body', async () => {
