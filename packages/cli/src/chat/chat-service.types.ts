@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'http';
 import type { WebSocket } from 'ws';
+import { z } from 'zod';
 
 export interface ChatRequest extends IncomingMessage {
 	url: string;
@@ -34,13 +35,19 @@ export type Session = {
  *  files - Optional files
  *
  * */
-export type ChatMessage = {
-	sessionId: string;
-	action: 'sendMessage';
-	chatInput: string;
-	files?: Array<{
-		name: string;
-		type: string;
-		data: string;
-	}>;
-};
+export const chatMessageSchema = z.object({
+	sessionId: z.string(),
+	action: z.literal('sendMessage'),
+	chatInput: z.string(),
+	files: z
+		.array(
+			z.object({
+				name: z.string(),
+				type: z.string(),
+				data: z.string(),
+			}),
+		)
+		.optional(),
+});
+
+export type ChatMessage = z.infer<typeof chatMessageSchema>;

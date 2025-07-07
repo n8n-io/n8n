@@ -3,9 +3,15 @@ import { Service } from '@n8n/di';
 import { OnShutdown } from '@n8n/decorators';
 import { jsonParse, UnexpectedError, ensureError } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
+import { z } from 'zod';
 
 import { ChatExecutionManager } from './chat-execution-manager';
-import type { ChatMessage, ChatRequest, Session } from './chat-service.types';
+import {
+	chatMessageSchema,
+	type ChatMessage,
+	type ChatRequest,
+	Session,
+} from './chat-service.types';
 import {
 	getLastNodeExecuted,
 	getMessage,
@@ -258,17 +264,26 @@ export class ChatService {
 		clearInterval(session.intervalId);
 	}
 
-	private prepareChatMessage(message: string) {
-		const chatMessage = jsonParse<ChatMessage>(message);
+	private prepareChatMessage(message: string): ChatMessage {
+		try {
+			const parsedMessage = chatMessageSchema.parse(jsonParse(message));
 
-		if (chatMessage.files) {
-			chatMessage.files = chatMessage.files.map((file) => ({
-				...file,
-				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
-			}));
+			if (parsedMessage.files) {
+				parsedMessage.files = parsedMessage.files.map((file) => ({
+					...file,
+					data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
+				}));
+			}
+
+			return parsedMessage;
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				throw new Error(
+					`Chat message validation error: ${error.errors.map((error) => error.message).join(', ')}`,
+				);
+			}
+			throw error;
 		}
-
-		return chatMessage;
 	}
 
 	private async checkHeartbeats() {
