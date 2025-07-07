@@ -25,6 +25,19 @@ const DRAIN_TIMEOUT = 50;
 const HEARTBEAT_INTERVAL = 30 * 1000;
 const HEARTBEAT_TIMEOUT = 60 * 1000;
 
+/**
+ * let frontend know that no user input is expected
+ */
+const N8N_CONTINUE = 'n8n|continue';
+/**
+ * send message for heartbeat check
+ */
+const N8N_HEARTBEAT = 'n8n|heartbeat';
+/**
+ * frontend did acknowledge the heartbeat
+ */
+const N8N_HEARTBEAT_ACK = 'n8n|heartbeat-ack';
+
 function closeConnection(ws: WebSocket) {
 	if (ws.readyState !== WebSocket.OPEN) return;
 
@@ -107,7 +120,7 @@ export class ChatService {
 
 		this.sessions.set(key, session);
 
-		ws.send('n8n|heartbeat');
+		ws.send(N8N_HEARTBEAT);
 	}
 
 	private outgoingMessageHandler(sessionKey: string) {
@@ -140,7 +153,7 @@ export class ChatService {
 					const lastNode = getLastNodeExecuted(execution);
 
 					if (execution.status === 'waiting' && lastNode?.name !== waitingNodeName) {
-						connection.send('n8n|continue');
+						connection.send(N8N_CONTINUE);
 						session.waitingNodeName = undefined;
 					}
 					session.isProcessing = false;
@@ -156,7 +169,7 @@ export class ChatService {
 						const lastNode = getLastNodeExecuted(execution);
 
 						if (lastNode && shouldResumeImmediately(lastNode)) {
-							connection.send('n8n|continue');
+							connection.send(N8N_CONTINUE);
 							const data: ChatMessage = { action: 'sendMessage', chatInput: '', sessionId };
 							await this.resumeExecution(executionId, data, sessionKey);
 							session.waitingNodeName = undefined;
@@ -209,7 +222,7 @@ export class ChatService {
 
 				const message = this.stringifyRawData(data);
 
-				if (message === 'n8n|heartbeat-ack') {
+				if (message === N8N_HEARTBEAT_ACK) {
 					session.lastHeartbeat = Date.now();
 					return;
 				}
@@ -300,7 +313,7 @@ export class ChatService {
 					disconnected.push(key);
 				} else {
 					try {
-						session.connection.send('n8n|heartbeat');
+						session.connection.send(N8N_HEARTBEAT);
 					} catch (e) {
 						this.cleanupSession(session);
 						disconnected.push(key);

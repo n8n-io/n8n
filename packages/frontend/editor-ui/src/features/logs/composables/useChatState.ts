@@ -17,6 +17,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { restoreChatHistory } from '@/features/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/utils/aiUtils';
+import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;
@@ -164,11 +165,14 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		const response = await runWorkflow(runWorkflowOptions);
 
 		if (response) {
-			const wsProtocol = rootStore.urlBaseEditor.startsWith('https') ? 'wss' : 'ws';
-			const wsUrl = rootStore.urlBaseEditor.replace(/^https?/, wsProtocol).replace(/\/$/, '');
-			ws.value = new WebSocket(
-				`${wsUrl}/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+			const wsUrl = constructChatWebsocketUrl(
+				rootStore.urlBaseEditor,
+				response.executionId as string,
+				currentSessionId.value,
+				false,
 			);
+
+			ws.value = new WebSocket(wsUrl);
 			ws.value.onmessage = (event) => {
 				if (event.data === 'n8n|heartbeat') {
 					ws.value?.send('n8n|heartbeat-ack');

@@ -7,6 +7,7 @@ import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
 import type { ChatMessage } from '../types';
@@ -146,12 +147,13 @@ function setupWebsocketConnection(executionId: string) {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
-		const baseUrl = new URL(options.webhookUrl).origin;
-		const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
-		const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
-		chatStore.ws = new WebSocket(
-			`${wsUrl}/chat?sessionId=${chatStore.currentSessionId.value}&executionId=${executionId}&isPublic=true`,
+		const wsUrl = constructChatWebsocketUrl(
+			options.webhookUrl,
+			executionId,
+			chatStore.currentSessionId.value,
+			true,
 		);
+		chatStore.ws = new WebSocket(wsUrl);
 		chatStore.ws.onmessage = (e) => {
 			if (e.data === 'n8n|heartbeat') {
 				chatStore.ws?.send('n8n|heartbeat-ack');
