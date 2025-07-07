@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
+import { Container } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
@@ -397,6 +399,7 @@ describe('SamlService', () => {
 		});
 
 		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and the metadata is an empty string', async () => {
+			Container.get(GlobalConfig).sso.saml.loginEnabled = true;
 			await samlService.loadPreferencesWithoutValidation({
 				metadata: '',
 				loginEnabled: true,

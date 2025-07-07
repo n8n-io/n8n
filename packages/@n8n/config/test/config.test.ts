@@ -331,6 +331,21 @@ describe('GlobalConfig', () => {
 			enabled: true,
 			pruneTime: -1,
 		},
+		sso: {
+			justInTimeProvisioning: true,
+			redirectLoginToSso: true,
+			saml: {
+				loginEnabled: false,
+				loginLabel: '',
+			},
+			oidc: {
+				loginEnabled: false,
+			},
+			ldap: {
+				loginEnabled: false,
+				loginLabel: '',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

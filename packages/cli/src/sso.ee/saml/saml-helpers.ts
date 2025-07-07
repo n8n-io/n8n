@@ -1,4 +1,5 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,11 +26,11 @@ import {
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
 export function isSamlLoginEnabled(): boolean {
-	return config.getEnv(SAML_LOGIN_ENABLED);
+	return Container.get(GlobalConfig).sso.saml.loginEnabled;
 }
 
 export function getSamlLoginLabel(): string {
-	return config.getEnv(SAML_LOGIN_LABEL);
+	return Container.get(GlobalConfig).sso.saml.loginLabel;
 }
 
 // can only toggle between email and saml, not directly to e.g. ldap
