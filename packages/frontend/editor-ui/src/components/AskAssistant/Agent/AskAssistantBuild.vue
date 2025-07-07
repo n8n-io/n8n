@@ -22,6 +22,7 @@ const workflowStore = useWorkflowsStore();
 const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
+const processedWorkflowUpdates = ref(new Set<string>());
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -119,10 +120,27 @@ function onUpdateWorkflow(code: string) {
 		return;
 	}
 
+	// Capture current node positions before removing nodes
+	const nodePositions = new Map<string, [number, number]>();
+	workflowStore.allNodes.forEach((node) => {
+		nodePositions.set(node.id, [...node.position]);
+	});
+
 	workflowStore.removeAllConnections({ setStateDirty: false });
 	workflowStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 
-	console.log('🚀 ~ onUpdateWorkflow ~ workflowData:', workflowData);
+	// Restore positions for nodes that still exist
+	if (workflowData.nodes) {
+		workflowData.nodes = workflowData.nodes.map((node) => {
+			const savedPosition = nodePositions.get(node.id);
+			if (savedPosition) {
+				return { ...node, position: savedPosition };
+			}
+			return node;
+		});
+	}
+
+	console.log('🚀 ~ onUpdateWorkflow ~ workflowData with restored positions:', workflowData);
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: workflowData,
 		tidyUp: false,
@@ -135,6 +153,7 @@ function onNewWorkflow() {
 	workflowGenerated.value = false;
 	helpful.value = false;
 	generationStartTime.value = new Date().getTime();
+	processedWorkflowUpdates.value.clear(); // Clear tracked updates
 }
 
 function onThumbsUp() {
@@ -169,13 +188,14 @@ watch(
 	(messages) => {
 		if (workflowGenerated.value) return;
 
-		const workflowGeneratedMessage = messages.find((msg) => msg.type === 'workflow-generated');
-		if (workflowGeneratedMessage) {
-			onInsertWorkflow(workflowGeneratedMessage.codeSnippet);
-		}
 		const workflowUpdatedMessage = messages.findLast((msg) => msg.type === 'workflow-updated');
-		console.log('🚀 ~ workflowUpdatedMessage:', workflowUpdatedMessage);
-		if (workflowUpdatedMessage) {
+		if (
+			workflowUpdatedMessage &&
+			workflowUpdatedMessage.id &&
+			!processedWorkflowUpdates.value.has(workflowUpdatedMessage.id)
+		) {
+			console.log('Processing new workflow update:', workflowUpdatedMessage.id);
+			processedWorkflowUpdates.value.add(workflowUpdatedMessage.id);
 			// @ts-ignore
 			onUpdateWorkflow(workflowUpdatedMessage.codeSnippet);
 		}

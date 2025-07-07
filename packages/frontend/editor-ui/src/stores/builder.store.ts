@@ -382,7 +382,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			{
 				payload,
 			},
-			(msg) => onEachStreamingMessage(msg, id),
+			(msg) => onEachStreamingMessage(msg, getRandomId()),
 			() => onDoneStreaming(),
 			(e) => handleServiceError(e, id, async () => await initBuilderChat(userMessage, 'chat')),
 		);
@@ -425,7 +425,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						},
 					},
 				},
-				(msg) => onEachStreamingMessage(msg, id),
+				(msg) => onEachStreamingMessage(msg, getRandomId()),
 				() => onDoneStreaming(),
 				(e) => handleServiceError(e, id, retry),
 			);

@@ -475,6 +475,7 @@ export interface InferConnectionTypeResult {
  * @param targetNodeType - The target node type description
  * @returns The inferred connection type or possible types
  */
+// eslint-disable-next-line complexity
 export function inferConnectionType(
 	sourceNode: INode,
 	targetNode: INode,
