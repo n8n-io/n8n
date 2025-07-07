@@ -143,3 +143,31 @@ export const textFromPreviousNode: INodeProperties = {
 	},
 	disabledOptions: { show: { promptType: ['auto'] } },
 };
+
+export const toolDescription: INodeProperties = {
+	displayName: 'Description',
+	name: 'toolDescription',
+	type: 'string',
+	default: 'AI Agent that can call other tools',
+	required: true,
+	typeOptions: { rows: 2 },
+	description:
+		'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+};
+
+export const agentBanner: INodeProperties = {
+	displayName:
+		'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
+	name: 'aiAgentStarterCallout',
+	type: 'callout',
+	default: '',
+};
+
+export const agentInputFromPreviousNode: INodeProperties = {
+	...textFromPreviousNode,
+	displayOptions: {
+		show: {
+			promptType: ['auto'],
+		},
+	},
+};

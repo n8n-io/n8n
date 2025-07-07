@@ -10,7 +10,13 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	agentBanner,
+	agentInputFromPreviousNode,
+	promptTypeOptions,
+	textInput,
+	toolDescription,
+} from '@utils/descriptions';
 
 import { toolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
@@ -101,13 +107,12 @@ function getInputs(
 
 export class AgentV2 implements INodeType {
 	description: INodeTypeDescription;
-
-	constructor(baseDescription: INodeTypeBaseDescription) {
+	constructor(baseDescription: INodeTypeBaseDescription, isTool?: boolean) {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1, 2.2],
 			defaults: {
-				name: 'AI Agent',
+				name: 'AI Agent' + (isTool ? ' Tool' : ''),
 				color: '#404040',
 			},
 			inputs: `={{
@@ -116,31 +121,20 @@ export class AgentV2 implements INodeType {
 					return getInputs(hasOutputParser, needsFallback)
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
 			}}`,
-			outputs: [NodeConnectionTypes.Main],
+			outputs: [isTool ? NodeConnectionTypes.AiTool : NodeConnectionTypes.Main],
 			properties: [
-				{
-					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'aiAgentStarterCallout',
-					type: 'callout',
-					default: '',
-				},
-				promptTypeOptions,
-				{
-					...textFromPreviousNode,
-					displayOptions: {
-						show: {
-							promptType: ['auto'],
-						},
-					},
-				},
+				...(isTool
+					? [toolDescription]
+					: [agentBanner, promptTypeOptions, agentInputFromPreviousNode]),
 				{
 					...textInput,
-					displayOptions: {
-						show: {
-							promptType: ['define'],
-						},
-					},
+					displayOptions: !isTool
+						? {
+								show: {
+									promptType: ['define'],
+								},
+							}
+						: undefined,
 				},
 				{
 					displayName: 'Require Specific Output Format',
