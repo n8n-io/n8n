@@ -28,7 +28,7 @@ export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	id: MaybeRefOrGetter<string>,
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>,
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
