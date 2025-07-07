@@ -683,6 +683,8 @@
 	"dataMapping.tableView.tableColumnsExceeded": "Some columns are hidden",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip": "Your data has more than {columnLimit} columns so some are hidden. Switch to {link} to see all data.",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip.link": "JSON view",
+	"dataMapping.tableView.columnCollapsing": "Collapse rows",
+	"dataMapping.tableView.columnCollapsing.tooltip": "Collapse rows (to compare values in this column)",
 	"dataMapping.schemaView.emptyData": "No fields - node executed, but no items were sent on this branch",
 	"dataMapping.schemaView.emptySchema": "No fields - item(s) exist, but they're empty",
 	"dataMapping.schemaView.emptySchemaWithBinary": "Only binary data exists. View it using the 'Binary' tab",

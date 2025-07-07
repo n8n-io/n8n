@@ -152,6 +152,7 @@ type Props = {
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableAiContent?: boolean;
+	collapsingTableColumnName: string | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -207,6 +208,7 @@ const emit = defineEmits<{
 		},
 	];
 	displayModeChange: [IRunDataDisplayMode];
+	collapsingTableColumnChanged: [columnName: string | null];
 }>();
 
 const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
@@ -1436,6 +1438,16 @@ defineExpose({ enterEditMode });
 					/>
 				</Suspense>
 
+				<N8nIconButton
+					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
+					:class="$style.resetCollapseButton"
+					text
+					icon="chevrons-up-down"
+					size="xmini"
+					type="tertiary"
+					@click="emit('collapsingTableColumnChanged', null)"
+				/>
+
 				<RunDataDisplayModeSelect
 					v-show="
 						hasPreviewSchema ||
@@ -1844,9 +1856,11 @@ defineExpose({ enterEditMode });
 					:header-bg-color="tableHeaderBgColor"
 					:compact="props.compact"
 					:disable-hover-highlight="props.disableHoverHighlight"
+					:collapsing-column-name="collapsingTableColumnName"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
+					@collapsing-column-changed="emit('collapsingTableColumnChanged', $event)"
 				/>
 			</Suspense>
 
@@ -2333,6 +2347,10 @@ defineExpose({ enterEditMode });
 	.compact & {
 		color: var(--color-text-light);
 	}
+}
+
+.resetCollapseButton {
+	color: var(--color-foreground-xdark);
 }
 
 @container (max-width: 240px) {

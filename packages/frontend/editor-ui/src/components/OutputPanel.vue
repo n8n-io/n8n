@@ -103,6 +103,7 @@ const outputTypes = ref([
 	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 ]);
 const runDataRef = ref<RunDataRef>();
+const collapsingColumnName = ref<string | null>(null);
 
 // Computed
 
@@ -321,6 +322,10 @@ watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
 const activatePane = () => {
 	emit('activatePane');
 };
+
+function handleChangeCollapsingColumn(columnName: string | null) {
+	collapsingColumnName.value = columnName;
+}
 </script>
 
 <template>
@@ -346,6 +351,7 @@ const activatePane = () => {
 		:callout-message="allToolsWereUnusedNotice"
 		:display-mode="displayMode"
 		:disable-ai-content="true"
+		:collapsing-table-column-name="collapsingColumnName"
 		data-test-id="ndv-output-panel"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
@@ -355,6 +361,7 @@ const activatePane = () => {
 		@item-hover="emit('itemHover', $event)"
 		@search="emit('search', $event)"
 		@display-mode-change="emit('displayModeChange', $event)"
+		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
 			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
