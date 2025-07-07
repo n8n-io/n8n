@@ -167,6 +167,7 @@ function onActivate(event: MouseEvent) {
 					!isDisabled &&
 					!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
 				"
+				:class="$style.settingsIcons"
 			/>
 			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 			<div :class="$style.description">
@@ -365,6 +366,14 @@ function onActivate(event: MouseEvent) {
 	right: var(--canvas-node--status-icons-offset);
 }
 
+.settingsIcons {
+	position: absolute;
+	top: var(--canvas-node--status-icons-offset);
+	right: var(--canvas-node--status-icons-offset);
+	display: flex;
+	flex-direction: row;
+	gap: 2px;
+}
 .icon {
 	flex-grow: 0;
 	flex-shrink: 0;

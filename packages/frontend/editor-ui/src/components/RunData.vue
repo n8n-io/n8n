@@ -2,10 +2,7 @@
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import AlwaysOutputData from 'virtual:icons/mdi/arrow-right-circle';
-import ExecuteOnce from 'virtual:icons/mdi/numeric-1-box';
-import RetryOnFail from 'virtual:icons/material-symbols/repeat-rounded';
-import ContinuesOnError from 'virtual:icons/material-symbols/tab-close-right';
+import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -822,100 +819,6 @@ function getNodeHints(): NodeHint[] {
 
 	return [];
 }
-function getConsolidatedHint(): { message: string } | null {
-	if (node.value?.disabled) {
-		return {
-			message: i18n.baseText('ndv.nodeHints.disabled'),
-		};
-	}
-	if (
-		canPinData.value &&
-		pinnedData.hasData.value &&
-		!editMode.value?.enabled &&
-		!props.isProductionExecutionPreview
-	) {
-		return null;
-	}
-	const activeSettings = [];
-
-	if (node.value?.alwaysOutputData) {
-		activeSettings.push({
-			key: 'alwaysOutputData',
-			message: i18n.baseText('ndv.nodeHints.alwaysOutputData'),
-			shortMessage: i18n.baseText('ndv.nodeHints.alwaysOutputData.short'),
-		});
-	}
-
-	if (node.value?.executeOnce) {
-		activeSettings.push({
-			key: 'executeOnce',
-			message: i18n.baseText('ndv.nodeHints.executeOnce'),
-			shortMessage: i18n.baseText('ndv.nodeHints.executeOnce.short'),
-		});
-	}
-
-	if (node.value?.retryOnFail) {
-		activeSettings.push({
-			key: 'retryOnFail',
-			message: i18n.baseText('ndv.nodeHints.retryOnFail'),
-			shortMessage: i18n.baseText('ndv.nodeHints.retryOnFail.short'),
-		});
-	}
-
-	if (
-		node.value?.onError === 'continueRegularOutput' ||
-		node.value?.onError === 'continueErrorOutput'
-	) {
-		activeSettings.push({
-			key: 'continueOnError',
-			message: i18n.baseText('ndv.nodeHints.continueOnError'),
-			shortMessage: i18n.baseText('ndv.nodeHints.continueOnError.short'),
-		});
-	}
-
-	if (activeSettings.length === 0) {
-		return null;
-	}
-
-	if (activeSettings.length === 1) {
-		return {
-			message: activeSettings[0].message,
-		};
-	}
-
-	const shortMessages = activeSettings.map((setting) => setting.shortMessage);
-	let consolidatedMessage = '';
-
-	if (shortMessages.length === 2) {
-		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.two', {
-			interpolate: {
-				first: shortMessages[0],
-				second: shortMessages[1],
-			},
-		});
-	} else if (shortMessages.length === 3) {
-		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.three', {
-			interpolate: {
-				first: shortMessages[0],
-				second: shortMessages[1],
-				third: shortMessages[2],
-			},
-		});
-	} else if (shortMessages.length === 4) {
-		consolidatedMessage = i18n.baseText('ndv.nodeHints.consolidated.four', {
-			interpolate: {
-				first: shortMessages[0],
-				second: shortMessages[1],
-				third: shortMessages[2],
-				fourth: shortMessages[3],
-			},
-		});
-	}
-
-	return {
-		message: consolidatedMessage,
-	};
-}
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
 		emit('itemHover', null);
@@ -1672,42 +1575,7 @@ defineExpose({ enterEditMode });
 				</slot>
 			</N8nCallout>
 		</div>
-		<div
-			v-if="getConsolidatedHint() && props.paneType === 'output'"
-			:class="[$style.hintCallout, $style.customHint]"
-		>
-			<div
-				:class="[
-					$style.messageSection,
-					!node?.disabled &&
-					(node?.alwaysOutputData ? 1 : 0) +
-						(node?.executeOnce ? 1 : 0) +
-						(node?.retryOnFail ? 1 : 0) +
-						(node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
-							? 1
-							: 0) >
-						1
-						? $style.multipleIcons
-						: $style.singleIcon,
-				]"
-			>
-				<div :class="$style.iconStack">
-					<FontAwesomeIcon icon="power-off" v-if="node?.disabled" :class="$style.icon" />
-					<template v-else>
-						<AlwaysOutputData v-if="node?.alwaysOutputData" :class="$style.icon" />
-						<ExecuteOnce v-if="node?.executeOnce" :class="$style.icon" />
-						<RetryOnFail v-if="node?.retryOnFail" :class="$style.icon" />
-						<ContinuesOnError
-							v-if="
-								node?.onError === 'continueRegularOutput' || node?.onError === 'continueErrorOutput'
-							"
-							:class="$style.icon"
-						/>
-					</template>
-				</div>
-				<N8nText size="small" v-n8n-html="getConsolidatedHint()?.message"></N8nText>
-			</div>
-		</div>
+		<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
 		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
