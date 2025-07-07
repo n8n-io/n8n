@@ -244,7 +244,11 @@ function optionSelected(action: string) {
 	min-height: 24px;
 
 	> span {
-		white-space: nowrap;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+		word-break: break-word;
+		white-space: normal;
+		max-width: 100%;
 	}
 }
 
