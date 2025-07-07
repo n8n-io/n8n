@@ -1582,6 +1582,26 @@ export class Telegram implements INodeType {
 						description: 'Whether to disable link previews for links in this message',
 					},
 					{
+						displayName: 'Protect Content',
+						name: 'protect_content',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'sendMessage',
+									'sendAnimation',
+									'sendAudio',
+									'sendDocument',
+									'sendPhoto',
+									'sendVideo',
+								],
+							},
+						},
+						default: false,
+						description:
+							'Whether to protect the contents of the sent message from forwarding and saving',
+					},
+					{
 						displayName: 'Duration',
 						name: 'duration',
 						type: 'number',
