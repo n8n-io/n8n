@@ -23,14 +23,14 @@ export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject)
 	if (binaryData.id) {
 		responseBody =
 			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
-				? sandboxResponseData(binaryData.data, false)
+				? sandboxResponseData(binaryData.data)
 				: { binaryData };
 	} else {
 		const responseBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 
 		responseBody =
 			mimeTypesToSanitize.includes(binaryData.mimeType) || shouldSandboxContentType
-				? sandboxResponseData(responseBuffer.toString(), true)
+				? sandboxResponseData(responseBuffer.toString())
 				: responseBuffer;
 
 		setContentLength(responseBody, headers);
