@@ -191,6 +191,10 @@ const shortPath = computed<string>(() => {
 	return short.join('.');
 });
 
+function getTypeOption<T>(optionName: string): T {
+	return nodeSettingsParameters.getParameterTypeOption<T>(props.parameter, optionName);
+}
+
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
 
 const isResourceLocatorParameter = computed<boolean>(() => {
@@ -198,14 +202,11 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 });
 
 const isSecretParameter = computed<boolean>(() => {
-	return nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true;
+	return getTypeOption('password') === true;
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
-	return (
-		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptionsMethod') ||
-		!!nodeSettingsParameters.getParameterTypeOption(props.parameter, 'loadOptions')
-	);
+	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
 });
 
 const parameterOptions = computed(() => {
@@ -231,29 +232,19 @@ const modelValueExpressionEdit = computed<string>(() => {
 		: (props.modelValue as string);
 });
 
-const editorRows = computed(() =>
-	nodeSettingsParameters.getParameterTypeOption<number>(props.parameter, 'rows'),
-);
+const editorRows = computed(() => getTypeOption<number>('rows'));
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return nodeSettingsParameters.getParameterTypeOption<EditorType>(props.parameter, 'editor');
+	return getTypeOption<EditorType>('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
-	return (
-		nodeSettingsParameters.getParameterTypeOption<boolean>(props.parameter, 'editorIsReadOnly') ??
-		false
-	);
+	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	if (editorType.value === 'json' || props.parameter.type === 'json')
 		return 'json' as CodeNodeEditorLanguage;
-	return (
-		nodeSettingsParameters.getParameterTypeOption<CodeNodeEditorLanguage>(
-			props.parameter,
-			'editorLanguage',
-		) ?? 'javaScript'
-	);
+	return getTypeOption<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
@@ -313,7 +304,7 @@ const displayValue = computed(() => {
 	if (
 		Array.isArray(returnValue) &&
 		props.parameter.type === 'color' &&
-		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
+		getTypeOption('showAlpha') === true &&
 		(returnValue as unknown as string).charAt(0) === '#'
 	) {
 		// Convert the value to rgba that el-color-picker can display it correctly
@@ -353,10 +344,7 @@ const expressionDisplayValue = computed(() => {
 });
 
 const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = nodeSettingsParameters.getParameterTypeOption<string[] | undefined>(
-		props.parameter,
-		'loadOptionsDependsOn',
-	);
+	const loadOptionsDependsOn = getTypeOption<string[] | undefined>('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -379,7 +367,7 @@ const dependentParametersValues = computed<string | null>(() => {
 });
 
 const getStringInputType = computed(() => {
-	if (nodeSettingsParameters.getParameterTypeOption(props.parameter, 'password') === true) {
+	if (getTypeOption('password') === true) {
 		return 'password';
 	}
 
@@ -654,14 +642,8 @@ async function loadRemoteParameterOptions() {
 			props.parameter,
 			currentNodeParameters,
 		) as INodeParameters;
-		const loadOptionsMethod = nodeSettingsParameters.getParameterTypeOption<string | undefined>(
-			props.parameter,
-			'loadOptionsMethod',
-		);
-		const loadOptions = nodeSettingsParameters.getParameterTypeOption<ILoadOptions | undefined>(
-			props.parameter,
-			'loadOptions',
-		);
+		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
+		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
@@ -759,10 +741,7 @@ function selectInput() {
 }
 
 async function setFocus() {
-	if (
-		['json'].includes(props.parameter.type) &&
-		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'alwaysOpenEditWindow')
-	) {
+	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
 		return;
 	}
@@ -865,7 +844,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 
 	if (
 		props.parameter.type === 'color' &&
-		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
+		getTypeOption('showAlpha') === true &&
 		value !== null &&
 		value !== undefined &&
 		(value as string).toString().charAt(0) !== '#'
@@ -1033,7 +1012,7 @@ onMounted(() => {
 
 	if (
 		props.parameter.type === 'color' &&
-		nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true &&
+		getTypeOption('showAlpha') === true &&
 		displayValue.value !== null &&
 		displayValue.value.toString().charAt(0) !== '#'
 	) {
@@ -1105,10 +1084,7 @@ watch(dependentParametersValues, async () => {
 watch(
 	() => props.modelValue,
 	() => {
-		if (
-			props.parameter.type === 'color' &&
-			nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha') === true
-		) {
+		if (props.parameter.type === 'color' && getTypeOption('showAlpha') === true) {
 			// Do not set for color with alpha else wrong value gets displayed in field
 			return;
 		}
@@ -1305,9 +1281,7 @@ onUpdated(async () => {
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
-							:dialect="
-								nodeSettingsParameters.getParameterTypeOption(props.parameter, 'sqlDialect')
-							"
+							:dialect="getTypeOption('sqlDialect')"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
 							fullscreen
@@ -1422,7 +1396,7 @@ onUpdated(async () => {
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
 					:model-value="modelValueString"
-					:dialect="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'sqlDialect')"
+					:dialect="getTypeOption('sqlDialect')"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
@@ -1551,7 +1525,7 @@ onUpdated(async () => {
 					:model-value="displayValue"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					:show-alpha="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'showAlpha')"
+					:show-alpha="getTypeOption('showAlpha')"
 					@focus="setFocus"
 					@blur="onBlur"
 					@update:model-value="valueChanged"
@@ -1597,11 +1571,9 @@ onUpdated(async () => {
 				:size="inputSize"
 				:model-value="displayValue"
 				:controls="false"
-				:max="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'maxValue')"
-				:min="nodeSettingsParameters.getParameterTypeOption(props.parameter, 'minValue')"
-				:precision="
-					nodeSettingsParameters.getParameterTypeOption(props.parameter, 'numberPrecision')
-				"
+				:max="getTypeOption('maxValue')"
+				:min="getTypeOption('minValue')"
+				:precision="getTypeOption('numberPrecision')"
 				:disabled="isReadOnly"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
