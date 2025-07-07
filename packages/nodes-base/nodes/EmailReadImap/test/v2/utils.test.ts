@@ -1,7 +1,7 @@
 import { type ImapSimple } from '@n8n/imap';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
-import { type ITriggerFunctions } from 'n8n-workflow';
+import type { INode, ITriggerFunctions } from 'n8n-workflow';
 
 import { getNewEmails } from '../../v2/utils';
 
@@ -73,6 +73,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			expectedResults.forEach(async (expectedResult) => {
+				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 				triggerFunctions.getNodeParameter
 					.calledWith('format')
 					.mockReturnValue(expectedResult.format);

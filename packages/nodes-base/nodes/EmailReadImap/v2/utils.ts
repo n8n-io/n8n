@@ -97,8 +97,21 @@ export async function getNewEmails(
 	let results: Message[] = [];
 	let maxUid = 0;
 
+	const staticData = this.getWorkflowStaticData('node');
+	const limit = this.getNode().typeVersion >= 2.1 ? EMAIL_BATCH_SIZE : undefined;
+
 	do {
-		results = await imapConnection.search(searchCriteria, fetchOptions, EMAIL_BATCH_SIZE);
+		if (maxUid) {
+			searchCriteria = searchCriteria.filter((criteria: SearchCriteria) => {
+				if (Array.isArray(criteria)) {
+					return !['UID', 'SINCE'].includes(criteria[0]);
+				}
+				return true;
+			});
+
+			searchCriteria.push(['UID', `${maxUid}:*`]);
+		}
+		results = await imapConnection.search(searchCriteria, fetchOptions, limit);
 
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
 
@@ -241,7 +254,6 @@ export async function getNewEmails(
 	} while (results.length >= EMAIL_BATCH_SIZE);
 
 	// Update lastMessageUid after processing all messages
-	const staticData = this.getWorkflowStaticData('node');
 	if (maxUid > ((staticData.lastMessageUid as number) ?? 0)) {
 		this.getWorkflowStaticData('node').lastMessageUid = maxUid;
 	}
