@@ -5,14 +5,9 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodePropertyOptions,
 	type NodeParameterValue,
-	type NodePropertyTypes,
-	type NodeParameterValueType,
-	type INodePropertyCollection,
 	NodeHelpers,
 	deepCopy,
-	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
@@ -25,7 +20,6 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { isPresent } from '@/utils/typesUtils';
 import { omitKey } from '@/utils/objectUtils';
 
 export function useNodeSettingsParameters() {
@@ -48,19 +42,6 @@ export function useNodeSettingsParameters() {
 		notes: '',
 		parameters: {},
 	});
-
-	function getParameterTypeOption<T = string | number | boolean | undefined>(
-		parameter: INodeProperties,
-		optionName: string,
-	): T {
-		return parameter.typeOptions?.[optionName] as T;
-	}
-
-	function isValidParameterOption(
-		option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): option is INodePropertyOptions {
-		return 'value' in option && isPresent(option.value) && isPresent(option.name);
-	}
 
 	function setValue(name: string, value: NodeParameterValue) {
 		const nameParts = name.split('.');
@@ -132,12 +113,6 @@ export function useNodeSettingsParameters() {
 		}
 
 		nodeValues.value = { ...nodeValues.value };
-	}
-
-	function nameIsParameter(
-		parameterData: IUpdateInformation,
-	): parameterData is IUpdateInformation & { name: `parameters.${string}` } {
-		return parameterData.name.startsWith('parameters.');
 	}
 
 	function updateNodeParameter(
@@ -241,80 +216,6 @@ export function useNodeSettingsParameters() {
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
-	function isResourceLocatorParameterType(type: NodePropertyTypes) {
-		return type === 'resourceLocator' || type === 'workflowSelector';
-	}
-
-	function formatAsExpression(value: NodeParameterValueType, parameterType: NodePropertyTypes) {
-		if (isResourceLocatorParameterType(parameterType)) {
-			if (isResourceLocatorValue(value)) {
-				return {
-					__rl: true,
-					value: `=${value.value}`,
-					mode: value.mode,
-				};
-			}
-
-			return { __rl: true, value: `=${value as string}`, mode: '' };
-		}
-
-		const isNumber = parameterType === 'number';
-		const isBoolean = parameterType === 'boolean';
-		const isMultiOptions = parameterType === 'multiOptions';
-
-		if (isNumber && (!value || value === '[Object: null]')) {
-			return '={{ 0 }}';
-		}
-
-		if (isMultiOptions) {
-			return `={{ ${JSON.stringify(value)} }}`;
-		}
-
-		if (isNumber || isBoolean || typeof value !== 'string') {
-			// eslint-disable-next-line @typescript-eslint/no-base-to-string -- stringified intentionally
-			return `={{ ${String(value)} }}`;
-		}
-
-		return `=${value}`;
-	}
-
-	function parseFromExpression(
-		currentParameterValue: NodeParameterValueType,
-		evaluatedExpressionValue: unknown,
-		parameterType: NodePropertyTypes,
-		defaultValue: NodeParameterValueType,
-		parameterOptions: INodePropertyOptions[] = [],
-	) {
-		if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
-			return evaluatedExpressionValue
-				.split(',')
-				.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
-		}
-
-		if (
-			isResourceLocatorParameterType(parameterType) &&
-			isResourceLocatorValue(currentParameterValue)
-		) {
-			return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
-		}
-
-		if (parameterType === 'string') {
-			return currentParameterValue
-				? (currentParameterValue as string).toString().replace(/^=+/, '')
-				: null;
-		}
-
-		if (typeof evaluatedExpressionValue !== 'undefined') {
-			return evaluatedExpressionValue;
-		}
-
-		if (['number', 'boolean'].includes(parameterType)) {
-			return defaultValue;
-		}
-
-		return null;
-	}
-
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
@@ -341,15 +242,9 @@ export function useNodeSettingsParameters() {
 
 	return {
 		nodeValues,
-		getParameterTypeOption,
-		isValidParameterOption,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
-		nameIsParameter,
-		isResourceLocatorParameterType,
-		formatAsExpression,
-		parseFromExpression,
 		handleFocus,
 		shouldSkipParamValidation,
 	};

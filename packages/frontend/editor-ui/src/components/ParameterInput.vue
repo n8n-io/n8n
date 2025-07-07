@@ -36,6 +36,13 @@ import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
 
+import {
+	formatAsExpression,
+	getParameterTypeOption,
+	isResourceLocatorParameterType,
+	isValidParameterOption,
+	parseFromExpression,
+} from '@/utils/nodeSettingsUtils';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 
 import {
@@ -192,13 +199,13 @@ const shortPath = computed<string>(() => {
 });
 
 function getTypeOption<T>(optionName: string): T {
-	return nodeSettingsParameters.getParameterTypeOption<T>(props.parameter, optionName);
+	return getParameterTypeOption<T>(props.parameter, optionName);
 }
 
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
 
 const isResourceLocatorParameter = computed<boolean>(() => {
-	return nodeSettingsParameters.isResourceLocatorParameterType(props.parameter.type);
+	return isResourceLocatorParameterType(props.parameter.type);
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -211,7 +218,7 @@ const hasRemoteMethod = computed<boolean>(() => {
 
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
-	const safeOptions = (options ?? []).filter(nodeSettingsParameters.isValidParameterOption);
+	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
 	return safeOptions;
 });
@@ -960,16 +967,14 @@ async function optionSelected(command: string) {
 			return valueChanged(props.parameter.default);
 
 		case 'addExpression':
-			valueChanged(
-				nodeSettingsParameters.formatAsExpression(props.modelValue, props.parameter.type),
-			);
+			valueChanged(formatAsExpression(props.modelValue, props.parameter.type));
 			await setFocus();
 			break;
 
 		case 'removeExpression':
 			isFocused.value = false;
 			valueChanged(
-				nodeSettingsParameters.parseFromExpression(
+				parseFromExpression(
 					props.modelValue,
 					props.expressionEvaluated,
 					props.parameter.type,
@@ -1123,9 +1128,7 @@ const unwatchParameterOptions = watch(
 	[remoteParameterOptions, () => props.parameter.options],
 	([remoteOptions, options]) => {
 		const allOptions = [...remoteOptions, ...(options ?? [])];
-		const invalidOptions = allOptions.filter(
-			(option) => !nodeSettingsParameters.isValidParameterOption(option),
-		);
+		const invalidOptions = allOptions.filter((option) => !isValidParameterOption(option));
 
 		if (invalidOptions.length > 0) {
 			captureMessage('Invalid parameter options', {
