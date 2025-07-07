@@ -142,14 +142,246 @@ Output:
 - Body: Update bodyParameters.parameters for POST/PUT
 - Authentication: Update authentication settings
 
-### Set Node Updates
-- Assignments: Add/update items in assignments.assignments array
-- Each assignment needs: id, name, value, type
+### Set Node Updates - Comprehensive Type Handling Guide
 
-### IF Node Updates
-- Conditions: Update conditions.conditions array
-- Each condition needs: leftValue, rightValue, operator
-- Operator must match data type (string, number, boolean, etc.)
+The Set node uses assignments to create or modify data fields. Each assignment has a specific type that determines how the value is formatted and processed.
+
+#### Assignment Structure
+\`\`\`json
+{
+  "id": "unique-id",
+  "name": "field_name",
+  "value": "field_value",  // Format depends on type
+  "type": "string|number|boolean|array|object"
+}
+\`\`\`
+
+**CRITICAL**: ALWAYS use "value" field for ALL types. NEVER use type-specific fields like "stringValue", "numberValue", "booleanValue", etc. The field is ALWAYS named "value" regardless of the type.
+
+#### Type-Specific Value Formatting
+
+##### String Type
+- **Format**: Direct string value or expression
+- **Examples**:
+  - Literal: \`"Hello World"\`
+  - Expression: \`"={{ $('Previous Node').item.json.message }}"\`
+  - With embedded expressions: \`"=Order #{{ $('Set').item.json.orderId }} processed"\`
+- **Use when**: Text data, IDs, names, messages, dates as strings
+
+##### Number Type
+- **Format**: Direct numeric value (NOT as a string)
+- **Examples**:
+  - Integer: \`123\`
+  - Decimal: \`45.67\`
+  - Negative: \`-100\`
+  - Expression: \`"={{ $('HTTP Request').item.json.count }}"\`
+- **CRITICAL**: Use actual numbers, not strings: \`123\` not \`"123"\`
+- **Use when**: Quantities, prices, scores, numeric calculations
+
+##### Boolean Type
+- **Format**: Direct boolean value (NOT as a string)
+- **Examples**:
+  - True: \`true\`
+  - False: \`false\`
+  - Expression: \`"={{ $('IF').item.json.isActive }}"\`
+- **CRITICAL**: Use actual booleans, not strings: \`true\` not \`"true"\`
+- **CRITICAL**: The field name is "value", NOT "booleanValue"
+- **Use when**: Flags, toggles, yes/no values, active/inactive states
+
+##### Array Type
+- **Format**: JSON stringified array
+- **Examples**:
+  - Simple array: \`"[1, 2, 3]"\`
+  - String array: \`"[\\"apple\\", \\"banana\\", \\"orange\\"]"\`
+  - Mixed array: \`"[\\"item1\\", 123, true]"\`
+  - Expression: \`"={{ JSON.stringify($('Previous Node').item.json.items) }}"\`
+- **CRITICAL**: Arrays must be JSON stringified
+- **Use when**: Lists, collections, multiple values
+
+##### Object Type
+- **Format**: JSON stringified object
+- **Examples**:
+  - Simple object: \`"{ \\"name\\": \\"John\\", \\"age\\": 30 }"\`
+  - Nested object: \`"{ \\"user\\": { \\"id\\": 123, \\"role\\": \\"admin\\" } }"\`
+  - Expression: \`"={{ JSON.stringify($('Set').item.json.userData) }}"\`
+- **CRITICAL**: Objects must be JSON stringified with escaped quotes
+- **Use when**: Complex data structures, grouped properties
+
+#### Important Type Selection Rules
+
+1. **Analyze the requested data type**:
+   - "Set count to 5" → number type with value: \`5\`
+   - "Set message to hello" → string type with value: \`"hello"\`
+   - "Set active to true" → boolean type with value: \`true\`
+   - "Set tags to apple, banana" → array type with value: \`"[\\"apple\\", \\"banana\\"]"\`
+
+2. **Expression handling**:
+   - All types can use expressions with \`"={{ ... }}"\`
+   - For arrays/objects from expressions, use \`JSON.stringify()\`
+
+3. **Common mistakes to avoid**:
+   - WRONG: Setting number as string: \`{ "value": "123", "type": "number" }\`
+   - CORRECT: \`{ "value": 123, "type": "number" }\`
+   - WRONG: Setting boolean as string: \`{ "value": "false", "type": "boolean" }\`
+   - CORRECT: \`{ "value": false, "type": "boolean" }\`
+   - WRONG: Using type-specific field names: \`{ "booleanValue": true, "type": "boolean" }\`
+   - CORRECT: \`{ "value": true, "type": "boolean" }\`
+   - WRONG: Setting array without stringification: \`{ "value": [1,2,3], "type": "array" }\`
+   - CORRECT: \`{ "value": "[1,2,3]", "type": "array" }\`
+
+### IF Node Updates - Comprehensive Guide
+
+The IF node uses a complex filter structure for conditional logic. Understanding the correct operator format is crucial.
+
+#### IF Node Structure
+\`\`\`json
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,      // For string comparisons
+      "leftValue": "",              // Optional default left value
+      "typeValidation": "loose"     // "strict" or "loose"
+    },
+    "conditions": [
+      {
+        "id": "unique-id",          // Optional, auto-generated
+        "leftValue": "={{ $('Node').item.json.field }}",
+        "rightValue": "value",      // Can be expression or literal
+        "operator": {
+          "type": "string|number|boolean|dateTime|array|object",
+          "operation": "specific-operation"
+        }
+      }
+    ],
+    "combinator": "and"  // "and" or "or"
+  }
+}
+\`\`\`
+
+#### Complete Operator Reference
+
+##### String Operators
+- **exists**: Check if value exists (singleValue: true, no rightValue needed)
+  \`{ "type": "string", "operation": "exists" }\`
+- **notExists**: Check if value doesn't exist (singleValue: true)
+  \`{ "type": "string", "operation": "notExists" }\`
+- **empty**: Check if string is empty (singleValue: true)
+  \`{ "type": "string", "operation": "empty" }\`
+- **notEmpty**: Check if string is not empty (singleValue: true)
+  \`{ "type": "string", "operation": "notEmpty" }\`
+- **equals**: Exact match
+  \`{ "type": "string", "operation": "equals" }\`
+- **notEquals**: Not equal
+  \`{ "type": "string", "operation": "notEquals" }\`
+- **contains**: Contains substring
+  \`{ "type": "string", "operation": "contains" }\`
+- **notContains**: Doesn't contain substring
+  \`{ "type": "string", "operation": "notContains" }\`
+- **startsWith**: Starts with string
+  \`{ "type": "string", "operation": "startsWith" }\`
+- **notStartsWith**: Doesn't start with
+  \`{ "type": "string", "operation": "notStartsWith" }\`
+- **endsWith**: Ends with string
+  \`{ "type": "string", "operation": "endsWith" }\`
+- **notEndsWith**: Doesn't end with
+  \`{ "type": "string", "operation": "notEndsWith" }\`
+- **regex**: Matches regex pattern
+  \`{ "type": "string", "operation": "regex" }\`
+- **notRegex**: Doesn't match regex
+  \`{ "type": "string", "operation": "notRegex" }\`
+
+##### Number Operators
+- **exists**: Check if number exists (singleValue: true)
+  \`{ "type": "number", "operation": "exists" }\`
+- **notExists**: Check if number doesn't exist (singleValue: true)
+  \`{ "type": "number", "operation": "notExists" }\`
+- **equals**: Equal to
+  \`{ "type": "number", "operation": "equals" }\`
+- **notEquals**: Not equal to
+  \`{ "type": "number", "operation": "notEquals" }\`
+- **gt**: Greater than
+  \`{ "type": "number", "operation": "gt" }\`
+- **lt**: Less than
+  \`{ "type": "number", "operation": "lt" }\`
+- **gte**: Greater than or equal
+  \`{ "type": "number", "operation": "gte" }\`
+- **lte**: Less than or equal
+  \`{ "type": "number", "operation": "lte" }\`
+
+##### DateTime Operators
+- **exists**: Check if date exists (singleValue: true)
+  \`{ "type": "dateTime", "operation": "exists" }\`
+- **notExists**: Check if date doesn't exist (singleValue: true)
+  \`{ "type": "dateTime", "operation": "notExists" }\`
+- **equals**: Same date/time
+  \`{ "type": "dateTime", "operation": "equals" }\`
+- **notEquals**: Different date/time
+  \`{ "type": "dateTime", "operation": "notEquals" }\`
+- **after**: After date
+  \`{ "type": "dateTime", "operation": "after" }\`
+- **before**: Before date
+  \`{ "type": "dateTime", "operation": "before" }\`
+- **afterOrEquals**: After or same date
+  \`{ "type": "dateTime", "operation": "afterOrEquals" }\`
+- **beforeOrEquals**: Before or same date
+  \`{ "type": "dateTime", "operation": "beforeOrEquals" }\`
+
+##### Boolean Operators
+- **exists**: Check if boolean exists (singleValue: true)
+  \`{ "type": "boolean", "operation": "exists" }\`
+- **notExists**: Check if boolean doesn't exist (singleValue: true)
+  \`{ "type": "boolean", "operation": "notExists" }\`
+- **true**: Is true (singleValue: true)
+  \`{ "type": "boolean", "operation": "true" }\`
+- **false**: Is false (singleValue: true)
+  \`{ "type": "boolean", "operation": "false" }\`
+- **equals**: Equal to boolean value
+  \`{ "type": "boolean", "operation": "equals" }\`
+- **notEquals**: Not equal to boolean value
+  \`{ "type": "boolean", "operation": "notEquals" }\`
+
+##### Array Operators
+- **exists**: Check if array exists (singleValue: true)
+  \`{ "type": "array", "operation": "exists" }\`
+- **notExists**: Check if array doesn't exist (singleValue: true)
+  \`{ "type": "array", "operation": "notExists" }\`
+- **empty**: Array is empty (singleValue: true)
+  \`{ "type": "array", "operation": "empty" }\`
+- **notEmpty**: Array is not empty (singleValue: true)
+  \`{ "type": "array", "operation": "notEmpty" }\`
+- **contains**: Array contains value
+  \`{ "type": "array", "operation": "contains" }\`
+- **notContains**: Array doesn't contain value
+  \`{ "type": "array", "operation": "notContains" }\`
+- **lengthEquals**: Array length equals
+  \`{ "type": "array", "operation": "lengthEquals" }\`
+- **lengthNotEquals**: Array length not equals
+  \`{ "type": "array", "operation": "lengthNotEquals" }\`
+- **lengthGt**: Array length greater than
+  \`{ "type": "array", "operation": "lengthGt" }\`
+- **lengthLt**: Array length less than
+  \`{ "type": "array", "operation": "lengthLt" }\`
+- **lengthGte**: Array length greater or equal
+  \`{ "type": "array", "operation": "lengthGte" }\`
+- **lengthLte**: Array length less or equal
+  \`{ "type": "array", "operation": "lengthLte" }\`
+
+##### Object Operators
+- **exists**: Check if object exists (singleValue: true)
+  \`{ "type": "object", "operation": "exists" }\`
+- **notExists**: Check if object doesn't exist (singleValue: true)
+  \`{ "type": "object", "operation": "notExists" }\`
+- **empty**: Object is empty (singleValue: true)
+  \`{ "type": "object", "operation": "empty" }\`
+- **notEmpty**: Object is not empty (singleValue: true)
+  \`{ "type": "object", "operation": "notEmpty" }\`
+
+#### Important Notes:
+1. **singleValue operators**: When using exists, notExists, empty, notEmpty, true, or false operators, DO NOT include a rightValue in the condition
+2. **Expression values**: Both leftValue and rightValue can be expressions using \`={{ ... }}\` syntax
+3. **Type matching**: The operator type must match the data type you're comparing
+4. **Case sensitivity**: Only applies to string comparisons when caseSensitive is true in options
+5. **Type validation**: "loose" allows type coercion, "strict" requires exact type matches
 
 ## Text Field Expression Formatting
 
@@ -213,14 +445,82 @@ Updated parameters: {
 ## Common Node Parameter Structures
 
 ### Set Node Structure
+
+#### Complete Example with All Types
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "id-1",
+        "name": "text_field",
+        "value": "This is a simple text",
+        "type": "string"
+      },
+      {
+        "id": "id-2",
+        "name": "number_field",
+        "value": 123,
+        "type": "number"
+      },
+      {
+        "id": "id-3", 
+        "name": "boolean_field",
+        "value": false,      // Always "value", never "booleanValue"
+        "type": "boolean"
+      },
+      {
+        "id": "id-4",
+        "name": "array_field",
+        "value": "[1,2,3]",
+        "type": "array"
+      },
+      {
+        "id": "id-5",
+        "name": "object_field",
+        "value": "{ \"test\": 123 }",
+        "type": "object"
+      }
+    ]
+  },
+  "options": {}
+}
+
+#### Simple String Assignment
 {
   "assignments": {
     "assignments": [
       {
         "id": "unique-id-1",
-        "name": "property_name",
-        "value": "property_value",
+        "name": "message",
+        "value": "Hello World",
         "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+
+#### Expression-Based Assignments
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "id-1",
+        "name": "userId",
+        "value": "={{ $('HTTP Request').item.json.id }}",
+        "type": "string"
+      },
+      {
+        "id": "id-2",
+        "name": "itemCount",
+        "value": "={{ $('Set').item.json.items.length }}",
+        "type": "number"
+      },
+      {
+        "id": "id-3",
+        "name": "isActive", 
+        "value": "={{ $('Previous Node').item.json.status === 'active' }}",
+        "type": "boolean"
       }
     ]
   },
@@ -274,6 +574,213 @@ Updated parameters: {
     ]
   },
   "options": {}
+}
+
+### IF Node Structures
+
+#### Single String Condition
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('HTTP Request').item.json.status }}",
+        "rightValue": "active",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Check if Property Exists
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Set').item.json.email }}",
+        "operator": {
+          "type": "string",
+          "operation": "exists"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Number Comparison
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Previous Node').item.json.price }}",
+        "rightValue": "100",
+        "operator": {
+          "type": "number",
+          "operation": "gt"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Multiple Conditions with AND
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Set').item.json.status }}",
+        "rightValue": "active",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      },
+      {
+        "leftValue": "={{ $('Set').item.json.score }}",
+        "rightValue": "50",
+        "operator": {
+          "type": "number",
+          "operation": "gte"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Multiple Conditions with OR
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('HTTP Request').item.json.role }}",
+        "rightValue": "admin",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      },
+      {
+        "leftValue": "={{ $('HTTP Request').item.json.role }}",
+        "rightValue": "moderator",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      }
+    ],
+    "combinator": "or"
+  }
+}
+
+#### Date Comparison
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Set').item.json.createdAt }}",
+        "rightValue": "={{ $now.minus(30, 'days').toISO() }}",
+        "operator": {
+          "type": "dateTime",
+          "operation": "after"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Array Contains Check
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Previous Node').item.json.tags }}",
+        "rightValue": "featured",
+        "operator": {
+          "type": "array",
+          "operation": "contains"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+#### Complex Condition with Mixed Types
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict"
+    },
+    "conditions": [
+      {
+        "leftValue": "={{ $('Set').item.json.email }}",
+        "operator": {
+          "type": "string",
+          "operation": "notEmpty"
+        }
+      },
+      {
+        "leftValue": "={{ $('Set').item.json.verified }}",
+        "operator": {
+          "type": "boolean",
+          "operation": "true"
+        }
+      },
+      {
+        "leftValue": "={{ $('Set').item.json.permissions }}",
+        "rightValue": "write",
+        "operator": {
+          "type": "array",
+          "operation": "contains"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
 }
 
 ## Parameter Update Examples
@@ -356,6 +863,157 @@ Expected Output:
   }
 }
 
+### Example 3a: Set Node (Adding Different Types)
+Current Parameters:
+{}
+
+Requested Changes:
+- Set productName to "Widget"
+- Set price to 19.99
+- Set inStock to true
+- Set categories to electronics and gadgets
+- Set metadata with manufacturer and warranty info
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "id-1",
+        "name": "productName",
+        "value": "Widget",
+        "type": "string"
+      },
+      {
+        "id": "id-2",
+        "name": "price",
+        "value": 19.99,
+        "type": "number"
+      },
+      {
+        "id": "id-3",
+        "name": "inStock",
+        "value": true,
+        "type": "boolean"
+      },
+      {
+        "id": "id-4",
+        "name": "categories",
+        "value": "[\"electronics\", \"gadgets\"]",
+        "type": "array"
+      },
+      {
+        "id": "id-5",
+        "name": "metadata",
+        "value": "{ \"manufacturer\": \"TechCorp\", \"warranty\": \"2 years\" }",
+        "type": "object"
+      }
+    ]
+  }
+}
+
+### Example 3b: Set Node (Numeric Calculations)
+Current Parameters:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "calc-1",
+        "name": "quantity",
+        "value": "10",
+        "type": "string"
+      }
+    ]
+  }
+}
+
+Requested Changes:
+- Change quantity to be a number
+- Add totalPrice calculated from previous node's unitPrice
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "calc-1",
+        "name": "quantity",
+        "value": 10,
+        "type": "number"
+      },
+      {
+        "id": "calc-2",
+        "name": "totalPrice",
+        "value": "={{ $('HTTP Request').item.json.unitPrice * 10 }}",
+        "type": "number"
+      }
+    ]
+  }
+}
+
+### Example 3c: Set Node (Boolean Logic)
+Current Parameters:
+{}
+
+Requested Changes:
+- Set isEligible based on whether age from previous node is 18 or over
+- Set requiresApproval to false
+- Set hasDiscount if either member or coupon exists
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "bool-1",
+        "name": "isEligible",
+        "value": "={{ $('Form').item.json.age >= 18 }}",
+        "type": "boolean"
+      },
+      {
+        "id": "bool-2",
+        "name": "requiresApproval",
+        "value": false,
+        "type": "boolean"
+      },
+      {
+        "id": "bool-3",
+        "name": "hasDiscount",
+        "value": "={{ $('Set').item.json.isMember || $('Set').item.json.hasCoupon }}",
+        "type": "boolean"
+      }
+    ]
+  }
+}
+
+### Example 3d: Set Node (Array from Expression)
+Current Parameters:
+{}
+
+Requested Changes:
+- Create tags array from comma-separated string in previous node
+- Set selectedIds to array containing 1, 2, and 3
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "arr-1",
+        "name": "tags",
+        "value": "={{ JSON.stringify($('HTTP Request').item.json.tagString.split(',').map(tag => tag.trim())) }}",
+        "type": "array"
+      },
+      {
+        "id": "arr-2",
+        "name": "selectedIds",
+        "value": "[1, 2, 3]",
+        "type": "array"
+      }
+    ]
+  }
+}
+
 ### Example 4: Slack Node (ResourceLocator Parameter)
 Current Parameters:
 {
@@ -429,6 +1087,270 @@ Expected Output:
     "__rl": true,
     "mode": "id",
     "value": "={{ $('Previous Node').item.json.pageId }}"
+  }
+}
+
+### Example 7: IF Node - Adding First Condition
+Current Parameters:
+{}
+
+Requested Changes:
+- Check if order status equals "pending"
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Previous Node').item.json.orderStatus }}",
+        "rightValue": "pending",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+### Example 8: IF Node - Adding Second Condition
+Current Parameters:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Set').item.json.status }}",
+        "rightValue": "active",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+Requested Changes:
+- Also check if amount is greater than 100
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Set').item.json.status }}",
+        "rightValue": "active",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      },
+      {
+        "id": "id-2",
+        "leftValue": "={{ $('Set').item.json.amount }}",
+        "rightValue": "100",
+        "operator": {
+          "type": "number",
+          "operation": "gt"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+### Example 9: IF Node - Changing Operator
+Current Parameters:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "abc123",
+        "leftValue": "={{ $('HTTP Request').item.json.price }}",
+        "rightValue": "50",
+        "operator": {
+          "type": "number",
+          "operation": "equals"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+Requested Changes:
+- Change to check if price is less than or equal to 50
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "abc123",
+        "leftValue": "={{ $('HTTP Request').item.json.price }}",
+        "rightValue": "50",
+        "operator": {
+          "type": "number",
+          "operation": "lte"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+### Example 10: IF Node - Check if Field Exists
+Current Parameters:
+{}
+
+Requested Changes:
+- Check if email field exists in the data
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Previous Node').item.json.email }}",
+        "operator": {
+          "type": "string",
+          "operation": "exists"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+### Example 11: IF Node - Array Length Check
+Current Parameters:
+{}
+
+Requested Changes:
+- Check if items array has more than 5 elements
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Set').item.json.items }}",
+        "rightValue": "5",
+        "operator": {
+          "type": "array",
+          "operation": "lengthGt"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+### Example 12: IF Node - Switching from AND to OR
+Current Parameters:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "cond1",
+        "leftValue": "={{ $('Set').item.json.priority }}",
+        "rightValue": "high",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      },
+      {
+        "id": "cond2",
+        "leftValue": "={{ $('Set').item.json.urgent }}",
+        "operator": {
+          "type": "boolean",
+          "operation": "true"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+
+Requested Changes:
+- Change to OR logic - either high priority OR urgent
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+    },
+    "conditions": [
+      {
+        "id": "cond1",
+        "leftValue": "={{ $('Set').item.json.priority }}",
+        "rightValue": "high",
+        "operator": {
+          "type": "string",
+          "operation": "equals"
+        }
+      },
+      {
+        "id": "cond2",
+        "leftValue": "={{ $('Set').item.json.urgent }}",
+        "operator": {
+          "type": "boolean",
+          "operation": "true"
+        }
+      }
+    ],
+    "combinator": "or"
   }
 }
 
