@@ -37,12 +37,14 @@ export async function getUsers(
 ): Promise<INodeListSearchResult> {
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
+	const defaultQuery = 'n8n-io';
+
 	const responseData: UserSearchResponse = await githubApiRequest.call(
 		this,
 		'GET',
 		'/search/users',
 		{},
-		{ q: filter, page, per_page },
+		{ ...(filter ? { q: filter } : { q: defaultQuery }), page, per_page },
 	);
 
 	const results: INodeListSearchItems[] = responseData.items.map((item: UserSearchItem) => ({
