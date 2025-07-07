@@ -23,7 +23,7 @@ export function previousTaskData(
 		return undefined; // No run data for the next node
 	}
 
-	const nextRunIndex = currentRunData.source[0]?.previousNodeRun ?? 0;
+	const nextRunIndex = currentRunData.source?.[0]?.previousNodeRun ?? 0;
 
 	return nextRunData[nextRunIndex]; // Return the first run data for the next node
 }
@@ -46,10 +46,15 @@ export function findPairedItemTroughWorkflowData(
 	// This is the run data of the last node executed in the workflow run
 	const runData = workflowRunData.resultData.runData[currentNodeName];
 
+	if (!runData) {
+		// No run data available for the last node executed
+		return undefined;
+	}
+
 	// Since we are backtracking through the workflow, we start with the last run data
 	const runIndex = runData.length - 1;
 
-	const taskData = runData[runIndex] as ITaskData | undefined;
+	const taskData = runData[runIndex];
 
 	if (!taskData) {
 		// If no run data is available, then the workflow did not run at all
@@ -57,10 +62,7 @@ export function findPairedItemTroughWorkflowData(
 	}
 
 	// Now we are getting the second last task data, because our initial pairedItem points to this.
-	let runDataItem: ITaskData | undefined = previousTaskData(
-		workflowRunData.resultData.runData,
-		taskData,
-	);
+	let runDataItem = previousTaskData(workflowRunData.resultData.runData, taskData);
 
 	let pairedItem = item.pairedItem;
 
@@ -81,7 +83,7 @@ export function findPairedItemTroughWorkflowData(
 		}
 
 		// We found the paired item of the current run data item, this points to the node in the previous task data
-		pairedItem = nodeInformationArray?.[inputIndex]?.[nodeIndex].pairedItem;
+		pairedItem = nodeInformationArray?.[inputIndex]?.[nodeIndex]?.pairedItem;
 
 		// We move the runDataItem to the previous task data
 		runDataItem = previousTaskData(workflowRunData.resultData.runData, runDataItem);
