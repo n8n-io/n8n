@@ -7,7 +7,7 @@ import { googleApiRequest } from '../../GenericFunctions';
 function setEmailReplyHeaders(email: IEmail, messageId: string | undefined): void {
 	if (messageId) {
 		email.inReplyTo = messageId;
-		email.reference = messageId;
+		email.references = messageId;
 	}
 }
 
