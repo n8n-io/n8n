@@ -6,13 +6,11 @@ import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
-import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
 import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 import {
@@ -45,12 +43,12 @@ export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 	const targetAuthenticationMethod =
 		!enabled && currentAuthenticationMethod === 'saml' ? 'email' : currentAuthenticationMethod;
 
-	config.set(SAML_LOGIN_ENABLED, enabled);
+	Container.get(GlobalConfig).sso.saml.loginEnabled = enabled;
 	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
 }
 
 export function setSamlLoginLabel(label: string): void {
-	config.set(SAML_LOGIN_LABEL, label);
+	Container.get(GlobalConfig).sso.saml.loginLabel = label;
 }
 
 export function isSamlLicensed(): boolean {
