@@ -964,7 +964,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.innerJoin('execution.workflow', 'workflow');
 
 		// Add join to execution_data only if nodesExecuted is not null or not an empty array
-		if (nodesExecuted && Array.isArray(nodesExecuted) ? nodesExecuted.length > 0 : true) {
+		if (!Array.isArray(nodesExecuted) || nodesExecuted.length > 0) {
 			qb.innerJoin('execution_data', 'execution_data', 'execution.id = execution_data.executionId');
 		}
 
