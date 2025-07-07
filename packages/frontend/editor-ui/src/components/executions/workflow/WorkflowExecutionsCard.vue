@@ -142,12 +142,8 @@ function onRetryMenuItemSelect(action: string): void {
 				</div>
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
-						<FontAwesomeIcon
-							v-if="execution.annotation.vote == 'up'"
-							:class="$style.up"
-							icon="thumbs-up"
-						/>
-						<FontAwesomeIcon v-else :class="$style.down" icon="thumbs-down" />
+						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />
+						<N8nIcon v-else :class="$style.down" icon="thumbs-down" />
 					</div>
 					<N8nTags
 						v-if="executionUIDetails.tags.length > 0"
@@ -162,7 +158,7 @@ function onRetryMenuItemSelect(action: string): void {
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					:disabled="!workflowPermissions.execute"
-					activator-icon="redo"
+					activator-icon="redo-2"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
@@ -170,13 +166,13 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<FontAwesomeIcon :class="[$style.icon, $style.manual]" icon="flask" />
+					<N8nIcon :class="[$style.icon, $style.manual]" icon="flask-conical" />
 				</N8nTooltip>
 				<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
 					<template #content>
 						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
 					</template>
-					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="check-double" />
+					<N8nIcon :class="[$style.icon, $style.evaluation]" icon="check-check" />
 				</N8nTooltip>
 			</div>
 		</router-link>

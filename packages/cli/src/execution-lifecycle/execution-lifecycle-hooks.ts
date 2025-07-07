@@ -17,7 +17,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { isWorkflowIdValid } from '@/utils';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';

@@ -49,11 +49,7 @@ const initializeActiveStep = () => {
 		return;
 	}
 
-	if (
-		evaluationStore.evaluationTriggerExists &&
-		evaluationStore.evaluationSetOutputsNodeExist &&
-		evaluationStore.evaluationSetMetricsNodeExist
-	) {
+	if (evaluationStore.evaluationTriggerExists && evaluationStore.evaluationSetMetricsNodeExist) {
 		activeStepIndex.value = 3;
 	} else if (
 		evaluationStore.evaluationTriggerExists &&
@@ -241,7 +237,8 @@ function onSeePlans() {
 							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
-								!evaluationStore.evaluationSetOutputsNodeExist
+								(!evaluationStore.evaluationSetOutputsNodeExist &&
+									!evaluationStore.evaluationSetMetricsNodeExist)
 							"
 							@click="$emit('runTest')"
 						>
@@ -253,7 +250,8 @@ function onSeePlans() {
 							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
-								!evaluationStore.evaluationSetOutputsNodeExist
+								(!evaluationStore.evaluationSetOutputsNodeExist &&
+									!evaluationStore.evaluationSetMetricsNodeExist)
 							"
 							@click="navigateToWorkflow('executeEvaluation')"
 						>

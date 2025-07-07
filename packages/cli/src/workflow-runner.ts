@@ -23,7 +23,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
@@ -248,6 +248,7 @@ export class WorkflowRunner {
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.streamingEnabled = data.streamingEnabled;
 
 		additionalData.executionId = executionId;
 
@@ -357,6 +358,7 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			streamingEnabled: data.streamingEnabled,
 		};
 
 		if (!this.scalingService) {

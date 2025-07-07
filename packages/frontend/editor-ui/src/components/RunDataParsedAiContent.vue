@@ -128,7 +128,7 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					:class="$style.copyToClipboard"
 					type="secondary"
 					:title="i18n.baseText('nodeErrorView.copyToClipboard')"
-					icon="copy"
+					icon="files"
 					@click="onCopyToClipboard(raw)"
 				/>
 				<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
@@ -175,6 +175,12 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 				font-size: var(--font-size-xs);
 			}
 		}
+
+		p {
+			.compact & {
+				line-height: var(--font-line-height-xloose);
+			}
+		}
 	}
 }
 
@@ -202,7 +208,7 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 	.compact & {
 		padding-top: 0;
 		padding-inline: var(--spacing-2xs);
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
 	}
 }
 </style>

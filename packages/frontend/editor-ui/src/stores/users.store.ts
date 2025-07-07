@@ -1,3 +1,4 @@
+import { useAsyncState } from '@vueuse/core';
 import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
@@ -5,6 +6,7 @@ import {
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
+	type UsersListFilterDto,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
@@ -18,7 +20,6 @@ import type {
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -43,7 +44,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
 	const currentUserId = ref<string | null>(null);
 	const usersById = ref<Record<string, IUser>>({});
-	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 	const userQuota = ref<number>(-1);
 
 	const loginHooks = ref<LoginHook[]>([]);
@@ -179,7 +179,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const unsetCurrentUser = () => {
 		currentUserId.value = null;
-		currentUserCloudInfo.value = null;
 	};
 
 	const deleteUserById = (userId: string) => {
@@ -305,13 +304,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const updateOtherUserSettings = async (userId: string, settings: SettingsUpdateRequestDto) => {
-		const updatedSettings = await usersApi.updateOtherUserSettings(
-			rootStore.restApiContext,
-			userId,
-			settings,
-		);
-		usersById.value[userId].settings = updatedSettings;
-		addUsers([usersById.value[userId]]);
+		await usersApi.updateOtherUserSettings(rootStore.restApiContext, userId, settings);
 	};
 
 	const updateCurrentUserPassword = async (params: PasswordUpdateRequestDto) => {
@@ -391,14 +384,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const fetchUserCloudAccount = async () => {
-		let cloudUser: Cloud.UserAccount | null = null;
-		try {
-			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
-			currentUserCloudInfo.value = cloudUser;
-		} catch (error) {
-			throw new Error(error);
-		}
+	const updateEnforceMfa = async (enforce: boolean) => {
+		await mfaApi.updateEnforceMfa(rootStore.restApiContext, enforce);
+		settingsStore.isMFAEnforced = enforce;
 	};
 
 	const sendConfirmationEmail = async () => {
@@ -434,11 +422,20 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
+	const usersList = useAsyncState(
+		async (filter?: UsersListFilterDto) =>
+			await usersApi.getUsers(rootStore.restApiContext, filter),
+		{
+			count: 0,
+			items: [],
+		},
+		{ immediate: false, resetOnExecute: false },
+	);
+
 	return {
 		initialized,
 		currentUserId,
 		usersById,
-		currentUserCloudInfo,
 		allUsers,
 		currentUser,
 		userActivated,
@@ -480,8 +477,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		verifyMfaCode,
 		enableMfa,
 		disableMfa,
+		updateEnforceMfa,
 		canEnableMFA,
-		fetchUserCloudAccount,
 		sendConfirmationEmail,
 		updateGlobalRole,
 		setEasyAIWorkflowOnboardingDone,
@@ -489,5 +486,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setCalloutDismissed,
 		submitContactEmail,
 		submitContactInfo,
+		usersList,
 	};
 });

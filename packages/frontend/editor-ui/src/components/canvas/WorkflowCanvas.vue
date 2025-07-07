@@ -10,7 +10,7 @@ import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
-import ExperimentalNodeDetailsDrawer from './components/ExperimentalNodeDetailsDrawer.vue';
+import ExperimentalNodeDetailsDrawer from './experimental/components/ExperimentalNodeDetailsDrawer.vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -78,6 +78,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:executing="executing"
 				v-bind="$attrs"
 			/>
 		</div>

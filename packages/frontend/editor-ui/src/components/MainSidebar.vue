@@ -6,7 +6,7 @@ import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -86,7 +86,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
@@ -95,7 +95,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
@@ -114,7 +114,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 	{
 		id: 'insights',
-		icon: 'chart-bar',
+		icon: 'chart-column-decreasing',
 		label: 'Insights',
 		customIconSize: 'medium',
 		position: 'bottom',
@@ -125,7 +125,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 	{
 		id: 'help',
-		icon: 'question',
+		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
@@ -206,10 +206,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			),
 			{
 				id: 'full-changelog',
-				icon: 'external-link-alt',
+				icon: 'external-link',
 				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 				link: {
-					href: 'https://docs.n8n.io/release-notes/',
+					href: RELEASE_NOTES_URL,
 					target: '_blank',
 				},
 				size: 'small',
@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
 
 const trackTemplatesClick = () => {
 	telemetry.track('User clicked on templates', {
-		role: usersStore.currentUserCloudInfo?.role,
+		role: cloudPlanStore.currentUserCloudInfo?.role,
 		active_workflow_count: workflowsStore.activeWorkflows.length,
 	});
 };

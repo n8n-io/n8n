@@ -27,7 +27,6 @@ import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
-	IUpdateInformation,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
 	NodeFilterType,
@@ -67,11 +66,11 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
+	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	NodeConnectionTypes,
@@ -129,6 +128,7 @@ import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import { usePostHog } from '@/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -148,6 +148,9 @@ const LazyNodeCreation = defineAsyncComponent(
 
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
+);
+const LazyNodeDetailsViewV2 = defineAsyncComponent(
+	async () => await import('@/components/NodeDetailsViewV2.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
@@ -191,6 +194,7 @@ const focusPanelStore = useFocusPanelStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
+const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 
@@ -278,6 +282,12 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -554,9 +564,6 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 		{
 			workflow_id: workflowId.value,
 		},
-		{
-			withPostHog: true,
-		},
 	);
 }
 
@@ -646,17 +653,11 @@ async function openWorkflowTemplate(templateId: string) {
 }
 
 function trackOpenWorkflowTemplate(templateId: string) {
-	telemetry.track(
-		'User inserted workflow template',
-		{
-			source: 'workflow',
-			template_id: tryToParseNumber(templateId),
-			wf_template_repo_session_id: templatesStore.previousSessionId,
-		},
-		{
-			withPostHog: true,
-		},
-	);
+	telemetry.track('User inserted workflow template', {
+		source: 'workflow',
+		template_id: tryToParseNumber(templateId),
+		wf_template_repo_session_id: templatesStore.previousSessionId,
+	});
 }
 
 /**
@@ -848,7 +849,7 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	const workflowIsSaved = !uiStore.stateIsDirty;
+	const workflowIsSaved = !uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
 	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
 	if (workflowIsSaved || workflowIsArchived) {
@@ -884,9 +885,9 @@ async function onCreateWorkflow() {
 	await router.push({ name: VIEWS.NEW_WORKFLOW });
 }
 
-function onRenameNode(parameterData: IUpdateInformation) {
-	if (parameterData.name === 'name' && parameterData.oldValue) {
-		void renameNode(parameterData.oldValue as string, parameterData.value as string);
+function onRenameNode(name: string) {
+	if (ndvStore.activeNode?.name) {
+		void renameNode(ndvStore.activeNode.name, name);
 	}
 }
 
@@ -2126,22 +2127,33 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
+					v-if="!isNDVV2"
 					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="isProductionExecutionPreview"
 					:renaming="false"
-					@value-changed="onRenameNode"
+					@value-changed="onRenameNode($event.value as string)"
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
 					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
-				<!--
-				:renaming="renamingActive"
-			-->
+			</Suspense>
+			<Suspense>
+				<LazyNodeDetailsViewV2
+					v-if="isNDVV2"
+					:workflow-object="editableWorkflowObject"
+					:read-only="isCanvasReadOnly"
+					:is-production-execution-preview="isProductionExecutionPreview"
+					@rename-node="onRenameNode"
+					@stop-execution="onStopExecution"
+					@switch-selected-node="onSwitchActiveNode"
+					@open-connection-node-creator="onOpenSelectiveNodeCreator"
+					@save-keyboard-shortcut="onSaveWorkflow"
+				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel v-if="isFocusPanelFeatureEnabled" />
+		<FocusPanel v-if="isFocusPanelFeatureEnabled" :executable="!isCanvasReadOnly" />
 	</div>
 </template>
 

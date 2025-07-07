@@ -5,7 +5,7 @@ import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
@@ -16,7 +16,9 @@ import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.v
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const route = useRoute();
 const router = useRouter();
@@ -30,13 +32,15 @@ const emit = defineEmits<{
 	createFolder: [];
 }>();
 
-const headerIcon = computed((): ProjectIconType => {
+const headerIcon = computed((): IconOrEmoji => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+		return isIconOrEmoji(projectsStore.currentProject.icon)
+			? projectsStore.currentProject.icon
+			: { type: 'icon', value: 'layers' };
 	} else {
-		return { type: 'icon', value: 'home' };
+		return { type: 'icon', value: 'house' };
 	}
 });
 
@@ -89,7 +93,7 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: i18n.baseText('projects.header.create.workflow'),
-	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||

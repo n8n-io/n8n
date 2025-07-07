@@ -36,9 +36,7 @@ function getInputs(
 				type,
 				displayName,
 				required,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -107,7 +105,7 @@ export class AgentV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'AI Agent',
 				color: '#404040',
@@ -150,6 +148,11 @@ export class AgentV2 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
@@ -168,6 +171,11 @@ export class AgentV2 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
 				},
 				{
 					displayName:
@@ -182,6 +190,16 @@ export class AgentV2 implements INodeType {
 					},
 				},
 				...toolsAgentProperties,
+			],
+			hints: [
+				{
+					message:
+						'You are using streaming responses. Make sure to set the response mode to "Streaming Response" on the connected trigger node.',
+					type: 'warning',
+					location: 'outputPane',
+					whenToDisplay: 'afterExecution',
+					displayCondition: '={{ $parameter["enableStreaming"] === true }}',
+				},
 			],
 		};
 	}

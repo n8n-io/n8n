@@ -130,4 +130,119 @@ describe('ChatTrigger Node', () => {
 			});
 		});
 	});
+
+	describe('webhook method: streaming response mode', () => {
+		beforeEach(() => {
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getMode.mockReturnValue('production' as any);
+			mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
+			(mockContext.helpers.returnJsonArray as any) = jest.fn().mockReturnValue([]);
+			mockResponse.writeHead.mockImplementation(() => mockResponse);
+			mockResponse.flushHeaders.mockImplementation(() => undefined);
+		});
+
+		it('should enable streaming when responseMode is "streaming"', async () => {
+			// Mock options with streaming responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'options.responseMode') return 'streaming';
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are set
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive',
+			});
+			expect(mockResponse.flushHeaders).toHaveBeenCalled();
+
+			// Verify response structure for streaming
+			expect(result).toEqual({
+				workflowData: expect.any(Array),
+				noWebhookResponse: true,
+			});
+		});
+
+		it('should not enable streaming when responseMode is not "streaming"', async () => {
+			// Mock options with lastNode responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'options.responseMode') return 'lastNode';
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are NOT set
+			expect(mockResponse.writeHead).not.toHaveBeenCalled();
+			expect(mockResponse.flushHeaders).not.toHaveBeenCalled();
+
+			// Verify normal response structure
+			expect(result).toEqual({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('should handle multipart form data with streaming enabled', async () => {
+			// Mock multipart form data request
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = {
+				data: { message: 'Hello' },
+				files: {},
+			};
+
+			// Mock options with streaming responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'options.responseMode') return 'streaming';
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are set
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive',
+			});
+			expect(mockResponse.flushHeaders).toHaveBeenCalled();
+
+			// Verify response structure for streaming
+			expect(result).toEqual({
+				workflowData: expect.any(Array),
+				noWebhookResponse: true,
+			});
+		});
+	});
 });

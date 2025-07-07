@@ -25,6 +25,8 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
 
+import type { VueScanOptions } from 'z-vue-scan';
+
 const pinia = createPinia();
 
 const app = createApp(App);
@@ -39,6 +41,13 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+if (import.meta.env.VUE_SCAN) {
+	const { default: VueScan } = await import('z-vue-scan');
+	app.use<VueScanOptions>(VueScan, {
+		enable: true,
+	});
+}
 
 app.mount('#app');
 

@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
-	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
@@ -16,14 +15,19 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import {
+	BASE_NODE_SURVEY_URL,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+	NDV_UI_OVERHAUL_EXPERIMENT,
+} from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -42,23 +46,24 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { usePostHog } from '@/stores/posthog.store';
+import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { N8nIconButton } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
 		eventBus: EventBus;
 		dragging: boolean;
 		pushRef: string;
-		nodeType: INodeTypeDescription | null;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
-		canExpand?: boolean;
-		hideConnections?: boolean;
+		isEmbeddedInCanvas?: boolean;
+		noWheel?: boolean;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -67,8 +72,8 @@ const props = withDefaults(
 		inputSize: 0,
 		blockUI: false,
 		activeNode: undefined,
-		canExpand: false,
-		hideConnections: false,
+		isEmbeddedInCanvas: false,
+		noWheel: false,
 	},
 );
 
@@ -84,14 +89,16 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
-	expand: [];
 }>();
+
+const slots = defineSlots<{ actions?: {} }>();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -100,8 +107,19 @@ const i18n = useI18n();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const nodeValues = nodeSettingsParameters.nodeValues;
 
+const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
+const shouldShowStaticScrollbar = ref(false);
+
+if (props.isEmbeddedInCanvas) {
+	useResizeObserver(nodeParameterWrapper, () => {
+		shouldShowStaticScrollbar.value =
+			(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+			(nodeParameterWrapper.value?.offsetHeight ?? 0);
+	});
+}
+
 const nodeValid = ref(true);
-const openPanel = ref<'params' | 'settings'>('params');
+const openPanel = ref<Tab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -123,31 +141,17 @@ const isReadOnly = computed(
 );
 const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
+const nodeType = computed(() =>
+	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+);
+
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
-const isExecutable = computed(() => {
-	if (props.nodeType && node.value) {
-		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
-		const inputs = NodeHelpers.getNodeInputs(
-			currentWorkflowInstance.value,
-			workflowNode!,
-			props.nodeType,
-		);
-		const inputNames = NodeHelpers.getConnectionTypes(inputs);
-
-		if (
-			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!isToolNode.value &&
-			!isTriggerNode.value
-		) {
-			return false;
-		}
-	}
-
-	return props.executable || props.foreignCredentials.length > 0;
-});
+const isExecutable = computed(() =>
+	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
+);
 
 const nodeTypeVersions = computed(() => {
 	if (!node.value) return [];
@@ -175,7 +179,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!props.nodeType || props.nodeType.hidden) {
+	if (!nodeType.value || nodeType.value.hidden) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -189,24 +193,26 @@ const nodeVersionTag = computed(() => {
 });
 
 const parameters = computed(() => {
-	if (props.nodeType === null) {
+	if (nodeType.value === null) {
 		return [];
 	}
 
-	return props.nodeType?.properties ?? [];
+	return nodeType.value?.properties ?? [];
 });
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
-const parametersNoneSetting = computed(() =>
+const parametersNoneSetting = computed(() => {
 	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	parameters.value.filter((item) => !item.isNodeSetting),
-);
+	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
+
+	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
+});
 
 const isDisplayingCredentials = computed(
 	() =>
 		credentialsStore
-			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.getCredentialTypesNodeDescriptions('', nodeType.value)
 			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
 		0,
 );
@@ -237,6 +243,20 @@ const credentialOwnerName = computed(() => {
 		: undefined;
 
 	return credentialsStore.getCredentialOwnerName(credential);
+});
+
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
+
+const featureRequestUrl = computed(() => {
+	if (!nodeType.value) {
+		return '';
+	}
+	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
@@ -279,19 +299,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		};
 		emit('valueChanged', sendData);
 	} else if (parameterData.name === 'parameters') {
-		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
-		if (!nodeType) {
+		const _nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
+		if (!_nodeType) {
 			return;
 		}
 
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			_node.parameters,
 			false,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -308,7 +328,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					parameterName,
 					newValue,
 					nodeParameters,
-					nodeType,
+					_nodeType,
 					_node.typeVersion,
 				);
 
@@ -324,12 +344,12 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters
 		nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			nodeParameters as INodeParameters,
 			true,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -568,7 +588,7 @@ const setNodeValues = () => {
 		return;
 	}
 
-	if (props.nodeType !== null) {
+	if (nodeType.value !== null) {
 		nodeValid.value = true;
 
 		const foundNodeSettings = [];
@@ -698,8 +718,21 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: 'params' | 'settings') => {
+const onTabSelect = (tab: Tab) => {
 	openPanel.value = tab;
+};
+
+const onFeatureRequestClick = () => {
+	window.open(featureRequestUrl.value, '_blank');
+	if (node.value) {
+		telemetry.track('User clicked ndv link', {
+			node_type: node.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: props.pushRef,
+			pane: NodeConnectionTypes.Main,
+			type: 'i-wish-this-node-would',
+		});
+	}
 };
 
 watch(node, () => {
@@ -712,7 +745,7 @@ onMounted(() => {
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
-		nodeHelpers.updateNodeParameterIssues(node.value, props.nodeType);
+		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
@@ -735,6 +768,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
+
+function handleWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -742,10 +781,11 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		:class="{
 			'node-settings': true,
 			dragging: dragging,
+			embedded: props.isEmbeddedInCanvas,
 		}"
 		@keydown.stop
 	>
-		<div :class="$style.header">
+		<div v-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -754,8 +794,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:node-type="nodeType"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable || props.canExpand" :class="$style.headerActions">
+				/>
+				<template v-if="isExecutable || slots.actions">
 					<NodeExecuteButton
 						v-if="isExecutable && !blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
@@ -768,17 +808,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 						@stop-execution="onStopExecution"
 						@value-changed="valueChanged"
 					/>
-					<N8nIconButton
-						v-if="props.canExpand"
-						icon="expand"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Expand"
-						@click="emit('expand')"
-					/>
-				</div>
+					<slot name="actions" />
+				</template>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -788,9 +819,24 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				@update:model-value="onTabSelect"
 			/>
 		</div>
+		<NodeSettingsHeader
+			v-else-if="node"
+			:selected-tab="openPanel"
+			:node-name="node.name"
+			:node-type="nodeType"
+			:execute-button-tooltip="executeButtonTooltip"
+			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
+			:hide-tabs="!nodeValid"
+			:push-ref="pushRef"
+			@execute="onNodeExecute"
+			@stop-execution="onStopExecution"
+			@value-changed="valueChanged"
+			@tab-changed="onTabSelect"
+		/>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
-				<font-awesome-icon icon="exclamation-triangle" />
+				<n8n-icon icon="triangle-alert" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>
@@ -830,7 +876,18 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				</template>
 			</i18n-t>
 		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
+		<div
+			v-if="node && nodeValid"
+			ref="nodeParameterWrapper"
+			:class="[
+				'node-parameters-wrapper',
+				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
+				{ 'ndv-v2': isNDVV2 },
+			]"
+			data-test-id="node-parameters"
+			@wheel="noWheel ? handleWheelEvent : undefined"
+		>
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -851,11 +908,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
+					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
+						v-if="!isEmbeddedInCanvas"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -918,9 +977,15 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
+			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
+				<a target="_blank" @click="onFeatureRequestClick">
+					<N8nIcon icon="lightbulb" />
+					{{ i18n.baseText('ndv.featureRequest') }}
+				</a>
+			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.hideConnections"
+			v-if="node && !props.isEmbeddedInCanvas"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -935,12 +1000,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 	background-color: var(--color-background-base);
 }
 
-.headerActions {
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
-}
-
 .warningIcon {
 	color: var(--color-text-lighter);
 	font-size: var(--font-size-2xl);
@@ -949,6 +1008,22 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
+}
+
+.featureRequest {
+	margin-top: auto;
+	align-self: center;
+
+	a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+		margin-top: var(--spacing-xl);
+
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-light);
+	}
 }
 </style>
 
@@ -976,6 +1051,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		}
 	}
 
+	&.embedded .header-side-menu {
+		padding: var(--spacing-xs);
+	}
+
 	.node-is-not-valid {
 		height: 75%;
 		padding: 10px;
@@ -988,9 +1067,37 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 	}
 
 	.node-parameters-wrapper {
+		display: flex;
+		flex-direction: column;
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+
+		&.ndv-v2 {
+			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+		}
+	}
+
+	&.embedded .node-parameters-wrapper {
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+	}
+
+	&.embedded .node-parameters-wrapper.with-static-scrollbar {
+		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-2xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid white;
+			}
+		}
 	}
 
 	&.dragging {

@@ -69,7 +69,6 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -181,7 +180,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -263,7 +262,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -614,7 +612,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                     data-test-id="replace-code-button"
                     disabled="false"
                     element="button"
-                    icon="refresh"
+                    icon="refresh-cw"
                     label=""
                     loading="false"
                     outline="false"
@@ -918,7 +916,7 @@ Testing more code
                     data-test-id="replace-code-button"
                     disabled="false"
                     element="button"
-                    icon="refresh"
+                    icon="refresh-cw"
                     label=""
                     loading="false"
                     outline="false"
@@ -999,7 +997,7 @@ Testing more code
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -1081,7 +1079,6 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -1186,7 +1183,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -1268,7 +1265,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -1457,7 +1453,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -1539,7 +1535,6 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -1615,7 +1610,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 >
                   <n8n-icon-stub
                     class="errorIcon"
-                    icon="exclamation-triangle"
+                    icon="triangle-alert"
                     size="small"
                     spin="false"
                   />
@@ -1663,7 +1658,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -1745,7 +1740,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -1927,7 +1921,7 @@ catch(e) {
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"
@@ -2009,7 +2003,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
-          size="medium"
           spin="false"
         />
       </div>
@@ -2124,7 +2117,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        icon="send"
         loading="false"
         outline="false"
         size="large"

@@ -78,7 +78,7 @@ const plugins = [
 					return { name: componentName, from: '@n8n/design-system' };
 			},
 			iconsResolver({
-				prefix: 'icon',
+				prefix: 'Icon',
 			}),
 		],
 	}),
@@ -131,7 +131,7 @@ export default mergeConfig(
 		plugins,
 		resolve: { alias },
 		base: publicPath,
-		envPrefix: 'VUE_APP',
+		envPrefix: 'VUE',
 		css: {
 			preprocessorOptions: {
 				scss: {
