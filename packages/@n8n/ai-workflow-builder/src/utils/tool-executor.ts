@@ -1,4 +1,5 @@
-import { BaseMessage, isAIMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { isAIMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 

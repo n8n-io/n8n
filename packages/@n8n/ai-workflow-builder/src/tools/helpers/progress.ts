@@ -1,5 +1,5 @@
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
-import { ZodIssue } from 'zod';
+import type { ZodIssue } from 'zod';
 
 export type ProgressUpdateType = 'input' | 'output' | 'progress' | 'error';
 
@@ -52,7 +52,7 @@ export function createProgressReporter<TToolName extends string = string>(
 		config.writer?.(message);
 	};
 
-	const start = <T extends Record<string, unknown>>(input: T): void => {
+	const start = <T>(input: T): void => {
 		emit({
 			type: 'tool',
 			toolName,
@@ -61,7 +61,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			updates: [
 				{
 					type: 'input',
-					data: input,
+					data: input as Record<string, unknown>,
 				},
 			],
 		});
@@ -76,13 +76,13 @@ export function createProgressReporter<TToolName extends string = string>(
 			updates: [
 				{
 					type: 'progress',
-					data: data ?? message,
+					data: data ?? { message },
 				},
 			],
 		});
 	};
 
-	const complete = <T extends Record<string, unknown>>(output: T): void => {
+	const complete = <T>(output: T): void => {
 		emit({
 			type: 'tool',
 			toolName,
@@ -91,7 +91,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			updates: [
 				{
 					type: 'output',
-					data: output,
+					data: output as Record<string, unknown>,
 				},
 			],
 		});
