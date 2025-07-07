@@ -913,6 +913,8 @@ describe('GoogleGemini Node', () => {
 						};
 					case 'options.binaryPropertyOutput':
 						return 'data';
+					case 'returnAs':
+						return 'video';
 					default:
 						return undefined;
 				}
