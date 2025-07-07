@@ -178,7 +178,10 @@ export class Telemetry {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	identify(traits?: { [key: string]: string | number | boolean | object | undefined | null }) {
+	identify(
+		traits?: { [key: string]: string | number | boolean | object | undefined | null },
+		feInstanceId?: string,
+	) {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -186,7 +189,7 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 
 		this.rudderStack.identify({
-			userId: instanceId,
+			userId: feInstanceId ?? instanceId,
 			traits: { ...traits, instanceId },
 			context: {
 				// provide a fake IP address to instruct RudderStack to not use the user's IP address
@@ -220,6 +223,25 @@ export class Telemetry {
 			// provide a fake IP address to instruct RudderStack to not use the user's IP address
 			context: { ...payload.context, ip: '0.0.0.0' },
 		});
+	}
+
+	//page is more complex because the FE sdk captures a bunch of data about the browser
+	page(category: string, pageName: string, properties: Record<string, unknown> = {}) {
+		if (!this.rudderStack) {
+			return;
+		}
+
+		const payload = {
+			category,
+			pageName,
+			properties,
+
+			context: {
+				ip: '0.0.0.0',
+			},
+		};
+
+		// this.rudderStack.page(payload);
 	}
 
 	// test helpers
