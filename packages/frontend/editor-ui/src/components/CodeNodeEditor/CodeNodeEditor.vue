@@ -84,7 +84,7 @@ const { highlightLine, readEditorValue, editor } = useCodeEditor({
 		rows: props.rows,
 	},
 	onChange: onEditorUpdate,
-	targetNodeParameterContext: props.targetNodeParameterContext,
+	targetNodeParameterContext: () => props.targetNodeParameterContext,
 });
 
 onMounted(() => {
