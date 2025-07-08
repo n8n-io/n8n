@@ -19,7 +19,7 @@ export class AgentToolV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2.2],
 			defaults: {
 				name: 'AI Agent Tool',
 				color: '#404040',
