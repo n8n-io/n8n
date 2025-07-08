@@ -19,10 +19,10 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
-import { useNodeTypesStore } from './nodeTypes.store';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useAiMessages } from '@/composables/useAiMessages';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -44,8 +44,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
-	const nodeTypesStore = useNodeTypesStore();
 	const assistantHelpers = useAIAssistantHelpers();
+	const aiMessages = useAiMessages();
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
@@ -109,7 +109,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function clearMessages() {
-		chatMessages.value = [];
+		chatMessages.value = aiMessages.clearMessages();
 	}
 
 	function updateWindowWidth(width: number) {
@@ -118,183 +118,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Message handling functions
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		const read = true; // Always mark as read in builder
-		const messages = [...chatMessages.value];
+		const result = aiMessages.processAssistantMessages(chatMessages.value, newMessages, id);
 
-		// Clear thinking message when we get any response (text or tool)
-		const hasResponse = newMessages.some((msg) => msg.type === 'message' || msg.type === 'tool');
-		if (hasResponse) {
+		chatMessages.value = result.messages;
+
+		if (result.shouldClearThinking) {
 			assistantThinkingMessage.value = undefined;
 		}
 
-		newMessages.forEach((msg) => {
-			if (msg.type === 'message') {
-				messages.push({
-					id,
-					type: 'text',
-					role: 'assistant',
-					content: msg.text,
-					quickReplies: msg.quickReplies,
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'workflow-step' && 'steps' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-step',
-					role: 'assistant',
-					steps: msg.steps,
-					read,
-				});
-			} else if (msg.type === 'prompt-validation' && !msg.isWorkflowPrompt) {
-				messages.push({
-					id,
-					role: 'assistant',
-					type: 'error',
-					content: locale.baseText('aiAssistant.builder.invalidPrompt'),
-					read: true,
-				});
-			} else if (msg.type === 'workflow-node' && 'nodes' in msg) {
-				const mappedNodes = msg.nodes.map(
-					(node) => nodeTypesStore.getNodeType(node)?.displayName ?? node,
-				);
-				messages.push({
-					id,
-					type: 'workflow-node',
-					role: 'assistant',
-					nodes: mappedNodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-composed' && 'nodes' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-composed',
-					role: 'assistant',
-					nodes: msg.nodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-generated' && 'codeSnippet' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-generated',
-					role: 'assistant',
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'workflow-updated' && 'codeSnippet' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-updated',
-					role: 'assistant',
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'rate-workflow') {
-				messages.push({
-					id,
-					type: 'rate-workflow',
-					role: 'assistant',
-					content: msg.content,
-					read,
-				});
-			} else if (msg.type === 'tool' && 'toolName' in msg) {
-				console.log(
-					'Processing tool message:',
-					msg.toolName,
-					'status:',
-					msg.status,
-					'toolCallId:',
-					msg.toolCallId,
-				);
+		if (result.thinkingMessage) {
+			assistantThinkingMessage.value = result.thinkingMessage;
+		}
 
-				if (msg.status === 'running') {
-					// Check if this is a progress update for an existing running tool
-					const existingRunningToolIndex = messages.findIndex(
-						(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
-					);
-
-					if (existingRunningToolIndex > -1) {
-						// This is a progress update - append updates to existing message
-						console.log('Updating existing running tool with progress');
-						const existingMessage = messages[existingRunningToolIndex] as ChatUI.ToolMessage;
-						messages[existingRunningToolIndex] = {
-							...existingMessage,
-							updates: [...existingMessage.updates, ...msg.updates],
-						} as ChatUI.AssistantMessage;
-					} else {
-						// This is a new tool execution
-						console.log('Adding new running tool message');
-						messages.push({
-							id,
-							type: 'tool',
-							role: 'assistant',
-							toolName: msg.toolName,
-							toolCallId: msg.toolCallId,
-							status: msg.status,
-							updates: msg.updates,
-							read,
-						});
-					}
-				} else {
-					// For completed/error status, find and update the matching running message
-					const existingToolMessageIndex = messages.findIndex(
-						(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
-					);
-
-					console.log('Found existing tool at index:', existingToolMessageIndex);
-
-					if (existingToolMessageIndex > -1) {
-						// Update existing running tool message with completion or error
-						console.log('Updating existing tool message to status:', msg.status);
-						const existingMessage = messages[existingToolMessageIndex] as ChatUI.ToolMessage;
-						messages[existingToolMessageIndex] = {
-							...existingMessage,
-							status: msg.status,
-							updates: [...existingMessage.updates, ...msg.updates],
-						} as ChatUI.AssistantMessage;
-					} else {
-						// If no matching running message found, add as new (shouldn't happen normally)
-						console.warn('No matching running tool message found for completion, adding as new');
-						messages.push({
-							id,
-							type: 'tool',
-							role: 'assistant',
-							toolName: msg.toolName,
-							toolCallId: msg.toolCallId,
-							status: msg.status,
-							updates: msg.updates,
-							read,
-						});
-					}
-
-					// Check if all tools are completed and show processing message
-					if (msg.status === 'completed') {
-						const hasRunningTools = messages.some(
-							(m) => m.type === 'tool' && m.status === 'running',
-						);
-						if (!hasRunningTools) {
-							// All tools completed, show processing results message
-							assistantThinkingMessage.value = locale.baseText(
-								'aiAssistant.thinkingSteps.processingResults',
-							);
-						}
-					}
-				}
-			}
-		});
-		console.log('🚀 ~ addAssistantMessages ~ messages:', messages);
-		chatMessages.value = messages;
+		console.log('🚀 ~ addAssistantMessages ~ messages:', result.messages);
 	}
 
 	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'error',
-			content,
-			read: true,
-			retry,
-		});
+		const errorMessage = aiMessages.createErrorMessage(content, id, retry);
+		chatMessages.value = aiMessages.addMessages(chatMessages.value, [errorMessage]);
 	}
 
 	function addLoadingAssistantMessage(message: string) {
@@ -302,13 +143,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function addUserMessage(content: string, id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'user',
-			type: 'text',
-			content,
-			read: true,
-		});
+		const userMessage = aiMessages.createUserMessage(content, id);
+		chatMessages.value = aiMessages.addMessages(chatMessages.value, [userMessage]);
 	}
 
 	function stopStreaming() {
@@ -318,6 +154,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Error handling
 	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
+		console.log(e);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(

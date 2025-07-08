@@ -1,5 +1,6 @@
 export namespace ChatUI {
 	export interface TextMessage {
+		id?: string;
 		role: 'assistant' | 'user';
 		type: 'text';
 		content: string;
@@ -66,6 +67,7 @@ export namespace ChatUI {
 	}
 
 	export interface ErrorMessage {
+		id?: string;
 		role: 'assistant';
 		type: 'error';
 		content: string;
@@ -155,7 +157,7 @@ export namespace ChatUI {
 		| WorkflowUpdatedMessage
 		| ToolMessage
 	) & {
-		id: string;
-		read: boolean;
+		id?: string;
+		read?: boolean;
 	};
 }

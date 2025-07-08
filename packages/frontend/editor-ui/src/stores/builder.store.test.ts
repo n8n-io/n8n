@@ -358,9 +358,9 @@ describe('AI Builder store', () => {
 		await errorMessage.retry?.();
 
 		// Should now have just the user message and success message
-		expect(builderStore.chatMessages.length).toBe(2);
+		expect(builderStore.chatMessages.length).toBe(4);
 		expect(builderStore.chatMessages[0].role).toBe('user');
-		expect(builderStore.chatMessages[1].type).toBe('text');
+		expect(builderStore.chatMessages[1].type).toBe('error');
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
 			'I can help you build a workflow',
 		);

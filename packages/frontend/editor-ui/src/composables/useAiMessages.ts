@@ -1,0 +1,357 @@
+import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { useI18n } from '@n8n/i18n';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+/**
+ * Composable for handling AI chat messages with pure functions
+ */
+export function useAiMessages() {
+	const i18n = useI18n();
+
+	/**
+	 * Process a single text message
+	 */
+	function processTextMessage(msg: ChatRequest.TextMessage, id: string): ChatUI.TextMessage {
+		return {
+			id,
+			type: 'text',
+			role: 'assistant',
+			content: msg.text,
+			quickReplies: msg.quickReplies,
+			codeSnippet: msg.codeSnippet,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process a workflow step message
+	 */
+	function processWorkflowStepMessage(
+		msg: ChatRequest.WorkflowStepMessage,
+		id: string,
+	): ChatUI.WorkflowStepMessage {
+		return {
+			id,
+			type: 'workflow-step',
+			role: 'assistant',
+			steps: msg.steps,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process a prompt validation error
+	 */
+	function processPromptValidationError(id: string): ChatUI.ErrorMessage {
+		return {
+			id,
+			role: 'assistant',
+			type: 'error',
+			content: i18n.baseText('aiAssistant.builder.invalidPrompt'),
+			read: true,
+		};
+	}
+
+	/**
+	 * Process a workflow node message
+	 */
+	function processWorkflowNodeMessage(
+		msg: ChatRequest.WorkflowNodeMessage,
+		id: string,
+		nodeGetter?: (nodeType: string) => INodeTypeDescription,
+	): ChatUI.WorkflowNodeMessage {
+		const mappedNodes = msg.nodes.map((node) => nodeGetter?.(node)?.displayName ?? node);
+		return {
+			id,
+			type: 'workflow-node',
+			role: 'assistant',
+			nodes: mappedNodes,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process workflow composed/generated/updated messages
+	 */
+	function processWorkflowCodeMessage(
+		msg:
+			| ChatRequest.WorkflowComposedMessage
+			| ChatRequest.WorkflowGeneratedMessage
+			| ChatRequest.WorkflowUpdatedMessage,
+		id: string,
+	):
+		| ChatUI.WorkflowComposedMessage
+		| ChatUI.WorkflowGeneratedMessage
+		| ChatUI.WorkflowUpdatedMessage {
+		if (msg.type === 'workflow-composed') {
+			return {
+				id,
+				type: 'workflow-composed',
+				role: 'assistant',
+				nodes: msg.nodes,
+				read: true,
+			};
+		}
+		return {
+			id,
+			type: msg.type,
+			role: 'assistant',
+			codeSnippet: msg.codeSnippet,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process a rate workflow message
+	 */
+	function processRateWorkflowMessage(
+		msg: ChatRequest.RateWorkflowMessage,
+		id: string,
+	): ChatUI.RateWorkflowMessage {
+		return {
+			id,
+			type: 'rate-workflow',
+			role: 'assistant',
+			content: msg.content,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process a tool message
+	 */
+	function processToolMessage(
+		msg: ChatRequest.ToolMessage,
+		id: string,
+		messages: ChatUI.AssistantMessage[],
+	): {
+		updatedMessages: ChatUI.AssistantMessage[];
+		checkForProcessingMessage: boolean;
+	} {
+		const updatedMessages = [...messages];
+		let checkForProcessingMessage = false;
+
+		if (msg.status === 'running') {
+			// Check if this is a progress update for an existing running tool
+			const existingIndex = updatedMessages.findIndex(
+				(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+			);
+
+			if (existingIndex > -1) {
+				// Update existing running tool message
+				const existingMessage = updatedMessages[existingIndex] as ChatUI.ToolMessage;
+				updatedMessages[existingIndex] = {
+					...existingMessage,
+					updates: [...existingMessage.updates, ...msg.updates],
+				} as ChatUI.AssistantMessage;
+			} else {
+				// Add new running tool message
+				updatedMessages.push({
+					id,
+					type: 'tool',
+					role: 'assistant',
+					toolName: msg.toolName,
+					toolCallId: msg.toolCallId,
+					status: msg.status,
+					updates: msg.updates,
+					read: true,
+				});
+			}
+		} else {
+			// Handle completed/error status
+			const existingIndex = updatedMessages.findIndex(
+				(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+			);
+
+			if (existingIndex > -1) {
+				// Update existing running tool message
+				const existingMessage = updatedMessages[existingIndex] as ChatUI.ToolMessage;
+				updatedMessages[existingIndex] = {
+					...existingMessage,
+					status: msg.status,
+					updates: [...existingMessage.updates, ...msg.updates],
+				} as ChatUI.AssistantMessage;
+			} else {
+				// Add new completed/error tool message (shouldn't happen normally)
+				updatedMessages.push({
+					id,
+					type: 'tool',
+					role: 'assistant',
+					toolName: msg.toolName,
+					toolCallId: msg.toolCallId,
+					status: msg.status,
+					updates: msg.updates,
+					read: true,
+				});
+			}
+
+			// Check if we should show processing message
+			checkForProcessingMessage = msg.status === 'completed';
+		}
+
+		return { updatedMessages, checkForProcessingMessage };
+	}
+
+	/**
+	 * Process assistant messages and return a new array with the processed messages
+	 */
+	function processAssistantMessages(
+		currentMessages: ChatUI.AssistantMessage[],
+		newMessages: ChatRequest.MessageResponse[],
+		id: string,
+		nodeGetter?: (nodeType: string) => INodeTypeDescription,
+	): {
+		messages: ChatUI.AssistantMessage[];
+		shouldClearThinking: boolean;
+		thinkingMessage?: string;
+	} {
+		let messages = [...currentMessages];
+		let shouldClearThinking = false;
+		let thinkingMessage: string | undefined;
+
+		// Clear thinking message when we get any response (text or tool)
+		const hasResponse = newMessages.some((msg) => isTextMessage(msg) || isToolMessage(msg));
+		if (hasResponse) {
+			shouldClearThinking = true;
+		}
+
+		newMessages.forEach((msg) => {
+			if (isTextMessage(msg)) {
+				messages.push(processTextMessage(msg, id));
+			} else if (isSummaryMessage(msg)) {
+				// Handle summary message type from API (maps to SummaryBlock in UI)
+				messages.push({
+					id,
+					type: 'block',
+					role: 'assistant',
+					title: msg.title,
+					content: msg.content,
+					read: true,
+				});
+			} else if (isAgentSuggestionMessage(msg)) {
+				// Handle agent suggestion message
+				messages.push({
+					id,
+					type: 'agent-suggestion',
+					role: 'assistant',
+					title: msg.title,
+					content: msg.text,
+					text: msg.text,
+					suggestionId: msg.suggestionId,
+					read: true,
+				});
+			} else if (isAgentThinkingMessage(msg)) {
+				// Handle agent thinking step
+				messages.push({
+					id,
+					type: 'intermediate-step',
+					role: 'assistant',
+					text: msg.text,
+					step: msg.step,
+					read: true,
+				});
+			} else if (isCodeDiffMessage(msg)) {
+				// Handle code diff message
+				messages.push({
+					id,
+					type: 'code-diff',
+					role: 'assistant',
+					description: msg.description,
+					codeDiff: msg.codeDiff,
+					suggestionId: msg.suggestionId,
+					solution_count: msg.solution_count,
+					quickReplies: msg.quickReplies,
+					read: true,
+				});
+			} else if (isWorkflowStepMessage(msg)) {
+				messages.push(processWorkflowStepMessage(msg, id));
+			} else if (isPromptValidationMessage(msg) && !msg.isWorkflowPrompt) {
+				messages.push(processPromptValidationError(id));
+			} else if (isWorkflowNodeMessage(msg)) {
+				messages.push(processWorkflowNodeMessage(msg, id, nodeGetter));
+			} else if (isWorkflowComposedMessage(msg)) {
+				messages.push(processWorkflowComposedMessage(msg, id));
+			} else if (isWorkflowGeneratedMessage(msg)) {
+				messages.push(processWorkflowCodeMessage(msg, id));
+			} else if (isWorkflowUpdatedMessage(msg)) {
+				messages.push(processWorkflowCodeMessage(msg, id));
+			} else if (isRateWorkflowMessage(msg)) {
+				messages.push(processRateWorkflowMessage(msg, id));
+			} else if (isToolMessage(msg)) {
+				const { updatedMessages, checkForProcessingMessage } = processToolMessage(
+					msg,
+					id,
+					messages,
+				);
+				messages = updatedMessages;
+
+				// Check if all tools are completed and show processing message
+				if (checkForProcessingMessage) {
+					const hasRunningTools = messages.some((m) => m.type === 'tool' && m.status === 'running');
+					if (!hasRunningTools) {
+						thinkingMessage = i18n.baseText('aiAssistant.thinkingSteps.processingResults');
+					}
+				}
+			}
+		});
+
+		return { messages, shouldClearThinking, thinkingMessage };
+	}
+
+	/**
+	 * Create a user message
+	 */
+	function createUserMessage(content: string, id: string): ChatUI.TextMessage {
+		return {
+			id,
+			role: 'user',
+			type: 'text',
+			content,
+			// read: true,
+		};
+	}
+
+	/**
+	 * Create an error message
+	 */
+	function createErrorMessage(
+		content: string,
+		id: string,
+		retry?: () => Promise<void>,
+	): ChatUI.ErrorMessage {
+		return {
+			id,
+			role: 'assistant',
+			type: 'error',
+			content,
+			// read: true,
+			retry,
+		};
+	}
+
+	/**
+	 * Add messages to an array (pure function)
+	 */
+	function addMessages(
+		currentMessages: ChatUI.AssistantMessage[],
+		newMessages: ChatUI.AssistantMessage[],
+	): ChatUI.AssistantMessage[] {
+		return [...currentMessages, ...newMessages];
+	}
+
+	/**
+	 * Clear all messages (pure function)
+	 */
+	function clearMessages(): ChatUI.AssistantMessage[] {
+		return [];
+	}
+
+	return {
+		processAssistantMessages,
+		createUserMessage,
+		createErrorMessage,
+		addMessages,
+		clearMessages,
+	};
+}

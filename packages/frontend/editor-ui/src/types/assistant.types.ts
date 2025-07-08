@@ -10,6 +10,7 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
+import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -134,118 +135,57 @@ export namespace ChatRequest {
 				sessionId: string;
 		  };
 
-	interface CodeDiffMessage {
-		role: 'assistant';
-		type: 'code-diff';
-		description?: string;
-		codeDiff?: string;
-		suggestionId: string;
-		solution_count: number;
-	}
+	// Re-export types from design-system for backward compatibility
+	export type CodeDiffMessage = ChatUI.CodeDiffMessage;
+	export type QuickReplyOption = ChatUI.QuickReply;
+	export type EndSessionMessage = ChatUI.EndSessionMessage;
+	export type AgentThinkingStep = ChatUI.AgentThinkingMessage;
+	export type WorkflowStepMessage = ChatUI.WorkflowStepMessage;
+	export type WorkflowNodeMessage = ChatUI.WorkflowNodeMessage;
+	export type WorkflowComposedMessage = ChatUI.WorkflowComposedMessage;
+	export type WorkflowGeneratedMessage = ChatUI.WorkflowGeneratedMessage;
+	export type WorkflowUpdatedMessage = ChatUI.WorkflowUpdatedMessage;
+	export type RateWorkflowMessage = ChatUI.RateWorkflowMessage;
+	export type ToolMessage = ChatUI.ToolMessage;
 
-	interface QuickReplyOption {
-		text: string;
-		type: string;
-		isFeedback?: boolean;
-	}
-
-	interface AssistantChatMessage {
+	// API-specific types that extend UI types
+	export interface TextMessage {
 		role: 'assistant';
-		type: 'message';
+		type: 'message'; // API uses 'message' instead of 'text'
 		text: string;
 		step?: 'n8n_documentation' | 'n8n_forum';
 		codeSnippet?: string;
+		quickReplies?: QuickReplyOption[];
 	}
 
-	interface AssistantSummaryMessage {
+	export interface SummaryMessage {
 		role: 'assistant';
-		type: 'summary';
+		type: 'summary'; // API uses 'summary' instead of 'block'
 		title: string;
 		content: string;
 	}
 
-	interface EndSessionMessage {
-		role: 'assistant';
-		type: 'event';
-		eventName: 'end-session';
-	}
-
-	interface AgentChatMessage {
+	export interface AgentSuggestionMessage {
 		role: 'assistant';
 		type: 'agent-suggestion';
 		title: string;
-		text: string;
+		text: string; // API uses text instead of content
+		suggestionId?: string;
 	}
 
-	interface AgentThinkingStep {
-		role: 'assistant';
-		type: 'intermediate-step';
-		text: string;
-		step: string;
-	}
-
-	interface WorkflowStepMessage {
-		role: 'assistant';
-		type: 'workflow-step';
-		steps: string[];
-	}
-
-	interface WorkflowNodeMessage {
-		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	interface WorkflowPromptValidationMessage {
+	// API-only types
+	export interface WorkflowPromptValidationMessage {
 		role: 'assistant';
 		type: 'prompt-validation';
 		isWorkflowPrompt: boolean;
 	}
-	interface WorkflowComposedMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-	interface WorkflowGeneratedMessage {
-		role: 'assistant';
-		type: 'workflow-generated';
-		codeSnippet: string;
-	}
-	interface WorkflowUpdatedMessage {
-		role: 'assistant';
-		type: 'workflow-updated';
-		codeSnippet: string;
-	}
-	interface RateWorkflowMessage {
-		role: 'assistant';
-		type: 'rate-workflow';
-		content: string;
-	}
-
-	interface ToolMessage {
-		role: 'assistant';
-		type: 'tool';
-		toolName: string;
-		toolCallId?: string;
-		status: 'running' | 'completed' | 'error';
-		updates: Array<{
-			type: 'input' | 'output' | 'progress' | 'error';
-			data: Record<string, unknown>;
-			timestamp?: string;
-		}>;
-	}
 
 	export type MessageResponse =
 		| ((
-				| AssistantChatMessage
+				| TextMessage
 				| CodeDiffMessage
-				| AssistantSummaryMessage
-				| AgentChatMessage
+				| SummaryMessage
+				| AgentSuggestionMessage
 				| AgentThinkingStep
 				| WorkflowStepMessage
 				| WorkflowNodeMessage

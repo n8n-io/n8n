@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, onBeforeUnmount } from 'vue';
+import { computed, watch, ref } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -11,7 +11,6 @@ import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import { canvasEventBus } from '@/event-bus/canvas';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 const emit = defineEmits<{
@@ -153,7 +152,6 @@ function onUpdateWorkflow(code: string) {
 		});
 	}
 
-	console.log('🚀 ~ onUpdateWorkflow ~ workflowData with restored positions:', workflowData);
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: workflowData,
 		tidyUp: false,
@@ -203,8 +201,7 @@ watch(
 
 		const workflowUpdatedMessage = messages.findLast((msg) => msg.type === 'workflow-updated');
 		if (
-			workflowUpdatedMessage &&
-			workflowUpdatedMessage.id &&
+			workflowUpdatedMessage?.id &&
 			!processedWorkflowUpdates.value.has(workflowUpdatedMessage.id)
 		) {
 			console.log('Processing new workflow update:', workflowUpdatedMessage.id);
@@ -218,16 +215,6 @@ watch(
 
 watch(currentRoute, () => {
 	onNewWorkflow();
-});
-
-const unsubscribe = builderStore.$onAction(({ name }) => {
-	if (name === 'initBuilderChat') {
-		onNewWorkflow();
-	}
-});
-
-onBeforeUnmount(() => {
-	unsubscribe();
 });
 </script>
 
