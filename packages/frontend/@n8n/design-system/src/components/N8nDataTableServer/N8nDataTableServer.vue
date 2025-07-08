@@ -350,7 +350,7 @@ const table = useVueTable({
 			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
 
 		// prevent duplicate events from being fired
-		emitUpdateOptions({
+		void emitUpdateOptions({
 			page: newValue.pageIndex,
 			itemsPerPage: newValue.pageSize,
 			sortBy: sortBy.value,
