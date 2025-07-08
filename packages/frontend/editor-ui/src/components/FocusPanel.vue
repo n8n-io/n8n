@@ -202,7 +202,7 @@ function optionSelected(command: string) {
 	}
 }
 
-const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 </script>
 
 <template>
@@ -379,7 +379,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 		.tabHeaderText {
 			display: flex;
 			gap: var(--spacing-4xs);
-			align-items: center;
+			align-items: baseline;
 		}
 
 		.buttonWrapper {
