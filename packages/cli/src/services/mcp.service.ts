@@ -37,57 +37,35 @@ export class McpService {
 					projectId: z.string().optional(),
 				},
 			},
-			async ({ limit = 100, active, name, projectId }) => {
+			async ({ limit = 500, active, name, projectId }) => {
 				const where: FindOptionsWhere<WorkflowEntity> = {
 					...(active !== undefined && { active }),
 					...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 				};
 
-				if (['global:owner', 'global:admin'].includes(user.role)) {
-					if (projectId) {
-						const workflows = await this.workflowFinderService.findAllWorkflowsForUser(user, [
-							'workflow:read',
-						]);
+				let workflows = await this.workflowFinderService.findAllWorkflowsForUser(user, [
+					'workflow:read',
+				]);
 
-						const workflowIds = workflows
-							.filter((workflow) => workflow.projectId === projectId)
-							.map((workflow) => workflow.id);
-
-						where.id = In(workflowIds);
-					}
-				} else {
-					const options: { workflowIds?: string[] } = {};
-
-					let workflows = await this.workflowFinderService.findAllWorkflowsForUser(user, [
-						'workflow:read',
-					]);
-
-					if (options.workflowIds) {
-						const workflowIds = options.workflowIds;
-						workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
-					}
-
-					if (projectId) {
-						workflows = workflows.filter((w) => w.projectId === projectId);
-					}
-
-					if (!workflows.length) {
-						return {
-							content: [{ type: 'text', text: JSON.stringify({ data: [], count: 0 }) }],
-						};
-					}
-
-					const workflowsIds = workflows.map((wf) => wf.id);
-					where.id = In(workflowsIds);
+				if (projectId) {
+					workflows = workflows.filter((w) => w.projectId === projectId);
 				}
 
-				const [workflows] = await Container.get(WorkflowRepository).findAndCount({
+				if (!workflows.length) {
+					return {
+						content: [{ type: 'text', text: JSON.stringify({ data: [], count: 0 }) }],
+					};
+				}
+
+				const workflowIds = workflows.map((wf) => wf.id);
+				where.id = In(workflowIds);
+
+				const [filteredWorkflows] = await Container.get(WorkflowRepository).findAndCount({
 					take: limit,
 					where,
 				});
 
-				// TODO: Filter needs to be in where clause
-				const data = workflows
+				const data = filteredWorkflows
 					.filter((w) => w.settings?.availableInMCP)
 					.map(({ id, name, active, createdAt, updatedAt, triggerCount, nodes, connections }) => ({
 						id,

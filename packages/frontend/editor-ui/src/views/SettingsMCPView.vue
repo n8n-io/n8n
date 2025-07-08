@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import type { UserAction, WorkflowResource } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,6 +9,7 @@ import { onMounted, ref } from 'vue';
 
 const i18n = useI18n();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -97,7 +99,7 @@ const fetchAvailableWorkflows = async () => {
 };
 
 onMounted(() => {
-	// Fetch available workflows when the component is mounted
+	documentTitle.set(i18n.baseText('settings.mcp.heading'));
 	fetchAvailableWorkflows();
 });
 </script>
