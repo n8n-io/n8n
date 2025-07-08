@@ -106,7 +106,18 @@ const shouldCaptureForPosthog = computed(
 	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
 );
 
-const isReadOnly = computed(() => props.isCanvasReadOnly);
+const isReadOnly = computed(
+	() =>
+		props.isCanvasReadOnly ||
+		(resolvedParameter.value && resolvedParameter.value.parameter.disabledOptions
+			? nodeSettingsParameters.shouldDisplayNodeParameter(
+					nodeSettingsParameters.nodeValues.value,
+					resolvedParameter.value.node,
+					resolvedParameter.value.parameter,
+					'disabledOptions',
+				)
+			: false),
+);
 
 // TODO: get correct value
 const isForCredential = false;
@@ -301,6 +312,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 							v-else
 							:model-value="resolvedParameter.value"
 							:class="$style.editor"
+							:readonly="isReadOnly"
 							type="textarea"
 							resize="none"
 							@update:model-value="valueChangedDebounced"
