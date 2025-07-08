@@ -9,7 +9,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { GenerateContentResponse, Content } from '../../helpers/interfaces';
+import type { GenerateContentResponse, Content, Tool } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -237,7 +237,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	const availableTools = await getConnectedTools(this, true);
-	const tools = [
+	const tools: Tool[] = [
 		{
 			functionDeclarations: availableTools.map((t) => ({
 				name: t.name,
@@ -249,10 +249,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				},
 			})),
 		},
-	] as IDataObject[];
+	];
+	if (!tools[0].functionDeclarations?.length) {
+		tools.pop();
+	}
+
 	if (options.codeExecution) {
 		tools.push({
-			code_execution: {},
+			codeExecution: {},
 		});
 	}
 

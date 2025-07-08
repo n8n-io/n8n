@@ -63,3 +63,12 @@ export interface VeoResponse {
 		};
 	};
 }
+
+export interface Tool {
+	functionDeclarations?: Array<{
+		name: string;
+		description: string;
+		parameters: IDataObject;
+	}>;
+	codeExecution?: object;
+}
