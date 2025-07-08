@@ -1030,7 +1030,7 @@ export class WorkflowDataProxy {
 			const placeholdersDataInputData =
 				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
 
-			if (Boolean(!placeholdersDataInputData)) {
+			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
 					runIndex,
 					itemIndex,
