@@ -54,6 +54,11 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusPanelActive.value = !focusPanelActive.value;
 	};
 
+	const reset = () => {
+		focusPanelActive.value = false;
+		_focusedNodeParameters.value = [];
+	};
+
 	function isRichParameter(
 		p: RichFocusedNodeParameter | FocusedNodeParameter,
 	): p is RichFocusedNodeParameter {
@@ -67,5 +72,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		isRichParameter,
 		closeFocusPanel,
 		toggleFocusPanel,
+		reset,
 	};
 });
