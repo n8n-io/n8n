@@ -15,7 +15,7 @@ import type { INodeUi } from '@/Interface';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 describe('useNodeSettingsParameters', () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
 
