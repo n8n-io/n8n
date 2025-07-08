@@ -325,7 +325,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 	flex-direction: column;
 	width: 528px;
 	border-left: 1px solid var(--color-foreground-base);
-	background: var(--color-background-base);
+	background: var(--color-foreground-light);
 	overflow-y: hidden;
 }
 
@@ -338,7 +338,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 	padding: var(--spacing-2xs);
 	justify-content: space-between;
 	border-bottom: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
+	background: var(--color-foreground-xlight);
 }
 
 .content {
