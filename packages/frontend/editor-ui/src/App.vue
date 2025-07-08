@@ -17,6 +17,7 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useZenModeStore } from '@/stores/zenMode.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
@@ -29,6 +30,7 @@ const builderStore = useBuilderStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const zenModeStore = useZenModeStore();
 
 const { setAppZIndexes } = useStyles();
 
@@ -100,16 +102,27 @@ watch(
 		:class="{
 			[$style.container]: true,
 			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+			[$style.zenMode]: zenModeStore.isZenModeActive,
 		}"
 	>
 		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
-			<div id="banners" :class="$style.banners">
+			<div
+				id="banners"
+				:class="[$style.banners, { [$style.bannersSlideUp]: zenModeStore.isZenModeActive }]"
+			>
 				<BannerStack v-if="!isDemoMode" />
 			</div>
-			<div id="header" :class="$style.header">
+			<div
+				id="header"
+				:class="[$style.header, { [$style.headerSlideUp]: zenModeStore.isZenModeActive }]"
+			>
 				<RouterView name="header" />
 			</div>
-			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+			<div
+				v-if="usersStore.currentUser"
+				id="sidebar"
+				:class="[$style.sidebar, { [$style.sidebarSlideLeft]: zenModeStore.isZenModeActive }]"
+			>
 				<RouterView name="sidebar" />
 			</div>
 			<div id="content" :class="$style.content">
@@ -158,9 +171,60 @@ watch(
 	grid-template-rows: auto auto 1fr;
 }
 
+// Focus mode styles
+.zenMode {
+	.app-grid {
+		// Keep original grid layout to prevent layout shifts
+		// grid-template-areas: 'content';
+		// grid-template-columns: 1fr;
+		// grid-template-rows: 1fr;
+	}
+
+	.header {
+		/* Header is already full width in grid, just needs to slide up */
+		z-index: var(--z-index-app-header);
+		left: 0;
+	}
+
+	.banners {
+		/* Banners are already full width in grid, just need to slide up */
+		z-index: var(--z-index-top-banners);
+	}
+
+	.sidebar {
+		position: absolute !important;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		z-index: var(--z-index-app-sidebar);
+	}
+
+	.content {
+		position: fixed !important;
+		top: 0 !important;
+		left: 0 !important;
+		width: 100vw !important;
+		height: 100vh !important;
+		overflow: hidden !important;
+		z-index: 1000;
+	}
+
+	.contentWrapper {
+		width: 100vw !important;
+		height: 100vh !important;
+		overflow: hidden !important;
+	}
+}
+
 .banners {
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
+	transition: transform 0.3s ease-in-out;
+}
+
+.bannersSlideUp {
+	transform: translateY(-100%);
+	left: 0 !important; /* Expand to full width */
 }
 .content {
 	display: flex;
@@ -201,11 +265,30 @@ watch(
 	z-index: var(--z-index-app-header);
 	min-width: 0;
 	min-height: 0;
+	transition: transform 0.15s ease-in-out;
+	/* Make header span full width by positioning it to cover the entire row */
+	position: relative;
+	left: -200px; /* Offset to account for sidebar width */
+	padding-left: 200px;
+	width: calc(100% + 200px); /* Extend width to cover sidebar area */
+}
+
+.headerSlideUp {
+	transform: translateY(-150%);
+}
+
+.bannersSlideUp {
+	transform: translateY(-100%);
 }
 
 .sidebar {
 	grid-area: sidebar;
 	z-index: var(--z-index-app-sidebar);
+	transition: transform 0.15s ease-in-out;
+}
+
+.sidebarSlideLeft {
+	transform: translateX(-100%);
 }
 
 .modals {

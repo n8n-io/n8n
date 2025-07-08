@@ -56,6 +56,7 @@ import Node from './elements/nodes/CanvasNode.vue';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
+import { useZenModeStore } from '@/stores/zenMode.store';
 
 const $style = useCssModule();
 
@@ -103,7 +104,7 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
-	'toggle:focus-panel': [];
+	'toggle-zen-mode': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
@@ -179,9 +180,12 @@ const experimentalNdvStore = useExperimentalNdvStore();
 
 const isPaneReady = ref(false);
 
+const zenModeStore = useZenModeStore();
+
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
+	zenMode: zenModeStore.isZenModeActive,
 }));
 
 /**
@@ -326,6 +330,7 @@ const keyMap = computed(() => {
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
+		z: onToggleZenMode,
 	};
 	return fullKeymap;
 });
@@ -727,6 +732,33 @@ async function onTidyUp(payload: { source: CanvasLayoutSource }) {
 	}
 }
 
+function onToggleZenMode() {
+	zenModeStore.toggleZenMode();
+	// Center on the currently selected node when entering Zen mode
+	if (zenModeStore.isZenModeActive) {
+		if (selectedNodes.value.length === 1) {
+			const targetNode = selectedNodes.value[0];
+			const newViewport = updateViewportToContainNodes(
+				viewport.value,
+				dimensions.value,
+				[targetNode],
+				200,
+			);
+			void setViewport(newViewport, { duration: 300 });
+		} else if (selectedNodes.value.length > 1) {
+			const newViewport = updateViewportToContainNodes(
+				viewport.value,
+				dimensions.value,
+				selectedNodes.value,
+				100,
+			);
+			void setViewport(newViewport, { duration: 300 });
+		} else {
+			void onFitView();
+		}
+	}
+}
+
 /**
  * Drag and drop
  */
@@ -958,6 +990,7 @@ provide(CanvasKey, {
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@toggle-zen-mode="onToggleZenMode"
 		/>
 
 		<Suspense>

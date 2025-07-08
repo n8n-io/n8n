@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import TidyUpIcon from '@/components/TidyUpIcon.vue';
+import ZenModeIcon from '@/components/ZenModeIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
+import { useZenModeStore } from '@/stores/zenMode.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -22,11 +24,14 @@ const emit = defineEmits<{
 	'zoom-out': [];
 	'zoom-to-fit': [];
 	'tidy-up': [];
+	'toggle-zen-mode': [];
 }>();
 
 const i18n = useI18n();
+const zenModeStore = useZenModeStore();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
+const isZenModeActive = computed(() => zenModeStore.isZenModeActive);
 
 function onResetZoom() {
 	emit('reset-zoom');
@@ -46,6 +51,10 @@ function onZoomToFit() {
 
 function onTidyUp() {
 	emit('tidy-up');
+}
+
+function onToggleZenMode() {
+	emit('toggle-zen-mode');
 }
 </script>
 <template>
@@ -109,6 +118,20 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="isZenModeActive ? 'Exit Zen Mode' : 'Enter Zen Mode'"
+			:shortcut="{ keys: ['z'] }"
+		>
+			<N8nButton
+				class="zenModeBtn"
+				type="tertiary"
+				size="medium"
+				data-test-id="zen-mode-button"
+				@click="onToggleZenMode"
+			>
+				<ZenModeIcon />
+			</N8nButton>
+		</KeyboardShortcutTooltip>
 	</Controls>
 </template>
 
@@ -120,6 +143,30 @@ function onTidyUp() {
 	svg {
 		width: 16px;
 		height: 16px;
+	}
+}
+
+.zenModeActive {
+	// Remove background/gradient for GitHub style
+	background: none !important;
+	border-color: transparent !important;
+	color: var(--color-text-dark, #222) !important;
+}
+
+.zenModeBtn {
+	display: flex;
+	align-items: center;
+	font-weight: 500;
+	font-size: 15px;
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+	color: var(--color-text-dark, #222) !important;
+	padding: 4px 12px;
+	border-radius: 6px;
+	transition: background 0.2s;
+	&:hover {
+		background: #f3f4f6 !important;
 	}
 }
 </style>
