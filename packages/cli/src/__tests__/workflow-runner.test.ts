@@ -317,58 +317,63 @@ describe('workflow timeout with startedAt', () => {
 			return {} as NodeJS.Timeout;
 		});
 
-		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		try {
+			// Mock config to return a workflow timeout of 10 seconds
+			jest.spyOn(config, 'getEnv').mockReturnValue(10);
 
-		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: {
-				nodes: [],
-				settings: { executionTimeout: 10 }, // 10 seconds timeout
-			},
-			executionData: undefined,
-			executionMode: 'webhook',
-			startedAt,
-		});
+			const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: {
+					nodes: [],
+					settings: { executionTimeout: 10 }, // 10 seconds timeout
+				},
+				executionData: undefined,
+				executionMode: 'webhook',
+				startedAt,
+			});
 
-		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+			const mockHooks = mock<core.ExecutionLifecycleHooks>();
+			jest
+				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+				.mockReturnValue(mockHooks);
 
-		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
-		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
-			new PCancelable(() => {
-				return mock<IRun>();
-			}),
-		);
+			const manualExecutionService = Container.get(ManualExecutionService);
+			jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+				new PCancelable(() => {
+					return mock<IRun>();
+				}),
+			);
 
-		// ACT
-		await runner.run(data);
+			// ACT
+			await runner.run(data);
 
-		// ASSERT
-		// The timeout should be adjusted: 10 seconds - 5 seconds elapsed = ~5 seconds remaining
-		expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
+			// ASSERT
+			// The timeout should be adjusted: 10 seconds - 5 seconds elapsed = ~5 seconds remaining
+			expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
 
-		let actualTimeout = mockSetTimeout.mock.calls[0][1];
-		if (mockSetTimeout.mock.calls.length > 1) {
-			if (actualTimeout === 60000) {
-				// If the first call was for 60 seconds, the second call should be the adjusted timeout
-				actualTimeout = mockSetTimeout.mock.calls[1][1];
+			let actualTimeout = mockSetTimeout.mock.calls[0][1];
+			if (mockSetTimeout.mock.calls.length > 1) {
+				if (actualTimeout === 60000) {
+					// If the first call was for 60 seconds, the second call should be the adjusted timeout
+					actualTimeout = mockSetTimeout.mock.calls[1][1];
+				}
 			}
+
+			// Get the actual timeout value passed to setTimeout
+
+			// Should be approximately 5000ms (5 seconds remaining), allowing for timing differences
+			expect(actualTimeout).toBeLessThan(6000);
+			expect(actualTimeout).toBeGreaterThan(4000);
+
+			// Execution should not be stopped immediately
+			expect(mockStopExecution).not.toHaveBeenCalled();
+		} finally {
+			// Restore the original setTimeout implementation
+			mockSetTimeout.mockRestore();
 		}
-
-		// Get the actual timeout value passed to setTimeout
-
-		// Should be approximately 5000ms (5 seconds remaining), allowing for timing differences
-		expect(actualTimeout).toBeLessThan(6000);
-		expect(actualTimeout).toBeGreaterThan(4000);
-
-		// Execution should not be stopped immediately
-		expect(mockStopExecution).not.toHaveBeenCalled();
 	});
 
 	it('should stop execution immediately when timeout has already elapsed', async () => {
