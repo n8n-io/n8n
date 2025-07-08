@@ -156,9 +156,7 @@ function onAskAssistantButtonClick() {
 			@click="experimentalNdvStore.collapseAllNodes"
 		/>
 		<AskAssistantButton
-			v-if="
-				assistantStore.canShowAssistantButtonsOnCanvas && assistantStore.hideAssistantFloatingButton
-			"
+			v-if="assistantStore.canShowAssistantButtonsOnCanvas"
 			:class="$style.withBorder"
 			:unread-count="assistantStore.unreadCount"
 			@click="onAskAssistantButtonClick"
