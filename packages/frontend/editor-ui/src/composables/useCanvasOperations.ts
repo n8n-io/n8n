@@ -2162,7 +2162,7 @@ export function useCanvasOperations() {
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),
-					i18n.baseText('nodeView.showError.openExecution.title'),
+					i18n.baseText('nodeView.showError.openExecution.node'),
 				);
 			}
 		}
