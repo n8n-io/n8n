@@ -3,7 +3,8 @@ import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
-import { getConnectedTools, nodeNameToToolName } from '@utils/helpers';
+import { getConnectedTools } from '@utils/helpers';
+import { nodeNameToToolName } from 'n8n-workflow';
 
 import type { CompressionResponse } from './FlushingTransport';
 import { McpServerManager } from './McpServer';

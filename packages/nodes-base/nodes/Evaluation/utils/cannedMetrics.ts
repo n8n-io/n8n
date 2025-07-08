@@ -13,6 +13,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { validateEntry } from '../../Set/v2/helpers/utils';
@@ -85,14 +86,29 @@ export const metricHandlers = {
 			});
 		}
 
-		return Object.fromEntries(
-			expectedTools.map((tool) => {
-				return [
-					`${tool} used`,
-					intermediateSteps.filter((step) => step.action.tool === tool)?.length >= 1 ? 1 : 0,
-				];
-			}),
+		// Convert user-entered tool names to the format used in intermediate steps (case-insensitive)
+		const normalizedExpectedTools = expectedTools.map((tool) =>
+			nodeNameToToolName(tool).toLowerCase(),
 		);
+
+		// Calculate individual tool usage (1 if used, 0 if not used)
+		const toolUsageScores = normalizedExpectedTools.map((normalizedTool) => {
+			return intermediateSteps.filter((step) => step.action.tool.toLowerCase() === normalizedTool)
+				?.length >= 1
+				? 1
+				: 0;
+		});
+
+		// Calculate the average of all tool usage scores
+		const averageScore =
+			toolUsageScores.reduce((sum: number, score: number) => sum + score, 0) /
+			toolUsageScores.length;
+
+		const metricName = this.getNodeParameter('options.metricName', i, 'Tools Used') as string;
+
+		return {
+			[metricName]: averageScore,
+		};
 	},
 
 	async categorization(this: IExecuteFunctions, i: number): Promise<IDataObject> {

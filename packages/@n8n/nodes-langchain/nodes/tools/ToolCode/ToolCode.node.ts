@@ -20,7 +20,7 @@ import {
 	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { nodeNameToToolName } from '@utils/helpers';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
