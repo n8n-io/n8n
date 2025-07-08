@@ -1,6 +1,6 @@
 {
   "name": "@n8n/imap",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
