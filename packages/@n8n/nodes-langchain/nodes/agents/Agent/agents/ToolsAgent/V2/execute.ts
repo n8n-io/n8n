@@ -251,7 +251,7 @@ export async function toolsAgentExecute(
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
 			// Check if streaming is actually available
-			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming() : undefined;
+			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
 
 			if (
 				'isStreaming' in this &&
