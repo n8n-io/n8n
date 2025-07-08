@@ -114,7 +114,7 @@ export class AgentToolV2 implements INodeType {
 				((hasOutputParser, needsFallback) => {
 					${getInputs.toString()};
 					return getInputs(hasOutputParser, needsFallback)
-				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
+				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.AiTool],
 			properties: [
