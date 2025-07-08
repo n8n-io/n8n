@@ -459,6 +459,10 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
+			if (hasHtmlContentType && respondWith !== 'text' && respondWith !== 'binary') {
+				responseBody = sandboxResponseData(responseBody as string);
+			}
+
 			response = {
 				body: responseBody,
 				headers,
