@@ -11,6 +11,9 @@ type RequestParameters = {
 	body?: IDataObject | string | FormData;
 	qs?: IDataObject;
 	option?: IDataObject;
+	enableAnthropicBetas?: {
+		promptTools?: boolean;
+	};
 };
 
 export async function apiRequest(
@@ -29,10 +32,15 @@ export async function apiRequest(
 		url = `${credentials?.url as string}${endpoint}`;
 	}
 
+	const betas = ['files-api-2025-04-14'];
+	if (parameters?.enableAnthropicBetas?.promptTools) {
+		betas.push('prompt-tools-2025-04-02');
+	}
+
 	const options = {
 		headers: {
 			'anthropic-version': '2023-06-01',
-			'anthropic-beta': 'files-api-2025-04-14',
+			'anthropic-beta': betas.join(','),
 			...headers,
 		},
 		method,

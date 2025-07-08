@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 						displayName: 'Prompt',
 						name: 'content',
 						type: 'string',
-						description: 'The content of the message to be send',
+						description: 'The content of the message to be sent',
 						default: '',
 						placeholder: 'e.g. Hello, how can you help me?',
 						typeOptions: {
@@ -300,7 +300,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: { ...response },
+			json: response,
 			pairedItem: { item: i },
 		},
 	];

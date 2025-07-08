@@ -4,6 +4,7 @@ import * as document from './document';
 import * as file from './file';
 import * as image from './image';
 import type { AnthropicType } from './node.type';
+import * as prompt from './prompt';
 import * as text from './text';
 
 export async function router(this: IExecuteFunctions) {
@@ -28,6 +29,9 @@ export async function router(this: IExecuteFunctions) {
 			break;
 		case 'image':
 			execute = image[anthropicTypeData.operation].execute;
+			break;
+		case 'prompt':
+			execute = prompt[anthropicTypeData.operation].execute;
 			break;
 		case 'text':
 			execute = text[anthropicTypeData.operation].execute;

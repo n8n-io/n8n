@@ -98,7 +98,7 @@ export async function baseAnalyze(
 
 	return [
 		{
-			json: { ...response },
+			json: response,
 			pairedItem: { item: i },
 		},
 	];

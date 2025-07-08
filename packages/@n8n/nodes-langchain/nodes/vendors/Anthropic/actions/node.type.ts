@@ -5,6 +5,7 @@ type NodeMap = {
 	image: 'analyze';
 	document: 'analyze';
 	file: 'upload' | 'delete' | 'get' | 'list';
+	prompt: 'generate' | 'improve' | 'templatize';
 };
 
 export type AnthropicType = AllEntities<NodeMap>;

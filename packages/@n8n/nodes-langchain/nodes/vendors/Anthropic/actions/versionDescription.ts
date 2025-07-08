@@ -4,6 +4,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import * as document from './document';
 import * as file from './file';
 import * as image from './image';
+import * as prompt from './prompt';
 import * as text from './text';
 
 export const versionDescription: INodeTypeDescription = {
@@ -70,6 +71,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'image',
 				},
 				{
+					name: 'Prompt',
+					value: 'prompt',
+				},
+				{
 					name: 'Text',
 					value: 'text',
 				},
@@ -79,6 +84,7 @@ export const versionDescription: INodeTypeDescription = {
 		...document.description,
 		...file.description,
 		...image.description,
+		...prompt.description,
 		...text.description,
 	],
 };
