@@ -1,5 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { CommandClass } from '@n8n/decorators';
 import argvParser from 'yargs-parser';
 

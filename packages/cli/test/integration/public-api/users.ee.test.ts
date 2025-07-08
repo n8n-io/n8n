@@ -1,6 +1,9 @@
-import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	linkUserToProject,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';

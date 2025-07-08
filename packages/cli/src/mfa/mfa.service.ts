@@ -27,7 +27,6 @@ export class MfaService {
 		try {
 			await this.loadMFASettings();
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			this.logger.warn('Failed to load MFA settings', { error });
 		}
 	}
