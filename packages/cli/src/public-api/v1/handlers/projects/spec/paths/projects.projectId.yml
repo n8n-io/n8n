@@ -27,7 +27,7 @@ put:
   tags:
     - Projects
   summary: Update a project
-  description: Update a project.
+  description: Update a project on your instance.
   parameters:
     - in: path
       name: projectId

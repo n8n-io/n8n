@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraggableMode, XYPosition } from '@/Interface';
 import { isPresent } from '@/utils/typesUtils';
-import { type StyleValue, computed, ref } from 'vue';
+import { type StyleValue, computed, onBeforeUnmount, ref } from 'vue';
 
 type Props = {
 	type: DraggableMode;
@@ -113,8 +113,14 @@ const onDragEnd = () => {
 		if (draggingElement.value) emit('dragend', draggingElement.value);
 		isDragging.value = false;
 		draggingElement.value = undefined;
-	}, 0);
+	});
 };
+
+onBeforeUnmount(() => {
+	if (draggingElement.value) {
+		emit('dragend', draggingElement.value);
+	}
+});
 </script>
 
 <template>

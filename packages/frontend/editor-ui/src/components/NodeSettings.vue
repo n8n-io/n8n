@@ -31,6 +31,7 @@ import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { nameIsParameter } from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -369,7 +370,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
 		}
-	} else if (nodeSettingsParameters.nameIsParameter(parameterData)) {
+	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
 		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
 	} else {
