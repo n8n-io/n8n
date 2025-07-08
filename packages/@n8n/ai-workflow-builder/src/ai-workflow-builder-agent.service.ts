@@ -1,10 +1,17 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
-import { StateGraph, MemorySaver } from '@langchain/langgraph';
+import {
+	AIMessage,
+	BaseMessage,
+	HumanMessage,
+	RemoveMessage,
+	ToolMessage,
+} from '@langchain/core/messages';
+import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
@@ -18,6 +25,7 @@ import { SimpleWorkflow } from './types';
 import { createStreamProcessor, DEFAULT_WORKFLOW_UPDATE_TOOLS } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+import { conversationCompactChain } from './chains/conversation-compact';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -117,29 +125,41 @@ export class AiWorkflowBuilderService {
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
 			createRemoveNodeTool(),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmSimpleTask!),
 		];
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmComplexTask, 'LLM not setup');
-			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
+			assert(this.llmSimpleTask, 'LLM not setup');
+			assert(typeof this.llmSimpleTask.bindTools === 'function', 'LLM does not support tools');
 
 			const prompt = await mainAgentPrompt.invoke(state);
-			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
+			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
 		};
+		const shouldModifyState = ({ messages }: typeof WorkflowState.State) => {
+			const lastMessage = messages[messages.length - 1] as HumanMessage;
 
+			if (lastMessage.content === '/compact') {
+				return 'compact_messages';
+			}
+
+			if (lastMessage.content === '/clear') {
+				return 'delete_messages';
+			}
+
+			return 'agent';
+		};
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
 			const lastMessage = messages[messages.length - 1] as AIMessage;
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
 			}
-			return '__end__';
+			return END;
 		};
 
 		// Use the new tool executor helper
@@ -147,11 +167,33 @@ export class AiWorkflowBuilderService {
 			return await executeToolsInParallel({ state, toolMap });
 		};
 
+		function deleteMessages(state: typeof WorkflowState.State) {
+			const messages = state.messages;
+			return { messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [] };
+		}
+
+		const compactSession = async (state: typeof WorkflowState.State) => {
+			assert(this.llmSimpleTask, 'LLM not setup');
+			const messages = state.messages;
+			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
+
+			return {
+				messages: [
+					...messages.map((m) => new RemoveMessage({ id: m.id! })),
+					...compactedMessages.newMessages,
+				],
+			};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
-			.addEdge('__start__', 'agent')
 			.addNode('tools', customToolExecutor)
+			.addNode('delete_messages', deleteMessages)
+			.addNode('compact_messages', compactSession)
+			.addConditionalEdges('__start__', shouldModifyState)
 			.addEdge('tools', 'agent')
+			.addEdge('delete_messages', END)
+			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
 
 		return workflow;
@@ -244,7 +286,7 @@ export class AiWorkflowBuilderService {
 	private formatMessages(
 		messages: Array<AIMessage | HumanMessage | ToolMessage>,
 	): Array<Record<string, unknown>> {
-		const formattedMessages: Array<Record<string, any>> = [];
+		const formattedMessages: Array<Record<string, unknown>> = [];
 
 		for (const msg of messages) {
 			if (msg instanceof HumanMessage) {

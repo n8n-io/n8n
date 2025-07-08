@@ -1,11 +1,12 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { Annotation } from '@langchain/langgraph';
+import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { SimpleWorkflow } from './types';
 
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
-		reducer: (x, y) => x.concat(y),
+		reducer: messagesStateReducer,
+		default: () => [],
 	}),
 	// The original prompt from the user.
 	prompt: Annotation<string>({ reducer: (x, y) => y ?? x ?? '' }),

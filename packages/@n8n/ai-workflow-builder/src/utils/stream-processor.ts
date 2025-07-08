@@ -43,13 +43,14 @@ export interface StreamProcessorConfig {
 /**
  * Process a single chunk from the LangGraph stream
  */
+// eslint-disable-next-line complexity
 export async function processStreamChunk(
 	streamMode: string,
 	chunk: unknown,
 	agent: CompiledStateGraph<
 		typeof WorkflowState.State,
 		Partial<typeof WorkflowState.State>,
-		'__start__' | 'agent' | 'tools'
+		'__start__' | 'agent' | 'tools' | 'delete_messages' | 'compact_messages'
 	>,
 	config: StreamProcessorConfig,
 ): Promise<StreamOutput | null> {
@@ -57,7 +58,35 @@ export async function processStreamChunk(
 		// Handle agent message updates
 		const agentChunk = chunk as {
 			agent?: { messages?: Array<{ content: string | Array<{ type: string; text: string }> }> };
+			compact_messages?: {
+				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+			};
+			delete_messages?: {
+				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+			};
 		};
+
+		if ((agentChunk?.delete_messages?.messages ?? []).length > 0) {
+			const messageChunk: AgentMessageChunk = {
+				role: 'assistant',
+				type: 'message',
+				text: 'Deleted, refresh?',
+			};
+
+			return { messages: [messageChunk] };
+		}
+
+		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
+			const lastMessage =
+				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
+			const messageChunk: AgentMessageChunk = {
+				role: 'assistant',
+				type: 'message',
+				text: lastMessage.content as string,
+			};
+
+			return { messages: [messageChunk] };
+		}
 
 		if ((agentChunk?.agent?.messages ?? []).length > 0) {
 			const lastMessage = agentChunk.agent!.messages![agentChunk.agent!.messages!.length - 1];
@@ -125,7 +154,7 @@ export async function* createStreamProcessor(
 	agent: CompiledStateGraph<
 		typeof WorkflowState.State,
 		Partial<typeof WorkflowState.State>,
-		'__start__' | 'agent' | 'tools'
+		'__start__' | 'agent' | 'tools' | 'delete_messages' | 'compact_messages'
 	>,
 	config: StreamProcessorConfig,
 ): AsyncGenerator<StreamOutput> {
