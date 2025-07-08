@@ -159,6 +159,7 @@ function onAskAssistantButtonClick() {
 			v-if="
 				assistantStore.canShowAssistantButtonsOnCanvas && assistantStore.hideAssistantFloatingButton
 			"
+			:class="$style.withBorder"
 			:unread-count="assistantStore.unreadCount"
 			@click="onAskAssistantButtonClick"
 		/>
@@ -182,5 +183,9 @@ function onAskAssistantButtonClick() {
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-s);
 	pointer-events: all !important;
+}
+
+.withBorder {
+	border: var(--border-width-base) var(--color-button-secondary-border) var(--border-style-base);
 }
 </style>
