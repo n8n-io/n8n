@@ -27,7 +27,7 @@ export const useEvaluationStore = defineStore(
 
 		// Computed
 
-		const isEvaluationEnabled = computed(() => settingsStore.settings.evaluation.quota !== 0);
+		const isEvaluationEnabled = computed(() => settingsStore.settings.evaluation?.quota !== 0);
 
 		const isLoading = computed(() => loadingTestRuns.value);
 
