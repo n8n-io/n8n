@@ -7,7 +7,8 @@ export const replaceSingleQuotes = (responseBody: string) => {
  * This prevents the API from being accessed since the iframe origin will be empty.
  */
 export const sandboxResponseData = (responseBody: string) => {
-	const parsedResponseBody = replaceSingleQuotes(responseBody);
+	const parsedResponseBody =
+		typeof responseBody === 'string' ? replaceSingleQuotes(responseBody) : responseBody;
 
 	return `
 		<iframe srcdoc='${parsedResponseBody}'

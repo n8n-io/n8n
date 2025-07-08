@@ -264,6 +264,90 @@ describe('RespondToWebhook Node', () => {
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
+		describe('HTML content sandboxing', () => {
+			it('should sandbox HTML content for json response with HTML content-type', async () => {
+				const inputItems = [
+					{ json: { index: 0, input: true } },
+					{ json: { index: 1, input: true } },
+				];
+				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+				mockExecuteFunctions.getParentNodes.mockReturnValue([
+					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+				]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+					if (paramName === 'respondWith') return 'allIncomingItems';
+					if (paramName === 'options')
+						return {
+							responseHeaders: {
+								entries: [{ name: 'content-type', value: 'application/xhtml+xml' }],
+							},
+						};
+				});
+				mockExecuteFunctions.sendResponse.mockReturnValue();
+
+				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
+					body: inputItems.map((item) => item.json),
+					headers: {},
+					statusCode: 200,
+				});
+				expect(result).toHaveLength(1);
+				expect(result[0]).toHaveLength(2);
+				expect(result[0]).toEqual(inputItems);
+			});
+
+			// it('should sandbox HTML content for json response with XHTML content-type', async () => {
+			// 	mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			// 	mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			// 	mockExecuteFunctions.getParentNodes.mockReturnValue([
+			// 		mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+			// 	]);
+			// 	mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+			// 		if (paramName === 'respondWith') return 'json';
+			// 		if (paramName === 'options')
+			// 			return {
+			// 				responseHeaders: {
+			// 					entries: [{ name: 'content-type', value: 'application/xhtml+xml' }],
+			// 				},
+			// 			};
+			// 		if (paramName === 'responseBody') return '<div>HTML content</div>';
+			// 	});
+			// 	mockExecuteFunctions.sendResponse.mockReturnValue();
+
+			// 	await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+			// 	expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
+			// 		body: sandboxResponseData('<div>HTML content</div>'),
+			// 		headers: { 'content-type': 'application/xhtml+xml' },
+			// 		statusCode: 200,
+			// 	});
+			// });
+
+			// it('should NOT sandbox HTML content for non-HTML content-type', async () => {
+			// 	mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			// 	mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			// 	mockExecuteFunctions.getParentNodes.mockReturnValue([
+			// 		mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+			// 	]);
+			// 	mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+			// 		if (paramName === 'respondWith') return 'json';
+			// 		if (paramName === 'options')
+			// 			return {
+			// 				responseHeaders: { entries: [{ name: 'content-type', value: 'application/json' }] },
+			// 			};
+			// 		if (paramName === 'responseBody') return '<script>alert("xss")</script>';
+			// 	});
+			// 	mockExecuteFunctions.sendResponse.mockReturnValue();
+
+			// 	await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+			// 	expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
+			// 		body: '<script>alert("xss")</script>',
+			// 		headers: { 'content-type': 'application/json' },
+			// 		statusCode: 200,
+			// 	});
+			// });
+		});
+
 		it('should have two outputs in version 1.3', async () => {
 			const inputItems = [{ json: { index: 0, input: true } }, { json: { index: 1, input: true } }];
 			mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
