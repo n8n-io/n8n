@@ -110,6 +110,7 @@ import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
 import IconLucideLock from '~icons/lucide/lock';
+import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
 import IconLucideMail from '~icons/lucide/mail';
@@ -347,6 +348,7 @@ export const deprecatedIconSet = {
 	screwdriver: IconLucidePocketKnife,
 	smile: IconLucideSmile,
 	'sign-in-alt': IconLucideLogIn,
+	'loader-circle': IconLucideLoaderCircle,
 	'sign-out-alt': IconLucideLogOut,
 	'sliders-h': IconLucideSlidersHorizontal,
 	'sticky-note': IconLucideStickyNote,

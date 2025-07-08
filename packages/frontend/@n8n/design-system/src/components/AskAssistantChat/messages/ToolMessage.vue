@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+
 import BaseMessage from './BaseMessage.vue';
-import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
-import N8nButton from '../../N8nButton';
-import N8nSpinner from '../../N8nSpinner';
 import N8nIcon from '../../N8nIcon';
+import N8nSpinner from '../../N8nSpinner';
 
 interface Props {
 	message: ChatUI.ToolMessage & { id: string; read: boolean };
@@ -17,7 +16,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { t } = useI18n();
 
 const expanded = ref(false);
 
@@ -34,7 +32,7 @@ const statusIcon = computed(() => {
 		case 'running':
 			return null; // Will show spinner
 		case 'completed':
-			return 'check-circle';
+			return 'circle-check';
 		case 'error':
 			return 'times-circle';
 		default:
@@ -72,11 +70,12 @@ const progressMessages = computed(() => {
 	return props.message.updates.filter((u) => u.type === 'progress').map((u) => u.data);
 });
 
-function formatJSON(data: any): string {
+function formatJSON(data: Record<string, unknown> | string): string {
 	if (!data) return '';
 	try {
 		return JSON.stringify(data, null, 2);
 	} catch {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		return String(data);
 	}
 }
@@ -98,7 +97,7 @@ function toggleExpanded() {
 					/>
 					<span :class="$style.toolName">{{ toolDisplayName }}</span>
 					<div :class="$style.status">
-						<N8nSpinner v-if="message.status === 'running'" size="small" />
+						<N8nSpinner v-if="message.status === 'running'" size="xsmall" />
 						<N8nIcon v-else-if="statusIcon" :icon="statusIcon" :color="statusColor" size="small" />
 						<span :class="[$style.statusText, $style[`status-${message.status}`]]">
 							{{ message.status }}

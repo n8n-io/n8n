@@ -25,7 +25,7 @@ withDefaults(defineProps<SpinnerProps>(), {
 			<div></div>
 			<div></div>
 		</div>
-		<N8nIcon v-else icon="spinner" :size="size" spin />
+		<N8nIcon v-else icon="loader-circle" :size="size" spin />
 	</span>
 </template>
 

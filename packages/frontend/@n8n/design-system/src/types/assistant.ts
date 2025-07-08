@@ -126,7 +126,7 @@ export namespace ChatUI {
 		status: 'running' | 'completed' | 'error';
 		updates: Array<{
 			type: 'input' | 'output' | 'progress' | 'error';
-			data: any;
+			data: Record<string, unknown>;
 			timestamp?: string;
 		}>;
 	}

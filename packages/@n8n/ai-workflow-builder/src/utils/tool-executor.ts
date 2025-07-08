@@ -390,7 +390,7 @@ export async function executeToolsInParallel(
 		}
 	});
 
-	console.log(`\n=== Final merge results ===`);
+	console.log('\n=== Final merge results ===');
 	console.log(`Final workflow has ${mergedWorkflowJSON.nodes.length} nodes`);
 	console.log(
 		`Final workflow has ${Object.keys(mergedWorkflowJSON.connections).length} connection groups`,
