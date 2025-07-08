@@ -56,41 +56,6 @@ export function validateConnection(sourceNode: INode, targetNode: INode): ToolEr
 }
 
 /**
- * Validate that nodes exist for a connection
- */
-export function validateNodesForConnection(
-	sourceIdentifier: string,
-	targetIdentifier: string,
-	nodes: INode[],
-): { sourceNode: INode; targetNode: INode } | ToolError {
-	const sourceNode = findNodeByIdOrName(sourceIdentifier, nodes);
-	if (!sourceNode) {
-		return {
-			message: `Source node "${sourceIdentifier}" not found`,
-			code: 'SOURCE_NODE_NOT_FOUND',
-			details: { identifier: sourceIdentifier },
-		};
-	}
-
-	const targetNode = findNodeByIdOrName(targetIdentifier, nodes);
-	if (!targetNode) {
-		return {
-			message: `Target node "${targetIdentifier}" not found`,
-			code: 'TARGET_NODE_NOT_FOUND',
-			details: { identifier: targetIdentifier },
-		};
-	}
-
-	// Validate the connection itself
-	const connectionError = validateConnection(sourceNode, targetNode);
-	if (connectionError) {
-		return connectionError;
-	}
-
-	return { sourceNode, targetNode };
-}
-
-/**
  * Create a validation error
  */
 export function createValidationError(
@@ -126,57 +91,8 @@ export function createNodeTypeNotFoundError(nodeTypeName: string): ToolError {
 }
 
 /**
- * Validate required parameters are present
- */
-export function validateRequiredParameters(
-	parameters: Record<string, unknown>,
-	requiredParams: string[],
-): string[] {
-	const missing: string[] = [];
-	for (const param of requiredParams) {
-		if (!(param in parameters) || parameters[param] === undefined || parameters[param] === '') {
-			missing.push(param);
-		}
-	}
-	return missing;
-}
-
-/**
  * Check if a workflow has nodes
  */
 export function hasNodes(workflow: SimpleWorkflow): boolean {
 	return workflow.nodes.length > 0;
-}
-
-/**
- * Check if a node has incoming connections
- */
-export function hasIncomingConnections(
-	nodeId: string,
-	connections: SimpleWorkflow['connections'],
-): boolean {
-	for (const [, nodeConnections] of Object.entries(connections)) {
-		for (const [, typeConnections] of Object.entries(nodeConnections)) {
-			if (Array.isArray(typeConnections)) {
-				for (const outputConnections of typeConnections) {
-					if (Array.isArray(outputConnections)) {
-						if (outputConnections.some((conn) => conn.node === nodeId)) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-	}
-	return false;
-}
-
-/**
- * Check if a node has outgoing connections
- */
-export function hasOutgoingConnections(
-	nodeId: string,
-	connections: SimpleWorkflow['connections'],
-): boolean {
-	return nodeId in connections && Object.keys(connections[nodeId]).length > 0;
 }
