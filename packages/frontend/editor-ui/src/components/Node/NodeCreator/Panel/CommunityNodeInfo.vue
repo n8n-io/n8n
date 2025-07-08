@@ -116,7 +116,7 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="installedPackage?.updateAvailable"
+			v-if="isOwner && installedPackage?.updateAvailable"
 			data-test-id="update-available"
 		/>
 		<div v-else :class="$style.separator"></div>
