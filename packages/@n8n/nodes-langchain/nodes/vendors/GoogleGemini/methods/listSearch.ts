@@ -33,6 +33,7 @@ export async function modelSearch(
 		this,
 		(model) =>
 			!model.includes('embedding') &&
+			!model.includes('aqa') &&
 			!model.includes('image') &&
 			!model.includes('vision') &&
 			!model.includes('veo') &&
@@ -50,6 +51,7 @@ export async function audioModelSearch(
 		this,
 		(model) =>
 			!model.includes('embedding') &&
+			!model.includes('aqa') &&
 			!model.includes('image') &&
 			!model.includes('vision') &&
 			!model.includes('veo') &&
