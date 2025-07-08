@@ -1,13 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver } from '@langchain/langgraph';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
-
-import { ILicenseService } from './interfaces';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
@@ -29,56 +26,38 @@ export class AiWorkflowBuilderService {
 
 	private llmComplexTask: BaseChatModel | undefined;
 
-	private client: AiAssistantClient | undefined;
-
 	private checkpointer = new MemorySaver();
 
 	constructor(
-		private readonly licenseService: ILicenseService,
 		private readonly nodeTypes: INodeTypes,
-		private readonly globalConfig: GlobalConfig,
-		private readonly n8nVersion: string,
+		private readonly client?: AiAssistantClient,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
 
-	private async setupModels(user: IUser) {
+	private async setupModels(user?: IUser) {
 		if (this.llmSimpleTask && this.llmComplexTask) {
 			return;
 		}
 
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		// If base URL is set, use api-proxy to access LLMs
-		if (baseUrl) {
-			if (!this.client) {
-				const licenseCert = await this.licenseService.loadCertStr();
-				const consumerId = this.licenseService.getConsumerId();
-
-				this.client = new AiAssistantClient({
-					licenseCert,
-					consumerId,
-					baseUrl,
-					n8nVersion: this.n8nVersion,
-				});
-			}
-
-			assert(this.client, 'Client not setup');
-
+		// If client is provided, use it for API proxy
+		if (this.client && user) {
 			const authHeaders = await this.client.generateApiProxyCredentials(user);
+			// Extract baseUrl from client configuration
+			const baseUrl = this.client.getApiProxyBaseUrl();
+
 			this.llmSimpleTask = await gpt41mini({
-				baseUrl: baseUrl + '/v1/api-proxy/openai',
+				baseUrl: baseUrl + '/openai',
 				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
 				apiKey: '-',
 				headers: {
-					// eslint-disable-next-line @typescript-eslint/naming-convention
 					Authorization: authHeaders.apiKey,
 				},
 			});
 			this.llmComplexTask = await anthropicClaudeSonnet4({
-				baseUrl: baseUrl + '/v1/api-proxy/anthropic',
+				baseUrl: baseUrl + '/anthropic',
 				apiKey: '-',
 				headers: {
-					// eslint-disable-next-line @typescript-eslint/naming-convention
 					Authorization: authHeaders.apiKey,
 				},
 			});
@@ -121,7 +100,7 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(user: IUser) {
+	private async getAgent(user?: IUser) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}
@@ -174,15 +153,15 @@ export class AiWorkflowBuilderService {
 
 	async *chat(
 		payload: { question: string; currentWorkflowJSON?: string; workflowId?: string },
-		user: IUser,
+		user?: IUser,
 	) {
 		const agent = (await this.getAgent(user)).compile({ checkpointer: this.checkpointer });
 
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
 		const threadId = payload.workflowId
-			? `workflow-${payload.workflowId}-user-${user.id}`
-			: `user-${user.id}-default`;
+			? `workflow-${payload.workflowId}-user-${user?.id ?? new Date().getTime()}`
+			: `user-${user?.id ?? new Date().getTime()}-default`;
 
 		// Configure thread
 		const threadConfig = {

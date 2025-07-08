@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRoute } from 'vue-router';
 
 const emit = defineEmits<{
 	close: [];
@@ -23,6 +24,7 @@ const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
 const processedWorkflowUpdates = ref(new Set<string>());
+const route = useRoute();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -34,6 +36,7 @@ const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const generatedWorkflowJson = computed(
 	() => builderStore.chatMessages.find((msg) => msg.type === 'workflow-generated')?.codeSnippet,
 );
+const currentRoute = computed(() => route.name);
 
 async function onUserMessage(content: string) {
 	// If there is no current session running, initialize the support chat session
@@ -149,7 +152,7 @@ function onUpdateWorkflow(code: string) {
 }
 
 function onNewWorkflow() {
-	// Don't reset chat to preserve conversation history
+	builderStore.resetBuilderChat();
 	workflowGenerated.value = false;
 	helpful.value = false;
 	generationStartTime.value = new Date().getTime();
@@ -202,6 +205,10 @@ watch(
 	},
 	{ deep: true },
 );
+
+watch(currentRoute, () => {
+	onNewWorkflow();
+});
 
 const unsubscribe = builderStore.$onAction(({ name }) => {
 	if (name === 'initBuilderChat') {
