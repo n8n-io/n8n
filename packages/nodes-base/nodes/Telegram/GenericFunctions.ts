@@ -256,6 +256,7 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
+	const messageThreadId = context.getNodeParameter('message_thread_id', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
 	let text = config.message;
@@ -269,6 +270,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const body = {
 		chat_id,
+		message_thread_id: messageThreadId || undefined,
 		text,
 
 		disable_web_page_preview: true,
