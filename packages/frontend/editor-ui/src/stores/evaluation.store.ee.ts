@@ -27,8 +27,6 @@ export const useEvaluationStore = defineStore(
 
 		// Computed
 
-		const isFeatureEnabled = computed(() => true);
-
 		const isEvaluationEnabled = computed(() => settingsStore.settings.evaluation.quota !== 0);
 
 		const isLoading = computed(() => loadingTestRuns.value);
@@ -178,7 +176,6 @@ export const useEvaluationStore = defineStore(
 
 			// Computed
 			isLoading,
-			isFeatureEnabled,
 			isEvaluationEnabled,
 			testRunsByWorkflowId,
 			evaluationTriggerExists,
