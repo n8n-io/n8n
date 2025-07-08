@@ -52,6 +52,7 @@ describe('GET /users', () => {
 	let member1: User;
 	let member2: User;
 	let ownerAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
 	let userRepository: UserRepository;
 
 	beforeAll(async () => {
@@ -91,6 +92,7 @@ describe('GET /users', () => {
 		}
 
 		ownerAgent = testServer.authAgentFor(owner);
+		memberAgent = testServer.authAgentFor(member1);
 	});
 
 	test('should return all users', async () => {
@@ -602,6 +604,50 @@ describe('GET /users', () => {
 					expect(pendingUserInResponse.inviteAcceptUrl).toMatch(
 						new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
 					);
+
+					// Verify that non-pending users don't have inviteAcceptUrl
+					const nonPendingUser = response.body.data.items.find(
+						(user: any) => user.id === member1.id,
+					);
+
+					expect(nonPendingUser).toBeDefined();
+					expect(nonPendingUser.isPending).toBe(false);
+					expect(nonPendingUser.inviteAcceptUrl).toBeUndefined();
+				} finally {
+					// Clean up
+					await userRepository.delete({ id: pendingUser.id });
+				}
+			});
+
+			test('should not include inviteAcceptUrl for pending users, if member requests it', async () => {
+				// Create a pending user
+				const pendingUser = await createUser({
+					role: 'global:member',
+					email: 'pending@n8n.io',
+					firstName: 'PendingFirstName',
+					lastName: 'PendingLastName',
+				});
+
+				await userRepository.update(
+					{ id: pendingUser.id },
+					{
+						password: null as unknown as string,
+					},
+				);
+
+				try {
+					const response = await memberAgent.get('/users').expect(200);
+
+					expect(response.body.data).toHaveProperty('count');
+					expect(response.body.data).toHaveProperty('items');
+
+					// Find the pending user in the response
+					const pendingUserInResponse = response.body.data.items.find(
+						(user: any) => user.id === pendingUser.id,
+					);
+
+					expect(pendingUserInResponse).toBeDefined();
+					expect(pendingUserInResponse.inviteAcceptUrl).not.toBeDefined();
 
 					// Verify that non-pending users don't have inviteAcceptUrl
 					const nonPendingUser = response.body.data.items.find(
