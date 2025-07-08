@@ -43,7 +43,7 @@ jobs:
           ref: ${{ inputs.git_ref }}
 
       - name: Setup Environment and Build Project
-        uses: ./.github/actions/setup-and-build
+        uses: n8n-io/n8n/.github/actions/setup-and-build@7e870b8f7f5a39bb8bf82d1f42b6d44febc0082c # v1.100.1
         with:
           node-version: '22.x'
           cache-suffix: 'workflow-test'
@@ -63,7 +63,6 @@ jobs:
       - name: Import workflows
         run: ./packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
 
-
       - name: Copy static assets
         run: |
           mkdir -p /tmp/testData/pdfs
@@ -76,8 +75,8 @@ jobs:
         run: ./packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.json --githubWorkflow --shortOutput --output=test-results.json --concurrency=16 --compare=test-workflows/snapshots
         continue-on-error: true
         env:
-          SKIP_STATISTICS_EVENTS: "true"
-          DB_SQLITE_POOL_SIZE: "4"
+          SKIP_STATISTICS_EVENTS: 'true'
+          DB_SQLITE_POOL_SIZE: '4'
           N8N_SENTRY_DSN: ${{ secrets.CI_SENTRY_DSN }}
 
       - name: Report test outcome
