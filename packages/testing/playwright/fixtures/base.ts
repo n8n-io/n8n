@@ -28,6 +28,7 @@ interface ContainerConfig {
 		mains: number;
 		workers: number;
 	};
+	env?: Record<string, string>;
 }
 
 /**
@@ -40,6 +41,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	containerConfig: [
 		async ({}, use, testInfo: TestInfo) => {
 			const config = (testInfo.project.use?.containerConfig as ContainerConfig) || {};
+			config.env = {
+				...config.env,
+				E2E_TESTS: 'true',
+			};
+
 			await use(config);
 		},
 		{ scope: 'worker' },
@@ -60,7 +66,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			const container = await createN8NStack(containerConfig);
 
 			// TODO: Remove this once we have a better way to wait for the container to be ready (e.g. healthcheck)
-			await new Promise((resolve) => setTimeout(resolve, 5000));
+			await new Promise((resolve) => setTimeout(resolve, 3000));
 
 			console.log(`Container URL: ${container.baseUrl}`);
 

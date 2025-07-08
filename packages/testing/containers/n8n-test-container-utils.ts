@@ -1,15 +1,26 @@
-import { createServer } from 'net';
+import type { Readable } from 'stream';
 
 /**
- * Get an available port on the host system
+ * Create a log consumer that does not log to the console
+ * @returns A tuple containing the log consumer and a function to throw an error with logs
  */
-export function getAvailablePort(): Promise<number> {
-	return new Promise((resolve, reject) => {
-		const server = createServer();
-		server.listen(0, () => {
-			const port = (server.address() as any).port;
-			server.close(() => resolve(port));
+export function createSilentLogConsumer() {
+	const logs: string[] = [];
+
+	const consumer = (stream: Readable) => {
+		stream.on('data', (chunk: Buffer | string) => {
+			logs.push(chunk.toString().trim());
 		});
-		server.on('error', reject);
-	});
+	};
+
+	const throwWithLogs = (error: unknown): never => {
+		if (logs.length > 0) {
+			console.error('\n--- Container Logs ---');
+			console.error(logs.join('\n'));
+			console.error('---------------------\n');
+		}
+		throw error;
+	};
+
+	return { consumer, throwWithLogs };
 }

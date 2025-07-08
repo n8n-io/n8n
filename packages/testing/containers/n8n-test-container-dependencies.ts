@@ -1,8 +1,9 @@
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
-import { Readable } from 'stream';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
+
+import { createSilentLogConsumer } from './n8n-test-container-utils';
 
 export async function setupRedis({
 	redisImage,
@@ -94,13 +95,7 @@ export async function setupNginxLoadBalancer({
 	// This allows us to have the port allocation be dynamic.
 	const nginxConfig = buildNginxConfig(upstreamServers);
 
-	const logs: string[] = [];
-	// Collect logs and display them on failure
-	const silentLogConsumer = (stream: Readable) => {
-		stream.on('data', (chunk) => {
-			logs.push(chunk.toString().trim());
-		});
-	};
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
 		return await new GenericContainer(nginxImage)
@@ -114,13 +109,10 @@ export async function setupNginxLoadBalancer({
 			})
 			.withName(`${projectName}-nginx-lb`)
 			.withReuse()
-			.withLogConsumer(silentLogConsumer)
+			.withLogConsumer(consumer)
 			.start();
 	} catch (error) {
-		console.error('--- Container Logs for NGINX (from testLogConsumer on failure) ---');
-		console.error(logs.join('\n'));
-		console.error('--------------------------------------------------------');
-		throw error;
+		return throwWithLogs(error);
 	}
 }
 
@@ -267,12 +259,7 @@ export async function setupCaddyLoadBalancer({
 	// Build the Caddy configuration
 	const caddyConfig = buildCaddyConfig(upstreamServers);
 
-	const logs: string[] = [];
-	const silentLogConsumer = (stream: Readable) => {
-		stream.on('data', (chunk) => {
-			logs.push(chunk.toString().trim());
-		});
-	};
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
 		return await new GenericContainer(caddyImage)
@@ -286,13 +273,10 @@ export async function setupCaddyLoadBalancer({
 			})
 			.withName(`${projectName}-caddy-lb`)
 			.withReuse()
-			.withLogConsumer(silentLogConsumer)
+			.withLogConsumer(consumer)
 			.start();
 	} catch (error) {
-		console.error('--- Container Logs for Caddy (from testLogConsumer on failure) ---');
-		console.error(logs.join('\n'));
-		console.error('--------------------------------------------------------');
-		throw error;
+		return throwWithLogs(error);
 	}
 }
 

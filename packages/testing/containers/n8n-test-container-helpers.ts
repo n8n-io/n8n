@@ -124,8 +124,9 @@ export class ContainerTestHelpers {
 			const checkTimestamp = currentCheckTime;
 
 			// Check all containers concurrently
-			const matchPromises = targetContainers.map((container) =>
-				this.checkContainerForMatch(container, messageRegex, checkTimestamp),
+			const matchPromises = targetContainers.map(
+				async (container) =>
+					await this.checkContainerForMatch(container, messageRegex, checkTimestamp),
 			);
 
 			const results = await Promise.all(matchPromises);
@@ -228,6 +229,7 @@ export class ContainerTestHelpers {
 	 * Strip ANSI escape codes from log text
 	 */
 	private stripAnsiCodes(text: string): string {
+		// eslint-disable-next-line no-control-regex
 		return text.replace(/\x1B\[[0-9;]*[mGKH]/g, '');
 	}
 
@@ -248,7 +250,7 @@ export class ContainerTestHelpers {
 		since?: number,
 	): Promise<StreamLogMatch | null> {
 		try {
-			const logOptions: any = {};
+			const logOptions: { since?: number } = {};
 			if (since !== undefined) {
 				logOptions.since = since;
 			}
@@ -311,7 +313,7 @@ export class ContainerTestHelpers {
 		since?: number,
 	): Promise<string> {
 		try {
-			const logOptions: any = {};
+			const logOptions: { since?: number } = {};
 			if (since !== undefined) {
 				logOptions.since = since;
 			}
@@ -371,7 +373,7 @@ export class ContainerTestHelpers {
 		return matches;
 	}
 
-	private sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
+	private async sleep(ms: number): Promise<void> {
+		return await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }

@@ -10,19 +10,19 @@
  * - Dynamic port allocation to avoid conflicts (handled by testcontainers or get-port)
  */
 
+import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
-import { Readable } from 'stream';
-import getPort from 'get-port';
 
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
+import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 import {
 	setupPostgres,
 	setupRedis,
 	setupCaddyLoadBalancer,
 	pollContainerHttpEndpoint,
 } from './n8n-test-container-dependencies';
-import { DockerImageNotFoundError } from './docker-image-not-found-error';
-import { N8nImagePullPolicy } from './n8n-image-pull-policy';
+import { createSilentLogConsumer } from './n8n-test-container-utils';
 
 // --- Constants ---
 
@@ -32,13 +32,14 @@ const CADDY_IMAGE = 'caddy:2-alpine';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
+// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE || N8N_E2E_IMAGE;
 
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
 	N8N_ENCRYPTION_KEY: 'test-encryption-key',
-	E2E_TESTS: 'true',
+	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	N8N_RUNNERS_ENABLED: 'true',
@@ -126,7 +127,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const postgresContainer = await setupPostgres({
 			postgresImage: POSTGRES_IMAGE,
 			projectName: uniqueProjectName,
-			network: network,
+			network,
 		});
 		containers.push(postgresContainer.container);
 		environment = {
@@ -147,7 +148,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const redis = await setupRedis({
 			redisImage: REDIS_IMAGE,
 			projectName: uniqueProjectName,
-			network: network,
+			network,
 		});
 		containers.push(redis);
 		environment = {
@@ -177,8 +178,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const loadBalancerContainer = await setupCaddyLoadBalancer({
 			caddyImage: CADDY_IMAGE,
 			projectName: uniqueProjectName,
-			mainCount: mainCount,
-			network: network,
+			mainCount,
+			network,
 		});
 		containers.push(loadBalancerContainer);
 
@@ -190,9 +191,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 
 		const instances = await createN8NInstances({
-			mainCount: mainCount,
+			mainCount,
 			workerCount: queueConfig?.workers ?? 0,
-			uniqueProjectName: uniqueProjectName,
+			uniqueProjectName,
 			environment,
 			network,
 		});
@@ -212,7 +213,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const instances = await createN8NInstances({
 			mainCount: 1,
 			workerCount: queueConfig?.workers ?? 0,
-			uniqueProjectName: uniqueProjectName,
+			uniqueProjectName,
 			environment,
 			network,
 			directPort: assignedPort,
@@ -352,14 +353,7 @@ async function createN8NContainer({
 	networkAlias,
 	directPort,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
-	const logs: string[] = [];
-
-	// Collect logs and display them on failure
-	const silentLogConsumer = (stream: Readable) => {
-		stream.on('data', (chunk) => {
-			logs.push(chunk.toString().trim());
-		});
-	};
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
 
@@ -372,7 +366,7 @@ async function createN8NContainer({
 		})
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
-		.withLogConsumer(silentLogConsumer)
+		.withLogConsumer(consumer)
 		.withName(name)
 		.withReuse();
 
@@ -395,19 +389,18 @@ async function createN8NContainer({
 
 	try {
 		return await container.start();
-	} catch (error: any) {
-		if (error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+	} catch (error: unknown) {
+		if (
+			error instanceof Error &&
+			'statusCode' in error &&
+			(error as Error & { statusCode: number }).statusCode === 404
+		) {
 			throw new DockerImageNotFoundError(name, error);
 		}
+
 		console.error(`Container "${name}" failed to start!`);
-		console.error('Original error:', error.message);
+		console.error('Original error:', error instanceof Error ? error.message : String(error));
 
-		if (logs.length > 0) {
-			console.error('\n--- Container Logs ---');
-			console.error(logs.join('\n'));
-			console.error('---------------------\n');
-		}
-
-		throw error;
+		return throwWithLogs(error);
 	}
 }

@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
-import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
 // ANSI colors for terminal output
 const colors = {
@@ -165,6 +165,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	const usePostgres = config.postgres || config.queueMode;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
@@ -186,7 +187,7 @@ function displayConfig(config: N8NConfig) {
 		if (envCount > 0) {
 			log.info(`Environment variables: ${envCount} custom variable(s)`);
 			Object.entries(config.env).forEach(([key, value]) => {
-				console.log(`  ${key}=${value as string}`);
+				console.log(`  ${key}=${value}`);
 			});
 		}
 	}
