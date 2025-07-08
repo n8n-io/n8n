@@ -4,7 +4,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { formatAsExpression, parseFromExpression } from '@/utils/nodeSettingsUtils';
+import {
+	formatAsExpression,
+	getParameterTypeOption,
+	parseFromExpression,
+} from '@/utils/nodeSettingsUtils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
@@ -60,26 +64,28 @@ const isExecutable = computed(() => {
 	);
 });
 
-function getArgument<T = string | number | boolean | undefined>(argumentName: string): T {
-	return resolvedParameter.value?.parameter.typeOptions?.[argumentName] as T;
+function getTypeOption<T>(optionName: string): T | undefined {
+	return resolvedParameter.value
+		? getParameterTypeOption<T>(resolvedParameter.value.parameter, optionName)
+		: undefined;
 }
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
 	return resolvedParameter.value?.node.parameters.mode as CodeExecutionMode;
 });
 
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return getArgument('editor');
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
+	return getTypeOption('editor') ?? undefined;
 });
 
 const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	if (editorType.value === 'json' || resolvedParameter.value?.parameter.type === 'json')
 		return 'json' as CodeNodeEditorLanguage;
 
-	return getArgument('editorLanguage') ?? 'javaScript';
+	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
-const editorRows = computed(() => getArgument<number>('rows'));
+const editorRows = computed(() => getTypeOption<number>('rows'));
 
 const isToolNode = computed(() =>
 	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
@@ -307,7 +313,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor'"
 							:model-value="resolvedParameter.value"
-							:dialect="getArgument('sqlDialect')"
+							:dialect="getTypeOption('sqlDialect')"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
 							fullscreen
