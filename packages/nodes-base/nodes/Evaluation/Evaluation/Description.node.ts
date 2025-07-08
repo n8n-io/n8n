@@ -96,7 +96,7 @@ const correctnessFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
-				metric: ['correctness', 'stringSimilarity', 'accuracy'],
+				metric: ['correctness', 'stringSimilarity', 'categorization'],
 			},
 		},
 	},
@@ -109,7 +109,7 @@ const correctnessFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
-				metric: ['correctness', 'stringSimilarity', 'accuracy'],
+				metric: ['correctness', 'stringSimilarity', 'categorization'],
 			},
 		},
 	},
@@ -253,7 +253,7 @@ const toolsUsedFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'Enter the name of the tool you expect the AI to call. Replace spaces with underscores (e.g. get_events)',
+							'Enter the name of the tool you expect the AI to call. Replace spaces with underscores (e.g. get_events).',
 						required: true,
 					},
 				],
@@ -324,8 +324,8 @@ export const setMetricsProperties: INodeProperties[] = [
 					'How close the answer is to a reference answer, measured character-by-character (edit distance). Returns a score between 0 and 1.',
 			},
 			{
-				name: 'Accuracy',
-				value: 'accuracy',
+				name: 'Categorization',
+				value: 'categorization',
 				description:
 					'Whether the answer exactly matches the reference answer. Returns 1 if so and 0 otherwise.',
 			},
@@ -393,6 +393,6 @@ export const setMetricsProperties: INodeProperties[] = [
 	},
 	...optionsForMetric('correctness', CORRECTNESS_INPUT_PROMPT, 'Correctness'),
 	...optionsForMetric('helpfulness', HELPFULNESS_INPUT_PROMPT, 'Helpfulness'),
-	...optionsForMetricBasic('accuracy', 'Accuracy'),
+	...optionsForMetricBasic('categorization', 'Categorization'),
 	...optionsForMetricBasic('stringSimilarity', 'String similarity'),
 ];

@@ -95,7 +95,7 @@ export const metricHandlers = {
 		);
 	},
 
-	async accuracy(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+	async categorization(this: IExecuteFunctions, i: number): Promise<IDataObject> {
 		const expectedAnswer = (this.getNodeParameter('expectedAnswer', i, '') as string)
 			.toString()
 			.trim();
@@ -112,7 +112,7 @@ export const metricHandlers = {
 			});
 		}
 
-		const metricName = this.getNodeParameter('options.metricName', i, 'Accuracy') as string;
+		const metricName = this.getNodeParameter('options.metricName', i, 'Categorization') as string;
 
 		return {
 			[metricName]: expectedAnswer === actualAnswer ? 1 : 0,
