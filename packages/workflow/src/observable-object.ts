@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-shadow */
 
 import type { IDataObject, IObservableObject } from './interfaces';
 
