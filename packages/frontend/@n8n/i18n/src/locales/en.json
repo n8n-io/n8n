@@ -2548,6 +2548,8 @@
 	"workflowSettings.timeSavedPerExecution": "Estimated time saved",
 	"workflowSettings.timeSavedPerExecution.hint": "Minutes per production execution",
 	"workflowSettings.timeSavedPerExecution.tooltip": "Total time savings are summarised in the Overview page.",
+	"workflowSettings.availableInMCP": "Available in MCP",
+	"workflowSettings.availableInMCP.tooltip": "Make this workflow visible to AI Agents trough n8n MCP",
 	"workflowHistory.title": "Version History",
 	"workflowHistory.content.title": "Version",
 	"workflowHistory.content.editedBy": "Edited by",
