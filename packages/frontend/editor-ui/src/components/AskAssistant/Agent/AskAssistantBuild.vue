@@ -10,7 +10,9 @@ import { v4 as uuid } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { canvasEventBus } from '@/event-bus/canvas';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 const emit = defineEmits<{
 	close: [];
@@ -19,12 +21,14 @@ const emit = defineEmits<{
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
-const workflowStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
 const processedWorkflowUpdates = ref(new Set<string>());
 const route = useRoute();
+const router = useRouter();
+const workflowSaver = useWorkflowSaving({ router });
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -39,6 +43,12 @@ const generatedWorkflowJson = computed(
 const currentRoute = computed(() => route.name);
 
 async function onUserMessage(content: string) {
+	const isNewWorkflow = workflowsStore.isNewWorkflow;
+
+	// Save the workflow to get workflow ID which is used for session
+	if (isNewWorkflow) {
+		await workflowSaver.saveCurrentWorkflow();
+	}
 	// If there is no current session running, initialize the support chat session
 	await builderStore.initBuilderChat(content, 'chat');
 }
@@ -125,12 +135,12 @@ function onUpdateWorkflow(code: string) {
 
 	// Capture current node positions before removing nodes
 	const nodePositions = new Map<string, [number, number]>();
-	workflowStore.allNodes.forEach((node) => {
+	workflowsStore.allNodes.forEach((node) => {
 		nodePositions.set(node.id, [...node.position]);
 	});
 
-	workflowStore.removeAllConnections({ setStateDirty: false });
-	workflowStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+	workflowsStore.removeAllConnections({ setStateDirty: false });
+	workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 
 	// Restore positions for nodes that still exist
 	if (workflowData.nodes) {
