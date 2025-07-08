@@ -15,7 +15,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	NodeHint,
-	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -27,6 +26,7 @@ import {
 	type Rect,
 	type ViewportTransform,
 } from '@vue-flow/core';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 /*
  * Canvas constants and functions
@@ -371,7 +371,6 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	workflow,
 	hasNodeRun,
 }: {
 	workflowNode: INode;
@@ -379,9 +378,9 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	workflow: Workflow;
 	hasNodeRun: boolean;
 }) {
+	const workflowsStore = useWorkflowsStore();
 	const nodeHints: NodeHint[] = [];
 
 	// tools hints
@@ -417,7 +416,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowsStore.getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -429,7 +428,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowsStore.getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -470,9 +469,7 @@ export function getGenericHints({
 
 	// Split In Batches setup hints
 	if (node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-		const { connectionsBySourceNode } = workflow;
-
-		const firstNodesInLoop = connectionsBySourceNode[node.name]?.main[1] || [];
+		const firstNodesInLoop = workflowsStore.connectionsBySourceNode[node.name]?.main[1] || [];
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
@@ -482,7 +479,7 @@ export function getGenericHints({
 			});
 		} else {
 			for (const nodeInConnection of firstNodesInLoop || []) {
-				const nodeChilds = workflow.getChildNodes(nodeInConnection.node) || [];
+				const nodeChilds = workflowsStore.getChildNodes(nodeInConnection.node) || [];
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
 						message:
