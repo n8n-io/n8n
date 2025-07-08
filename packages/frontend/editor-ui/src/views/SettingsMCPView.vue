@@ -5,11 +5,14 @@ import type { UserAction, WorkflowResource } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useClipboard } from '@vueuse/core';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+
+const { copy, copied, isSupported } = useClipboard();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -56,7 +59,6 @@ const tableActions = ref<Array<UserAction<WorkflowResource>>>([
 ]);
 
 const connectionString = ref(`
-\`\`\`
 {
   "mcpServers": {
     "n8n-mcp": {
@@ -65,25 +67,18 @@ const connectionString = ref(`
         "-y",
         "supergateway",
         "--streamableHttp",
-        "${window.location.protocol}://${window.location.hostname}:${window.location.port}/rest/mcp-control/mcp",
+        "${window.location.protocol}://${window.location.host}/rest/mcp-control/mcp",
         "--header",
         "x-n8n-api-key:<YOUR_N8N_API_KEY>",
       ]
     }
   }
 }
-\`\`\`
 `);
 
-// TODO: Only owners can toggle this
-const onUpdateMCPEnabled = async (value: boolean) => {
-	isMCPEnabled.value = value;
-	if (value) {
-		await fetchAvailableWorkflows();
-	} else {
-		workflowsLoading.value = false;
-	}
-};
+const connectionCode = computed(() => {
+	return `\`\`\`json${connectionString.value}\`\`\``;
+});
 
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
@@ -96,6 +91,22 @@ const fetchAvailableWorkflows = async () => {
 	} finally {
 		workflowsLoading.value = false;
 	}
+};
+
+// TODO: Only owners can toggle this
+const onUpdateMCPEnabled = async (value: boolean) => {
+	isMCPEnabled.value = value;
+	if (value) {
+		await fetchAvailableWorkflows();
+	} else {
+		workflowsLoading.value = false;
+	}
+};
+
+const onWorkflowAction = async (action: string, workflow: WorkflowResource) => {
+	toast.showMessage({
+		title: '🚧 Coming soon',
+	});
 };
 
 onMounted(() => {
@@ -134,11 +145,20 @@ onMounted(() => {
 							},
 						})
 					"
-				></n8n-text>
+				>
+				</n8n-text>
 			</div>
 			<div :class="$style.settingsContainer">
 				<div :class="[$style.connectionString]">
-					<n8n-markdown :content="connectionString"></n8n-markdown>
+					<n8n-markdown :content="connectionCode"></n8n-markdown>
+					<n8n-button
+						v-if="isSupported"
+						type="tertiary"
+						:icon="copied ? 'check' : 'clipboard-list'"
+						:square="true"
+						:class="$style['copy-button']"
+						@click="copy(connectionString)"
+					/>
 				</div>
 			</div>
 		</div>
@@ -170,7 +190,12 @@ onMounted(() => {
 					:items-length="availableWorkflows.length"
 				>
 					<template #[`item.actions`]="{ item }">
-						<N8nActionToggle placement="bottom" :actions="tableActions" theme="dark" />
+						<N8nActionToggle
+							placement="bottom"
+							:actions="tableActions"
+							theme="dark"
+							@action="onWorkflowAction($event, item)"
+						/>
 					</template>
 				</N8nDataTableServer>
 			</div>
@@ -226,6 +251,7 @@ onMounted(() => {
 
 .connectionString {
 	flex-grow: 1;
+	position: relative;
 
 	:global(.n8n-markdown) {
 		width: 100%;
@@ -233,5 +259,18 @@ onMounted(() => {
 	code {
 		font-size: var(--font-size-2xs);
 	}
+
+	&:hover {
+		.copy-button {
+			display: flex;
+		}
+	}
+}
+
+.copy-button {
+	position: absolute;
+	top: var(--spacing-xs);
+	right: var(--spacing-xs);
+	display: none;
 }
 </style>
