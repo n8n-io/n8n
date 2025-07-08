@@ -81,9 +81,14 @@ export class AiWorkflowBuilderService {
 
 		const nodeTypes = nodeTypesKeys
 			.map((nodeName) => {
-				return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
+				try {
+					return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
+				} catch (error) {
+					console.log('Error getting node type', 'nodeName:', nodeName, 'error:', error);
+					return undefined;
+				}
 			})
-			.filter((nodeType) => nodeType.hidden !== true)
+			.filter((nodeType): nodeType is INodeTypeDescription => nodeType !== undefined)
 			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
 				const isTool = nodeType.name.endsWith('Tool');
 				if (!isTool) return nodeType;
