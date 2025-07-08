@@ -147,8 +147,12 @@ export const completeExpressionSyntax = <T>(value: T, isSpecializedEditor = fals
 	return value;
 };
 
-export const shouldConvertToExpression = <T>(value: T, isSpecializedEditor = false): boolean => {
+export const shouldConvertToExpression = (
+	value: unknown,
+	isSpecializedEditor = false,
+): value is string => {
 	if (isSpecializedEditor) return false;
+
 	return (
 		typeof value === 'string' &&
 		!value.startsWith('=') &&

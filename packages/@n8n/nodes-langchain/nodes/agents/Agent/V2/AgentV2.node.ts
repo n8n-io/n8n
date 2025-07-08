@@ -114,7 +114,7 @@ export class AgentV2 implements INodeType {
 				((hasOutputParser, needsFallback) => {
 					${getInputs.toString()};
 					return getInputs(hasOutputParser, needsFallback)
-				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
+				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
 			properties: [
@@ -148,11 +148,6 @@ export class AgentV2 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
