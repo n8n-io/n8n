@@ -5,8 +5,15 @@ import type {
 	NodeParameterValueType,
 	IDataObject,
 	INodeTypeDescription,
+	INodePropertyOptions,
 } from 'n8n-workflow';
-import { updateDynamicConnections, updateParameterByPath } from './nodeSettingsUtils';
+import {
+	updateDynamicConnections,
+	updateParameterByPath,
+	nameIsParameter,
+	formatAsExpression,
+	parseFromExpression,
+} from './nodeSettingsUtils';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -14,6 +21,7 @@ describe('updateDynamicConnections', () => {
 	afterAll(() => {
 		vi.clearAllMocks();
 	});
+
 	it('should remove extra outputs when the number of outputs decreases', () => {
 		const node = mock<INodeUi>({
 			name: 'TestNode',
@@ -280,5 +288,111 @@ describe('updateParameterByPath', () => {
 		expect(updatedPath).toBe('arrayParam[1]');
 		expect(nodeParameters.arrayParam).toHaveLength(2);
 		expect(nodeParameters.arrayParam).toEqual(['value1', 'value3']);
+	});
+});
+
+describe('nameIsParameter', () => {
+	it.each([
+		['', false],
+		['parameters', false],
+		['parameters.', true],
+		['parameters.path.to.some', true],
+		['', false],
+	])('%s should be %s', (input, expected) => {
+		const result = nameIsParameter({ name: input } as never);
+		expect(result).toBe(expected);
+	});
+
+	it('should reject path on other input', () => {
+		const result = nameIsParameter({
+			name: 'aName',
+			value: 'parameters.path.to.parameters',
+		} as never);
+		expect(result).toBe(false);
+	});
+});
+
+describe('formatAsExpression', () => {
+	it('wraps string value with "="', () => {
+		expect(formatAsExpression('foo', 'string')).toBe('=foo');
+	});
+
+	it('wraps number value with "={{ }}"', () => {
+		expect(formatAsExpression(42, 'number')).toBe('={{ 42 }}');
+	});
+
+	it('wraps boolean value with "={{ }}"', () => {
+		expect(formatAsExpression(true, 'boolean')).toBe('={{ true }}');
+	});
+
+	it('wraps multiOptions value with "={{ }}" and stringifies', () => {
+		expect(formatAsExpression(['a', 'b'], 'multiOptions')).toBe('={{ ["a","b"] }}');
+	});
+
+	it('returns "={{ 0 }}" for number with empty value', () => {
+		expect(formatAsExpression('', 'number')).toBe('={{ 0 }}');
+		expect(formatAsExpression('[Object: null]', 'number')).toBe('={{ 0 }}');
+	});
+
+	it('wraps non-string, non-number, non-boolean value with "={{ }}"', () => {
+		expect(formatAsExpression({ foo: 'bar' }, 'string')).toBe('={{ [object Object] }}');
+	});
+
+	it('handles resourceLocator value', () => {
+		const value = { __rl: true, value: 'abc', mode: 'url' };
+		expect(formatAsExpression(value, 'resourceLocator')).toEqual({
+			__rl: true,
+			value: '=abc',
+			mode: 'url',
+		});
+	});
+
+	it('handles resourceLocator value as string', () => {
+		expect(formatAsExpression('abc', 'resourceLocator')).toEqual({
+			__rl: true,
+			value: '=abc',
+			mode: '',
+		});
+	});
+});
+
+describe('parseFromExpression', () => {
+	it('removes expression from multiOptions string value', () => {
+		const options: INodePropertyOptions[] = [
+			{ name: 'Option A', value: 'a' },
+			{ name: 'Option B', value: 'b' },
+			{ name: 'Option C', value: 'c' },
+		];
+		expect(parseFromExpression('', 'a,b,c', 'multiOptions', [], options)).toEqual(['a', 'b', 'c']);
+		expect(parseFromExpression('', 'a,x', 'multiOptions', [], options)).toEqual(['a']);
+	});
+
+	it('removes expression from resourceLocator value', () => {
+		const modelValue = { __rl: true, value: '=abc', mode: 'url' };
+		expect(parseFromExpression(modelValue, 'abc', 'resourceLocator', '', [])).toEqual({
+			__rl: true,
+			value: 'abc',
+			mode: 'url',
+		});
+	});
+
+	it('removes leading "=" from string parameter', () => {
+		expect(parseFromExpression('=foo', undefined, 'string', '', [])).toBe('foo');
+		expect(parseFromExpression('==bar', undefined, 'string', '', [])).toBe('bar');
+		expect(parseFromExpression('', undefined, 'string', '', [])).toBeNull();
+	});
+
+	it('returns value if defined and not string/resourceLocator/multiOptions', () => {
+		expect(parseFromExpression(123, 456, 'number', 0, [])).toBe(456);
+		expect(parseFromExpression(true, false, 'boolean', true, [])).toBe(false);
+	});
+
+	it('returns defaultValue for number/boolean if value is undefined', () => {
+		expect(parseFromExpression(123, undefined, 'number', 0, [])).toBe(0);
+		expect(parseFromExpression(true, undefined, 'boolean', false, [])).toBe(false);
+	});
+
+	it('returns null for other types if value is undefined', () => {
+		expect(parseFromExpression({}, undefined, 'json', null, [])).toBeNull();
 	});
 });

@@ -1,8 +1,8 @@
-import { useActiveElement, useEventListener } from '@vueuse/core';
-import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import type { MaybeRef, Ref } from 'vue';
-import { computed, inject, ref, unref } from 'vue';
 import { PiPWindowSymbol } from '@/constants';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useActiveElement, useEventListener } from '@vueuse/core';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed, inject, ref, toValue } from 'vue';
 
 type KeyboardEventHandler =
 	| ((event: KeyboardEvent) => void)
@@ -25,16 +25,16 @@ export type KeyMap = Partial<Record<string, KeyboardEventHandler>>;
  * ```
  */
 export const useKeybindings = (
-	keymap: Ref<KeyMap>,
+	keymap: MaybeRefOrGetter<KeyMap>,
 	options?: {
-		disabled: MaybeRef<boolean>;
+		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
 	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 	const activeElement = useActiveElement({ window: pipWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const isDisabled = computed(() => unref(options?.disabled));
+	const isDisabled = computed(() => toValue(options?.disabled));
 
 	const ignoreKeyPresses = computed(() => {
 		if (!activeElement.value) return false;
@@ -49,7 +49,7 @@ export const useKeybindings = (
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(keymap.value).flatMap(([shortcut, handler]) => {
+			Object.entries(toValue(keymap)).flatMap(([shortcut, handler]) => {
 				const shortcuts = shortcut.split('|');
 				return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
 			}),

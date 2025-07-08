@@ -32,6 +32,10 @@ const emit = defineEmits<{
 	action: [value: { action: string; userId: string }];
 }>();
 
+const tableOptions = defineModel<TableOptions>('tableOptions', {
+	default: () => ({}),
+});
+
 const rows = computed(() => props.data.items);
 const headers = ref<Array<TableHeader<Item>>>([
 	{
@@ -133,6 +137,9 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 <template>
 	<div>
 		<N8nDataTableServer
+			v-model:sort-by="tableOptions.sortBy"
+			v-model:page="tableOptions.page"
+			v-model:items-per-page="tableOptions.itemsPerPage"
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"

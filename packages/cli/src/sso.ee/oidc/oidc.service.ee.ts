@@ -8,22 +8,17 @@ import {
 	type User,
 	UserRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import * as client from 'openid-client';
 
-import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { UrlService } from '@/services/url.service';
 
-import {
-	OIDC_CLIENT_SECRET_REDACTED_VALUE,
-	OIDC_LOGIN_ENABLED,
-	OIDC_PREFERENCES_DB_KEY,
-} from './constants';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
@@ -235,7 +230,7 @@ export class OidcService {
 		const targetAuthenticationMethod =
 			!enabled && currentAuthenticationMethod === 'oidc' ? 'email' : currentAuthenticationMethod;
 
-		config.set(OIDC_LOGIN_ENABLED, enabled);
+		Container.get(GlobalConfig).sso.oidc.loginEnabled = enabled;
 		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
 	}
 
