@@ -89,6 +89,30 @@ const isHtmlNode = computed(
 	() => !!resolvedParameter.value && resolvedParameter.value.node.type === HTML_NODE_TYPE,
 );
 
+const isDisabled = computed(() => {
+	if (!resolvedParameter.value) return false;
+
+	return nodeSettingsParameters.shouldDisplayNodeParameter(
+		resolvedParameter.value.node.parameters,
+		resolvedParameter.value.node,
+		resolvedParameter.value.parameter,
+		'',
+		'disabledOptions',
+	);
+});
+
+const isDisplayed = computed(() => {
+	if (!resolvedParameter.value) return true;
+
+	return nodeSettingsParameters.shouldDisplayNodeParameter(
+		resolvedParameter.value.node.parameters,
+		resolvedParameter.value.node,
+		resolvedParameter.value.parameter,
+		'',
+		'displayOptions',
+	);
+});
+
 const expressionModeEnabled = computed(
 	() =>
 		resolvedParameter.value &&
@@ -106,18 +130,7 @@ const shouldCaptureForPosthog = computed(
 	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
 );
 
-const isReadOnly = computed(
-	() =>
-		props.isCanvasReadOnly ||
-		(resolvedParameter.value && resolvedParameter.value.parameter.disabledOptions
-			? nodeSettingsParameters.shouldDisplayNodeParameter(
-					nodeSettingsParameters.nodeValues.value,
-					resolvedParameter.value.node,
-					resolvedParameter.value.parameter,
-					'disabledOptions',
-				)
-			: false),
-);
+const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
 
 // TODO: get correct value
 const isForCredential = false;
@@ -246,8 +259,15 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 					/>
 				</div>
 				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
+					<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
+						<div :class="$style.emptyText">
+							<N8nText color="text-base">
+								{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+							</N8nText>
+						</div>
+					</div>
 					<ExpressionEditorModalInput
-						v-if="expressionModeEnabled"
+						v-else-if="expressionModeEnabled"
 						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						:is-read-only="isReadOnly"
