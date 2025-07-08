@@ -148,18 +148,16 @@ onMounted(() => {
 				>
 				</n8n-text>
 			</div>
-			<div :class="$style.settingsContainer">
-				<div :class="[$style.connectionString]">
-					<n8n-markdown :content="connectionCode"></n8n-markdown>
-					<n8n-button
-						v-if="isSupported"
-						type="tertiary"
-						:icon="copied ? 'check' : 'clipboard-list'"
-						:square="true"
-						:class="$style['copy-button']"
-						@click="copy(connectionString)"
-					/>
-				</div>
+			<div :class="[$style.settingsContainer, $style.connectionString]">
+				<n8n-markdown :content="connectionCode"></n8n-markdown>
+				<n8n-button
+					v-if="isSupported"
+					type="tertiary"
+					:icon="copied ? 'check' : 'clipboard-list'"
+					:square="true"
+					:class="$style['copy-button']"
+					@click="copy(connectionString)"
+				/>
 			</div>
 		</div>
 		<div v-if="isMCPEnabled" :class="$style['workflow-list-container']">
@@ -217,7 +215,7 @@ onMounted(() => {
 .settingsContainer {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-xs);
+	padding: var(--spacing-s);
 	justify-content: space-between;
 	flex-shrink: 0;
 
@@ -252,6 +250,7 @@ onMounted(() => {
 .connectionString {
 	flex-grow: 1;
 	position: relative;
+	padding-bottom: 0;
 
 	:global(.n8n-markdown) {
 		width: 100%;
@@ -269,8 +268,8 @@ onMounted(() => {
 
 .copy-button {
 	position: absolute;
-	top: var(--spacing-xs);
-	right: var(--spacing-xs);
+	top: var(--spacing-l);
+	right: var(--spacing-l);
 	display: none;
 }
 </style>
