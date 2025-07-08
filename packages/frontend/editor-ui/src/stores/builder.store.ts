@@ -216,13 +216,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					if (existingRunningToolIndex > -1) {
 						// This is a progress update - append updates to existing message
 						console.log('Updating existing running tool with progress');
+						const existingMessage = messages[existingRunningToolIndex] as ChatUI.ToolMessage;
 						messages[existingRunningToolIndex] = {
-							...messages[existingRunningToolIndex],
-							updates: [
-								...(messages[existingRunningToolIndex] as ChatUI.ToolMessage).updates,
-								...msg.updates,
-							],
-						};
+							...existingMessage,
+							updates: [...existingMessage.updates, ...msg.updates],
+						} as ChatUI.AssistantMessage;
 					} else {
 						// This is a new tool execution
 						console.log('Adding new running tool message');
@@ -248,14 +246,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					if (existingToolMessageIndex > -1) {
 						// Update existing running tool message with completion or error
 						console.log('Updating existing tool message to status:', msg.status);
+						const existingMessage = messages[existingToolMessageIndex] as ChatUI.ToolMessage;
 						messages[existingToolMessageIndex] = {
-							...messages[existingToolMessageIndex],
+							...existingMessage,
 							status: msg.status,
-							updates: [
-								...(messages[existingToolMessageIndex] as ChatUI.ToolMessage).updates,
-								...msg.updates,
-							],
-						};
+							updates: [...existingMessage.updates, ...msg.updates],
+						} as ChatUI.AssistantMessage;
 					} else {
 						// If no matching running message found, add as new (shouldn't happen normally)
 						console.warn('No matching running tool message found for completion, adding as new');

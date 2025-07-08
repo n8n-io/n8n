@@ -227,6 +227,19 @@ export namespace ChatRequest {
 		content: string;
 	}
 
+	interface ToolMessage {
+		role: 'assistant';
+		type: 'tool';
+		toolName: string;
+		toolCallId?: string;
+		status: 'running' | 'completed' | 'error';
+		updates: Array<{
+			type: 'input' | 'output' | 'progress' | 'error';
+			data: Record<string, unknown>;
+			timestamp?: string;
+		}>;
+	}
+
 	export type MessageResponse =
 		| ((
 				| AssistantChatMessage
@@ -241,6 +254,7 @@ export namespace ChatRequest {
 				| WorkflowGeneratedMessage
 				| WorkflowUpdatedMessage
 				| RateWorkflowMessage
+				| ToolMessage
 		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
