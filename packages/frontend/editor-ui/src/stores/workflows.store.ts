@@ -102,6 +102,7 @@ import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
+import { snapPositionToGrid } from '@/utils/nodeViewUtils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -828,7 +829,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowActive(targetWorkflowId: string) {
-		uiStore.stateIsDirty = false;
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -837,6 +837,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[targetWorkflowId].active = true;
 		}
 		if (targetWorkflowId === workflow.value.id) {
+			uiStore.stateIsDirty = false;
 			setActive(true);
 		}
 	}
@@ -1288,6 +1289,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			if (node.extendsCredential) {
 				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
 			}
 
 			if (!nodeMetadata.value[node.name]) {

@@ -18,7 +18,10 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
+	mockInstance(GlobalConfig, {
+		publicApi: { disabled: false },
+		sso: { saml: { loginEnabled: true } },
+	});
 });
 
 describe('Owner shell', () => {

@@ -127,7 +127,7 @@ describe('Canvas', () => {
 				[
 					{
 						id: '1',
-						position: { x: 120, y: 120 },
+						position: { x: 112, y: 112 },
 					},
 				],
 			],

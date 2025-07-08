@@ -15,9 +15,10 @@
     "build:frontend": "turbo run build:frontend",
     "build:nodes": "turbo run build:nodes",
     "build:n8n": "node scripts/build-n8n.mjs",
+    "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
-    "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && pnpm --filter=n8n-playwright run test:standard",
+    "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:standard --filter=n8n-playwright",
     "typecheck": "turbo typecheck",
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
     "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
@@ -100,7 +101,6 @@
       "vue-tsc": "^2.2.8",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
-      "zod": "3.25.67",
       "brace-expansion@1": "1.1.12",
       "brace-expansion@2": "2.0.2",
       "date-fns": "2.30.0",
@@ -115,7 +115,10 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
-      "js-base64": "patches/js-base64.patch"
+      "js-base64": "patches/js-base64.patch",
+      "ics": "patches/ics.patch",
+      "minifaker": "patches/minifaker.patch",
+      "z-vue-scan": "patches/z-vue-scan.patch"
     }
   }
 }

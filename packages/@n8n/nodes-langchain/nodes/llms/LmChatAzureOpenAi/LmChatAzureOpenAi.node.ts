@@ -8,7 +8,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 import { setupApiKeyAuthentication } from './credentials/api-key';
 import { setupOAuth2Authentication } from './credentials/oauth2';
@@ -112,7 +112,9 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
-					httpAgent: getHttpProxyAgent(),
+					fetchOptions: {
+						dispatcher: getProxyAgent(),
+					},
 				},
 				modelKwargs: options.responseFormat
 					? {

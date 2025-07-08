@@ -138,7 +138,15 @@ export abstract class BaseCommand<F = never> {
 			await Container.get(CommunityPackagesService).init();
 		}
 
-		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+		const taskRunnersConfig = this.globalConfig.taskRunners;
+
+		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+			if (taskRunnersConfig.insecureMode) {
+				this.logger.warn(
+					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
+				);
+			}
+
 			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			await Container.get(TaskRunnerModule).start();
 		}
