@@ -353,7 +353,7 @@ describe('CredentialsHelper', () => {
 			const updatedAt = updatedCredentialData.updatedAt as Date;
 
 			expect(updatedAt).toBeInstanceOf(Date);
-			expect(updatedAt!.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
+			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
 
 			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
 			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
