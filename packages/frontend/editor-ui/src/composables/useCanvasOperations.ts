@@ -2157,10 +2157,14 @@ export function useCanvasOperations() {
 
 		if (nodeId) {
 			const node = workflowsStore.getNodeById(nodeId);
-			if (!node) {
-				return void toast.showError(new Error(`Node with id "${nodeId}" could not be found!`), i18n.baseText('nodeView.showError.openExecution.title'));
+			if (node) {
+				ndvStore.activeNodeName = node.name;
+			} else {
+				toast.showError(
+					new Error(`Node with id "${nodeId}" could not be found!`),
+					i18n.baseText('nodeView.showError.openExecution.title'),
+				);
 			}
-			ndvStore.activeNodeName = node.name;
 		}
 
 		uiStore.stateIsDirty = false;
