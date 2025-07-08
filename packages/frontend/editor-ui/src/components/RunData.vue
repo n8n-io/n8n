@@ -1675,7 +1675,6 @@ defineExpose({ enterEditMode });
 					:error="subworkflowExecutionError"
 					:class="$style.errorDisplay"
 					:active-node="activeNode"
-					:input-data-length="inputData.length"
 					show-details
 					@open-error-node="onOpenErrorNode"
 				/>
@@ -1742,7 +1741,6 @@ defineExpose({ enterEditMode });
 						:class="$style.inlineError"
 						:compact="compact"
 						:active-node="activeNode"
-						:input-data-length="inputData.length"
 						@open-error-node="onOpenErrorNode"
 					/>
 					<slot name="content"></slot>
@@ -1753,7 +1751,6 @@ defineExpose({ enterEditMode });
 					:class="$style.dataDisplay"
 					:compact="compact"
 					:active-node="activeNode"
-					:input-data-length="inputData.length"
 					show-details
 					@open-error-node="onOpenErrorNode"
 				/>

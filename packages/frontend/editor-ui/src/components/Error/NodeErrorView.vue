@@ -32,14 +32,17 @@ type Props = {
 	showDetails?: boolean;
 	compact?: boolean;
 	activeNode?: INodeUi | null;
-	inputDataLength?: number;
 };
 
 const emit = defineEmits<{
 	openErrorNode: [error: NodeError | NodeApiError | NodeOperationError];
 }>();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	showDetails: false,
+	compact: false,
+	activeNode: null,
+});
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
@@ -80,10 +83,6 @@ const n8nVersion = computed(() => {
 	}
 
 	return rootStore.versionCli + ` (${instanceType})`;
-});
-
-const hasManyInputItems = computed(() => {
-	return (props.inputDataLength ?? 0) > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -194,7 +193,7 @@ function getErrorDescription(): string {
 function addItemIndexSuffix(message: string): string {
 	let itemIndexSuffix = '';
 
-	if (hasManyInputItems.value && props.error?.context?.itemIndex !== undefined) {
+	if (props.error?.context?.itemIndex !== undefined) {
 		itemIndexSuffix = `item ${props.error.context.itemIndex}`;
 	}
 
