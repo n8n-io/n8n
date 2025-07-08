@@ -550,11 +550,7 @@ export class LoadNodesAndCredentials {
 			// Watch options for chokidar v4
 			const watchOptions = {
 				ignoreInitial: true,
-				persistent: true,
-				awaitWriteFinish: {
-					stabilityThreshold: 500,
-					pollInterval: 100,
-				},
+				cwd: directory,
 				// Filter which files to watch based on loader type
 				ignored: (filePath: string, stats?: Stats) => {
 					if (!stats) return false;
