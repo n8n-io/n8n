@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
@@ -200,7 +200,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
-	// eslint-disable-next-line complexity
+
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,

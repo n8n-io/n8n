@@ -1,9 +1,11 @@
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { InvalidAuthTokenRepository } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	User,
+	InvalidAuthTokenRepository,
+	UserRepository,
+} from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';

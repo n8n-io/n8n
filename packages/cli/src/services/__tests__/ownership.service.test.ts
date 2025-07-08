@@ -1,9 +1,15 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { SharedCredentials } from '@n8n/db';
-import { Project, SharedWorkflow, User, WorkflowEntity, ProjectRelation } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import {
+	Project,
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ProjectRelation,
+	ProjectRelationRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
