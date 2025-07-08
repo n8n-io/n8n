@@ -121,6 +121,15 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
 
+	menuItems.push({
+		id: 'settings-mcp',
+		icon: 'robot',
+		label: i18n.baseText('settings.mcp.sidebar.item'),
+		position: 'top',
+		available: canUserAccessRouteByName(VIEWS.MCP_SETTINGS),
+		route: { to: { name: VIEWS.MCP_SETTINGS } },
+	});
+
 	return menuItems;
 });
 </script>

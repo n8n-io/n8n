@@ -28,6 +28,7 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
+	WorkflowResource,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -564,6 +565,57 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'GET',
 			`/active-workflows/error/${id}`,
 		);
+	}
+
+	async function fetchWorkflowsAvailableForMCP(
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+	): Promise<WorkflowResource[]> {
+		const options = {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+		};
+		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			undefined,
+			Object.keys(options).length ? options : undefined,
+		);
+
+		let allWorkflows = data;
+
+		// If there are more workflows than the current page size, fetch remaining pages
+		if (count > DEFAULT_WORKFLOW_PAGE_SIZE) {
+			const totalPages = Math.ceil(count / DEFAULT_WORKFLOW_PAGE_SIZE);
+			const remainingPages = [];
+
+			// Create promises for all remaining pages
+			for (let currentPage = page + 1; currentPage <= totalPages; currentPage++) {
+				const pageOptions = {
+					skip: (currentPage - 1) * DEFAULT_WORKFLOW_PAGE_SIZE,
+					take: DEFAULT_WORKFLOW_PAGE_SIZE,
+				};
+				remainingPages.push(
+					workflowsApi
+						.getWorkflowsAndFolders(
+							rootStore.restApiContext,
+							undefined,
+							Object.keys(pageOptions).length ? pageOptions : undefined,
+						)
+						.then((response) => response.data),
+				);
+			}
+
+			// Wait for all remaining pages to complete
+			const remainingData = await Promise.all(remainingPages);
+
+			// Combine all data
+			allWorkflows = [...data, ...remainingData.flat()];
+		}
+
+		// TODO: This needs to be filtered on the backend, then we can remove automatic pagination from here
+		return allWorkflows.filter((item: WorkflowResource) => {
+			return item.settings?.availableInMCP === true;
+		});
 	}
 
 	async function fetchWorkflowsPage(
@@ -1992,6 +2044,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		fetchAllWorkflows,
 		fetchWorkflowsPage,
+		fetchWorkflowsAvailableForMCP,
 		fetchWorkflow,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,

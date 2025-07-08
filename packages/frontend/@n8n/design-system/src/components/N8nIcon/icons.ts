@@ -534,6 +534,7 @@ export const updatedIconSet = {
 	'redo-2': IconLucideRedo2,
 	'refresh-cw': IconLucideRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
+	robot: IconLucideBot,
 	rss: IconLucideRss,
 	'satellite-dish': IconLucideSatelliteDish,
 	save: IconLucideSave,
