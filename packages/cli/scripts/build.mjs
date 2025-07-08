@@ -60,7 +60,7 @@ function bundleOpenApiSpecs() {
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
 			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
-			shell.exec(command, { silent: true });
+			shell.exec(command, { silent: false });
 		});
 }
 
