@@ -77,7 +77,7 @@ const properties: INodeProperties[] = [
 			{
 				displayName: 'Length of Description (Max Tokens)',
 				description: 'Fewer tokens will result in shorter, less detailed image description',
-				name: 'max_tokens',
+				name: 'maxTokens',
 				type: 'number',
 				default: 1024,
 				typeOptions: {

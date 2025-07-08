@@ -74,7 +74,7 @@ export async function baseAnalyze(
 
 	const body = {
 		model,
-		max_tokens: options.max_tokens ?? 1024,
+		max_tokens: options.maxTokens ?? 1024,
 		messages: [
 			{
 				role: 'user',

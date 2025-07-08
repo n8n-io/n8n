@@ -9,7 +9,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { Content, Message } from '../../helpers/interfaces';
+import type { Content, Message, Tool } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -87,8 +87,44 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
+				displayName: 'Web Search',
+				name: 'webSearch',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable web search',
+			},
+			{
+				displayName: 'Web Search Max Uses',
+				name: 'maxUses',
+				type: 'number',
+				default: 5,
+				description: 'The maximum number of web search uses per request',
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
+			},
+			{
+				displayName: 'Web Search Allowed Domains',
+				name: 'allowedDomains',
+				type: 'string',
+				default: '',
+				description:
+					'Comma-separated list of domains to search. Only domains in this list will be searched. Conflicts with "Web Search Blocked Domains".',
+				placeholder: 'e.g. google.com, wikipedia.org',
+			},
+			{
+				displayName: 'Web Search Blocked Domains',
+				name: 'blockedDomains',
+				type: 'string',
+				default: '',
+				description:
+					'Comma-separated list of domains to block from search. Conflicts with "Web Search Allowed Domains".',
+				placeholder: 'e.g. google.com, wikipedia.org',
+			},
+			{
 				displayName: 'Maximum Number of Tokens',
-				name: 'max_tokens',
+				name: 'maxTokens',
 				default: 1024,
 				description: 'The maximum number of tokens to generate in the completion',
 				type: 'number',
@@ -112,7 +148,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Output Randomness (Top P)',
-				name: 'top_p',
+				name: 'topP',
 				default: 0.7,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
 				type: 'number',
@@ -124,7 +160,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Output Randomness (Top K)',
-				name: 'top_k',
+				name: 'topK',
 				default: 5,
 				description: 'The maximum number of tokens to consider when sampling',
 				type: 'number',
@@ -169,21 +205,39 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const options = this.getNodeParameter('options', i, {});
 
 	const availableTools = await getConnectedTools(this, true);
-	const tools = availableTools.map((t) => ({
+	const tools: Tool[] = availableTools.map((t) => ({
+		type: 'custom',
 		name: t.name,
 		input_schema: zodToJsonSchema(t.schema),
 		description: t.description,
 	}));
+	if (options.webSearch) {
+		const allowedDomains = (options.allowedDomains as string | undefined)
+			?.split(',')
+			.map((d) => d.trim())
+			.filter((d) => d);
+		const blockedDomains = (options.blockedDomains as string | undefined)
+			?.split(',')
+			.map((d) => d.trim())
+			.filter((d) => d);
+		tools.push({
+			type: 'web_search_20250305',
+			name: 'web_search',
+			max_uses: options.maxUses as number | undefined,
+			allowed_domains: allowedDomains,
+			blocked_domains: blockedDomains,
+		});
+	}
 
 	const body = {
 		model,
 		messages,
 		tools,
-		max_tokens: options.max_tokens ?? 1024,
+		max_tokens: options.maxTokens ?? 1024,
 		system: options.system,
 		temperature: options.temperature,
-		top_p: options.top_p,
-		top_k: options.top_k,
+		top_p: options.topP,
+		top_k: options.topK,
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
@@ -194,6 +248,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const abortSignal = this.getExecutionCancelSignal();
 	let currentIteration = 1;
 	let toolCalls = getToolCalls(response.content);
+	// TODO: handle 'pause_turn'
 	while (response.stop_reason === 'tool_use' && toolCalls.length) {
 		if (
 			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations) ||

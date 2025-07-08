@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 export type FileSource =
 	| {
@@ -54,3 +55,18 @@ export interface File {
 	size_bytes: number;
 	type: 'file';
 }
+
+export type Tool =
+	| {
+			type: 'custom';
+			name: string;
+			input_schema: JsonSchema7Type;
+			description: string;
+	  }
+	| {
+			type: 'web_search_20250305';
+			name: 'web_search';
+			max_uses?: number;
+			allowed_domains?: string[];
+			blocked_domains?: string[];
+	  };
