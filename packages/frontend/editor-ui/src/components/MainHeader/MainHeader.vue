@@ -9,7 +9,6 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
-	WORKFLOW_EVALUATION_EXPERIMENT,
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -64,12 +63,10 @@ const tabBarItems = computed(() => {
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
 	];
 
-	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
-		items.push({
-			value: MAIN_HEADER_TABS.EVALUATION,
-			label: locale.baseText('generic.tests'),
-		});
-	}
+	items.push({
+		value: MAIN_HEADER_TABS.EVALUATION,
+		label: locale.baseText('generic.tests'),
+	});
 	return items;
 });
 

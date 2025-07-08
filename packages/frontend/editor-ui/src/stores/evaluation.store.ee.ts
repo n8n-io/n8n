@@ -4,7 +4,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
-import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
@@ -30,16 +29,9 @@ export const useEvaluationStore = defineStore(
 
 		// Computed
 
-		// Enable with `window.featureFlags.override('032_evaluation_mvp', true)`
-		const isFeatureEnabled = computed(() =>
-			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
-		);
+		const isFeatureEnabled = computed(() => true);
 
-		const isEvaluationEnabled = computed(
-			() =>
-				posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
-				settingsStore.settings.evaluation.quota !== 0,
-		);
+		const isEvaluationEnabled = computed(() => settingsStore.settings.evaluation.quota !== 0);
 
 		const isLoading = computed(() => loadingTestRuns.value);
 
