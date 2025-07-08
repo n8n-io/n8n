@@ -9,6 +9,7 @@ import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
+import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
@@ -63,6 +64,8 @@ export abstract class AbstractServer {
 	protected testWebhooksEnabled = false;
 
 	readonly uniqueInstanceId: string;
+
+	readonly InstanceSettings = Container.get(InstanceSettings);
 
 	constructor() {
 		this.app = express();
@@ -135,6 +138,14 @@ export abstract class AbstractServer {
 				res.status(200).send({ status: 'ok' });
 			} else {
 				res.status(503).send({ status: 'error' });
+			}
+		});
+
+		this.app.get('/healthz/is_leader', (_req, res) => {
+			if (this.InstanceSettings.isLeader) {
+				res.status(200).send({ status: 'leader' });
+			} else {
+				res.status(503).send({ status: 'not_leader' });
 			}
 		});
 
