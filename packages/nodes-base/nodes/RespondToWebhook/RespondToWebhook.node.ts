@@ -360,6 +360,10 @@ export class RespondToWebhook implements INodeType {
 				}
 			}
 
+			const hasHtmlContentType =
+				headers['content-type'] === 'type/html' ||
+				headers['content-type'] === 'application/xhtml+xml';
+
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
 			if (respondWith === 'json') {
@@ -413,7 +417,11 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
-				responseBody = sandboxResponseData(this.getNodeParameter('responseBody', 0) as string);
+				if (hasHtmlContentType || !headers['content-type']) {
+					responseBody = sandboxResponseData(this.getNodeParameter('responseBody', 0) as string);
+				} else {
+					responseBody = this.getNodeParameter('responseBody', 0) as string;
+				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];
 
