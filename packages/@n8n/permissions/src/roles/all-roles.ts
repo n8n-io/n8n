@@ -15,6 +15,7 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'project:admin': 'Project Admin',
 	'project:editor': 'Project Editor',
 	'project:viewer': 'Project Viewer',
+	'project:executor': 'Project Executor',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
