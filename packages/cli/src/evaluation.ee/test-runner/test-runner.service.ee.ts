@@ -106,7 +106,6 @@ export class TestRunnerService {
 			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
 		}
 
-		// TODO this needs to be a bit more specific, probably...
 		const unconfiguredMetricsNode = metricsNodes.find(
 			(node) =>
 				!node.parameters ||
