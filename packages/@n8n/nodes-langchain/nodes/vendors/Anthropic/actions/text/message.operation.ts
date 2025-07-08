@@ -87,6 +87,13 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable code execution. Not supported by all models.',
+			},
+			{
 				displayName: 'Web Search',
 				name: 'webSearch',
 				type: 'boolean',
@@ -202,7 +209,18 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {});
+	const options = this.getNodeParameter('options', i, {}) as {
+		codeExecution?: boolean;
+		webSearch?: boolean;
+		allowedDomains?: string;
+		blockedDomains?: string;
+		maxUses?: number;
+		maxTokens?: number;
+		system?: string;
+		temperature?: number;
+		topP?: number;
+		topK?: number;
+	};
 
 	const availableTools = await getConnectedTools(this, true);
 	const tools: Tool[] = availableTools.map((t) => ({
@@ -211,19 +229,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		input_schema: zodToJsonSchema(t.schema),
 		description: t.description,
 	}));
+	if (options.codeExecution) {
+		tools.push({
+			type: 'code_execution_20250522',
+			name: 'code_execution',
+		});
+	}
 	if (options.webSearch) {
-		const allowedDomains = (options.allowedDomains as string | undefined)
+		const allowedDomains = options.allowedDomains
 			?.split(',')
 			.map((d) => d.trim())
 			.filter((d) => d);
-		const blockedDomains = (options.blockedDomains as string | undefined)
+		const blockedDomains = options.blockedDomains
 			?.split(',')
 			.map((d) => d.trim())
 			.filter((d) => d);
 		tools.push({
 			type: 'web_search_20250305',
 			name: 'web_search',
-			max_uses: options.maxUses as number | undefined,
+			max_uses: options.maxUses,
 			allowed_domains: allowedDomains,
 			blocked_domains: blockedDomains,
 		});
@@ -242,6 +266,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
+		enableAnthropicBetas: { codeExecution: options.codeExecution },
 	})) as { content: Content[]; stop_reason: string };
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
@@ -286,6 +311,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 			body,
+			enableAnthropicBetas: { codeExecution: options.codeExecution },
 		})) as { content: Content[]; stop_reason: string };
 		toolCalls = getToolCalls(response.content);
 		currentIteration++;

@@ -69,4 +69,8 @@ export type Tool =
 			max_uses?: number;
 			allowed_domains?: string[];
 			blocked_domains?: string[];
+	  }
+	| {
+			type: 'code_execution_20250522';
+			name: 'code_execution';
 	  };

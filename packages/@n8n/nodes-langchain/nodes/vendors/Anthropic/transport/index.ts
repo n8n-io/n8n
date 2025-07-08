@@ -13,6 +13,7 @@ type RequestParameters = {
 	option?: IDataObject;
 	enableAnthropicBetas?: {
 		promptTools?: boolean;
+		codeExecution?: boolean;
 	};
 };
 
@@ -35,6 +36,10 @@ export async function apiRequest(
 	const betas = ['files-api-2025-04-14'];
 	if (parameters?.enableAnthropicBetas?.promptTools) {
 		betas.push('prompt-tools-2025-04-02');
+	}
+
+	if (parameters?.enableAnthropicBetas?.codeExecution) {
+		betas.push('code-execution-2025-05-22');
 	}
 
 	const options = {
