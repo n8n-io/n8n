@@ -98,8 +98,13 @@ export const metricHandlers = {
 
 		// Calculate individual tool usage (1 if used, 0 if not used)
 		const toolUsageScores = normalizedExpectedTools.map((normalizedTool) => {
-			return intermediateSteps.filter((step) => step.action.tool.toLowerCase() === normalizedTool)
-				?.length >= 1
+			return intermediateSteps.filter((step) => {
+				// Handle malformed intermediate steps gracefully
+				if (!step || !step.action || typeof step.action.tool !== 'string') {
+					return false;
+				}
+				return step.action.tool.toLowerCase() === normalizedTool;
+			})?.length >= 1
 				? 1
 				: 0;
 		});

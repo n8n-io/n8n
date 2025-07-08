@@ -239,6 +239,162 @@ describe('metricHandlers', () => {
 				NodeOperationError,
 			);
 		});
+
+		describe('intermediate steps validation', () => {
+			it('should throw error for missing intermediate steps parameter', async () => {
+				const expectedTools = 'calculator';
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return undefined;
+					return undefined;
+				});
+
+				await expect(metricHandlers.toolsUsed.call(mockExecuteFunctions, 0)).rejects.toThrow(
+					new NodeOperationError(mockNode, 'Intermediate steps missing', {
+						description:
+							"Make sure to enable returning intermediate steps in your agent node's options, then map them in here",
+					}),
+				);
+			});
+
+			it('should throw error for empty object intermediate steps', async () => {
+				const expectedTools = 'calculator';
+				const intermediateSteps = {};
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					return undefined;
+				});
+
+				await expect(metricHandlers.toolsUsed.call(mockExecuteFunctions, 0)).rejects.toThrow(
+					NodeOperationError,
+				);
+			});
+
+			it('should throw error for string intermediate steps', async () => {
+				const expectedTools = 'calculator';
+				const intermediateSteps = 'not an array';
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					return undefined;
+				});
+
+				await expect(metricHandlers.toolsUsed.call(mockExecuteFunctions, 0)).rejects.toThrow(
+					NodeOperationError,
+				);
+			});
+
+			it('should throw error for null intermediate steps', async () => {
+				const expectedTools = 'calculator';
+				const intermediateSteps = null;
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					return undefined;
+				});
+
+				await expect(metricHandlers.toolsUsed.call(mockExecuteFunctions, 0)).rejects.toThrow(
+					NodeOperationError,
+				);
+			});
+
+			it('should handle empty array intermediate steps gracefully', async () => {
+				const expectedTools = 'calculator, search';
+				const intermediateSteps: any[] = [];
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					if (paramName === 'options.metricName') return 'Tools Used';
+					return undefined;
+				});
+
+				const result = await metricHandlers.toolsUsed.call(mockExecuteFunctions, 0);
+
+				expect(result).toEqual({
+					'Tools Used': 0,
+				});
+			});
+
+			it('should handle malformed intermediate steps objects', async () => {
+				const expectedTools = 'calculator, search';
+				const intermediateSteps = [
+					{ action: { tool: 'calculator' } }, // valid
+					{ action: {} }, // missing tool property
+					{ notAction: { tool: 'search' } }, // wrong structure
+					{}, // completely empty
+				];
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					if (paramName === 'options.metricName') return 'Tools Used';
+					return undefined;
+				});
+
+				const result = await metricHandlers.toolsUsed.call(mockExecuteFunctions, 0);
+
+				// Only 'calculator' should match (1 out of 2 expected tools)
+				expect(result).toEqual({
+					'Tools Used': 0.5,
+				});
+			});
+
+			it('should handle intermediate steps with null/undefined tool names', async () => {
+				const expectedTools = 'calculator, search';
+				const intermediateSteps = [
+					{ action: { tool: 'calculator' } }, // valid
+					{ action: { tool: null } }, // null tool
+					{ action: { tool: undefined } }, // undefined tool
+					{ action: { tool: '' } }, // empty string tool
+				];
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					if (paramName === 'options.metricName') return 'Tools Used';
+					return undefined;
+				});
+
+				const result = await metricHandlers.toolsUsed.call(mockExecuteFunctions, 0);
+
+				// Only 'calculator' should match (1 out of 2 expected tools)
+				expect(result).toEqual({
+					'Tools Used': 0.5,
+				});
+			});
+
+			it('should handle intermediate steps with non-string tool names', async () => {
+				const expectedTools = 'calculator, search';
+				const intermediateSteps = [
+					{ action: { tool: 'calculator' } }, // valid
+					{ action: { tool: 123 } }, // number
+					{ action: { tool: { name: 'search' } } }, // object
+					{ action: { tool: ['search'] } }, // array
+				];
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'expectedTools') return expectedTools;
+					if (paramName === 'intermediateSteps') return intermediateSteps;
+					if (paramName === 'options.metricName') return 'Tools Used';
+					return undefined;
+				});
+
+				// This should not throw an error, but might have unexpected behavior
+				// depending on how the comparison works
+				const result = await metricHandlers.toolsUsed.call(mockExecuteFunctions, 0);
+
+				// Only 'calculator' should match reliably (1 out of 2 expected tools)
+				expect(result).toEqual({
+					'Tools Used': 0.5,
+				});
+			});
+		});
 	});
 
 	describe('categorization', () => {
