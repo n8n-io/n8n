@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
-import { usePostHog } from './posthog.store';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
@@ -21,7 +20,6 @@ export const useEvaluationStore = defineStore(
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
 
 		// Store instances
-		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
 		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
