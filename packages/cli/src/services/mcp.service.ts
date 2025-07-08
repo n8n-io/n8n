@@ -81,15 +81,29 @@ export class McpService {
 					where.id = In(workflowsIds);
 				}
 
-				const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
+				const [workflows] = await Container.get(WorkflowRepository).findAndCount({
 					take: limit,
 					where,
 				});
 
-				// For now only return id and name
-				const result = workflows.map(({ id, name }) => ({ id, name }));
+				// TODO: Filter needs to be in where clause
+				const data = workflows
+					.filter((w) => w.settings?.availableInMCP)
+					.map(({ id, name, active, createdAt, updatedAt, triggerCount, nodes, connections }) => ({
+						id,
+						name,
+						active,
+						createdAt,
+						updatedAt,
+						triggerCount,
+						nodes: nodes.map((node) => ({
+							name: node.name,
+							type: node.type,
+						})),
+						connections,
+					}));
 				return {
-					content: [{ type: 'text', text: JSON.stringify({ data: result, count }) }],
+					content: [{ type: 'text', text: JSON.stringify({ data, count: data.length }) }],
 				};
 			},
 		);
