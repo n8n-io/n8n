@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { mock } from 'jest-mock-extended';
 import { AgentExecutor } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
-import type { ISupplyDataFunctions, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
