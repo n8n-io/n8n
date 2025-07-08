@@ -110,6 +110,95 @@ describe('Search Functions', () => {
 				}),
 			);
 		});
+
+		it('should use defaultQuery when filter is undefined', async () => {
+			const responseData = {
+				items: [
+					{ login: 'n8n-io-user-1', html_url: 'https://github.com/n8n-io-user-1' },
+					{ login: 'n8n-io-user-2', html_url: 'https://github.com/n8n-io-user-2' },
+				],
+				total_count: 2,
+			};
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getUsers.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{
+						name: 'n8n-io-user-1',
+						value: 'n8n-io-user-1',
+						url: 'https://github.com/n8n-io-user-1',
+					},
+					{
+						name: 'n8n-io-user-2',
+						value: 'n8n-io-user-2',
+						url: 'https://github.com/n8n-io-user-2',
+					},
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({
+						q: 'n8n-io',
+						page: 1,
+						per_page: 100,
+					}),
+				}),
+			);
+		});
+
+		it('should use filter when provided', async () => {
+			const filter = 'custom-user';
+			const responseData = {
+				items: [
+					{ login: 'custom-user-1', html_url: 'https://github.com/custom-user-1' },
+					{ login: 'custom-user-2', html_url: 'https://github.com/custom-user-2' },
+				],
+				total_count: 2,
+			};
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getUsers.call(mockLoadOptionsFunctions, filter);
+
+			expect(result).toEqual({
+				results: [
+					{
+						name: 'custom-user-1',
+						value: 'custom-user-1',
+						url: 'https://github.com/custom-user-1',
+					},
+					{
+						name: 'custom-user-2',
+						value: 'custom-user-2',
+						url: 'https://github.com/custom-user-2',
+					},
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({
+						q: 'custom-user',
+						page: 1,
+						per_page: 100,
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('getRepositories', () => {
