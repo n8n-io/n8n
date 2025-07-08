@@ -1022,6 +1022,46 @@ describe('TestRunnerService', () => {
 			}
 		});
 
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node is disabled', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: true,
+						parameters: {
+							operation: 'setMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'assignment1',
+										value: 0.95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
 		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when assignment has null value', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [
