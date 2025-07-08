@@ -46,7 +46,6 @@ import { isObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import get from 'lodash/get';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
@@ -163,10 +162,6 @@ export function useNodeHelpers() {
 			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
 	}
 
-	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
-		return get(nodeValues, path ? path + '.' + parameterName : parameterName);
-	}
-
 	// Returns if the given parameter should be displayed or not
 	function displayParameter(
 		nodeValues: INodeParameters,
@@ -252,7 +247,7 @@ export function useNodeHelpers() {
 	function hasNodeExecutionIssues(node: INodeUi): boolean {
 		const workflowResultData = workflowsStore.getWorkflowRunData;
 
-		if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
+		if (!workflowResultData?.hasOwnProperty(node.name)) {
 			return false;
 		}
 
@@ -1078,7 +1073,6 @@ export function useNodeHelpers() {
 		isCustomApiCallSelected,
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
-		getParameterValue,
 		displayParameter,
 		getNodeIssues,
 		updateNodesInputIssues,

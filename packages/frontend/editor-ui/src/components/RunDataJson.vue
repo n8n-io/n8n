@@ -112,8 +112,12 @@ const onDragEnd = (el: HTMLElement) => {
 	}, 1000); // ensure dest data gets set if drop
 };
 
-const getContent = (value: unknown) => {
+const formatKey = (value: unknown) => {
 	return isString(value) ? `"${value}"` : JSON.stringify(value);
+};
+
+const formatValue = (value: unknown) => {
+	return JSON.stringify(value);
 };
 
 const getListItemName = (path: string) => {
@@ -168,7 +172,7 @@ const getListItemName = (path: string) => {
 			>
 				<template #renderNodeKey="{ node }">
 					<TextWithHighlights
-						:content="getContent(node.key)"
+						:content="formatKey(node.key)"
 						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
@@ -183,13 +187,7 @@ const getListItemName = (path: string) => {
 				</template>
 				<template #renderNodeValue="{ node }">
 					<TextWithHighlights
-						v-if="isNaN(node.index)"
-						:content="getContent(node.content)"
-						:search="search"
-					/>
-					<TextWithHighlights
-						v-else
-						:content="getContent(node.content)"
+						:content="formatValue(node.content)"
 						:search="search"
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"

@@ -253,7 +253,7 @@ const completionProperties = updateDisplayOptions(
 			],
 			displayOptions: {
 				show: {
-					respondWith: ['text', 'returnBinary'],
+					respondWith: ['text', 'returnBinary', 'redirect'],
 				},
 			},
 		},

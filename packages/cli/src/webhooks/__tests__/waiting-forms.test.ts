@@ -206,17 +206,17 @@ describe('WaitingForms', () => {
 			});
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
 
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: WAITING_FORMS_EXECUTION_STATUS,
+				},
+			});
+
 			const res = mock<express.Response>();
 
-			const result = await waitingForms.executeWebhook(
-				{
-					params: {
-						path: '123',
-						suffix: WAITING_FORMS_EXECUTION_STATUS,
-					},
-				} as WaitingWebhookRequest,
-				res,
-			);
+			const result = await waitingForms.executeWebhook(req, res);
 
 			expect(result).toEqual({ noWebhookResponse: true });
 			expect(res.send).toHaveBeenCalledWith(execution.status);

@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -146,7 +146,7 @@ export class LmChatGroq implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
-			httpAgent: getHttpProxyAgent(),
+			httpAgent: getProxyAgent('https://api.groq.com/openai/v1'),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

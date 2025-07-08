@@ -6,7 +6,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { ADD_FORM_NOTICE, deepCopy, getParameterValueByPath, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -537,7 +537,7 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 function getParameterValue<T extends NodeParameterValueType = NodeParameterValueType>(
 	name: string,
 ): T {
-	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
+	return getParameterValueByPath(props.nodeValues, name, props.path) as T;
 }
 
 function isRagStarterCallout(parameter: INodeProperties): boolean {
@@ -627,8 +627,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 				>
 					<N8nText size="small">
 						<N8nText
-							size="small"
 							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+							size="small"
 						/>
 						<template v-if="parameter.typeOptions?.calloutAction">
 							{{ ' ' }}
@@ -734,7 +734,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
+					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
@@ -777,7 +777,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
-					size="mini"
+					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
@@ -813,8 +813,8 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	.icon-button {
 		position: absolute;
 		opacity: 0;
-		top: 0;
-		left: calc(-0.5 * var(--spacing-2xs));
+		top: -3px;
+		left: calc(-0.5 * var(--spacing-xs));
 		transition: opacity 100ms ease-in;
 		Button {
 			color: var(--color-icon-base);

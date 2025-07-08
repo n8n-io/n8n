@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -44,9 +45,9 @@ export function isEmailCurrentAuthenticationMethod(): boolean {
 }
 
 export function isSsoJustInTimeProvisioningEnabled(): boolean {
-	return config.getEnv('sso.justInTimeProvisioning');
+	return Container.get(GlobalConfig).sso.justInTimeProvisioning;
 }
 
 export function doRedirectUsersFromLoginToSsoFlow(): boolean {
-	return config.getEnv('sso.redirectLoginToSso');
+	return Container.get(GlobalConfig).sso.redirectLoginToSso;
 }

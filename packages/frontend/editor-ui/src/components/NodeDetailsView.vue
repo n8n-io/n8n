@@ -96,7 +96,7 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 
-//computed
+// computed
 
 const pushRef = computed(() => ndvStore.pushRef);
 
@@ -276,7 +276,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 

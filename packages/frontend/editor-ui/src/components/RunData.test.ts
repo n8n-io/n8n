@@ -262,7 +262,7 @@ describe('RunData', () => {
 
 	it('should render pagination with binary data on non-binary tab', async () => {
 		const { getByTestId } = render({
-			defaultRunItems: Array.from({ length: 11 }).map((_, i) => ({
+			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
 				json: {
 					data: {
 						id: i,

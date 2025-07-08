@@ -71,6 +71,10 @@ export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
-export { UsersListFilterDto } from './user/users-list-filter.dto';
+export {
+	UsersListFilterDto,
+	type UsersListSortOptions,
+	USERS_LIST_SORT_OPTIONS,
+} from './user/users-list-filter.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
