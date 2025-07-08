@@ -24,6 +24,8 @@ export class AgentTool extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			// Should have the same versioning as Agent node
+			// because internal agent logic often checks for node version
 			2.2: new AgentToolV2(baseDescription),
 		};
 
