@@ -165,6 +165,19 @@ export class Ssh implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Raise Error on Failure',
+				name: 'raise_failure',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['command'],
+						operation: ['execute'],
+					},
+				},
+				default: true,
+				description: 'Whether to throw an error if the command returns a non-zero exit code',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
@@ -371,8 +384,22 @@ export class Ssh implements INodeType {
 								ssh,
 								i,
 							);
+							const raiseFailure = this.getNodeParameter('raise_failure', i, true) as boolean;
+							const result = await ssh.execCommand(command, { cwd });
+
+							if (raiseFailure && result.code !== 0) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Command failed with exit code ${result.code}. stderr: ${result.stderr || 'N/A'}. stdout: ${result.stdout || 'N/A'}`,
+									{
+										itemIndex: i,
+										description: `Exit Code: ${result.code}\nstderr: ${result.stderr}\nstdout: ${result.stdout}`,
+									},
+								);
+							}
+
 							returnItems.push({
-								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
+								json: result as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
