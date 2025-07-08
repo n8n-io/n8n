@@ -323,7 +323,7 @@ const keyMap = computed(() => {
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 		tab: () => emit('create:node', 'tab'),
 		shift_s: () => emit('create:sticky'),
-		// shift_f: () => emit('toggle:focus-panel'), // Disabled in favor of Zen mode
+		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
