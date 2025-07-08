@@ -446,6 +446,11 @@ const tags = computed(
 				</span>
 				<span v-show="data" class="mr-2xs"
 					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+					<span v-if="data.settings?.availableInMCP">|</span>
+				</span>
+				<span v-show="data.settings?.availableInMCP" :class="$style['description-cell']">
+					<!-- <n8n-icon icon="check" color="success"></n8n-icon> -->
+					<n8n-text size="small">{{ locale.baseText('workflows.item.availableInMCP') }}</n8n-text>
 				</span>
 				<span
 					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"

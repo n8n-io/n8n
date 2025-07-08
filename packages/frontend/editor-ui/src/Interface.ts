@@ -310,6 +310,7 @@ export type WorkflowResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
+	settings?: Partial<IWorkflowSettings>;
 };
 
 export type VariableResource = BaseResource & {

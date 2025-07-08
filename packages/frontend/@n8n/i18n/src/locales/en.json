@@ -2597,6 +2597,7 @@
 	"workflows.item.created": "Created",
 	"workflows.item.readonly": "Read only",
 	"workflows.item.archived": "Archived",
+	"workflows.item.availableInMCP": "Available in MCP",
 	"workflows.search.placeholder": "Search",
 	"workflows.filters": "Filters",
 	"workflows.filters.tags": "Tags",
