@@ -52,6 +52,8 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: n8n-docs
 
       - name: Checkout Docs Repository
         if: steps.verify_file.outputs.file_exists == 'true'
