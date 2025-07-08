@@ -5,7 +5,6 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import { Toolkit } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
-import type { SupplyDataContext } from 'n8n-core';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
@@ -76,7 +75,7 @@ export function isToolsInstance(model: unknown): model is Tool {
 }
 
 export function getPromptInputByType(options: {
-	ctx: IExecuteFunctions | SupplyDataContext;
+	ctx: IExecuteFunctions | ISupplyDataFunctions;
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
@@ -187,7 +186,7 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions | IWebhookFunctions | SupplyDataContext,
+	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,

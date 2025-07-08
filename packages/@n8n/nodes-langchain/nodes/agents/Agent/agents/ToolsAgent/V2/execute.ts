@@ -12,9 +12,8 @@ import {
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
-import type { SupplyDataContext } from 'n8n-core';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
@@ -173,7 +172,7 @@ async function processEventStream(
  * @returns The array of execution data for all processed items
  */
 export async function toolsAgentExecute(
-	this: IExecuteFunctions | SupplyDataContext,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Tools Agent V2');
 

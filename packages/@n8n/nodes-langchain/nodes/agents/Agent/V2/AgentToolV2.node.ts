@@ -8,12 +8,14 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 	INodeTypeBaseDescription,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import { textInput, toolDescription } from '@utils/descriptions';
 
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
+// import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
@@ -96,18 +98,17 @@ function getInputs(
 	if (needsFallback === false) {
 		specialInputs = specialInputs.filter((input) => input.displayName !== 'Fallback Model');
 	}
-	return ['main', ...getInputData(specialInputs)];
+	return [...getInputData(specialInputs)];
 }
 
-export class AgentV2 implements INodeType {
+export class AgentToolV2 implements INodeType {
 	description: INodeTypeDescription;
-
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1, 2.2],
 			defaults: {
-				name: 'AI Agent',
+				name: 'AI Agent Tool',
 				color: '#404040',
 			},
 			inputs: `={{
@@ -116,31 +117,11 @@ export class AgentV2 implements INodeType {
 					return getInputs(hasOutputParser, needsFallback)
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback === undefined || $parameter.needsFallback === true)
 			}}`,
-			outputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.AiTool],
 			properties: [
-				{
-					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/workflows/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'aiAgentStarterCallout',
-					type: 'callout',
-					default: '',
-				},
-				promptTypeOptions,
-				{
-					...textFromPreviousNode,
-					displayOptions: {
-						show: {
-							promptType: ['auto'],
-						},
-					},
-				},
+				toolDescription,
 				{
 					...textInput,
-					displayOptions: {
-						show: {
-							promptType: ['define'],
-						},
-					},
 				},
 				{
 					displayName: 'Require Specific Output Format',
@@ -189,22 +170,13 @@ export class AgentV2 implements INodeType {
 						},
 					},
 				},
-				...getToolsAgentProperties({ withStreaming: true }),
-			],
-			hints: [
-				{
-					message:
-						'You are using streaming responses. Make sure to set the response mode to "Streaming Response" on the connected trigger node.',
-					type: 'warning',
-					location: 'outputPane',
-					whenToDisplay: 'afterExecution',
-					displayCondition: '={{ $parameter["enableStreaming"] === true }}',
-				},
+				...getToolsAgentProperties({ withStreaming: false }),
 			],
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	// Automatically wrapped as a tool
+	async execute(this: IExecuteFunctions | ISupplyDataFunctions): Promise<INodeExecutionData[][]> {
 		return await toolsAgentExecute.call(this);
 	}
 }

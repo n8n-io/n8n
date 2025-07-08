@@ -1,7 +1,7 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { AgentV2 } from './V2/AgentV2.node';
+import { AgentToolV2 } from './V2/AgentToolV2.node';
 
 export class AgentTool extends VersionedNodeType {
 	constructor() {
@@ -31,7 +31,7 @@ export class AgentTool extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			2.1: new AgentV2(baseDescription, true),
+			2.1: new AgentToolV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
