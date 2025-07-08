@@ -1178,7 +1178,6 @@ export class WorkflowExecute {
 			const newInputData: ITaskDataConnections = {};
 			for (const connectionType of Object.keys(inputData)) {
 				newInputData[connectionType] = inputData[connectionType].map((input) => {
-					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
 			}
@@ -1558,7 +1557,7 @@ export class WorkflowExecute {
 								if (waitBetweenTries !== 0) {
 									// TODO: Improve that in the future and check if other nodes can
 									//       be executed in the meantime
-									// eslint-disable-next-line @typescript-eslint/no-shadow
+
 									await new Promise((resolve) => {
 										setTimeout(() => {
 											resolve(undefined);
@@ -1767,14 +1766,11 @@ export class WorkflowExecute {
 								lineResult.json.$error !== undefined &&
 								lineResult.json.$json !== undefined
 							) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {
-									// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
 								};
 							} else if (lineResult.error !== undefined) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.json = { error: lineResult.error.message };
 							}
 						}
@@ -1986,7 +1982,7 @@ export class WorkflowExecute {
 							const parentNodes = workflow.getParentNodes(nodeName);
 
 							// Check if input nodes (of same run) got already executed
-							// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 							const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
 							if (parentIsWaiting) {
 								// Execute node later as one of its dependencies is still outstanding
@@ -2127,12 +2123,11 @@ export class WorkflowExecute {
 
 					this.moveNodeMetadata();
 
-					await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
-						// eslint-disable-next-line @typescript-eslint/no-shadow
-						(error) => {
+					await hooks
+						.runHook('workflowExecuteAfter', [fullRunData, newStaticData])
+						.catch((error) => {
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
-						},
-					);
+						});
 
 					if (closeFunction) {
 						try {
