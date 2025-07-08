@@ -167,7 +167,7 @@ async function processEventStream(
  * creates the agent, and processes each input item. The error handling for each item is also
  * managed here based on the node's continueOnFail setting.
  *
- * @param this Execute context. SupplyDataContext is passed when agent is a tool
+ * @param this Execute context. SupplyDataContext is passed when agent is as a tool
  *
  * @returns The array of execution data for all processed items
  */

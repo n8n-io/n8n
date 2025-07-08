@@ -27,11 +27,11 @@ export class AgentTool extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			2.1: new AgentToolV2(baseDescription),
+			2.2: new AgentToolV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
