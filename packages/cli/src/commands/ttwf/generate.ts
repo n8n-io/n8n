@@ -1,7 +1,6 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
-import { Container } from '@n8n/di';
 import { Command } from '@n8n/decorators';
-
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';

@@ -1,10 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
