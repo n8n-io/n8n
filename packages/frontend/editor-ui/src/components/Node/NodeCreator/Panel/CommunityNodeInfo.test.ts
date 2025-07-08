@@ -6,8 +6,11 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 
 const getCommunityNodeAttributes = vi.fn();
-const communityNodesStore: { getInstalledPackages: PublicInstalledPackage[] } = {
-	getInstalledPackages: [],
+const getInstalledPackage = vi.fn();
+const communityNodesStore: {
+	getInstalledPackage: (packageName: string) => Promise<PublicInstalledPackage>;
+} = {
+	getInstalledPackage,
 };
 
 vi.mock('@/stores/nodeTypes.store', () => ({
@@ -87,13 +90,13 @@ describe('CommunityNodeInfo', () => {
 			npmVersion: '1.0.0',
 			authorName: 'contributor',
 			numberOfDownloads: 9999,
+			nodeVersions: [{ npmVersion: '1.0.0' }],
 		});
-		communityNodesStore.getInstalledPackages = [
-			{
-				installedVersion: '1.0.0',
-				packageName: 'n8n-nodes-test',
-			} as PublicInstalledPackage,
-		];
+		getInstalledPackage.mockResolvedValue({
+			installedVersion: '1.0.0',
+			packageName: 'n8n-nodes-test',
+		} as PublicInstalledPackage);
+
 		const wrapper = renderComponent({ pinia });
 
 		await waitFor(() => expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument());
