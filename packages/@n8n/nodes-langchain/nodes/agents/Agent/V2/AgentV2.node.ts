@@ -9,7 +9,7 @@ import type {
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
-import { getInputs } from './helpers';
+import { getInputs } from './utils';
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 
