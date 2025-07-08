@@ -128,11 +128,6 @@ export class AgentToolV2 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
