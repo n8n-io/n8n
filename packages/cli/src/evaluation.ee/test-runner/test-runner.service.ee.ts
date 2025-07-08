@@ -110,7 +110,8 @@ export class TestRunnerService {
 		const unconfiguredMetricsNode = metricsNodes.find(
 			(node) =>
 				!node.parameters ||
-				(node.parameters.metric === 'customMetric' &&
+				!node.parameters.metric ||
+				(node.parameters.metric === 'customMetrics' &&
 					(!node.parameters.metrics ||
 						(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
 						(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(

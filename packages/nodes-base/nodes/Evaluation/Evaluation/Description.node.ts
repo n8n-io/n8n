@@ -237,29 +237,11 @@ const toolsUsedFields: INodeProperties[] = [
 	{
 		displayName: 'Expected Tools',
 		name: 'expectedTools',
-		type: 'fixedCollection',
-		placeholder: 'Add tool to expect',
-		typeOptions: {
-			multipleValues: true,
-		},
-		options: [
-			{
-				name: 'tools',
-				displayName: 'Tools',
-				values: [
-					{
-						displayName: 'Tool',
-						name: 'tool',
-						type: 'string',
-						default: '',
-						description:
-							'Enter the name of the tool you expect the AI to call. Replace spaces with underscores (e.g. get_events).',
-						required: true,
-					},
-				],
-			},
-		],
-		default: {},
+		type: 'string',
+		default: '',
+		description:
+			'Enter the name(s) of the tool(s) you expect the AI to call (separated by commas).',
+		placeholder: 'Get Events, Send Email, Search Database',
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
@@ -395,4 +377,5 @@ export const setMetricsProperties: INodeProperties[] = [
 	...optionsForMetric('helpfulness', HELPFULNESS_INPUT_PROMPT, 'Helpfulness'),
 	...optionsForMetricBasic('categorization', 'Categorization'),
 	...optionsForMetricBasic('stringSimilarity', 'String similarity'),
+	...optionsForMetricBasic('toolsUsed', 'Tools Used'),
 ];

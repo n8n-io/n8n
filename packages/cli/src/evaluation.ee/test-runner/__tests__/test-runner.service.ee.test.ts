@@ -867,6 +867,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -930,6 +931,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: undefined,
 						},
 					},
@@ -961,6 +963,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [],
 							},
@@ -994,6 +997,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -1033,6 +1037,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -1072,6 +1077,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -1091,6 +1097,7 @@ describe('TestRunnerService', () => {
 						position: [100, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{

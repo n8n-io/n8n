@@ -65,18 +65,23 @@ export const metricHandlers = {
 	},
 
 	async toolsUsed(this: IExecuteFunctions, i: number): Promise<IDataObject> {
-		const expectedTools: string[] = (
-			this.getNodeParameter('expectedTools', i, {}) as { tools: Array<{ tool: string }> }
-		)?.tools?.map((t) => t?.tool);
+		const expectedToolsParam = this.getNodeParameter('expectedTools', i, '');
+		const expectedToolsString = (expectedToolsParam as string)?.trim() || '';
+		const expectedTools: string[] = expectedToolsString
+			? expectedToolsString
+					.split(',')
+					.map((tool) => tool.trim())
+					.filter((tool) => tool !== '')
+			: [];
 
 		const intermediateSteps = this.getNodeParameter('intermediateSteps', i, {}) as Array<{
 			action: { tool: string };
 		}>;
 
-		if (!expectedTools || expectedTools.some((t) => t.trim() === '')) {
+		if (!expectedTools || expectedTools.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'Expected tool name missing', {
 				description:
-					'Make sure you add at least one expected tool and fill in the name for each expected tool',
+					'Make sure you add at least one expected tool name (comma-separated if multiple)',
 			});
 		}
 		if (!intermediateSteps || !Array.isArray(intermediateSteps)) {
