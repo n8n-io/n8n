@@ -15,7 +15,6 @@ import { textInput, toolDescription } from '@utils/descriptions';
 
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
-// import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
