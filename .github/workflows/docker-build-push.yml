@@ -364,10 +364,12 @@ jobs:
     if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
     steps:
       - name: Call Success URL
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != ''
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success_url }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
         run: |
-          echo "Calling success URL: ${{ github.event.inputs.success_url }}"
-          curl -v "${{ github.event.inputs.success_url }}" || echo "Failed to call success URL"
+          echo "Calling success URL: ${{ env.SUCCESS_URL }}"
+          curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
 
   security-scan:

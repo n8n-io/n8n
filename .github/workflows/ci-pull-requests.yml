@@ -46,7 +46,7 @@ jobs:
 
       - name: Upload Frontend Build Artifacts
         if: steps.paths-filter.outputs.frontend == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: editor-ui-dist
           path: packages/frontend/editor-ui/dist/
@@ -75,7 +75,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download Frontend Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: editor-ui-dist
           path: packages/frontend/editor-ui/dist/
