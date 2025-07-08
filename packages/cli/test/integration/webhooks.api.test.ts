@@ -1,11 +1,10 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
 import {
+	type INode,
+	type IWorkflowBase,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,

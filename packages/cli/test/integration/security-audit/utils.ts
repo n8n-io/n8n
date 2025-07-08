@@ -1,6 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import type { InstalledNodes } from '@n8n/db';
-import type { InstalledPackages } from '@n8n/db';
+import type { InstalledNodes, InstalledPackages } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';

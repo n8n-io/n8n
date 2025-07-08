@@ -171,7 +171,7 @@ export class OidcService {
 			} catch (error) {
 				this.logger.warn(
 					'Failed to load OIDC configuration from database, falling back to default configuration.',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					{ error },
 				);
 			}
