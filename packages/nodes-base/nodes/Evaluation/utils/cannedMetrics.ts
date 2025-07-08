@@ -78,7 +78,12 @@ export const metricHandlers = {
 					'Make sure you add at least one expected tool and fill in the name for each expected tool',
 			});
 		}
-		// TODO add proper check for intermediate steps!
+		if (!intermediateSteps || !Array.isArray(intermediateSteps)) {
+			throw new NodeOperationError(this.getNode(), 'Intermediate steps missing', {
+				description:
+					"Make sure to enable returning intermediate steps in your agent node's options, then map them in here",
+			});
+		}
 
 		return Object.fromEntries(
 			expectedTools.map((tool) => {
