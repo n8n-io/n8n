@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
@@ -18,7 +18,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
@@ -113,7 +113,7 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
@@ -183,7 +183,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

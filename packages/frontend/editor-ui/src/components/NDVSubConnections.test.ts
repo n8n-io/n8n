@@ -87,31 +87,17 @@ describe('NDVSubConnections', () => {
 			props: {
 				rootNode: node,
 			},
+			global: {
+				stubs: {
+					N8nButton: true,
+				},
+			},
 		});
 		vi.advanceTimersByTime(1000); // Event debounce time
 
 		await waitFor(() => {});
 		expect(getByTestId('subnode-connection-group-ai_tool-0')).toBeVisible();
-		expect(html()).toEqual(
-			`<div class="container">
-  <div class="connections" style="--possible-connections: 1;">
-    <div data-test-id="subnode-connection-group-ai_tool-0">
-      <div class="connectionType"><span class="connectionLabel">Tools</span>
-        <div>
-          <div class="connectedNodesWrapper" style="--nodes-length: 0;">
-            <div class="plusButton">
-              <n8n-tooltip placement="top" teleported="true" offset="10" show-after="300" disabled="false">
-                <n8n-icon-button size="medium" icon="plus" type="tertiary" data-test-id="add-subnode-ai_tool-0"></n8n-icon-button>
-              </n8n-tooltip>
-            </div>
-            <!--v-if-->
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>`,
-		);
+		expect(html()).toMatchSnapshot();
 	});
 
 	it('should not render container if no possible connections', async () => {

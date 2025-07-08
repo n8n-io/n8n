@@ -17,6 +17,7 @@ import { agent as testAgent } from 'supertest';
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
+import type { LastActiveAtService } from '@/services/last-active-at.service';
 import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
@@ -24,12 +25,21 @@ describe('ControllerRegistry', () => {
 	const authService = mock<AuthService>();
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
+	const lastActiveAtService = mock<LastActiveAtService>();
 	let agent: SuperAgentTest;
+	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		const app = express();
-		new ControllerRegistry(license, authService, globalConfig, metadata).activate(app);
+		authService.createAuthMiddleware.mockImplementation(() => authMiddleware);
+		new ControllerRegistry(
+			license,
+			authService,
+			globalConfig,
+			metadata,
+			lastActiveAtService,
+		).activate(app);
 		agent = testAgent(app);
 	});
 
@@ -49,7 +59,8 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authService.authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
 		it('should not rate-limit by default', async () => {
@@ -83,15 +94,15 @@ describe('ControllerRegistry', () => {
 
 		it('should not require auth if configured to skip', async () => {
 			await agent.get('/rest/test/no-auth').expect(200);
-			expect(authService.authMiddleware).not.toHaveBeenCalled();
+			expect(authMiddleware).not.toHaveBeenCalled();
 		});
 
 		it('should require auth by default', async () => {
-			authService.authMiddleware.mockImplementation(async (_req, res) => {
+			authMiddleware.mockImplementation(async (_req, res) => {
 				res.status(401).send();
 			});
 			await agent.get('/rest/test/auth').expect(401);
-			expect(authService.authMiddleware).toHaveBeenCalled();
+			expect(authMiddleware).toHaveBeenCalled();
 		});
 	});
 
@@ -107,7 +118,8 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authService.authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
 		it('should disallow when feature is missing', async () => {
@@ -135,7 +147,8 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authService.authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
 		it('should pass in correct args to the route handler', async () => {

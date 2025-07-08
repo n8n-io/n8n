@@ -5,6 +5,8 @@ import { type InsightsDateRange } from './schemas/insights.schema';
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
+	whatsNewEnabled: boolean;
+	whatsNewEndpoint: string;
 	infoUrl: string;
 }
 
@@ -135,6 +137,7 @@ export interface FrontendSettings {
 		ldap: boolean;
 		saml: boolean;
 		oidc: boolean;
+		mfaEnforcement: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
@@ -165,6 +168,7 @@ export interface FrontendSettings {
 	};
 	mfa: {
 		enabled: boolean;
+		enforced: boolean;
 	};
 	folders: {
 		enabled: boolean;

@@ -38,7 +38,7 @@ export const EXTENSION_OBJECTS: ExtensionMap[] = [
 	booleanExtensions,
 ];
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 const genericExtensions: Record<string, Function> = {
 	isEmpty,
 	isNotEmpty,
@@ -450,12 +450,12 @@ function isDate(input: unknown): boolean {
 
 interface FoundFunction {
 	type: 'native' | 'extended';
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	function: Function;
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
@@ -545,7 +545,7 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 export function extendOptional(
 	input: unknown,
 	functionName: string,
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 ): Function | undefined {
 	const foundFunction = findExtendedFunction(input, functionName);
 

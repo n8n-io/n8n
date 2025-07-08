@@ -66,12 +66,18 @@ const isEachItemMode = computed(() => {
 	return mode === 'runOnceForEachItem';
 });
 
-function getErrorMessageByStatusCode(statusCode: number) {
+function getErrorMessageByStatusCode(statusCode: number, message: string | undefined): string {
 	const errorMessages: Record<number, string> = {
-		400: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
-		413: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
-		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
-		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		[413]: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
+		[400]: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		[429]: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
+		[500]: message
+			? i18n.baseText('codeNodeEditor.askAi.generationFailedWithReason', {
+					interpolate: {
+						error: message,
+					},
+				})
+			: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
 
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
@@ -189,7 +195,10 @@ async function onSubmit() {
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
+			message: getErrorMessageByStatusCode(
+				error.httpStatusCode || error?.response.status,
+				error?.message,
+			),
 		});
 		stopLoading();
 		useTelemetry().trackAskAI('askAi.generationFinished', {
@@ -256,7 +265,7 @@ onMounted(() => {
 					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
-					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
+					<n8n-icon icon="circle-help" color="text-light" size="large" />{{
 						i18n.baseText('codeNodeEditor.askAi.help')
 					}}
 				</a>

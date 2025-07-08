@@ -1,6 +1,6 @@
 import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
-import type { Application } from 'express';
+import type { Application, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -114,6 +114,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** HTTPResponse needed for streaming responses */
+	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;

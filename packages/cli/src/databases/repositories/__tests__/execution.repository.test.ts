@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config/src/configs/database.config';
 import type { IExecutionResponse } from '@n8n/db';
@@ -11,7 +12,7 @@ import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { mockInstance, mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);

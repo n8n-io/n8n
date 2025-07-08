@@ -1,15 +1,32 @@
-import type {
-	IConnection,
-	IConnections,
-	IDataObject,
-	NodeInputConnections,
-	NodeParameterValueType,
+import {
+	type IConnection,
+	type IConnections,
+	type IDataObject,
+	type NodeInputConnections,
+	type NodeParameterValueType,
+	type INodeTypeDescription,
+	type INode,
+	type INodeParameters,
+	type NodeParameterValue,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type INodePropertyCollection,
+	type NodePropertyTypes,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import isEqual from 'lodash/isEqual';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
+import { isPresent } from './typesUtils';
 
 export function updateDynamicConnections(
 	node: INodeUi,
@@ -127,6 +144,195 @@ export function updateDynamicConnections(
 		}
 	} catch (error) {
 		captureException(error);
+	}
+
+	return null;
+}
+
+/**
+ * Removes node values that are not valid options for the given parameter.
+ * This can happen when there are multiple node parameters with the same name
+ * but different options and display conditions
+ * @param nodeType The node type description
+ * @param nodeParameterValues Current node parameter values
+ * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
+ */
+export function removeMismatchedOptionValues(
+	nodeType: INodeTypeDescription,
+	nodeTypeVersion: INode['typeVersion'],
+	nodeParameterValues: INodeParameters | null,
+	updatedParameter: { name: string; value: NodeParameterValue },
+) {
+	nodeType.properties.forEach((prop) => {
+		const displayOptions = prop.displayOptions;
+		// Not processing parameters that are not set or don't have options
+		if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+			return;
+		}
+		// Only process the parameters that depend on the updated parameter
+		const showCondition = displayOptions.show?.[updatedParameter.name];
+		const hideCondition = displayOptions.hide?.[updatedParameter.name];
+		if (showCondition === undefined && hideCondition === undefined) {
+			return;
+		}
+
+		let hasValidOptions = true;
+
+		// Every value should be a possible option
+		if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+			hasValidOptions = Object.keys(nodeParameterValues).every(
+				(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+			);
+		} else if (isINodePropertyOptionsList(prop.options)) {
+			hasValidOptions = !!prop.options.find(
+				(option) => option.value === nodeParameterValues[prop.name],
+			);
+		}
+
+		if (
+			!hasValidOptions &&
+			displayParameter(nodeParameterValues, prop, { typeVersion: nodeTypeVersion }, nodeType)
+		) {
+			unset(nodeParameterValues as object, prop.name);
+		}
+	});
+}
+
+export function updateParameterByPath(
+	parameterName: string,
+	newValue: NodeParameterValue,
+	nodeParameters: INodeParameters | null,
+	nodeType: INodeTypeDescription,
+	nodeTypeVersion: INode['typeVersion'],
+) {
+	// Remove the 'parameters.' from the beginning to just have the
+	// actual parameter name
+	const parameterPath = parameterName.split('.').slice(1).join('.');
+
+	// Check if the path is supposed to change an array and if so get
+	// the needed data like path and index
+	const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+
+	// Apply the new value
+	if (newValue === undefined && parameterPathArray !== null) {
+		// Delete array item
+		const path = parameterPathArray[1];
+		const index = parameterPathArray[2];
+		const data = get(nodeParameters, path);
+
+		if (Array.isArray(data)) {
+			data.splice(parseInt(index, 10), 1);
+			set(nodeParameters as object, path, data);
+		}
+	} else {
+		if (newValue === undefined) {
+			unset(nodeParameters as object, parameterPath);
+		} else {
+			set(nodeParameters as object, parameterPath, newValue);
+		}
+
+		// If value is updated, remove parameter values that have invalid options
+		// so getNodeParameters checks don't fail
+		removeMismatchedOptionValues(nodeType, nodeTypeVersion, nodeParameters, {
+			name: parameterPath,
+			value: newValue,
+		});
+	}
+
+	return parameterPath;
+}
+
+export function getParameterTypeOption<T = string | number | boolean | undefined>(
+	parameter: INodeProperties,
+	optionName: string,
+): T {
+	return parameter.typeOptions?.[optionName] as T;
+}
+
+export function isResourceLocatorParameterType(type: NodePropertyTypes) {
+	return type === 'resourceLocator' || type === 'workflowSelector';
+}
+
+export function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return 'value' in option && isPresent(option.value) && isPresent(option.name);
+}
+
+export function nameIsParameter(
+	parameterData: IUpdateInformation,
+): parameterData is IUpdateInformation & { name: `parameters.${string}` } {
+	return parameterData.name.startsWith('parameters.');
+}
+
+export function formatAsExpression(
+	value: NodeParameterValueType,
+	parameterType: NodePropertyTypes,
+) {
+	if (isResourceLocatorParameterType(parameterType)) {
+		if (isResourceLocatorValue(value)) {
+			return {
+				__rl: true,
+				value: `=${value.value}`,
+				mode: value.mode,
+			};
+		}
+
+		return { __rl: true, value: `=${value as string}`, mode: '' };
+	}
+
+	const isNumber = parameterType === 'number';
+	const isBoolean = parameterType === 'boolean';
+	const isMultiOptions = parameterType === 'multiOptions';
+
+	if (isNumber && (!value || value === '[Object: null]')) {
+		return '={{ 0 }}';
+	}
+
+	if (isMultiOptions) {
+		return `={{ ${JSON.stringify(value)} }}`;
+	}
+
+	if (isNumber || isBoolean || typeof value !== 'string') {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string -- stringified intentionally
+		return `={{ ${String(value)} }}`;
+	}
+
+	return `=${value}`;
+}
+
+export function parseFromExpression(
+	currentParameterValue: NodeParameterValueType,
+	evaluatedExpressionValue: unknown,
+	parameterType: NodePropertyTypes,
+	defaultValue: NodeParameterValueType,
+	parameterOptions: INodePropertyOptions[] = [],
+) {
+	if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
+		return evaluatedExpressionValue
+			.split(',')
+			.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
+	}
+
+	if (
+		isResourceLocatorParameterType(parameterType) &&
+		isResourceLocatorValue(currentParameterValue)
+	) {
+		return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
+	}
+
+	if (parameterType === 'string') {
+		return currentParameterValue
+			? (currentParameterValue as string).toString().replace(/^=+/, '')
+			: null;
+	}
+
+	if (typeof evaluatedExpressionValue !== 'undefined') {
+		return evaluatedExpressionValue;
+	}
+
+	if (['number', 'boolean'].includes(parameterType)) {
+		return defaultValue;
 	}
 
 	return null;

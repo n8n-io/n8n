@@ -106,7 +106,7 @@ const cellClassStyle = ({ row, column }: CellClassStyleMethodParams<TableRow>): 
 	return {};
 };
 
-const onInput = (input: { name: string; value: string | number | boolean }) => {
+const onInput = (input: { name: string; value: string | number | boolean | null | undefined }) => {
 	if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 		loginEnabled.value = input.value;
 	}

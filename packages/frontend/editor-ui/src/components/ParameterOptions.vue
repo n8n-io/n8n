@@ -8,7 +8,8 @@ import {
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
+import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
 
 interface Props {
 	parameter: INodeProperties;
@@ -37,6 +38,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const ndvStore = useNDVStore();
+const posthogStore = usePostHog();
 
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
@@ -53,6 +56,10 @@ const shouldShowOptions = computed(() => {
 		return false;
 	}
 
+	if (hasFocusAction.value) {
+		return true;
+	}
+
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
 		return false;
 	}
@@ -64,7 +71,7 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
-const activeNode = computed(() => useNDVStore().activeNode);
+const activeNode = computed(() => ndvStore.activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -77,27 +84,53 @@ const resetValueLabel = computed(() => {
 	return i18n.baseText('parameterInput.resetValue');
 });
 
+const isFocusPanelFeatureEnabled = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
+const hasFocusAction = computed(
+	() =>
+		isFocusPanelFeatureEnabled.value &&
+		!props.isReadOnly &&
+		activeNode.value &&
+		(props.parameter.type === 'string' || props.parameter.type === 'json'),
+);
+
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
 		return props.customActions;
 	}
 
+	const focusAction = {
+		label: i18n.baseText('parameterInput.focusParameter'),
+		value: 'focus',
+		disabled: false,
+	};
+
 	if (isHtmlEditor.value && !isValueAnExpression.value) {
-		return [
-			{
-				label: i18n.baseText('parameterInput.formatHtml'),
-				value: 'formatHtml',
-			},
-		];
+		const formatHtmlAction = {
+			label: i18n.baseText('parameterInput.formatHtml'),
+			value: 'formatHtml',
+		};
+
+		return hasFocusAction.value ? [formatHtmlAction, focusAction] : [formatHtmlAction];
 	}
 
+	const resetAction = {
+		label: resetValueLabel.value,
+		value: 'resetValue',
+		disabled: isDefault.value,
+	};
+
+	// The reset value action is not working correctly for these
+	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
+		props.parameter.typeOptions?.editor ?? '',
+	);
+
+	// Conditionally build actions array without nulls to ensure correct typing
 	const parameterActions = [
-		{
-			label: resetValueLabel.value,
-			value: 'resetValue',
-			disabled: isDefault.value,
-		},
-	];
+		hasResetAction ? [resetAction] : [],
+		hasFocusAction.value ? [focusAction] : [],
+	].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -144,7 +177,7 @@ const getArgument = (argumentName: string) => {
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
 			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				<n8n-icon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
 			</n8n-text>
 		</div>

@@ -21,6 +21,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
+import { MfaRequiredError } from '@n8n/rest-api-client';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -832,6 +833,14 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 		return next();
 	} catch (failure) {
+		const settingsStore = useSettingsStore();
+		if (failure instanceof MfaRequiredError && settingsStore.isMFAEnforced) {
+			if (to.name !== VIEWS.PERSONAL_SETTINGS) {
+				return next({ name: VIEWS.PERSONAL_SETTINGS });
+			} else {
+				return next();
+			}
+		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
 		} else {

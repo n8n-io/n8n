@@ -1,5 +1,7 @@
-import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +14,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -25,7 +27,6 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 
@@ -61,6 +62,7 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+import { MfaService } from './mfa/mfa.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -75,7 +77,6 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly licenseState: LicenseState,
 	) {
 		super();
 
@@ -124,6 +125,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (isMfaFeatureEnabled()) {
+			await Container.get(MfaService).init();
 			await import('@/controllers/mfa.controller');
 		}
 
@@ -154,11 +156,12 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		try {
-			if (this.licenseState.isOidcLicensed()) {
-				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-				await Container.get(OidcService).init();
-				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-			}
+			// in the short term, we load the OIDC module here to ensure it is initialized
+			// ideally we want to migrate this to a module and be able to load it dynamically
+			// when the license changes, but that requires some refactoring
+			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+			await Container.get(OidcService).init();
+			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
 		} catch (error) {
 			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
 		}
@@ -167,16 +170,14 @@ export class Server extends AbstractServer {
 		// Source Control
 		// ----------------------------------------
 
-		if (this.licenseState.isSourceControlLicensed()) {
-			try {
-				const { SourceControlService } = await import(
-					'@/environments.ee/source-control/source-control.service.ee'
-				);
-				await Container.get(SourceControlService).init();
-				await import('@/environments.ee/source-control/source-control.controller.ee');
-			} catch (error) {
-				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-			}
+		try {
+			const { SourceControlService } = await import(
+				'@/environments.ee/source-control/source-control.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
 		}
 
 		try {

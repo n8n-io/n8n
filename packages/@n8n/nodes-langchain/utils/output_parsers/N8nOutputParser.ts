@@ -14,13 +14,14 @@ export { N8nOutputFixingParser, N8nItemListOutputParser, N8nStructuredOutputPars
 
 export async function getOptionalOutputParser(
 	ctx: IExecuteFunctions,
+	index: number = 0,
 ): Promise<N8nOutputParser | undefined> {
 	let outputParser: N8nOutputParser | undefined;
 
 	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
 		outputParser = (await ctx.getInputConnectionData(
 			NodeConnectionTypes.AiOutputParser,
-			0,
+			index,
 		)) as N8nOutputParser;
 	}
 

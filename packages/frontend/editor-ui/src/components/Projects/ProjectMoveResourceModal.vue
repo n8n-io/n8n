@@ -6,7 +6,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -240,7 +240,7 @@ onMounted(async () => {
 						v-for="p in filteredProjects"
 						:key="p.id"
 						:value="p.id"
-						:label="p.name"
+						:label="p.name ?? ''"
 					></N8nOption>
 				</N8nSelect>
 				<N8nText>

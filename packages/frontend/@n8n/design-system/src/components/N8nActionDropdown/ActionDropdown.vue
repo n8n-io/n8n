@@ -8,10 +8,12 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types/icon';
+import type { ActionDropdownItem, IconSize, ButtonSize } from '@n8n/design-system/types';
 
-import type { ActionDropdownItem } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
@@ -19,8 +21,8 @@ const TRIGGER = ['click', 'hover'] as const;
 interface ActionDropdownProps {
 	items: ActionDropdownItem[];
 	placement?: Placement;
-	activatorIcon?: string;
-	activatorSize?: IconSize;
+	activatorIcon?: IconName;
+	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
@@ -30,7 +32,7 @@ interface ActionDropdownProps {
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
-	activatorIcon: 'ellipsis-h',
+	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',
@@ -96,7 +98,7 @@ defineExpose({ open, close });
 			@visible-change="onVisibleChange"
 		>
 			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
+			<N8nIconButton
 				v-else
 				type="tertiary"
 				text

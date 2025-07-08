@@ -919,6 +919,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendChunk(type: ChunkType, content?: IDataObject | string): void;
+		isStreaming(): boolean;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -1220,7 +1222,7 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	__rl: true;
 	mode: ResourceLocatorModes;
-	value: NodeParameterValue;
+	value: Exclude<NodeParameterValue, boolean>;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
 	__regex?: string;
@@ -1907,7 +1909,8 @@ export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
-	nodes: string[]; // Allowed nodes
+	nodes?: string[]; // Allowed nodes
+	excludedNodes?: string[];
 }
 
 export interface INodeInputConfiguration {
@@ -2094,7 +2097,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
+export type WebhookResponseMode =
+	| 'onReceived'
+	| 'lastNode'
+	| 'responseNode'
+	| 'formPage'
+	| 'streaming';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2325,6 +2333,8 @@ export interface IWorkflowExecutionDataProcess {
 		data?: ITaskData;
 	};
 	agentRequest?: AiAgentRequest;
+	httpResponse?: express.Response; // Used for streaming responses
+	streamingEnabled?: boolean;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2385,6 +2395,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
+	streamingEnabled?: boolean;
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
@@ -2916,3 +2927,14 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSource?: string | null;
 	reportedSourceOther?: string | null;
 };
+
+export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export interface StructuredChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		nodeId: string;
+		nodeName: string;
+		timestamp: number;
+	};
+}

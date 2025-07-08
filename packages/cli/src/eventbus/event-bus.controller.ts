@@ -1,3 +1,4 @@
+import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@n8n/decorators';
 import express from 'express';
 import type {
@@ -7,7 +8,6 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthenticatedRequest } from '@/requests';
 
 import { eventNamesAll } from './event-message-classes';
 import { MessageEventBus } from './message-event-bus/message-event-bus';

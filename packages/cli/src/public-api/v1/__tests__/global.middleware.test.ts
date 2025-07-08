@@ -1,9 +1,9 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { NextFunction } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
-import { mockInstance } from '@test/mocking';
 
 import * as middlewares from '../shared/middlewares/global.middleware';
 

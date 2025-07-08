@@ -17,6 +17,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
@@ -51,6 +52,7 @@ export class FrontendService {
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly mfaService: MfaService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -122,6 +124,8 @@ export class FrontendService {
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
+				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
+				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
 			instanceId: this.instanceSettings.instanceId,
@@ -193,6 +197,7 @@ export class FrontendService {
 				ldap: false,
 				saml: false,
 				oidc: false,
+				mfaEnforcement: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
@@ -214,6 +219,7 @@ export class FrontendService {
 			},
 			mfa: {
 				enabled: false,
+				enforced: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
@@ -319,6 +325,7 @@ export class FrontendService {
 			ldap: this.license.isLdapEnabled(),
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
+			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
@@ -336,20 +343,20 @@ export class FrontendService {
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
-				loginEnabled: config.getEnv('sso.ldap.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
 
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
-				loginEnabled: config.getEnv('sso.saml.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.saml.loginEnabled,
 			});
 		}
 
 		if (this.licenseState.isOidcLicensed()) {
 			Object.assign(this.settings.sso.oidc, {
-				loginEnabled: config.getEnv('sso.oidc.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.oidc.loginEnabled,
 			});
 		}
 
@@ -382,6 +389,9 @@ export class FrontendService {
 		}
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
+
+		// TODO: read from settings
+		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 

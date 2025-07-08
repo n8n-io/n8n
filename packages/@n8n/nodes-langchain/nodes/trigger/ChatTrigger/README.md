@@ -50,5 +50,5 @@ Modify the import paths in `templates.ts` to point to your local server:
 ```
 
 ```html
-<link href="https://127.0.0.1:8443/chat.css" rel="stylesheet" />
+<link href="https://127.0.0.1:8443/style.css" rel="stylesheet" />
 ```

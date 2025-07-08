@@ -477,6 +477,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', () => {
+			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
@@ -485,6 +486,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should not modify active workflows when workflow is already active', () => {
@@ -497,6 +499,15 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+		});
+
+		it('should not set current workflow as active when it is not the target', () => {
+			uiStore.stateIsDirty = true;
+			workflowsStore.workflow.id = '1';
+			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsStore.setWorkflowActive('2');
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
 
@@ -647,20 +658,14 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-			expect(track).toHaveBeenCalledWith(
-				'Manual exec errored',
-				{
-					error_title: 'invalid syntax',
-					node_type: 'n8n-nodes-base.set',
-					node_type_version: 3.4,
-					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-					node_graph_string:
-						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
-				},
-				{
-					withPostHog: true,
-				},
-			);
+			expect(track).toHaveBeenCalledWith('Manual exec errored', {
+				error_title: 'invalid syntax',
+				node_type: 'n8n-nodes-base.set',
+				node_type_version: 3.4,
+				node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				node_graph_string:
+					'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+			});
 		});
 
 		it('sets workflow pin data', () => {
