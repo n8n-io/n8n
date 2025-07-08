@@ -63,6 +63,15 @@ const props = withDefaults(defineProps<Props>(), {
 	sessionId: undefined,
 });
 
+// Ensure all messages have required id and read properties
+const normalizedMessages = computed(() => {
+	return props.messages.map((msg, index) => ({
+		...msg,
+		id: msg.id || `msg-${index}`,
+		read: msg.read ?? true,
+	}));
+});
+
 const textInputValue = ref<string>('');
 
 const chatInput = ref<HTMLTextAreaElement | null>(null);
@@ -132,11 +141,11 @@ function onSubmitFeedback(feedback: string) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
-				<div v-if="messages?.length">
+			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
+				<div v-if="normalizedMessages?.length">
 					<data
-						v-for="(message, i) in messages"
-						:key="i"
+						v-for="(message, i) in normalizedMessages"
+						:key="message.id"
 						:data-test-id="
 							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 						"
@@ -144,75 +153,75 @@ function onSubmitFeedback(feedback: string) {
 						<TextMessage
 							v-if="message.type === 'text'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
+							:is-last-message="i === normalizedMessages.length - 1"
 						/>
 						<BlockMessage
 							v-else-if="message.type === 'block'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
+							:is-last-message="i === normalizedMessages.length - 1"
 						/>
 						<ErrorMessage
 							v-else-if="message.type === 'error'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<EventMessage
 							v-else-if="message.type === 'event'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<CodeDiffMessage
 							v-else-if="message.type === 'code-diff'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
+							:is-last-message="i === normalizedMessages.length - 1"
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 						/>
 						<ToolMessage
 							v-else-if="message.type === 'tool'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<WorkflowStepsMessage
 							v-else-if="message.type === 'workflow-step'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<WorkflowNodesMessage
 							v-else-if="message.type === 'workflow-node'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<ComposedNodesMessage
 							v-else-if="message.type === 'workflow-composed'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<WorkflowGeneratedMessage
 							v-else-if="message.type === 'workflow-generated'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 						/>
 						<RateWorkflowMessage
 							v-else-if="message.type === 'rate-workflow'"
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 							@thumbs-up="onThumbsUp"
 							@thumbs-down="onThumbsDown"
@@ -224,7 +233,7 @@ function onSubmitFeedback(feedback: string) {
 								!streaming &&
 								'quickReplies' in message &&
 								message.quickReplies?.length &&
-								i === messages.length - 1
+								i === normalizedMessages.length - 1
 							"
 							:class="$style.quickReplies"
 						>
@@ -246,7 +255,7 @@ function onSubmitFeedback(feedback: string) {
 				</div>
 				<div
 					v-if="loadingMessage"
-					:class="{ [$style.message]: true, [$style.loading]: messages?.length }"
+					:class="{ [$style.message]: true, [$style.loading]: normalizedMessages?.length }"
 				>
 					<AssistantLoadingMessage :message="loadingMessage" />
 				</div>

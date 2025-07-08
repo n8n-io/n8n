@@ -161,3 +161,113 @@ export namespace ChatUI {
 		read?: boolean;
 	};
 }
+
+// Type guards for ChatUI messages
+export function isTextMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
+	return msg.type === 'text';
+}
+
+export function isSummaryBlock(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SummaryBlock & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'block';
+}
+
+export function isCodeDiffMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.CodeDiffMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'code-diff';
+}
+
+export function isErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'error';
+}
+
+export function isEndSessionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.EndSessionMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'end-session';
+}
+
+export function isSessionTimeoutMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionTimeoutMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-timeout';
+}
+
+export function isSessionErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-error';
+}
+
+export function isAgentSuggestionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.AgentSuggestionMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'agent-suggestion';
+}
+
+export function isWorkflowStepMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowStepMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-step';
+}
+
+export function isWorkflowNodeMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowNodeMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-node';
+}
+
+export function isWorkflowComposedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowComposedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-composed';
+}
+
+export function isWorkflowGeneratedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowGeneratedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-generated';
+}
+
+export function isWorkflowUpdatedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowUpdatedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-updated';
+}
+
+export function isRateWorkflowMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.RateWorkflowMessage & { id?: string; read?: boolean } {
+	return msg.type === 'rate-workflow';
+}
+
+export function isToolMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ToolMessage & { id?: string; read?: boolean } {
+	return msg.type === 'tool';
+}
+
+// Helper to ensure message has required id and read properties
+export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
+	msg: T,
+): msg is T & { id: string; read: boolean } {
+	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
+}

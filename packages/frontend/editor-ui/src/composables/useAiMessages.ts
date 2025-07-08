@@ -1,4 +1,19 @@
 import type { ChatRequest } from '@/types/assistant.types';
+import {
+	isTextMessage,
+	isSummaryMessage,
+	isAgentSuggestionMessage,
+	isAgentThinkingMessage,
+	isCodeDiffMessage,
+	isWorkflowStepMessage,
+	isWorkflowNodeMessage,
+	isWorkflowComposedMessage,
+	isWorkflowGeneratedMessage,
+	isWorkflowUpdatedMessage,
+	isRateWorkflowMessage,
+	isToolMessage,
+	isPromptValidationMessage,
+} from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -12,15 +27,15 @@ export function useAiMessages() {
 	/**
 	 * Process a single text message
 	 */
-	function processTextMessage(msg: ChatRequest.TextMessage, id: string): ChatUI.TextMessage {
+	function processTextMessage(msg: ChatRequest.TextMessage, id: string): ChatUI.AssistantMessage {
 		return {
 			id,
 			type: 'text',
 			role: 'assistant',
 			content: msg.text,
-			quickReplies: msg.quickReplies,
 			codeSnippet: msg.codeSnippet,
 			read: true,
+			quickReplies: msg.quickReplies,
 		};
 	}
 
@@ -30,7 +45,7 @@ export function useAiMessages() {
 	function processWorkflowStepMessage(
 		msg: ChatRequest.WorkflowStepMessage,
 		id: string,
-	): ChatUI.WorkflowStepMessage {
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			type: 'workflow-step',
@@ -43,7 +58,7 @@ export function useAiMessages() {
 	/**
 	 * Process a prompt validation error
 	 */
-	function processPromptValidationError(id: string): ChatUI.ErrorMessage {
+	function processPromptValidationError(id: string): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'assistant',
@@ -60,7 +75,7 @@ export function useAiMessages() {
 		msg: ChatRequest.WorkflowNodeMessage,
 		id: string,
 		nodeGetter?: (nodeType: string) => INodeTypeDescription,
-	): ChatUI.WorkflowNodeMessage {
+	): ChatUI.AssistantMessage {
 		const mappedNodes = msg.nodes.map((node) => nodeGetter?.(node)?.displayName ?? node);
 		return {
 			id,
@@ -72,27 +87,28 @@ export function useAiMessages() {
 	}
 
 	/**
-	 * Process workflow composed/generated/updated messages
+	 * Process a workflow composed message
+	 */
+	function processWorkflowComposedMessage(
+		msg: ChatRequest.WorkflowComposedMessage,
+		id: string,
+	): ChatUI.AssistantMessage {
+		return {
+			id,
+			type: 'workflow-composed',
+			role: 'assistant',
+			nodes: msg.nodes,
+			read: true,
+		};
+	}
+
+	/**
+	 * Process workflow generated/updated messages
 	 */
 	function processWorkflowCodeMessage(
-		msg:
-			| ChatRequest.WorkflowComposedMessage
-			| ChatRequest.WorkflowGeneratedMessage
-			| ChatRequest.WorkflowUpdatedMessage,
+		msg: ChatRequest.WorkflowGeneratedMessage | ChatRequest.WorkflowUpdatedMessage,
 		id: string,
-	):
-		| ChatUI.WorkflowComposedMessage
-		| ChatUI.WorkflowGeneratedMessage
-		| ChatUI.WorkflowUpdatedMessage {
-		if (msg.type === 'workflow-composed') {
-			return {
-				id,
-				type: 'workflow-composed',
-				role: 'assistant',
-				nodes: msg.nodes,
-				read: true,
-			};
-		}
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			type: msg.type,
@@ -108,7 +124,7 @@ export function useAiMessages() {
 	function processRateWorkflowMessage(
 		msg: ChatRequest.RateWorkflowMessage,
 		id: string,
-	): ChatUI.RateWorkflowMessage {
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			type: 'rate-workflow',
@@ -237,20 +253,13 @@ export function useAiMessages() {
 					role: 'assistant',
 					title: msg.title,
 					content: msg.text,
-					text: msg.text,
-					suggestionId: msg.suggestionId,
+					suggestionId: msg.suggestionId || '',
 					read: true,
 				});
 			} else if (isAgentThinkingMessage(msg)) {
 				// Handle agent thinking step
-				messages.push({
-					id,
-					type: 'intermediate-step',
-					role: 'assistant',
-					text: msg.text,
-					step: msg.step,
-					read: true,
-				});
+				// Handle intermediate-step messages (agent thinking)
+				// These are not part of the final message array in the current UI
 			} else if (isCodeDiffMessage(msg)) {
 				// Handle code diff message
 				messages.push({
@@ -259,8 +268,7 @@ export function useAiMessages() {
 					role: 'assistant',
 					description: msg.description,
 					codeDiff: msg.codeDiff,
-					suggestionId: msg.suggestionId,
-					solution_count: msg.solution_count,
+					suggestionId: msg.suggestionId || '',
 					quickReplies: msg.quickReplies,
 					read: true,
 				});
@@ -302,13 +310,13 @@ export function useAiMessages() {
 	/**
 	 * Create a user message
 	 */
-	function createUserMessage(content: string, id: string): ChatUI.TextMessage {
+	function createUserMessage(content: string, id: string): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'user',
 			type: 'text',
 			content,
-			// read: true,
+			read: true,
 		};
 	}
 
@@ -319,13 +327,13 @@ export function useAiMessages() {
 		content: string,
 		id: string,
 		retry?: () => Promise<void>,
-	): ChatUI.ErrorMessage {
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'assistant',
 			type: 'error',
 			content,
-			// read: true,
+			read: true,
 			retry,
 		};
 	}

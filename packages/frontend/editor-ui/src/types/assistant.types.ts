@@ -136,10 +136,8 @@ export namespace ChatRequest {
 		  };
 
 	// Re-export types from design-system for backward compatibility
-	export type CodeDiffMessage = ChatUI.CodeDiffMessage;
 	export type QuickReplyOption = ChatUI.QuickReply;
 	export type EndSessionMessage = ChatUI.EndSessionMessage;
-	export type AgentThinkingStep = ChatUI.AgentThinkingMessage;
 	export type WorkflowStepMessage = ChatUI.WorkflowStepMessage;
 	export type WorkflowNodeMessage = ChatUI.WorkflowNodeMessage;
 	export type WorkflowComposedMessage = ChatUI.WorkflowComposedMessage;
@@ -147,6 +145,19 @@ export namespace ChatRequest {
 	export type WorkflowUpdatedMessage = ChatUI.WorkflowUpdatedMessage;
 	export type RateWorkflowMessage = ChatUI.RateWorkflowMessage;
 	export type ToolMessage = ChatUI.ToolMessage;
+
+	// API-specific types that extend UI types
+	export interface CodeDiffMessage extends ChatUI.CodeDiffMessage {
+		solution_count?: number;
+		quickReplies?: QuickReplyOption[];
+	}
+
+	export interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'intermediate-step';
+		text: string;
+		step: string;
+	}
 
 	// API-specific types that extend UI types
 	export interface TextMessage {
@@ -238,4 +249,86 @@ export namespace AskAiRequest {
 		};
 		forNode: 'code' | 'transform';
 	}
+}
+
+// Type guards for ChatRequest messages
+export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
+	return 'type' in msg && msg.type === 'message' && 'text' in msg;
+}
+
+export function isSummaryMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.SummaryMessage {
+	return 'type' in msg && msg.type === 'summary' && 'title' in msg && 'content' in msg;
+}
+
+export function isAgentSuggestionMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.AgentSuggestionMessage {
+	return 'type' in msg && msg.type === 'agent-suggestion' && 'title' in msg && 'text' in msg;
+}
+
+export function isAgentThinkingMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.AgentThinkingStep {
+	return 'type' in msg && msg.type === 'intermediate-step' && 'step' in msg;
+}
+
+export function isCodeDiffMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.CodeDiffMessage {
+	return 'type' in msg && msg.type === 'code-diff' && 'codeDiff' in msg;
+}
+
+export function isWorkflowStepMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowStepMessage {
+	return 'type' in msg && msg.type === 'workflow-step' && 'steps' in msg;
+}
+
+export function isWorkflowNodeMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowNodeMessage {
+	return 'type' in msg && msg.type === 'workflow-node' && 'nodes' in msg;
+}
+
+export function isWorkflowComposedMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowComposedMessage {
+	return 'type' in msg && msg.type === 'workflow-composed' && 'nodes' in msg;
+}
+
+export function isWorkflowGeneratedMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowGeneratedMessage {
+	return 'type' in msg && msg.type === 'workflow-generated' && 'codeSnippet' in msg;
+}
+
+export function isWorkflowUpdatedMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowUpdatedMessage {
+	return 'type' in msg && msg.type === 'workflow-updated' && 'codeSnippet' in msg;
+}
+
+export function isRateWorkflowMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.RateWorkflowMessage {
+	return 'type' in msg && msg.type === 'rate-workflow' && 'content' in msg;
+}
+
+export function isToolMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ToolMessage {
+	return 'type' in msg && msg.type === 'tool' && 'toolName' in msg && 'status' in msg;
+}
+
+export function isPromptValidationMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.WorkflowPromptValidationMessage {
+	return 'type' in msg && msg.type === 'prompt-validation' && 'isWorkflowPrompt' in msg;
+}
+
+export function isEndSessionMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.EndSessionMessage {
+	// @ts-expect-error API type mismatch, do we still need this?
+	return 'type' in msg && msg.type === 'end-session';
 }
