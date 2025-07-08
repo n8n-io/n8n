@@ -308,7 +308,7 @@ export class WorkflowRunner {
 
 			if (workflowTimeout > 0) {
 				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
-				if (data.startedAt) {
+				if (data.startedAt && data.startedAt instanceof Date) {
 					// If startedAt is set, we calculate the timeout based on the startedAt time
 					// This is useful for executions that were waiting in a waiting state
 					// and we want to ensure the timeout is relative to when the execution started.
