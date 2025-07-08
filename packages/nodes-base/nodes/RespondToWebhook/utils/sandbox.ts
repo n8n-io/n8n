@@ -11,6 +11,7 @@ export const sandboxResponseData = (responseBody: string) => {
 
 	return `
 		<iframe srcdoc='${parsedResponseBody}'
+		sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true">
 		</iframe>`;
