@@ -3006,7 +3006,7 @@ describe('useCanvasOperations', () => {
 
 			const executionId = '123';
 			const nodeId = 'node-123';
-			const mockNode = { id: nodeId, name: 'Test Node', type: 'test' };
+			const mockNode = { id: nodeId, name: 'Test Node', type: 'test' } as INodeUi;
 			const executionData: IExecutionResponse = {
 				id: executionId,
 				finished: true,
@@ -3044,7 +3044,7 @@ describe('useCanvasOperations', () => {
 			};
 
 			workflowsStore.getExecution.mockResolvedValue(executionData);
-			workflowsStore.getNodeById.mockReturnValue(null);
+			workflowsStore.getNodeById.mockReturnValue(undefined);
 
 			await openExecution(executionId, nodeId);
 
