@@ -1,4 +1,4 @@
-import { chatWithBuilder } from '@/api/ai';
+import { chatWithBuilder, getAiSessions } from '@/api/ai';
 import type { VIEWS } from '@/constants';
 import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
@@ -266,6 +266,36 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			handleServiceError(e, id, retry);
 		}
 	}
+
+	async function loadSessions() {
+		try {
+			const workflowId = workflowsStore.workflowId;
+			console.log('🚀 ~ loadSessions ~ workflowId:', workflowId);
+			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			console.log('🚀 ~ loadSessions ~ response:', response);
+
+			// Load the most recent session if available
+			if (response.sessions && response.sessions.length > 0) {
+				const latestSession = response.sessions[0];
+
+				// Clear existing messages
+				clearMessages();
+
+				// Convert and add messages from the session
+				latestSession.messages.forEach((msg) => {
+					const id = getRandomId();
+					const formattedMsg = aiMessages.mapAssistantMessageToUI(msg, id);
+					chatMessages.value.push(formattedMsg);
+				});
+			}
+
+			return response.sessions;
+		} catch (error) {
+			console.error('Failed to load AI sessions:', error);
+			return [];
+		}
+	}
+
 	// Reset on route change (but only if actually leaving the workflow view)
 	watch(route, (newRoute, oldRoute) => {
 		// Only reset if we're actually navigating away from the workflow
@@ -299,5 +329,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		sendMessage,
 		addAssistantMessages,
 		handleServiceError,
+		loadSessions,
 	};
 });

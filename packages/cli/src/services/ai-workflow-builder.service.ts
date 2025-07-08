@@ -45,8 +45,17 @@ export class WorkflowBuilderService {
 		return this.service;
 	}
 
-	async *chat(payload: { question: string; currentWorkflowJSON: string; workflowId?: string }, user: IUser) {
+	async *chat(
+		payload: { question: string; currentWorkflowJSON: string; workflowId?: string },
+		user: IUser,
+	) {
 		const service = await this.getService();
 		yield* service.chat(payload, user);
+	}
+
+	async getSessions(workflowId: string | undefined, user: IUser) {
+		const service = await this.getService();
+		const sessions = await service.getSessions(workflowId, user);
+		return sessions;
 	}
 }

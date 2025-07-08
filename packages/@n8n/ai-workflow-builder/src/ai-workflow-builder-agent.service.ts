@@ -1,10 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver } from '@langchain/langgraph';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
@@ -199,5 +200,107 @@ export class AiWorkflowBuilderService {
 		for await (const output of streamProcessor) {
 			yield output;
 		}
+	}
+
+	async getSessions(workflowId: string | undefined, user?: IUser) {
+		// For now, we'll return the current session if we have a workflowId
+		// MemorySaver doesn't expose a way to list all threads, so we'll need to
+		// track this differently in a production implementation
+		const sessions = [];
+
+		if (workflowId) {
+			const threadId = `workflow-${workflowId}-user-${user?.id ?? 'anonymous'}`;
+			const threadConfig = {
+				configurable: {
+					thread_id: threadId,
+				},
+			};
+
+			try {
+				// Try to get the checkpoint for this thread
+				const checkpoint = await this.checkpointer.getTuple(threadConfig);
+
+				if (checkpoint?.checkpoint) {
+					const messages =
+						(checkpoint.checkpoint.channel_values?.messages as Array<
+							AIMessage | HumanMessage | ToolMessage
+						>) ?? [];
+					// const messages = Array.isArray(channelValues?.messages) ? channelValues.messages : [];
+					sessions.push({
+						sessionId: threadId,
+						messages: this.formatMessages(messages),
+						lastUpdated: checkpoint.checkpoint.ts,
+					});
+				}
+			} catch (error) {
+				// Thread doesn't exist yet
+				console.log('No session found for workflow:', workflowId);
+			}
+		}
+
+		return { sessions };
+	}
+
+	private formatMessages(
+		messages: Array<AIMessage | HumanMessage | ToolMessage>,
+	): Array<Record<string, unknown>> {
+		const formattedMessages: Array<Record<string, any>> = [];
+
+		for (const msg of messages) {
+			if (msg instanceof HumanMessage) {
+				formattedMessages.push({
+					role: 'user',
+					type: 'message',
+					text: msg.content,
+				});
+			} else if (msg instanceof AIMessage) {
+				// Handle tool calls in AI messages
+				if (msg.tool_calls && msg.tool_calls.length > 0) {
+					// Add tool messages for each tool call
+					for (const toolCall of msg.tool_calls) {
+						formattedMessages.push({
+							id: toolCall.id,
+							toolCallId: toolCall.id,
+							role: 'assistant',
+							type: 'tool',
+							toolName: toolCall.name,
+							status: 'completed',
+							updates: [
+								{
+									type: 'input',
+									data: toolCall.args || {},
+								},
+							],
+						});
+					}
+				}
+
+				// Add the AI message content if it exists
+				if (msg.content) {
+					formattedMessages.push({
+						role: 'assistant',
+						type: 'message',
+						text: msg.content,
+					});
+				}
+			} else if (msg instanceof ToolMessage) {
+				// Find the tool message by ID and add the output
+				const toolCallId = msg.tool_call_id;
+				for (let i = formattedMessages.length - 1; i >= 0; i--) {
+					const m = formattedMessages[i];
+					if (m.type === 'tool' && m.id === toolCallId) {
+						// Add output to updates array
+						m.updates ??= [];
+						(m.updates as Array<Record<string, unknown>>).push({
+							type: 'output',
+							data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
+						});
+						break;
+					}
+				}
+			}
+		}
+
+		return formattedMessages;
 	}
 }

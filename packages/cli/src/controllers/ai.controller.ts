@@ -5,6 +5,7 @@ import {
 	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
+	AiSessionRetrievalRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
@@ -159,6 +160,22 @@ export class AiController {
 			});
 
 			return newCredential;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Post('/sessions', { rateLimit: { limit: 100 } })
+	async getSessions(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiSessionRetrievalRequestDto,
+	) {
+		try {
+			console.log('🚀 ~ AiController ~ payload:', payload);
+			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

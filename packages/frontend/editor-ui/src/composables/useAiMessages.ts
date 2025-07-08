@@ -31,7 +31,7 @@ export function useAiMessages() {
 		return {
 			id,
 			type: 'text',
-			role: 'assistant',
+			role: msg.role ?? 'assistant',
 			content: msg.text,
 			codeSnippet: msg.codeSnippet,
 			read: true,
@@ -240,7 +240,7 @@ export function useAiMessages() {
 				messages.push({
 					id,
 					type: 'block',
-					role: 'assistant',
+					role: msg.role ?? 'assistant',
 					title: msg.title,
 					content: msg.content,
 					read: true,
@@ -250,7 +250,7 @@ export function useAiMessages() {
 				messages.push({
 					id,
 					type: 'agent-suggestion',
-					role: 'assistant',
+					role: msg.role ?? 'assistant',
 					title: msg.title,
 					content: msg.text,
 					suggestionId: msg.suggestionId || '',
@@ -265,7 +265,7 @@ export function useAiMessages() {
 				messages.push({
 					id,
 					type: 'code-diff',
-					role: 'assistant',
+					role: msg.role ?? 'assistant',
 					description: msg.description,
 					codeDiff: msg.codeDiff,
 					suggestionId: msg.suggestionId || '',
@@ -355,11 +355,89 @@ export function useAiMessages() {
 		return [];
 	}
 
+	/**
+	 * Map a single assistant message from API format to UI format
+	 */
+	function mapAssistantMessageToUI(
+		msg: ChatRequest.MessageResponse,
+		id: string,
+		nodeGetter?: (nodeType: string) => INodeTypeDescription,
+	): ChatUI.AssistantMessage {
+		if (isTextMessage(msg)) {
+			return processTextMessage(msg, id);
+		} else if (isSummaryMessage(msg)) {
+			return {
+				id,
+				type: 'block',
+				role: 'assistant',
+				title: msg.title,
+				content: msg.content,
+				read: true,
+			};
+		} else if (isAgentSuggestionMessage(msg)) {
+			return {
+				id,
+				type: 'agent-suggestion',
+				role: 'assistant',
+				title: msg.title,
+				content: msg.text,
+				suggestionId: msg.suggestionId || '',
+				read: true,
+			};
+		} else if (isCodeDiffMessage(msg)) {
+			return {
+				id,
+				type: 'code-diff',
+				role: 'assistant',
+				description: msg.description,
+				codeDiff: msg.codeDiff,
+				suggestionId: msg.suggestionId || '',
+				quickReplies: msg.quickReplies,
+				read: true,
+			};
+		} else if (isWorkflowStepMessage(msg)) {
+			return processWorkflowStepMessage(msg, id);
+		} else if (isPromptValidationMessage(msg) && !msg.isWorkflowPrompt) {
+			return processPromptValidationError(id);
+		} else if (isWorkflowNodeMessage(msg)) {
+			return processWorkflowNodeMessage(msg, id, nodeGetter);
+		} else if (isWorkflowComposedMessage(msg)) {
+			return processWorkflowComposedMessage(msg, id);
+		} else if (isWorkflowGeneratedMessage(msg)) {
+			return processWorkflowCodeMessage(msg, id);
+		} else if (isWorkflowUpdatedMessage(msg)) {
+			return processWorkflowCodeMessage(msg, id);
+		} else if (isRateWorkflowMessage(msg)) {
+			return processRateWorkflowMessage(msg, id);
+		} else if (isToolMessage(msg)) {
+			return {
+				id,
+				type: 'tool',
+				role: 'assistant',
+				toolName: msg.toolName,
+				status: msg.status,
+				result: msg.result,
+				updates: msg.updates,
+				read: true,
+			};
+		}
+
+		// Default fallback for unknown message types
+		return {
+			id,
+			type: 'text',
+			role: 'assistant',
+			content: i18n.baseText('aiAssistant.unknownMessage'),
+			read: true,
+		};
+	}
+
 	return {
 		processAssistantMessages,
 		createUserMessage,
 		createErrorMessage,
 		addMessages,
 		clearMessages,
+		mapAssistantMessageToUI,
 	};
 }

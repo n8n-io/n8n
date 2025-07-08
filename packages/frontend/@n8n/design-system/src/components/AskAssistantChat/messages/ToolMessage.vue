@@ -67,7 +67,7 @@ const latestError = computed(() => {
 });
 
 const progressMessages = computed(() => {
-	return props.message.updates.filter((u) => u.type === 'progress').map((u) => u.data);
+	return (props.message.updates ?? []).filter((u) => u.type === 'progress').map((u) => u.data);
 });
 
 function formatJSON(data: Record<string, unknown> | string): string {

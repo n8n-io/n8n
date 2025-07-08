@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, onMounted } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -40,6 +40,15 @@ const generatedWorkflowJson = computed(
 	() => builderStore.chatMessages.find((msg) => msg.type === 'workflow-generated')?.codeSnippet,
 );
 const currentRoute = computed(() => route.name);
+
+// Load existing sessions when component mounts
+// onMounted(async () => {
+// 	const workflowId = workflowsStore.workflowId;
+// 	console.log("🚀 ~ onMounted ~ workflowId:", workflowId)
+// 	if (workflowId && !workflowsStore.isNewWorkflow) {
+// 		await builderStore.loadSessions();
+// 	}
+// });
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -216,6 +225,16 @@ watch(
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
+
+watch(
+	() => workflowsStore.workflowId,
+	async (workflowId) => {
+		console.log('🚀 ~ onMounted ~ workflowId:', workflowId);
+		if (workflowId && !workflowsStore.isNewWorkflow) {
+			await builderStore.loadSessions();
+		}
+	},
+);
 </script>
 
 <template>
