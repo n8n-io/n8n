@@ -19,13 +19,6 @@ export class AgentTool extends VersionedNodeType {
 					AI: ['Tools'],
 					Tools: ['Other Tools'],
 				},
-				resources: {
-					primaryDocumentation: [
-						{
-							url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/',
-						},
-					],
-				},
 			},
 			defaultVersion: 2.2,
 		};
