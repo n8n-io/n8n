@@ -1,3 +1,4 @@
+import type { Tool } from '@langchain/core/tools';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,7 +10,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { Content, Message, Tool } from '../../helpers/interfaces';
+import type { Content, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -205,6 +206,11 @@ function getToolCalls(contents: Content[]) {
 	return contents.filter((c) => c.type === 'tool_use');
 }
 
+interface MessagesResponse {
+	content: Content[];
+	stop_reason: string;
+}
+
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
@@ -223,7 +229,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	const availableTools = await getConnectedTools(this, true);
-	const tools: Tool[] = availableTools.map((t) => ({
+	const tools: AnthropicTool[] = availableTools.map((t) => ({
 		type: 'custom',
 		name: t.name,
 		input_schema: zodToJsonSchema(t.schema),
@@ -267,18 +273,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
 		enableAnthropicBetas: { codeExecution: options.codeExecution },
-	})) as { content: Content[]; stop_reason: string };
+	})) as MessagesResponse;
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
-	let currentIteration = 1;
-	let toolCalls = getToolCalls(response.content);
-	// TODO: handle 'pause_turn'
-	while (response.stop_reason === 'tool_use' && toolCalls.length) {
-		if (
-			(maxToolsIterations > 0 && currentIteration >= maxToolsIterations) ||
-			abortSignal?.aborted
-		) {
+	let currentIteration = 0;
+	let pauseTurns = 0;
+	while (true) {
+		if (abortSignal?.aborted) {
 			break;
 		}
 
@@ -287,34 +289,28 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			content: response.content,
 		});
 
-		const toolResults = {
-			role: 'user' as const,
-			content: [] as Content[],
-		};
-		for (const toolCall of toolCalls) {
-			let toolResponse;
-			for (const availableTool of availableTools) {
-				if (availableTool.name === toolCall.name) {
-					toolResponse = (await availableTool.invoke(toolCall.input)) as IDataObject;
-				}
+		if (response.stop_reason === 'tool_use') {
+			if (maxToolsIterations > 0 && currentIteration >= maxToolsIterations) {
+				break;
 			}
 
-			toolResults.content.push({
-				type: 'tool_result',
-				tool_use_id: toolCall.id,
-				content:
-					typeof toolResponse === 'object' ? JSON.stringify(toolResponse) : (toolResponse ?? ''),
-			});
-		}
+			await handleToolUse.call(this, response, messages, availableTools);
+			currentIteration++;
+		} else if (response.stop_reason === 'pause_turn') {
+			// if the model has paused (can happen for the web search or code execution tool), we just retry 3 times
+			if (pauseTurns >= 3) {
+				break;
+			}
 
-		messages.push(toolResults);
+			pauseTurns++;
+		} else {
+			break;
+		}
 
 		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 			body,
 			enableAnthropicBetas: { codeExecution: options.codeExecution },
-		})) as { content: Content[]; stop_reason: string };
-		toolCalls = getToolCalls(response.content);
-		currentIteration++;
+		})) as MessagesResponse;
 	}
 
 	if (simplify) {
@@ -326,8 +322,42 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: response,
+			json: { ...response },
 			pairedItem: { item: i },
 		},
 	];
+}
+
+async function handleToolUse(
+	this: IExecuteFunctions,
+	response: MessagesResponse,
+	messages: Message[],
+	availableTools: Tool[],
+) {
+	const toolCalls = getToolCalls(response.content);
+	if (!toolCalls.length) {
+		return;
+	}
+
+	const toolResults = {
+		role: 'user' as const,
+		content: [] as Content[],
+	};
+	for (const toolCall of toolCalls) {
+		let toolResponse;
+		for (const availableTool of availableTools) {
+			if (availableTool.name === toolCall.name) {
+				toolResponse = (await availableTool.invoke(toolCall.input)) as IDataObject;
+			}
+		}
+
+		toolResults.content.push({
+			type: 'tool_result',
+			tool_use_id: toolCall.id,
+			content:
+				typeof toolResponse === 'object' ? JSON.stringify(toolResponse) : (toolResponse ?? ''),
+		});
+	}
+
+	messages.push(toolResults);
 }
