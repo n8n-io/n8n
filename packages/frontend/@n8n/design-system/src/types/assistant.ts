@@ -121,6 +121,7 @@ export namespace ChatUI {
 	}
 
 	export interface ToolMessage {
+		id?: string;
 		role: 'assistant';
 		type: 'tool';
 		toolName: string;
@@ -169,9 +170,7 @@ export function isTextMessage(
 	return msg.type === 'text';
 }
 
-export function isSummaryBlock(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.SummaryBlock & {
+export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {
 	id?: string;
 	read?: boolean;
 	quickReplies?: ChatUI.QuickReply[];
@@ -179,9 +178,7 @@ export function isSummaryBlock(
 	return msg.type === 'block';
 }
 
-export function isCodeDiffMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.CodeDiffMessage & {
+export function isCodeDiffMessage(msg: ChatUI.AssistantMessage): msg is ChatUI.CodeDiffMessage & {
 	id?: string;
 	read?: boolean;
 	quickReplies?: ChatUI.QuickReply[];

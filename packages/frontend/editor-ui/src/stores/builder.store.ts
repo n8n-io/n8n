@@ -197,7 +197,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const nodes = workflowsStore.workflow.nodes.map((node) => node.name);
 		const schemas = assistantHelpers.getNodesSchemas(nodes);
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload: ChatRequest.InitBuilderChat = {
 			role: 'user',
 			type: 'init-builder-chat',

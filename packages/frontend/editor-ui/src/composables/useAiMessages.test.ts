@@ -113,7 +113,7 @@ describe('useAiMessages', () => {
 			(nodeType: string): INodeTypeDescription => ({
 				displayName: `${nodeType} Node`,
 				name: nodeType,
-				group: ['test'],
+				group: ['transform'],
 				version: 1,
 				description: 'Test node',
 				defaults: {},
@@ -493,7 +493,6 @@ describe('useAiMessages', () => {
 				toolCallId: 'tool-123',
 				status: 'running',
 				updates: [{ type: 'progress', data: { message: 'Starting...' } }],
-				read: true,
 			};
 			const currentMessages: ChatUI.AssistantMessage[] = [existingTool];
 			const newMessages: ChatRequest.MessageResponse[] = [
@@ -533,7 +532,6 @@ describe('useAiMessages', () => {
 				toolCallId: 'tool-123',
 				status: 'running',
 				updates: [{ type: 'progress', data: { message: 'Processing...' } }],
-				read: true,
 			};
 			const currentMessages: ChatUI.AssistantMessage[] = [existingTool];
 			const newMessages: ChatRequest.MessageResponse[] = [
@@ -566,7 +564,6 @@ describe('useAiMessages', () => {
 				toolCallId: 'tool-1',
 				status: 'running',
 				updates: [],
-				read: true,
 			};
 			const completingTool: ChatUI.ToolMessage = {
 				id: 'tool-2',
@@ -576,7 +573,6 @@ describe('useAiMessages', () => {
 				toolCallId: 'tool-2',
 				status: 'running',
 				updates: [],
-				read: true,
 			};
 			const currentMessages: ChatUI.AssistantMessage[] = [runningTool, completingTool];
 			const newMessages: ChatRequest.MessageResponse[] = [

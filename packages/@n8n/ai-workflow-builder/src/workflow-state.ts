@@ -17,11 +17,8 @@ export const WorkflowState = Annotation.Root({
 	}),
 	// Whether the user prompt is a workflow prompt.
 	isWorkflowPrompt: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
-	// Whether the agent has requested workflow execution data.
-	executionRequested: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
 	// The execution data from the last workflow run.
 	executionData: Annotation<IRunExecutionData['resultData'] | undefined>({
 		reducer: (x, y) => y ?? x ?? undefined,
 	}),
-	// The next phase to be executed in the workflow graph.
 });

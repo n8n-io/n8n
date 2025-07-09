@@ -16,7 +16,7 @@ import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { SimpleWorkflow } from './types';
-import { createStreamProcessor, DEFAULT_WORKFLOW_UPDATE_TOOLS } from './utils/stream-processor';
+import { createStreamProcessor, formatMessages } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -125,11 +125,11 @@ export class AiWorkflowBuilderService {
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmSimpleTask, 'LLM not setup');
-			assert(typeof this.llmSimpleTask.bindTools === 'function', 'LLM does not support tools');
+			assert(this.llmComplexTask, 'LLM not setup');
+			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
 
 			const prompt = await mainAgentPrompt.invoke(state);
-			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
+			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
 		};
@@ -222,19 +222,18 @@ export class AiWorkflowBuilderService {
 				? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
 				: { nodes: [], connections: {} },
 			isWorkflowPrompt: false,
+			executionData: payload.executionData,
 		};
 
 		const stream = await agent.stream(initialState, {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			executionData: payload.executionData,
 			recursionLimit: 80,
 		});
 
 		// Use the stream processor utility to handle chunk processing
 		const streamProcessor = createStreamProcessor(stream, agent, {
 			threadConfig,
-			workflowUpdateTools: DEFAULT_WORKFLOW_UPDATE_TOOLS,
 		});
 
 		for await (const output of streamProcessor) {
@@ -268,7 +267,7 @@ export class AiWorkflowBuilderService {
 					// const messages = Array.isArray(channelValues?.messages) ? channelValues.messages : [];
 					sessions.push({
 						sessionId: threadId,
-						messages: this.formatMessages(messages),
+						messages: formatMessages(messages),
 						lastUpdated: checkpoint.checkpoint.ts,
 					});
 				}
@@ -279,68 +278,5 @@ export class AiWorkflowBuilderService {
 		}
 
 		return { sessions };
-	}
-
-	private formatMessages(
-		messages: Array<AIMessage | HumanMessage | ToolMessage>,
-	): Array<Record<string, unknown>> {
-		const formattedMessages: Array<Record<string, unknown>> = [];
-
-		for (const msg of messages) {
-			if (msg instanceof HumanMessage) {
-				formattedMessages.push({
-					role: 'user',
-					type: 'message',
-					text: msg.content,
-				});
-			} else if (msg instanceof AIMessage) {
-				// Handle tool calls in AI messages
-				if (msg.tool_calls && msg.tool_calls.length > 0) {
-					// Add tool messages for each tool call
-					for (const toolCall of msg.tool_calls) {
-						formattedMessages.push({
-							id: toolCall.id,
-							toolCallId: toolCall.id,
-							role: 'assistant',
-							type: 'tool',
-							toolName: toolCall.name,
-							status: 'completed',
-							updates: [
-								{
-									type: 'input',
-									data: toolCall.args || {},
-								},
-							],
-						});
-					}
-				}
-
-				// Add the AI message content if it exists
-				if (msg.content) {
-					formattedMessages.push({
-						role: 'assistant',
-						type: 'message',
-						text: msg.content,
-					});
-				}
-			} else if (msg instanceof ToolMessage) {
-				// Find the tool message by ID and add the output
-				const toolCallId = msg.tool_call_id;
-				for (let i = formattedMessages.length - 1; i >= 0; i--) {
-					const m = formattedMessages[i];
-					if (m.type === 'tool' && m.id === toolCallId) {
-						// Add output to updates array
-						m.updates ??= [];
-						(m.updates as Array<Record<string, unknown>>).push({
-							type: 'output',
-							data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
-						});
-						break;
-					}
-				}
-			}
-		}
-
-		return formattedMessages;
 	}
 }

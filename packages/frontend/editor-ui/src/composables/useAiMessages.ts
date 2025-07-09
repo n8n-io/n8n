@@ -416,7 +416,6 @@ export function useAiMessages() {
 				role: 'assistant',
 				toolName: msg.toolName,
 				status: msg.status,
-				result: msg.result,
 				updates: msg.updates,
 				read: true,
 			};
@@ -427,7 +426,7 @@ export function useAiMessages() {
 			id,
 			type: 'text',
 			role: 'assistant',
-			content: i18n.baseText('aiAssistant.unknownMessage'),
+			content: 'Unknown message type',
 			read: true,
 		};
 	}

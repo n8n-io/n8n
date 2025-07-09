@@ -1,3 +1,4 @@
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { CompiledStateGraph } from '@langchain/langgraph';
 
 import type { WorkflowState } from '../workflow-state';
@@ -39,6 +40,15 @@ export type StreamChunk =
 export interface StreamOutput {
 	messages: StreamChunk[];
 }
+/**
+ * Tools which should trigger canvas updates
+ */
+export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
+	'add_nodes',
+	'connect_nodes',
+	'update_node_parameters',
+	'remove_node',
+];
 
 /**
  * Configuration for stream processing
@@ -47,7 +57,7 @@ export interface StreamProcessorConfig {
 	/** Thread configuration for retrieving state */
 	threadConfig: { configurable: { thread_id: string } };
 	/** List of tool names that trigger workflow updates */
-	workflowUpdateTools?: string[];
+	workflowUpdateTools?: Array<(typeof DEFAULT_WORKFLOW_UPDATE_TOOLS)[number]>;
 }
 
 /**
@@ -131,8 +141,9 @@ export async function processStreamChunk(
 
 			// Check if this tool update should trigger a workflow update
 			const shouldUpdateWorkflow =
-				config.workflowUpdateTools?.includes(toolChunk.toolName) &&
-				toolChunk.status === 'completed';
+				(config.workflowUpdateTools ?? DEFAULT_WORKFLOW_UPDATE_TOOLS)?.includes(
+					toolChunk.toolName,
+				) && toolChunk.status === 'completed';
 
 			if (shouldUpdateWorkflow) {
 				// Get current workflow state
@@ -147,24 +158,6 @@ export async function processStreamChunk(
 				};
 
 				output.messages.push(workflowUpdateChunk);
-			}
-
-			// Check if this is an execution request
-			if (toolChunk.toolName === 'request_workflow_execution' && toolChunk.status === 'completed') {
-				const currentState = await agent.getState(config.threadConfig);
-				const executionRequested = (currentState.values as typeof WorkflowState.State)
-					.executionRequested;
-
-				if (executionRequested) {
-					// Add execution request chunk
-					const executionRequestChunk: ExecutionRequestChunk = {
-						role: 'assistant',
-						type: 'execution-requested',
-						reason: (toolChunk.output as any)?.reason || 'Execution data needed',
-					};
-
-					output.messages.push(executionRequestChunk);
-				}
 			}
 
 			return output;
@@ -195,12 +188,65 @@ export async function* createStreamProcessor(
 	}
 }
 
-/**
- * Default configuration for workflow update tools
- */
-export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
-	'add_nodes',
-	'connect_nodes',
-	'update_node_parameters',
-	'remove_node',
-];
+export function formatMessages(
+	messages: Array<AIMessage | HumanMessage | ToolMessage>,
+): Array<Record<string, unknown>> {
+	const formattedMessages: Array<Record<string, unknown>> = [];
+
+	for (const msg of messages) {
+		if (msg instanceof HumanMessage) {
+			formattedMessages.push({
+				role: 'user',
+				type: 'message',
+				text: msg.content,
+			});
+		} else if (msg instanceof AIMessage) {
+			// Handle tool calls in AI messages
+			if (msg.tool_calls && msg.tool_calls.length > 0) {
+				// Add tool messages for each tool call
+				for (const toolCall of msg.tool_calls) {
+					formattedMessages.push({
+						id: toolCall.id,
+						toolCallId: toolCall.id,
+						role: 'assistant',
+						type: 'tool',
+						toolName: toolCall.name,
+						status: 'completed',
+						updates: [
+							{
+								type: 'input',
+								data: toolCall.args || {},
+							},
+						],
+					});
+				}
+			}
+
+			// Add the AI message content if it exists
+			if (msg.content) {
+				formattedMessages.push({
+					role: 'assistant',
+					type: 'message',
+					text: msg.content,
+				});
+			}
+		} else if (msg instanceof ToolMessage) {
+			// Find the tool message by ID and add the output
+			const toolCallId = msg.tool_call_id;
+			for (let i = formattedMessages.length - 1; i >= 0; i--) {
+				const m = formattedMessages[i];
+				if (m.type === 'tool' && m.id === toolCallId) {
+					// Add output to updates array
+					m.updates ??= [];
+					(m.updates as Array<Record<string, unknown>>).push({
+						type: 'output',
+						data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
+					});
+					break;
+				}
+			}
+		}
+	}
+
+	return formattedMessages;
+}
