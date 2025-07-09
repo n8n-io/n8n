@@ -144,7 +144,7 @@ function handleToggleExpand() {
 
 	height: auto;
 	max-height: min(calc(var(--canvas-node--height) * 2), 300px);
-	min-height: calc(16px * 4);
+	min-height: var(--spacing-3xl);
 
 	& > * {
 		zoom: var(--zoom);
