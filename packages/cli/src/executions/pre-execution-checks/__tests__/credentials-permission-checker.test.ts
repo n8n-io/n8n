@@ -1,6 +1,4 @@
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User, SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 

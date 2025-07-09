@@ -1209,6 +1209,10 @@ function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
+	if (options.createNodeActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
 	if (!options.createNodeActive && !options.hasAddedNodes) {
 		uiStore.resetLastInteractedWith();
 	}

@@ -21,7 +21,6 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { useI18n } from '@n8n/i18n';
-import { useExperimentalNdvStore } from '../canvas/experimental/experimentalNdv.store';
 import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
@@ -48,7 +47,6 @@ const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
 const assistantStore = useAssistantStore();
-const experimentalNdvStore = useExperimentalNdvStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -141,20 +139,6 @@ function onAskAssistantButtonClick() {
 				@click="focusPanelStore.toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<n8n-icon-button
-			v-if="experimentalNdvStore.isEnabled"
-			type="tertiary"
-			size="large"
-			icon="maximize-2"
-			@click="experimentalNdvStore.expandAllNodes"
-		/>
-		<n8n-icon-button
-			v-if="experimentalNdvStore.isEnabled"
-			type="tertiary"
-			size="large"
-			icon="minimize-2"
-			@click="experimentalNdvStore.collapseAllNodes"
-		/>
 		<AskAssistantButton
 			v-if="assistantStore.canShowAssistantButtonsOnCanvas"
 			:class="$style.withBorder"

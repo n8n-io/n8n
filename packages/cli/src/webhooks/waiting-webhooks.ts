@@ -18,13 +18,13 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
