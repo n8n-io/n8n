@@ -111,6 +111,20 @@ export async function itemGetAllFieldsPreSend(
 		requestOptions.qs.$expand = 'fields';
 	}
 	requestOptions.qs.$select = fields.map((x) => x);
+
+	await addHonorNonIndexedQueriesHeader.call(this, requestOptions);
+
+	return requestOptions;
+}
+
+export async function addHonorNonIndexedQueriesHeader(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	if (requestOptions.qs?.$filter) {
+		requestOptions.headers ??= {};
+		requestOptions.headers.Prefer = 'HonorNonIndexedQueriesWarningMayFailRandomly';
+	}
 	return requestOptions;
 }
 
