@@ -98,12 +98,16 @@ const isHtmlNode = computed(
 const isDisabled = computed(() => {
 	if (!resolvedParameter.value) return false;
 
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
-		resolvedParameter.value.node.parameters,
-		resolvedParameter.value.node,
-		resolvedParameter.value.parameter,
-		'',
-		'disabledOptions',
+	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
+	return (
+		resolvedParameter.value.parameter.disabledOptions &&
+		nodeSettingsParameters.shouldDisplayNodeParameter(
+			resolvedParameter.value.node.parameters,
+			resolvedParameter.value.node,
+			resolvedParameter.value.parameter,
+			'',
+			'disabledOptions',
+		)
 	);
 });
 
