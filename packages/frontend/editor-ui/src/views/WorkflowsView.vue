@@ -65,6 +65,7 @@ import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { isExtraTemplateLinksExperimentEnabled } from '@/experiments';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -327,9 +328,8 @@ const showEasyAIWorkflowCallout = computed(() => {
 	return !easyAIWorkflowOnboardingDone;
 });
 
-// TODO: implement feature flag
-const showStartFromTemplate = computed(() => {
-	return true;
+const templatesCardEnabled = computed(() => {
+	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
 });
 
 const projectPermissions = computed(() => {
@@ -755,16 +755,18 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
-const trackTemplatesClick = () => {
+const openTemplatesRepository = async () => {
 	telemetry.track('User clicked on templates', {
 		role: cloudPlanStore.currentUserCloudInfo?.role,
 		active_workflow_count: workflowsStore.activeWorkflows.length,
 		source: 'empty_instance_card',
 	});
-};
 
-const openTemplatesRepository = () => {
-	trackTemplatesClick();
+	if (templatesStore.hasCustomTemplatesHost) {
+		await router.push({ name: VIEWS.TEMPLATES });
+		return;
+	}
+
 	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
 };
 
@@ -1823,7 +1825,7 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 					<N8nCard
-						v-if="showStartFromTemplate"
+						v-if="templatesCardEnabled"
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="new-workflow-from-template-card"

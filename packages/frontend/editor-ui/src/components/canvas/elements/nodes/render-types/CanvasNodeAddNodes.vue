@@ -1,22 +1,42 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
+import { nodeViewEventBus } from '@/event-bus';
+import { isExtraTemplateLinksExperimentEnabled } from '@/experiments';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
-import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@n8n/i18n';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const cloudPlanStore = useCloudPlanStore();
+const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const workflowsStore = useWorkflowsStore();
 
 const isTooltipVisible = ref(false);
+
+const templateRepository = computed(() => {
+	if (templatesStore.hasCustomTemplatesHost) {
+		return {
+			to: { name: VIEWS.TEMPLATES },
+		};
+	}
+
+	return {
+		to: templatesStore.websiteTemplateRepositoryURL,
+		target: '_blank',
+	};
+});
+
+const templatesLinkEnabled = computed(() => {
+	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
+});
 
 onMounted(() => {
 	nodeViewEventBus.on('runWorkflowButton:mouseenter', onShowTooltip);
@@ -69,10 +89,11 @@ const trackTemplatesClick = () => {
 		<p :class="$style.label">
 			{{ i18n.baseText('nodeView.canvasAddButton.addFirstStep') }}
 			<N8nLink
-				:to="templatesStore.websiteTemplateRepositoryURL"
+				v-if="templatesLinkEnabled"
+				:to="templateRepository.to"
+				:target="templateRepository.target"
 				:underline="true"
 				size="small"
-				target="_self"
 				@click="trackTemplatesClick"
 			>
 				{{ i18n.baseText('executionsLandingPage.emptyState.noTrigger.templateLinkText') }}
