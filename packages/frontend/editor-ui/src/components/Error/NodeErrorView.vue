@@ -1,9 +1,12 @@
 <script lang="ts" setup>
-import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -14,9 +17,8 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
@@ -31,34 +33,32 @@ type Props = {
 	error: NodeError | NodeApiError | NodeOperationError;
 	showDetails?: boolean;
 	compact?: boolean;
-	activeNode?: INodeUi | null;
 };
 
-const emit = defineEmits<{
-	openErrorNode: [error: NodeError | NodeApiError | NodeOperationError];
-}>();
+const props = defineProps<Props>();
 
-const props = withDefaults(defineProps<Props>(), {
-	showDetails: false,
-	compact: false,
-	activeNode: null,
-});
+const router = useRouter();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
+const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
+
+const workflowId = computed(() => workflowsStore.workflowId);
+const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
 });
 
 const node = computed(() => {
-	return props.error.node || props.activeNode;
+	return props.error.node || ndvStore.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
@@ -83,6 +83,10 @@ const n8nVersion = computed(() => {
 	}
 
 	return rootStore.versionCli + ` (${instanceType})`;
+});
+
+const hasManyInputItems = computed(() => {
+	return ndvStore.ndvInputData.length > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -134,7 +138,7 @@ const isAskAssistantAvailable = computed(() => {
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
-		node: props.error.node || props.activeNode,
+		node: props.error.node || ndvStore.activeNode,
 	});
 });
 
@@ -193,7 +197,7 @@ function getErrorDescription(): string {
 function addItemIndexSuffix(message: string): string {
 	let itemIndexSuffix = '';
 
-	if (props.error?.context?.itemIndex !== undefined) {
+	if (hasManyInputItems.value && props.error?.context?.itemIndex !== undefined) {
 		itemIndexSuffix = `item ${props.error.context.itemIndex}`;
 	}
 
@@ -210,7 +214,7 @@ function getErrorMessage(): string {
 
 	if (isSubNodeError.value) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
-			interpolate: { node: props.error.node.name },
+			interpolate: { node: props.error.node?.name ?? '' },
 		});
 	} else if (
 		isNonEmptyString(props.error.message) &&
@@ -388,7 +392,32 @@ function nodeIsHidden() {
 }
 
 const onOpenErrorNodeDetailClick = () => {
-	emit('openErrorNode', props.error);
+	if (!props.error.node) {
+		return;
+	}
+
+	if (
+		'workflowId' in props.error &&
+		workflowId.value &&
+		typeof props.error.workflowId === 'string' &&
+		workflowId.value !== props.error.workflowId &&
+		'executionId' in props.error &&
+		executionId.value &&
+		typeof props.error.executionId === 'string' &&
+		executionId.value !== props.error.executionId
+	) {
+		const link = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: props.error.workflowId,
+				executionId: props.error.executionId,
+				nodeId: props.error.node.id,
+			},
+		});
+		window.open(link.href, '_blank');
+	} else {
+		ndvStore.activeNodeName = props.error.node.name;
+	}
 };
 
 async function onAskAssistantClick() {

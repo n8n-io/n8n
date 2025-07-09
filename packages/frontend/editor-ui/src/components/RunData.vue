@@ -12,8 +12,6 @@ import type {
 	IRunExecutionData,
 	ITaskMetadata,
 	NodeError,
-	NodeApiError,
-	NodeOperationError,
 	NodeHint,
 	Workflow,
 	NodeConnectionType,
@@ -45,7 +43,6 @@ import {
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	TEST_PIN_DATA,
-	VIEWS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -88,7 +85,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
@@ -235,7 +232,6 @@ const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
 const route = useRoute();
-const router = useRouter();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -309,9 +305,7 @@ const subworkflowExecutionError = computed(() => {
 	} as NodeError;
 });
 
-const hasSubworkflowExecutionError = computed(() =>
-	Boolean(workflowsStore.subWorkflowExecutionError),
-);
+const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
@@ -624,9 +618,6 @@ const parsedAiContent = computed(() =>
 const hasParsedAiContent = computed(() =>
 	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
 );
-
-const workflowId = computed(() => props.workflow.id);
-const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 function setInputBranchIndex(value: number) {
 	if (props.paneType === 'input') {
@@ -1346,35 +1337,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-const onOpenErrorNode = (error: NodeError | NodeApiError | NodeOperationError) => {
-	if (!error.node) {
-		return;
-	}
-
-	if (
-		'workflowId' in error &&
-		workflowId.value &&
-		typeof error.workflowId === 'string' &&
-		workflowId.value !== error.workflowId &&
-		'executionId' in error &&
-		executionId.value &&
-		typeof error.executionId === 'string' &&
-		executionId.value !== error.executionId
-	) {
-		const link = router.resolve({
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				name: error.workflowId,
-				executionId: error.executionId,
-				nodeId: error.node.id,
-			},
-		});
-		window.open(link.href, '_blank');
-	} else {
-		ndvStore.activeNodeName = error.node.name;
-	}
-};
-
 defineExpose({ enterEditMode });
 </script>
 
@@ -1674,9 +1636,7 @@ defineExpose({ enterEditMode });
 					:compact="compact"
 					:error="subworkflowExecutionError"
 					:class="$style.errorDisplay"
-					:active-node="activeNode"
 					show-details
-					@open-error-node="onOpenErrorNode"
 				/>
 			</div>
 
@@ -1740,8 +1700,6 @@ defineExpose({ enterEditMode });
 						:error="workflowRunErrorAsNodeError"
 						:class="$style.inlineError"
 						:compact="compact"
-						:active-node="activeNode"
-						@open-error-node="onOpenErrorNode"
 					/>
 					<slot name="content"></slot>
 				</div>
@@ -1750,9 +1708,7 @@ defineExpose({ enterEditMode });
 					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
 					:compact="compact"
-					:active-node="activeNode"
 					show-details
-					@open-error-node="onOpenErrorNode"
 				/>
 			</div>
 
@@ -1786,7 +1742,7 @@ defineExpose({ enterEditMode });
 				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
 				:class="$style.center"
 			>
-				<slot name="no-output-data">xxx</slot>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div
