@@ -1885,7 +1885,12 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi
+					render-type="rendered"
+					:compact="compact"
+					:content="parsedAiContent"
+					:search="search"
+				/>
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
