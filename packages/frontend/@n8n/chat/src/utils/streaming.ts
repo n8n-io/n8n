@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 export interface NodeRunData {
 	content: string;
@@ -8,6 +8,12 @@ export interface NodeRunData {
 	message: ChatMessageText;
 }
 
+/**
+ * Manages the state of streaming messages for nodes.
+ * This class is responsible for tracking the state of each run of nodes,
+ * including the content of each chunk, whether it's complete, and the message
+ * object that represents the run of a given node.
+ */
 export class StreamingMessageManager {
 	private nodeRuns = new Map<string, NodeRunData>();
 	private runOrder: string[] = [];
@@ -114,14 +120,14 @@ export function createBotMessage(id?: string): ChatMessageText {
 }
 
 export function updateMessageInArray(
-	messages: unknown[],
+	messages: ChatMessage[],
 	messageId: string,
 	updatedMessage: ChatMessageText,
 ): void {
-	const messageIndex = messages.findIndex(
-		(msg: unknown) => (msg as { id: string }).id === messageId,
-	);
-	if (messageIndex !== -1) {
-		messages[messageIndex] = updatedMessage;
+	const messageIndex = messages.findIndex((msg: ChatMessage) => msg.id === messageId);
+	if (messageIndex === -1) {
+		throw new Error(`Can't update message. No message with id ${messageId} found`);
 	}
+
+	messages[messageIndex] = updatedMessage;
 }

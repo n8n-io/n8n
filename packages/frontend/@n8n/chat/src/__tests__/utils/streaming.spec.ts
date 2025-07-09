@@ -157,7 +157,7 @@ describe('updateMessageInArray', () => {
 		expect(messages[1].text).toBe('World'); // Should remain unchanged
 	});
 
-	it('should handle non-existent message id gracefully', () => {
+	it('should throw error on non-existent message id', () => {
 		const messages: ChatMessageText[] = [
 			{
 				id: 'msg-1',
@@ -174,9 +174,8 @@ describe('updateMessageInArray', () => {
 			sender: 'bot',
 		};
 
-		updateMessageInArray(messages, 'non-existent', updatedMessage);
-
-		expect(messages).toHaveLength(1);
-		expect(messages[0].text).toBe('Hello');
+		expect(() => updateMessageInArray(messages, 'non-existent', updatedMessage)).toThrow(
+			"Can't update message. No message with id non-existent found",
+		);
 	});
 });
