@@ -95,7 +95,73 @@ describe('RunDataParsedAiContent', () => {
 		).toBeInTheDocument();
 	});
 
-	it.todo('highlight matches to the search keyword in raw data', () => {
+	it('highlight matches to the search keyword in inline code in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: 'The `quick brown fox` jumps over the lazy dog',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('fox');
+	});
+
+	it('highlight matches to the search keyword in a code block in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: 'Code:\n\n    quickFox.jump({ over: lazyDog });\n',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('Fox');
+	});
+
+	it('highlight matches to the search keyword in fence syntax in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: '```\nquickFox.jump({ over: lazyDog });\n```',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('Fox');
+	});
+
+	it('highlight matches to the search keyword in raw data', () => {
 		const rendered = renderComponent({
 			renderType: 'rendered',
 			content: [{ raw: { key: 'value' }, parsedContent: null }],
