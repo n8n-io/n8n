@@ -26,6 +26,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -33,6 +34,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -345,6 +347,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
 			workflowsStore.addWorkflow(workflowData);
+
+			focusPanelStore.onNewWorkflowSave(workflowData.id);
 
 			if (openInNewWindow) {
 				const routeData = router.resolve({

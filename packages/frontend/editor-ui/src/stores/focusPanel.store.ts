@@ -10,7 +10,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from './workflows.store';
-import { LOCAL_STORAGE_FOCUS_PANEL } from '@/constants';
+import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 
 type FocusedNodeParameter = {
@@ -73,14 +73,30 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const _setOptions = ({
 		parameters,
 		isActive,
-	}: { isActive?: boolean; parameters?: FocusedNodeParameter[] }) => {
+		wid = workflowsStore.workflowId,
+	}: { isActive?: boolean; parameters?: FocusedNodeParameter[]; wid?: string }) => {
 		focusPanelStorage.value = JSON.stringify({
 			...focusPanelData.value,
-			[workflowsStore.workflowId]: {
+			[wid]: {
 				isActive: isActive ?? focusPanelActive.value,
 				parameters: parameters ?? _focusedNodeParameters.value,
 			},
 		});
+	};
+
+	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
+	const onNewWorkflowSave = (wid: string) => {
+		if (!currentFocusPanelData.value || !(PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelData.value)) {
+			return;
+		}
+
+		const latestWorkflowData = focusPanelData.value[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		_setOptions({
+			wid,
+			parameters: latestWorkflowData.parameters,
+			isActive: latestWorkflowData.isActive,
+		});
+		_setOptions({ wid: PLACEHOLDER_EMPTY_WORKFLOW_ID, ...DEFAULT_FOCUS_PANEL_DATA });
 	};
 
 	const openWithFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
@@ -117,5 +133,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		closeFocusPanel,
 		toggleFocusPanel,
 		reset,
+		onNewWorkflowSave,
 	};
 });
