@@ -8,10 +8,13 @@ on:
         required: false
         default: '[1, 2]'
         type: string
-
-  push:
-    branches:
-      - playwright-ci-test
+  workflow_call:
+    inputs:
+      containers:
+        description: 'Shard containers to use'
+        required: false
+        default: '[1, 2]'
+        type: string
 
 env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache

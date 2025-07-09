@@ -1,0 +1,11 @@
+name: E2E Tests - On-Demand
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  run-e2e-tests:
+    name: Playwright E2E
+    uses: ./.github/workflows/playwright-test.yml
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/run-e2e')

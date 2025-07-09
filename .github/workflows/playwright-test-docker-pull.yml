@@ -1,10 +1,18 @@
 name: Test Playwright (Docker Pull)
 
 on:
-  push:
-    branches:
-      - playwright-ci-test
-
+  workflow_dispatch:
+    inputs:
+      containers:
+        description: 'Shard containers to use'
+        required: false
+        default: '[1, 2]'
+        type: string
+      image:
+        description: 'Image to use'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
 env:
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
@@ -39,7 +47,7 @@ jobs:
 
       - name: Run Playwright tests
         env:
-          N8N_DOCKER_IMAGE: n8nio/n8n:nightly
+          N8N_DOCKER_IMAGE: ${{ inputs.image }}
         run: pnpm --filter=n8n-playwright run test:standard --workers=2
 
       - name: Upload test artifacts
