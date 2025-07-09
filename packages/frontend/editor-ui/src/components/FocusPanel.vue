@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
 	getParameterTypeOption,
+	isValidParameterOption,
 	parseFromExpression,
 } from '@/utils/nodeSettingsUtils';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
@@ -212,7 +213,7 @@ function optionSelected(command: string) {
 				resolvedExpression.value,
 				resolvedParameter.value.parameter.type,
 				resolvedParameter.value.parameter.default,
-				[], // TODO: get parameterOptions
+				(resolvedParameter.value.parameter.options ?? []).filter(isValidParameterOption),
 			);
 			if (typeof newValue === 'string') {
 				valueChanged(newValue);
