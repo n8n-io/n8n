@@ -96,9 +96,9 @@ jobs:
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           signoff: false
 
-          # Create a unique branch and delete after we're done
-          branch: 'chore/openapi-sync-${{ github.run_id }}-${{ github.run_attempt }}'
-          delete-branch: true
+          # Create a single branch for multiple PRs
+          branch: 'chore/sync-public-api-schema'
+          delete-branch: false
 
           title: 'chore: Update Public API schema'
           body: |
