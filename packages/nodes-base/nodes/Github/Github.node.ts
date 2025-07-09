@@ -1705,8 +1705,9 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-limit
 				description:
-					'Max number of results to return. Maximum value is <a href="https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests">100</a>',
+					'Max number of results to return. Maximum value is <a href="https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests">100</a>.',
 			},
 			{
 				displayName: 'Filters',
