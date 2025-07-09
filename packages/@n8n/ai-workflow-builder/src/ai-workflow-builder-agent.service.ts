@@ -90,8 +90,13 @@ export class AiWorkflowBuilderService {
 					return undefined;
 				}
 			})
-			.filter((nodeType): nodeType is INodeTypeDescription => nodeType !== undefined)
+			.filter(
+				(nodeType): nodeType is INodeTypeDescription =>
+					nodeType !== undefined && nodeType.hidden !== true,
+			)
 			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
+				// If the node type is a tool, we need to find the corresponding non-tool node type
+				// and merge the two node types to get the full node type description.
 				const isTool = nodeType.name.endsWith('Tool');
 				if (!isTool) return nodeType;
 
