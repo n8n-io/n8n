@@ -176,6 +176,7 @@ function valueChanged(value: string) {
 	if (resolvedParameter.value === undefined) {
 		return;
 	}
+	debugger;
 	nodeSettingsParameters.updateNodeParameter(
 		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
 		value,
@@ -300,6 +301,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							:is-read-only="isReadOnly"
 							:target-node-parameter-context="targetNodeParameterContext"
 							fill-parent
+							:disable-ask-ai="true"
 							@update:model-value="valueChangedDebounced" />
 						<HtmlEditor
 							v-else-if="editorType === 'htmlEditor'"

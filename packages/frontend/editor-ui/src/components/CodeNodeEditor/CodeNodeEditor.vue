@@ -31,6 +31,7 @@ type Props = {
 	rows?: number;
 	id?: string;
 	targetNodeParameterContext?: TargetNodeParameterContext;
+	disableAskAi?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	id: () => crypto.randomUUID(),
 	targetNodeParameterContext: undefined,
+	disableAskAi: false,
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -102,7 +104,9 @@ onBeforeUnmount(() => {
 });
 
 const askAiEnabled = computed(() => {
-	return settingsStore.isAskAiEnabled && props.language === 'javaScript';
+	return (
+		props.disableAskAi === false && settingsStore.isAskAiEnabled && props.language === 'javaScript'
+	);
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
