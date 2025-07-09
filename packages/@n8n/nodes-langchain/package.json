@@ -76,6 +76,7 @@
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
+      "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
@@ -155,7 +156,8 @@
     "@types/temp": "^0.9.1",
     "fast-glob": "catalog:",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:"
+    "tsup": "catalog:",
+    "jest-mock-extended": "^3.0.4"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",

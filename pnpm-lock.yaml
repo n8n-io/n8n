@@ -1095,6 +1095,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)))(typescript@5.8.3)
       n8n-core:
         specifier: workspace:*
         version: link:../../core
