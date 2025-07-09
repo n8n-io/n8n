@@ -142,6 +142,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return { ...result, data };
 	}
 
+	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
+		return await this.additionalData.getRunExecutionData(executionId);
+	}
+
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
 		const inputData = this.inputData[connectionType];
 		if (inputData.length < inputIndex) {
