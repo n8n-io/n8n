@@ -7,11 +7,8 @@ import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
-import { splitTextBySearch } from '@/utils/stringUtils';
-import { escapeHtml } from 'xss';
-import type MarkdownIt from 'markdown-it';
 import { computed } from 'vue';
-import { unescapeAll } from 'markdown-it/lib/common/utils';
+import { createSearchHighlightPlugin } from '@/components/RunDataAi/utils';
 
 const {
 	content,
@@ -29,59 +26,7 @@ const i18n = useI18n();
 const clipboard = useClipboard();
 const { showMessage } = useToast();
 
-const vueMarkdownPlugins = computed(() => {
-	function createHtmlFragmentWithSearchHighlight(text: string): string {
-		const escaped = escapeHtml(text);
-
-		if (!search) {
-			return escaped;
-		}
-
-		const parts: string[] = [];
-
-		for (const part of splitTextBySearch(escaped, search ?? '')) {
-			parts.push(part.isMatched ? `<mark>${part.content}</mark>` : part.content);
-		}
-
-		return parts.join('');
-	}
-
-	function searchHighlightPlugin(md: MarkdownIt) {
-		md.renderer.rules.text = (tokens, idx) =>
-			createHtmlFragmentWithSearchHighlight(tokens[idx].content);
-
-		md.renderer.rules.code_inline = (tokens, idx, _, __, slf) =>
-			`<code${slf.renderAttrs(tokens[idx])}>${createHtmlFragmentWithSearchHighlight(tokens[idx].content)}</code>`;
-
-		md.renderer.rules.code_block = (tokens, idx, _, __, slf) =>
-			`<pre${slf.renderAttrs(tokens[idx])}><code>${createHtmlFragmentWithSearchHighlight(tokens[idx].content)}</code></pre>\n`;
-
-		md.renderer.rules.fence = (tokens, idx, options, _, slf) => {
-			const token = tokens[idx];
-			const info = token.info ? unescapeAll(token.info).trim() : '';
-			let langName = '';
-			let langAttrs = '';
-
-			if (info) {
-				const arr = info.split(/(\s+)/g);
-				langName = arr[0];
-				langAttrs = arr.slice(2).join('');
-			}
-
-			const highlighted =
-				options.highlight?.(token.content, langName, langAttrs) ??
-				createHtmlFragmentWithSearchHighlight(token.content);
-
-			if (highlighted.indexOf('<pre') === 0) {
-				return highlighted + '\n';
-			}
-
-			return `<pre><code${slf.renderAttrs(token)}>${highlighted}</code></pre>\n`;
-		};
-	}
-
-	return [searchHighlightPlugin];
-});
+const vueMarkdownPlugins = computed(() => [createSearchHighlightPlugin(search)]);
 
 function isJsonString(text: string) {
 	try {

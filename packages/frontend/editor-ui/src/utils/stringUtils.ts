@@ -1,3 +1,10 @@
+/**
+ * Split given text by the search term
+ *
+ * @param text Text to split
+ * @param search The search term
+ * @returns An array containing splitted text, each containing text fragment and the match flag.
+ */
 export function splitTextBySearch(
 	text: string,
 	search: string,
