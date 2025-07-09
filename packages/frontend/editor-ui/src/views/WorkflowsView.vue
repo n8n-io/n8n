@@ -35,6 +35,7 @@ import {
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -63,6 +64,7 @@ import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -105,6 +107,8 @@ const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
+const cloudPlanStore = useCloudPlanStore();
+const templatesStore = useTemplatesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -321,6 +325,11 @@ const statusFilterOptions = computed(() => [
 const showEasyAIWorkflowCallout = computed(() => {
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
 	return !easyAIWorkflowOnboardingDone;
+});
+
+// TODO: implement feature flag
+const showStartFromTemplate = computed(() => {
+	return true;
 });
 
 const projectPermissions = computed(() => {
@@ -744,6 +753,19 @@ const addWorkflow = () => {
 		source: 'Workflows list',
 	});
 	trackEmptyCardClick('blank');
+};
+
+const trackTemplatesClick = () => {
+	telemetry.track('User clicked on templates', {
+		role: cloudPlanStore.currentUserCloudInfo?.role,
+		active_workflow_count: workflowsStore.activeWorkflows.length,
+		source: 'empty_instance_card',
+	});
+};
+
+const openTemplatesRepository = () => {
+	trackTemplatesClick();
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
 };
 
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
@@ -1797,6 +1819,25 @@ const onNameSubmit = async (name: string) => {
 							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
 								{{ i18n.baseText('workflows.empty.easyAI') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-if="showStartFromTemplate"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-from-template-card"
+						@click="openTemplatesRepository"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="package-open"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.startWithTemplate') }}
 							</N8nText>
 						</div>
 					</N8nCard>

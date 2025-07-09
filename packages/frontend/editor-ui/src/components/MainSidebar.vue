@@ -254,6 +254,7 @@ const trackTemplatesClick = () => {
 	telemetry.track('User clicked on templates', {
 		role: cloudPlanStore.currentUserCloudInfo?.role,
 		active_workflow_count: workflowsStore.activeWorkflows.length,
+		source: 'sidebar_button',
 	});
 };
 
