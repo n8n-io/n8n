@@ -11,10 +11,10 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { CodeTaskRunnerSandbox } from './CodeTaskRunnerSandbox';
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
-import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
@@ -108,9 +108,9 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
-		if (runnersConfig.enabled && language === 'javaScript') {
+		if (runnersConfig.enabled && (language === 'javaScript' || language === 'python')) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const sandbox = new CodeTaskRunnerSandbox(language, code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
