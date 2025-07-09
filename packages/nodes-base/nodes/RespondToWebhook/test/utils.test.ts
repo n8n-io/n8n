@@ -3,7 +3,7 @@ import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { getBinaryResponse } from '../utils/binary';
 import { configuredOutputs } from '../utils/outputs';
-import { sandboxResponseData } from '../utils/sandbox';
+import { sandboxHtmlResponse } from 'n8n-core';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {
@@ -58,7 +58,7 @@ describe('sanitizeResponseData', () => {
 				"John's company \"TechCorp & Associates\" announced: 'We're launching a revolutionary product at €1,299.99 — it's 50% faster than competitors!' The CEO said, \"This isn't just an upgrade; it's a complete transformation.\" Users praised the app's ability to handle complex data like <script>alert('XSS')</script> and symbols such as @, #, $, %, ^, &, *, (, ), [, ], {, }, |, , /, ?, <, >, ~, `, +, =, -, _, and even emojis like 🚀 & 💡. The product description reads: \"It supports UTF-8 encoding, handles apostrophes in names like O'Connor & D'Angelo, processes mathematical expressions like 2 < 5 > 1, and manages URLs such as https://example.com/path?param=value&other='test'. We've tested it with HTML entities like &amp;, &lt;, &gt;, &quot;, &#39;, and even complex strings like `console.log(\"Hello 'World'!\");`\" — truly impressive!",
 		},
 	])('wraps the response body in an iframe', ({ srcdoc }) => {
-		const result = sandboxResponseData(srcdoc);
+		const result = sandboxHtmlResponse(srcdoc);
 
 		expect(result).toMatchSnapshot();
 	});
@@ -75,7 +75,7 @@ describe('getBinaryResponse', () => {
 
 		const result = getBinaryResponse(binaryData, headers);
 
-		expect(result).toBe(sandboxResponseData(binaryData.data));
+		expect(result).toBe(sandboxHtmlResponse(binaryData.data));
 		expect(headers['content-type']).toBe('text/html');
 	});
 
@@ -103,7 +103,7 @@ describe('getBinaryResponse', () => {
 		const result = getBinaryResponse(binaryData, headers);
 
 		expect(result).toBe(
-			sandboxResponseData(Buffer.from(binaryData.data, BINARY_ENCODING).toString()),
+			sandboxHtmlResponse(Buffer.from(binaryData.data, BINARY_ENCODING).toString()),
 		);
 		expect(headers['content-type']).toBe('text/html');
 	});

@@ -316,7 +316,7 @@ describe('RespondToWebhook Node', () => {
 				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
 					body: inputItems.map((item) => item.json),
-					headers: { 'content-type': 'application/xhtml+xml' },
+					headers: {},
 					statusCode: 200,
 				});
 				expect(result).toHaveLength(1);
@@ -325,8 +325,8 @@ describe('RespondToWebhook Node', () => {
 
 				await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: '<script>alert("xss")</script>',
-					headers: { 'content-type': 'application/json' },
+					body: inputItems.map((item) => item.json),
+					headers: {},
 					statusCode: 200,
 				});
 			});
