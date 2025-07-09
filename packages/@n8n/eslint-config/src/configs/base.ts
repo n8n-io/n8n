@@ -11,13 +11,6 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
-// Slowest rules are disabled locally (for lint, not lintfix) to improve performance in development
-// They are enabled in CI to ensure code quality
-const runAllRules =
-	process.env.CI === 'true' ||
-	process.env.INCLUDE_SLOW_RULES === 'true' ||
-	process.argv.includes('--fix');
-
 export const baseConfig = tseslint.config(
 	globalIgnores([
 		'node_modules/**',
@@ -110,7 +103,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
 			/** https://typescript-eslint.io/rules/await-thenable/ */
-			'@typescript-eslint/await-thenable': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/await-thenable': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
@@ -230,16 +223,12 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
 			 */
-			'@typescript-eslint/no-misused-promises': runAllRules
-				? ['error', { checksVoidReturn: false }]
-				: 'off',
+			'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
 			 */
-			'@typescript-eslint/no-floating-promises': runAllRules
-				? ['error', { ignoreVoid: true }]
-				: 'off',
+			'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
@@ -259,7 +248,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-qualifier.md
 			 */
-			'@typescript-eslint/no-unnecessary-qualifier': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/no-unnecessary-qualifier': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-expressions.md
@@ -279,7 +268,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/promise-function-async.md
 			 */
-			'@typescript-eslint/promise-function-async': runAllRules ? 'error' : 'off',
+			'@typescript-eslint/promise-function-async': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
@@ -303,7 +292,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
-			'import-x/no-cycle': runAllRules ? ['error', { ignoreExternal: false, maxDepth: 3 }] : 'off',
+			'import-x/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md

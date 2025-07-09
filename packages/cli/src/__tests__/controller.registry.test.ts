@@ -6,9 +6,7 @@ jest.mock('@n8n/backend-common', () => {
 });
 
 import type { GlobalConfig } from '@n8n/config';
-import { ControllerRegistryMetadata } from '@n8n/decorators';
-import { Param } from '@n8n/decorators';
-import { Get, Licensed, RestController } from '@n8n/decorators';
+import { ControllerRegistryMetadata, Param, Get, Licensed, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express from 'express';
 import { mock } from 'jest-mock-extended';
