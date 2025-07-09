@@ -1556,6 +1556,8 @@
 	"nodeView.zoomToFit": "Zoom to Fit",
 	"nodeView.replaceMe": "Replace Me",
 	"nodeView.setupTemplate": "Set up template",
+	"nodeView.expandAllNodes": "Expand all nodes",
+	"nodeView.collapseAllNodes": "Collapse all nodes",
 	"nodeViewV2.showError.editingNotAllowed": "Editing is not allowed",
 	"nodeViewV2.showError.failedToCreateNode": "Failed to create node",
 	"contextMenu.node": "node | nodes",
