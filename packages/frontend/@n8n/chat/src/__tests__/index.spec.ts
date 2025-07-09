@@ -4,7 +4,7 @@ import {
 	createFetchResponse,
 	createGetLatestMessagesResponse,
 	createSendMessageResponse,
-	createStreamingFetchResponse,
+	createMockStreamingFetchResponse,
 	getChatInputSendButton,
 	getChatInputTextarea,
 	getChatMessage,
@@ -280,7 +280,7 @@ describe('createChat()', () => {
 			const fetchSpy = vi.spyOn(window, 'fetch');
 			fetchSpy
 				.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
-				.mockImplementationOnce(createStreamingFetchResponse(chunks));
+				.mockImplementationOnce(createMockStreamingFetchResponse(chunks));
 
 			app = createChat({
 				mode: 'fullscreen',

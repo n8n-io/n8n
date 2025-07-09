@@ -17,7 +17,7 @@ export const createSendMessageResponse = (
 	output,
 });
 
-export function createStreamingFetchResponse(
+export function createMockStreamingFetchResponse(
 	chunks: Array<{
 		type: string;
 		content?: string;
