@@ -184,6 +184,7 @@ watch(activeElement, (active) => {
 						disable-display-mode-selection
 						disable-run-index-selection
 						mapping-enabled
+						:collapsing-table-column-name="null"
 					>
 						<template #header>
 							<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
