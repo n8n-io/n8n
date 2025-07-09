@@ -354,13 +354,9 @@ describe('workflow timeout with startedAt', () => {
 			// The timeout should be adjusted: 10 seconds - 5 seconds elapsed = ~5 seconds remaining
 			expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
 
-			let actualTimeout = mockSetTimeout.mock.calls[0][1];
-			if (mockSetTimeout.mock.calls.length > 1) {
-				if (actualTimeout === 60000) {
-					// If the first call was for 60 seconds, the second call should be the adjusted timeout
-					actualTimeout = mockSetTimeout.mock.calls[1][1];
-				}
-			}
+			// We take the second call, because the first one is setting up
+			// the regular pull of waiting executions
+			const actualTimeout = mockSetTimeout.mock.calls[1][1];
 
 			// Get the actual timeout value passed to setTimeout
 
