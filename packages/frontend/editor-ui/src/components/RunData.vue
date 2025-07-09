@@ -1455,7 +1455,6 @@ defineExpose({ enterEditMode });
 							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
 							!editMode.enabled)
 					"
-					:class="$style.displayModeSelect"
 					:compact="props.compact"
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
@@ -1467,8 +1466,6 @@ defineExpose({ enterEditMode });
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
-
-				<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 
 				<N8nIconButton
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -1509,6 +1506,8 @@ defineExpose({ enterEditMode });
 					/>
 				</div>
 			</div>
+
+			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
@@ -2071,6 +2070,7 @@ defineExpose({ enterEditMode });
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
+		gap: var(--spacing-2xs);
 	}
 
 	> *:first-child {
@@ -2250,6 +2250,15 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+		visibility: hidden;
+
+		:global(.el-input__prefix) {
+			transition-duration: 0ms;
+		}
+	}
+
+	.compact:hover & {
+		visibility: visible;
 	}
 }
 
@@ -2329,18 +2338,6 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
-}
-
-.search,
-.displayModeSelect {
-	.compact:not(:hover) & {
-		opacity: 0;
-		display: none;
-	}
-
-	.compact:hover & {
-		opacity: 1;
-	}
 }
 
 .executingMessage {

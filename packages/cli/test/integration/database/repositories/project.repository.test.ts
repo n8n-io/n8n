@@ -1,8 +1,5 @@
-import { createTeamProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { AuthIdentity } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { AuthIdentity, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
