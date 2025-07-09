@@ -1,3 +1,4 @@
+import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 
 export interface LogMatch {
@@ -118,7 +119,7 @@ export class ContainerTestHelpers {
 
 		while (Date.now() - startTime < timeoutMs) {
 			iteration++;
-			await this.sleep(ContainerTestHelpers.POLL_INTERVAL_MS);
+			await wait(ContainerTestHelpers.POLL_INTERVAL_MS);
 
 			// Capture the timestamp for this iteration to avoid race conditions
 			const checkTimestamp = currentCheckTime;
@@ -371,9 +372,5 @@ export class ContainerTestHelpers {
 		}
 
 		return matches;
-	}
-
-	private async sleep(ms: number): Promise<void> {
-		return await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }

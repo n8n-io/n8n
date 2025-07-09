@@ -7,7 +7,7 @@
   "scripts": {
     "stack": "tsx ./n8n-start-stack.ts",
     "stack:help": "tsx ./n8n-start-stack.ts --help",
-    "stack:dev": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
+    "stack:sqlite": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
     "stack:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
     "stack:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
     "stack:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",

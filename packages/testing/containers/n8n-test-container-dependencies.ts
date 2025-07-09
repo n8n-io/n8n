@@ -4,6 +4,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { setTimeout as wait } from 'node:timers/promises';
 
 export async function setupRedis({
 	redisImage,
@@ -305,7 +306,7 @@ export async function pollContainerHttpEndpoint(
 			// Don't log errors, just retry
 		}
 
-		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+		await wait(retryIntervalMs);
 	}
 
 	console.error(
