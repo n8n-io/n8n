@@ -44,7 +44,9 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "ws": "^8.18.0"
+    "pyodide": "0.27.5",
+    "ws": "^8.18.0",
+    "xmlhttprequest-ssl": "3.1.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

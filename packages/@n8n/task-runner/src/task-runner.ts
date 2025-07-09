@@ -381,7 +381,7 @@ export abstract class TaskRunner extends EventEmitter {
 			waitingForSettings: async () => {
 				taskState.status = 'running';
 
-				await this.executeTask(
+				await this.executeCodeTask(
 					{
 						taskId,
 						settings,
@@ -394,7 +394,7 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
+	async executeCodeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}
 

@@ -14,8 +14,8 @@ import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
-import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
+import type { CodeExecSettings } from '@/js-task-runner/js-task-runner';
+import { CodeTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
 	UNSUPPORTED_HELPER_FUNCTIONS,
 	type DataRequestResponse,
@@ -46,7 +46,7 @@ describe('JsTaskRunner', () => {
 		jsRunnerOpts: Partial<JsRunnerConfig> = {},
 		baseRunnerOpts: Partial<BaseRunnerConfig> = {},
 	) =>
-		new JsTaskRunner({
+		new CodeTaskRunner({
 			baseRunnerConfig: {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
@@ -74,12 +74,12 @@ describe('JsTaskRunner', () => {
 		taskData,
 		runner = defaultTaskRunner,
 	}: {
-		task: TaskParams<JSExecSettings>;
+		task: TaskParams<CodeExecSettings>;
 		taskData: DataRequestResponse;
-		runner?: JsTaskRunner;
+		runner?: CodeTaskRunner;
 	}) => {
 		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
-		return await runner.executeTask(task, new AbortController().signal);
+		return await runner.executeCodeTask(task, new AbortController().signal);
 	};
 
 	afterEach(() => {
@@ -94,8 +94,8 @@ describe('JsTaskRunner', () => {
 	}: {
 		code: string;
 		inputItems: IDataObject[];
-		settings?: Partial<JSExecSettings>;
-		runner?: JsTaskRunner;
+		settings?: Partial<CodeExecSettings>;
+		runner?: CodeTaskRunner;
 	}) => {
 		return await execTaskWithParams({
 			task: newTaskParamsWithSettings({
@@ -117,8 +117,8 @@ describe('JsTaskRunner', () => {
 	}: {
 		code: string;
 		inputItems: IDataObject[];
-		settings?: Partial<JSExecSettings>;
-		runner?: JsTaskRunner;
+		settings?: Partial<CodeExecSettings>;
+		runner?: CodeTaskRunner;
 		chunk?: InputDataChunkDefinition;
 	}) => {
 		return await execTaskWithParams({
@@ -1239,7 +1239,7 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';
 			const task = newTaskState(taskId);
-			const taskSettings: JSExecSettings = {
+			const taskSettings: CodeExecSettings = {
 				code: 'unknown; return []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
@@ -1486,7 +1486,7 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';
 			const task = newTaskState(taskId);
-			const taskSettings: JSExecSettings = {
+			const taskSettings: CodeExecSettings = {
 				code: 'function my_function() {\n  null.map();\n}\nmy_function();\nreturn []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,

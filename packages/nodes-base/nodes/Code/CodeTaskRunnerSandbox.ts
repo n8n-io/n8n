@@ -1,4 +1,5 @@
 import {
+	type CodeNodeEditorLanguage,
 	ApplicationError,
 	type CodeExecutionMode,
 	type IExecuteFunctions,
@@ -12,9 +13,10 @@ import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
 /**
  * JS Code execution sandbox that executes the JS code using task runner.
  */
-export class JsTaskRunnerSandbox {
+export class CodeTaskRunnerSandbox {
 	constructor(
-		private readonly jsCode: string,
+		private readonly language: CodeNodeEditorLanguage,
+		private readonly code: string,
 		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: IExecuteFunctions,
@@ -25,9 +27,10 @@ export class JsTaskRunnerSandbox {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-			'javascript',
+			'code',
 			{
-				code: this.jsCode,
+				language: this.language === 'javaScript' ? 'javascript' : 'python',
+				code: this.code,
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
@@ -41,7 +44,7 @@ export class JsTaskRunnerSandbox {
 	}
 
 	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
-		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
+		validateNoDisallowedMethodsInRunForEach(this.code, 0);
 
 		const itemIndex = 0;
 		const chunks = this.chunkInputItems(numInputItems);
@@ -49,9 +52,10 @@ export class JsTaskRunnerSandbox {
 
 		for (const chunk of chunks) {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-				'javascript',
+				'code',
 				{
-					code: this.jsCode,
+					language: this.language === 'javaScript' ? 'javascript' : 'python',
+					code: this.code,
 					nodeMode: this.nodeMode,
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),

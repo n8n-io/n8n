@@ -106,8 +106,10 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		return createReadStream(filePath);
 	},
 
-	getStoragePath() {
-		return join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
+	async getStoragePath() {
+		return await Promise.resolve(
+			join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`),
+		);
 	},
 
 	async writeContentToFile(filePath, content, flag) {
