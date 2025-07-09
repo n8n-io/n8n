@@ -5,6 +5,18 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
+/*
+ * These functions do not cover all possible edge cases for backtracking through workflow run data.
+ * They are designed to work for a simple and linear workflow execution.
+ * If the workflow has branches or complex execution paths, additional logic may be needed.
+ * We should follow up on this and improve the logic in the future.
+ */
+
+/*
+ * If we cannot backtrack correctly, we return undefined to fallback to the current paired item behavior
+ * failing in these functions will cause the parent workflow to fail
+ */
+
 /**
  * This function retrieves the previous task data for a given task in the workflow run data.
  * Until there is no more source set
@@ -13,13 +25,14 @@ export function previousTaskData(
 	runData: IRunExecutionData['resultData']['runData'],
 	currentRunData: ITaskData,
 ): ITaskData | undefined {
-	const nextNodeName = currentRunData.source[0]?.previousNode;
+	const nextNodeName = currentRunData.source?.[0]?.previousNode;
 	if (!nextNodeName) {
 		return undefined; // No next node
 	}
 
 	const nextRunData = runData[nextNodeName];
 	if (!nextRunData || nextRunData.length === 0) {
+		// We don't expect this case to happen in practice, but if for some reason it happens, we fallback to undefined
 		return undefined; // No run data for the next node
 	}
 
@@ -66,7 +79,9 @@ export function findPairedItemTroughWorkflowData(
 
 	let pairedItem = item.pairedItem;
 
-	// move the runDataItem to the last node in the
+	// move the runDataItem to the previous node in the in the workflow execution data
+	// and find the paired item of the current item in the previous task data
+	// We do this until we reach the first task data of the workflow run
 
 	while (runDataItem !== undefined) {
 		// We find the output items for the current run data item
@@ -80,6 +95,11 @@ export function findPairedItemTroughWorkflowData(
 		if (typeof pairedItem === 'object') {
 			inputIndex = (pairedItem as IPairedItemData).input ?? 0;
 			nodeIndex = (pairedItem as IPairedItemData).item ?? itemIndex;
+		} else if (typeof pairedItem === 'number') {
+			// If the paired item is a number, we use it as the node index
+			nodeIndex = pairedItem;
+			// and fallback to 0 for the input index
+			inputIndex = 0;
 		}
 
 		// We found the paired item of the current run data item, this points to the node in the previous task data
