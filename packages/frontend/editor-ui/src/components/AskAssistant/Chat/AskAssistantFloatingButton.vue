@@ -68,16 +68,9 @@ const onClick = () => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	bottom: calc(var(--canvas-panel-height-offset, 0px) + var(--spacing-s));
+	bottom: var(--spacing-2xl);
 	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
-
-	/* Prevent overlap with 'Execute Workflow' / 'Open Chat' buttons on small screens */
-	@include mixins.breakpoint('sm-only') {
-		bottom: calc(
-			var(--canvas-panel-height-offset, 0px) + var(--spacing-s) + var(--spacing-xs) + 42px
-		);
-	}
 }
 
 .tooltip {
