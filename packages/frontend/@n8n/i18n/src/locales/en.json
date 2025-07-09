@@ -1484,6 +1484,7 @@
 	"nodeView.cantExecuteNoTrigger": "Cannot execute workflow",
 	"nodeView.canvasAddButton.addATriggerNodeBeforeExecuting": "Add a Trigger Node before executing the workflow",
 	"nodeView.canvasAddButton.addFirstStep": "Add first step…",
+	"nodeView.templateLink": "or start from a template",
 	"nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText": "",
 	"nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText": "Yes, import",
 	"nodeView.confirmMessage.onClipboardPasteEvent.headline": "Import Workflow?",

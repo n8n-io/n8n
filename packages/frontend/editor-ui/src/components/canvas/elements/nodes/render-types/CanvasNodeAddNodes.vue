@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@n8n/i18n';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const cloudPlanStore = useCloudPlanStore();
+const templatesStore = useTemplatesStore();
+const workflowsStore = useWorkflowsStore();
 
 const isTooltipVisible = ref(false);
 
@@ -33,6 +41,14 @@ function onClick() {
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 	);
 }
+
+const trackTemplatesClick = () => {
+	telemetry.track('User clicked on templates', {
+		role: cloudPlanStore.currentUserCloudInfo?.role,
+		active_workflow_count: workflowsStore.activeWorkflows.length,
+		source: 'empty_workflow_link',
+	});
+};
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
@@ -50,7 +66,18 @@ function onClick() {
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</N8nTooltip>
-		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
+		<p :class="$style.label">
+			{{ i18n.baseText('nodeView.canvasAddButton.addFirstStep') }}
+			<N8nLink
+				:to="templatesStore.websiteTemplateRepositoryURL"
+				:underline="true"
+				size="small"
+				target="_self"
+				@click="trackTemplatesClick"
+			>
+				{{ i18n.baseText('executionsLandingPage.emptyState.noTrigger.templateLinkText') }}
+			</N8nLink>
+		</p>
 	</div>
 </template>
 
@@ -86,5 +113,7 @@ function onClick() {
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 	margin-top: var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
 }
 </style>
