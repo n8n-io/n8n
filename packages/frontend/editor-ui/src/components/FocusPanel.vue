@@ -176,7 +176,7 @@ function valueChanged(value: string) {
 	if (resolvedParameter.value === undefined) {
 		return;
 	}
-	debugger;
+
 	nodeSettingsParameters.updateNodeParameter(
 		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
 		value,
