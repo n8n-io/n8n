@@ -51,8 +51,38 @@ const resolvedParameter = computed(() =>
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 
+const isDisabled = computed(() => {
+	if (!resolvedParameter.value) return false;
+
+	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
+	return (
+		!!resolvedParameter.value.parameter.disabledOptions &&
+		nodeSettingsParameters.shouldDisplayNodeParameter(
+			resolvedParameter.value.node.parameters,
+			resolvedParameter.value.node,
+			resolvedParameter.value.parameter,
+			'',
+			'disabledOptions',
+		)
+	);
+});
+
+const isDisplayed = computed(() => {
+	if (!resolvedParameter.value) return true;
+
+	return nodeSettingsParameters.shouldDisplayNodeParameter(
+		resolvedParameter.value.node.parameters,
+		resolvedParameter.value.node,
+		resolvedParameter.value.parameter,
+		'',
+		'displayOptions',
+	);
+});
+
 const isExecutable = computed(() => {
 	if (!resolvedParameter.value) return false;
+
+	if (!isDisplayed.value) return false;
 
 	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
 		resolvedParameter.value.node.credentials,
@@ -94,34 +124,6 @@ const isToolNode = computed(() =>
 const isHtmlNode = computed(
 	() => !!resolvedParameter.value && resolvedParameter.value.node.type === HTML_NODE_TYPE,
 );
-
-const isDisabled = computed(() => {
-	if (!resolvedParameter.value) return false;
-
-	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
-	return (
-		!!resolvedParameter.value.parameter.disabledOptions &&
-		nodeSettingsParameters.shouldDisplayNodeParameter(
-			resolvedParameter.value.node.parameters,
-			resolvedParameter.value.node,
-			resolvedParameter.value.parameter,
-			'',
-			'disabledOptions',
-		)
-	);
-});
-
-const isDisplayed = computed(() => {
-	if (!resolvedParameter.value) return true;
-
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
-		resolvedParameter.value.node.parameters,
-		resolvedParameter.value.node,
-		resolvedParameter.value.parameter,
-		'',
-		'displayOptions',
-	);
-});
 
 const expressionModeEnabled = computed(
 	() =>
@@ -262,6 +264,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 				<div :class="$style.parameterOptionsWrapper">
 					<div></div>
 					<ParameterOptions
+						v-if="isDisplayed"
 						:parameter="resolvedParameter.parameter"
 						:value="resolvedParameter.value"
 						:is-read-only="isReadOnly"
