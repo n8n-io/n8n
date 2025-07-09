@@ -234,11 +234,7 @@ watch(activeElement, (active) => {
 
 	height: auto;
 	max-height: calc(min(calc(var(--canvas-node--height) * 2), 300px) - var(--border-width-base) * 2);
-	min-height: calc(16px * 4);
-
-	& > * {
-		zoom: var(--zoom);
-	}
+	min-height: var(--spacing-3xl); // should be multiple of GRID_SIZE
 }
 
 .collapsedContent {
@@ -252,6 +248,16 @@ watch(activeElement, (active) => {
 	background-color: var(--color-background-xlight);
 	color: var(--color-text-base);
 	cursor: pointer;
+
+	& > * {
+		zoom: calc(var(--zoom) * 1.25);
+	}
+}
+
+.settingsView {
+	& > * {
+		zoom: var(--zoom);
+	}
 }
 
 .inputPanelContainer {

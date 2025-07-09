@@ -1,21 +1,26 @@
-import type { IUpdateInformation } from '@/Interface';
 import get from 'lodash/get';
 import set from 'lodash/set';
+import { ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
 	type NodeParameterValue,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
 import { useTelemetry } from './useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from './useNodeHelpers';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useExternalHooks } from './useExternalHooks';
-import { ref } from 'vue';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { updateDynamicConnections, updateParameterByPath } from '@/utils/nodeSettingsUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { omitKey } from '@/utils/objectUtils';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -43,7 +48,7 @@ export function useNodeSettingsParameters() {
 		let lastNamePart: string | undefined = nameParts.pop();
 
 		let isArray = false;
-		if (lastNamePart !== undefined && lastNamePart.includes('[')) {
+		if (lastNamePart?.includes('[')) {
 			// It includes an index so we have to extract it
 			const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
 			if (lastNameParts) {
@@ -59,8 +64,7 @@ export function useNodeSettingsParameters() {
 			if (value === null) {
 				// Property should be deleted
 				if (lastNamePart) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = nodeValues.value;
-					nodeValues.value = remainingNodeValues;
+					nodeValues.value = omitKey(nodeValues.value, lastNamePart);
 				}
 			} else {
 				// Value should be set
@@ -78,8 +82,7 @@ export function useNodeSettingsParameters() {
 					| INodeParameters[];
 
 				if (lastNamePart && !Array.isArray(tempValue)) {
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
-					tempValue = remainingNodeValues;
+					tempValue = omitKey(tempValue, lastNamePart);
 				}
 
 				if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
@@ -88,9 +91,7 @@ export function useNodeSettingsParameters() {
 					lastNamePart = nameParts.pop();
 					tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 					if (lastNamePart) {
-						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
-							tempValue;
-						tempValue = remainingArrayNodeValues;
+						tempValue = omitKey(tempValue, lastNamePart);
 					}
 				}
 			} else {
@@ -112,12 +113,6 @@ export function useNodeSettingsParameters() {
 		}
 
 		nodeValues.value = { ...nodeValues.value };
-	}
-
-	function nameIsParameter(
-		parameterData: IUpdateInformation,
-	): parameterData is IUpdateInformation & { name: `parameters.${string}` } {
-		return parameterData.name.startsWith('parameters.');
 	}
 
 	function updateNodeParameter(
@@ -221,11 +216,36 @@ export function useNodeSettingsParameters() {
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
+	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
+		if (!node) return;
+
+		const ndvStore = useNDVStore();
+		const focusPanelStore = useFocusPanelStore();
+
+		focusPanelStore.setFocusedNodeParameter({
+			nodeId: node.id,
+			parameterPath: path,
+			parameter,
+		});
+
+		if (ndvStore.activeNode) {
+			ndvStore.setActiveNodeName(null);
+			ndvStore.resetNDVPushRef();
+		}
+
+		focusPanelStore.focusPanelActive = true;
+	}
+
+	function shouldSkipParamValidation(value: string | number | boolean | null) {
+		return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+	}
+
 	return {
 		nodeValues,
 		setValue,
 		updateParameterByPath,
 		updateNodeParameter,
-		nameIsParameter,
+		handleFocus,
+		shouldSkipParamValidation,
 	};
 }

@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -147,7 +147,7 @@ export class LmChatAwsBedrock implements INodeType {
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			clientConfig: {
-				httpAgent: getHttpProxyAgent(),
+				httpAgent: getProxyAgent(),
 			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,

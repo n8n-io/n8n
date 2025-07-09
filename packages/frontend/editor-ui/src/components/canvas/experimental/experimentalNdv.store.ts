@@ -47,13 +47,14 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function focusNode(nodeId: string) {
-		// Call useVueFlow() here because having it in setup fn scope seem to cause initialization problem
-		const vueFlow = useVueFlow(workflowStore.workflow.id);
 		const nodeToFocus = workflowStore.getNodeById(nodeId);
 
 		if (!nodeToFocus) {
 			return;
 		}
+
+		// Call useVueFlow() here because having it in setup fn scope seem to cause initialization problem
+		const vueFlow = useVueFlow(workflowStore.workflow.id);
 
 		collapsedNodes.value = workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>(
 			(acc, node) => {

@@ -112,20 +112,30 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
-		<N8nIconButton
+		<N8nTooltip
 			v-if="experimentalNdvStore.isActive(props.zoom)"
-			type="tertiary"
-			size="large"
-			icon="maximize-2"
-			@click="experimentalNdvStore.expandAllNodes"
-		/>
-		<N8nIconButton
+			placement="top"
+			:content="i18n.baseText('nodeView.expandAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="maximize-2"
+				@click="experimentalNdvStore.expandAllNodes"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
 			v-if="experimentalNdvStore.isActive(props.zoom)"
-			type="tertiary"
-			size="large"
-			icon="minimize-2"
-			@click="experimentalNdvStore.collapseAllNodes"
-		/>
+			placement="top"
+			:content="i18n.baseText('nodeView.collapseAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="minimize-2"
+				@click="experimentalNdvStore.collapseAllNodes"
+			/>
+		</N8nTooltip>
 	</Controls>
 </template>
 

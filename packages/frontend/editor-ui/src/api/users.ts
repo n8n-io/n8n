@@ -1,6 +1,7 @@
 import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
+	Role,
 	SettingsUpdateRequestDto,
 	UsersList,
 	UsersListFilterDto,
@@ -10,7 +11,6 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IUserResponse,
-	InvitableRoleName,
 } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
@@ -158,7 +158,7 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: InvitableRoleName;
+	newRoleName: Role;
 }
 
 export async function updateGlobalRole(

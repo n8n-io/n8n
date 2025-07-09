@@ -131,7 +131,7 @@ export default mergeConfig(
 		plugins,
 		resolve: { alias },
 		base: publicPath,
-		envPrefix: 'VUE_APP',
+		envPrefix: 'VUE',
 		css: {
 			preprocessorOptions: {
 				scss: {
