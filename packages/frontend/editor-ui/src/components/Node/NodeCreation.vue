@@ -19,7 +19,7 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
+import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 
@@ -139,12 +139,23 @@ function onAskAssistantButtonClick() {
 				@click="focusPanelStore.toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<AskAssistantButton
-			v-if="assistantStore.canShowAssistantButtonsOnCanvas"
-			:class="$style.withBorder"
-			:unread-count="assistantStore.unreadCount"
-			@click="onAskAssistantButtonClick"
-		/>
+		<n8n-tooltip placement="left">
+			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+			<n8n-button
+				v-if="assistantStore.canShowAssistantButtonsOnCanvas"
+				type="tertiary"
+				size="large"
+				square
+				:class="$style.icon"
+				@click="onAskAssistantButtonClick"
+			>
+				<template #default>
+					<div>
+						<AssistantIcon size="large" />
+					</div>
+				</template>
+			</n8n-button>
+		</n8n-tooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -167,7 +178,13 @@ function onAskAssistantButtonClick() {
 	pointer-events: all !important;
 }
 
-.withBorder {
-	border: var(--border-width-base) var(--color-button-secondary-border) var(--border-style-base);
+.icon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>
