@@ -7,6 +7,7 @@ import {
 	MIN_CHAT_WIDTH,
 	useAssistantStore,
 } from '@/stores/assistant.store';
+import { useWorkflowsStore } from './workflows.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -325,6 +326,17 @@ describe('AI Assistant store', () => {
 		it(`should show ai assistant floating button if on ${view} page`, () => {
 			currentRouteName = view;
 			currentRouteParams = nodeId ? { nodeId } : {};
+
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.activeNode = () => ({
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
 			const assistantStore = useAssistantStore();
 
 			setAssistantEnabled(true);
@@ -333,13 +345,19 @@ describe('AI Assistant store', () => {
 		});
 	});
 
-	it('should hide ai assistant floating button if on workflow canvas page', () => {
-		currentRouteName = VIEWS.WORKFLOW;
-		const assistantStore = useAssistantStore();
+	[{ view: VIEWS.WORKFLOW }, { view: VIEWS.NEW_WORKFLOW }].forEach(({ view }) => {
+		it(`should hide ai assistant floating button if on canvas of ${view} page`, () => {
+			currentRouteName = view;
 
-		setAssistantEnabled(true);
-		expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
-		expect(assistantStore.hideAssistantFloatingButton).toBe(true);
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.activeNode = () => null;
+
+			const assistantStore = useAssistantStore();
+
+			setAssistantEnabled(true);
+			expect(assistantStore.canShowAssistantButtonsOnCanvas).toBe(true);
+			expect(assistantStore.hideAssistantFloatingButton).toBe(true);
+		});
 	});
 
 	it('should initialize assistant chat session on node error', async () => {
