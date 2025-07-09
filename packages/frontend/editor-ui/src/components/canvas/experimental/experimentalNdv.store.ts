@@ -4,9 +4,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVueFlow } from '@vue-flow/core';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
+	const ndvStore = useNDVStore();
 	const settingsStore = useSettingsStore();
 	const isEnabled = computed(
 		() =>
@@ -75,12 +77,15 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			nodeToFocus.position[1] + 80,
 			{ duration: 200, zoom: maxCanvasZoom.value },
 		);
+
+		ndvStore.setActiveNodeName(nodeToFocus.name);
 	}
 
 	return {
 		isEnabled,
 		maxCanvasZoom,
 		collapsedNodes: computed(() => collapsedNodes.value),
+		shouldInterruptNdvModal: computed(() => true),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,

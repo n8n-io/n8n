@@ -81,6 +81,8 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	parameterFocus: [name: string];
+	parameterBlur: [name: string];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -519,8 +521,13 @@ const populateSettings = () => {
 	);
 };
 
+const onParameterFocus = (parameterName: string) => {
+	emit('parameterFocus', parameterName);
+};
+
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
+	emit('parameterBlur', parameterName);
 };
 
 const onWorkflowActivate = () => {
@@ -859,6 +866,7 @@ function handleWheelEvent(event: WheelEvent) {
 					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
+					@parameter-focus="onParameterFocus"
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
@@ -1015,7 +1023,7 @@ function handleWheelEvent(event: WheelEvent) {
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
 				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
 			}
 		}
 	}

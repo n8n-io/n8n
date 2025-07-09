@@ -55,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 });
 const emit = defineEmits<{
+	focus: [];
 	blur: [];
 	update: [value: IUpdateInformation];
 }>();
@@ -121,6 +122,7 @@ function onFocus() {
 		ndvStore.setMappableNDVInputFocus(props.parameter.displayName);
 	}
 	ndvStore.setFocusedInputPath(props.path ?? '');
+	emit('focus');
 }
 
 function onBlur() {

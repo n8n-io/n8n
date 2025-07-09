@@ -39,6 +39,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -622,6 +623,7 @@ const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode)
 watch(
 	activeNode,
 	(node, oldNode) => {
+		console.log(4444, node);
 		if (node && !oldNode) {
 			registerKeyboardListener();
 		} else if (!node) {
@@ -712,12 +714,17 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
+const experimentalNdvStore = useExperimentalNdvStore();
 </script>
 
 <template>
 	<el-dialog
 		id="ndv"
-		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
+		:model-value="
+			!experimentalNdvStore.shouldInterruptNdvModal &&
+			(!!activeNode || renaming) &&
+			!isActiveStickyNode
+		"
 		:before-close="close"
 		:show-close="false"
 		class="data-display-wrapper ndv-wrapper"

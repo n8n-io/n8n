@@ -14,6 +14,11 @@ const { nodeId, noWheel, isReadOnly } = defineProps<{
 
 defineSlots<{ actions?: {} }>();
 
+const emit = defineEmits<{
+	parameterFocus: [name: string];
+	parameterBlur: [name: string];
+}>();
+
 const settingsEventBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
 const { renameNode } = useCanvasOperations();
@@ -41,6 +46,8 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 		is-embedded-in-canvas
 		:no-wheel="noWheel"
 		@value-changed="handleValueChanged"
+		@parameter-focus="emit('parameterFocus', $event)"
+		@parameter-blur="emit('parameterBlur', $event)"
 	>
 		<template #actions>
 			<slot name="actions" />

@@ -79,7 +79,8 @@ const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs:
 const emit = defineEmits<{
 	activate: [];
 	valueChanged: [value: IUpdateInformation];
-	parameterBlur: [value: string];
+	parameterFocus: [name: string];
+	parameterBlur: [name: string];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -300,6 +301,10 @@ function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
 
 	return parameters;
+}
+
+function onParameterFocus(parameterName: string) {
+	emit('parameterFocus', parameterName);
 }
 
 function onParameterBlur(parameterName: string) {
@@ -797,6 +802,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					:hide-label="false"
 					:node-values="nodeValues"
 					@update="valueChanged"
+					@focus="onParameterFocus(parameter.name)"
 					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
