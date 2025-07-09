@@ -1,3 +1,14 @@
+## [1.102.1](https://github.com/n8n-io/n8n/compare/n8n@1.102.0...n8n@1.102.1) (2025-07-09)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Prevent fallback input to be added in version <2.1 ([#17094](https://github.com/n8n-io/n8n/issues/17094)) ([eb7fb8a](https://github.com/n8n-io/n8n/commit/eb7fb8a9249a0d3142cf7d99bfb309cb4f3392e7))
+* **core:** On OAuth access token update only update partial credential ([#17135](https://github.com/n8n-io/n8n/issues/17135)) ([5a336c5](https://github.com/n8n-io/n8n/commit/5a336c5f82783aae04e574410070765fe27c6ebc))
+* **editor:** Fix RAG Callout keyboard navigation in nodes search ([#17099](https://github.com/n8n-io/n8n/issues/17099)) ([80c40ba](https://github.com/n8n-io/n8n/commit/80c40ba22f16e417a4196d1db4af60746ddf454b))
+
+
+
 # [1.102.0](https://github.com/n8n-io/n8n/compare/n8n@1.101.0...n8n@1.102.0) (2025-07-07)
 
 
