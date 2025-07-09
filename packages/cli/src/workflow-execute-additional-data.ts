@@ -392,6 +392,15 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
+		async getRunExecutionData(executionId) {
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionData = await executionRepository.findSingleExecution(executionId, {
+				unflattenData: true,
+				includeData: true,
+			});
+
+			return executionData?.data;
+		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,

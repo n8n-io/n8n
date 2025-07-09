@@ -2157,7 +2157,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel v-if="isFocusPanelFeatureEnabled" :executable="!isCanvasReadOnly" />
+		<FocusPanel v-if="isFocusPanelFeatureEnabled" :is-canvas-read-only="isCanvasReadOnly" />
 	</div>
 </template>
 

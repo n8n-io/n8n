@@ -13,7 +13,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
@@ -65,7 +65,10 @@ function createAgentExecutor(
 		fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
 		getAgentStepsParser(outputParser, memory),
 		fixEmptyContentMessage,
-	]);
+	]) as AgentRunnableSequence;
+
+	runnableAgent.singleAction = false;
+	runnableAgent.streamRunnable = false;
 
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
@@ -167,9 +170,13 @@ async function processEventStream(
  * creates the agent, and processes each input item. The error handling for each item is also
  * managed here based on the node's continueOnFail setting.
  *
+ * @param this Execute context. SupplyDataContext is passed when agent is as a tool
+ *
  * @returns The array of execution data for all processed items
  */
-export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function toolsAgentExecute(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Tools Agent V2');
 
 	const returnData: INodeExecutionData[] = [];
@@ -247,9 +254,14 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
 			// Check if streaming is actually available
-			const isStreamingAvailable = this.isStreaming();
+			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
 
-			if (enableStreaming && isStreamingAvailable && this.getNode().typeVersion >= 2.1) {
+			if (
+				'isStreaming' in this &&
+				enableStreaming &&
+				isStreamingAvailable &&
+				this.getNode().typeVersion >= 2.1
+			) {
 				const chatHistory = await memory?.chatHistory.getMessages();
 				const eventStream = executor.streamEvents(
 					{

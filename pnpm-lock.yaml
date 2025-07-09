@@ -830,6 +830,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       '@types/imap':
         specifier: ^0.8.40
         version: 0.8.40
@@ -842,6 +845,9 @@ importers:
       '@types/uuencode':
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@5.8.3)(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.1)(jiti@1.21.7)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -1089,6 +1095,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)))(typescript@5.8.3)
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -6865,8 +6874,8 @@ packages:
   '@types/docker-modem@3.0.6':
     resolution: {integrity: sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==}
 
-  '@types/dockerode@3.3.41':
-    resolution: {integrity: sha512-5kOi6bcnEjqfJ68ZNV/bBvSMLNIucc0XbRmBO4hg5OoFCoP99eSRcbMysjkzV7ZxQEmmc/zMnv4A7odwuKFzDA==}
+  '@types/dockerode@3.3.42':
+    resolution: {integrity: sha512-U1jqHMShibMEWHdxYhj3rCMNCiLx5f35i4e3CEUuW+JSSszc/tVqc6WCAPdhwBymG5R/vgbcceagK0St7Cq6Eg==}
 
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
@@ -11520,10 +11529,6 @@ packages:
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
     engines: {node: '>=10'}
-
-  lilconfig@3.1.2:
-    resolution: {integrity: sha512-eop+wDAvpItUys0FWkHIKeC9ybYrTGbU41U5K7+bttZZeohvnY7M9dZ5kB21GNWiFT2q1OoPTvncPCgSOVO5ow==}
-    engines: {node: '>=14'}
 
   lilconfig@3.1.3:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
@@ -18986,7 +18991,7 @@ snapshots:
   '@n8n/localtunnel@3.0.0':
     dependencies:
       axios: 1.10.0(debug@4.3.6)
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -19172,13 +19177,13 @@ snapshots:
       ansis: 3.2.0
       clean-stack: 3.0.1
       cli-spinners: 2.9.2
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
       ejs: 3.1.10
       get-package-type: 0.1.0
       globby: 11.1.0
       indent-string: 4.0.0
       is-wsl: 2.2.0
-      lilconfig: 3.1.2
+      lilconfig: 3.1.3
       minimatch: 9.0.5
       string-width: 4.2.3
       supports-color: 8.1.1
@@ -20858,7 +20863,7 @@ snapshots:
       '@types/node': 20.19.1
       '@types/ssh2': 1.11.6
 
-  '@types/dockerode@3.3.41':
+  '@types/dockerode@3.3.42':
     dependencies:
       '@types/docker-modem': 3.0.6
       '@types/node': 20.19.1
@@ -23489,11 +23494,9 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
-  debug@4.3.6(supports-color@8.1.1):
+  debug@4.3.6:
     dependencies:
       ms: 2.1.2
-    optionalDependencies:
-      supports-color: 8.1.1
 
   debug@4.4.0:
     dependencies:
@@ -24690,7 +24693,7 @@ snapshots:
 
   follow-redirects@1.15.9(debug@4.3.6):
     optionalDependencies:
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.6
 
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
@@ -26736,8 +26739,6 @@ snapshots:
 
   lilconfig@2.1.0: {}
 
-  lilconfig@3.1.2: {}
-
   lilconfig@3.1.3: {}
 
   lines-and-columns@1.2.4: {}
@@ -28397,7 +28398,7 @@ snapshots:
 
   postcss-load-config@4.0.2(postcss@8.4.49)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)):
     dependencies:
-      lilconfig: 3.1.2
+      lilconfig: 3.1.3
       yaml: 2.3.4
     optionalDependencies:
       postcss: 8.4.49
@@ -30126,7 +30127,7 @@ snapshots:
   testcontainers@11.0.3:
     dependencies:
       '@balena/dockerignore': 1.0.2
-      '@types/dockerode': 3.3.41
+      '@types/dockerode': 3.3.42
       archiver: 7.0.1
       async-lock: 1.4.1
       byline: 5.0.0

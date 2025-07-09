@@ -229,11 +229,11 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
-export function autocompletableNodeNames(contextNodeName?: string) {
+export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
 	const activeNode =
-		contextNodeName === undefined
+		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
-			: useWorkflowsStore().getNodeByName(contextNodeName);
+			: useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];
 

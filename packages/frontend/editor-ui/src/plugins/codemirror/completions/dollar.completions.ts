@@ -137,18 +137,20 @@ export function dollarOptions(
 		SKIP.add('$binary');
 	}
 
-	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => {
-		const label = `$('${escapeMappingString(nodeName)}')`;
-		return {
-			label,
-			info: createInfoBoxRenderer({
-				name: label,
-				returnType: 'Object',
-				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-			}),
-			section: PREVIOUS_NODES_SECTION,
-		};
-	});
+	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
+		(nodeName) => {
+			const label = `$('${escapeMappingString(nodeName)}')`;
+			return {
+				label,
+				info: createInfoBoxRenderer({
+					name: label,
+					returnType: 'Object',
+					description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+				}),
+				section: PREVIOUS_NODES_SECTION,
+			};
+		},
+	);
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)
