@@ -11,7 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
-import { contentType } from 'mime-types';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;
