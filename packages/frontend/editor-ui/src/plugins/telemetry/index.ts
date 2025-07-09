@@ -60,7 +60,6 @@ export class Telemetry {
 		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
-			// configUrl: 'https://api-rs.n8n.io',
 			...logging,
 		});
 
