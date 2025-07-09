@@ -202,9 +202,7 @@ function buildNginxConfig(upstreamServers: string): string {
  * @returns The complete Caddyfile configuration as a string
  */
 function buildCaddyConfig(upstreamServers: string[]): string {
-	// Join servers with space for Caddy's format
 	const backends = upstreamServers.join(' ');
-
 	return `
 :80 {
   # Reverse proxy with load balancing
@@ -298,10 +296,15 @@ export async function pollContainerHttpEndpoint(
 	const retryIntervalMs = 1000;
 
 	while (Date.now() - startTime < timeoutMs) {
-		const response = await fetch(url);
-		if (response.status === 200) {
-			return;
+		try {
+			const response = await fetch(url);
+			if (response.status === 200) {
+				return;
+			}
+		} catch (error) {
+			// Don't log errors, just retry
 		}
+
 		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
 	}
 

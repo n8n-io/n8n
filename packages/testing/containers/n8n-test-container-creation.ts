@@ -11,6 +11,7 @@
  */
 
 import getPort from 'get-port';
+import assert from 'node:assert';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Network, Wait } from 'testcontainers';
 
@@ -32,8 +33,7 @@ const CADDY_IMAGE = 'caddy:2-alpine';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
-// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE || N8N_E2E_IMAGE;
+const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
 
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {
@@ -123,7 +123,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (usePostgres) {
-		if (!network) throw new Error('Network should be created for postgres');
+		assert(network, 'Network should be created for postgres');
 		const postgresContainer = await setupPostgres({
 			postgresImage: POSTGRES_IMAGE,
 			projectName: uniqueProjectName,
@@ -144,7 +144,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (queueConfig) {
-		if (!network) throw new Error('Network should be created for queue mode');
+		assert(network, 'Network should be created for queue mode');
 		const redis = await setupRedis({
 			redisImage: REDIS_IMAGE,
 			projectName: uniqueProjectName,
@@ -173,8 +173,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
-		// Multi-main setup: use load balancer
-		if (!network) throw new Error('Network should be created for load balancer');
+		assert(network, 'Network should be created for load balancer');
 		const loadBalancerContainer = await setupCaddyLoadBalancer({
 			caddyImage: CADDY_IMAGE,
 			projectName: uniqueProjectName,
@@ -294,6 +293,7 @@ async function createN8NInstances({
 	uniqueProjectName,
 	environment,
 	network,
+	/** The host port to use for the main instance */
 	directPort,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
