@@ -153,7 +153,7 @@ onMounted(() => {
 				<n8n-button
 					v-if="isSupported"
 					type="tertiary"
-					:icon="copied ? 'check' : 'clipboard-list'"
+					:icon="copied ? 'check' : 'copy'"
 					:square="true"
 					:class="$style['copy-button']"
 					@click="copy(connectionString)"
