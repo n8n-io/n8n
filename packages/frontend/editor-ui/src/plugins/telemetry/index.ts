@@ -47,7 +47,7 @@ export class Telemetry {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
 		const {
-			config: { key, proxy },
+			config: { key, proxy, sourceConfig },
 		} = telemetrySettings;
 
 		const settingsStore = useSettingsStore();
@@ -60,6 +60,7 @@ export class Telemetry {
 		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
+			configUrl: sourceConfig,
 			...logging,
 		});
 
