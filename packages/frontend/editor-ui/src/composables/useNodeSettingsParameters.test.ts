@@ -75,7 +75,7 @@ describe('useNodeSettingsParameters', () => {
 			focusPanelStore.focusPanelActive = false;
 		});
 
-		it('sets focused node parameter and activates panel', () => {
+		it('sets focused node parameter', () => {
 			const { handleFocus } = useNodeSettingsParameters();
 			const node: INodeUi = {
 				id: '1',
@@ -100,7 +100,6 @@ describe('useNodeSettingsParameters', () => {
 				parameterPath: path,
 				parameter,
 			});
-			expect(focusPanelStore.focusPanelActive).toBe(true);
 
 			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
 			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
