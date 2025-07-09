@@ -62,7 +62,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	if (inputType === 'url') {
 		const fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
-		const { fileContent, mimeType } = await downloadFile.call(this, fileUrl);
+		const { fileContent, mimeType } = await downloadFile.call(
+			this,
+			fileUrl,
+			'application/octet-stream',
+		);
 		const response = await uploadFile.call(this, fileContent, mimeType);
 		return [
 			{

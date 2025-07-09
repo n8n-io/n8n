@@ -135,11 +135,11 @@ describe('GoogleGemini Node', () => {
 			});
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('test'),
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			uploadFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			apiRequestMock.mockResolvedValue({
 				candidates: [
@@ -165,8 +165,8 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/audio.mp3', 'audio/mp3');
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mp3');
+			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/audio.mp3', 'audio/mpeg');
+			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
@@ -178,7 +178,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -218,7 +218,7 @@ describe('GoogleGemini Node', () => {
 				}
 			});
 			const mockBinaryData: IBinaryData = {
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 				fileName: 'test.mp3',
 				fileSize: '1024',
 				fileExtension: 'mp3',
@@ -228,7 +228,7 @@ describe('GoogleGemini Node', () => {
 			executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test'));
 			uploadFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			apiRequestMock.mockResolvedValue({
 				candidates: [
@@ -254,7 +254,7 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mp3');
+			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
@@ -266,7 +266,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -308,7 +308,7 @@ describe('GoogleGemini Node', () => {
 
 			apiRequestMock.mockImplementation(async (method: string) => {
 				if (method === 'GET') {
-					return { mimeType: 'audio/mp3' };
+					return { mimeType: 'audio/mpeg' };
 				}
 				return {
 					candidates: [
@@ -352,7 +352,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -394,11 +394,11 @@ describe('GoogleGemini Node', () => {
 			});
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('test'),
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			uploadFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			apiRequestMock.mockResolvedValue({
 				candidates: [
@@ -425,7 +425,7 @@ describe('GoogleGemini Node', () => {
 				},
 			]);
 			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/audio.mp3', 'audio/mpeg');
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mp3');
+			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
@@ -437,7 +437,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -470,7 +470,7 @@ describe('GoogleGemini Node', () => {
 				}
 			});
 			const mockBinaryData: IBinaryData = {
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 				fileName: 'test.mp3',
 				fileSize: '1024',
 				fileExtension: 'mp3',
@@ -480,7 +480,7 @@ describe('GoogleGemini Node', () => {
 			executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test'));
 			uploadFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-				mimeType: 'audio/mp3',
+				mimeType: 'audio/mpeg',
 			});
 			apiRequestMock.mockResolvedValue({
 				candidates: [
@@ -505,7 +505,7 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mp3');
+			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
@@ -517,7 +517,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -557,7 +557,7 @@ describe('GoogleGemini Node', () => {
 
 			apiRequestMock.mockImplementation(async (method: string) => {
 				if (method === 'GET') {
-					return { mimeType: 'audio/mp3' };
+					return { mimeType: 'audio/mpeg' };
 				}
 				return {
 					candidates: [
@@ -601,7 +601,7 @@ describe('GoogleGemini Node', () => {
 									{
 										fileData: {
 											fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
-											mimeType: 'audio/mp3',
+											mimeType: 'audio/mpeg',
 										},
 									},
 									{
@@ -637,7 +637,6 @@ describe('GoogleGemini Node', () => {
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
 				mimeType: 'application/pdf',
 			});
-
 			const result = await file.upload.execute.call(executeFunctionsMock, 0);
 
 			expect(result).toEqual([
@@ -649,7 +648,10 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/file.pdf');
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://example.com/file.pdf',
+				'application/octet-stream',
+			);
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'application/pdf');
 		});
 
