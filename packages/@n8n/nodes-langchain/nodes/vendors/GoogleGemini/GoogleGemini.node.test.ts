@@ -89,10 +89,7 @@ describe('GoogleGemini Node', () => {
 						],
 						tools: [
 							{
-								functionDeclarations: [],
-							},
-							{
-								code_execution: {},
+								codeExecution: {},
 							},
 						],
 						generationConfig: {
