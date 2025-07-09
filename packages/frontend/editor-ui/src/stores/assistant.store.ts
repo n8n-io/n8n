@@ -113,9 +113,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const canShowAssistantButtonsOnCanvas = computed(
 		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
-
 	const hideAssistantFloatingButton = computed(
-		() => route.name === VIEWS.WORKFLOW && !route.params.nodeId,
+		() =>
+			(route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) &&
+			!workflowsStore.activeNode(),
 	);
 
 	const unreadCount = computed(
