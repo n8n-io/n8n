@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { IExecutionResponse } from '@/Interface';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -48,10 +49,6 @@ describe('NodeErrorView.vue', () => {
 		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
 
-		// Reset router mock
-		mockRouterResolve.mockReturnValue({
-			href: '/execution/workflow123/execution456?nodeId=node123',
-		});
 		//@ts-expect-error
 		error = {
 			name: 'NodeOperationError',
@@ -223,7 +220,9 @@ describe('NodeErrorView.vue', () => {
 
 		it('opens new window when error has different workflow and execution IDs', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = { id: 'current-execution-id' };
+			mockWorkflowsStore.getWorkflowExecution = {
+				id: 'current-execution-id',
+			} as IExecutionResponse;
 
 			const testError = {
 				...error,
@@ -255,7 +254,9 @@ describe('NodeErrorView.vue', () => {
 
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = { id: 'current-execution-id' };
+			mockWorkflowsStore.getWorkflowExecution = {
+				id: 'current-execution-id',
+			} as IExecutionResponse;
 
 			const testError = {
 				...error,
