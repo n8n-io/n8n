@@ -27,8 +27,9 @@ export class CodeTaskRunnerSandbox {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-			this.language === 'javaScript' ? 'javascript' : 'python',
+			'code',
 			{
+				language: this.language === 'javaScript' ? 'javascript' : 'python',
 				code: this.code,
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
@@ -51,8 +52,9 @@ export class CodeTaskRunnerSandbox {
 
 		for (const chunk of chunks) {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-				this.language === 'javaScript' ? 'javascript' : 'python',
+				'code',
 				{
+					language: this.language === 'javaScript' ? 'javascript' : 'python',
 					code: this.code,
 					nodeMode: this.nodeMode,
 					workflowMode: this.workflowMode,

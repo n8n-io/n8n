@@ -1,3 +1,5 @@
+// @TODO: Rename file to code-task-runner.ts
+
 import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
@@ -24,6 +26,7 @@ import type {
 	IExecuteData,
 	INodeTypeDescription,
 	IWorkflowDataProxyData,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { type Context, createContext, runInContext } from 'node:vm';
@@ -50,13 +53,16 @@ import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+import type { SandboxContext } from './python-sandbox/code-sandbox';
+import { PythonSandbox } from './python-sandbox/python-sandbox';
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
 }
 
-export interface JSExecSettings {
+export interface CodeExecSettings {
 	code: string;
+	language: 'javaScript' | 'python';
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -88,7 +94,7 @@ type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
 
-export class JsTaskRunner extends TaskRunner {
+export class CodeTaskRunner extends TaskRunner {
 	private readonly requireResolver: RequireResolver;
 
 	private readonly builtInsParser = new BuiltInsParser();
@@ -97,9 +103,9 @@ export class JsTaskRunner extends TaskRunner {
 
 	private readonly mode: 'secure' | 'insecure' = 'secure';
 
-	constructor(config: MainConfig, name = 'JS Task Runner') {
+	constructor(config: MainConfig, name = 'Code Task Runner') {
 		super({
-			taskType: 'javascript',
+			taskType: 'code',
 			name,
 			...config.baseRunnerConfig,
 		});
@@ -126,7 +132,7 @@ export class JsTaskRunner extends TaskRunner {
 			allowedExternalModules,
 		});
 
-		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
+		// if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
 	}
 
 	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
@@ -158,19 +164,25 @@ export class JsTaskRunner extends TaskRunner {
 			.forEach(Object.freeze);
 	}
 
-	async executeTask(
-		taskParams: TaskParams<JSExecSettings>,
+	async executeCodeTask(
+		taskParams: TaskParams<CodeExecSettings>,
 		abortSignal: AbortSignal,
 	): Promise<TaskResultData> {
 		const { taskId, settings } = taskParams;
-		a.ok(settings, 'JS Code not sent to runner');
+		a.ok(settings, 'Code not sent to runner');
 
 		this.validateTaskSettings(settings);
 
-		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
-		const neededBuiltIns = neededBuiltInsResult.ok
-			? neededBuiltInsResult.result
-			: BuiltInsParserState.newNeedsAllDataState();
+		let neededBuiltIns: BuiltInsParserState;
+
+		if (settings.language === 'python') {
+			neededBuiltIns = BuiltInsParserState.newNeedsAllDataState();
+		} else {
+			const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
+			neededBuiltIns = neededBuiltInsResult.ok
+				? neededBuiltInsResult.result
+				: BuiltInsParserState.newNeedsAllDataState();
+		}
 
 		const dataResponse = await this.requestData<DataRequestResponse>(
 			taskId,
@@ -189,10 +201,19 @@ export class JsTaskRunner extends TaskRunner {
 
 		workflow.staticData = ObservableObject.create(workflow.staticData);
 
-		const result =
-			settings.nodeMode === 'runOnceForAllItems'
-				? await this.runForAllItems(taskId, settings, data, workflow, abortSignal)
-				: await this.runForEachItem(taskId, settings, data, workflow, abortSignal);
+		let result: INodeExecutionData[];
+
+		if (settings.language === 'python') {
+			result =
+				settings.nodeMode === 'runOnceForAllItems'
+					? await this.runPythonForAllItems(taskId, settings, data, abortSignal)
+					: await this.runPythonForEachItem(taskId, settings, data, abortSignal);
+		} else {
+			result =
+				settings.nodeMode === 'runOnceForAllItems'
+					? await this.runForAllItems(taskId, settings, data, workflow, abortSignal)
+					: await this.runForEachItem(taskId, settings, data, workflow, abortSignal);
+		}
 
 		return {
 			result,
@@ -201,7 +222,7 @@ export class JsTaskRunner extends TaskRunner {
 		};
 	}
 
-	private validateTaskSettings(settings: JSExecSettings) {
+	private validateTaskSettings(settings: CodeExecSettings) {
 		a.ok(settings.code, 'No code to execute');
 
 		if (settings.nodeMode === 'runOnceForAllItems') {
@@ -236,7 +257,7 @@ export class JsTaskRunner extends TaskRunner {
 	 */
 	private async runForAllItems(
 		taskId: string,
-		settings: JSExecSettings,
+		settings: CodeExecSettings,
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
@@ -296,7 +317,7 @@ export class JsTaskRunner extends TaskRunner {
 	 */
 	private async runForEachItem(
 		taskId: string,
-		settings: JSExecSettings,
+		settings: CodeExecSettings,
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
@@ -572,5 +593,78 @@ export class JsTaskRunner extends TaskRunner {
 		);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
 		return await fn(context);
+	}
+
+	private async runPythonForAllItems(
+		taskId: string,
+		settings: CodeExecSettings,
+		data: JsTaskData,
+		abortSignal: AbortSignal,
+	): Promise<INodeExecutionData[]> {
+		const helpers = this.pythonHelpers(taskId);
+		const context = this.pythonContext(data, data.itemIndex, helpers);
+
+		const sandbox = new PythonSandbox(context, settings.code, helpers);
+
+		sandbox.on('output', (...args: unknown[]) => {
+			void this.makeRpcCall(taskId, 'logNodeOutput', args);
+		});
+
+		try {
+			// @TODO: Abort signal handling
+			return await sandbox.runCodeAllItems();
+		} catch (e) {
+			const error = this.toExecutionErrorIfNeeded(e);
+			if (settings.continueOnFail) {
+				return [{ json: { error: error.message } }];
+			}
+			throw error;
+		}
+	}
+
+	private async runPythonForEachItem(
+		taskId: string,
+		settings: CodeExecSettings,
+		data: JsTaskData,
+		abortSignal: AbortSignal,
+	): Promise<INodeExecutionData[]> {
+		return await Promise.resolve([]); // @TODO
+	}
+
+	private pythonContext(
+		data: JsTaskData,
+		itemIndex: number,
+		helpers: IExecuteFunctions['helpers'],
+	): SandboxContext {
+		const workflow = new Workflow({ ...data.workflow, nodeTypes: this.nodeTypes });
+
+		return {
+			// @ts-expect-error @TODO: $getNodeParameter doesn't work on master
+			$getNodeParameter: undefined,
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
+			helpers,
+			...this.createDataProxy(data, workflow, itemIndex),
+		};
+	}
+
+	private pythonHelpers(taskId: string) {
+		return {
+			// @TODO: Generate these programatically from EXPOSED_RPC_METHODS?
+			assertBinaryData: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.assertBinaryData', args),
+			getBinaryDataBuffer: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.getBinaryDataBuffer', args),
+			prepareBinaryData: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.prepareBinaryData', args),
+			setBinaryDataBuffer: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.setBinaryDataBuffer', args),
+			binaryToString: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.binaryToString', args),
+			httpRequest: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.httpRequest', args),
+			request: async (...args: unknown[]) =>
+				await this.makeRpcCall(taskId, 'helpers.request', args),
+			getStoragePath: async () => await this.makeRpcCall(taskId, 'helpers.getStoragePath', []),
+		} as unknown as IExecuteFunctions['helpers'];
 	}
 }

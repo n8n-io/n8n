@@ -671,7 +671,7 @@ export interface BaseHelperFunctions {
 
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
-	getStoragePath(): string;
+	getStoragePath(): Promise<string>;
 	writeContentToFile(
 		path: PathLike,
 		content: string | Buffer | Readable,

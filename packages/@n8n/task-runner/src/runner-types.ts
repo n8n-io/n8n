@@ -122,6 +122,10 @@ export const EXPOSED_RPC_METHODS = [
 
 	// (deprecated) request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
 	'helpers.request',
+
+	// needed for packageCacheDir in PythonSandbox.runCodeInPython in runner
+	// getStoragePath(): string
+	'helpers.getStoragePath',
 ];
 
 /** Helpers that exist but that we are not exposing to the Code Node */
@@ -145,7 +149,6 @@ export const UNSUPPORTED_HELPER_FUNCTIONS = [
 	// These are pretty low-level, so we shouldn't expose them
 	// (require binary data id, which we don't expose)
 	'helpers.getBinaryMetadata',
-	'helpers.getStoragePath',
 	'helpers.getBinaryPath',
 
 	// We shouldn't allow arbitrary FS writes

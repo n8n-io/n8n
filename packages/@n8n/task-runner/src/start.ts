@@ -3,11 +3,11 @@ import { ensureError, setGlobalState } from 'n8n-workflow';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
-import { JsTaskRunner } from './js-task-runner/js-task-runner';
+import { CodeTaskRunner } from './js-task-runner/js-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
 
 let healthCheckServer: HealthCheckServer | undefined;
-let runner: JsTaskRunner | undefined;
+let runner: CodeTaskRunner | undefined;
 let isShuttingDown = false;
 let sentry: TaskRunnerSentry | undefined;
 
@@ -56,7 +56,7 @@ void (async function start() {
 	sentry = Container.get(TaskRunnerSentry);
 	await sentry.initIfEnabled();
 
-	runner = new JsTaskRunner(config);
+	runner = new CodeTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
 		// Use shorter timeout since we know we don't have any tasks running
 		void createSignalHandler('IDLE_TIMEOUT', 3)();
