@@ -255,6 +255,13 @@ function closeFocusPanel() {
 	focusPanelStore.closeFocusPanel();
 }
 
+function onExecute() {
+	telemetry.track('User executed node from focus panel', {
+		nodeType: resolvedParameter.value?.node.type ?? 'executed without a node, should never happen',
+		parameter: resolvedParameter.value?.parameterPath,
+	});
+}
+
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 </script>
 
@@ -286,6 +293,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 					:square="true"
 					:hide-label="true"
 					telemetry-source="focus"
+					@execute="onExecute"
 				></NodeExecuteButton>
 			</div>
 			<div :class="$style.parameterDetailsWrapper">
