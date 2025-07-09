@@ -144,11 +144,7 @@ function handleToggleExpand() {
 
 	height: auto;
 	max-height: min(calc(var(--canvas-node--height) * 2), 300px);
-	min-height: var(--spacing-3xl);
-
-	& > * {
-		zoom: var(--zoom);
-	}
+	min-height: var(--spacing-3xl); // should be multiple of GRID_SIZE
 }
 
 .collapsedContent {
@@ -162,5 +158,15 @@ function handleToggleExpand() {
 	background-color: var(--color-background-xlight);
 	color: var(--color-text-base);
 	cursor: pointer;
+
+	& > * {
+		zoom: calc(var(--zoom) * 1.25);
+	}
+}
+
+.settingsView {
+	& > * {
+		zoom: var(--zoom);
+	}
 }
 </style>
