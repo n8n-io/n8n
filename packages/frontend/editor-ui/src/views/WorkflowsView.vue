@@ -1774,7 +1774,7 @@ const onNameSubmit = async (name: string) => {
 								:class="$style.emptyStateCardIcon"
 								icon="file"
 								color="foreground-dark"
-								:stroke-width="1"
+								:stroke-width="1.5"
 							/>
 							<N8nText size="large" class="mt-xs">
 								{{ i18n.baseText('workflows.empty.startFromScratch') }}
@@ -1789,7 +1789,12 @@ const onNameSubmit = async (name: string) => {
 						@click="openAIWorkflow('empty')"
 					>
 						<div :class="$style.emptyStateCardContent">
-							<N8nIcon :class="$style.emptyStateCardIcon" icon="bot" color="foreground-dark" />
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="bot"
+								color="foreground-dark"
+							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
 								{{ i18n.baseText('workflows.empty.easyAI') }}
 							</N8nText>

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
@@ -200,7 +200,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
-	// eslint-disable-next-line complexity
+
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -248,6 +248,7 @@ export class WorkflowRunner {
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.streamingEnabled = data.streamingEnabled;
 
 		additionalData.executionId = executionId;
 
@@ -357,6 +358,7 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			streamingEnabled: data.streamingEnabled,
 		};
 
 		if (!this.scalingService) {

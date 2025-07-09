@@ -639,7 +639,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		type: 'view',
 		properties: {
 			title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-			icon: 'bolt',
+			icon: 'bolt-filled',
 			description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 		},
 	});

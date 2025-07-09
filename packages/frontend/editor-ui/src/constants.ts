@@ -475,6 +475,7 @@ export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
 export const LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED = 'N8N_TABLE_HOVER_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
+export const LOCAL_STORAGE_NDV_DIMENSIONS = 'N8N_NDV_DIMENSIONS';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
@@ -492,6 +493,7 @@ export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
 	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
+export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -727,6 +729,12 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
+export const NDV_UI_OVERHAUL_EXPERIMENT = {
+	name: '029_ndv_ui_overhaul',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '30_workflow_builder',
 	control: 'control',
@@ -920,3 +928,5 @@ export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
+
+export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;

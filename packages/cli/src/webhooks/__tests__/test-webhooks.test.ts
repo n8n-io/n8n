@@ -1,11 +1,12 @@
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
-import type { ITaskData, IWorkflowBase } from 'n8n-workflow';
-import {
-	type IWebhookData,
-	type IWorkflowExecuteAdditionalData,
-	type Workflow,
+import type {
+	ITaskData,
+	IWorkflowBase,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 

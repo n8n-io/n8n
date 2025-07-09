@@ -869,6 +869,8 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
+		const lastUpdatedDate = lastUpdatedTag[0]?.updatedAt ?? new Date();
+
 		const tagMappingsRemote =
 			await this.sourceControlImportService.getRemoteTagsAndMappingsFromFile(context);
 		const tagMappingsLocal =
@@ -916,7 +918,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: false,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 		tagsMissingInRemote.forEach((item) => {
@@ -928,7 +930,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -941,7 +943,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -1028,7 +1030,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 

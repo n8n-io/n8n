@@ -25,6 +25,8 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -32,8 +34,6 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
  * Service for handling the execution of webhooks of manual executions

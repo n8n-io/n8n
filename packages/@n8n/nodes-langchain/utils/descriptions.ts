@@ -143,3 +143,14 @@ export const textFromPreviousNode: INodeProperties = {
 	},
 	disabledOptions: { show: { promptType: ['auto'] } },
 };
+
+export const toolDescription: INodeProperties = {
+	displayName: 'Description',
+	name: 'toolDescription',
+	type: 'string',
+	default: 'AI Agent that can call other tools',
+	required: true,
+	typeOptions: { rows: 2 },
+	description:
+		'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+};

@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import type { CredentialsEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
