@@ -65,7 +65,7 @@ const isFocusNodeVisible = computed(
 	() =>
 		experimentalNdvStore.isEnabled &&
 		node.value !== null &&
-		experimentalNdvStore.collapsedNodes[node.value.id],
+		experimentalNdvStore.collapsedNodes[node.value.id] !== false,
 );
 
 const isStickyNoteChangeColorVisible = computed(
