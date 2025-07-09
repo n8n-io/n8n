@@ -1,6 +1,6 @@
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { constructExecutionMetaData } from 'n8n-core';
+import { constructExecutionMetaData, sandboxHtmlResponse } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	WAIT_NODE_TYPE,
@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
-import { sandboxResponseData } from '../utils/sandbox';
+import { contentType } from 'mime-types';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;
@@ -164,7 +164,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: sandboxResponseData('responseBody'),
+				body: sandboxHtmlResponse('responseBody'),
 				headers: {},
 				statusCode: 200,
 			});
@@ -288,8 +288,8 @@ describe('RespondToWebhook Node', () => {
 
 				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: inputItems.map((item) => item.json),
-					headers: {},
+					body: sandboxHtmlResponse(JSON.stringify(inputItems.map((item) => item.json))),
+					headers: { 'content-type': 'application/xhtml+xml' },
 					statusCode: 200,
 				});
 				expect(result).toHaveLength(1);
@@ -297,55 +297,39 @@ describe('RespondToWebhook Node', () => {
 				expect(result[0]).toEqual(inputItems);
 			});
 
-			// it('should sandbox HTML content for json response with XHTML content-type', async () => {
-			// 	mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
-			// 	mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-			// 	mockExecuteFunctions.getParentNodes.mockReturnValue([
-			// 		mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-			// 	]);
-			// 	mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-			// 		if (paramName === 'respondWith') return 'json';
-			// 		if (paramName === 'options')
-			// 			return {
-			// 				responseHeaders: {
-			// 					entries: [{ name: 'content-type', value: 'application/xhtml+xml' }],
-			// 				},
-			// 			};
-			// 		if (paramName === 'responseBody') return '<div>HTML content</div>';
-			// 	});
-			// 	mockExecuteFunctions.sendResponse.mockReturnValue();
+			it('should NOT sandbox HTML content for non-HTML content-type', async () => {
+				const inputItems = [
+					{ json: { index: 0, input: true } },
+					{ json: { index: 1, input: true } },
+				];
+				mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+				mockExecuteFunctions.getParentNodes.mockReturnValue([
+					mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+				]);
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+					if (paramName === 'respondWith') return 'allIncomingItems';
+					if (paramName === 'options') return {};
+				});
+				mockExecuteFunctions.sendResponse.mockReturnValue();
 
-			// 	await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
-			// 	expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-			// 		body: sandboxResponseData('<div>HTML content</div>'),
-			// 		headers: { 'content-type': 'application/xhtml+xml' },
-			// 		statusCode: 200,
-			// 	});
-			// });
+				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
+					body: inputItems.map((item) => item.json),
+					headers: { 'content-type': 'application/xhtml+xml' },
+					statusCode: 200,
+				});
+				expect(result).toHaveLength(1);
+				expect(result[0]).toHaveLength(2);
+				expect(result[0]).toEqual(inputItems);
 
-			// it('should NOT sandbox HTML content for non-HTML content-type', async () => {
-			// 	mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
-			// 	mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
-			// 	mockExecuteFunctions.getParentNodes.mockReturnValue([
-			// 		mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
-			// 	]);
-			// 	mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
-			// 		if (paramName === 'respondWith') return 'json';
-			// 		if (paramName === 'options')
-			// 			return {
-			// 				responseHeaders: { entries: [{ name: 'content-type', value: 'application/json' }] },
-			// 			};
-			// 		if (paramName === 'responseBody') return '<script>alert("xss")</script>';
-			// 	});
-			// 	mockExecuteFunctions.sendResponse.mockReturnValue();
-
-			// 	await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
-			// 	expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-			// 		body: '<script>alert("xss")</script>',
-			// 		headers: { 'content-type': 'application/json' },
-			// 		statusCode: 200,
-			// 	});
-			// });
+				await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
+					body: '<script>alert("xss")</script>',
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+			});
 		});
 
 		it('should have two outputs in version 1.3', async () => {

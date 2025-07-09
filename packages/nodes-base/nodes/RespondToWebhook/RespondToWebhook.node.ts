@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
-import { sandboxHtmlResponse } from 'n8n-core';
+import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -417,7 +417,12 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
-				if (hasHtmlContentType || !headers['content-type']) {
+				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
+				if (
+					(headers['content-type'] &&
+						isHtmlRenderedContentType(headers['content-type'] as string)) ||
+					!headers['content-type']
+				) {
 					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
 				} else {
 					responseBody = this.getNodeParameter('responseBody', 0) as string;
@@ -465,7 +470,7 @@ export class RespondToWebhook implements INodeType {
 				respondWith !== 'binary' &&
 				responseBody
 			) {
-				responseBody = sandboxHtmlResponse(responseBody as string);
+				responseBody = sandboxHtmlResponse(JSON.stringify(responseBody as string));
 			}
 
 			response = {
