@@ -123,7 +123,12 @@ export async function addHonorNonIndexedQueriesHeader(
 ): Promise<IHttpRequestOptions> {
 	if (requestOptions.qs?.$filter) {
 		requestOptions.headers ??= {};
-		requestOptions.headers.Prefer = 'HonorNonIndexedQueriesWarningMayFailRandomly';
+		requestOptions.headers.Prefer = [
+			requestOptions.headers.Prefer,
+			'HonorNonIndexedQueriesWarningMayFailRandomly',
+		]
+			.filter(Boolean)
+			.join(', ');
 	}
 	return requestOptions;
 }
