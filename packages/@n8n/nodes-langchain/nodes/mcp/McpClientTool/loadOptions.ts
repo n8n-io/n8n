@@ -8,11 +8,17 @@ import type { McpAuthenticationOption } from './types';
 import { connectMcpClient, getAllTools, getAuthHeaders } from './utils';
 
 export async function getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
-	const sseEndpoint = this.getNodeParameter('sseEndpoint') as string;
 	const protocol = this.getNodeParameter('protocol') as string;
+	const sseEndpoint = this.getNodeParameter('sseEndpoint') as string;
 	const node = this.getNode();
-	const { headers } = await getAuthHeaders(this, authentication);
+
+	let headers: Record<string, string> | undefined = undefined;
+	let authentication: McpAuthenticationOption | undefined = undefined;
+	if (protocol === 'sse' || protocol === 'streamable-http') {
+		authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
+		headers = (await getAuthHeaders(this, authentication)).headers;
+	}
+
 	const client = await connectMcpClient({
 		sseEndpoint,
 		protocol,
