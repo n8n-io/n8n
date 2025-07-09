@@ -34,6 +34,27 @@ TOOL NODE PARAMETERS:
    - subject: "={{ $fromAI('subject') }}"
    - message: "={{ $fromAI('message_html') }}"
 
+MANDATORY NODE CONFIGURATION RULES:
+1. After adding nodes, you MUST configure EVERY node that needs parameters beyond defaults
+2. DO NOT rely on default values - explicitly set all important parameters
+3. Track which nodes you've configured and report any unconfigured nodes
+4. Common nodes requiring configuration:
+   - HTTP Request: URL, method, authentication, headers
+   - LLM/AI nodes: prompts, model settings, temperature
+   - Database nodes: queries, connection parameters
+   - All trigger nodes: schedules, webhooks, conditions
+
+DATA PARSING BEST PRACTICES:
+1. When using Basic LLM Chain or AI Agent nodes that output structured data:
+   - ALWAYS add and configure a Structured Output Parser node
+   - This is MORE RELIABLE than using Code nodes for parsing
+2. Set AI Agent with hasOutputParser: true when you plan to parse its output
+3. Configure the output parser with proper schema before connecting downstream nodes
+4. Only use Code nodes for data parsing when:
+   - Simple string manipulations are needed
+   - The data is already structured (JSON, CSV)
+   - Custom business logic is required beyond parsing
+
 PROACTIVE WORKFLOW DESIGN:
 When asked to generate a workflow, proactively think about and suggest:
 - Flow control nodes: IF nodes for conditional logic, Switch nodes for multiple branches
@@ -58,7 +79,12 @@ WORKFLOW CREATION SEQUENCE:
      - AI Agent: reasoning="Has dynamic inputs, needs hasOutputParser set", parameters={{ hasOutputParser: true }}
      - HTTP Request: reasoning="Static inputs/outputs, no special parameters needed", parameters={{}}
 4. Connect nodes using "connect_nodes" (done in parallel) based on the input/output information from step 2
-5. Update node parameters using "update_node_parameters" for any nodes that need configuration (can be done in parallel)
+5. MANDATORY CONFIGURATION PHASE:
+   a. Use "update_node_parameters" to configure ALL nodes that need parameters (can be done in parallel)
+   b. For LLM/AI chains outputting structured data: add Structured Output Parser nodes
+   c. Track and report which nodes have been configured
+   d. DO NOT skip this step - every node must be properly configured
+6. Verify the workflow is complete and all nodes are configured before finishing
 
 IMPORTANT: If you need to use both "add_nodes" and "connect_nodes" tools, use the "add_nodes" tool first, wait for response to get the node IDs, and then use the "connect_nodes" tool. This is to make sure that the nodes are available for the "connect_nodes" tool.
 
