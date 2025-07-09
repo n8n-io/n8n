@@ -50,6 +50,7 @@
     "nodes": [
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
+      "dist/nodes/agents/Agent/AgentTool.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
       "dist/nodes/chains/ChainLLM/ChainLlm.node.js",
