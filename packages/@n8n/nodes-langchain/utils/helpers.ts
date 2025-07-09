@@ -38,10 +38,24 @@ export function getMetadataFiltersValues(
 			metadataValues: Array<{
 				name: string;
 				value: string;
+				valueType?: string;
 			}>;
 		};
 		if (metadata.length > 0) {
-			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+			return metadata.reduce((acc, { name, value, valueType }) => {
+				if (valueType === 'number') {
+					const numValue = Number(value);
+					if (isNaN(numValue)) {
+						throw new NodeOperationError(
+							ctx.getNode(),
+							`Metadata field "${name}" expects a number but got "${value}".`,
+							{ itemIndex },
+						);
+					}
+					return { ...acc, [name]: Number(value) };
+				}
+				return { ...acc, [name]: value };
+			}, {});
 		}
 	}
 
