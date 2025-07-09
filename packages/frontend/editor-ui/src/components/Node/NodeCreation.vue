@@ -20,6 +20,7 @@ import type {
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	nodeViewScale: number;
@@ -44,6 +45,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -82,6 +84,16 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
+
+function toggleFocusPanel() {
+	focusPanelStore.toggleFocusPanel();
+
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasButton',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+	});
+}
 </script>
 
 <template>
@@ -118,12 +130,7 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
-				type="tertiary"
-				size="large"
-				icon="list"
-				@click="focusPanelStore.toggleFocusPanel"
-			/>
+			<n8n-icon-button type="tertiary" size="large" icon="list" @click="toggleFocusPanel" />
 		</KeyboardShortcutTooltip>
 	</div>
 	<Suspense>

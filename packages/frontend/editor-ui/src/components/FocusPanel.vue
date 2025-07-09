@@ -27,6 +27,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -46,6 +47,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const { debounce } = useDebounce();
@@ -243,6 +245,16 @@ function optionSelected(command: string) {
 	}
 }
 
+function closeFocusPanel() {
+	telemetry.track('User closed focus panel', {
+		source: 'closeIcon',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+	});
+
+	focusPanelStore.closeFocusPanel();
+}
+
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 </script>
 
@@ -252,7 +264,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 			<N8nText size="small" :bold="true">
 				{{ locale.baseText('nodeView.focusPanel.title') }}
 			</N8nText>
-			<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
+			<div :class="$style.closeButton" @click="closeFocusPanel">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
