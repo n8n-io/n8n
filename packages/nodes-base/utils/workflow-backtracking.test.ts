@@ -2,10 +2,11 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 	IRunExecutionData,
+	ISourceData,
 	ITaskData,
 } from 'n8n-workflow';
 
-import { previousTaskData, findPairedItemTroughWorkflowData } from './backtracking';
+import { previousTaskData, findPairedItemTroughWorkflowData } from './workflow-backtracking';
 
 describe('backtracking.ts', () => {
 	describe('previousTaskData', () => {
@@ -43,10 +44,11 @@ describe('backtracking.ts', () => {
 		it('should return undefined when previousNode is undefined', () => {
 			const runData = {};
 			const currentRunData: ITaskData = {
-				source: [{}],
+				source: [{} as unknown as ISourceData],
 				data: { main: [[]] },
 				executionTime: 0,
 				executionStatus: 'success',
+				executionIndex: 0,
 				startTime: 0,
 			};
 

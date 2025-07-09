@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { findPairedItemTroughWorkflowData } from './backtracking';
+import { findPairedItemTroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
 import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
