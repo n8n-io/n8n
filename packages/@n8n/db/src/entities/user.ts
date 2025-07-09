@@ -55,7 +55,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	password: string;
+	password: string | null;
 
 	@JsonColumn({
 		nullable: true,
