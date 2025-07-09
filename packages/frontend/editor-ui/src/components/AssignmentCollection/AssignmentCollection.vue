@@ -16,6 +16,7 @@ import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 interface Props {
 	parameter: INodeProperties;
@@ -23,7 +24,7 @@ interface Props {
 	path: string;
 	defaultType?: keyof FieldTypeMap;
 	disableType?: boolean;
-	node: INode | null;
+	node: INode;
 	isReadOnly?: boolean;
 }
 
@@ -50,6 +51,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 });
 
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
@@ -98,7 +100,14 @@ function dropAssignment(expression: string): void {
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type:
+			props.defaultType ??
+			typeFromExpression(
+				expression,
+				workflowsStore.getCurrentWorkflow(),
+				workflowsStore.workflowExecutionData,
+				props.node.name,
+			),
 	});
 }
 
@@ -165,6 +174,7 @@ function optionSelected(action: string) {
 							:class="$style.assignment"
 							:is-read-only="isReadOnly"
 							:disable-type="disableType"
+							:node="node"
 							@update:model-value="(value) => onAssignmentUpdate(index, value)"
 							@remove="() => onAssignmentRemove(index)"
 						>

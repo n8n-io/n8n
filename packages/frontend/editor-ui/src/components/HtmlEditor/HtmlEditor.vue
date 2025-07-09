@@ -36,6 +36,7 @@ import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	modelValue: string;
@@ -55,12 +56,18 @@ const emit = defineEmits<{
 }>();
 
 const htmlEditor = ref<HTMLElement>();
+
+const workflowsStore = useWorkflowsStore();
+
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
 	new LanguageSupport(htmlLanguage, [
 		htmlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-		n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
+		n8nCompletionSources(
+			workflowsStore.getCurrentWorkflow(),
+			workflowsStore.workflowExecutionData,
+		).map((source) => htmlLanguage.data.of(source)),
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),

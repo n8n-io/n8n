@@ -278,10 +278,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
-	const shouldReplaceInputDataWithPinData = computed(() => {
-		return !activeWorkflowExecution.value || activeWorkflowExecution.value.mode === 'manual';
-	});
-
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
 	const getAllLoadedFinishedExecutions = computed(() => {
@@ -1961,7 +1957,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodesByName,
 		nodesIssuesExist,
 		pinnedWorkflowData,
-		shouldReplaceInputDataWithPinData,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,

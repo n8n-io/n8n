@@ -558,7 +558,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [],
 			} as unknown as WorkflowData);
-			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+			vi.mocked(workflowHelpers).createExecuteData.mockResolvedValue({
 				data: {},
 				node: {},
 				source: null,

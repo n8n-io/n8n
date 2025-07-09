@@ -502,7 +502,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('executeData', () => {
 		it('should return empty execute data if no parent nodes', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes: string[] = [];
 			const currentNode = 'Set';
@@ -519,7 +519,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with one parent node', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Start'];
 			const currentNode = 'Set';
@@ -590,7 +590,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, only one with execution data', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -661,7 +661,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, all with execution data', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -757,7 +757,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from pinnedWorkflowData if available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -776,7 +776,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from getWorkflowRunData if pinnedWorkflowData is not available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -813,7 +813,7 @@ describe('useWorkflowHelpers', () => {
 			});
 		});
 		it('should use provided parentRunIndex ', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -853,7 +853,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return empty data if neither pinnedWorkflowData nor getWorkflowRunData is available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { createExecuteData: executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';

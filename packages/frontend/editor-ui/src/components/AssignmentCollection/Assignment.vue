@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
@@ -20,6 +20,7 @@ interface Props {
 	disableType?: boolean;
 	isReadOnly?: boolean;
 	index?: number;
+	node: INodeUi;
 }
 
 const props = defineProps<Props>();
@@ -84,6 +85,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 const { resolvedExpressionString, isExpression } = useResolvedExpression({
 	expression: value,
 	additionalData: resolvedAdditionalExpressionData,
+	contextNodeName: props.node.name,
 });
 
 const hint = computed(() => resolvedExpressionString.value);
@@ -156,6 +158,7 @@ const onBlur = (): void => {
 						:value="assignment.name"
 						:path="`${path}.name`"
 						data-test-id="assignment-name"
+						:node="node"
 						@update="onAssignmentNameChange"
 						@blur="onBlur"
 					/>
@@ -184,6 +187,7 @@ const onBlur = (): void => {
 							:value="assignment.value"
 							:path="`${path}.value`"
 							data-test-id="assignment-value"
+							:node="node"
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
 						/>

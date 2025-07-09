@@ -6,6 +6,8 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { n8nCompletionSources } from './completions/addCompletions';
 import { autocompletion } from '@codemirror/autocomplete';
 import { expressionCloseBracketsConfig } from './expressionCloseBrackets';
+import type { IExecutionResponse } from '@/Interface';
+import type { Workflow } from 'n8n-workflow';
 
 const isResolvable = (node: SyntaxNodeRef) => node.type.name === 'Resolvable';
 
@@ -21,10 +23,10 @@ const n8nParserWithNestedJsParser = n8nParser.configure({
 
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
-export function n8nLang() {
+export function n8nLang(workflow: Workflow, executionData: IExecutionResponse | null) {
 	return new LanguageSupport(n8nLanguage, [
 		n8nLanguage.data.of(expressionCloseBracketsConfig),
-		...n8nCompletionSources().map((source) => n8nLanguage.data.of(source)),
+		...n8nCompletionSources(workflow, executionData).map((source) => n8nLanguage.data.of(source)),
 	]);
 }
 

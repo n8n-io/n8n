@@ -34,6 +34,7 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 
 <template>
 	<NodeSettings
+		v-if="activeNode"
 		:event-bus="settingsEventBus"
 		:dragging="false"
 		:active-node="activeNode"

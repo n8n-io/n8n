@@ -7,7 +7,6 @@ import type {
 	INode,
 	INodeParameters,
 	INodeProperties,
-	INodeTypeDescription,
 	NodeParameterValueType,
 	ResourceMapperField,
 	ResourceMapperFields,
@@ -33,7 +32,7 @@ import isEqual from 'lodash/isEqual';
 
 type Props = {
 	parameter: INodeProperties;
-	node: INode | null;
+	node: INode;
 	path: string;
 	inputSize: 'small' | 'medium';
 	labelSize: 'small' | 'medium';
@@ -126,15 +125,13 @@ watch(
 );
 
 onMounted(async () => {
-	if (props.node) {
-		state.parameterValues = {
-			...state.parameterValues,
-			parameters: props.node.parameters,
-		};
+	state.parameterValues = {
+		...state.parameterValues,
+		parameters: props.node.parameters,
+	};
 
-		if (showTypeConversionOptions.value) {
-			state.paramValue.convertFieldsToString = true;
-		}
+	if (showTypeConversionOptions.value) {
+		state.paramValue.convertFieldsToString = true;
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -190,12 +187,9 @@ const resourceMapperMode = computed<string | undefined>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode;
 });
 
-const nodeType = computed<INodeTypeDescription | null>(() => {
-	if (props.node) {
-		return nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion);
-	}
-	return null;
-});
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+);
 
 const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
@@ -301,10 +295,11 @@ const createRequestParams = (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveRequiredParameters(
-			props.parameter,
-			props.node.parameters,
-		) as INodeParameters,
+		currentNodeParameters: resolveRequiredParameters(props.parameter, props.node.parameters, {
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
+			contextNodeName: props.node.name,
+		}) as INodeParameters,
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
@@ -622,6 +617,7 @@ defineExpose({
 			:refresh-in-progress="state.refreshInProgress"
 			:is-read-only="isReadOnly"
 			:is-data-stale="state.hasStaleFields"
+			:context-node-name="node.name"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"
@@ -673,6 +669,7 @@ defineExpose({
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"
 				:is-read-only="isReadOnly"
+				:node="props.node"
 				@update="
 					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;

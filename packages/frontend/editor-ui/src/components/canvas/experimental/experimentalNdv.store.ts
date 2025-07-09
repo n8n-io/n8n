@@ -1,14 +1,12 @@
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVueFlow } from '@vue-flow/core';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
-import { useNDVStore } from '@/stores/ndv.store';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
-	const ndvStore = useNDVStore();
 	const settingsStore = useSettingsStore();
 	const isEnabled = computed(
 		() =>
@@ -20,6 +18,8 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	);
 
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
+
+	const shouldInterruptNdvModal = ref(false);
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -78,19 +78,29 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			nodeToFocus.position[1] + 80,
 			{ duration: 200, zoom: maxCanvasZoom.value },
 		);
+	}
 
-		ndvStore.setActiveNodeName(nodeToFocus.name);
+	function setInterruptNdvModal(value: boolean) {
+		shouldInterruptNdvModal.value = value;
 	}
 
 	return {
 		isEnabled,
 		maxCanvasZoom,
+
 		collapsedNodes: computed(() => collapsedNodes.value),
-		shouldInterruptNdvModal: computed(() => true),
+		/**
+		 * As a quick and dirty way of reusing all the logic in NodeDetailsView / NDV store
+		 * for resolving expressions in node parameters while keeping it visually hidden
+		 *
+		 * TODO: Refactor code to make resolving expressions work without making the node active
+		 */
+		shouldInterruptNdvModal: computed(() => isEnabled.value && shouldInterruptNdvModal.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
 		focusNode,
+		setInterruptNdvModal,
 	};
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
@@ -43,6 +43,7 @@ type Props = {
 	hideLabel?: boolean;
 	hideIssues?: boolean;
 	entryIndex?: number;
+	node: INodeUi;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -366,6 +367,7 @@ function removeOverride(clearField = false) {
 						:event-bus="eventBus"
 						:can-be-overridden="canBeContentOverride"
 						input-size="small"
+						:node="node"
 						@update="valueChanged"
 						@text-input="onTextInput"
 						@focus="onFocus"

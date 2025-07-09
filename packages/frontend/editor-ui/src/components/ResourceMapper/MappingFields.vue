@@ -44,6 +44,7 @@ interface Props {
 	teleported?: boolean;
 	isReadOnly?: boolean;
 	isDataStale?: boolean;
+	contextNodeName: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -407,6 +408,7 @@ defineExpose({
 					:hide-issues="true"
 					:node-values="nodeValues"
 					:class="$style.parameterInputFull"
+					:context-node-name="contextNodeName"
 					@update="onValueChanged"
 				/>
 			</div>

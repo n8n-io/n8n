@@ -5,7 +5,7 @@ import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { useI18n } from '@n8n/i18n';
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
@@ -21,6 +21,7 @@ const props = withDefaults(
 		path: string;
 		values?: INodeParameters[];
 		isReadOnly?: boolean;
+		node: INodeUi;
 	}>(),
 	{
 		values: () => [] as INodeParameters[],
@@ -156,6 +157,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					:path="getPath(index)"
 					:hide-delete="hideDelete"
 					:is-read-only="isReadOnly"
+					:node="node"
 					@value-changed="valueChanged"
 				/>
 			</div>
@@ -169,6 +171,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					:path="getPath(index)"
 					input-size="small"
 					:is-read-only="isReadOnly"
+					:node="node"
 					@update="valueChanged"
 				/>
 			</div>

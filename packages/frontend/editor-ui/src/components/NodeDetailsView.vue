@@ -623,7 +623,6 @@ const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode)
 watch(
 	activeNode,
 	(node, oldNode) => {
-		console.log(4444, node);
 		if (node && !oldNode) {
 			registerKeyboardListener();
 		} else if (!node) {
@@ -843,6 +842,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 						:block-u-i="blockUi && showTriggerPanel"
 						:executable="!readOnly"
 						:input-size="inputSize"
+						:active-node="activeNode"
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"

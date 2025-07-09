@@ -1,21 +1,19 @@
 <script setup lang="ts">
-import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { onBeforeUnmount, ref, computed, useTemplateRef, watch } from 'vue';
+import InputPanel from '@/components/InputPanel.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExperimentalNdvStore } from '../experimentalNdv.store';
-import NodeTitle from '@/components/NodeTitle.vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement, useDebounce, watchOnce } from '@vueuse/core';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n } from '@n8n/i18n';
-import RunData from '@/components/RunData.vue';
+import { useActiveElement, watchOnce } from '@vueuse/core';
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { useExperimentalNdvStore } from '../experimentalNdv.store';
+import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
-const { nodeId, isReadOnly, isSelected, isConfigurable } = defineProps<{
+const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
-	isSelected?: boolean;
 	isConfigurable: boolean;
 }>();
 
@@ -61,35 +59,10 @@ const isVisible = computed(() =>
 );
 const isOnceVisible = ref(isVisible.value);
 const containerRef = useTemplateRef('container');
-const inputPanelRef = useTemplateRef('inputPanelContainer');
 const activeElement = useActiveElement();
 const shouldShowInputPanel = ref(false);
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const locale = useI18n();
-const runDataProps = computed<
-	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
->(() => {
-	const runIndex = 0;
-	const source =
-		node.value &&
-		workflowsStore.workflowExecutionData?.data?.resultData.runData[node.value.name]?.[runIndex]
-			?.source?.[0];
-	const inputNode = source && workflowsStore.nodesByName[source.previousNode];
-
-	if (!source || !inputNode) {
-		return undefined;
-	}
-
-	return {
-		node: {
-			...inputNode,
-			disabled: false, // For RunData component to render data from disabled nodes as well
-		},
-		runIndex: source.previousNodeRun ?? 0,
-		overrideOutputs: [source.previousNodeOutput ?? 0],
-	};
-});
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -99,20 +72,26 @@ watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
 });
 
-watch(
-	() => isSelected,
-	(selected) => {
-		if (!selected) {
-			shouldShowInputPanel.value = false;
+watch(vf.getSelectedNodes, (selected) => {
+	if (node.value && selected.some((n) => n.id === node.value?.id)) {
+		experimentalNdvStore.setInterruptNdvModal(true);
+		ndvStore.setActiveNodeName(node.value.name);
+	} else {
+		if (selected.length === 0) {
+			experimentalNdvStore.setInterruptNdvModal(false);
+			ndvStore.setActiveNodeName(null);
 		}
-	},
-);
+
+		shouldShowInputPanel.value = false;
+	}
+});
 
 watch(activeElement, (active) => {
 	if (
+		node.value &&
 		active &&
 		containerRef.value?.contains(active) &&
-		active.closest('[data-test-id=inline-expression-editor-input]')
+		active.closest('[data-test-id=inline-expression-editor-input]') // TODO: find a way to implement this reliably
 	) {
 		shouldShowInputPanel.value = true;
 	}
@@ -167,31 +146,23 @@ watch(activeElement, (active) => {
 					:class="$style.inputPanelContainer"
 					:tabindex="-1"
 				>
-					<RunData
-						v-if="runDataProps"
-						v-bind="runDataProps"
+					<InputPanel
+						:key="ndvStore.activeNodeName ?? ''"
 						:class="$style.inputPanel"
 						:workflow="workflow"
-						:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
-						:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
-						:executing-message="locale.baseText('ndv.output.executing')"
-						pane-type="input"
+						:run-index="0"
 						compact
-						disable-pin
-						disable-edit
-						disable-hover-highlight
+						push-ref=""
 						display-mode="schema"
 						disable-display-mode-selection
-						disable-run-index-selection
-						mapping-enabled
-						:collapsing-table-column-name="null"
+						:current-node-name="node.name"
 					>
 						<template #header>
 							<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
 								Input
 							</N8nText>
 						</template>
-					</RunData>
+					</InputPanel>
 				</div>
 			</Transition>
 		</template>
@@ -279,8 +250,7 @@ watch(activeElement, (active) => {
 	border-radius: var(--border-radius-large);
 	zoom: var(--zoom);
 	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
-	padding-bottom: var(--spacing-xs);
-	padding-bottom: var(--spacing-s);
+	padding: var(--spacing-2xs);
 	height: 100%;
 }
 

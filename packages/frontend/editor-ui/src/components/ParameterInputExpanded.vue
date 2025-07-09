@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -24,6 +24,7 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
+	node: INodeUi;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -147,6 +148,7 @@ function onDocumentationUrlClick(): void {
 			:event-source="eventSource"
 			:hint="!showRequiredErrors && hint ? hint : ''"
 			:event-bus="eventBus"
+			:node="node"
 			@focus="onFocus"
 			@blur="onBlur"
 			@text-input="valueChanged"

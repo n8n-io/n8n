@@ -32,7 +32,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { createExecuteData, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
@@ -128,7 +128,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return;
 		}
 
-		const workflow = workflowHelpers.getCurrentWorkflow();
+		const workflow = workflowsStore.getCurrentWorkflow();
 
 		toast.clearAllStickyNotifications();
 
@@ -252,7 +252,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
 						const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
-						const executeData = workflowHelpers.executeData(
+						const executeData = createExecuteData(
+							workflowsStore.getCurrentWorkflow(),
+							workflowsStore.workflowExecutionData,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -538,7 +540,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
-		const workflow = workflowHelpers.getCurrentWorkflow();
+		const workflow = workflowsStore.getCurrentWorkflow();
 
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {

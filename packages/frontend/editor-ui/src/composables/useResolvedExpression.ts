@@ -5,7 +5,7 @@ import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/u
 import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
-import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
+import { resolveExpression, type ResolveParameterOptions } from './useWorkflowHelpers';
 
 export function useResolvedExpression({
 	expression,
@@ -18,12 +18,10 @@ export function useResolvedExpression({
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	isForCredential?: MaybeRefOrGetter<boolean>;
 	stringifyObject?: MaybeRefOrGetter<boolean>;
-	contextNodeName?: MaybeRefOrGetter<string>;
+	contextNodeName: MaybeRefOrGetter<string>;
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
-
-	const { resolveExpression } = useWorkflowHelpers();
 
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
@@ -45,12 +43,14 @@ export function useResolvedExpression({
 		}
 
 		let options: ResolveParameterOptions = {
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),
 			contextNodeName: toValue(contextNodeName),
 		};
 
-		if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
+		if (ndvStore.isInputParentOfActiveNode) {
 			options = {
 				...options,
 				targetItem: targetItem.value ?? undefined,

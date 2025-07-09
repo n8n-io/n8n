@@ -7,7 +7,11 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import {
+	resolveExpression,
+	resolveRequiredParameters,
+	useWorkflowHelpers,
+} from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -88,7 +92,7 @@ type Props = {
 	parameter: INodeProperties;
 	path: string;
 	loadOptionsMethod?: string;
-	node?: INode;
+	node: INode;
 	inputSize?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge';
 	parameterIssues?: string[];
 	dependentParametersValues?: string | null;
@@ -103,7 +107,6 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	node: undefined,
 	loadOptionsMethod: undefined,
 	inputSize: 'small',
 	parameterIssues: () => [],
@@ -255,7 +258,11 @@ const urlValue = computed(() => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = workflowHelpers.resolveExpression(expression);
+			const resolved = resolveExpression(expression, undefined, {
+				workflow: workflowsStore.getCurrentWorkflow(),
+				executionData: workflowsStore.workflowExecutionData,
+				contextNodeName: props.node.name,
+			});
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
@@ -372,9 +379,14 @@ const handleAddResourceClick = async () => {
 	}
 
 	const { method: addNewResourceMethodName } = allowNewResources.value;
-	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+	const resolvedNodeParameters = resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		{
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
+			contextNodeName: props.node.name,
+		},
 	);
 
 	if (!resolvedNodeParameters || !addNewResourceMethodName) {
@@ -701,10 +713,11 @@ async function loadResources() {
 			});
 		}
 
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
-			props.parameter,
-			params.parameters,
-		) as INodeParameters;
+		const resolvedNodeParameters = resolveRequiredParameters(props.parameter, params.parameters, {
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
+			contextNodeName: props.node.name,
+		}) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
 		const requestParams: ResourceLocatorRequestDto = {

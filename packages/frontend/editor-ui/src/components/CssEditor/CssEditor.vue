@@ -22,6 +22,7 @@ import {
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	modelValue: string;
@@ -43,12 +44,17 @@ const emit = defineEmits<{
 const cssEditor = ref<HTMLElement>();
 const editorValue = ref<string>(props.modelValue);
 
+const workflowsStore = useWorkflowsStore();
+
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
 	new LanguageSupport(cssLanguage, [
 		cssLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-		n8nCompletionSources().map((source) => cssLanguage.data.of(source)),
+		n8nCompletionSources(
+			workflowsStore.getCurrentWorkflow(),
+			workflowsStore.workflowExecutionData,
+		).map((source) => cssLanguage.data.of(source)),
 	]),
 	expressionCloseBrackets(),
 	Prec.highest(keymap.of(editorKeymap)),

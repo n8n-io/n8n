@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import type {
 	INodeParameters,
@@ -19,6 +19,7 @@ import { storeToRefs } from 'pinia';
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
+	node: INodeUi;
 	hideDelete?: boolean;
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
@@ -180,6 +181,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					:hide-delete="hideDelete"
 					:indent="true"
 					:is-read-only="isReadOnly"
+					:node="node"
 					@value-changed="valueChanged"
 				/>
 			</Suspense>

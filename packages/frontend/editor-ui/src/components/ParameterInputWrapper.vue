@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IUpdateInformation, InputSize } from '@/Interface';
+import type { INodeUi, IUpdateInformation, InputSize } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import {
@@ -42,6 +42,7 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	node: INodeUi;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -119,6 +120,7 @@ const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,
 	stringifyObject: props.parameter.type !== 'multiOptions',
+	contextNodeName: props.node.name,
 });
 
 const parsedParameterName = computed(() => {
@@ -181,6 +183,7 @@ defineExpose({
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			:can-be-overridden="canBeOverridden"
+			:node="node"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"

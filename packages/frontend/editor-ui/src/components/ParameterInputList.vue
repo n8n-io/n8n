@@ -20,7 +20,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveExpression, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useMessage } from '@/composables/useMessage';
 import {
 	FORM_NODE_TYPE,
@@ -52,6 +52,7 @@ import {
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -64,7 +65,7 @@ const LazyCollectionParameter = defineAsyncComponent(
 const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
-	node?: INodeUi;
+	node: INodeUi;
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
 	path?: string;
@@ -85,6 +86,7 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const message = useMessage();
 const nodeHelpers = useNodeHelpers();
@@ -115,14 +117,9 @@ onErrorCaptured((e, component) => {
 	return false;
 });
 
-const nodeType = computed(() => {
-	if (node.value) {
-		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
-	}
-	return null;
-});
-
-const node = computed(() => props.node ?? ndvStore.activeNode);
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+);
 
 const filteredParameters = computedWithControl(
 	[() => props.parameters, () => props.nodeValues] as WatchSource[],
@@ -131,20 +128,16 @@ const filteredParameters = computedWithControl(
 			displayNodeParameter(parameter),
 		);
 
-		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
-			return updateFormTriggerParameters(parameters, node.value.name);
+		if (props.node.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, props.node.name);
 		}
 
-		if (node.value && node.value.type === FORM_NODE_TYPE) {
-			return updateFormParameters(parameters, node.value.name);
+		if (props.node.type === FORM_NODE_TYPE) {
+			return updateFormParameters(parameters, props.node.name);
 		}
 
-		if (
-			node.value &&
-			node.value.type === WAIT_NODE_TYPE &&
-			node.value.parameters.resume === 'form'
-		) {
-			return updateWaitParameters(parameters, node.value.name);
+		if (props.node.type === WAIT_NODE_TYPE && props.node.parameters.resume === 'form') {
+			return updateWaitParameters(parameters, props.node.name);
 		}
 
 		return parameters;
@@ -207,7 +200,7 @@ watch(filteredParameterNames, (newValue, oldValue) => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
+	const workflow = workflowsStore.getCurrentWorkflow();
 	const connectedNodes = workflow.getChildNodes(triggerName);
 
 	const hasFormPage = connectedNodes.some((nodeName) => {
@@ -252,7 +245,7 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
+	const workflow = workflowsStore.getCurrentWorkflow();
 	const parentNodes = workflow.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
@@ -291,7 +284,7 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
+	const workflow = workflowsStore.getCurrentWorkflow();
 	const parentNodes = workflow.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
@@ -392,7 +385,7 @@ function displayNodeParameter(
 
 	// Hide authentication related fields since it will now be part of credentials modal
 	if (
-		!KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value?.type || '') &&
+		!KEEP_AUTH_IN_NDV_FOR_NODES.includes(props.node.type) &&
 		mainNodeAuthField.value &&
 		(parameter.name === mainNodeAuthField.value?.name || shouldHideAuthRelatedParameter(parameter))
 	) {
@@ -433,10 +426,11 @@ function displayNodeParameter(
 			} else {
 				// Contains probably no expression with a missing parameter so resolve
 				try {
-					nodeValues[key] = workflowHelpers.resolveExpression(
-						value,
-						nodeValues,
-					) as NodeParameterValue;
+					nodeValues[key] = resolveExpression(value, nodeValues, {
+						workflow: workflowsStore.getCurrentWorkflow(),
+						executionData: workflowsStore.workflowExecutionData,
+						contextNodeName: props.node.name,
+					}) as NodeParameterValue;
 				} catch (e) {
 					// If expression is invalid ignore
 					nodeValues[key] = '';
@@ -458,9 +452,9 @@ function displayNodeParameter(
 		if (props.path) {
 			rawValues = deepCopy(props.nodeValues);
 			set(rawValues, props.path, nodeValues);
-			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value, displayKey);
+			return nodeHelpers.displayParameter(rawValues, parameter, props.path, props.node, displayKey);
 		} else {
-			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value, displayKey);
+			return nodeHelpers.displayParameter(nodeValues, parameter, '', props.node, displayKey);
 		}
 	}
 
@@ -468,7 +462,7 @@ function displayNodeParameter(
 		props.nodeValues,
 		parameter,
 		props.path,
-		node.value,
+		props.node,
 		displayKey,
 	);
 }
@@ -484,14 +478,14 @@ function onNoticeAction(action: string) {
 }
 
 function getParameterIssues(parameter: INodeProperties): string[] {
-	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
+	if (!props.node || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
 	}
 	const issues = NodeHelpers.getParameterIssues(
 		parameter,
-		node.value.parameters,
+		props.node.parameters,
 		'',
-		node.value,
+		props.node,
 		nodeType.value,
 	);
 
@@ -526,7 +520,11 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters, {
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
+			contextNodeName: props.node.name,
+		});
 
 		const returnValues: string[] = [];
 		for (const parameterPath of loadOptionsDependsOn) {
@@ -607,6 +605,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
+					:node="node"
 					@value-changed="valueChanged"
 				/>
 			</div>
@@ -712,6 +711,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
+							:node="node"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
@@ -801,6 +801,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 					"
 					:hide-label="false"
 					:node-values="nodeValues"
+					:node="props.node"
 					@update="valueChanged"
 					@focus="onParameterFocus(parameter.name)"
 					@blur="onParameterBlur(parameter.name)"

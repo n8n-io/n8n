@@ -26,12 +26,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/Interface';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
 const ndvStore = useNDVStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
@@ -74,8 +76,10 @@ const tabBarItems = computed(() => {
 });
 
 const activeNode = computed(() => ndvStore.activeNode);
-const hideMenuBar = computed(() =>
-	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
+const hideMenuBar = computed(
+	() =>
+		!experimentalNdvStore.setInterruptNdvModal &&
+		Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = computed(() =>

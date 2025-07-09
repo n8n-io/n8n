@@ -62,7 +62,7 @@ const props = withDefaults(
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
-		activeNode?: INodeUi;
+		activeNode: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		noWheel?: boolean;
 	}>(),
@@ -72,7 +72,6 @@ const props = withDefaults(
 		executable: true,
 		inputSize: 0,
 		blockUI: false,
-		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		noWheel: false,
 	},
@@ -955,6 +954,7 @@ function handleWheelEvent(event: WheelEvent) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<ParameterInputList
+					:node="node"
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -965,6 +965,7 @@ function handleWheelEvent(event: WheelEvent) {
 					@parameter-blur="onParameterBlur"
 				/>
 				<ParameterInputList
+					:node="node"
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="nodeValues"

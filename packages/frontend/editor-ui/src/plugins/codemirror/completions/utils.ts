@@ -4,7 +4,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
@@ -17,9 +17,9 @@ import {
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
-import type { DocMetadata } from 'n8n-workflow';
+import type { DocMetadata, Workflow } from 'n8n-workflow';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { IExecutionResponse, TargetNodeParameterContext } from '@/Interface';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -145,19 +145,36 @@ export const isAllowedInDotNotation = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export function receivesNoBinaryData(contextNodeName?: string) {
+export function receivesNoBinaryData(
+	workflow: Workflow,
+	executionData: IExecutionResponse | null,
+	contextNodeName: string,
+) {
 	try {
-		return resolveAutocompleteExpression('={{ $binary }}', contextNodeName)?.data === undefined;
+		return (
+			resolveAutocompleteExpression('={{ $binary }}', workflow, executionData, contextNodeName)
+				?.data === undefined
+		);
 	} catch {
 		return true;
 	}
 }
 
-export function hasNoParams(toResolve: string, contextNodeName?: string) {
+export function hasNoParams(
+	toResolve: string,
+	workflow: Workflow,
+	executionData: IExecutionResponse,
+	contextNodeName: string,
+) {
 	let params;
 
 	try {
-		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = resolveAutocompleteExpression(
+			`={{ ${toResolve}.params }}`,
+			workflow,
+			executionData,
+			contextNodeName,
+		);
 	} catch {
 		return true;
 	}
@@ -169,7 +186,12 @@ export function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export function resolveAutocompleteExpression(
+	expression: string,
+	workflow: Workflow,
+	executionData: IExecutionResponse | null,
+	contextNodeName: string,
+) {
 	const ndvStore = useNDVStore();
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
@@ -180,10 +202,7 @@ export function resolveAutocompleteExpression(expression: string, contextNodeNam
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return resolveParameter(expression, {
-		...inputData,
-		contextNodeName,
-	});
+	return resolveParameter(expression, { workflow, executionData, ...inputData, contextNodeName });
 }
 
 // ----------------------------------
@@ -207,11 +226,6 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
-	(targetNodeParameterContext !== undefined &&
-		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
-	useNDVStore().activeNode?.name !== undefined;
-
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
@@ -225,7 +239,7 @@ export function autocompletableNodeNames(contextNodeName?: string) {
 
 	const activeNodeName = activeNode.name;
 
-	const workflow = useWorkflowHelpers().getCurrentWorkflow();
+	const workflow = useWorkflowsStore().getCurrentWorkflow();
 	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
@@ -237,7 +251,7 @@ export function autocompletableNodeNames(contextNodeName?: string) {
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflow = useWorkflowHelpers().getCurrentWorkflow();
+	const workflow = useWorkflowsStore().getCurrentWorkflow();
 	return workflow
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

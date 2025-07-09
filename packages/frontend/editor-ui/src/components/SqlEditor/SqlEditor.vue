@@ -36,6 +36,7 @@ import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '@/plugins/codemirror/expressionCloseBrackets';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -71,6 +72,8 @@ const container = ref<HTMLDivElement>();
 const sqlEditor = ref<HTMLDivElement>();
 const isFocused = ref(false);
 
+const workflowsStore = useWorkflowsStore();
+
 const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
 	function sqlWithN8nLanguageSupport() {
@@ -79,7 +82,10 @@ const extensions = computed(() => {
 			dialect.language.data.of({
 				autocomplete: ifNotIn(['Resolvable'], keywordCompletionSource(dialect, true)),
 			}),
-			n8nCompletionSources().map((source) => dialect.language.data.of(source)),
+			n8nCompletionSources(
+				workflowsStore.getCurrentWorkflow(),
+				workflowsStore.workflowExecutionData,
+			).map((source) => dialect.language.data.of(source)),
 		]);
 	}
 

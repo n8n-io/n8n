@@ -45,6 +45,8 @@ export type Props = {
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	displayMode: IRunDataDisplayMode;
+	compact?: boolean;
+	disableDisplayModeSelection?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -396,6 +398,8 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		data-test-id="ndv-input-panel"
 		:disable-ai-content="true"
 		:collapsing-table-column-name="collapsingColumnName"
+		:compact="compact"
+		:disable-display-mode-selection="disableDisplayModeSelection"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -408,9 +412,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	>
 		<template #header>
 			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
-				<span :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">{{
-					i18n.baseText('ndv.input')
-				}}</span>
+				<N8nText
+					:bold="true"
+					color="text-light"
+					:size="compact ? 'small' : 'medium'"
+					:class="[$style.title, { [$style.titleV2]: isNDVV2 }]"
+				>
+					{{ i18n.baseText('ndv.input') }}
+				</N8nText>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -686,10 +695,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
 	letter-spacing: 3px;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 }
 
 .titleV2 {

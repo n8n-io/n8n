@@ -59,7 +59,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveRequiredParameters, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -103,6 +103,7 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	node: INodeUi;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -187,9 +188,8 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
-const node = computed(() => ndvStore.activeNode ?? undefined);
-const nodeType = computed(
-	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
 );
 
 const shortPath = computed<string>(() => {
@@ -255,7 +255,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
-	return node.value?.parameters.mode as CodeExecutionMode;
+	return props.node.parameters.mode as CodeExecutionMode;
 });
 
 const displayValue = computed(() => {
@@ -267,7 +267,7 @@ const displayValue = computed(() => {
 		if (nodeType.value?.credentials && nodeType.value?.credentials?.length > 0) {
 			const credentialsType = nodeType.value?.credentials[0];
 
-			if (credentialsType.required && !node.value?.credentials) {
+			if (credentialsType.required && !props.node.credentials) {
 				return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
 			}
 		}
@@ -360,7 +360,11 @@ const dependentParametersValues = computed<string | null>(() => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters, {
+			workflow: workflowsStore.getCurrentWorkflow(),
+			executionData: workflowsStore.workflowExecutionData,
+			contextNodeName: props.node.name,
+		});
 
 		const returnValues: string[] = [];
 		for (const parameterPath of loadOptionsDependsOn) {
@@ -391,7 +395,7 @@ const getStringInputType = computed(() => {
 });
 
 const getIssues = computed<string[]>(() => {
-	if (props.hideIssues || !node.value) {
+	if (props.hideIssues) {
 		return [];
 	}
 
@@ -400,10 +404,10 @@ const getIssues = computed<string[]>(() => {
 
 	const issues = NodeHelpers.getParameterIssues(
 		props.parameter,
-		node.value.parameters,
+		props.node.parameters,
 		newPath.join('.'),
-		node.value,
-		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+		props.node,
+		nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
 	);
 
 	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
@@ -544,9 +548,7 @@ const parameterInputWrapperStyle = computed(() => {
 	return styles;
 });
 
-const parameterId = computed(() => {
-	return `${node.value?.id ?? crypto.randomUUID()}${props.path}`;
-});
+const parameterId = computed(() => props.node.id);
 
 const remoteParameterOptionsKeys = computed<string[]>(() => {
 	return (remoteParameterOptions.value || []).map((o) => o.name);
@@ -556,11 +558,9 @@ const shouldRedactValue = computed<boolean>(() => {
 	return getStringInputType.value === 'password' || props.isForCredential;
 });
 
-const isCodeNode = computed(
-	() => !!node.value && NODES_USING_CODE_NODE_EDITOR.includes(node.value.type),
-);
+const isCodeNode = computed(() => NODES_USING_CODE_NODE_EDITOR.includes(props.node.type));
 
-const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_TYPE);
+const isHtmlNode = computed(() => props.node.type === HTML_NODE_TYPE);
 
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
@@ -585,7 +585,7 @@ const showDragnDropTip = computed(
 		!props.isForCredential,
 );
 
-const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
+const shouldCaptureForPosthog = computed(() => props.node.type === AI_TRANSFORM_NODE_TYPE);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -628,12 +628,7 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
-	if (
-		!node.value ||
-		!hasRemoteMethod.value ||
-		remoteParameterOptionsLoading.value ||
-		!props.parameter
-	) {
+	if (!hasRemoteMethod.value || remoteParameterOptionsLoading.value || !props.parameter) {
 		return;
 	}
 	remoteParameterOptionsLoadingIssues.value = null;
@@ -644,23 +639,28 @@ async function loadRemoteParameterOptions() {
 
 	try {
 		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			{
+				workflow: workflowsStore.getCurrentWorkflow(),
+				executionData: workflowsStore.workflowExecutionData,
+				contextNodeName: props.node.name,
+			},
 		) as INodeParameters;
 		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
 		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
-				name: node.value.type,
-				version: node.value.typeVersion,
+				name: props.node.type,
+				version: props.node.typeVersion,
 			},
 			path: props.path,
 			methodName: loadOptionsMethod,
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
-			credentials: node.value.credentials,
+			credentials: props.node.credentials,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -690,13 +690,9 @@ function closeExpressionEditDialog() {
 }
 
 function trackExpressionEditOpen() {
-	if (!node.value) {
-		return;
-	}
-
-	if (node.value.type.startsWith('n8n-nodes-base') || isCredentialOnlyNodeType(node.value.type)) {
+	if (props.node.type.startsWith('n8n-nodes-base') || isCredentialOnlyNodeType(props.node.type)) {
 		telemetry.track('User opened Expression Editor', {
-			node_type: node.value.type,
+			node_type: props.node.type,
 			parameter_name: props.parameter.displayName,
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
@@ -752,15 +748,13 @@ async function setFocus() {
 		return;
 	}
 
-	if (node.value) {
-		// When an event like mouse-click removes the active node while
-		// editing is active it does not know where to save the value to.
-		// For that reason do we save the node-name here. We could probably
-		// also just do that once on load but if Vue decides for some reason to
-		// reuse the input it could have the wrong value so lets set it everytime
-		// just to be sure
-		nodeName.value = node.value.name;
-	}
+	// When an event like mouse-click removes the active node while
+	// editing is active it does not know where to save the value to.
+	// For that reason do we save the node-name here. We could probably
+	// also just do that once on load but if Vue decides for some reason to
+	// reuse the input it could have the wrong value so lets set it everytime
+	// just to be sure
+	nodeName.value = props.node.name;
 
 	await nextTick();
 
@@ -793,7 +787,7 @@ function rgbaToHex(value: string): string | null {
 }
 function onTextInputChange(value: string) {
 	const parameterData = {
-		node: node.value ? node.value.name : nodeName.value,
+		node: props.node.name,
 		name: props.path,
 		value,
 	};
@@ -810,7 +804,7 @@ function trackWorkflowInputModeEvent(value: string) {
 	telemetry.track('User chose input data mode', {
 		option: telemetryValuesMap[value],
 		workflow_id: workflowsStore.workflowId,
-		node_id: node.value?.id,
+		node_id: props.node.id,
 	});
 }
 
@@ -819,7 +813,7 @@ function valueChanged(untypedValue: unknown) {
 		return;
 	}
 
-	const oldValue = get(node.value, props.path) as unknown;
+	const oldValue = get(props.node, props.path) as unknown;
 	if (oldValue !== undefined && oldValue === untypedValue) {
 		// Skip emit if value hasn't changed
 		return;
@@ -877,7 +871,7 @@ function valueChanged(untypedValue: unknown) {
 	}
 
 	const parameterData: IUpdateInformation = {
-		node: node.value ? node.value.name : nodeName.value,
+		node: props.node.name,
 		name: props.path,
 		value,
 	};
@@ -887,8 +881,8 @@ function valueChanged(untypedValue: unknown) {
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
 		telemetry.track('User set node operation or mode', {
 			workflow_id: workflowsStore.workflowId,
-			node_type: node.value?.type,
-			resource: node.value?.parameters.resource,
+			node_type: props.node.type,
+			resource: props.node.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
@@ -996,13 +990,13 @@ async function optionSelected(command: string) {
 			return;
 
 		case 'focus':
-			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
+			nodeSettingsParameters.handleFocus(props.node, props.path, props.parameter);
 			return;
 	}
 
-	if (node.value && (command === 'addExpression' || command === 'removeExpression')) {
+	if (command === 'addExpression' || command === 'removeExpression') {
 		const telemetryPayload = {
-			node_type: node.value.type,
+			node_type: props.node.type,
 			parameter: props.path,
 			old_mode: command === 'addExpression' ? 'fixed' : 'expression',
 			new_mode: command === 'removeExpression' ? 'fixed' : 'expression',
@@ -1020,12 +1014,10 @@ onMounted(() => {
 
 	tempValue.value = displayValue.value;
 
-	if (node.value) {
-		nodeName.value = node.value.name;
-	}
+	nodeName.value = props.node.name;
 
-	if (node.value && node.value.parameters.authentication === 'predefinedCredentialType') {
-		activeCredentialType.value = node.value.parameters.nodeCredentialType as string;
+	if (props.node.parameters.authentication === 'predefinedCredentialType') {
+		activeCredentialType.value = props.node.parameters.nodeCredentialType as string;
 	}
 
 	if (
@@ -1084,9 +1076,9 @@ onBeforeUnmount(() => {
 });
 
 watch(
-	() => node.value?.credentials,
+	() => props.node.credentials,
 	() => {
-		if (hasRemoteMethod.value && node.value) {
+		if (hasRemoteMethod.value) {
 			void loadRemoteParameterOptions();
 		}
 	},
@@ -1136,7 +1128,7 @@ const unwatchParameterOptions = watch(
 				extra: {
 					invalidOptions,
 					parameter: props.parameter.name,
-					node: node.value,
+					node: props.node,
 				},
 			});
 			unwatchParameterOptions();
