@@ -1705,7 +1705,8 @@ export class Github implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'Max number of results to return',
+				description:
+					'Max number of results to return. Maximum value is <a href="https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests">100</a>',
 			},
 			{
 				displayName: 'Filters',
