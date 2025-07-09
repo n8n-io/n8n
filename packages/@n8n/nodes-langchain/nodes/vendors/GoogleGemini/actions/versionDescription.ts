@@ -11,7 +11,7 @@ import * as video from './video';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Gemini',
 	name: 'googleGemini',
-	icon: 'file:google.svg',
+	icon: 'file:gemini.svg',
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
