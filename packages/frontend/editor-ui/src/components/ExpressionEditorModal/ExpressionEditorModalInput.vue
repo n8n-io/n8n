@@ -86,7 +86,7 @@ onMounted(() => {
 	focus();
 });
 
-defineExpose({ editor });
+defineExpose({ editor, focus });
 </script>
 
 <template>

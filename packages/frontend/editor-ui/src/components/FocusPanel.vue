@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -25,6 +25,7 @@ import {
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
+import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
 
 defineOptions({ name: 'FocusPanel' });
@@ -32,6 +33,14 @@ defineOptions({ name: 'FocusPanel' });
 const props = defineProps<{
 	isCanvasReadOnly: boolean;
 }>();
+
+const emit = defineEmits<{
+	focus: [];
+}>();
+
+// ESLint: false positive
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
@@ -177,6 +186,20 @@ function valueChanged(value: string) {
 	);
 }
 
+async function setFocus() {
+	await nextTick();
+
+	if (inputField.value) {
+		if (hasFocusOnInput(inputField.value)) {
+			inputField.value.focusOnInput();
+		} else if (isFocusableEl(inputField.value)) {
+			inputField.value.focus();
+		}
+	}
+
+	emit('focus');
+}
+
 function optionSelected(command: string) {
 	if (!resolvedParameter.value) return;
 
@@ -193,12 +216,11 @@ function optionSelected(command: string) {
 				resolvedParameter.value.parameter.type,
 			);
 			valueChanged(typeof newValue === 'string' ? newValue : newValue.value);
-			// await setFocus();
+			void setFocus();
 			break;
 		}
 
 		case 'removeExpression': {
-			// isFocused.value = false;
 			const newValue = parseFromExpression(
 				resolvedParameter.value.value,
 				resolvedExpression.value,
@@ -211,6 +233,7 @@ function optionSelected(command: string) {
 			} else if (newValue && typeof (newValue as { value?: unknown }).value === 'string') {
 				valueChanged((newValue as { value: string }).value);
 			}
+			void setFocus();
 			break;
 		}
 
@@ -274,6 +297,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 					</div>
 					<ExpressionEditorModalInput
 						v-else-if="expressionModeEnabled"
+						ref="inputField"
 						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						:is-read-only="isReadOnly"
@@ -337,6 +361,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<N8nInput
 							v-else
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:class="$style.editor"
 							:readonly="isReadOnly"
