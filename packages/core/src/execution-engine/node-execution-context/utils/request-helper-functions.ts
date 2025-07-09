@@ -993,7 +993,7 @@ export async function requestOAuth2(
 		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentials(
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
@@ -1074,7 +1074,7 @@ export async function requestOAuth2(
 					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
@@ -1154,7 +1154,7 @@ export async function requestOAuth2(
 				const nodeCredentials = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
