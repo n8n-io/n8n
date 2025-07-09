@@ -40,43 +40,43 @@ paths:
     $ref: './handlers/audit/spec/paths/audit.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
-  /credentials/{id}:
+  /credentials/{credentialId}:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+  /credentials/{credentialId}/transfer:
+    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
+  /executions/{executionId}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
-  /tags/{id}:
+  /tags/{tagId}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
-  /workflows/{id}:
+  /workflows/{workflowId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
-  /workflows/{id}/activate:
+  /workflows/{workflowId}/activate:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
+  /workflows/{workflowId}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /workflows/{id}/transfer:
+  /workflows/{workflowId}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /workflows/{id}/tags:
+  /workflows/{workflowId}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
+  /users/{userId}:
     $ref: './handlers/users/spec/paths/users.id.yml'
-  /users/{id}/role:
+  /users/{userId}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
   /source-control/pull:
     $ref: './handlers/source-control/spec/paths/sourceControl.yml'
   /variables:
     $ref: './handlers/variables/spec/paths/variables.yml'
-  /variables/{id}:
+  /variables/{variableId}:
     $ref: './handlers/variables/spec/paths/variables.id.yml'
   /projects:
     $ref: './handlers/projects/spec/paths/projects.yml'
