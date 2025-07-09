@@ -6,6 +6,7 @@ import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
 
 const emit = defineEmits<{
 	delete: [];
@@ -27,8 +28,9 @@ const { isDisabled, render, name } = useCanvasNode();
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
-const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
+const node = computed(() => (name.value ? workflowsStore.getNodeByName(name.value) : null));
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
@@ -58,6 +60,13 @@ const isDisableNodeVisible = computed(() => {
 });
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
+
+const isFocusNodeVisible = computed(
+	() =>
+		experimentalNdvStore.isEnabled &&
+		node.value !== null &&
+		experimentalNdvStore.collapsedNodes[node.value.id] !== false,
+);
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
@@ -91,6 +100,12 @@ function onMouseEnter() {
 
 function onMouseLeave() {
 	isHovered.value = false;
+}
+
+function onFocusNode() {
+	if (node.value) {
+		experimentalNdvStore.focusNode(node.value.id);
+	}
 }
 </script>
 
@@ -138,6 +153,14 @@ function onMouseLeave() {
 				icon="trash-2"
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
+			/>
+			<N8nIconButton
+				v-if="isFocusNodeVisible"
+				type="tertiary"
+				size="small"
+				text
+				icon="crosshair"
+				@click="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
 				v-if="isStickyNoteChangeColorVisible"
