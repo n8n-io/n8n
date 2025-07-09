@@ -103,14 +103,18 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 	});
 }
 
+export interface StreamingEventHandlers {
+	onBeginMessage: (nodeId: string, runIndex?: number) => void;
+	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void;
+	onEndMessage: (nodeId: string, runIndex?: number) => void;
+}
+
 export async function sendMessageStreaming(
 	message: string,
 	files: File[],
 	sessionId: string,
 	options: ChatOptions,
-	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void,
-	onBeginMessage: (nodeId: string, runIndex?: number) => void,
-	onEndMessage: (nodeId: string, runIndex?: number) => void,
+	handlers: StreamingEventHandlers,
 ): Promise<void> {
 	// Build request
 	const response = await (files.length > 0
@@ -140,17 +144,17 @@ export async function sendMessageStreaming(
 
 			switch (value.type) {
 				case 'begin':
-					onBeginMessage(nodeId, runIndex);
+					handlers.onBeginMessage(nodeId, runIndex);
 					break;
 				case 'item':
-					onChunk(value.content ?? '', nodeId, runIndex);
+					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
-					onEndMessage(nodeId, runIndex);
+					handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
-					onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
-					onEndMessage(nodeId, runIndex);
+					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
+					handlers.onEndMessage(nodeId, runIndex);
 					break;
 			}
 		}

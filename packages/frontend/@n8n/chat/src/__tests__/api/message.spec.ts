@@ -94,15 +94,11 @@ describe('sendMessageStreaming', () => {
 		const onBeginMessage = vi.fn();
 		const onEndMessage = vi.fn();
 
-		await sendMessageStreaming(
-			'Test message',
-			[],
-			'test-session-id',
-			mockOptions,
+		await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
 			onChunk,
 			onBeginMessage,
 			onEndMessage,
-		);
+		});
 
 		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',
@@ -216,15 +212,11 @@ describe('sendMessageStreaming', () => {
 		const onBeginMessage = vi.fn();
 		const onEndMessage = vi.fn();
 
-		await sendMessageStreaming(
-			'Test message',
-			[],
-			'test-session-id',
-			mockOptions,
+		await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
 			onChunk,
 			onBeginMessage,
 			onEndMessage,
-		);
+		});
 
 		expect(onBeginMessage).toHaveBeenCalledTimes(2);
 		expect(onBeginMessage).toHaveBeenCalledWith('node-1', 0);
@@ -309,15 +301,11 @@ describe('sendMessageStreaming', () => {
 		const onBeginMessage = vi.fn();
 		const onEndMessage = vi.fn();
 
-		await sendMessageStreaming(
-			'Test message',
-			[testFile],
-			'test-session-id',
-			mockOptions,
+		await sendMessageStreaming('Test message', [testFile], 'test-session-id', mockOptions, {
 			onChunk,
 			onBeginMessage,
 			onEndMessage,
-		);
+		});
 
 		// Verify FormData was used for file upload
 		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
@@ -348,15 +336,11 @@ describe('sendMessageStreaming', () => {
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		await expect(
-			sendMessageStreaming(
-				'Test message',
-				[],
-				'test-session-id',
-				mockOptions,
-				vi.fn(),
-				vi.fn(),
-				vi.fn(),
-			),
+			sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk: vi.fn(),
+				onEndMessage: vi.fn(),
+				onBeginMessage: vi.fn(),
+			}),
 		).rejects.toThrow('Error while sending message. Error: Internal Server Error');
 	});
 
@@ -371,15 +355,11 @@ describe('sendMessageStreaming', () => {
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		await expect(
-			sendMessageStreaming(
-				'Test message',
-				[],
-				'test-session-id',
-				mockOptions,
-				vi.fn(),
-				vi.fn(),
-				vi.fn(),
-			),
+			sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk: vi.fn(),
+				onEndMessage: vi.fn(),
+				onBeginMessage: vi.fn(),
+			}),
 		).rejects.toThrow('Response body is not readable');
 	});
 
@@ -421,15 +401,11 @@ describe('sendMessageStreaming', () => {
 
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
-		await sendMessageStreaming(
-			'Test message',
-			[],
-			'test-session-id',
-			optionsWithHeaders,
-			vi.fn(),
-			vi.fn(),
-			vi.fn(),
-		);
+		await sendMessageStreaming('Test message', [], 'test-session-id', optionsWithHeaders, {
+			onChunk: vi.fn(),
+			onEndMessage: vi.fn(),
+			onBeginMessage: vi.fn(),
+		});
 
 		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',
@@ -483,15 +459,11 @@ describe('sendMessageStreaming', () => {
 
 		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
-		await sendMessageStreaming(
-			'Test message',
-			[],
-			'test-session-id',
-			optionsWithMetadata,
-			vi.fn(),
-			vi.fn(),
-			vi.fn(),
-		);
+		await sendMessageStreaming('Test message', [], 'test-session-id', optionsWithMetadata, {
+			onChunk: vi.fn(),
+			onEndMessage: vi.fn(),
+			onBeginMessage: vi.fn(),
+		});
 
 		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
 			method: 'POST',

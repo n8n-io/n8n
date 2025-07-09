@@ -49,12 +49,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			try {
 				if (options?.enableStreaming) {
-					await api.sendMessageStreaming(
-						text,
-						files,
-						currentSessionId.value as string,
-						options,
-						(chunk: string, nodeId?: string, runIndex?: number) => {
+					const handlers: api.StreamingEventHandlers = {
+						onChunk: (chunk: string, nodeId?: string, runIndex?: number) => {
 							handleStreamingChunk(
 								chunk,
 								nodeId,
@@ -64,12 +60,20 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 								runIndex,
 							);
 						},
-						(nodeId: string, runIndex?: number) => {
+						onBeginMessage: (nodeId: string, runIndex?: number) => {
 							handleNodeStart(nodeId, streamingManager, runIndex);
 						},
-						(nodeId: string, runIndex?: number) => {
+						onEndMessage: (nodeId: string, runIndex?: number) => {
 							handleNodeComplete(nodeId, streamingManager, runIndex);
 						},
+					};
+
+					await api.sendMessageStreaming(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+						handlers,
 					);
 				} else {
 					receivedMessage.value = createBotMessage();
