@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
+import { sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -23,7 +24,6 @@ import type { Readable } from 'stream';
 
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 import { configuredOutputs } from './utils/outputs';
-import { sandboxResponseData } from './utils/sandbox';
 import { getBinaryResponse } from './utils/binary';
 
 const respondWithProperty: INodeProperties = {
@@ -418,7 +418,7 @@ export class RespondToWebhook implements INodeType {
 					: items[0].json;
 			} else if (respondWith === 'text') {
 				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxResponseData(this.getNodeParameter('responseBody', 0) as string);
+					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
 				} else {
 					responseBody = this.getNodeParameter('responseBody', 0) as string;
 				}
@@ -465,7 +465,7 @@ export class RespondToWebhook implements INodeType {
 				respondWith !== 'binary' &&
 				responseBody
 			) {
-				responseBody = sandboxResponseData(responseBody as string);
+				responseBody = sandboxHtmlResponse(responseBody as string);
 			}
 
 			response = {

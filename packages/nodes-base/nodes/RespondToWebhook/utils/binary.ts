@@ -1,8 +1,7 @@
+import { sandboxHtmlResponse } from 'n8n-core';
 import type { IBinaryData, IDataObject, IN8nHttpResponse } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { Readable } from 'stream';
-
-import { sandboxResponseData } from './sandbox';
 
 const setContentLength = (responseBody: IN8nHttpResponse | Readable, headers: IDataObject) => {
 	if (Buffer.isBuffer(responseBody)) {
@@ -24,13 +23,13 @@ export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject)
 
 	if (binaryData.id) {
 		responseBody = shouldSandboxResponseData
-			? sandboxResponseData(binaryData.data)
+			? sandboxHtmlResponse(binaryData.data)
 			: { binaryData };
 	} else {
 		const responseBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 
 		responseBody = shouldSandboxResponseData
-			? sandboxResponseData(responseBuffer.toString())
+			? sandboxHtmlResponse(responseBuffer.toString())
 			: responseBuffer;
 
 		setContentLength(responseBody, headers);
