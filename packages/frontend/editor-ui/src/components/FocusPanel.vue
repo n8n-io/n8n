@@ -100,7 +100,7 @@ const isDisabled = computed(() => {
 
 	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
 	return (
-		resolvedParameter.value.parameter.disabledOptions &&
+		!!resolvedParameter.value.parameter.disabledOptions &&
 		nodeSettingsParameters.shouldDisplayNodeParameter(
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
