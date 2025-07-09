@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { searchModels } from './methods/loadModels';
@@ -345,13 +345,18 @@ export class LmChatOpenAi implements INodeType {
 			reasoningEffort?: 'low' | 'medium' | 'high';
 		};
 
-		const configuration: ClientOptions = {
-			httpAgent: getHttpProxyAgent(),
-		};
+		const configuration: ClientOptions = {};
+
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
+		}
+
+		if (configuration.baseURL) {
+			configuration.fetchOptions = {
+				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+			};
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain

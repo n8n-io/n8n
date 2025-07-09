@@ -19,6 +19,13 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+const props = defineProps<{
+	modalName: string;
+	data: {
+		afterInvite?: () => Promise<void>;
+	};
+}>();
+
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
 const usersStore = useUsersStore();
@@ -226,6 +233,8 @@ async function onSubmit() {
 		} else {
 			modalBus.emit('close');
 		}
+
+		await props.data.afterInvite?.();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.usersInvitedError'));
 	}

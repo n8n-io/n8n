@@ -146,47 +146,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	sso: {
-		justInTimeProvisioning: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to automatically create users when they login via SSO.',
-		},
-		redirectLoginToSso: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
-		},
-		saml: {
-			loginEnabled: {
-				format: Boolean,
-				default: false,
-				doc: 'Whether to enable SAML SSO.',
-			},
-			loginLabel: {
-				format: String,
-				default: '',
-			},
-		},
-		oidc: {
-			loginEnabled: {
-				format: Boolean,
-				default: false,
-				doc: 'Whether to enable OIDC SSO.',
-			},
-		},
-		ldap: {
-			loginEnabled: {
-				format: Boolean,
-				default: false,
-			},
-			loginLabel: {
-				format: String,
-				default: '',
-			},
-		},
-	},
-
 	redis: {
 		prefix: {
 			doc: 'Prefix for all n8n related keys',

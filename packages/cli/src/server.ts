@@ -1,4 +1,4 @@
-import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest } from '@n8n/db';
@@ -77,7 +77,6 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly licenseState: LicenseState,
 	) {
 		super();
 
@@ -171,16 +170,14 @@ export class Server extends AbstractServer {
 		// Source Control
 		// ----------------------------------------
 
-		if (this.licenseState.isSourceControlLicensed()) {
-			try {
-				const { SourceControlService } = await import(
-					'@/environments.ee/source-control/source-control.service.ee'
-				);
-				await Container.get(SourceControlService).init();
-				await import('@/environments.ee/source-control/source-control.controller.ee');
-			} catch (error) {
-				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-			}
+		try {
+			const { SourceControlService } = await import(
+				'@/environments.ee/source-control/source-control.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
 		}
 
 		try {
@@ -418,7 +415,7 @@ export class Server extends AbstractServer {
 			});
 
 			// Route all UI urls to index.html to support history-api
-			const nonUIRoutes: Readonly<string[]> = [
+			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',

@@ -9,7 +9,7 @@ import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 
-let agents: Record<string, SuperAgentTest> = {};
+const agents: Record<string, SuperAgentTest> = {};
 const testServer = utils.setupTestServer({
 	endpointGroups: ['insights', 'license', 'auth'],
 	enabledFeatures: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -15,6 +17,8 @@ const props = defineProps<{
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const nodeTypesStore = useNodeTypesStore();
+const nodeSettingsParameters = useNodeSettingsParameters();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -38,6 +42,10 @@ const isExecutable = computed(() => {
 	);
 });
 
+const isToolNode = computed(() =>
+	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
+);
+
 const expressionModeEnabled = computed(
 	() =>
 		resolvedParameter.value &&
@@ -48,13 +56,22 @@ function optionSelected() {
 	// TODO: Handle the option selected (command: string) from the dropdown
 }
 
-function valueChanged() {
-	// TODO: Update parameter value
+function valueChanged(value: string) {
+	if (resolvedParameter.value === undefined) {
+		return;
+	}
+
+	nodeSettingsParameters.updateNodeParameter(
+		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
+		value,
+		resolvedParameter.value.node,
+		isToolNode.value,
+	);
 }
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.container">
+	<div v-if="focusPanelActive" :class="$style.container" @keydown.stop>
 		<div :class="$style.header">
 			<N8nText size="small" :bold="true">
 				{{ locale.baseText('nodeView.focusPanel.title') }}
@@ -105,14 +122,15 @@ function valueChanged() {
 							nodeName: resolvedParameter.node.name,
 							parameterPath: resolvedParameter.parameterPath,
 						}"
-						@change="valueChanged"
+						@change="valueChanged($event.value)"
 					/>
 					<N8nInput
 						v-else
-						v-model="resolvedParameter.value"
+						:model-value="resolvedParameter.value"
 						:class="$style.editor"
 						type="textarea"
 						resize="none"
+						@update:model-value="valueChanged($event)"
 					></N8nInput>
 				</div>
 			</div>

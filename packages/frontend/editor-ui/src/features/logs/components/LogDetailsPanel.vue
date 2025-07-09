@@ -20,18 +20,30 @@ import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, window, latestInfo, panels } = defineProps<{
+const {
+	isOpen,
+	logEntry,
+	window,
+	latestInfo,
+	panels,
+	collapsingInputTableColumnName,
+	collapsingOutputTableColumnName,
+} = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
 	panels: LogDetailsPanelState;
+	collapsingInputTableColumnName: string | null;
+	collapsingOutputTableColumnName: string | null;
 }>();
 
 const emit = defineEmits<{
 	clickHeader: [];
 	toggleInputOpen: [] | [boolean];
 	toggleOutputOpen: [] | [boolean];
+	collapsingInputTableColumnChanged: [columnName: string | null];
+	collapsingOutputTableColumnChanged: [columnName: string | null];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -149,6 +161,8 @@ function handleResizeEnd() {
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
 						:log-entry="logEntry"
+						:collapsing-table-column-name="collapsingInputTableColumnName"
+						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
 					/>
 				</N8nResizeWrapper>
 				<LogsViewRunData
@@ -158,6 +172,8 @@ function handleResizeEnd() {
 					:class="$style.outputPanel"
 					:title="locale.baseText('logs.details.header.actions.output')"
 					:log-entry="logEntry"
+					:collapsing-table-column-name="collapsingOutputTableColumnName"
+					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
 				/>
 			</template>
 		</div>
