@@ -54,12 +54,12 @@ export class McpClientTool implements INodeType {
 		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
 		credentials: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpBearerAuth',
 				required: true,
 				displayOptions: {
 					show: {
 						authentication: ['bearerAuth'],
+						protocol: ['sse', 'streamable-http'],
 					},
 				},
 			},
@@ -69,6 +69,7 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['headerAuth'],
+						protocol: ['sse', 'streamable-http'],
 					},
 				},
 			},
@@ -76,13 +77,33 @@ export class McpClientTool implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'SSE Endpoint',
+				displayName: 'Protocol',
+				name: 'protocol',
+				type: 'options',
+				description: 'Which protocol to use to connect to MCP server',
+				options: [
+					{ name: 'STDIO', value: 'stdio' },
+					{ name: 'SSE', value: 'sse' },
+					{ name: 'Streamable-HTTP', value: 'streamable-http' },
+				],
+				default: 'streamable-http',
+				required: true,
+			},
+			{
+				displayName: 'Endpoint/Command',
 				name: 'sseEndpoint',
 				type: 'string',
-				description: 'SSE Endpoint of your MCP server',
-				placeholder: 'e.g. https://my-mcp-server.ai/sse',
+				description:
+					'For SSE/Streamable-HTTP, input the HTTP URL (e.g. https://my-mcp-server.ai/sse or https://my-mcp-server.ai/mcp). For STDIO, input the executable command (e.g. ./mcp-server)',
+				placeholder:
+					'http://localhost:8020/mcp (for SSE/Streamable-HTTP) or ./mcp-server (for STDIO)',
 				default: '',
 				required: true,
+				displayOptions: {
+					show: {
+						protocol: ['stdio', 'sse', 'streamable-http'],
+					},
+				},
 			},
 			{
 				displayName: 'Authentication',
@@ -103,7 +124,12 @@ export class McpClientTool implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate with your SSE endpoint',
+				description: 'The way to authenticate with your endpoint (not used for STDIO)',
+				displayOptions: {
+					show: {
+						protocol: ['sse', 'streamable-http'],
+					},
+				},
 			},
 			{
 				displayName: 'Credentials',
@@ -113,6 +139,7 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['headerAuth', 'bearerAuth'],
+						protocol: ['sse', 'streamable-http'],
 					},
 				},
 			},
@@ -183,15 +210,20 @@ export class McpClientTool implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const authentication = this.getNodeParameter(
-			'authentication',
-			itemIndex,
-		) as McpAuthenticationOption;
+		const protocol = this.getNodeParameter('protocol', itemIndex) as
+			| 'stdio'
+			| 'sse'
+			| 'streamable-http';
+		const authentication =
+			protocol === 'stdio'
+				? 'none'
+				: (this.getNodeParameter('authentication', itemIndex) as McpAuthenticationOption);
 		const sseEndpoint = this.getNodeParameter('sseEndpoint', itemIndex) as string;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
 			sseEndpoint,
+			protocol,
 			headers,
 			name: node.type,
 			version: node.typeVersion,
@@ -210,7 +242,9 @@ export class McpClientTool implements INodeType {
 
 			switch (client.error.type) {
 				case 'invalid_url':
-					return setError('Could not connect to your MCP server. The provided URL is invalid.');
+					return setError(
+						'Could not connect to your MCP server. The provided URL or command is invalid.',
+					);
 				case 'connection':
 				default:
 					return setError('Could not connect to your MCP server');

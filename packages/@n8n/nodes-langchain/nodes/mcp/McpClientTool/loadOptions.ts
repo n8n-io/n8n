@@ -10,10 +10,12 @@ import { connectMcpClient, getAllTools, getAuthHeaders } from './utils';
 export async function getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
 	const sseEndpoint = this.getNodeParameter('sseEndpoint') as string;
+	const protocol = this.getNodeParameter('protocol') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);
 	const client = await connectMcpClient({
 		sseEndpoint,
+		protocol,
 		headers,
 		name: node.type,
 		version: node.typeVersion,

@@ -1,6 +1,8 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Toolkit } from 'langchain/agents';
 import {
@@ -145,35 +147,49 @@ type ConnectMcpClientError =
 	| { type: 'connection'; error: Error };
 export async function connectMcpClient({
 	headers,
+	protocol,
 	sseEndpoint,
 	name,
 	version,
 }: {
 	sseEndpoint: string;
+	protocol: string;
 	headers?: Record<string, string>;
 	name: string;
 	version: number;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	try {
-		const endpoint = normalizeAndValidateUrl(sseEndpoint);
-
-		if (!endpoint.ok) {
-			return createResultError({ type: 'invalid_url', error: endpoint.error });
+		let transport;
+		if (protocol === 'stdio') {
+			// For stdio: sseEndpoint is the command string, not a URL.
+			transport = new StdioClientTransport({
+				command: sseEndpoint,
+			});
+		} else {
+			const endpoint = normalizeAndValidateUrl(sseEndpoint);
+			if (!endpoint.ok) {
+				return createResultError({ type: 'invalid_url', error: endpoint.error });
+			}
+			if (protocol === 'streamable-http') {
+				transport = new StreamableHTTPClientTransport(endpoint.result, {
+					requestInit: { headers },
+				});
+			} else {
+				transport = new SSEClientTransport(endpoint.result, {
+					eventSourceInit: {
+						fetch: async (url, init) =>
+							await fetch(url, {
+								...init,
+								headers: {
+									...headers,
+									Accept: 'text/event-stream',
+								},
+							}),
+					},
+					requestInit: { headers },
+				});
+			}
 		}
-
-		const transport = new SSEClientTransport(endpoint.result, {
-			eventSourceInit: {
-				fetch: async (url, init) =>
-					await fetch(url, {
-						...init,
-						headers: {
-							...headers,
-							Accept: 'text/event-stream',
-						},
-					}),
-			},
-			requestInit: { headers },
-		});
 
 		const client = new Client(
 			{ name, version: version.toString() },
@@ -183,7 +199,7 @@ export async function connectMcpClient({
 		await client.connect(transport);
 		return createResultOk(client);
 	} catch (error) {
-		return createResultError({ type: 'connection', error });
+		return createResultError({ type: 'connection', error: error as Error });
 	}
 }
 
