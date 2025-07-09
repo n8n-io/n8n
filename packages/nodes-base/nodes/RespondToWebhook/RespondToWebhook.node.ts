@@ -361,8 +361,7 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const hasHtmlContentType =
-				headers['content-type'] === 'type/html' ||
-				headers['content-type'] === 'application/xhtml+xml';
+				headers['content-type'] && isHtmlRenderedContentType(headers['content-type'] as string);
 
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
@@ -418,11 +417,7 @@ export class RespondToWebhook implements INodeType {
 					: items[0].json;
 			} else if (respondWith === 'text') {
 				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
-				if (
-					(headers['content-type'] &&
-						isHtmlRenderedContentType(headers['content-type'] as string)) ||
-					!headers['content-type']
-				) {
+				if (hasHtmlContentType || !headers['content-type']) {
 					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
 				} else {
 					responseBody = this.getNodeParameter('responseBody', 0) as string;
