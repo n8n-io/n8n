@@ -105,7 +105,7 @@ onBeforeUnmount(() => {
 
 const askAiEnabled = computed(() => {
 	return (
-		props.disableAskAi === false && settingsStore.isAskAiEnabled && props.language === 'javaScript'
+		props.disableAskAi !== true && settingsStore.isAskAiEnabled && props.language === 'javaScript'
 	);
 });
 
