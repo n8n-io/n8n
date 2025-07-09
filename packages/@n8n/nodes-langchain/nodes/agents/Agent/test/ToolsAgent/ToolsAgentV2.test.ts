@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { mock } from 'jest-mock-extended';
 import { AgentExecutor } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
@@ -619,5 +619,61 @@ describe('toolsAgentExecute', () => {
 			expect(mockExecutor.streamEvents).not.toHaveBeenCalled();
 			expect(result[0][0].json.output).toBe('Regular response');
 		});
+	});
+
+	it('should process items if SupplyDataContext is passed and isStreaming is not set', async () => {
+		const mockSupplyDataContext = mock<ISupplyDataFunctions>();
+
+		// @ts-expect-error isStreaming is not supported by SupplyDataFunctions, but mock object still resolves it
+		mockSupplyDataContext.isStreaming = undefined;
+
+		mockSupplyDataContext.logger = {
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		};
+
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2.2; // version where streaming is supported
+		mockSupplyDataContext.getNode.mockReturnValue(mockNode);
+		mockSupplyDataContext.getInputData.mockReturnValue([{ json: { text: 'test input 1' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockSupplyDataContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		// Mock getNodeParameter to return default values
+		mockSupplyDataContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'enableStreaming') return true;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		const mockExecutor = {
+			invoke: jest.fn().mockResolvedValueOnce({ output: { text: 'success 1' } }),
+		};
+
+		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+		const result = await toolsAgentExecute.call(mockSupplyDataContext);
+
+		expect(mockExecutor.invoke).toHaveBeenCalledTimes(1);
+		expect(result[0]).toHaveLength(1);
+		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
 	});
 });
