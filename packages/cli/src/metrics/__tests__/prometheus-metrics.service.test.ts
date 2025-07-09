@@ -5,12 +5,12 @@ import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
 import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
-import { EventMessageTypeNames } from 'n8n-workflow';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
 
