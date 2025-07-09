@@ -49,7 +49,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			try {
 				if (options?.enableStreaming) {
-					// Set up a safety timeout to ensure typing indicator disappears
 					await api.sendMessageStreaming(
 						text,
 						files,
