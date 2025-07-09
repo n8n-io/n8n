@@ -2,7 +2,7 @@
 import type { ITaskData } from 'n8n-workflow';
 import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nInfoTip } from '@n8n/design-system';
 
 const i18n = useI18n();
@@ -52,7 +52,12 @@ const runMetadata = computed(() => {
 		></span>
 	</N8nInfoTip>
 	<div v-else-if="runMetadata" :class="$style.tooltipRow">
-		<N8nInfoTip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
+		<N8nInfoTip
+			type="note"
+			:theme="theme"
+			:data-test-id="`node-run-status-${theme}`"
+			size="large"
+		/>
 		<N8nInfoTip
 			type="tooltip"
 			theme="info"

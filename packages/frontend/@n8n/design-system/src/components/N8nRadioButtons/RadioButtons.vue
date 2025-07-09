@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="Value extends string">
+<script lang="ts" setup generic="Value extends string | boolean">
 import RadioButton from './RadioButton.vue';
 
 interface RadioOption {
@@ -11,19 +11,23 @@ interface RadioButtonsProps {
 	modelValue?: Value;
 	options?: RadioOption[];
 	/** @default medium */
-	size?: 'small' | 'medium';
+	size?: 'small' | 'small-medium' | 'medium';
 	disabled?: boolean;
+	squareButtons?: boolean;
 }
 
 const props = withDefaults(defineProps<RadioButtonsProps>(), {
 	active: false,
 	disabled: false,
 	size: 'medium',
+	squareButtons: false,
 });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: Value, e: MouseEvent];
 }>();
+
+const slots = defineSlots<{ option?: ((props: RadioOption) => {}) | undefined }>();
 
 const onClick = (
 	option: { label: string; value: Value; disabled?: boolean },
@@ -43,13 +47,17 @@ const onClick = (
 	>
 		<RadioButton
 			v-for="option in options"
-			:key="option.value"
+			:key="`${option.value}`"
 			v-bind="option"
+			:value="`${option.value}`"
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
+			:square="squareButtons"
 			@click.prevent.stop="onClick(option, $event)"
-		/>
+		>
+			<slot name="option" v-bind="option" />
+		</RadioButton>
 	</div>
 </template>
 

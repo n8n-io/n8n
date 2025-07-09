@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -98,9 +97,9 @@ export class EmbeddingsOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
@@ -228,14 +227,12 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-				openAIApiKey: credentials.apiKey as string,
-				...options,
-			},
+		const embeddings = new OpenAIEmbeddings({
+			modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			openAIApiKey: credentials.apiKey as string,
+			...options,
 			configuration,
-		);
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

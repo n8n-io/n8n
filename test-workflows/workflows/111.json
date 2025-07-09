@@ -1,0 +1,148 @@
+{
+  "createdAt": "2021-03-09T10:08:44.018Z",
+  "updatedAt": "2021-10-27T11:17:13.078Z",
+  "id": "111",
+  "name": "Spreadsheet File",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "cbe7cbcd-cf83-498b-8f42-0ebff7d279ed"
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "html",
+        "options": {}
+      },
+      "name": "Spreadsheet File",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "id": "d591ad7b-d116-405a-8866-a4d5c6a4624b"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Spreadsheet File1",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        800,
+        450
+      ],
+      "id": "88b9ed84-42da-4a23-a7df-c5b83487dab1"
+    },
+    {
+      "parameters": {
+        "functionCode": "items=[\n    {\n        json:{\n            names:['test1','test12','test13','test14']\n        }\n    },\n    {\n        json:{\n            names:['test2','test22','test23','test24']\n        }\n    },\n    {\n        json:{\n            names:['test3','test32','test33','test34']\n        }\n    },\n    {\n        json:{\n            names:['test4','test42','test43','test44']\n        }\n    },\n]\nreturn items;"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "id": "1df49508-7816-408e-8aed-7ba7452d3a1f"
+    },
+    {
+      "parameters": {
+        "functionCode": "testData='PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMCIgaWQ9InNqcy1BMSI+bmFtZXMuMDwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJuYW1lcy4xIiBpZD0ic2pzLUIxIj5uYW1lcy4xPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9Im5hbWVzLjIiIGlkPSJzanMtQzEiPm5hbWVzLjI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMyIgaWQ9InNqcy1EMSI+bmFtZXMuMzwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MSIgaWQ9InNqcy1BMiI+dGVzdDE8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEyIiBpZD0ic2pzLUIyIj50ZXN0MTI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEzIiBpZD0ic2pzLUMyIj50ZXN0MTM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDE0IiBpZD0ic2pzLUQyIj50ZXN0MTQ8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDIiIGlkPSJzanMtQTMiPnRlc3QyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMiIgaWQ9InNqcy1CMyI+dGVzdDIyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMyIgaWQ9InNqcy1DMyI+dGVzdDIzPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyNCIgaWQ9InNqcy1EMyI+dGVzdDI0PC90ZD48L3RyPjx0cj48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QzIiBpZD0ic2pzLUE0Ij50ZXN0MzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzIiIGlkPSJzanMtQjQiPnRlc3QzMjwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzMiIGlkPSJzanMtQzQiPnRlc3QzMzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzQiIGlkPSJzanMtRDQiPnRlc3QzNDwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0NCIgaWQ9InNqcy1BNSI+dGVzdDQ8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQyIiBpZD0ic2pzLUI1Ij50ZXN0NDI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQzIiBpZD0ic2pzLUM1Ij50ZXN0NDM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQ0IiBpZD0ic2pzLUQ1Ij50ZXN0NDQ8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==';\nif(testData !== items[0].binary.data.data){\n  throw new Error('Error in Spreadsheet File node (write to file)');\n}\nreturn items;"
+      },
+      "name": "Function1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Verify write to file",
+      "id": "64f7019d-5fa8-456e-a640-084cd57f3ec0"
+    },
+    {
+      "parameters": {
+        "functionCode": "testData = JSON.stringify(\n[\n{\n\"names.0\": \"test1\",\n\"names.1\": \"test12\",\n\"names.2\": \"test13\",\n\"names.3\": \"test14\"\n},\n{\n\"names.0\": \"test2\",\n\"names.1\": \"test22\",\n\"names.2\": \"test23\",\n\"names.3\": \"test24\"\n},\n{\n\"names.0\": \"test3\",\n\"names.1\": \"test32\",\n\"names.2\": \"test33\",\n\"names.3\": \"test34\"\n},\n{\n\"names.0\": \"test4\",\n\"names.1\": \"test42\",\n\"names.2\": \"test43\",\n\"names.3\": \"test44\"\n}\n]);\n\nif(testData !== JSON.stringify(items.map(item => item.json))){\n  throw new Error('Error in Spreadsheet File node (read file)');\n}\nreturn items;"
+      },
+      "name": "Function2",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        950,
+        450
+      ],
+      "notes": "verify read file",
+      "id": "a5eb9e0e-922f-4156-b586-90c42bcde889"
+    }
+  ],
+  "connections": {
+    "Spreadsheet File": {
+      "main": [
+        [
+          {
+            "node": "Function1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spreadsheet File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function": {
+      "main": [
+        [
+          {
+            "node": "Spreadsheet File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spreadsheet File1": {
+      "main": [
+        [
+          {
+            "node": "Function2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

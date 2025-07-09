@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
@@ -44,7 +44,7 @@ function onClick() {
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
-				<FontAwesomeIcon icon="plus" size="lg" />
+				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
@@ -77,14 +77,6 @@ function onClick() {
 	min-width: 100px;
 	min-height: 100px;
 	cursor: pointer;
-
-	svg {
-		width: 26px !important;
-		height: 40px;
-		path {
-			fill: var(--color-foreground-xdark);
-		}
-	}
 }
 
 .label {

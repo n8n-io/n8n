@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
@@ -10,9 +11,9 @@ import {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 
 @Service()
@@ -73,6 +74,8 @@ export class WaitingForms extends WaitingWebhooks {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
@@ -136,12 +139,6 @@ export class WaitingForms extends WaitingWebhooks {
 				lastNodeExecuted = completionPage;
 			}
 		}
-
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
 
 		return await this.getWebhookExecutionData({
 			execution,

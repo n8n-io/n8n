@@ -1,67 +1,22 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="ResourceType extends Resource = Resource">
 import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
-import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
-import type { BaseTextKey } from '@/plugins/i18n';
-import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
+import type { BaseTextKey } from '@n8n/i18n';
+import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
+import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
-
-export type FolderResource = BaseFolderItem & {
-	resourceType: 'folder';
-	readOnly: boolean;
-};
-
-export type WorkflowResource = BaseResource & {
-	resourceType: 'workflow';
-	updatedAt: string;
-	createdAt: string;
-	active: boolean;
-	homeProject?: ProjectSharingData;
-	scopes?: Scope[];
-	tags?: ITag[] | string[];
-	sharedWithProjects?: ProjectSharingData[];
-	readOnly: boolean;
-	parentFolder?: FolderShortInfo;
-};
-
-export type VariableResource = BaseResource & {
-	resourceType: 'variable';
-	key?: string;
-	value?: string;
-};
-
-export type CredentialsResource = BaseResource & {
-	resourceType: 'credential';
-	updatedAt: string;
-	createdAt: string;
-	type: string;
-	homeProject?: ProjectSharingData;
-	scopes?: Scope[];
-	sharedWithProjects?: ProjectSharingData[];
-	readOnly: boolean;
-	needsSetup: boolean;
-};
-
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
-
-export type BaseFilters = {
-	search: string;
-	homeProject: string;
-	[key: string]: boolean | string | string[];
-};
 
 const route = useRoute();
 const router = useRouter();
@@ -69,23 +24,24 @@ const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const n8nLocalStorage = useN8nLocalStorage();
 
 const props = withDefaults(
 	defineProps<{
 		resourceKey: ResourceKeyType;
-		displayName?: (resource: Resource) => string;
-		resources: Resource[];
+		displayName?: (resource: ResourceType) => string;
+		resources: ResourceType[];
 		disabled: boolean;
 		initialize?: () => Promise<void>;
 		filters?: BaseFilters;
 		additionalFiltersHandler?: (
-			resource: Resource,
+			resource: ResourceType,
 			filters: BaseFilters,
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
 		showFiltersDropdown?: boolean;
-		sortFns?: Record<string, (a: Resource, b: Resource) => number>;
+		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
 		sortOptions?: string[];
 		type?: 'datatable' | 'list-full' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
@@ -99,7 +55,7 @@ const props = withDefaults(
 		hasEmptyState?: boolean;
 	}>(),
 	{
-		displayName: (resource: Resource) => resource.name || '',
+		displayName: (resource: ResourceType) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
@@ -126,12 +82,15 @@ const rowsPerPage = ref<number>(props.customPageSize);
 const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 
+// Preferred sorting and page size
+// These refs store the values that are set by the user and preserved in local storage
+const preferredPageSize = ref<number>(props.customPageSize);
+const preferredSort = ref<string>(props.sortOptions[0]);
+
 const emit = defineEmits<{
 	'update:filters': [value: BaseFilters];
 	'click:add': [event: Event];
-	'update:current-page': [page: number];
-	'update:page-size': [pageSize: number];
-	sort: [value: string];
+	'update:pagination-and-sort': [value: SortingAndPaginationUpdates];
 	'update:search': [value: string];
 }>();
 
@@ -178,7 +137,7 @@ const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
 });
 
-const filteredAndSortedResources = computed(() => {
+const filteredAndSortedResources = computed((): ResourceType[] => {
 	if (props.dontPerformSortingAndFiltering) {
 		return props.resources;
 	}
@@ -188,7 +147,11 @@ const filteredAndSortedResources = computed(() => {
 		if (filtersModel.value.homeProject && isSharedResource(resource)) {
 			matches =
 				matches &&
-				!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
+				!!(
+					'homeProject' in resource &&
+					resource.homeProject &&
+					resource.homeProject.id === filtersModel.value.homeProject
+				);
 		}
 
 		if (filtersModel.value.search) {
@@ -210,16 +173,27 @@ const filteredAndSortedResources = computed(() => {
 				if (!sortableByDate) {
 					return 0;
 				}
-				return props.sortFns.lastUpdated
-					? props.sortFns.lastUpdated(a, b)
-					: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
+
+				if ('updatedAt' in a && 'updatedAt' in b) {
+					return props.sortFns.lastUpdated
+						? props.sortFns.lastUpdated(a, b)
+						: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
+				}
+
+				return 0;
+
 			case 'lastCreated':
 				if (!sortableByDate) {
 					return 0;
 				}
-				return props.sortFns.lastCreated
-					? props.sortFns.lastCreated(a, b)
-					: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
+
+				if ('createdAt' in a && 'createdAt' in b) {
+					return props.sortFns.lastCreated
+						? props.sortFns.lastCreated(a, b)
+						: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
+				}
+
+				return 0;
 			case 'nameAsc':
 				return props.sortFns.nameAsc
 					? props.sortFns.nameAsc(a, b)
@@ -286,24 +260,15 @@ watch(
 	},
 );
 
-watch(
-	() => sortBy.value,
-	(newValue) => {
-		emit('sort', newValue);
-		sendSortingTelemetry();
-	},
-);
-
-watch(
-	() => route?.params?.projectId,
-	async () => {
-		await resetFilters();
-	},
-);
+watch([() => route.params?.projectId, () => route.name], async () => {
+	await resetFilters();
+	await loadPaginationPreferences();
+	await props.initialize();
+});
 
 // Lifecycle hooks
 onMounted(async () => {
-	await loadPaginationFromQueryString();
+	await loadPaginationPreferences();
 	await props.initialize();
 	await nextTick();
 
@@ -332,38 +297,62 @@ const focusSearchInput = () => {
 	}
 };
 
-const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find((key) => {
-		if (key === 'search') return false;
+const isFilterApplied = (key: string): boolean => {
+	if (key === 'search') return false;
 
-		if (typeof props.filters[key] === 'boolean') {
-			return props.filters[key];
-		}
+	if (typeof props.filters[key] === 'boolean') {
+		return props.filters[key];
+	}
 
-		if (Array.isArray(props.filters[key])) {
-			return props.filters[key].length > 0;
-		}
+	if (Array.isArray(props.filters[key])) {
+		return props.filters[key].length > 0;
+	}
 
-		return props.filters[key] !== '';
+	return props.filters[key] !== '';
+};
+
+const hasOnlyFiltersThatShowMoreResults = computed(() => {
+	const activeFilters = filterKeys.value.filter(isFilterApplied);
+
+	const filtersThatShowMoreResults = ['showArchived'];
+
+	return activeFilters.every((filter) => {
+		return filtersThatShowMoreResults.includes(filter);
 	});
+});
+
+const hasAppliedFilters = (): boolean => {
+	return !!filterKeys.value.find(isFilterApplied);
 };
 
 const setRowsPerPage = async (numberOfRowsPerPage: number) => {
 	rowsPerPage.value = numberOfRowsPerPage;
-	await savePaginationToQueryString();
-	emit('update:page-size', numberOfRowsPerPage);
+	await savePaginationPreferences();
+	emit('update:pagination-and-sort', {
+		pageSize: numberOfRowsPerPage,
+	});
 };
 
-const setCurrentPage = async (page: number) => {
+const setSorting = async (sort: string, persistUpdate = true) => {
+	sortBy.value = sort;
+	if (persistUpdate) {
+		await savePaginationPreferences();
+	}
+	emit('update:pagination-and-sort', {
+		sort,
+	});
+	sendSortingTelemetry();
+};
+
+const setCurrentPage = async (page: number, persistUpdate = true) => {
 	currentPage.value = page;
-	await savePaginationToQueryString();
-	emit('update:current-page', page);
+	if (persistUpdate) {
+		await savePaginationPreferences();
+	}
+	emit('update:pagination-and-sort', {
+		page,
+	});
 };
-
-defineExpose({
-	currentPage,
-	setCurrentPage,
-});
 
 const sendFiltersTelemetry = (source: string) => {
 	// Prevent sending multiple telemetry events when resetting filters
@@ -409,7 +398,7 @@ const resetFilters = async () => {
 	});
 
 	// Reset the current page
-	await setCurrentPage(1);
+	await setCurrentPage(1, false);
 
 	resettingFilters.value = true;
 	hasFilters.value = false;
@@ -452,7 +441,10 @@ const findNearestPageSize = (size: number): number => {
 	);
 };
 
-const savePaginationToQueryString = async () => {
+/**
+ * Saves the current pagination preferences to local storage and updates the URL query parameters.
+ */
+const savePaginationPreferences = async () => {
 	// For now, only available for paginated lists
 	if (props.type !== 'list-paginated') {
 		return;
@@ -466,38 +458,95 @@ const savePaginationToQueryString = async () => {
 		delete currentQuery.page;
 	}
 
-	if (rowsPerPage.value !== props.customPageSize) {
+	// Only update sort & page size if they are different from the default values
+	// otherwise, remove them from the query
+	if (rowsPerPage.value !== preferredPageSize.value) {
 		currentQuery.pageSize = rowsPerPage.value.toString();
+		preferredPageSize.value = rowsPerPage.value;
 	} else {
 		delete currentQuery.pageSize;
 	}
+
+	if (sortBy.value !== preferredSort.value) {
+		currentQuery.sort = sortBy.value;
+		preferredSort.value = sortBy.value;
+	} else {
+		delete currentQuery.sort;
+	}
+
+	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
+		(route.params.projectId as string) ?? '',
+		'workflows',
+		{
+			sort: sortBy.value,
+			pageSize: rowsPerPage.value,
+		},
+	);
 
 	await router.replace({
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
 
-const loadPaginationFromQueryString = async () => {
+/**
+ * Loads the pagination preferences from local storage or URL query parameter
+ * Current page is only saved in the URL query parameters
+ * Page size and sort are saved both in local storage and URL query parameters, with query parameters taking precedence
+ */
+const loadPaginationPreferences = async () => {
 	// For now, only available for paginated lists
 	if (props.type !== 'list-paginated') {
 		return;
 	}
-	const query = router.currentRoute.value.query;
+	const query = route.query;
+	// For now, only load workflow list preferences from local storage
+	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
+		(route.params.projectId as string) ?? '',
+		'workflows',
+	);
+
+	const emitPayload: SortingAndPaginationUpdates = {};
 
 	if (query.page) {
-		await setCurrentPage(parseInt(query.page as string, 10));
+		const newPage = parseInt(query.page as string, 10);
+		if (newPage > 1) {
+			currentPage.value = newPage;
+			emitPayload.page = newPage;
+		}
 	}
 
-	if (query.pageSize) {
-		const parsedSize = parseInt(query.pageSize as string, 10);
+	if (query.pageSize ?? localStorageValues.pageSize) {
+		const parsedSize = parseInt(
+			(query.pageSize as string) || String(localStorageValues.pageSize),
+			10,
+		);
 		// Round to the nearest available page size, this will prevent users from passing arbitrary values
-		await setRowsPerPage(findNearestPageSize(parsedSize));
+		const newPageSize = findNearestPageSize(parsedSize);
+		rowsPerPage.value = newPageSize;
+		emitPayload.pageSize = newPageSize;
+		preferredPageSize.value = newPageSize;
+	} else {
+		rowsPerPage.value = props.customPageSize;
+		emitPayload.pageSize = props.customPageSize;
 	}
 
 	if (query.sort) {
-		sortBy.value = query.sort as string;
+		// Update the sortBy value and emit the event based on the query parameter
+		sortBy.value = emitPayload.sort = preferredSort.value = query.sort as string;
+	} else if (localStorageValues.sort) {
+		await setSorting(localStorageValues.sort, false);
+		emitPayload.sort = localStorageValues.sort;
+		preferredSort.value = localStorageValues.sort;
+	} else {
+		sortBy.value = props.sortOptions[0];
 	}
+	emit('update:pagination-and-sort', emitPayload);
 };
+
+defineExpose({
+	currentPage,
+	setCurrentPage,
+});
 </script>
 
 <template>
@@ -556,7 +605,12 @@ const loadPaginationFromQueryString = async () => {
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" size="small" data-test-id="resources-list-sort">
+								<n8n-select
+									v-model="sortBy"
+									size="small"
+									data-test-id="resources-list-sort"
+									@change="setSorting(sortBy)"
+								>
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
@@ -588,9 +642,18 @@ const loadPaginationFromQueryString = async () => {
 
 					<slot name="callout"></slot>
 
-					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
+					<div
+						v-if="showFiltersDropdown"
+						v-show="hasFilters"
+						class="mt-xs"
+						data-test-id="resources-list-filters-applied-info"
+					>
 						<n8n-info-tip :bold="false">
-							{{ i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey) }}
+							{{
+								hasOnlyFiltersThatShowMoreResults
+									? i18n.baseText(`${resourceKey}.filters.active.shortText` as BaseTextKey)
+									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
+							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
 								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
 							</n8n-link>
@@ -617,14 +680,18 @@ const loadPaginationFromQueryString = async () => {
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
-						item-key="id"
+						:item-key="'id'"
 					>
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :update-item-size="updateItemSize" />
 						</template>
 					</n8n-recycle-scroller>
 					<!-- PAGINATED LIST -->
-					<div v-else-if="type === 'list-paginated'" :class="$style.paginatedListWrapper">
+					<div
+						v-else-if="type === 'list-paginated'"
+						:class="$style.paginatedListWrapper"
+						data-test-id="paginated-list"
+					>
 						<div :class="$style.listItems">
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">

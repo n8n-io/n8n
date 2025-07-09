@@ -10,10 +10,9 @@ import {
 } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
@@ -21,9 +20,8 @@ const props = defineProps<{
 	nodeTypeDescription: INodeTypeDescription | null;
 }>();
 
-const router = useRouter();
 const clipboard = useClipboard();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const toast = useToast();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -190,7 +188,7 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
+			<n8n-icon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>

@@ -1,11 +1,21 @@
+import type { Logger } from '@n8n/backend-common';
+import { randomName, mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import {
+	InstalledNodes,
+	InstalledPackages,
+	InstalledNodesRepository,
+	InstalledPackagesRepository,
+} from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import { mkdir, readFile, writeFile, rm, access, constants } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { PackageDirectoryLoader } from 'n8n-core';
+import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'node:path';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -13,17 +23,13 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import { InstalledNodes } from '@/databases/entities/installed-nodes';
-import { InstalledPackages } from '@/databases/entities/installed-packages';
-import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
-import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
-import { randomName } from '@test-integration/random';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
 jest.mock('fs/promises');
@@ -45,39 +51,49 @@ describe('CommunityPackagesService', () => {
 			communityPackages: {
 				reinstallMissing: false,
 				registry: 'some.random.host',
+				unverifiedEnabled: true,
 			},
 		},
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
-
-	const nodeName = randomName();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
-	installedNodesRepository.create.mockImplementation(() => {
-		return Object.assign(new InstalledNodes(), {
-			name: nodeName,
-			type: nodeName,
-			latestVersion: COMMUNITY_NODE_VERSION.CURRENT.toString(),
-			packageName: 'test',
-		});
-	});
-
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
-	installedPackageRepository.create.mockImplementation(() => {
-		return Object.assign(new InstalledPackages(), {
-			packageName: mockPackageName(),
-			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
-		});
-	});
+
+	const nodesDownloadDir = '/tmp/n8n-jest-global-downloads';
+	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
+
+	const logger = mock<Logger>();
+	const publisher = mock<Publisher>();
 
 	const communityPackagesService = new CommunityPackagesService(
-		mock(),
-		mock(),
-		mock(),
+		instanceSettings,
+		logger,
+		installedPackageRepository,
 		loadNodesAndCredentials,
-		mock(),
+		publisher,
 		license,
 		globalConfig,
 	);
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+		const nodeName = randomName();
+		installedNodesRepository.create.mockImplementation(() => {
+			return Object.assign(new InstalledNodes(), {
+				name: nodeName,
+				type: nodeName,
+				latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
+			});
+		});
+		installedPackageRepository.create.mockImplementation(() => {
+			return Object.assign(new InstalledPackages(), {
+				packageName: mockPackageName(),
+				installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
+			});
+		});
+	});
 
 	describe('parseNpmPackageName()', () => {
 		test('should fail with empty package name', () => {
@@ -128,9 +144,7 @@ describe('CommunityPackagesService', () => {
 
 	describe('executeCommand()', () => {
 		beforeEach(() => {
-			mocked(fsAccess).mockReset();
-			mocked(fsMkdir).mockReset();
-			mocked(exec).mockReset();
+			mocked(exec).mockImplementation(execMock);
 		});
 
 		test('should call command with valid options', async () => {
@@ -147,31 +161,15 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toBeCalledTimes(0);
 		});
 
 		test('should make sure folder exists', async () => {
 			mocked(exec).mockImplementation(execMock);
 
 			await communityPackagesService.executeNpmCommand('ls');
-			expect(fsAccess).toHaveBeenCalled();
+
 			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toBeCalledTimes(0);
-		});
-
-		test('should try to create folder if it does not exist', async () => {
-			mocked(exec).mockImplementation(execMock);
-			mocked(fsAccess).mockImplementation(() => {
-				throw new Error('Folder does not exist.');
-			});
-
-			await communityPackagesService.executeNpmCommand('ls');
-
-			expect(fsAccess).toHaveBeenCalled();
-			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toHaveBeenCalled();
 		});
 
 		test('should throw especial error when package is not found', async () => {
@@ -187,9 +185,7 @@ describe('CommunityPackagesService', () => {
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
-			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toHaveBeenCalledTimes(0);
 		});
 	});
 
@@ -375,68 +371,325 @@ describe('CommunityPackagesService', () => {
 		Object.assign(communityPackagesService, { missingPackages });
 	};
 
-	describe('updateNpmModule', () => {
-		const installedPackage = mock<InstalledPackages>({ packageName: mockPackageName() });
-		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
-			loadedNodes: [{ name: nodeName, version: 1 }],
+	describe('updatePackage', () => {
+		const PACKAGE_NAME = 'n8n-nodes-test';
+		const installedPackageForUpdateTest = mock<InstalledPackages>({
+			packageName: PACKAGE_NAME,
 		});
 
-		beforeEach(async () => {
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
+		});
+
+		const testBlockDownloadDir = instanceSettings.nodesDownloadDir;
+		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
+		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
+		const testBlockRegistry = globalConfig.nodes.communityPackages.registry;
+		const testBlockNpmInstallArgs = [
+			'--audit=false',
+			'--fund=false',
+			'--bin-links=false',
+			'--install-strategy=shallow',
+			'--ignore-scripts=true',
+			'--package-lock=false',
+			`--registry=${testBlockRegistry}`,
+		].join(' ');
+
+		const execMockForThisBlock = (command: string, optionsOrCallback: any, callback?: any) => {
+			const actualCallback = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+			if (command.startsWith('npm pack') && command.includes(PACKAGE_NAME)) {
+				actualCallback(null, { stdout: testBlockTarballName, stderr: '' });
+			} else {
+				actualCallback(null, 'Done', '');
+			}
+		};
+
+		beforeEach(() => {
 			jest.clearAllMocks();
 
+			mocked(exec).mockImplementation(execMockForThisBlock as typeof exec);
+
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: '1.0.0', // Mocked version from package.json inside tarball
+					dependencies: { 'some-actual-dep': '1.2.3' },
+					devDependencies: { 'a-dev-dep': '1.0.0' },
+					peerDependencies: { 'a-peer-dep': '2.0.0' },
+					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+				}),
+			);
+			mocked(writeFile).mockResolvedValue(undefined);
+
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
-			mocked(exec).mockImplementation(execMock);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+			installedPackageRepository.remove.mockResolvedValue(undefined as any);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				installedPackageForUpdateTest,
+			);
+
+			publisher.publishCommand.mockResolvedValue(undefined);
 		});
 
-		test('should call `exec` with the correct command and registry', async () => {
-			//
+		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
-			//
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-			//
 			// ACT
-			//
-			await communityPackagesService.updatePackage(installedPackage.packageName, installedPackage);
+			await communityPackagesService.updatePackage(
+				installedPackageForUpdateTest.packageName,
+				installedPackageForUpdateTest,
+			);
 
-			//
-			// ASSERT
-			//
+			// ASSERT:
+			expect(rm).toHaveBeenCalledTimes(2);
+			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
+			expect(rm).toHaveBeenNthCalledWith(2, `${nodesDownloadDir}/n8n-nodes-test-latest.tgz`);
 
-			expect(exec).toHaveBeenCalledTimes(1);
+			expect(exec).toHaveBeenCalledTimes(3);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`npm install ${installedPackage.packageName}@latest --registry=some.random.host`,
-				expect.any(Object),
+				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
+				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
-			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(
-				installedPackage.packageName,
+
+			expect(exec).toHaveBeenNthCalledWith(
+				2,
+				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
+				{ cwd: testBlockDownloadDir },
+				expect.any(Function),
 			);
-			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(
-				installedPackage.packageName,
+
+			expect(exec).toHaveBeenNthCalledWith(
+				3,
+				`npm install ${testBlockNpmInstallArgs}`,
+				{ cwd: testBlockPackageDir },
+				expect.any(Function),
+			);
+
+			expect(mkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
+			expect(readFile).toHaveBeenCalledWith(`${testBlockPackageDir}/package.json`, 'utf-8');
+			expect(writeFile).toHaveBeenCalledWith(
+				`${testBlockPackageDir}/package.json`,
+				JSON.stringify(
+					{
+						name: PACKAGE_NAME,
+						version: '1.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+					},
+					null,
+					2,
+				),
+				'utf-8',
+			);
+
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
+
+			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackageForUpdateTest);
+			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
+				packageDirectoryLoader,
+			);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-update',
+				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
+			});
+		});
+
+		test('should throw when not licensed for custom registry if custom registry is different from default', async () => {
+			// ARRANGE
+			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
+
+			// ACT & ASSERT
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow(
+				new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY),
+			);
+		});
+	});
+
+	describe('installPackage', () => {
+		test('should throw when installation of not vetted packages is forbidden', async () => {
+			globalConfig.nodes.communityPackages.unverifiedEnabled = false;
+			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
+			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
+				'Installation of unverified community packages is forbidden!',
+			);
+		});
+	});
+
+	describe('ensurePackageJson', () => {
+		const packageJsonPath = join(nodesDownloadDir, 'package.json');
+
+		test('should not create package.json if it already exists', async () => {
+			mocked(access).mockResolvedValue(undefined);
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).not.toHaveBeenCalled();
+			expect(writeFile).not.toHaveBeenCalled();
+		});
+
+		test('should create package.json if it does not exist', async () => {
+			mocked(access).mockRejectedValue(new Error('ENOENT'));
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
+			expect(writeFile).toHaveBeenCalledWith(
+				packageJsonPath,
+				JSON.stringify(
+					{
+						name: 'installed-nodes',
+						private: true,
+						dependencies: {},
+					},
+					null,
+					2,
+				),
+				'utf-8',
+			);
+		});
+	});
+
+	describe('checkForMissingPackages', () => {
+		const installedPackage1 = mock<InstalledPackages>({
+			packageName: 'package-1',
+			installedVersion: '1.0.0',
+			installedNodes: [{ type: 'node-type-1' }],
+		});
+		const installedPackage2 = mock<InstalledPackages>({
+			packageName: 'package-2',
+			installedVersion: '2.0.0',
+			installedNodes: [{ type: 'node-type-2' }],
+		});
+
+		beforeEach(() => {
+			jest
+				.spyOn(communityPackagesService, 'installPackage')
+				.mockResolvedValue({} as InstalledPackages);
+		});
+
+		test('should set missingPackages to empty array when no packages are missing', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.missingPackages).toEqual([]);
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+		});
+
+		test('should identify missing packages without reinstalling when reinstallMissing is false', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockImplementation(
+				(nodeType) => nodeType === 'node-type-2',
+			);
+			globalConfig.nodes.communityPackages.reinstallMissing = false;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test('should reinstall missing packages when reinstallMissing is true', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+			expect(communityPackagesService.missingPackages).toEqual([]);
+			expect(logger.info).toHaveBeenCalledWith(
+				'Packages reinstalled successfully. Resuming regular initialization.',
 			);
 		});
 
-		test('should throw when not licensed', async () => {
-			//
-			// ARRANGE
-			//
-			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
+		test('should handle failed reinstallations and record missing packages', async () => {
+			const installedPackages = [installedPackage1];
 
-			//
-			// ACT
-			//
-			const promise = communityPackagesService.updatePackage(
-				installedPackage.packageName,
-				installedPackage,
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+			communityPackagesService.installPackage = jest
+				.fn()
+				.mockRejectedValue(new Error('Installation failed'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
+			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
+		});
+
+		test('should handle multiple missing packages and stop reinstalling after first failure', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			globalConfig.nodes.communityPackages.reinstallMissing = true;
+
+			// First installation succeeds, second fails
+			communityPackagesService.installPackage = jest
+				.fn()
+				.mockResolvedValueOnce({} as InstalledPackages)
+				.mockRejectedValueOnce(new Error('Installation failed'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-2', '2.0.0');
+			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
+			expect(communityPackagesService.missingPackages).toEqual(['package-2@2.0.0']);
+		});
+	});
+
+	describe('updatePackageJsonDependency', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+		});
+
+		test('should update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			expect(writeFile).toHaveBeenCalledWith(
+				`${nodesDownloadDir}/package.json`,
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
 			);
+		});
 
-			//
-			// ASSERT
-			//
-			await expect(promise).rejects.toThrow(
-				'Your license does not allow for feat:communityNodes:customRegistry.',
+		test('should create file and update package dependencies', async () => {
+			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
+
+			expect(writeFile).toHaveBeenCalledWith(
+				`${nodesDownloadDir}/package.json`,
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				'utf-8',
 			);
 		});
 	});

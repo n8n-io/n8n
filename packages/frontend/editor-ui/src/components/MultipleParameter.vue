@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { useNDVStore } from '@/stores/ndv.store';
+import { storeToRefs } from 'pinia';
 
 defineOptions({ name: 'MultipleParameter' });
 
@@ -31,7 +32,10 @@ const emit = defineEmits<{
 	valueChanged: [parameterData: IUpdateInformation];
 }>();
 
+const ndvStore = useNDVStore();
 const i18n = useI18n();
+
+const { activeNode } = storeToRefs(ndvStore);
 
 const mutableValues = ref<INodeParameters[]>(deepCopy(props.values));
 
@@ -48,7 +52,7 @@ const addButtonText = computed(() => {
 		return i18n.baseText('multipleParameter.addItem');
 	}
 
-	return i18n.nodeText().multipleValueButtonText(props.parameter);
+	return i18n.nodeText(activeNode.value?.type).multipleValueButtonText(props.parameter);
 });
 
 const hideDelete = computed(() => props.parameter.options?.length === 1);
@@ -108,8 +112,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 <template>
 	<div class="duplicate-parameter" @keydown.stop>
 		<N8nInputLabel
-			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
+			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+			:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 			:underline="true"
 			size="small"
 			color="text-dark"
@@ -122,22 +126,22 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			:class="parameter.type"
 		>
 			<div v-if="!isReadOnly" class="delete-item clickable">
-				<FontAwesomeIcon
-					icon="trash"
+				<N8nIcon
+					icon="trash-2"
 					:title="i18n.baseText('multipleParameter.deleteItem')"
 					@click="deleteItem(index)"
 				/>
 				<div v-if="sortable">
-					<FontAwesomeIcon
+					<N8nIcon
 						v-if="index !== 0"
-						icon="angle-up"
+						icon="chevron-up"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveUp')"
 						@click="moveOptionUp(index)"
 					/>
-					<FontAwesomeIcon
+					<N8nIcon
 						v-if="index !== mutableValues.length - 1"
-						icon="angle-down"
+						icon="chevron-down"
 						class="clickable"
 						:title="i18n.baseText('multipleParameter.moveDown')"
 						@click="moveOptionDown(index)"

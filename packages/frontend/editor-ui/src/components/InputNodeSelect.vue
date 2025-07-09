@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -35,19 +35,20 @@ const selectedInputNodeType = computed(() => {
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 });
 
-const inputNodes = computed(() =>
-	props.nodes
-		.map((node) => {
-			const fullNode = workflowsStore.getNodeByName(node.name);
-			if (!fullNode) return null;
+const inputNodes = computed(
+	() =>
+		props.nodes
+			?.map((node) => {
+				const fullNode = workflowsStore.getNodeByName(node.name);
+				if (!fullNode) return null;
 
-			return {
-				node: fullNode,
-				type: nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion),
-				depth: node.depth,
-			};
-		})
-		.filter(isPresent),
+				return {
+					node: fullNode,
+					type: nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion),
+					depth: node.depth,
+				};
+			})
+			.filter(isPresent) ?? [],
 );
 
 const activeNode = computed(() => ndvStore.activeNode);

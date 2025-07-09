@@ -27,7 +27,7 @@ import {
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
 
@@ -61,6 +61,8 @@ export const mockNodeTypeDescription = ({
 	codex = undefined,
 	properties = [],
 	group,
+	hidden,
+	description,
 }: {
 	name?: INodeTypeDescription['name'];
 	icon?: INodeTypeDescription['icon'];
@@ -71,12 +73,14 @@ export const mockNodeTypeDescription = ({
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 	group?: INodeTypeDescription['group'];
+	hidden?: INodeTypeDescription['hidden'];
+	description?: INodeTypeDescription['description'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
 		displayName: name,
-		description: '',
+		description: description ?? '',
 		version,
 		defaults: {
 			name,
@@ -92,6 +96,8 @@ export const mockNodeTypeDescription = ({
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
+		parameterPane: undefined,
+		hidden,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
@@ -171,6 +177,7 @@ export function createTestWorkflow({
 	nodes = [],
 	connections = {},
 	active = false,
+	isArchived = false,
 	settings = {
 		timezone: 'DEFAULT',
 		executionOrder: 'v1',
@@ -186,6 +193,7 @@ export function createTestWorkflow({
 		nodes,
 		connections,
 		active,
+		isArchived,
 		settings,
 		versionId: '1',
 		meta: {},
@@ -213,6 +221,8 @@ export function createMockEnterpriseSettings(
 		sharing: false,
 		ldap: false,
 		saml: false,
+		oidc: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: false,
@@ -235,7 +245,7 @@ export function createMockEnterpriseSettings(
 	};
 }
 
-export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
+export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskData {
 	return {
 		startTime: 0,
 		executionTime: 1,
@@ -244,5 +254,25 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 		executionStatus: 'success',
 		data: { main: [[{ json: {} }]] },
 		...partialData,
+	};
+}
+
+export function createTestWorkflowExecutionResponse(
+	data: Partial<IExecutionResponse> = {},
+): IExecutionResponse {
+	return {
+		id: 'test-exec-id',
+		finished: true,
+		mode: 'manual',
+		status: 'error',
+		workflowData: createTestWorkflow(),
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+		createdAt: '2025-04-16T00:00:00.000Z',
+		startedAt: '2025-04-16T00:00:01.000Z',
+		...data,
 	};
 }

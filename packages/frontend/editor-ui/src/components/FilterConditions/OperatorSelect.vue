@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
@@ -136,7 +136,6 @@ function onGroupSelect(group: string) {
 	align-items: center;
 	justify-content: space-between;
 	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-regular);
 	color: var(--color-text-dark);
 	padding: var(--spacing-2xs) var(--spacing-s);

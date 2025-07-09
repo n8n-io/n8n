@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/azurecosmosdb/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.azureCosmosDb/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.azurecosmosdb/"
 			}
 		]
 	}

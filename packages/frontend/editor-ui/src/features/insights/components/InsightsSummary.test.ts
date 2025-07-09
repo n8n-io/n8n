@@ -17,6 +17,7 @@ const renderComponent = createComponentRenderer(InsightsSummary, {
 			'router-link': {
 				template: '<a><slot /></a>',
 			},
+			N8nIcon: true,
 		},
 	},
 });
@@ -27,6 +28,7 @@ describe('InsightsSummary', () => {
 			renderComponent({
 				props: {
 					summary: [],
+					timeRange: 'week',
 				},
 			}),
 		).not.toThrow();
@@ -95,6 +97,7 @@ describe('InsightsSummary', () => {
 		const { html } = renderComponent({
 			props: {
 				summary,
+				timeRange: 'week',
 			},
 		});
 

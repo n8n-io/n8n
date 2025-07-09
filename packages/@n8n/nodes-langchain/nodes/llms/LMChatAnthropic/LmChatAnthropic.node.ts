@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
@@ -12,11 +10,12 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { searchModels } from './methods/searchModels';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { searchModels } from './methods/searchModels';
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -81,7 +80,7 @@ export class LmChatAnthropic implements INodeType {
 
 	description: INodeTypeDescription = {
 		displayName: 'Anthropic Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
@@ -106,9 +105,9 @@ export class LmChatAnthropic implements INodeType {
 			},
 			alias: ['claude', 'sonnet', 'opus'],
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -154,8 +153,8 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-3-7-sonnet-20250219',
-					cachedResultName: 'Claude 3.7 Sonnet',
+					value: 'claude-sonnet-4-20250514',
+					cachedResultName: 'Claude 4 Sonnet',
 				},
 				required: true,
 				modes: [
@@ -266,8 +265,10 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('anthropicApi');
-
+		const credentials = await this.getCredentials<{ url?: string; apiKey?: string }>(
+			'anthropicApi',
+		);
+		const baseURL = credentials.url ?? 'https://api.anthropic.com';
 		const version = this.getNode().typeVersion;
 		const modelName =
 			version >= 1.3
@@ -317,8 +318,9 @@ export class LmChatAnthropic implements INodeType {
 		}
 
 		const model = new ChatAnthropic({
-			anthropicApiKey: credentials.apiKey as string,
-			modelName,
+			anthropicApiKey: credentials.apiKey,
+			model: modelName,
+			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			topK: options.topK,
@@ -326,6 +328,11 @@ export class LmChatAnthropic implements INodeType {
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
+			clientOptions: {
+				fetchOptions: {
+					dispatcher: getProxyAgent(baseURL),
+				},
+			},
 		});
 
 		return {

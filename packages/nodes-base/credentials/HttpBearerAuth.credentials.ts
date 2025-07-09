@@ -36,7 +36,7 @@ export class HttpBearerAuth implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: 'Bearer ={{$credentials.token}}',
+				Authorization: '=Bearer {{$credentials.token}}',
 			},
 		},
 	};

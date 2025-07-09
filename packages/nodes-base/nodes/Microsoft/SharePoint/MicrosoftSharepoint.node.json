@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.microsoftSharePoint",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["ECM"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftsharepoint/"
+			}
+		]
+	}
+}

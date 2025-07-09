@@ -1,10 +1,10 @@
 <script lang="ts">
 import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { defineComponent } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export default defineComponent({
 	name: 'EventSelection',
@@ -85,7 +85,7 @@ export default defineComponent({
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
 				>
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ groupLabelInfo(group.name) }}
 					</template>
@@ -100,7 +100,7 @@ export default defineComponent({
 			>
 				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>

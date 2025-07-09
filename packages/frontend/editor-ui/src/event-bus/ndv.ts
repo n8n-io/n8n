@@ -16,6 +16,10 @@ export interface NdvEventBusEvents {
 	setPositionByName: Position;
 
 	updateParameterValue: IUpdateInformation;
+
+	updateInputNodeName: string | undefined;
+
+	setInputBranchIndex: number;
 }
 
 export const ndvEventBus = createEventBus<NdvEventBusEvents>();

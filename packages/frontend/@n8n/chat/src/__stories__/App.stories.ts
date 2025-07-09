@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryObj } from '@storybook/vue3';
 import { onMounted } from 'vue';
 
@@ -25,7 +24,7 @@ const meta = {
 	tags: ['autodocs'],
 };
 
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default meta;
 type Story = StoryObj<typeof meta>;
 

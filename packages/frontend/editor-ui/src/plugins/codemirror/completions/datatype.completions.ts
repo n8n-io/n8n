@@ -1,5 +1,5 @@
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
@@ -9,7 +9,7 @@ import type {
 	CompletionResult,
 	CompletionSection,
 } from '@codemirror/autocomplete';
-import { uniqBy } from 'lodash-es';
+import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
 import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
@@ -1234,7 +1234,7 @@ const createLuxonAutocompleteOption = ({
 	const label = isFunction ? name + '()' : name;
 
 	let doc: DocMetadata | undefined;
-	if (docs.properties && docs.properties.hasOwnProperty(name)) {
+	if (docs.properties?.hasOwnProperty(name)) {
 		doc = docs.properties[name].doc;
 	} else if (docs.functions.hasOwnProperty(name)) {
 		doc = docs.functions[name].doc;

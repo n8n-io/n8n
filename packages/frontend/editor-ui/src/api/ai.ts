@@ -1,10 +1,28 @@
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
-import type { ICredentialsResponse, IRestApiContext } from '@/Interface';
+import type { ICredentialsResponse } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
-import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
+
+export function chatWithBuilder(
+	ctx: IRestApiContext,
+	payload: ChatRequest.RequestPayload,
+	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
+	onDone: () => void,
+	onError: (e: Error) => void,
+): void {
+	void streamRequest<ChatRequest.ResponsePayload>(
+		ctx,
+		'/ai/build',
+		payload,
+		onMessageUpdated,
+		onDone,
+		onError,
+	);
+}
 
 export function chatWithAssistant(
 	ctx: IRestApiContext,

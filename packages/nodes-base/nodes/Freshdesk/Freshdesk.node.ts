@@ -18,25 +18,21 @@ import {
 	// validateJSON,
 } from './GenericFunctions';
 
-const Statuses = {
+const Status = {
 	Open: 2,
 	Pending: 3,
 	Resolved: 4,
 	Closed: 5,
 } as const;
 
-type Status = (typeof Statuses)[keyof typeof Statuses];
-
-const Priorities = {
+const Priority = {
 	Low: 1,
 	Medium: 2,
 	High: 3,
 	Urgent: 4,
 } as const;
 
-type Priority = (typeof Priorities)[keyof typeof Priorities];
-
-const Sources = {
+const Source = {
 	Email: 1,
 	Portal: 2,
 	Phone: 3,
@@ -46,7 +42,13 @@ const Sources = {
 	OutboundEmail: 10,
 } as const;
 
-type Source = (typeof Sources)[keyof typeof Sources];
+type StatusKey = keyof typeof Status;
+type PriorityKey = keyof typeof Priority;
+type SourceKey = keyof typeof Source;
+
+type StatusValue = (typeof Status)[keyof typeof Status];
+type PriorityValue = (typeof Priority)[keyof typeof Priority];
+type SourceValue = (typeof Source)[keyof typeof Source];
 
 interface ICreateTicketBody {
 	name?: string;
@@ -58,8 +60,8 @@ interface ICreateTicketBody {
 	unique_external_id?: string;
 	subject?: string | null;
 	type?: string;
-	status?: Status;
-	priority?: Priority;
+	status?: StatusValue;
+	priority?: PriorityValue;
 	description?: string;
 	responder_id?: number;
 	cc_emails?: [string];
@@ -69,7 +71,7 @@ interface ICreateTicketBody {
 	fr_due_by?: string;
 	group_id?: number;
 	product_id?: number;
-	source?: Source;
+	source?: SourceValue;
 	tags?: [string];
 	company_id?: number;
 }
@@ -1114,12 +1116,9 @@ export class Freshdesk implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 						const body: ICreateTicketBody = {
-							// @ts-ignore
-							status: Status[capitalize(status)],
-							// @ts-ignore
-							priority: Priority[capitalize(priority)],
-							// @ts-ignore
-							source: Source[capitalize(source)],
+							status: Status[capitalize(status) as StatusKey],
+							priority: Priority[capitalize(priority) as PriorityKey],
+							source: Source[capitalize(source) as SourceKey],
 						};
 
 						if (requester === 'requesterId') {

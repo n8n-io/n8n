@@ -94,6 +94,7 @@ declare global {
 	function $min(...numbers: number[]): number;
 	function $max(...numbers: number[]): number;
 	function $evaluateExpression(expression: string): any;
+	function $getWorkflowStaticData(type: 'global' | 'node'): N8nJson;
 
 	type SomeOtherString = string & NonNullable<unknown>;
 	// @ts-expect-error NodeName is created dynamically

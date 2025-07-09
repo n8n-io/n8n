@@ -4,7 +4,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes

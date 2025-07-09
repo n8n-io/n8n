@@ -9,6 +9,7 @@ import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
 	TEST_NODE_SINGLE_MODE,
+	TEST_PARAMETER_ADD_RESOURCE,
 	TEST_PARAMETER_MULTI_MODE,
 	TEST_PARAMETER_SINGLE_MODE,
 } from './ResourceLocator.test.constants';
@@ -133,6 +134,69 @@ describe('ResourceLocator', () => {
 		});
 	});
 
+	it('renders add resource button', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_ADD_RESOURCE,
+				path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+				node: TEST_NODE_SINGLE_MODE,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		expect(getByTestId(`resource-locator-${TEST_PARAMETER_ADD_RESOURCE.name}`)).toBeInTheDocument();
+		// Click on the input to open it
+		await userEvent.click(getByTestId('rlc-input'));
+		// Expect the button to create a new resource to be rendered
+		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
+	});
+
+	it('creates new resource passing search filter as name', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_ADD_RESOURCE,
+				path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+				node: TEST_NODE_SINGLE_MODE,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		// Click on the input to open it
+		await userEvent.click(getByTestId('rlc-input'));
+		// Type in the input to name the resource
+		await userEvent.type(getByTestId('rlc-search'), 'Test Resource');
+		// Click on the add resource button
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(nodeTypesStore.getNodeParameterActionResult).toHaveBeenCalledWith({
+			nodeTypeAndVersion: {
+				name: TEST_NODE_SINGLE_MODE.type,
+				version: TEST_NODE_SINGLE_MODE.typeVersion,
+			},
+			path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+			currentNodeParameters: expect.any(Object),
+			credentials: TEST_NODE_SINGLE_MODE.credentials,
+			handler: 'testAddResource',
+			payload: {
+				name: 'Test Resource',
+			},
+		});
+	});
+
 	// Testing error message deduplication
 	describe('ResourceLocator credentials error handling', () => {
 		it.each([
@@ -228,5 +292,45 @@ describe('ResourceLocator', () => {
 
 			expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 		});
+	});
+
+	it('switches to expression when user enters "{{ "', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: '', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		const expression = new DataTransfer();
+		// '{' is an escape character: '{{{{' === '{{'
+		expression.setData('text', '{{ ');
+		await userEvent.clear(input);
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '={{  }}',
+				},
+			],
+		]);
+	});
+
+	it('can switch between modes', async () => {
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.click(getByTestId('rlc-mode-selector'));
+		await userEvent.click(screen.getByTestId('mode-id'));
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: 'test',
+				},
+			],
+		]);
 	});
 });

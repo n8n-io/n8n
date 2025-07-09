@@ -3,7 +3,7 @@ import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref, useCssModule } from 'vue';
 import type { CanvasNodeDefaultRender } from '@/types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	add: [];

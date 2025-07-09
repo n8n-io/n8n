@@ -1,24 +1,19 @@
 import type { RunningJobSummary } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	WorkflowHasIssuesError,
-	InstanceSettings,
-	WorkflowExecute,
-	ErrorReporter,
-	Logger,
-} from 'n8n-core';
+import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -31,6 +26,7 @@ import type {
 	JobResult,
 	RespondToWebhookMessage,
 	RunningJob,
+	SendChunkMessage,
 } from './scaling.types';
 
 /**
@@ -42,7 +38,6 @@ export class JobProcessor {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly errorReporter: ErrorReporter,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -77,6 +72,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 
@@ -126,6 +122,7 @@ export class JobProcessor {
 			undefined,
 			executionTimeoutTimestamp,
 		);
+		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;
 
@@ -156,21 +153,40 @@ export class JobProcessor {
 			await job.progress(msg);
 		});
 
+		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
+			const msg: SendChunkMessage = {
+				kind: 'send-chunk',
+				executionId,
+				chunkText: chunk,
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(msg);
+		});
+
 		additionalData.executionId = executionId;
 
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
 				`Queued worker execution status for execution ${executionId} (job ${job.id}) is "${status}"`,
+				{
+					executionId,
+					workflowId,
+					jobId: job.id,
+				},
 			);
 		};
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 
-		const { startData, resultData, manualData, isTestWebhook } = execution.data;
+		const { startData, resultData, manualData } = execution.data;
 
-		if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
+		if (execution.data?.executionData) {
+			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowRun = workflowExecute.processRunExecutionData(workflow);
+		} else {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
@@ -211,15 +227,6 @@ export class JobProcessor {
 				}
 				throw error;
 			}
-		} else if (execution.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
-		} else {
-			this.errorReporter.info(`Worker found execution ${executionId} without data`);
-			// Execute all nodes
-			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode);
-			workflowRun = workflowExecute.run(workflow);
 		}
 
 		const runningJob: RunningJob = {
@@ -241,6 +248,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 

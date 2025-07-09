@@ -19,12 +19,23 @@ export const transformInsightsValues: Record<InsightsSummaryType, (value: number
 	failureRate: transformInsightsFailureRate,
 };
 
+const getPreviousValue = (value: number, deviation: number): number => value - deviation;
+
+const getDeviation = (value: number, deviation: number): number | null => {
+	if (value === 0 && deviation === 0) return 0;
+
+	const previousValue = getPreviousValue(value, deviation);
+	if (previousValue === 0) return null; // avoid division by zero
+
+	return (deviation / previousValue) * 100;
+};
+
 export const transformInsightsDeviation: Record<
 	InsightsSummaryType,
-	(value: number, deviation: number) => number
+	(value: number, deviation: number) => number | null
 > = {
-	total: (value: number, deviation: number) => (deviation / value) * 100,
-	failed: (value: number, deviation: number) => (deviation / value) * 100,
+	total: getDeviation,
+	failed: getDeviation,
 	timeSaved: (_: number, deviation: number) => transformInsightsTimeSaved(deviation),
 	averageRunTime: (_: number, deviation: number) => transformInsightsAverageRunTime(deviation),
 	failureRate: (_: number, deviation: number) => transformInsightsFailureRate(deviation),

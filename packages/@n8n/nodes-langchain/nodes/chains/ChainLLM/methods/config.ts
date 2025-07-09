@@ -7,7 +7,7 @@ import type { IDataObject, INodeInputConfiguration, INodeProperties } from 'n8n-
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
-import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 /**
  * Dynamic input configuration generation based on node parameters
@@ -22,6 +22,17 @@ export function getInputs(parameters: IDataObject) {
 			required: true,
 		},
 	];
+
+	const needsFallback = parameters?.needsFallback;
+
+	if (needsFallback === undefined || needsFallback === true) {
+		inputs.push({
+			displayName: 'Fallback Model',
+			maxConnections: 1,
+			type: 'ai_languageModel',
+			required: true,
+		});
+	}
 
 	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
@@ -110,6 +121,18 @@ export const nodeProperties: INodeProperties[] = [
 	{
 		displayName: 'Require Specific Output Format',
 		name: 'hasOutputParser',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		displayOptions: {
+			hide: {
+				'@version': [1, 1.1, 1.3],
+			},
+		},
+	},
+	{
+		displayName: 'Enable Fallback Model',
+		name: 'needsFallback',
 		type: 'boolean',
 		default: false,
 		noDataExpression: true,
@@ -259,6 +282,11 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		],
 	},
+	getBatchingOptionFields({
+		show: {
+			'@version': [{ _cnd: { gte: 1.7 } }],
+		},
+	}),
 	{
 		displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 		name: 'notice',
@@ -267,6 +295,18 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				hasOutputParser: [true],
+			},
+		},
+	},
+	{
+		displayName:
+			'Connect an additional language model on the canvas to use it as a fallback if the main model fails',
+		name: 'fallbackNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				needsFallback: [true],
 			},
 		},
 	},

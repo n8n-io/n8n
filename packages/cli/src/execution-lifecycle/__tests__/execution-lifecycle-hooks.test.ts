@@ -1,10 +1,13 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
 	ErrorReporter,
 	InstanceSettings,
-	Logger,
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
@@ -21,8 +24,6 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -30,7 +31,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { mockInstance } from '@test/mocking';
 
 import {
 	getLifecycleHooksForSubExecutions,
@@ -54,6 +54,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
 
 	const nodeName = 'Test Node';
+	const nodeType = 'n8n-nodes-base.testNode';
+	const nodeId = 'test-node-id';
 	const node = mock<INode>();
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
@@ -61,8 +63,18 @@ describe('Execution Lifecycle Hooks', () => {
 		id: workflowId,
 		name: 'Test Workflow',
 		active: true,
+		isArchived: false,
 		connections: {},
-		nodes: [],
+		nodes: [
+			{
+				id: nodeId,
+				name: nodeName,
+				type: nodeType,
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			},
+		],
 		settings: {},
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -72,6 +84,12 @@ describe('Execution Lifecycle Hooks', () => {
 	const taskStartedData = mock<ITaskStartedData>();
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
+
+	const successfulRunWithRewiredDestination = mock<IRun>({
+		status: 'success',
+		finished: true,
+		waitTill: undefined,
+	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
@@ -111,6 +129,15 @@ describe('Execution Lifecycle Hooks', () => {
 				error: expressionError,
 			},
 		};
+		successfulRunWithRewiredDestination.data = {
+			startData: {
+				destinationNode: 'PartialExecutionToolExecutor',
+				originalDestinationNode: nodeName,
+			},
+			resultData: {
+				runData: {},
+			},
+		};
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -142,6 +169,25 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
 			});
+
+			it('should reset destination node to original destination', async () => {
+				await lifecycleHooks.runHook('workflowExecuteAfter', [
+					successfulRunWithRewiredDestination,
+					{},
+				]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRunWithRewiredDestination,
+					workflow: workflowData,
+					userId: expectedUserId,
+				});
+
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(
+					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
+				).toBeUndefined();
+			});
 		});
 	};
 
@@ -154,6 +200,8 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflow: workflowData,
 					nodeName,
+					nodeType,
+					nodeId,
 				});
 			});
 		});
@@ -166,6 +214,8 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflow: workflowData,
 					nodeName,
+					nodeType,
+					nodeId,
 				});
 			});
 		});
@@ -244,6 +294,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(5);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('nodeExecuteBefore', () => {
@@ -560,6 +611,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(0);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('workflowExecuteBefore', () => {
@@ -647,6 +699,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('saving static data', () => {
@@ -744,6 +797,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 	});
 });

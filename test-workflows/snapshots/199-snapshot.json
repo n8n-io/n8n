@@ -1,0 +1,77 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1710331896175,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailcheck": [
+          {
+            "startTime": 1710331896175,
+            "executionTime": 15896,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "email": "jan@n8n.io",
+                      "trustRate": 100,
+                      "mxExists": true,
+                      "smtpExists": true,
+                      "isNotSmtpCatchAll": true,
+                      "isNotDisposable": true,
+                      "gravatar": {
+                        "object": true
+                      },
+                      "githubUsername": ""
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Mailcheck"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-03-13T12:11:36.175Z",
+  "stoppedAt": "2024-03-13T12:11:52.071Z",
+  "status": "running",
+  "finished": true
+}

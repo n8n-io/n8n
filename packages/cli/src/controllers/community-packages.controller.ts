@@ -1,10 +1,11 @@
+import type { InstalledPackages } from '@n8n/db';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -12,6 +13,8 @@ import type { CommunityPackages } from '@/interfaces';
 import { Push } from '@/push';
 import { NodeRequest } from '@/requests';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+
+import { CommunityNodeTypesService } from '../services/community-node-types.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -36,15 +39,26 @@ export class CommunityPackagesController {
 		private readonly push: Push,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
+		private readonly communityNodeTypesService: CommunityNodeTypesService,
 	) {}
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
-		const { name } = req.body;
+		const { name, verify, version } = req.body;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		let checksum: string | undefined = undefined;
+
+		// Get the checksum for the package if flagged to verify
+		if (verify) {
+			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			if (!checksum) {
+				throw new BadRequestError(`Package ${name} is not vetted for installation`);
+			}
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -84,11 +98,13 @@ export class CommunityPackagesController {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
+		const packageVersion = version ?? parsed.version;
 		let installedPackage: InstalledPackages;
 		try {
 			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
-				parsed.version,
+				packageVersion,
+				checksum,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
@@ -98,7 +114,7 @@ export class CommunityPackagesController {
 				inputString: name,
 				packageName: parsed.packageName,
 				success: false,
-				packageVersion: parsed.version,
+				packageVersion,
 				failureReason: errorMessage,
 			});
 
@@ -129,7 +145,7 @@ export class CommunityPackagesController {
 			inputString: name,
 			packageName: parsed.packageName,
 			success: true,
-			packageVersion: parsed.version,
+			packageVersion,
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
@@ -231,7 +247,7 @@ export class CommunityPackagesController {
 	@Patch('/')
 	@GlobalScope('communityPackage:update')
 	async updatePackage(req: NodeRequest.Update) {
-		const { name } = req.body;
+		const { name, version, checksum } = req.body;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
@@ -248,6 +264,8 @@ export class CommunityPackagesController {
 			const newInstalledPackage = await this.communityPackagesService.updatePackage(
 				this.communityPackagesService.parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
+				version,
+				checksum,
 			);
 
 			// broadcast to connected frontends that node list has been updated
@@ -265,7 +283,7 @@ export class CommunityPackagesController {
 				this.push.broadcast({
 					type: 'reloadNodeType',
 					data: {
-						name: node.name,
+						name: node.type,
 						version: node.latestVersion,
 					},
 				});

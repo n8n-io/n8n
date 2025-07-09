@@ -1,0 +1,330 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343995018,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker1": [
+          {
+            "startTime": 1747343995018,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 262,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0f42cd20b0617400",
+                      "name": "n8n-qa",
+                      "labels": [
+                        "json array"
+                      ],
+                      "statuses": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker": [
+          {
+            "startTime": 1747343995280,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 255,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0f42cd2088617400",
+                      "name": "n8n-qa"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker2": [
+          {
+            "startTime": 1747343995535,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 392,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0f42ccbcb93d4000",
+                      "username": "node8qa"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker3": [
+          {
+            "startTime": 1747343995927,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 760,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "2ce7808ff95c8800",
+                      "number": "2218",
+                      "title": "WorkItem1747343995928",
+                      "description": "",
+                      "status": {
+                        "object": true
+                      },
+                      "members": [
+                        "json array"
+                      ],
+                      "watchers": [
+                        "json array"
+                      ],
+                      "labels": [
+                        "json array"
+                      ],
+                      "effort": {
+                        "object": true
+                      },
+                      "impact": {
+                        "object": true
+                      },
+                      "updatedAt": 1747343996386,
+                      "createdAt": 1747343996386
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker4": [
+          {
+            "startTime": 1747343996687,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Kitemaker3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 270,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "2ce7808ff95c8800",
+                      "number": "2218",
+                      "title": "WorkItem1747343995928",
+                      "description": "",
+                      "status": {
+                        "object": true
+                      },
+                      "sort": "s",
+                      "members": [
+                        "json array"
+                      ],
+                      "watchers": [
+                        "json array"
+                      ],
+                      "labels": [
+                        "json array"
+                      ],
+                      "comments": [
+                        "json array"
+                      ],
+                      "effort": {
+                        "object": true
+                      },
+                      "impact": {
+                        "object": true
+                      },
+                      "updatedAt": 1747343996386,
+                      "createdAt": 1747343996386
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker5": [
+          {
+            "startTime": 1747343996957,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "Kitemaker4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 306,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0f42cd2103617400",
+                      "title": "Use arrow keys to navigate work items",
+                      "description": "# Things to explore\n\n- [ ] Press the little + sign to the top right to see different types of meta data you can add to work items\n- [ ] Learn some markdown\n  - [ ] `#` On an empty line creates a headline (type ## and ### for sub headlines)\n  - [ ] Type `**` or `__` before and after a section of text to make it **bold**\n  - [ ] Type `*` or `_` before and after a section of text to make it _italic_\n  - [ ] Type `´`  before and after a section of text to make it `a code block`\n  - [ ] Type `*` followed by space on an empty line to make bullet points\n  - [ ] Type `[]` followed by space on an empty line to make todo-lists\n  - [ ] Type `1.` followed by space on an empty line to make numbered lists\n  - [ ] Type `$$` before and after Tex expression $$\\frac{1}{100}$$\n- [ ] Check out our integrations\n- [ ] Make comments (they support everything the description field supports)\n- [ ] Invite your team\n- [ ] Learn hotkeys:\n  - [ ] Hovering elements gives you hotkey tips. Hover this sections to see that `D` lets you edit the description\n  - [ ] Other times the hotkey hints are in the UI. If you look at the right section of this screen, `R` adds a new comment\n  - [ ] Pressing `?` gives you a searchable list of all hotkeys\n  - [ ] In the Kitemaker command (open it by pressing `CTRL/CMD+k`) you will also be able to see the hotkeys for the commands\n  - [ ] When you have long descriptions use `SPACE` and `SHIFT+SPACE` to scroll up and down\n\n",
+                      "labels": [
+                        "json array"
+                      ],
+                      "comments": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Kitemaker6": [
+          {
+            "startTime": 1747343997263,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "Kitemaker5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 482,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "2ce7808ff95c8800",
+                      "number": "2218",
+                      "title": "UpdatedWorkItem1747343995928",
+                      "description": "",
+                      "status": {
+                        "object": true
+                      },
+                      "members": [
+                        "json array"
+                      ],
+                      "watchers": [
+                        "json array"
+                      ],
+                      "labels": [
+                        "json array"
+                      ],
+                      "effort": {
+                        "object": true
+                      },
+                      "impact": {
+                        "object": true
+                      },
+                      "updatedAt": 1747343997664,
+                      "createdAt": 1747343996386
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Kitemaker6"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:55.018Z",
+  "stoppedAt": "2025-05-15T21:19:57.745Z",
+  "status": "running",
+  "finished": true
+}

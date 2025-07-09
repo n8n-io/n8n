@@ -39,22 +39,9 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const separate = <T>(array: T[], test: (element: T) => boolean) => {
-	const pass: T[] = [];
-	const fail: T[] = [];
-
-	array.forEach((i) => (test(i) ? pass : fail).push(i));
-
-	return [pass, fail];
-};
-
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
-
-export function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
 

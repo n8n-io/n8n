@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
-
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -9,25 +9,25 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData, Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/plugins/telemetry';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 const props = defineProps<{
 	data: {
@@ -49,6 +49,9 @@ const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
+const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
 	data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
@@ -141,15 +144,16 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		return await new Promise<string>((resolve) => {
-			if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				nodeViewEventBus.emit('saveWorkflow', () => {
-					resolve(workflow.value.id);
-				});
-			} else {
-				resolve(workflow.value.id);
+		if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			const parentFolderId = route.query.folderId as string | undefined;
+			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
+			if (!workflowId) {
+				throw new Error(i18n.baseText('workflows.shareModal.onSave.error.title'));
 			}
-		});
+			return workflowId;
+		} else {
+			return workflow.value.id;
+		}
 	};
 
 	try {

@@ -1,0 +1,95 @@
+{
+  "createdAt": "2021-03-11T15:40:59.286Z",
+  "updatedAt": "2021-05-20T09:47:21.924Z",
+  "id": "127",
+  "name": "Rundeck:Job:execute getMetadata",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "f6b07b0d-8721-49de-8c02-39987174e2c4"
+    },
+    {
+      "parameters": {
+        "jobid": "4dc20913-c26f-4060-afe9-6bb26dfd1a10",
+        "arguments": {
+          "arguments": [
+            {}
+          ]
+        }
+      },
+      "name": "Rundeck",
+      "type": "n8n-nodes-base.rundeck",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "rundeckApi": {
+          "id": "94",
+          "name": "Rundeck API creds"
+        }
+      },
+      "id": "c1504f84-7203-426f-9eab-10ccde6bcd76"
+    },
+    {
+      "parameters": {
+        "operation": "getMetadata",
+        "jobid": "4dc20913-c26f-4060-afe9-6bb26dfd1a10"
+      },
+      "name": "Rundeck1",
+      "type": "n8n-nodes-base.rundeck",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "rundeckApi": {
+          "id": "94",
+          "name": "Rundeck API creds"
+        }
+      },
+      "id": "425b0f49-4d3b-4b5e-a4b8-0dadda512663"
+    }
+  ],
+  "connections": {
+    "Rundeck": {
+      "main": [
+        [
+          {
+            "node": "Rundeck1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Rundeck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -14,7 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { Workflow } from 'n8n-workflow';
 
 export interface Props {
@@ -29,6 +29,14 @@ const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
 
 const i18n = useI18n();
+
+const aiData = computed<AIResult[]>(() =>
+	createAiData(props.node.name, props.workflow, workflowsStore.getWorkflowResultDataByNodeName),
+);
+
+const executionTree = computed<TreeNode[]>(() =>
+	getTreeNodeData(props.node.name, props.workflow, aiData.value, props.runIndex),
+);
 
 function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
@@ -79,14 +87,6 @@ function selectFirst() {
 	}
 }
 
-const aiData = computed<AIResult[]>(() =>
-	createAiData(props.node.name, props.workflow, workflowsStore.getWorkflowResultDataByNodeName),
-);
-
-const executionTree = computed<TreeNode[]>(() =>
-	getTreeNodeData(props.node.name, props.workflow, aiData.value),
-);
-
 watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
 
@@ -103,7 +103,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 					data-test-id="lm-chat-logs-tree"
 					@node-click="onItemClick"
 				>
-					<template #default="{ node, data }">
+					<template #default="{ node: currentNode, data }">
 						<div
 							:class="{
 								[$style.treeNode]: true,
@@ -115,13 +115,13 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 							<button
 								v-if="data.children.length"
 								:class="$style.treeToggle"
-								@click="toggleTreeItem(node)"
+								@click="toggleTreeItem(currentNode)"
 							>
-								<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-right'" />
+								<n8n-icon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
 							</button>
 							<n8n-tooltip :disabled="!slim" placement="right">
 								<template #content>
-									{{ node.label }}
+									{{ currentNode.label }}
 								</template>
 								<span :class="$style.leafLabel">
 									<NodeIcon
@@ -129,7 +129,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 										:size="17"
 										:class="$style.nodeIcon"
 									/>
-									<span v-if="!slim" v-text="node.label" />
+									<span v-if="!slim" v-text="currentNode.label" />
 								</span>
 							</n8n-tooltip>
 						</div>
@@ -157,7 +157,9 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.noData">{{ i18n.baseText('ndv.output.ai.waiting') }}</div>
+		<div v-else :class="$style.noData">
+			{{ i18n.baseText('ndv.output.ai.waiting') }}
+		</div>
 	</div>
 </template>
 

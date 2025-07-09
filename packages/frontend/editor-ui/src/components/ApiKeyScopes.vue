@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-// eslint-disable-next-line import/no-extraneous-dependencies
+
 import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 // Define props

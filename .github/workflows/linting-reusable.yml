@@ -8,11 +8,16 @@ on:
         required: false
         type: string
         default: master
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 22.x
       cacheKey:
         description: Cache key for modules and build artifacts.
         required: false
-        default: ''
         type: string
+        default: ''
 
 jobs:
   lint:
@@ -23,32 +28,12 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5
+      - name: Setup Environment
+        uses: n8n-io/n8n/.github/actions/setup-and-build@7e870b8f7f5a39bb8bf82d1f42b6d44febc0082c # v1.100.1
         with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
-
-      - name: Build
-        if: ${{ inputs.cacheKey == '' }}
-        run: pnpm build
-
-      - name: Restore cached build artifacts
-        if: ${{ inputs.cacheKey != '' }}
-        uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
-        with:
-          path: ./packages/**/dist
-          key: ${{ inputs.cacheKey }}
-          fail-on-cache-miss: true
+          node-version: ${{ inputs.nodeVersion }}
+          enable-caching: true
+          skip-build: ${{ inputs.cacheKey != '' }}
 
       - name: Lint Backend
         run: pnpm lint:backend

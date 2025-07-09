@@ -1,3 +1,4 @@
+import { overrideFeatureFlag } from '../composables/featureFlags';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import {
 	MainSidebar,
@@ -73,10 +74,7 @@ describe('Cloud', () => {
 
 	describe('Easy AI workflow experiment', () => {
 		it('should not show option to take you to the easy AI workflow if experiment is control', () => {
-			window.localStorage.setItem(
-				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '026_easy_ai_workflow': 'control' }),
-			);
+			overrideFeatureFlag('026_easy_ai_workflow', 'control');
 
 			cy.visit(workflowsPage.url);
 
@@ -84,10 +82,7 @@ describe('Cloud', () => {
 		});
 
 		it('should show option to take you to the easy AI workflow if experiment is variant', () => {
-			window.localStorage.setItem(
-				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '026_easy_ai_workflow': 'variant' }),
-			);
+			overrideFeatureFlag('026_easy_ai_workflow', 'variant');
 
 			cy.visit(workflowsPage.url);
 
@@ -95,10 +90,7 @@ describe('Cloud', () => {
 		});
 
 		it('should show default instructions if free AI credits experiment is control', () => {
-			window.localStorage.setItem(
-				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '026_easy_ai_workflow': 'variant' }),
-			);
+			overrideFeatureFlag('026_easy_ai_workflow', 'variant');
 
 			cy.visit(workflowsPage.url);
 

@@ -17,11 +17,6 @@ on:
         required: false
         default: 'e2e/*'
         type: string
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node18.12.0-chrome107'
-        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -81,7 +76,13 @@ jobs:
         with:
           ref: ${{ steps.calculate_ref.outputs.value }}
 
-      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
 
       - name: Cache build artifacts
         id: cache-build-artifacts
@@ -99,7 +100,7 @@ jobs:
 
       - name: Cypress build
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           # Disable running of tests within install job
           runTests: false
@@ -125,7 +126,13 @@ jobs:
         with:
           ref: ${{ steps.calculate_ref.outputs.value }}
 
-      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
 
       - name: Restore cached pnpm modules
         id: cache-build-artifacts
@@ -141,7 +148,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
+        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           working-directory: cypress
           install: false
@@ -156,11 +163,10 @@ jobs:
           spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
-          CYPRESS_NODE_VIEW_VERSION: 2
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable

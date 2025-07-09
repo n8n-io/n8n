@@ -3,10 +3,9 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
@@ -15,7 +14,6 @@ import { VIEWS } from '@/constants';
 import AuthView from '@/views/AuthView.vue';
 
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 const usersStore = useUsersStore();
 
 const toast = useToast();
@@ -90,7 +88,7 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 
 		if (values.agree === true) {
 			try {
-				await uiStore.submitContactEmail(values.email.toString(), values.agree);
+				await usersStore.submitContactEmail(values.email.toString(), values.agree);
 			} catch {}
 		}
 		if (forceRedirectedHere) {

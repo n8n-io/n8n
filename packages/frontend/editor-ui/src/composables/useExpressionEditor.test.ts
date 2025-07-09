@@ -9,7 +9,6 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
-import { useRouter } from 'vue-router';
 import { useExpressionEditor } from './useExpressionEditor';
 
 vi.mock('@/composables/useAutocompleteTelemetry', () => ({
@@ -26,7 +25,7 @@ describe('useExpressionEditor', () => {
 	const mockResolveExpression = () => {
 		const mock = vi.fn();
 		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-			...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+			...workflowHelpers.useWorkflowHelpers(),
 			resolveExpression: mock,
 		});
 

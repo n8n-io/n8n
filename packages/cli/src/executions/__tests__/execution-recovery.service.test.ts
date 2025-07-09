@@ -1,3 +1,5 @@
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
@@ -6,17 +8,13 @@ import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
-import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
 import { setupMessages } from './utils';
@@ -46,7 +44,7 @@ describe('ExecutionRecoveryService', () => {
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
-		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
+		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
 	});
 
 	afterAll(async () => {
@@ -134,6 +132,31 @@ describe('ExecutionRecoveryService', () => {
 				const workflow = await createWorkflow();
 				const execution = await createExecution(
 					{ status: 'success', data: stringify({ runData: { foo: 'bar' } }) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(amendedExecution).toBeNull();
+			});
+
+			test('for errored dataful execution, should return `null`', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow();
+				const execution = await createExecution(
+					{ status: 'error', data: stringify({ runData: { foo: 'bar' } }) },
 					workflow,
 				);
 				const messages = setupMessages(execution.id, 'Some workflow');
@@ -256,14 +279,14 @@ describe('ExecutionRecoveryService', () => {
 
 				if (!runData) fail('Expected `runData` to be defined');
 
-				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
 
 				if (!manualTriggerTaskData) fail("Expected manual trigger's `taskData` to be defined");
 				if (!debugHelperTaskData) fail("Expected debug helper's `taskData` to be defined");
 
 				const originalManualTriggerTaskData =
-					IN_PROGRESS_EXECUTION_DATA.resultData.runData['When clicking "Test workflow"'].at(
+					IN_PROGRESS_EXECUTION_DATA.resultData.runData['When clicking "Execute workflow"'].at(
 						0,
 					)?.data;
 
@@ -298,6 +321,7 @@ describe('ExecutionRecoveryService', () => {
 							workflowName: workflow.name,
 							nodeName: 'DebugHelper',
 							nodeType: 'n8n-nodes-base.debugHelper',
+							nodeId: '123',
 						},
 					}),
 				);
@@ -335,7 +359,7 @@ describe('ExecutionRecoveryService', () => {
 
 				if (!runData) fail('Expected `runData` to be defined');
 
-				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
 
 				expect(manualTriggerTaskData?.executionStatus).toBe('success');

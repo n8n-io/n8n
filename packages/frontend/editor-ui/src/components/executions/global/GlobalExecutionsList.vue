@@ -2,15 +2,15 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
-import type { PermissionsRecord } from '@/permissions';
-import { getResourcePermissions } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -438,7 +438,7 @@ const goToUpgrade = () => {
 								<template v-else-if="total > executions.length || estimated">
 									<N8nButton
 										ref="loadMoreButton"
-										icon="sync"
+										icon="refresh-cw"
 										:title="i18n.baseText('executionsList.loadMore')"
 										:label="i18n.baseText('executionsList.loadMore')"
 										:loading="executionsStore.loading"

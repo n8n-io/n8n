@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { LogMetadata } from 'n8n-workflow';
 
 import config from '@/config';
@@ -86,10 +87,9 @@ export class Publisher {
 
 	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
 
-	async setIfNotExists(key: string, value: string) {
-		const success = await this.client.setnx(key, value);
-
-		return !!success;
+	async setIfNotExists(key: string, value: string, ttl: number) {
+		const result = await this.client.set(key, value, 'EX', ttl, 'NX');
+		return result === 'OK';
 	}
 
 	async setExpiration(key: string, ttl: number) {

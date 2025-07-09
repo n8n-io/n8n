@@ -13,7 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 vi.mock('vue-router', () => {
 	return {

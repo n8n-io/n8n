@@ -4,7 +4,7 @@
  */
 
 const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
-const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
+const SEPARATOR_BONUS = 38; // bonus if match occurs after a separator
 const CAMEL_BONUS = 30; // bonus if match is uppercase and prev is lower
 const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
 
@@ -221,7 +221,7 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 
 export function sublimeSearch<T extends object>(
 	filter: string,
-	data: Readonly<T[]>,
+	data: readonly T[],
 	keys: Array<{ key: string; weight: number }> = DEFAULT_KEYS,
 ): Array<{ score: number; item: T }> {
 	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {

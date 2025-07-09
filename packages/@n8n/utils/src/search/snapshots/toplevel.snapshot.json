@@ -12849,7 +12849,7 @@
 		"properties": {
 			"displayName": "Manual Trigger",
 			"defaults": {
-				"name": "When clicking ‘Test workflow’",
+				"name": "When clicking ‘Execute workflow’",
 				"color": "#909298"
 			},
 			"description": "Runs the flow on clicking a button in n8n",

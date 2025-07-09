@@ -3,12 +3,12 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
@@ -17,7 +17,7 @@ const defaultFilterState: ExecutionFilterType = {
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
-	metadata: [{ key: '', value: '' }],
+	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
 };
 

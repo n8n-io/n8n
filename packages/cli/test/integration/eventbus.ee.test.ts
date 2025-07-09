@@ -1,3 +1,5 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
@@ -13,7 +15,6 @@ import {
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
-import type { User } from '@/databases/entities/user';
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
@@ -27,7 +28,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');

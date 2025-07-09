@@ -1,6 +1,10 @@
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import { ExecutionRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	sleep,
@@ -14,11 +18,8 @@ import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -47,7 +48,6 @@ export class ScalingService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
@@ -58,6 +58,9 @@ export class ScalingService {
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis-client.service');
+
+		if (this.queue) return;
+
 		const service = Container.get(RedisClientService);
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
@@ -71,15 +74,7 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		const { isLeader, isMultiMain } = this.instanceSettings;
-
-		if (isLeader) this.scheduleQueueRecovery();
-
-		if (isMultiMain) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.scheduleQueueRecovery())
-				.on('leader-stepdown', () => this.stopQueueRecovery());
-		}
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
 
 		this.scheduleQueueMetrics();
 
@@ -92,6 +87,13 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				this.eventService.emit('job-dequeued', {
+					executionId: job.data.executionId,
+					workflowId: job.data.workflowId,
+					hostId: this.instanceSettings.hostId,
+					jobId: job.id.toString(),
+				});
+
 				if (!this.hasValidJobData(job)) {
 					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
@@ -202,6 +204,12 @@ export class ScalingService {
 		const jobId = job.id;
 
 		this.logger.info(`Enqueued execution ${executionId} (job ${jobId})`, { executionId, jobId });
+		this.eventService.emit('job-enqueued', {
+			executionId,
+			workflowId: jobData.workflowId,
+			hostId: this.instanceSettings.hostId,
+			jobId: jobId.toString(),
+		});
 
 		return job;
 	}
@@ -309,11 +317,15 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
+				case 'send-chunk':
+					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
+					break;
 				case 'respond-to-webhook':
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
+					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
@@ -388,7 +400,7 @@ export class ScalingService {
 	private readonly jobCounters = { completed: 0, failed: 0 };
 
 	/** Interval for collecting queue metrics to expose via Prometheus. */
-	private queueMetricsInterval: NodeJS.Timer | undefined;
+	private queueMetricsInterval: NodeJS.Timeout | undefined;
 
 	get isQueueMetricsEnabled() {
 		return (
@@ -434,6 +446,7 @@ export class ScalingService {
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
+	@OnLeaderTakeover()
 	private scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
 		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
@@ -454,7 +467,10 @@ export class ScalingService {
 		this.logger.debug(`Scheduled queue recovery check for next ${wait}`);
 	}
 
+	@OnLeaderStepdown()
 	private stopQueueRecovery() {
+		if (!this.queueRecoveryContext.timeout) return;
+
 		clearTimeout(this.queueRecoveryContext.timeout);
 
 		this.logger.debug('Queue recovery stopped');

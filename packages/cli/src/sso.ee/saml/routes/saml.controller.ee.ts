@@ -1,14 +1,15 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
 import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
-import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
 
@@ -126,7 +127,7 @@ export class SamlController {
 
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
-					this.authService.issueCookie(res, loginResult.authenticatedUser, req.browserId);
+					this.authService.issueCookie(res, loginResult.authenticatedUser, false, req.browserId);
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
 					} else {
@@ -164,7 +165,7 @@ export class SamlController {
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
 	@Get('/initsso', { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
-	async initSsoGet(req: AuthlessRequest, res: Response) {
+	async initSsoGet(req: AuthlessRequest<{}, {}, {}, { redirect?: string }>, res: Response) {
 		let redirectUrl = '';
 		try {
 			const refererUrl = req.headers.referer;
@@ -180,7 +181,7 @@ export class SamlController {
 		} catch {
 			// ignore
 		}
-		return await this.handleInitSSO(res, redirectUrl);
+		return await this.handleInitSSO(res, redirectUrl || (req.query.redirect ?? ''));
 	}
 
 	/**

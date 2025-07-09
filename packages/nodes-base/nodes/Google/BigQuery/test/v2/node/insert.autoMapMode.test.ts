@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 jest.mock('jsonwebtoken', () => ({
 	sign: jest.fn().mockReturnValue('signature'),
@@ -42,6 +41,7 @@ describe('Test Google BigQuery V2, insert auto map', () => {
 			{ kind: 'bigquery#tableDataInsertAllResponse' },
 		]);
 
-	const workflows = ['nodes/Google/BigQuery/test/v2/node/insert.autoMapMode.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['insert.autoMapMode.workflow.json'],
+	});
 });

@@ -2,7 +2,8 @@ import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/m
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from '@/components/RunData.vue';
-import { SET_NODE_TYPE, STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { SET_NODE_TYPE } from '@/constants';
 import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -261,7 +262,7 @@ describe('RunData', () => {
 
 	it('should render pagination with binary data on non-binary tab', async () => {
 		const { getByTestId } = render({
-			defaultRunItems: Array.from({ length: 11 }).map((_, i) => ({
+			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
 				json: {
 					data: {
 						id: i,
@@ -444,7 +445,7 @@ describe('RunData', () => {
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
@@ -475,7 +476,7 @@ describe('RunData', () => {
 		const testNodes = [
 			{
 				id: '1',
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				position: [80, -180],
@@ -529,7 +530,7 @@ describe('RunData', () => {
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
@@ -641,7 +642,6 @@ describe('RunData', () => {
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
-					outputPanelDisplayMode: displayMode,
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -696,6 +696,7 @@ describe('RunData', () => {
 					// @ts-expect-error allow missing properties in test
 					workflowNodes,
 				}),
+				displayMode,
 			},
 			global: {
 				stubs: {

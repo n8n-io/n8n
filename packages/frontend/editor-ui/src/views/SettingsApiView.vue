@@ -7,13 +7,13 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();

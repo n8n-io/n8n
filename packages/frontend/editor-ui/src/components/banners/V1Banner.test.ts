@@ -2,10 +2,16 @@ import { createComponentRenderer } from '@/__tests__/render';
 import V1Banner from './V1Banner.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { ROLE } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import type { IUser } from '@/Interface';
 
-const renderComponent = createComponentRenderer(V1Banner);
+const renderComponent = createComponentRenderer(V1Banner, {
+	global: {
+		stubs: {
+			N8nIcon: true,
+		},
+	},
+});
 
 describe('V1 Banner', () => {
 	let pinia: ReturnType<typeof createPinia>;

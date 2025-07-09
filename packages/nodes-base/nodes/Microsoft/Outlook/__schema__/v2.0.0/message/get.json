@@ -52,9 +52,15 @@
         "id": {
             "type": "string"
         },
+        "sentDateTime": {
+            "type": "string"
+        },
         "subject": {
+            "type": "string"
+        },
+        "webLink": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

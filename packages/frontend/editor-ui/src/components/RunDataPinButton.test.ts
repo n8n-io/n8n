@@ -3,7 +3,7 @@ import { cleanup, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 const renderComponent = createComponentRenderer(RunDataPinButton, {
 	global: {

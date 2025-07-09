@@ -1,6 +1,6 @@
-import type { Plugin } from 'vue';
+import type { Component, Plugin } from 'vue';
 import { render } from '@testing-library/vue';
-import { i18nInstance } from '@/plugins/i18n';
+import { i18nInstance } from '@n8n/i18n';
 import { GlobalComponentsPlugin } from '@/plugins/components';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { FontAwesomePlugin } from '@/plugins/icons';
@@ -8,8 +8,9 @@ import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
 import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import type { TestingPinia } from '@pinia/testing';
+import * as components from '@n8n/design-system/components';
 
 export type RenderComponent = Parameters<typeof render>[0];
 export type RenderOptions = Parameters<typeof render>[1] & {
@@ -22,6 +23,14 @@ const TelemetryPlugin: Plugin<{}> = {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			track(..._: unknown[]) {},
 		} as Telemetry;
+	},
+};
+
+const TestingGlobalComponentsPlugin: Plugin<{}> = {
+	install(app) {
+		for (const [name, component] of Object.entries(components)) {
+			app.component(name, component as unknown as Component);
+		}
 	},
 };
 
@@ -38,6 +47,7 @@ const defaultOptions = {
 			GlobalComponentsPlugin,
 			GlobalDirectivesPlugin,
 			TelemetryPlugin,
+			TestingGlobalComponentsPlugin,
 		],
 	},
 };

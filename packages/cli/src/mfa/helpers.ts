@@ -1,11 +1,8 @@
+import { GlobalConfig } from '@n8n/config';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import config from '@/config';
-import { UserRepository } from '@/databases/repositories/user.repository';
-
-import { MFA_FEATURE_ENABLED } from './constants';
-
-export const isMfaFeatureEnabled = () => config.get(MFA_FEATURE_ENABLED);
+export const isMfaFeatureEnabled = () => Container.get(GlobalConfig).mfa.enabled;
 
 const isMfaFeatureDisabled = () => !isMfaFeatureEnabled();
 
@@ -18,7 +15,7 @@ export const handleMfaDisable = async () => {
 		// users, then keep the feature enabled
 		const users = await getUsersWithMfaEnabled();
 		if (users) {
-			config.set(MFA_FEATURE_ENABLED, true);
+			Container.get(GlobalConfig).mfa.enabled = true;
 		}
 	}
 };

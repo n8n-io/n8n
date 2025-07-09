@@ -1,15 +1,19 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import type {
+	FolderWithWorkflowAndSubFolderCount,
+	FolderWithWorkflowAndSubFolderCountAndPath,
+	User,
+} from '@n8n/db';
+import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
-import { Folder } from '@/databases/entities/folder';
-import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
+// eslint-disable-next-line import-x/no-cycle
+import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -29,6 +33,7 @@ export class FolderService {
 		private readonly folderRepository: FolderRepository,
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
@@ -68,7 +73,16 @@ export class FolderService {
 
 			if (parentFolderId !== PROJECT_ROOT) {
 				await this.findFolderInProjectOrFail(parentFolderId, projectId);
+
+				// Ensure that the target parentFolder isn't a descendant of the current folder.
+				const parentFolderPath = await this.getFolderTree(parentFolderId, projectId);
+				if (this.isDescendant(folderId, parentFolderPath)) {
+					throw new UserError(
+						"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+					);
+				}
 			}
+
 			await this.folderRepository.update(
 				{ id: folderId },
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
@@ -126,10 +140,35 @@ export class FolderService {
 		return this.transformFolderPathToTree(result);
 	}
 
-	async deleteFolder(folderId: string, projectId: string, { transferToFolderId }: DeleteFolderDto) {
+	/**
+	 * Moves all workflows in a folder to the root of the project and archives them,
+	 * flattening the folder structure.
+	 *
+	 * If any workflows were active this will also deactivate those workflows.
+	 */
+	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
+		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
+			folderId,
+			projectId,
+		);
+
+		for (const workflowId of workflowIds) {
+			await this.workflowService.archive(user, workflowId, true);
+		}
+
+		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
+	}
+
+	async deleteFolder(
+		user: User,
+		folderId: string,
+		projectId: string,
+		{ transferToFolderId }: DeleteFolderDto,
+	) {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 
 		if (!transferToFolderId) {
+			await this.flattenAndArchive(user, folderId, projectId);
 			await this.folderRepository.delete({ id: folderId });
 			return;
 		}
@@ -191,6 +230,15 @@ export class FolderService {
 		return rootNode ? [rootNode] : [];
 	}
 
+	private isDescendant(folderId: string, tree: SimpleFolderNode[]): boolean {
+		return tree.some((node) => {
+			if (node.id === folderId) {
+				return true;
+			}
+			return this.isDescendant(folderId, node.children);
+		});
+	}
+
 	async getFolderAndWorkflowCount(
 		folderId: string,
 		projectId: string,
@@ -228,7 +276,8 @@ export class FolderService {
 		const workflowCountQuery = this.workflowRepository
 			.createQueryBuilder('workflow')
 			.select('COUNT(workflow.id)', 'count')
-			.where((qb) => {
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere((qb) => {
 				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
 				return `workflow.parentFolderId IN ${folderQuery}`;
 			})
@@ -254,7 +303,28 @@ export class FolderService {
 	}
 
 	async getManyAndCount(projectId: string, options: ListQuery.Options) {
-		options.filter = { ...options.filter, projectId };
-		return await this.folderRepository.getManyAndCount(options);
+		options.filter = { ...options.filter, projectId, isArchived: false };
+		// eslint-disable-next-line prefer-const
+		let [folders, count] = await this.folderRepository.getManyAndCount(options);
+		if (options.select?.path) {
+			folders = await this.enrichFoldersWithPaths(folders);
+		}
+		return [folders, count];
+	}
+
+	private async enrichFoldersWithPaths(
+		folders: FolderWithWorkflowAndSubFolderCount[],
+	): Promise<FolderWithWorkflowAndSubFolderCountAndPath[]> {
+		const folderIds = folders.map((folder) => folder.id);
+
+		const folderPaths = await this.folderRepository.getFolderPathsToRoot(folderIds);
+
+		return folders.map(
+			(folder) =>
+				({
+					...folder,
+					path: folderPaths.get(folder.id),
+				}) as FolderWithWorkflowAndSubFolderCountAndPath,
+		);
 	}
 }

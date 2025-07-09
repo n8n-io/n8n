@@ -1,0 +1,310 @@
+{
+  "createdAt": "2021-03-09T08:21:50.403Z",
+  "updatedAt": "2021-07-14T13:48:45.782Z",
+  "id": "109",
+  "name": "Customerio:Campaign:get getMettrics geAll:Customer:upsert delete:Event:track trackAnonymous:Segment:add remove",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "61b889fc-0c5f-4bfc-b477-a22d4f8ad97e"
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "campaignId": 1
+      },
+      "name": "CustomerIo",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        450,
+        200
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=trigger_segment_ids",
+      "id": "2a946a7a-e22f-4ec4-af11-ff6213d5244a"
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getMetrics",
+        "campaignId": 1,
+        "period": "months",
+        "additionalFields": {}
+      },
+      "name": "CustomerIo1",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "0c8e6559-217d-4e55-a13f-2cf3ecf9559c"
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "name": "CustomerIo2",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        750,
+        200
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=trigger_segment_ids",
+      "id": "b704d6b5-e1ac-4cee-ba74-cab476884a9b"
+    },
+    {
+      "parameters": {
+        "id": "=customer{{Date.now()}}",
+        "additionalFields": {
+          "email": "=fakeemail{{Date.now()}}@gmail.com"
+        }
+      },
+      "name": "CustomerIo3",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        450,
+        450
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "2be9fc9b-a1c2-4ddb-ac93-a8cfd3a9d80c"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "id": "={{$node[\"CustomerIo3\"].json[\"id\"]}}"
+      },
+      "name": "CustomerIo4",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        950,
+        450
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "d285c006-5edc-40c7-a932-3e648bd899ba"
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "customerId": "={{$node[\"CustomerIo3\"].json[\"id\"]}}",
+        "eventName": "Click",
+        "additionalFields": {}
+      },
+      "name": "CustomerIo5",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        600,
+        550
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "05605b9b-d0a9-48df-bab5-a6b2794333e1"
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "trackAnonymous",
+        "eventName": "Click",
+        "additionalFields": {}
+      },
+      "name": "CustomerIo6",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        750,
+        550
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "505b79eb-bd8c-4951-b0fd-72b9d2a02449"
+    },
+    {
+      "parameters": {
+        "resource": "segment",
+        "segmentId": 10,
+        "customerIds": "={{$node[\"CustomerIo3\"].json[\"id\"]}}"
+      },
+      "name": "CustomerIo7",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "81151093-ae55-43fe-88da-db9ac4655406"
+    },
+    {
+      "parameters": {
+        "resource": "segment",
+        "operation": "remove",
+        "segmentId": 10,
+        "customerIds": "={{$node[\"CustomerIo3\"].json[\"id\"]}}"
+      },
+      "name": "CustomerIo8",
+      "type": "n8n-nodes-base.customerIo",
+      "typeVersion": 1,
+      "position": [
+        750,
+        400
+      ],
+      "credentials": {
+        "customerIoApi": {
+          "id": "78",
+          "name": "Customer.io creds"
+        }
+      },
+      "id": "13d89387-b408-41f3-b22c-8dccb11134ea"
+    }
+  ],
+  "connections": {
+    "CustomerIo": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CustomerIo1": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CustomerIo3": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CustomerIo7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CustomerIo3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CustomerIo5": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CustomerIo7": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CustomerIo8": {
+      "main": [
+        [
+          {
+            "node": "CustomerIo4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

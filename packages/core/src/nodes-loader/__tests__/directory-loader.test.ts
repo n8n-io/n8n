@@ -13,6 +13,7 @@ jest.mock('node:fs');
 jest.mock('node:fs/promises');
 const mockFs = mock<typeof fs>();
 const mockFsPromises = mock<typeof fsPromises>();
+fs.realpathSync = mockFs.realpathSync;
 fs.readFileSync = mockFs.readFileSync;
 fsPromises.readFile = mockFsPromises.readFile;
 
@@ -22,7 +23,10 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 		: ['dist/Credential1.js'];
 });
 
+import { NodeTypes } from '@test/helpers';
+
 import { CustomDirectoryLoader } from '../custom-directory-loader';
+import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
 import * as classLoader from '../load-class-in-isolation';
 import { PackageDirectoryLoader } from '../package-directory-loader';
@@ -61,6 +65,7 @@ describe('DirectoryLoader', () => {
 	let mockCredential1: ICredentialType, mockNode1: INodeType, mockNode2: INodeType;
 
 	beforeEach(() => {
+		mockFs.realpathSync.mockImplementation((path) => String(path));
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
@@ -327,6 +332,19 @@ describe('DirectoryLoader', () => {
 		});
 	});
 
+	describe('constructor', () => {
+		it('should resolve symlinks to real paths when directory is a symlink', () => {
+			const symlinkPath = '/symlink/path';
+			const realPath = '/real/path';
+			mockFs.realpathSync.mockReturnValueOnce(realPath);
+
+			const loader = new CustomDirectoryLoader(symlinkPath);
+
+			expect(mockFs.realpathSync).toHaveBeenCalledWith(symlinkPath);
+			expect(loader.directory).toBe(realPath);
+		});
+	});
+
 	describe('reset()', () => {
 		it('should reset all properties to their initial state', async () => {
 			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
@@ -550,6 +568,18 @@ describe('DirectoryLoader', () => {
 
 			expect(() => loader.loadCredentialFromFile(filePath)).toThrow('Class could not be found');
 		});
+
+		it('should not push credential to types array when lazy loaded', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			loader.isLazyLoaded = true;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			expect(loader.credentialTypes).toEqual({
+				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+			});
+			expect(loader.types.credentials).toEqual([]);
+		});
 	});
 
 	describe('getCredential', () => {
@@ -753,6 +783,77 @@ describe('DirectoryLoader', () => {
 			expect(() => loader.getNode('nonexistent')).toThrow(
 				'Unrecognized node type: CUSTOM.nonexistent',
 			);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test('sets up the options parameters', () => {
+			const nodeTypes = NodeTypes();
+			const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
+
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+
+			const options = nodeType.description.properties.find(
+				(property) => property.name === 'requestOptions',
+			);
+
+			expect(options?.options).toBeDefined;
+
+			const optionNames = options!.options!.map((option) => option.name);
+
+			expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+		});
+
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 });

@@ -1,17 +1,19 @@
+import {
+	randomEmail,
+	randomName,
+	randomValidPassword,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import { ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
 
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { mockInstance } from '@test/mocking';
-
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
-import { randomEmail, randomName, randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -19,7 +21,10 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
+	mockInstance(GlobalConfig, {
+		publicApi: { disabled: false },
+		sso: { saml: { loginEnabled: true } },
+	});
 });
 
 describe('Owner shell', () => {

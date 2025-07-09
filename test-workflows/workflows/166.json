@@ -1,0 +1,520 @@
+{
+  "createdAt": "2021-04-09T07:48:03.152Z",
+  "updatedAt": "2021-04-16T10:57:50.621Z",
+  "id": "166",
+  "name": "Intercom:Company:create get getAll update users:Lead:create get getAll update delete:User:create get getAll update delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        270,
+        300
+      ],
+      "id": "64bf3c53-0178-4d4d-9512-03e5d4499dbd"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "companyId": "=Company{{Date.now()}}",
+        "additionalFields": {
+          "name": "=TestingCompany{{(new Date()).toISOString()}}"
+        },
+        "customAttributesUi": {
+          "customAttributesValues": []
+        }
+      },
+      "name": "Intercom1",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        450,
+        140
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "58a9b746-7277-4ade-96cd-cbe1d7b043f1"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "get",
+        "selectBy": "companyId",
+        "value": "={{$node[\"Intercom1\"].json[\"company_id\"]}}"
+      },
+      "name": "Intercom",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        600,
+        140
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "6dc0d8fe-d4f2-420b-aa34-dbae9b3720f7"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Intercom2",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        750,
+        140
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "ca96c3e9-1a42-4586-a59e-e020ff6bb533"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "update",
+        "companyId": "={{$node[\"Intercom1\"].json[\"company_id\"]}}",
+        "additionalFields": {
+          "name": "=Updated{{$node[\"Intercom\"].json[\"name\"]}}"
+        }
+      },
+      "name": "Intercom3",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        900,
+        140
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "10bc6886-98c8-4abd-a43e-955b02228f32"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "users",
+        "listBy": "companyId",
+        "value": "={{$node[\"Intercom\"].json[\"company_id\"]}}"
+      },
+      "name": "Intercom4",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        140
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "b9b67277-92d0-4f4f-ad58-c052bd7fdc1e"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "email": "=fake{{Date.now()}}@email.com",
+        "additionalFields": {
+          "avatar": "https://static.intercomassets.com/ember/assets/images/onboarding/home/guide-assistants/phil-978b5567c644d4c0f67a4516c03c6b91.png"
+        }
+      },
+      "name": "Intercom5",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "ee755a25-9b93-4041-9021-e4f81c3d7c69"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "get",
+        "selectBy": "id",
+        "value": "={{$node[\"Intercom5\"].json[\"id\"]}}"
+      },
+      "name": "Intercom6",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "fceb5905-6512-4c30-b0e8-de1720e7cace"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Intercom7",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "03ace0e9-3abc-4144-ba2a-6a3785887d39"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "update",
+        "value": "={{$node[\"Intercom5\"].json[\"id\"]}}",
+        "additionalFields": {
+          "name": "=UpdatedLead"
+        }
+      },
+      "name": "Intercom8",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "0deacb0c-d21c-4f03-85c1-83f6383f3c67"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "delete",
+        "deleteBy": "id",
+        "value": "={{$node[\"Intercom5\"].json[\"id\"]}}"
+      },
+      "name": "Intercom9",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "c4dbf1f2-2c89-4041-b409-64f83643c235"
+    },
+    {
+      "parameters": {
+        "identifierType": "userId",
+        "idValue": "=User{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Intercom10",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        450,
+        440
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "3a93e3d0-b94e-4987-bf80-b272d9315472"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "selectBy": "id",
+        "value": "={{$node[\"Intercom10\"].json[\"id\"]}}"
+      },
+      "name": "Intercom11",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        600,
+        440
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "7442311e-f761-47fb-8008-b884e434acd8"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Intercom12",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        740,
+        440
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "f82997b8-6501-4e4f-b36f-34571cbb4b84"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "value": "={{$node[\"Intercom10\"].json[\"id\"]}}",
+        "additionalFields": {
+          "name": "UpdatedUser"
+        }
+      },
+      "name": "Intercom13",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        900,
+        440
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "a11ffecd-9647-4a31-846f-687b1f5146fd"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "id": "={{$node[\"Intercom10\"].json[\"id\"]}}"
+      },
+      "name": "Intercom14",
+      "type": "n8n-nodes-base.intercom",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        440
+      ],
+      "credentials": {
+        "intercomApi": {
+          "id": "137",
+          "name": "Intercom API creds"
+        }
+      },
+      "id": "300d5a46-b105-4360-80d6-f60f8f4e8e35"
+    }
+  ],
+  "connections": {
+    "Intercom1": {
+      "main": [
+        [
+          {
+            "node": "Intercom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom": {
+      "main": [
+        [
+          {
+            "node": "Intercom2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom2": {
+      "main": [
+        [
+          {
+            "node": "Intercom3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom3": {
+      "main": [
+        [
+          {
+            "node": "Intercom4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom5": {
+      "main": [
+        [
+          {
+            "node": "Intercom6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom6": {
+      "main": [
+        [
+          {
+            "node": "Intercom7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom7": {
+      "main": [
+        [
+          {
+            "node": "Intercom8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom8": {
+      "main": [
+        [
+          {
+            "node": "Intercom9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom10": {
+      "main": [
+        [
+          {
+            "node": "Intercom11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom11": {
+      "main": [
+        [
+          {
+            "node": "Intercom12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom12": {
+      "main": [
+        [
+          {
+            "node": "Intercom13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intercom13": {
+      "main": [
+        [
+          {
+            "node": "Intercom14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Intercom5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Intercom10",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Intercom1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -1,0 +1,74 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "update",
+				"group": {
+					"__rl": true,
+					"value": "GroupNameUpdated",
+					"mode": "list",
+					"cachedResultName": "GroupNameUpdated"
+				},
+				"groupName": "GroupNameUpdated2",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [140, -120],
+			"id": "6299cf80-7aea-4cf6-8604-368a42290da7",
+			"name": "updateGroup",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"updateGroup": [
+			{
+				"json": {
+					"UpdateGroupResponse": {
+						"ResponseMetadata": {
+							"RequestId": "16ada465-a981-44ab-841f-3ca3247f7405"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "updateGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "bce6ece0-c45a-4389-9e39-6edea3d2e0da",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

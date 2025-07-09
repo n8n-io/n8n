@@ -1,0 +1,1131 @@
+{
+  "createdAt": "2024-09-25T09:14:35.108Z",
+  "updatedAt": "2024-09-25T11:27:58.000Z",
+  "id": "254",
+  "name": "Agent:Tools:Anthropic",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f9b7ea03-1809-4fef-80dd-521e9d60f3bc",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_weather_data",
+        "description": "Call this tool to get weather information for a specific city. Input should be a single string in format: \"$CITY, $COUNTRY\". So for example to get data about Prague, \"Prague, Czechia\".",
+        "workflowId": "={{ $workflow.id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "tool",
+              "stringValue": "get_weather"
+            }
+          ]
+        }
+      },
+      "id": "4275e044-2ce3-4942-a0ed-406bed90debc",
+      "name": "Get Weather",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1,
+      "position": [
+        640,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_evens",
+        "description": "Call this tool to get upcoming events for a specific city. Input should be a single string in format: \"$CITY, $COUNTRY\". So for example to get data about Prague, \"Prague, Czechia\".",
+        "workflowId": "={{ $workflow.id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "tool",
+              "stringValue": "get_events"
+            }
+          ]
+        }
+      },
+      "id": "c28a61c8-be38-4031-a456-76f936ba6721",
+      "name": "Get Events",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1,
+      "position": [
+        760,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fc61cf88-967d-4433-9cfd-7cdad1a43e75",
+              "name": "response",
+              "value": "={\n    \"created\": \"2024-03-04T09:26:23+01:00\",\n    \"symbolCode\": {\n        \"next1Hour\": \"fog\"\n    },\n    \"temperature\": {\n        \"value\": 5.1,\n        \"feelsLike\": 4\n    },\n    \"precipitation\": {\n        \"value\": 0.0\n    },\n    \"wind\": {\n        \"direction\": 275,\n        \"speed\": 1.7\n    },\n    \"status\": {\n        \"code\": \"Ok\"\n    }\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "141f2081-39eb-48f4-9ade-924187116c58",
+      "name": "Edit Fields4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1140,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0434695d-b245-4947-8b6e-7676a5c92904",
+              "name": "response",
+              "value": "=[\n    {\n        \"description\": \"***Movie Barf* is a new English friendly film night presented by film journalist and blogger Ryan Keating-Lambert, dedicated to screening a diverse variety of award-winning films both contemporary and classic. Ryan’s late night shows includes intriguing chats with various guests (in person or over Skype in the case of the international ones) and special drink offers at the bar.**\\n\\n*Dune: Part Two* / Denis Villeneuve / Canada, USA 2024 / 166 min – Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.\",\n        \"name\": \"Movie Barf: Dune – Part Two\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"Luboš Pospíšil will perform with the renewed band 5P on March 14 at the cultural house of Barikadník.\",\n        \"name\": \"Luboš Pospíšil & 5P\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"An insomniac office worker looking for a way to change his life crosses paths with a devil-may-care soap maker and they form an underground fight club that evolves into something much, much more...\",\n        \"name\": \"Fight Club\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"From filmmaker Yorgos Lanthimos and producer Emma Stone comes the incredible tale and fantastical evolution of Bella Baxter (Stone), a young woman brought back to life by the brilliant and unorthodox scientist Dr. Godwin Baxter (Willem Dafoe). Under Baxter's protection, Bella is eager to learn. Hungry for the worldliness she is lacking, she runs off with Duncan Wedderburn (Mark Ruffalo), a slick and debauched lawyer, on a whirlwind adventure across the continents. Free from the prejudices of her times, Bella grows steadfast in her purpose to stand for equality and liberation.\",\n        \"name\": \"Poor Things\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"Concert of Bharata Rajnošek, who decided to do something very brave - pay tribute to king of the pop, Michael Jackson in jazz.\",\n        \"name\": \"Tribute to World Legends: Michael Jackson\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    }\n]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce0ba26a-5149-436f-aaf6-dc2b64ca02b1",
+      "name": "Edit Fields5",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1140,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "414caf45-02aa-4c0a-9cdb-e6da9ec03d80",
+              "name": "has_weather",
+              "value": "={{ $json.output.includes('weather') }}",
+              "type": "boolean"
+            },
+            {
+              "id": "4f055fa4-10eb-4b7e-b1dc-37a7ef7185fc",
+              "name": "has_movie",
+              "value": "={{ $json.output.includes('Dune') }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4ec6d24d-353c-4534-a9e7-5a19f62f8fde",
+      "name": "Edit Fields6",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        900,
+        260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e14fcffe-bbf8-429c-b84e-aa749017fb8c",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Multiple Tools Calling",
+        "height": 80,
+        "width": 335
+      },
+      "id": "62fb5440-b07d-4279-9c0a-722a65fa5322",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Output Parsing\n",
+        "height": 88,
+        "width": 386
+      },
+      "id": "8020da6e-2ab4-4613-8527-b78705f72114",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0434695d-b245-4947-8b6e-7676a5c92904",
+              "name": "response",
+              "value": "=Maurits Cornelis Escher (Dutch pronunciation: [ˈmʌurɪts kɔrˈneːlɪs ˈɛɕər]; 17 June 1898 – 27 March 1972) was a Dutch graphic artist who made woodcuts, lithographs, and mezzotints, many of which were inspired by mathematics. Despite wide popular interest, for most of his life Escher was neglected in the art world, even in his native Netherlands. He was 70 before a retrospective exhibition was held. In the late twentieth century, he became more widely appreciated, and in the twenty-first century he has been celebrated in exhibitions around the world.\n\nHis work features mathematical objects and operations including impossible objects, explorations of infinity, reflection, symmetry, perspective, truncated and stellated polyhedra, hyperbolic geometry, and tessellations. Although Escher believed he had no mathematical ability, he interacted with the mathematicians George Pólya, Roger Penrose, and Donald Coxeter, and the crystallographer Friedrich Haag, and conducted his own research into tessellation.\n\nEarly in his career, he drew inspiration from nature, making studies of insects, landscapes, and plants such as lichens, all of which he used as details in his artworks. He traveled in Italy and Spain, sketching buildings, townscapes, architecture and the tilings of the Alhambra and the Mezquita of Cordoba, and became steadily more interested in their mathematical structure.\n\nEscher's art became well known among scientists and mathematicians, and in popular culture, especially after it was featured by Martin Gardner in his April 1966 Mathematical Games column in Scientific American. Apart from being used in a variety of technical papers, his work has appeared on the covers of many books and albums. He was one of the major inspirations for Douglas Hofstadter's Pulitzer Prize-winning 1979 book Gödel, Escher, Bach.\n\nExhibitions\n\nPoster advertising the first major exhibition of Escher's work in Britain (Dulwich Picture Gallery, 14 October 2015 – 17 January 2016). The image, which shows Escher and his interest in geometric distortion and multiple levels of distance from reality, is based on his Hand with Reflecting Sphere, 1935.[62][22]\nDespite wide popular interest, Escher was for a long time somewhat neglected in the art world; even in his native Netherlands, he was 70 before a retrospective exhibition was held.[43][k] In the twenty-first century, major exhibitions have been held in cities around the world.[63][64][65] An exhibition of his work in Rio de Janeiro attracted more than 573,000 visitors in 2011;[63] its daily visitor count of 9,677 made it the most visited museum exhibition of the year, anywhere in the world.[66] No major exhibition of Escher's work was held in Britain until 2015, when the Scottish National Gallery of Modern Art ran one in Edinburgh from June to September 2015,[64] moving in October 2015 to the Dulwich Picture Gallery, London. The exhibition poster is based on Hand with Reflecting Sphere, 1935, which shows Escher in his house reflected in a handheld sphere, thus illustrating the artist, his interest in levels of reality in art (e.g., is the hand in the foreground more real than the reflected one?), perspective, and spherical geometry.[22][62][67] The exhibition moved to Italy in 2015–2016, attracting over 500,000 visitors in Rome and Bologna,[65] and then Milan.[68][69][70]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2a0cdc4d-2ed8-4efe-973f-a633469c8001",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1140,
+        1260
+      ]
+    },
+    {
+      "parameters": {
+        "name": "get_evens",
+        "description": "Call this tool to search Wikipedia.",
+        "workflowId": "={{ $workflow.id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "tool",
+              "stringValue": "search_wiki"
+            }
+          ]
+        }
+      },
+      "id": "e4d9f9bc-45b0-41ce-8f52-539144736ed5",
+      "name": "Search Wiki",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1,
+      "position": [
+        640,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"Full name of the artist\"\n    },\n    \"birthDate\": {\n      \"type\": \"string\",\n      \"format\": \"date\",\n      \"description\": \"Date of birth\"\n    },\n    \"deathDate\": {\n      \"type\": \"string\",\n      \"format\": \"date\",\n      \"description\": \"Date of death\"\n    },\n    \"nationality\": {\n      \"type\": \"string\",\n      \"description\": \"Artist's nationality\"\n    },\n    \"profession\": {\n      \"type\": \"string\",\n      \"description\": \"Artist's primary profession\"\n    },\n    \"notableWorks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Notable works created by the artist\"\n    }\n  },\n  \"required\": [\"name\", \"birthDate\", \"deathDate\", \"nationality\", \"profession\", \"notableWorks\"]\n}"
+      },
+      "id": "466a8e57-8eb7-47a9-b0f0-f16c52b18c8f",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Tell me about M.C. Escher",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "75babac0-cb8c-401a-a027-49b850166bf3",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        520,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "414caf45-02aa-4c0a-9cdb-e6da9ec03d80",
+              "name": "has_birth_date",
+              "value": "={{ $json.output.birthDate === '1898-06-17' }}",
+              "type": "boolean"
+            },
+            {
+              "id": "57513cf6-1ee7-40b7-95fc-316066c62153",
+              "name": "has_death_date",
+              "value": "={{ $json.output.deathDate === '1972-03-27' }}",
+              "type": "string"
+            },
+            {
+              "id": "357953da-7578-4c7e-b8f8-aa25bd9187a4",
+              "name": "has_name",
+              "value": "={{ $json.output.name.includes('Escher') }}",
+              "type": "string"
+            },
+            {
+              "id": "7cf215ea-f65a-467c-b158-9a80d8de7511",
+              "name": "has_works",
+              "value": "={{ $json.output.notableWorks.length > 0 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "31344c44-bbfc-4774-92d9-b61762b43238",
+      "name": "Edit Fields7",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        880,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Code Tool with Schema\n",
+        "height": 88,
+        "width": 386
+      },
+      "id": "54533ef5-039b-4243-a81c-9ac1265ae3ec",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -620
+      ]
+    },
+    {
+      "parameters": {
+        "name": "array_merge",
+        "description": "Call this tool to merge array of strings to a single string",
+        "jsCode": "// Example: convert the incoming query to uppercase and return it\nreturn query.strings_array.join(', ');",
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n\t\"strings_array\": [\"some_value\", \"some_other_value\"]\n}"
+      },
+      "id": "35be87b4-b947-4b05-9380-23570dac701d",
+      "name": "Code Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "414caf45-02aa-4c0a-9cdb-e6da9ec03d80",
+              "name": "passed_array_parameter",
+              "value": "={{ Array.isArray($json.intermediateSteps[0].action.messageLog[0].kwargs.tool_calls[0].args.strings_array) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "069c2fe9-f0f8-4938-9552-1dac5c720add",
+              "name": "has_correct_length",
+              "value": "={{ $json.intermediateSteps[0].action.messageLog[0].kwargs.tool_calls[0].args.strings_array.length === 4 }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "33afa806-84d4-4c2e-a004-22e4d4808d47",
+      "name": "Edit Fields8",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        900,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "66c36215-8924-4534-8e7b-845d8de29f4a",
+              "name": "response",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b35ef011-376c-4982-b7d9-8ad29eb65cd0",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1140,
+        1460
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Convert this JSON array to a single string: ['This', 'Is', 'An', 'Array!'].",
+        "options": {
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "ed050ae2-eb67-4b1f-a87b-28bf5952e5da",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        540,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "5aa82a01-8d32-4ede-a7f3-9ea2f24432d2",
+      "name": "Anthropic Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        520,
+        460
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1Dr1Xbrd2xeq7gaq",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "2bfdb0c4-6bc9-481d-ad3c-51bed0925a78",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        520,
+        20
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1Dr1Xbrd2xeq7gaq",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "11d7b586-bf4b-42aa-81c1-55aa0e17a3fc",
+      "name": "Anthropic Chat Model3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        540,
+        -400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1Dr1Xbrd2xeq7gaq",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Help me plan my day in Berlin, Germany. Check current the weather  and get the upcoming events and respond with weather and details about the upcoming events.\n\nEach tool should only be called only once.",
+        "options": {
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "59f6625d-fbb2-47f8-ab09-31a6e0f3e527",
+      "name": "AI Agent4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        520,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get_weather",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Weather"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "a164188f-3b5b-4c24-b1bb-e589f4f9219f",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get_events",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Events"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "64f3dd1b-57e3-4183-a1d6-6b9b58fd1d81",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "search_wiki",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "search_wiki"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "85f031f4-123f-4407-b5d0-fdd90a26667c",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "no_query",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "empty_query"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4dde342-7945-49a1-8e98-cb967ada7afe",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        460,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Tool without parameters\n",
+        "height": 88,
+        "width": 386
+      },
+      "id": "b5dca644-99e9-4493-9e6a-1fbc03502d5a",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -1040
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "414caf45-02aa-4c0a-9cdb-e6da9ec03d80",
+              "name": "empty_args",
+              "value": "={{ $ifEmpty($json.intermediateSteps[0].action.messageLog[0].kwargs.tool_calls[0].args, true) }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2336c95b-f98a-4c4a-89df-d02c7ad00d42",
+      "name": "Edit Fields9",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        920,
+        -980
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "7646d5c7-3717-483f-85b5-da0f8eadf609",
+      "name": "Anthropic Chat Model4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        -820
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1Dr1Xbrd2xeq7gaq",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Fetch Example website",
+        "url": "https://example.com"
+      },
+      "id": "1e1f51e8-7668-4efd-95d6-9c8e7cd5dfbc",
+      "name": "HTTP Request",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        -820
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Fetch example website",
+        "options": {
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "36e3e45c-8167-4382-87fa-fed3eccc7dff",
+      "name": "AI Agent2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        560,
+        -980
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "memory3",
+        "contextWindowLength": 10
+      },
+      "id": "7eace01a-7ea1-4175-a989-297a885d6f54",
+      "name": "Window Buffer Memory1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        500,
+        -1240
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"english_answer\": \"California\",\n\t\"czech_answer\": \"California\"\n}"
+      },
+      "id": "58269208-5599-4e2f-b9fe-f63ce1bd73d3",
+      "name": "Structured Output Parser1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        -1240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Hi, my name is Oleg. Tell me about magnets like I'm 5.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise."
+        }
+      },
+      "id": "66af25fe-deed-4aa1-b597-a2b8ec2aa9be",
+      "name": "AI Agent5",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        540,
+        -1400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Output Parser + Memory\n",
+        "height": 88,
+        "width": 386
+      },
+      "id": "9dbe76ab-c191-404b-a3e6-bd81910923bc",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -1460
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "492acf62-f7d5-4798-a93c-6a291421ecfb",
+              "name": "contain_both_answers",
+              "value": "={{ $json.output.english_answer.length > 0 && $json.output.czech_answer.length > 0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "5c56b6d3-1d59-45c4-bcb8-3d4722493c62",
+              "name": "recalled_name",
+              "value": "={{ $json.output.english_answer.includes('Oleg') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "02cd9756-bc75-4467-a587-e9b063219b94",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1240,
+        -1400
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-haiku-20240307",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "acd4aefe-5deb-465c-81c3-28647e4a62c6",
+      "name": "Anthropic Chat Model5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        -1240
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1Dr1Xbrd2xeq7gaq",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Can you still remember my name?",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise."
+        }
+      },
+      "id": "cd67dbc8-d756-4e0c-8f75-f753e61a4280",
+      "name": "AI Agent3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        900,
+        -1400
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Weather": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Events": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Wiki": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent4": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent3",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "AI Agent3",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent5": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "pinData": {},
+  "versionId": "40faa4fb-40b3-4081-8f60-1b226a6294dc",
+  "triggerCount": 0,
+  "tags": []
+}

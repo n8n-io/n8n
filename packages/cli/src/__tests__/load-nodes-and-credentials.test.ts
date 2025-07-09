@@ -292,9 +292,9 @@ describe('LoadNodesAndCredentials', () => {
 				},
 			] as unknown as INodeTypeDescription[];
 			// private field
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			instance['known'].nodes.testNode = { className: 'TestNode', sourcePath: '/path/to/testNode' };
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			instance['known'].credentials['testCredential'] = {
 				className: 'TestCredential',
 				sourcePath: '/path/to/testCredential',
@@ -325,7 +325,6 @@ describe('LoadNodesAndCredentials', () => {
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 						displayName: 'Description',
 						name: 'toolDescription',
-						placeholder: 'e.g. A test node',
 						required: true,
 						type: 'string',
 						typeOptions: {
@@ -341,7 +340,7 @@ describe('LoadNodesAndCredentials', () => {
 
 			expect(instance.types.nodes).toHaveLength(2);
 			// accesses private property
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			expect(instance['known'].credentials.testCredential.supportedNodes).toEqual([
 				'testNode',
 				'testNodeTool',
@@ -380,7 +379,6 @@ describe('LoadNodesAndCredentials', () => {
 						typeOptions: { rows: 2 },
 						description:
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-						placeholder: 'e.g. A test node',
 					},
 				],
 				codex: {

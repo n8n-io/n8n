@@ -28,12 +28,13 @@ withDefaults(
 <style module lang="scss">
 .container {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing-3xs);
 	user-select: none;
 }
 
 .avatar {
-	height: var(--spacing-s);
+	height: var(--spacing-m);
 	animation: pulse 1.5s infinite;
 	position: relative;
 }
@@ -43,12 +44,15 @@ withDefaults(
 	position: relative;
 	overflow: hidden;
 	line-height: 1.4rem;
+	height: var(--spacing-xl);
+	align-items: center;
 }
 .message {
 	margin: 0;
 	padding: 0;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 	text-align: left;
 }
 

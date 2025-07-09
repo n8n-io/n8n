@@ -35,12 +35,14 @@ jobs:
     if: ${{ github.event.inputs.start-url != '' }}
     steps:
       - name: Calls start URL
+        env:
+          START_URL: ${{ github.event.inputs.start-url }}
         run: |
-          [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
+          [[ "${{ env.START_URL }}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' "${{ env.START_URL }}" || echo ""
         shell: bash
 
   run-e2e-tests:
-    name: E2E [Electron/Node 18]
+    name: E2E
     uses: ./.github/workflows/e2e-reusable.yml
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
@@ -56,7 +58,7 @@ jobs:
     if: ${{ github.event.inputs.success-url != '' }}
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}
@@ -65,6 +67,8 @@ jobs:
           message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Call Success URL - optionally
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success-url }}
         run: |
-          [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
+          [[ "${{ env.SUCCESS_URL }}" != "" ]] && curl -v "${{ env.SUCCESS_URL }}" || echo ""
         shell: bash

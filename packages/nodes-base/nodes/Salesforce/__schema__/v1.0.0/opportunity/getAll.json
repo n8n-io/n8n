@@ -12,9 +12,12 @@
                 }
             }
         },
-        "Name": {
+        "Id": {
+            "type": "string"
+        },
+        "StageName": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 5
 }

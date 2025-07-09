@@ -16,6 +16,7 @@ import {
 	faBan,
 	faBalanceScaleLeft,
 	faBars,
+	faBell,
 	faBolt,
 	faBook,
 	faBoxOpen,
@@ -42,6 +43,7 @@ import {
 	faCogs,
 	faComment,
 	faComments,
+	faCompress,
 	faClipboardList,
 	faClock,
 	faClone,
@@ -132,6 +134,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faShare,
 	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
@@ -190,6 +193,10 @@ import {
 	statusUnknown,
 	statusWarning,
 	faPopOut,
+	faJSON,
+	faSchema,
+	faBinary,
+	faText,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -198,6 +205,7 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
+// this can be removed once nodes stop using FA icons
 export const FontAwesomePlugin: Plugin = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
@@ -214,6 +222,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faBan);
 		addIcon(faBalanceScaleLeft);
 		addIcon(faBars);
+		addIcon(faBell);
 		addIcon(faBolt);
 		addIcon(faBook);
 		addIcon(faBoxOpen);
@@ -240,6 +249,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faCogs);
 		addIcon(faComment);
 		addIcon(faComments);
+		addIcon(faCompress);
 		addIcon(faClipboardList);
 		addIcon(faClock);
 		addIcon(faClone);
@@ -333,6 +343,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faShare);
 		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
@@ -389,6 +400,10 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusWarning);
 
 		addIcon(faPopOut);
+		addIcon(faSchema);
+		addIcon(faJSON);
+		addIcon(faBinary);
+		addIcon(faText);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
@@ -399,7 +414,3 @@ type LibraryWithDefinitions = Library & {
 };
 
 export const iconLibrary = library as LibraryWithDefinitions;
-
-export const getAllIconNames = () => {
-	return Object.keys(iconLibrary.definitions.fas);
-};

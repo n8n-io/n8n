@@ -1,13 +1,16 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import type { User } from '@/databases/entities/user';
 
 import { saveCredential } from './shared/db/credentials';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
 import { createOwner, createAdmin, createMember } from './shared/db/users';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 
 let credentialHelper: CredentialsHelper;
 let owner: User;

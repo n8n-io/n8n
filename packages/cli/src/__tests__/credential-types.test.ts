@@ -117,5 +117,26 @@ describe('CredentialTypes', () => {
 
 			expect(credentialTypes.getParentTypes('unknownCredential')).toBeEmptyArray();
 		});
+
+		test('Should not mutate the original extends array', () => {
+			const knownCredentials = {
+				childType: { extends: ['parentType'] },
+				parentType: { extends: ['grandparentType'] },
+				grandparentType: { extends: [] },
+			};
+
+			const credentialTypes = new CredentialTypes(
+				mock<LoadNodesAndCredentials>({ knownCredentials }),
+			);
+
+			const originalExtends = knownCredentials.childType.extends;
+			const originalLength = originalExtends.length;
+
+			credentialTypes.getParentTypes('childType');
+			credentialTypes.getParentTypes('childType');
+			credentialTypes.getParentTypes('childType');
+
+			expect(originalExtends).toHaveLength(originalLength);
+		});
 	});
 });

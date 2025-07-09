@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { ASSIGNMENT_TYPES } from './constants';
 import { computed } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 interface Props {
 	modelValue: string;
@@ -19,7 +20,9 @@ const i18n = useI18n();
 
 const types = ASSIGNMENT_TYPES;
 
-const icon = computed(() => types.find((type) => type.type === props.modelValue)?.icon ?? 'cube');
+const icon = computed(
+	(): IconName => types.find((type) => type.type === props.modelValue)?.icon ?? 'box',
+);
 
 const onTypeChange = (type: string): void => {
 	emit('update:model-value', type);

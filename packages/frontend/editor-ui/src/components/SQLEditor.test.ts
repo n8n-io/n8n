@@ -1,6 +1,6 @@
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
@@ -8,7 +8,6 @@ import { renderComponent } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
-import { useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 
@@ -40,7 +39,7 @@ const nodes = [
 const mockResolveExpression = () => {
 	const mock = vi.fn();
 	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-		...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+		...workflowHelpers.useWorkflowHelpers(),
 		resolveExpression: mock,
 	});
 

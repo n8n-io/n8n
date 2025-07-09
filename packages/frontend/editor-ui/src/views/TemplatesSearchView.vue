@@ -5,7 +5,7 @@ import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from '@/views/TemplatesView.vue';
 
-import type { ITemplatesCategory } from '@/Interface';
+import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -14,7 +14,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useToast } from '@/composables/useToast';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -301,6 +301,11 @@ onMounted(async () => {
 
 	restoreSearchFromRoute();
 
+	// Check if templates are enabled and check if the local templates store is available
+	if (settingsStore.isTemplatesEnabled) {
+		settingsStore.testTemplatesEndpoint().catch(() => {});
+	}
+
 	setTimeout(() => {
 		// Check if there is scroll position saved in route and scroll to it
 		const scrollOffset = route.meta?.scrollOffset;
@@ -372,7 +377,7 @@ watch(workflows, (newWorkflows) => {
 						@blur="trackSearch"
 					>
 						<template #prefix>
-							<font-awesome-icon icon="search" />
+							<n8n-icon icon="search" />
 						</template>
 					</n8n-input>
 					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">

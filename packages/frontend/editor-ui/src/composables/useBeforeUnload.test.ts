@@ -1,5 +1,6 @@
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
-import { STORES, VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { useRoute } from 'vue-router';

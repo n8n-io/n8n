@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 type Props = {
 	titleLocaleKey: BaseTextKey;

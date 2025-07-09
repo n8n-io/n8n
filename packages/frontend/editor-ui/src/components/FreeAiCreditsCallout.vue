@@ -1,11 +1,9 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { AI_CREDITS_EXPERIMENT } from '@/constants';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -27,7 +25,6 @@ const showSuccessCallout = ref(false);
 const claimingCredits = ref(false);
 
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
@@ -58,7 +55,6 @@ const userCanClaimOpenAiCredits = computed(() => {
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant &&
 		!userHasOpenAiCredentialAlready.value &&
 		!userHasClaimedAiCreditsAlready.value
 	);
@@ -93,7 +89,7 @@ const onClaimCreditsClicked = async () => {
 		<n8n-callout
 			v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
 			theme="secondary"
-			icon="exclamation-circle"
+			icon="circle-alert"
 		>
 			{{
 				i18n.baseText('freeAi.credits.callout.claim.title', {
@@ -110,7 +106,7 @@ const onClaimCreditsClicked = async () => {
 				/>
 			</template>
 		</n8n-callout>
-		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="check-circle">
+		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="circle-check">
 			<n8n-text size="small">
 				{{
 					i18n.baseText('freeAi.credits.callout.success.title.part1', {
@@ -118,7 +114,7 @@ const onClaimCreditsClicked = async () => {
 					})
 				}}</n8n-text
 			>&nbsp;
-			<n8n-text size="small" bold="true">
+			<n8n-text size="small" :bold="true">
 				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
 			>
 		</n8n-callout>

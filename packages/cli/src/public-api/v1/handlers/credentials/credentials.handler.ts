@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import type { CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { z } from 'zod';
@@ -6,7 +7,6 @@ import { z } from 'zod';
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 import {

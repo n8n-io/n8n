@@ -36,7 +36,7 @@ export class MongoDb implements INodeType {
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
@@ -248,7 +248,7 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({ items, fields, updateKey, useDotNotation, dateFields });
 
 			for (const item of updateItems) {
 				try {
@@ -290,7 +290,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				isUpdate: nodeVersion >= 1.2,
+			});
 
 			for (const item of updateItems) {
 				try {
@@ -329,7 +336,13 @@ export class MongoDb implements INodeType {
 					this.getNodeParameter('options.dateFields', 0, '') as string,
 				);
 
-				const insertItems = prepareItems(items, fields, '', useDotNotation, dateFields);
+				const insertItems = prepareItems({
+					items,
+					fields,
+					updateKey: '',
+					useDotNotation,
+					dateFields,
+				});
 
 				const { insertedIds } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
@@ -370,7 +383,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				isUpdate: nodeVersion >= 1.2,
+			});
 
 			for (const item of updateItems) {
 				try {

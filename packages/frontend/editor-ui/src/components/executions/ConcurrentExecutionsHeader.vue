@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 
@@ -71,7 +71,7 @@ const headerText = computed(() => {
 					>
 				</div>
 			</template>
-			<font-awesome-icon icon="info-circle" class="ml-2xs" />
+			<n8n-icon icon="info" class="ml-2xs" />
 		</n8n-tooltip>
 	</div>
 </template>

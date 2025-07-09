@@ -15,8 +15,8 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
+import { i18nInstance } from '@n8n/i18n';
 import { TelemetryPlugin } from './plugins/telemetry';
-import { i18nInstance } from './plugins/i18n';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
@@ -24,6 +24,8 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+
+import type { VueScanOptions } from 'z-vue-scan';
 
 const pinia = createPinia();
 
@@ -39,6 +41,13 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+if (import.meta.env.VUE_SCAN) {
+	const { default: VueScan } = await import('z-vue-scan');
+	app.use<VueScanOptions>(VueScan, {
+		enable: true,
+	});
+}
 
 app.mount('#app');
 

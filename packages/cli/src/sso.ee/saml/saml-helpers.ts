@@ -1,19 +1,16 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import config from '@/config';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import type { User } from '@/databases/entities/user';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
 
-import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
 import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 import {
@@ -27,32 +24,31 @@ import {
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
 export function isSamlLoginEnabled(): boolean {
-	return config.getEnv(SAML_LOGIN_ENABLED);
+	return Container.get(GlobalConfig).sso.saml.loginEnabled;
 }
 
 export function getSamlLoginLabel(): string {
-	return config.getEnv(SAML_LOGIN_LABEL);
+	return Container.get(GlobalConfig).sso.saml.loginLabel;
 }
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
-	if (isEmailCurrentAuthenticationMethod() || isSamlCurrentAuthenticationMethod()) {
-		if (enabled) {
-			config.set(SAML_LOGIN_ENABLED, true);
-			await setCurrentAuthenticationMethod('saml');
-		} else if (!enabled) {
-			config.set(SAML_LOGIN_ENABLED, false);
-			await setCurrentAuthenticationMethod('email');
-		}
-	} else {
+	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+	if (enabled && !isEmailCurrentAuthenticationMethod() && !isSamlCurrentAuthenticationMethod()) {
 		throw new InternalServerError(
-			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${getCurrentAuthenticationMethod()})`,
+			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${currentAuthenticationMethod})`,
 		);
 	}
+
+	const targetAuthenticationMethod =
+		!enabled && currentAuthenticationMethod === 'saml' ? 'email' : currentAuthenticationMethod;
+
+	Container.get(GlobalConfig).sso.saml.loginEnabled = enabled;
+	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
 }
 
 export function setSamlLoginLabel(label: string): void {
-	config.set(SAML_LOGIN_LABEL, label);
+	Container.get(GlobalConfig).sso.saml.loginLabel = label;
 }
 
 export function isSamlLicensed(): boolean {

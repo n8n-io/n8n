@@ -1,10 +1,10 @@
+import { PaginationDto } from '@n8n/api-types';
+import { RestController, Get, Middleware, Query } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
-import { RestController, Get, Middleware } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
 import { WorkflowHistoryRequest } from '@/requests';
 
 import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflow-history-helper.ee';
@@ -36,14 +36,14 @@ export class WorkflowHistoryController {
 		next();
 	}
 
-	@Get('/workflow/:workflowId', { middlewares: [paginationListQueryMiddleware] })
-	async getList(req: WorkflowHistoryRequest.GetList) {
+	@Get('/workflow/:workflowId')
+	async getList(req: WorkflowHistoryRequest.GetList, _res: Response, @Query query: PaginationDto) {
 		try {
 			return await this.historyService.getList(
 				req.user,
 				req.params.workflowId,
-				req.query.take ?? DEFAULT_TAKE,
-				req.query.skip ?? 0,
+				query.take ?? DEFAULT_TAKE,
+				query.skip ?? 0,
 			);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {

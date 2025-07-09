@@ -2,9 +2,9 @@ import type {
 	AppliedThemeOption,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	ITemplatesNode,
 	NodeAuthenticationOption,
 } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -12,21 +12,21 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
-import type {
-	IDataObject,
-	INodeCredentialDescription,
-	INodeExecutionData,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValueType,
-	ResourceMapperField,
-	Themed,
+import {
+	isResourceLocatorValue,
+	type IDataObject,
+	type INodeCredentialDescription,
+	type INodeExecutionData,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type ResourceMapperField,
+	type Themed,
 } from 'n8n-workflow';
 
 /*
@@ -281,9 +281,8 @@ export const getNodeCredentialForSelectedAuthType = (
 	const authField = getMainAuthField(nodeType);
 	const authFieldName = authField ? authField.name : '';
 	return (
-		nodeType.credentials?.find(
-			(cred) =>
-				cred.displayOptions?.show && cred.displayOptions.show[authFieldName]?.includes(authType),
+		nodeType.credentials?.find((cred) =>
+			cred.displayOptions?.show?.[authFieldName]?.includes(authType),
 		) || null
 	);
 };
@@ -297,10 +296,8 @@ export const getAuthTypeForNodeCredential = (
 		const authFieldName = authField ? authField.name : '';
 		const nodeAuthOptions = getNodeAuthOptions(nodeType);
 		return (
-			nodeAuthOptions.find(
-				(option) =>
-					credentialType.displayOptions?.show &&
-					credentialType.displayOptions?.show[authFieldName]?.includes(option.value),
+			nodeAuthOptions.find((option) =>
+				credentialType.displayOptions?.show?.[authFieldName]?.includes(option.value),
 			) || null
 		);
 	}

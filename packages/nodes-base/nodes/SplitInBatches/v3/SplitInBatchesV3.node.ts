@@ -55,7 +55,7 @@ export class SplitInBatchesV3 implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether the node will be reset and so with the current input-data newly initialized',
+							'Whether the node starts again from the beginning of the input items. This will treat incoming data as a new set rather than continuing with the previous items.',
 					},
 				],
 			},

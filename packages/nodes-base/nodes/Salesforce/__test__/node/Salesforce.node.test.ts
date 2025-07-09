@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import accountDetails from './fixtures/account-details.json';
 import accounts from './fixtures/accounts.json';
@@ -10,13 +9,19 @@ import opportunityDetails from './fixtures/opportunity-details.json';
 import taskDetails from './fixtures/task-details.json';
 import taskSummary from './fixtures/task-summary.json';
 import tasks from './fixtures/tasks.json';
-import userDeltails from './fixtures/user-details.json';
+import userDetails from './fixtures/user-details.json';
 import users from './fixtures/users.json';
 
 describe('Salesforce Node', () => {
-	nock.emitter.on('no match', (req) => {
-		console.error('Unmatched request: ', req);
-	});
+	const credentials = {
+		salesforceOAuth2Api: {
+			scope: 'full refresh_token',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+				instance_url: 'https://salesforce.instance',
+			},
+		},
+	};
 
 	const salesforceNock = nock('https://salesforce.instance/services/data/v59.0');
 
@@ -29,13 +34,14 @@ describe('Salesforce Node', () => {
 				})
 				.reply(200, { records: users })
 				.get('/sobjects/user/id1')
-				.reply(200, userDeltails);
+				.reply(200, userDetails);
 		});
 
-		testWorkflows(['nodes/Salesforce/__test__/node/users.workflow.json']);
+		afterAll(() => salesforceNock.done());
 
-		it('should make the correct network calls', () => {
-			salesforceNock.done();
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['users.workflow.json'],
 		});
 	});
 
@@ -63,10 +69,11 @@ describe('Salesforce Node', () => {
 				.reply(200, { success: true, errors: [] });
 		});
 
-		testWorkflows(['nodes/Salesforce/__test__/node/tasks.workflow.json']);
+		afterAll(() => salesforceNock.done());
 
-		it('should make the correct network calls', () => {
-			salesforceNock.done();
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['tasks.workflow.json'],
 		});
 	});
 
@@ -96,10 +103,11 @@ describe('Salesforce Node', () => {
 				.reply(200, { success: true, errors: [] });
 		});
 
-		testWorkflows(['nodes/Salesforce/__test__/node/accounts.workflow.json']);
+		afterAll(() => salesforceNock.done());
 
-		it('should make the correct network calls', () => {
-			salesforceNock.done();
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['accounts.workflow.json'],
 		});
 	});
 
@@ -113,10 +121,11 @@ describe('Salesforce Node', () => {
 				.reply(200, { records: accounts });
 		});
 
-		testWorkflows(['nodes/Salesforce/__test__/node/search.workflow.json']);
+		afterAll(() => salesforceNock.done());
 
-		it('should make the correct network calls', () => {
-			salesforceNock.done();
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['search.workflow.json'],
 		});
 	});
 
@@ -156,10 +165,11 @@ describe('Salesforce Node', () => {
 				.reply(200, opportunitiesSummary);
 		});
 
-		testWorkflows(['nodes/Salesforce/__test__/node/opportunities.workflow.json']);
+		afterAll(() => salesforceNock.done());
 
-		it('should make the correct network calls', () => {
-			salesforceNock.done();
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['opportunities.workflow.json'],
 		});
 	});
 });

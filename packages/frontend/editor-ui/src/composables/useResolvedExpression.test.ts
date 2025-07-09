@@ -2,7 +2,6 @@ import { defineComponent, h, nextTick, ref, toValue } from 'vue';
 import { useResolvedExpression } from './useResolvedExpression';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
-import { useRouter } from 'vue-router';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -25,7 +24,7 @@ async function renderTestComponent(...options: Parameters<typeof useResolvedExpr
 const mockResolveExpression = () => {
 	const mock = vi.fn();
 	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-		...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+		...workflowHelpers.useWorkflowHelpers(),
 		resolveExpression: mock,
 	});
 
@@ -63,8 +62,8 @@ describe('useResolvedExpression', () => {
 			});
 
 		expect(toValue(isExpression)).toBe(false);
-		expect(toValue(resolvedExpression)).toBe('');
-		expect(toValue(resolvedExpressionString)).toBe('[empty]');
+		expect(toValue(resolvedExpression)).toBe(null);
+		expect(toValue(resolvedExpressionString)).toBe('');
 	});
 
 	it('should handle errors', async () => {

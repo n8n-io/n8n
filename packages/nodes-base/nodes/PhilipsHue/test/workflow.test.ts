@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import {
 	deleteLightResponse,
@@ -10,6 +9,25 @@ import {
 } from './apiResponses';
 
 describe('PhilipsHue', () => {
+	const credentials = {
+		philipsHueOAuth2Api: {
+			grantType: 'authorizationCode',
+			appId: 'APPID',
+			authUrl: 'https://api.meethue.com/v2/oauth2/authorize',
+			accessTokenUrl: 'https://api.meethue.com/v2/oauth2/token',
+			authQueryParameters: 'appid=APPID',
+			scope: '',
+			authentication: 'header',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+				refresh_token: 'REFRESHTOKEN',
+				scope: '',
+				token_type: 'bearer',
+				expires_in: 86400,
+			},
+		},
+	};
+
 	describe('Run workflow', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.meethue.com/route');
@@ -19,7 +37,6 @@ describe('PhilipsHue', () => {
 			mock.delete('/api/pAtwdCV8NZId25Gk/lights/1').reply(200, deleteLightResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

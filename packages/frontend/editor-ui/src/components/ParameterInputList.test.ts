@@ -83,9 +83,10 @@ describe('ParameterInputList', () => {
 		});
 
 		// Should render labels for all parameters
-		TEST_PARAMETERS.forEach((parameter) => {
+		FIXED_COLLECTION_PARAMETERS.forEach((parameter) => {
 			expect(getByText(parameter.displayName)).toBeInTheDocument();
 		});
+
 		// Should render input placeholders for all fixed collection parameters
 		expect(getAllByTestId('suspense-stub')).toHaveLength(FIXED_COLLECTION_PARAMETERS.length);
 	});
@@ -100,7 +101,7 @@ describe('ParameterInputList', () => {
 		});
 
 		// Should render labels for all parameters
-		TEST_PARAMETERS.forEach((parameter) => {
+		FIXED_COLLECTION_PARAMETERS.forEach((parameter) => {
 			expect(getByText(parameter.displayName)).toBeInTheDocument();
 		});
 		// Should render error message for fixed collection parameter
@@ -108,6 +109,35 @@ describe('ParameterInputList', () => {
 			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
 		).toBeInTheDocument();
 		expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+	});
+
+	it('renders notice correctly', () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const { getByText } = renderComponent({
+			props: {
+				parameters: TEST_PARAMETERS,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+		expect(getByText('Note: This is a notice with')).toBeInTheDocument();
+		expect(getByText('notice link')).toBeInTheDocument();
+		expect(getByText('notice link').getAttribute('href')).toEqual('notice.n8n.io');
+	});
+
+	it('renders callout correctly', () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				parameters: TEST_PARAMETERS,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+
+		expect(getByText('Tip: This is a callout with')).toBeInTheDocument();
+		expect(getByText('callout link')).toBeInTheDocument();
+		expect(getByText('callout link').getAttribute('href')).toEqual('callout.n8n.io');
+		expect(getByText('and action!')).toBeInTheDocument();
+		expect(getByTestId('callout-dismiss-icon')).toBeInTheDocument();
 	});
 
 	describe('updateFormParameters', () => {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "type": "module",
   "files": [
     "dist",
@@ -30,6 +30,7 @@
   "scripts": {
     "cleanup": "rimraf dist",
     "dev": "vite",
+    "lint": "eslint src --quiet",
     "typecheck": "vue-tsc --noEmit",
     "build:backend": "tsup",
     "build:frontend": "vite build",
@@ -48,7 +49,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "rimraf": "catalog:",
-    "vite": "catalog:frontend",
+    "vite": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"

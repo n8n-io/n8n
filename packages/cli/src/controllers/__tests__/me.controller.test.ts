@@ -1,4 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -6,20 +9,14 @@ import jwt from 'jsonwebtoken';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import type { User } from '@/databases/entities/user';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { PublicUser } from '@/interfaces';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';
@@ -30,7 +27,6 @@ describe('MeController', () => {
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
-	mockInstance(AuthUserRepository);
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
@@ -171,6 +167,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: 'global:owner',
 					mfaEnabled: true,
+					mfaSecret: 'secret',
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
@@ -316,7 +313,7 @@ describe('MeController', () => {
 
 			it('should succeed when mfa code is correct', async () => {
 				const req = mock<AuthenticatedRequest>({
-					user: mock({ password: passwordHash, mfaEnabled: true }),
+					user: mock({ password: passwordHash, mfaEnabled: true, mfaSecret: 'secret' }),
 					browserId,
 				});
 				const res = mock<Response>();

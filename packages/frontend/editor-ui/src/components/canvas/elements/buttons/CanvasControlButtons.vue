@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import TidyUpIcon from '@/components/TidyUpIcon.vue';
+import { useI18n } from '@n8n/i18n';
+import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -57,7 +57,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="expand"
+				icon="maximize"
 				data-test-id="zoom-to-fit"
 				@click="onZoomToFit"
 			/>
@@ -66,7 +66,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-plus"
+				icon="zoom-in"
 				data-test-id="zoom-in-button"
 				@click="onZoomIn"
 			/>
@@ -75,7 +75,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-minus"
+				icon="zoom-out"
 				data-test-id="zoom-out-button"
 				@click="onZoomOut"
 			/>
@@ -88,7 +88,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="undo"
+				icon="undo-2"
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
@@ -114,9 +114,8 @@ function onTidyUp() {
 
 <style module lang="scss">
 .iconButton {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	padding-left: 0;
+	padding-right: 0;
 
 	svg {
 		width: 16px;

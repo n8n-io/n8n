@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
@@ -164,12 +164,6 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const capture = (event: string, properties: IDataObject) => {
-		if (typeof window.posthog?.capture === 'function') {
-			window.posthog.capture(event, properties);
-		}
-	};
-
 	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
 		if (typeof window.posthog?.people?.set !== 'function') return;
 		if (typeof window.posthog?.register !== 'function') return;
@@ -188,7 +182,6 @@ export const usePostHog = defineStore('posthog', () => {
 		getVariant,
 		reset,
 		identify,
-		capture,
 		setMetadata,
 		overrides,
 	};
