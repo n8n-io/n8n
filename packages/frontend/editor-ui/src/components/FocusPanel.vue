@@ -22,7 +22,6 @@ import {
 	HTML_NODE_TYPE,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
@@ -39,7 +38,6 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
-const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
 const { debounce } = useDebounce();
 
@@ -145,15 +143,9 @@ const shouldCaptureForPosthog = computed(
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
 
-// TODO: get correct value
-const isForCredential = false;
-
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
 		$vars: environmentsStore.variablesAsObject,
-		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && isForCredential
-			? { $secrets: externalSecretsStore.secretsAsObject }
-			: {}),
 	};
 });
 
@@ -168,7 +160,6 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 const { resolvedExpression } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
-	isForCredential,
 	stringifyObject:
 		resolvedParameter.value && resolvedParameter.value.parameter.type !== 'multiOptions',
 });
