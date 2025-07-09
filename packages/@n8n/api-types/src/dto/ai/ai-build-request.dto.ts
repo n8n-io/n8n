@@ -4,6 +4,7 @@ import { Z } from 'zod-class';
 export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
 		question: z.string(),
+		executionData: z.array(z.unknown()),
 		workflowContext: z.object({
 			currentWorkflow: z
 				.object({

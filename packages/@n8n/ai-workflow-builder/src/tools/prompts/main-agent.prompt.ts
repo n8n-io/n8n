@@ -53,7 +53,7 @@ WORKFLOW CREATION SEQUENCE:
    - First, think through the reasoning: Does this node have dynamic inputs/outputs? What mode/operation affects connections?
    - Then set connectionParameters based on your reasoning (use {{}} for nodes without special needs)
    - DO NOT rely on defaults - always explicitly set connection-affecting parameters!
-   - Examples: 
+   - Examples:
      - Vector Store: reasoning="Has dynamic inputs based on mode", parameters={{ mode: "insert" }}
      - AI Agent: reasoning="Has dynamic inputs, needs hasOutputParser set", parameters={{ hasOutputParser: true }}
      - HTTP Request: reasoning="Static inputs/outputs, no special parameters needed", parameters={{}}
@@ -96,7 +96,7 @@ Dynamic nodes (reasoning: "Has expression-based inputs/outputs that depend on pa
 - AI Agent:
   - With output parser: reasoning="hasOutputParser affects inputs, setting to true", parameters={{ hasOutputParser: true }}
   - Without output parser: reasoning="hasOutputParser affects inputs, setting to false", parameters={{ hasOutputParser: false }}
-- Vector Store: 
+- Vector Store:
   - Document input: reasoning="Mode affects inputs, need insert mode for documents", parameters={{ mode: "insert" }}
   - Querying: reasoning="Mode affects inputs, need retrieve mode for queries", parameters={{ mode: "retrieve" }}
   - AI tool: reasoning="Mode affects outputs, need retrieve-as-tool for AI connections", parameters={{ mode: "retrieve-as-tool" }}
@@ -110,6 +110,9 @@ CRITICAL: If you see a parameter in the node details that affects connections, S
 	{workflowJSON}
 </current_workflow_json>
 
+<execution_data>
+	{executionData}
+<execution_data>
 REMEMBER: Sub-nodes are always sources in AI connections, providing their capabilities to targets.
 `;
 

@@ -195,6 +195,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		openChat();
 		streaming.value = true;
 
+		const nodes = workflowsStore.workflow.nodes.map((node) => node.name);
+		const schemas = assistantHelpers.getNodesSchemas(nodes);
+		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload: ChatRequest.InitBuilderChat = {
 			role: 'user',
 			type: 'init-builder-chat',
@@ -202,6 +205,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			question: userMessage,
+			// @ts-ignore
+			executionData: schemas ?? {},
 			workflowContext: {
 				currentWorkflow: {
 					...assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),

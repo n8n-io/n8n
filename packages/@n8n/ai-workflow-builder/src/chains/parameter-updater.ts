@@ -1504,6 +1504,10 @@ const humanTemplate = `
 {workflow_json}
 </current_workflow_json>
 
+<current_execution_data_schema>
+{execution_data_schema}
+</current_execution_data_schema>
+
 <selected_node>
 Name: {node_name}
 Type: {node_type}

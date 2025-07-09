@@ -114,6 +114,7 @@ export function createUpdateNodeParametersTool(
 					const newParameters = await parametersChain.invoke({
 						user_workflow_prompt: state.prompt,
 						workflow_json: JSON.stringify(workflow, null, 2),
+						execution_data_schema: JSON.stringify(state.executionData, null, 2),
 						node_id: nodeId,
 						node_name: node.name,
 						node_type: node.type,

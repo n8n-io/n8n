@@ -1,18 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import {
-	AIMessage,
-	BaseMessage,
-	HumanMessage,
-	RemoveMessage,
-	ToolMessage,
-} from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
-import type { IUser, INodeTypeDescription } from 'n8n-workflow';
-import { z } from 'zod';
+import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 
+import { conversationCompactChain } from './chains/conversation-compact';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
@@ -25,7 +19,6 @@ import { SimpleWorkflow } from './types';
 import { createStreamProcessor, DEFAULT_WORKFLOW_UPDATE_TOOLS } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
-import { conversationCompactChain } from './chains/conversation-compact';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -162,7 +155,6 @@ export class AiWorkflowBuilderService {
 			return END;
 		};
 
-		// Use the new tool executor helper
 		const customToolExecutor = async (state: typeof WorkflowState.State) => {
 			return await executeToolsInParallel({ state, toolMap });
 		};
@@ -200,7 +192,12 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(
-		payload: { question: string; currentWorkflowJSON?: string; workflowId?: string },
+		payload: {
+			question: string;
+			currentWorkflowJSON?: string;
+			workflowId?: string;
+			executionData?: IRunExecutionData['resultData'];
+		},
 		user?: IUser,
 	) {
 		const agent = (await this.getAgent(user)).compile({ checkpointer: this.checkpointer });
@@ -230,6 +227,7 @@ export class AiWorkflowBuilderService {
 		const stream = await agent.stream(initialState, {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
+			executionData: payload.executionData,
 			recursionLimit: 80,
 		});
 

@@ -24,7 +24,17 @@ export interface WorkflowUpdateChunk {
 	codeSnippet: string;
 }
 
-export type StreamChunk = AgentMessageChunk | ToolProgressChunk | WorkflowUpdateChunk;
+export interface ExecutionRequestChunk {
+	role: 'assistant';
+	type: 'execution-requested';
+	reason: string;
+}
+
+export type StreamChunk =
+	| AgentMessageChunk
+	| ToolProgressChunk
+	| WorkflowUpdateChunk
+	| ExecutionRequestChunk;
 
 export interface StreamOutput {
 	messages: StreamChunk[];
@@ -137,6 +147,24 @@ export async function processStreamChunk(
 				};
 
 				output.messages.push(workflowUpdateChunk);
+			}
+
+			// Check if this is an execution request
+			if (toolChunk.toolName === 'request_workflow_execution' && toolChunk.status === 'completed') {
+				const currentState = await agent.getState(config.threadConfig);
+				const executionRequested = (currentState.values as typeof WorkflowState.State)
+					.executionRequested;
+
+				if (executionRequested) {
+					// Add execution request chunk
+					const executionRequestChunk: ExecutionRequestChunk = {
+						role: 'assistant',
+						type: 'execution-requested',
+						reason: (toolChunk.output as any)?.reason || 'Execution data needed',
+					};
+
+					output.messages.push(executionRequestChunk);
+				}
 			}
 
 			return output;

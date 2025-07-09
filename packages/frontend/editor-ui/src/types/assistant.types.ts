@@ -73,6 +73,7 @@ export namespace ChatRequest {
 		context?: UserContext & WorkflowContext;
 		workflowContext?: WorkflowContext;
 		question: string;
+		executionData?: IRunExecutionData['resultData'];
 	}
 
 	export interface InitCredHelp {
@@ -104,6 +105,7 @@ export namespace ChatRequest {
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
+		executionData?: IRunExecutionData['resultData'];
 	}
 
 	export interface UserContext {

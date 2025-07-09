@@ -53,6 +53,8 @@ export class AiController {
 						payload.payload.workflowContext?.currentWorkflow ?? {},
 					),
 					workflowId,
+					// @ts-ignore
+					executionData: payload.payload.executionData ?? {},
 				},
 				req.user,
 			);
