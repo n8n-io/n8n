@@ -29,21 +29,18 @@ Object.defineProperty(window, 'open', {
 	writable: true,
 });
 
-let pinia: ReturnType<typeof createTestingPinia>;
 let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
-const renderComponent = createComponentRenderer(NodeErrorView, {
-	pinia,
-});
+const renderComponent = createComponentRenderer(NodeErrorView);
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
 
 	beforeEach(() => {
-		pinia = createTestingPinia();
+		createTestingPinia();
 		mockAiAssistantStore = mockedStore(useAssistantStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
 		mockNDVStore = mockedStore(useNDVStore);
