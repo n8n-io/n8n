@@ -98,5 +98,5 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	return await baseAnalyze.call(this, i, 'audioUrls', 'audio/mp3');
+	return await baseAnalyze.call(this, i, 'audioUrls', 'audio/mpeg');
 }
