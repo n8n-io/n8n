@@ -19,7 +19,7 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { type ResolveParameterOptions, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
@@ -311,9 +311,9 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts: Record<string, unknown> = {
+				let opts: ResolveParameterOptions = {
 					additionalKeys: toValue(additionalData),
-					targetNodeParameterContext,
+					contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
 				};
 				if (
 					toValue(targetNodeParameterContext) === undefined &&
