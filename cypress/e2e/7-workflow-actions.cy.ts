@@ -1,4 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import {
 	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
@@ -127,7 +126,7 @@ describe('Workflow Actions', () => {
 			(req) => {
 				// Delay the response to give time for the save to be triggered
 				req.on('response', async (res) => {
-					await delay(2000);
+					await new Promise((resolve) => setTimeout(resolve, 2000));
 					res.send();
 				});
 			},
