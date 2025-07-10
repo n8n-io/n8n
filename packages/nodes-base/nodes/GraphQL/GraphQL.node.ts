@@ -208,9 +208,108 @@ export class GraphQL implements INodeType {
 				name: 'websocketUrl',
 				type: 'string',
 				default: '',
-				placeholder: 'ws://example.com/graphql',
+				placeholder: 'wss://example.com/graphql',
 				description: 'The WebSocket URL for GraphQL subscriptions',
 				required: true,
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Ignore SSL Issues (Insecure)',
+				name: 'websocketAllowUnauthorizedCerts',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to connect even if SSL certificate validation is not possible',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Request Format',
+				name: 'websocketRequestFormat',
+				type: 'options',
+				required: true,
+				options: [
+					{
+						name: 'JSON (Recommended)',
+						value: 'json',
+						description: 'JSON object with query, variables, and operationName properties',
+					},
+					{
+						name: 'GraphQL (Raw)',
+						value: 'graphql',
+						description: 'Raw GraphQL query string',
+					},
+				],
+				default: 'json',
+				description: 'The request format for the subscription payload',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Query',
+				name: 'websocketQuery',
+				type: 'string',
+				default: '',
+				description: 'GraphQL subscription query',
+				required: true,
+				typeOptions: {
+					rows: 6,
+				},
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation Name',
+				name: 'websocketOperationName',
+				type: 'string',
+				default: '',
+				description: 'Name of operation to execute (optional for WebSocket)',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Response Format',
+				name: 'websocketResponseFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'JSON',
+						value: 'json',
+					},
+					{
+						name: 'String',
+						value: 'string',
+					},
+				],
+				default: 'json',
+				description: 'The format in which the data gets returned from the WebSocket',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Variables',
+				name: 'websocketVariables',
+				type: 'json',
+				default: '',
+				description: 'Query variables as JSON object',
 				displayOptions: {
 					show: {
 						connectionMode: ['websocket'],
@@ -272,52 +371,6 @@ export class GraphQL implements INodeType {
 				type: 'number',
 				default: 300,
 				description: 'Timeout for subscription messages in seconds',
-				displayOptions: {
-					show: {
-						connectionMode: ['websocket'],
-					},
-				},
-			},
-			{
-				displayName: 'Variables',
-				name: 'websocketVariables',
-				type: 'json',
-				default: '',
-				description: 'Query variables as JSON object',
-				displayOptions: {
-					show: {
-						connectionMode: ['websocket'],
-					},
-				},
-			},
-			{
-				displayName: 'Operation Name',
-				name: 'websocketOperationName',
-				type: 'string',
-				default: '',
-				description: 'Name of operation to execute (optional for WebSocket)',
-				displayOptions: {
-					show: {
-						connectionMode: ['websocket'],
-					},
-				},
-			},
-			{
-				displayName: 'Response Format',
-				name: 'websocketResponseFormat',
-				type: 'options',
-				options: [
-					{
-						name: 'JSON',
-						value: 'json',
-					},
-					{
-						name: 'String',
-						value: 'string',
-					},
-				],
-				default: 'json',
-				description: 'The format in which the data gets returned from the WebSocket',
 				displayOptions: {
 					show: {
 						connectionMode: ['websocket'],
@@ -521,7 +574,12 @@ export class GraphQL implements INodeType {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const websocketUrl = this.getNodeParameter('websocketUrl', itemIndex, '') as string;
-					const query = this.getNodeParameter('query', itemIndex, '') as string;
+					const query = this.getNodeParameter('websocketQuery', itemIndex, '') as string;
+					const allowUnauthorizedCerts = this.getNodeParameter(
+						'websocketAllowUnauthorizedCerts',
+						itemIndex,
+						false,
+					) as boolean;
 					const connectionTimeout = this.getNodeParameter(
 						'connectionTimeout',
 						itemIndex,
@@ -563,6 +621,7 @@ export class GraphQL implements INodeType {
 					// Create WebSocket connection
 					const ws = new WebSocket(websocketUrl, {
 						headers,
+						rejectUnauthorized: !allowUnauthorizedCerts,
 					});
 
 					// Set up connection timeout
