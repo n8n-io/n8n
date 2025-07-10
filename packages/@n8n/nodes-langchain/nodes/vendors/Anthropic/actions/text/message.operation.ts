@@ -10,7 +10,13 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { Content, File, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
+import type {
+	Content,
+	File,
+	Message,
+	MessagesResponse,
+	Tool as AnthropicTool,
+} from '../../helpers/interfaces';
 import { downloadFile, getBaseUrl, splitByComma, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
@@ -274,10 +280,6 @@ interface MessageOptions {
 	topK?: number;
 }
 
-function getToolCalls(contents: Content[]) {
-	return contents.filter((c) => c.type === 'tool_use');
-}
-
 function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image' | 'document' {
 	if (mimeType?.startsWith('image/')) {
 		return 'image';
@@ -291,11 +293,6 @@ function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image'
 		this.getNode(),
 		`Unsupported file type: ${mimeType}. Only images and PDFs are supported.`,
 	);
-}
-
-interface MessagesResponse {
-	content: Content[];
-	stop_reason: string;
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -416,38 +413,53 @@ async function getTools(this: IExecuteFunctions, options: MessageOptions) {
 	return { tools, connectedTools };
 }
 
-async function handleToolUse(
+async function addCodeAttachmentsToMessages(
 	this: IExecuteFunctions,
-	response: MessagesResponse,
+	i: number,
 	messages: Message[],
-	connectedTools: Tool[],
 ) {
-	const toolCalls = getToolCalls(response.content);
-	if (!toolCalls.length) {
-		return;
-	}
+	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
+	const baseUrl = await getBaseUrl.call(this);
+	const fileUrlPrefix = `${baseUrl}/v1/files/`;
 
-	const toolResults = {
-		role: 'user' as const,
-		content: [] as Content[],
-	};
-	for (const toolCall of toolCalls) {
-		let toolResponse;
-		for (const connectedTool of connectedTools) {
-			if (connectedTool.name === toolCall.name) {
-				toolResponse = (await connectedTool.invoke(toolCall.input)) as IDataObject;
+	let content: Content[];
+	if (inputType === 'url') {
+		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
+		const promises = splitByComma(urls).map(async (url) => {
+			if (url.startsWith(fileUrlPrefix)) {
+				return url.replace(fileUrlPrefix, '');
+			} else {
+				const { fileContent, mimeType } = await downloadFile.call(this, url);
+				const response = await uploadFile.call(this, fileContent, mimeType);
+				return response.id;
 			}
-		}
-
-		toolResults.content.push({
-			type: 'tool_result',
-			tool_use_id: toolCall.id,
-			content:
-				typeof toolResponse === 'object' ? JSON.stringify(toolResponse) : (toolResponse ?? ''),
 		});
+
+		const fileIds = await Promise.all(promises);
+		content = fileIds.map((fileId) => ({
+			type: 'container_upload',
+			file_id: fileId,
+		}));
+	} else {
+		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
+		const promises = splitByComma(binaryPropertyNames).map(async (binaryPropertyName) => {
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+			const response = await uploadFile.call(this, buffer, binaryData.mimeType);
+			return response.id;
+		});
+
+		const fileIds = await Promise.all(promises);
+		content = fileIds.map((fileId) => ({
+			type: 'container_upload',
+			file_id: fileId,
+		}));
 	}
 
-	messages.push(toolResults);
+	messages.push({
+		role: 'user',
+		content,
+	});
 }
 
 async function addRegularAttachmentsToMessages(
@@ -514,51 +526,36 @@ async function addRegularAttachmentsToMessages(
 	});
 }
 
-async function addCodeAttachmentsToMessages(
+async function handleToolUse(
 	this: IExecuteFunctions,
-	i: number,
+	response: MessagesResponse,
 	messages: Message[],
+	connectedTools: Tool[],
 ) {
-	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
-	const baseUrl = await getBaseUrl.call(this);
-	const fileUrlPrefix = `${baseUrl}/v1/files/`;
-
-	let content: Content[];
-	if (inputType === 'url') {
-		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
-		const promises = splitByComma(urls).map(async (url) => {
-			if (url.startsWith(fileUrlPrefix)) {
-				return url.replace(fileUrlPrefix, '');
-			} else {
-				const { fileContent, mimeType } = await downloadFile.call(this, url);
-				const response = await uploadFile.call(this, fileContent, mimeType);
-				return response.id;
-			}
-		});
-
-		const fileIds = await Promise.all(promises);
-		content = fileIds.map((fileId) => ({
-			type: 'container_upload',
-			file_id: fileId,
-		}));
-	} else {
-		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
-		const promises = splitByComma(binaryPropertyNames).map(async (binaryPropertyName) => {
-			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-			const response = await uploadFile.call(this, buffer, binaryData.mimeType);
-			return response.id;
-		});
-
-		const fileIds = await Promise.all(promises);
-		content = fileIds.map((fileId) => ({
-			type: 'container_upload',
-			file_id: fileId,
-		}));
+	const toolCalls = response.content.filter((c) => c.type === 'tool_use');
+	if (!toolCalls.length) {
+		return;
 	}
 
-	messages.push({
-		role: 'user',
-		content,
-	});
+	const toolResults = {
+		role: 'user' as const,
+		content: [] as Content[],
+	};
+	for (const toolCall of toolCalls) {
+		let toolResponse;
+		for (const connectedTool of connectedTools) {
+			if (connectedTool.name === toolCall.name) {
+				toolResponse = (await connectedTool.invoke(toolCall.input)) as IDataObject;
+			}
+		}
+
+		toolResults.content.push({
+			type: 'tool_result',
+			tool_use_id: toolCall.id,
+			content:
+				typeof toolResponse === 'object' ? JSON.stringify(toolResponse) : (toolResponse ?? ''),
+		});
+	}
+
+	messages.push(toolResults);
 }

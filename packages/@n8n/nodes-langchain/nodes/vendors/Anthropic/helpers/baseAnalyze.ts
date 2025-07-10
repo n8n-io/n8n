@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { Content } from './interfaces';
+import type { Content, MessagesResponse } from './interfaces';
 import { getBaseUrl, splitByComma } from './utils';
 import { apiRequest } from '../transport';
 
@@ -77,9 +77,7 @@ export async function baseAnalyze(
 
 	const response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
-	})) as {
-		content: Content[];
-	};
+	})) as MessagesResponse;
 
 	if (simplify) {
 		return response.content.map((content) => ({
@@ -90,7 +88,7 @@ export async function baseAnalyze(
 
 	return [
 		{
-			json: response,
+			json: { ...response },
 			pairedItem: { item: i },
 		},
 	];

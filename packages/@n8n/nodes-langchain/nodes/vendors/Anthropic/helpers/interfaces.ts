@@ -78,3 +78,8 @@ export type Tool =
 			type: 'code_execution_20250522';
 			name: 'code_execution';
 	  };
+
+export interface MessagesResponse {
+	content: Content[];
+	stop_reason: string;
+}
