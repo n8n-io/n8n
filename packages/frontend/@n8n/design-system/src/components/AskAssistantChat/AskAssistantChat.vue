@@ -16,7 +16,6 @@ import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
-import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
@@ -123,7 +122,6 @@ function onSubmitFeedback(feedback: string) {
 					<AssistantIcon size="large" />
 					<AssistantText size="large" :text="title" />
 				</div>
-				<BetaTag />
 				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
