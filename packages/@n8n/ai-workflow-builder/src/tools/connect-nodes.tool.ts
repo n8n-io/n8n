@@ -245,7 +245,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				reporter.complete(output);
 
 				// Return success with state updates
-				const stateUpdates = updateWorkflowConnections(state, updatedConnections);
+				const stateUpdates = updateWorkflowConnections(updatedConnections);
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors

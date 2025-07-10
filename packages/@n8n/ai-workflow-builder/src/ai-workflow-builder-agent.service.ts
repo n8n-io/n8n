@@ -18,7 +18,7 @@ import { createUpdateNodeParametersTool } from './tools/update-node-parameters.t
 import { SimpleWorkflow } from './types';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
-import { WorkflowState } from './workflow-state';
+import { WorkflowState, CLEAR_WORKFLOW_MARKER } from './workflow-state';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -123,7 +123,7 @@ export class AiWorkflowBuilderService {
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes),
 			createRemoveNodeTool(),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmSimpleTask!),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!),
 		];
 
 		// Create a map for quick tool lookup
@@ -166,7 +166,21 @@ export class AiWorkflowBuilderService {
 
 		function deleteMessages(state: typeof WorkflowState.State) {
 			const messages = state.messages;
-			return { messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [] };
+			return {
+				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
+				workflowJSON: {
+					nodes: [
+						{
+							id: 'clear',
+							name: 'Clear',
+							type: CLEAR_WORKFLOW_MARKER,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				},
+			};
 		}
 
 		const compactSession = async (state: typeof WorkflowState.State) => {
@@ -269,7 +283,7 @@ export class AiWorkflowBuilderService {
 						(checkpoint.checkpoint.channel_values?.messages as Array<
 							AIMessage | HumanMessage | ToolMessage
 						>) ?? [];
-					// const messages = Array.isArray(channelValues?.messages) ? channelValues.messages : [];
+
 					sessions.push({
 						sessionId: threadId,
 						messages: formatMessages(messages),

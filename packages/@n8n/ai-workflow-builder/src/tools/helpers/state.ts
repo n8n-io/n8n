@@ -2,7 +2,11 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
-import type { WorkflowState } from '../../workflow-state';
+import type {
+	WorkflowState,
+	WorkflowStatePartialUpdate,
+	WorkflowRemovalUpdate,
+} from '../../workflow-state';
 
 /**
  * Get the current workflow from state in a type-safe manner
@@ -40,14 +44,17 @@ export function updateWorkflowNodes(
 
 /**
  * Create a state update for workflow connections
+ * Note: The connections passed should be the full connections object since
+ * the connect-nodes tool builds the complete connections structure
  */
 export function updateWorkflowConnections(
-	state: typeof WorkflowState.State,
 	connections: SimpleWorkflow['connections'],
 ): Partial<typeof WorkflowState.State> {
+	// For connections, we need to return the full connections object
+	// because the connect-nodes tool already builds the complete structure
 	return {
 		workflowJSON: {
-			...state.workflowJSON,
+			nodes: [],
 			connections,
 		},
 	};
@@ -83,116 +90,121 @@ export function addNodeToWorkflow(
 
 /**
  * Add multiple nodes to the workflow state
+ * Returns only the new nodes for the reducer to merge
  */
-export function addNodesToWorkflow(
-	state: typeof WorkflowState.State,
-	nodes: INode[],
-): Partial<typeof WorkflowState.State> {
-	return updateWorkflowNodes(state, [...state.workflowJSON.nodes, ...nodes]);
+export function addNodesToWorkflow(nodes: INode[]): Partial<typeof WorkflowState.State> {
+	// Return only the new nodes - the reducer will merge them
+	return {
+		workflowJSON: {
+			nodes,
+			connections: {},
+		},
+	};
 }
 
 /**
  * Remove a node from the workflow state
+ * Returns a special removal operation for the reducer
  */
-export function removeNodeFromWorkflow(
-	state: typeof WorkflowState.State,
-	nodeId: string,
-): Partial<typeof WorkflowState.State> {
-	const nodes = state.workflowJSON.nodes.filter((n) => n.id !== nodeId);
-	const connections = removeNodeConnections(state.workflowJSON.connections, nodeId);
-
-	return updateWorkflow(state, { nodes, connections });
+export function removeNodeFromWorkflow(nodeId: string): WorkflowStatePartialUpdate {
+	// Return a special removal operation that the reducer understands
+	const removalUpdate: WorkflowRemovalUpdate = {
+		_operation: 'remove',
+		_nodeIds: [nodeId],
+	};
+	return {
+		workflowJSON: removalUpdate,
+	};
 }
 
 /**
  * Remove multiple nodes from the workflow state
+ * Returns a special removal operation for the reducer
  */
-export function removeNodesFromWorkflow(
-	state: typeof WorkflowState.State,
-	nodeIds: string[],
-): Partial<typeof WorkflowState.State> {
-	const nodeIdSet = new Set(nodeIds);
-	const nodes = state.workflowJSON.nodes.filter((n) => !nodeIdSet.has(n.id));
-	let connections = state.workflowJSON.connections;
-
-	// Remove connections for all nodes
-	for (const nodeId of nodeIds) {
-		connections = removeNodeConnections(connections, nodeId);
-	}
-
-	return updateWorkflow(state, { nodes, connections });
+export function removeNodesFromWorkflow(nodeIds: string[]): WorkflowStatePartialUpdate {
+	// Return a special removal operation that the reducer understands
+	const removalUpdate: WorkflowRemovalUpdate = {
+		_operation: 'remove',
+		_nodeIds: nodeIds,
+	};
+	return {
+		workflowJSON: removalUpdate,
+	};
 }
 
 /**
  * Update a node in the workflow state
+ * Returns only the updated node for the reducer to merge
  */
 export function updateNodeInWorkflow(
 	state: typeof WorkflowState.State,
 	nodeId: string,
 	updates: Partial<INode>,
 ): Partial<typeof WorkflowState.State> {
-	const nodes = state.workflowJSON.nodes.map((node) =>
-		node.id === nodeId ? { ...node, ...updates } : node,
-	);
+	const existingNode = state.workflowJSON.nodes.find((n) => n.id === nodeId);
+	if (!existingNode) {
+		return {};
+	}
 
-	return updateWorkflowNodes(state, nodes);
+	// Return only the updated node - the reducer will merge it
+	return {
+		workflowJSON: {
+			nodes: [{ ...existingNode, ...updates }],
+			connections: {},
+		},
+	};
 }
 
 /**
  * Add a connection to the workflow state
+ * Returns only the new connection for the reducer to merge
  */
 export function addConnectionToWorkflow(
-	state: typeof WorkflowState.State,
 	sourceNodeId: string,
 	_targetNodeId: string,
 	connection: IConnection,
 ): Partial<typeof WorkflowState.State> {
-	const connections = { ...state.workflowJSON.connections };
-
-	// Initialize source node connections if not exists
-	if (!connections[sourceNodeId]) {
-		connections[sourceNodeId] = {};
-	}
-	if (!connections[sourceNodeId].main) {
-		connections[sourceNodeId].main = [];
-	}
-
-	// Add to the first output by default
-	connections[sourceNodeId].main[0] ??= [];
-
-	connections[sourceNodeId].main[0].push(connection);
-
-	return updateWorkflowConnections(state, connections);
+	// Return only the new connection - the reducer will merge it
+	return {
+		workflowJSON: {
+			nodes: [],
+			connections: {
+				[sourceNodeId]: {
+					main: [[connection]],
+				},
+			},
+		},
+	};
 }
 
 /**
  * Remove all connections for a node
  */
-function removeNodeConnections(
-	connections: SimpleWorkflow['connections'],
-	nodeId: string,
-): SimpleWorkflow['connections'] {
-	const newConnections = { ...connections };
+// function removeNodeConnections(
+// 	connections: SimpleWorkflow['connections'],
+// 	nodeId: string,
+// ): SimpleWorkflow['connections'] {
+// 	const newConnections = { ...connections };
 
-	// Remove outgoing connections
-	delete newConnections[nodeId];
+// 	// Remove outgoing connections
+// 	delete newConnections[nodeId];
 
-	// Remove incoming connections
-	for (const [_sourceId, nodeConnections] of Object.entries(newConnections)) {
-		for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
-			if (Array.isArray(outputs)) {
-				nodeConnections[connectionType] = outputs.map((outputConnections) => {
-					if (Array.isArray(outputConnections)) {
-						return outputConnections.filter((conn) => conn.node !== nodeId);
-					}
-					return outputConnections;
-				});
-			}
-		}
-	}
+// 	// Remove incoming connections
+// 	for (const [_sourceId, nodeConnections] of Object.entries(newConnections)) {
+// 		for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
+// 			if (Array.isArray(outputs)) {
+// 				nodeConnections[connectionType] = outputs.map((outputConnections) => {
+// 					if (Array.isArray(outputConnections)) {
+// 						return outputConnections.filter((conn) => conn.node !== nodeId);
+// 					}
+// 					return outputConnections;
+// 				});
+// 			}
+// 		}
+// 	}
 
-	return newConnections;
-}
+// 	return newConnections;
+// }
 
 /**
  * Get all node IDs from the workflow

@@ -130,7 +130,7 @@ export function createRemoveNodeTool() {
 				reporter.complete(output);
 
 				// Return success with state updates
-				const stateUpdates = removeNodeFromWorkflow(state, nodeId);
+				const stateUpdates = removeNodeFromWorkflow(nodeId);
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors

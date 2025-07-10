@@ -131,7 +131,7 @@ function buildResponseMessage(
  */
 export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
-		async (input: unknown, config) => {
+		async (input, config) => {
 			const reporter = createProgressReporter(config, 'add_nodes');
 
 			try {
@@ -221,7 +221,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				reporter.complete(output);
 
 				// Return success with state updates
-				const stateUpdates = addNodesToWorkflow(state, addedNodes);
+				const stateUpdates = addNodesToWorkflow(addedNodes);
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
