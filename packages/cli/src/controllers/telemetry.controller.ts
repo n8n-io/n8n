@@ -25,21 +25,21 @@ export class TelemetryController {
 		});
 	}
 
-	@Post('/proxy/:version/track', { skipAuth: true })
+	@Post('/proxy/:version/track', { skipAuth: true, rateLimit: true })
 	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/identify', { skipAuth: true })
+	@Post('/proxy/:version/identify', { skipAuth: true, rateLimit: true })
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/page', { skipAuth: true })
+	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: true })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
-	@Get('/rudderstack/sourceConfig', { skipAuth: true })
+	@Get('/rudderstack/sourceConfig', { skipAuth: true, rateLimit: true })
 	async sourceConfig() {
 		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
 			headers: {

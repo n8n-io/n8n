@@ -53,7 +53,6 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
-import '@/controllers/telemetry.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
@@ -150,6 +149,10 @@ export class Server extends AbstractServer {
 			await import('@/sso.ee/saml/routes/saml.controller.ee');
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		}
+
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
 		}
 
 		// ----------------------------------------
