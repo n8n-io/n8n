@@ -149,4 +149,20 @@ describe('GET /insights/by-workflow', () => {
 			})
 			.expect(400);
 	});
+
+	test('Call should work with workflowName sorting', async () => {
+		await agents.owner
+			.get('/insights/by-workflow')
+			.query({
+				sortBy: 'workflowName:asc',
+			})
+			.expect(200);
+
+		await agents.owner
+			.get('/insights/by-workflow')
+			.query({
+				sortBy: 'workflowName:desc',
+			})
+			.expect(200);
+	});
 });
