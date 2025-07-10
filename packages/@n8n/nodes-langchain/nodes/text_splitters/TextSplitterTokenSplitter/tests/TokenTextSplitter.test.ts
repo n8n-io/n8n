@@ -20,7 +20,7 @@ describe('TokenTextSplitter', () => {
 			encode: jest.fn(),
 			decode: jest.fn(),
 		};
-		(tiktokenUtils.getEncoding as jest.Mock).mockResolvedValue(mockTokenizer);
+		(tiktokenUtils.getEncoding as jest.Mock).mockReturnValue(mockTokenizer);
 		// Default mock for hasLongSequentialRepeat - no repetition
 		(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
 	});
@@ -306,7 +306,9 @@ describe('TokenTextSplitter', () => {
 				const text = 'This will cause tiktoken to fail';
 
 				(helpers.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
-				(tiktokenUtils.getEncoding as jest.Mock).mockRejectedValue(new Error('Tiktoken error'));
+				(tiktokenUtils.getEncoding as jest.Mock).mockImplementation(() => {
+					throw new Error('Tiktoken error');
+				});
 				(tokenEstimator.estimateTextSplitsByTokens as jest.Mock).mockReturnValue([
 					'fallback chunk',
 				]);
