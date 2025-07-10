@@ -2342,6 +2342,7 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	startedAt?: Date;
 }
 
 export interface ExecuteWorkflowOptions {
