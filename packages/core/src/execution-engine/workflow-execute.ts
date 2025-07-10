@@ -1720,7 +1720,16 @@ export class WorkflowExecute {
 
 						// Send error to the response if necessary
 						await hooks?.runHook('sendChunk', [
-							{ type: 'error', content: executionError.description },
+							{
+								type: 'error',
+								content: executionError.description,
+								metadata: {
+									nodeId: executionNode.id,
+									nodeName: executionNode.name,
+									runIndex,
+									itemIndex: 0,
+								},
+							},
 						]);
 
 						if (
