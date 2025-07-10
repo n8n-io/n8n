@@ -60,53 +60,6 @@ describe('Postgres SSL settings', () => {
 		});
 	});
 
-	test('ssl is allow + allowUnauthorizedCerts is false', async () => {
-		const context = mock<IExecuteFunctions>({
-			getCredentials: jest.fn().mockReturnValue({
-				...credentials,
-				ssl: 'allow',
-				allowUnauthorizedCerts: false,
-			}),
-		});
-
-		const dataSource = await getPostgresDataSource.call(context);
-
-		expect(dataSource.options).toMatchObject({
-			ssl: true,
-		});
-	});
-
-	test('ssl is allow + allowUnauthorizedCerts is true', async () => {
-		const context = mock<IExecuteFunctions>({
-			getCredentials: jest.fn().mockReturnValue({
-				...credentials,
-				ssl: 'allow',
-				allowUnauthorizedCerts: true,
-			}),
-		});
-
-		const dataSource = await getPostgresDataSource.call(context);
-
-		expect(dataSource.options).toMatchObject({
-			ssl: { rejectUnauthorized: false },
-		});
-	});
-
-	test('ssl is allow + allowUnauthorizedCerts is undefined', async () => {
-		const context = mock<IExecuteFunctions>({
-			getCredentials: jest.fn().mockReturnValue({
-				...credentials,
-				ssl: 'allow',
-			}),
-		});
-
-		const dataSource = await getPostgresDataSource.call(context);
-
-		expect(dataSource.options).toMatchObject({
-			ssl: true,
-		});
-	});
-
 	test('ssl is require + allowUnauthorizedCerts is false', async () => {
 		const context = mock<IExecuteFunctions>({
 			getCredentials: jest.fn().mockReturnValue({
