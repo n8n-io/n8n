@@ -84,6 +84,7 @@ function onClick() {
 				:target="templateRepository.target"
 				:underline="true"
 				size="small"
+				data-test-id="canvas-template-link"
 				@click="trackTemplatesClick(TemplateClickSource.emptyWorkflowLink)"
 			>
 				{{ i18n.baseText('nodeView.templateLink') }}
