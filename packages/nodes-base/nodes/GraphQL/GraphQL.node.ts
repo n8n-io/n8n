@@ -455,6 +455,11 @@ export class GraphQL implements INodeType {
 				typeOptions: {
 					rows: 6,
 				},
+				displayOptions: {
+					show: {
+						connectionMode: ['http'],
+					},
+				},
 			},
 			{
 				displayName: 'Variables',
