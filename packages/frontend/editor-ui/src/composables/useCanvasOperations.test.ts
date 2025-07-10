@@ -3081,6 +3081,61 @@ describe('useCanvasOperations', () => {
 				type: 'error',
 			});
 		});
+		it('should set active node when nodeId is provided and node exists', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const ndvStore = mockedStore(useNDVStore);
+			const { openExecution } = useCanvasOperations();
+
+			const executionId = '123';
+			const nodeId = 'node-123';
+			const mockNode = { id: nodeId, name: 'Test Node', type: 'test' } as INodeUi;
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+			workflowsStore.getNodeById.mockReturnValue(mockNode);
+
+			await openExecution(executionId, nodeId);
+
+			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
+			expect(ndvStore.activeNodeName).toBe(mockNode.name);
+		});
+
+		it('should show error when nodeId is provided but node does not exist', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations();
+			const toast = useToast();
+
+			const executionId = '123';
+			const nodeId = 'non-existent-node';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			await openExecution(executionId, nodeId);
+
+			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
+			expect(toast.showError).toHaveBeenCalledWith(
+				new Error(`Node with id "${nodeId}" could not be found!`),
+				'Problem opening node in execution',
+			);
+		});
 	});
 
 	describe('connectAdjacentNodes', () => {

@@ -1,6 +1,7 @@
+import { reactive } from 'vue';
 import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from '@/components/RunData.vue';
 import { STORES } from '@n8n/stores';
 import { SET_NODE_TYPE } from '@/constants';
@@ -11,7 +12,8 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { useNodeTypesStore } from '../stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -22,8 +24,12 @@ const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(
 
 vi.mock('vue-router', () => {
 	return {
-		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRouter: () => ({
+			resolve: vi.fn(() => ({
+				href: '',
+			})),
+		}),
+		useRoute: () => reactive({ meta: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -41,6 +47,10 @@ vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
 });
 
 describe('RunData', () => {
+	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
+
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
 	});
@@ -611,14 +621,16 @@ describe('RunData', () => {
 
 	const render = ({
 		defaultRunItems,
+		workflowId,
 		workflowNodes = nodes,
-		displayMode,
+		displayMode = 'html',
 		pinnedData,
 		paneType = 'output',
 		metadata,
 		runs,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
+		workflowId?: string;
 		workflowNodes?: INodeUi[];
 		displayMode: IRunDataDisplayMode;
 		pinnedData?: INodeExecutionData[];
@@ -677,15 +689,18 @@ describe('RunData', () => {
 
 		setActivePinia(pinia);
 
-		const workflowsStore = useWorkflowsStore();
-		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(workflowNodes[0]);
+		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
 
 		if (pinnedData) {
-			vi.mocked(workflowsStore).pinDataByNodeName.mockReturnValue(pinnedData);
+			workflowsStore.pinDataByNodeName.mockReturnValue(pinnedData);
 		}
+
+		schemaPreviewStore.getSchemaPreview = vi.fn().mockResolvedValue({});
 
 		return createComponentRenderer(RunData, {
 			props: {
@@ -693,8 +708,8 @@ describe('RunData', () => {
 					name: 'Test Node',
 				},
 				workflow: createTestWorkflowObject({
-					// @ts-expect-error allow missing properties in test
-					workflowNodes,
+					id: workflowId,
+					nodes: workflowNodes,
 				}),
 				displayMode,
 			},
@@ -710,6 +725,7 @@ describe('RunData', () => {
 					name: 'Test Node',
 					type: SET_NODE_TYPE,
 					position: [0, 0],
+					parameters: {},
 				},
 				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
@@ -717,6 +733,9 @@ describe('RunData', () => {
 				isExecuting: false,
 				mappingEnabled: true,
 				distanceFromActive: 0,
+				tooMuchDataTitle: '',
+				executingMessage: '',
+				noDataInBranchMessage: '',
 			},
 			pinia,
 		});
