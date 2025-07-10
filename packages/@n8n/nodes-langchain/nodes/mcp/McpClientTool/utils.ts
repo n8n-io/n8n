@@ -161,9 +161,20 @@ export async function connectMcpClient({
 	try {
 		let transport;
 		if (protocol === 'stdio') {
-			// For stdio: sseEndpoint is the command string, not a URL.
+			// For stdio: sseEndpoint is the command string, not a URL. split it into command and args.
+			const parts = sseEndpoint.trim().split(/\s+/);
+			const command = parts[0]; // first part as command
+			const args = parts.slice(1); // remaining parts as arguments
+			if (!command) {
+				return createResultError({
+					type: 'connection',
+					error: new Error('Invalid command in sseEndpoint'),
+				});
+			}
+			console.debug(`Connecting to MCP server using command: ${command} ${args.join(' ')}`);
 			transport = new StdioClientTransport({
-				command: sseEndpoint,
+				command,
+				args,
 			});
 		} else {
 			const endpoint = normalizeAndValidateUrl(sseEndpoint);
