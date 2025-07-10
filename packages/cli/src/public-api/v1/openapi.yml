@@ -87,17 +87,10 @@ paths:
   /projects/{projectId}/users/{userId}:
     $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
 components:
-  schemas:
-    $ref: './shared/spec/schemas/_index.yml'
-  responses:
-    $ref: './shared/spec/responses/_index.yml'
-  parameters:
-    $ref: './shared/spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-N8N-API-KEY
-
 security:
   - ApiKeyAuth: []

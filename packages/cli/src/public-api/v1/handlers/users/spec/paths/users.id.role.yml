@@ -6,7 +6,7 @@ patch:
   summary: Change a user's global role
   description: Change a user's global role
   parameters:
-    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/userId.yml'
   requestBody:
     description: New role for the user
     required: true
