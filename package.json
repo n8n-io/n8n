@@ -93,6 +93,7 @@
     }
   },
   "dependencies": {
-    "firebase-admin": "13.3.0"
+    "firebase-admin": "13.3.0",
+    "google-auth-library": "^10.1.0"
   }
 }
