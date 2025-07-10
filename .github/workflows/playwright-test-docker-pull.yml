@@ -40,6 +40,7 @@ jobs:
       - name: Run Playwright tests
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.image || env.N8N_DOCKER_IMAGE }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
         run: pnpm --filter=n8n-playwright run test:standard --workers=2
 
       - name: Upload test artifacts

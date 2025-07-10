@@ -52,6 +52,7 @@ jobs:
           TEST_SHARD_INDEX: ${{ matrix.containers }}
           N8N_BASE_URL: http://localhost:5678
           RESET_E2E_DB: true
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
       - name: Upload test results
         if: ${{ failure() }}

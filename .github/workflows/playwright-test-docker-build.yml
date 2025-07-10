@@ -31,6 +31,8 @@ jobs:
         with:
           build-command: pnpm build:docker:test
           enable-docker-cache: true
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
       - name: Upload test artifacts
         if: always()
