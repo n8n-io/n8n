@@ -239,8 +239,7 @@ const toolsUsedFields: INodeProperties[] = [
 		name: 'expectedTools',
 		type: 'string',
 		default: '',
-		description:
-			'Enter the name(s) of the tool(s) you expect the AI to call (separated by commas).',
+		description: 'Enter the name(s) of the tool(s) you expect the AI to call (separated by commas)',
 		placeholder: 'Get Events, Send Email, Search Database',
 		displayOptions: {
 			show: {

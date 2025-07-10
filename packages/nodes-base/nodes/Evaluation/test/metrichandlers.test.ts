@@ -2,6 +2,8 @@ import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, AssignmentCollectionValue } from 'n8n-workflow';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { Runnable } from '@langchain/core/runnables';
 
 import { metricHandlers } from '../utils/metrichandlers';
 
@@ -38,9 +40,9 @@ describe('metricHandlers', () => {
 		it('should process valid custom metrics', async () => {
 			const metricsData: AssignmentCollectionValue = {
 				assignments: [
-					{ id: '1', name: 'metric1', value: 5, type: 'number' },
-					{ id: '2', name: 'metric2', value: '10', type: 'number' },
-					{ id: '3', name: 'metric3', value: 7.5, type: 'number' },
+					{ id: '1', name: 'Metric1', value: 5, type: 'number' },
+					{ id: '2', name: 'Metric2', value: '10', type: 'number' },
+					{ id: '3', name: 'Metric3', value: 7.5, type: 'number' },
 				],
 			};
 
@@ -49,15 +51,15 @@ describe('metricHandlers', () => {
 			const result = await metricHandlers.customMetrics.call(mockExecuteFunctions, 0);
 
 			expect(result).toEqual({
-				metric1: 5,
-				metric2: 10,
-				metric3: 7.5,
+				Metric1: 5,
+				Metric2: 10,
+				Metric3: 7.5,
 			});
 		});
 
 		it('should throw error for non-numeric values', async () => {
 			const metricsData: AssignmentCollectionValue = {
-				assignments: [{ id: '1', name: 'metric1', value: 'not-a-number', type: 'number' }],
+				assignments: [{ id: '1', name: 'Metric1', value: 'not-a-number', type: 'number' }],
 			};
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(metricsData);
@@ -556,19 +558,16 @@ describe('metricHandlers', () => {
 			};
 
 			// Mock the LLM with withStructuredOutput
-			const mockLLMWithStructuredOutput = {
-				invoke: jest.fn().mockResolvedValue(mockResponse),
-			};
+			const mockLLMWithStructuredOutput = mock<Runnable>();
+			mockLLMWithStructuredOutput.invoke.mockResolvedValue(mockResponse);
 
 			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
 			// Mock ChatPromptTemplate.fromMessages to return a chain that can be piped
-			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockLLMWithStructuredOutput),
-			};
+			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
+			mockChatPromptTemplate.pipe.mockReturnValue(mockLLMWithStructuredOutput);
 
 			// Mock the static method
-			const ChatPromptTemplate = require('@langchain/core/prompts').ChatPromptTemplate;
 			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -626,19 +625,15 @@ describe('metricHandlers', () => {
 
 		it('should handle LLM errors gracefully', async () => {
 			const mockError = new Error('LLM processing failed');
-			const mockFinalChain = {
-				invoke: jest.fn().mockRejectedValue(mockError),
-			};
+			const mockFinalChain = mock<Runnable>();
+			mockFinalChain.invoke.mockRejectedValue(mockError);
 
-			const mockMiddleChain = {
-				pipe: jest.fn().mockReturnValue(mockFinalChain),
-			};
+			const mockMiddleChain = mock<Runnable>();
+			mockMiddleChain.pipe.mockReturnValue(mockFinalChain);
 
-			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockMiddleChain),
-			};
+			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
+			mockChatPromptTemplate.pipe.mockReturnValue(mockMiddleChain);
 
-			const ChatPromptTemplate = require('@langchain/core/prompts').ChatPromptTemplate;
 			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -673,17 +668,14 @@ describe('metricHandlers', () => {
 			};
 
 			// Mock the LLM with withStructuredOutput
-			const mockLLMWithStructuredOutput = {
-				invoke: jest.fn().mockResolvedValue(mockResponse),
-			};
+			const mockLLMWithStructuredOutput = mock<Runnable>();
+			mockLLMWithStructuredOutput.invoke.mockResolvedValue(mockResponse);
 
 			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
-			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockLLMWithStructuredOutput),
-			};
+			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
+			mockChatPromptTemplate.pipe.mockReturnValue(mockLLMWithStructuredOutput);
 
-			const ChatPromptTemplate = require('@langchain/core/prompts').ChatPromptTemplate;
 			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -741,19 +733,15 @@ describe('metricHandlers', () => {
 
 		it('should handle LLM errors gracefully', async () => {
 			const mockError = new Error('LLM processing failed');
-			const mockFinalChain = {
-				invoke: jest.fn().mockRejectedValue(mockError),
-			};
+			const mockFinalChain = mock<Runnable>();
+			mockFinalChain.invoke.mockRejectedValue(mockError);
 
-			const mockMiddleChain = {
-				pipe: jest.fn().mockReturnValue(mockFinalChain),
-			};
+			const mockMiddleChain = mock<Runnable>();
+			mockMiddleChain.pipe.mockReturnValue(mockFinalChain);
 
-			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockMiddleChain),
-			};
+			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
+			mockChatPromptTemplate.pipe.mockReturnValue(mockMiddleChain);
 
-			const ChatPromptTemplate = require('@langchain/core/prompts').ChatPromptTemplate;
 			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
