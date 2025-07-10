@@ -37,7 +37,7 @@ catalogs:
       specifier: ^9.0.9
       version: 9.0.9
     '@types/lodash':
-      specifier: ^4.17.17
+      specifier: 4.17.17
       version: 4.17.17
     '@types/uuid':
       specifier: ^10.0.0
@@ -2901,6 +2901,9 @@ importers:
       '@testcontainers/redis':
         specifier: ^11.0.3
         version: 11.0.3
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
       testcontainers:
         specifier: ^11.0.3
         version: 11.0.3
@@ -2913,6 +2916,9 @@ importers:
       '@playwright/test':
         specifier: 1.53.0
         version: 1.53.0
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       eslint-plugin-playwright:
         specifier: 2.2.0
         version: 2.2.0(eslint@9.29.0(jiti@1.21.7))
@@ -14222,6 +14228,7 @@ packages:
   supertest@7.1.1:
     resolution: {integrity: sha512-aI59HBTlG9e2wTjxGJV+DygfNLgnWbGdZxiA/sgrnNNikIW8lbDvCtF6RnhZoJ82nU7qv7ZLjrvWqCEm52fAmw==}
     engines: {node: '>=14.18.0'}
+    deprecated: Please upgrade to supertest v7.1.3+, see release notes at https://github.com/forwardemail/supertest/releases/tag/v7.1.3 - maintenance is supported by Forward Email @ https://forwardemail.net
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
@@ -17746,7 +17753,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.10.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.10.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.10.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -22268,28 +22275,15 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.10.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.10.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
       axios: 1.8.3
       is-retry-allowed: 2.2.0
-
-  axios@1.10.0:
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
-      form-data: 4.0.2
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.10.0(debug@4.3.6):
     dependencies:
@@ -22589,7 +22583,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.8.3):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       axios-retry: 4.5.0(axios@1.10.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -24077,7 +24071,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -24101,7 +24095,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3)
       eslint: 9.29.0(jiti@1.21.7)
@@ -24140,7 +24134,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -25074,7 +25068,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -25455,7 +25449,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -26617,7 +26611,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -28217,7 +28211,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -28471,7 +28465,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -29098,7 +29092,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -29123,7 +29117,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -29586,7 +29580,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
