@@ -17,7 +17,7 @@ catalog:
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': ^9.0.9
-  '@types/lodash': ^4.17.17
+  '@types/lodash': 4.17.17
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
