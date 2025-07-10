@@ -4,6 +4,7 @@ import { TEMPLATES_URLS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { TemplateClickSource } from '@/utils/experiments';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import CanvasNodeAddNodes from './CanvasNodeAddNodes.vue';
 
@@ -99,7 +100,7 @@ describe('CanvasNodeAddNodes', () => {
 			});
 
 			const link = getByTestId('canvas-template-link');
-			link.click();
+			await userEvent.click(link);
 
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User clicked on templates',
