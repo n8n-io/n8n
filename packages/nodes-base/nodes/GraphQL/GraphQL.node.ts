@@ -378,6 +378,35 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
+				displayName: 'WebSocket Subprotocol',
+				name: 'websocketSubprotocol',
+				type: 'options',
+				options: [
+					{
+						name: 'graphql-transport-ws',
+						value: 'graphql-transport-ws',
+						description: 'Modern GraphQL over WebSocket protocol',
+					},
+					{
+						name: 'graphql-ws',
+						value: 'graphql-ws',
+						description: 'Alternative GraphQL WebSocket protocol',
+					},
+					{
+						name: 'graphql',
+						value: 'graphql',
+						description: 'Legacy GraphQL WebSocket protocol',
+					},
+				],
+				default: 'graphql-transport-ws',
+				description: 'The WebSocket subprotocol to use',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
 				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
@@ -585,6 +614,11 @@ export class GraphQL implements INodeType {
 						itemIndex,
 						false,
 					) as boolean;
+					const subprotocol = this.getNodeParameter(
+						'websocketSubprotocol',
+						itemIndex,
+						'graphql-transport-ws',
+					) as string;
 					const connectionTimeout = this.getNodeParameter(
 						'connectionTimeout',
 						itemIndex,
@@ -624,7 +658,7 @@ export class GraphQL implements INodeType {
 					);
 
 					// Create WebSocket connection
-					const ws = new WebSocket(websocketUrl, {
+					const ws = new WebSocket(websocketUrl, [subprotocol], {
 						headers,
 						rejectUnauthorized: !allowUnauthorizedCerts,
 					});
