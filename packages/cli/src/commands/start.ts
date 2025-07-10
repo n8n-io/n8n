@@ -151,9 +151,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
-							ignoreCase: false,
-						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
