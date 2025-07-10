@@ -34,7 +34,6 @@ const headers = ref<Array<TableHeader<Item>>>([
 		title: 'Name',
 		key: 'workflowName',
 		width: 400,
-		disableSort: true,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.total'),
