@@ -1610,8 +1610,6 @@ export function useCanvasOperations() {
 		workflowsStore.currentWorkflowExecutions = [];
 		workflowsStore.setActiveExecutionId(undefined);
 
-		focusPanelStore.reset();
-
 		// Reset actions
 		uiStore.resetLastInteractedWith();
 		uiStore.stateIsDirty = false;

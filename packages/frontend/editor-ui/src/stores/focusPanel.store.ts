@@ -74,7 +74,19 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		parameters,
 		isActive,
 		wid = workflowsStore.workflowId,
-	}: { isActive?: boolean; parameters?: FocusedNodeParameter[]; wid?: string }) => {
+		removeEmpty = false,
+	}: {
+		isActive?: boolean;
+		parameters?: FocusedNodeParameter[];
+		wid?: string;
+		removeEmpty?: boolean;
+	}) => {
+		const focusPanelDataCurrent = focusPanelData.value;
+
+		if (removeEmpty && PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelDataCurrent) {
+			delete focusPanelDataCurrent[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		}
+
 		focusPanelStorage.value = JSON.stringify({
 			...focusPanelData.value,
 			[wid]: {
@@ -95,8 +107,8 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			wid,
 			parameters: latestWorkflowData.parameters,
 			isActive: latestWorkflowData.isActive,
+			removeEmpty: true,
 		});
-		_setOptions({ wid: PLACEHOLDER_EMPTY_WORKFLOW_ID, ...DEFAULT_FOCUS_PANEL_DATA });
 	};
 
 	const openWithFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
@@ -115,10 +127,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: !focusPanelActive.value });
 	};
 
-	const reset = () => {
-		_setOptions({ isActive: false, parameters: [] });
-	};
-
 	const isRichParameter = (
 		p: RichFocusedNodeParameter | FocusedNodeParameter,
 	): p is RichFocusedNodeParameter => {
@@ -132,7 +140,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		isRichParameter,
 		closeFocusPanel,
 		toggleFocusPanel,
-		reset,
 		onNewWorkflowSave,
 	};
 });
