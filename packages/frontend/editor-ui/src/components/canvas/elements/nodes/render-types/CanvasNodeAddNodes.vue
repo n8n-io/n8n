@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import { useTelemetry } from '@/composables/useTelemetry';
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
-import { isExtraTemplateLinksExperimentEnabled } from '@/experiments';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import {
+	isExtraTemplateLinksExperimentEnabled,
+	TemplateClickSource,
+	trackTemplatesClick,
+} from '@/utils/experiments';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
-const telemetry = useTelemetry();
-const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
-const workflowsStore = useWorkflowsStore();
 
 const isTooltipVisible = ref(false);
 
@@ -61,14 +59,6 @@ function onClick() {
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 	);
 }
-
-const trackTemplatesClick = () => {
-	telemetry.track('User clicked on templates', {
-		role: cloudPlanStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
-		source: 'empty_workflow_link',
-	});
-};
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
@@ -94,7 +84,7 @@ const trackTemplatesClick = () => {
 				:target="templateRepository.target"
 				:underline="true"
 				size="small"
-				@click="trackTemplatesClick"
+				@click="trackTemplatesClick(TemplateClickSource.emptyWorkflowLink)"
 			>
 				{{ i18n.baseText('executionsLandingPage.emptyState.noTrigger.templateLinkText') }}
 			</N8nLink>

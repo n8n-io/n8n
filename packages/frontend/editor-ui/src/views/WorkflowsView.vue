@@ -1,17 +1,6 @@
 <script lang="ts" setup>
 import Draggable from '@/components/Draggable.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
-import type {
-	BaseFilters,
-	FolderResource,
-	Resource,
-	SortingAndPaginationUpdates,
-	WorkflowResource,
-	FolderListItem,
-	UserAction,
-	WorkflowListItem,
-	WorkflowListResource,
-} from '@/Interface';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
@@ -20,7 +9,6 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import { useFolders } from '@/composables/useFolders';
-import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -32,15 +20,30 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
+import {
+	isExtraTemplateLinksExperimentEnabled,
+	TemplateClickSource,
+	trackTemplatesClick,
+} from '@/utils/experiments';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import type {
+	BaseFilters,
+	FolderListItem,
+	FolderResource,
+	Resource,
+	SortingAndPaginationUpdates,
+	UserAction,
+	WorkflowListItem,
+	WorkflowListResource,
+	WorkflowResource,
+} from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -48,6 +51,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
+	N8nButton,
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
@@ -56,16 +60,15 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nButton,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
-import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { isExtraTemplateLinksExperimentEnabled } from '@/experiments';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -108,7 +111,6 @@ const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
-const cloudPlanStore = useCloudPlanStore();
 const templatesStore = useTemplatesStore();
 
 const documentTitle = useDocumentTitle();
@@ -756,11 +758,7 @@ const addWorkflow = () => {
 };
 
 const openTemplatesRepository = async () => {
-	telemetry.track('User clicked on templates', {
-		role: cloudPlanStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
-		source: 'empty_instance_card',
-	});
+	trackTemplatesClick(TemplateClickSource.emptyInstanceCard);
 
 	if (templatesStore.hasCustomTemplatesHost) {
 		await router.push({ name: VIEWS.TEMPLATES });
