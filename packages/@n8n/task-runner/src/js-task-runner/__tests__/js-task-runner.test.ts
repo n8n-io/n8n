@@ -1,6 +1,10 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type { IBinaryData } from 'n8n-workflow';
-import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
+import {
+	type IBinaryData,
+	setGlobalState,
+	type CodeExecutionMode,
+	type IDataObject,
+} from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -26,10 +30,16 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
+import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
 const defaultConfig = new MainConfig();
+defaultConfig.jsRunnerConfig ??= {
+	allowedBuiltInModules: '',
+	allowedExternalModules: '',
+	insecureMode: false,
+};
 
 describe('JsTaskRunner', () => {
 	const createRunnerWithOpts = (
@@ -800,6 +810,15 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow(ValidationError);
 			});
+
+			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
+				await expect(
+					executeForAllItems({
+						code: 'return [{json: {b: 1}, objectId: "123"}]',
+						inputItems: [{ a: 1 }],
+					}),
+				).rejects.toThrow(ReservedKeyFoundError);
+			});
 		});
 
 		it('should return static items', async () => {
@@ -850,7 +869,7 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"]])(
+		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"], ['$items()']])(
 			'should have all input items in the context as %s',
 			async (expression) => {
 				const outcome = await executeForAllItems({
@@ -1434,6 +1453,80 @@ describe('JsTaskRunner', () => {
 			expect(Interval.fromISO('P1Y2M10DT2H30M').maliciousKey).toBeUndefined();
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
+		});
+
+		it('should allow prototype mutation when `insecureMode` is true', async () => {
+			const runner = createRunnerWithOpts({
+				insecureMode: true,
+			});
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+
+					Object.prototype.maliciousProperty = 'compromised';
+
+					return [{ json: {
+						prototypeMutated: obj.maliciousProperty === 'compromised'
+					}}];
+				`,
+				inputItems: [{ a: 1 }],
+				runner,
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeMutated: true })]);
+
+			// @ts-expect-error Non-existing property
+			delete Object.prototype.maliciousProperty;
+		});
+	});
+
+	describe('stack trace', () => {
+		it('should extract correct line number from user-defined function stack trace', async () => {
+			const runner = createRunnerWithOpts({});
+			const taskId = '1';
+			const task = newTaskState(taskId);
+			const taskSettings: JSExecSettings = {
+				code: 'function my_function() {\n  null.map();\n}\nmy_function();\nreturn []',
+				nodeMode: 'runOnceForAllItems',
+				continueOnFail: false,
+				workflowMode: 'manual',
+			};
+			runner.runningTasks.set(taskId, task);
+
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			jest
+				.spyOn(runner, 'requestData')
+				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+
+			await runner.receivedSettings(taskId, taskSettings);
+
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: expect.stringContaining('Cannot read properties of null'),
+					description: 'TypeError',
+					lineNumber: 2, // from user-defined function
+				},
+			});
+		});
+	});
+
+	describe('expressions', () => {
+		it('should evaluate expressions with $evaluateExpression', async () => {
+			const outcome = await executeForAllItems({
+				code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
+				inputItems: [],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 2 })]);
 		});
 	});
 });

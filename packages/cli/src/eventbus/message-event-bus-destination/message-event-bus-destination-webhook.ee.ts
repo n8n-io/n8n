@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import { Agent as HTTPSAgent } from 'https';
+import { ExternalSecretsProxy } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -14,7 +15,6 @@ import type {
 } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import * as SecretsHelpers from '@/external-secrets.ee/external-secrets-helper.ee';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
@@ -102,7 +102,9 @@ export class MessageEventBusDestinationWebhook
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
-				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
+				{
+					externalSecretsProxy: Container.get(ExternalSecretsProxy),
+				} as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',

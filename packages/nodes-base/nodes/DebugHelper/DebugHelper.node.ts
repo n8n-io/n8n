@@ -8,7 +8,7 @@ import type {
 import {
 	ApplicationError,
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -40,8 +40,8 @@ export class DebugHelper implements INodeType {
 		defaults: {
 			name: 'DebugHelper',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			{

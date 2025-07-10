@@ -1,9 +1,15 @@
+import {
+	createTeamProject,
+	createManyWorkflows,
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User, ExecutionEntity } from '@n8n/db';
+
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { User } from '@/databases/entities/user';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import {
 	createErrorExecution,
@@ -13,12 +19,6 @@ import {
 	createWaitingExecution,
 } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import {
-	createManyWorkflows,
-	createWorkflow,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -50,9 +50,9 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Workflow',
-		'Credentials',
-		'Execution',
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'ExecutionEntity',
 		'Settings',
 	]);
 

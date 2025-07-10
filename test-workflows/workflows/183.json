@@ -1,0 +1,617 @@
+{
+  "createdAt": "2021-04-23T11:00:16.427Z",
+  "updatedAt": "2021-04-23T16:04:29.271Z",
+  "id": "183",
+  "name": "Telegram:Chat:get setDescription setTitle member:Message: sendMessage editMessageText pinChatMessage unpinChatMessage sendPhoto sendSticker sendMediaGroup sendChatAction sendLocation sendDocument sendAudio sendAnimation sendVideo:File:get",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "2003127c-05c1-4e8d-a123-f50582b324d0"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "chatId": "@FixedChannel123"
+      },
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "b74ed6ec-dd64-46f1-bbd2-968a02e248bc"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "setDescription",
+        "chatId": "@FixedChannel123",
+        "description": "=UpdatedDescription{{Date.now()}}"
+      },
+      "name": "Telegram1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "b78da1c6-a208-490f-95a9-b359f8d9852c"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "setTitle",
+        "chatId": "@FixedChannel123",
+        "title": "=Title{{Date.now()}}"
+      },
+      "name": "Telegram2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "50e2a9f1-5cf4-4009-8952-9d9a7f798cf6"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "member",
+        "chatId": "@FixedChannel123",
+        "userId": "1757347499"
+      },
+      "name": "Telegram3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        950,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "26a5c251-d0c1-4cb4-83a8-b5722b6b086c"
+    },
+    {
+      "parameters": {
+        "chatId": "@FixedChannel123",
+        "text": "=Test{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Telegram4",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        490,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "8b3c6634-82c9-433e-8492-8c670b0e0ffd"
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "@FixedChannel123",
+        "messageId": "={{$node[\"Telegram4\"].json[\"result\"][\"message_id\"]}}",
+        "text": "=UpdatedTest{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Telegram5",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "179251fc-335f-4f05-ab9c-9c712e11b778"
+    },
+    {
+      "parameters": {
+        "operation": "pinChatMessage",
+        "chatId": "@FixedChannel123",
+        "messageId": "={{$node[\"Telegram4\"].json[\"result\"][\"message_id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Telegram6",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        800,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "bb70b35e-a908-43d8-8f01-a9cb3d152d53"
+    },
+    {
+      "parameters": {
+        "operation": "unpinChatMessage",
+        "chatId": "@FixedChannel123",
+        "messageId": "={{$node[\"Telegram4\"].json[\"result\"][\"message_id\"]}}"
+      },
+      "name": "Telegram7",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        950,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "dce352dc-fdbe-49ee-bb47-7aa065d5c3e4"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "@FixedChannel123",
+        "file": "https://n8n.io/_nuxt/img/df5be1c.png",
+        "additionalFields": {}
+      },
+      "name": "Telegram8",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "bdb4221e-41ad-42ad-8725-6d93a326abe4"
+    },
+    {
+      "parameters": {
+        "operation": "sendSticker",
+        "chatId": "@FixedChannel123",
+        "file": "https://tlgrm.eu/_/stickers/22c/b26/22cb267f-a2ab-41e4-8360-fe35ac048c3b/192/12.webp",
+        "additionalFields": {}
+      },
+      "name": "Telegram9",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "70f93d2c-1365-4a84-acb6-efe74de090a1"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$node[\"Telegram8\"].json[\"result\"][\"photo\"][0][\"file_id\"]}}"
+      },
+      "name": "Telegram10",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "53b7d1e7-462d-4843-b852-3491a1e69310"
+    },
+    {
+      "parameters": {
+        "operation": "sendMediaGroup",
+        "chatId": "@FixedChannel123",
+        "media": {
+          "media": [
+            {
+              "media": "https://n8n.io/_nuxt/img/df5be1c.png",
+              "additionalFields": {}
+            },
+            {
+              "media": "https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png",
+              "additionalFields": {}
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "name": "Telegram11",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "f8727e6e-c697-4b6b-be71-aaa451f4dabb"
+    },
+    {
+      "parameters": {
+        "operation": "sendChatAction",
+        "chatId": "@FixedChannel123",
+        "action": "find_location"
+      },
+      "name": "Telegram12",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1550,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "045fd95c-e699-4568-b6a5-3e1289e686c1"
+    },
+    {
+      "parameters": {
+        "operation": "sendLocation",
+        "chatId": "@FixedChannel123",
+        "latitude": 52.529776,
+        "longitude": 13.3893152845,
+        "additionalFields": {}
+      },
+      "name": "Telegram13",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "fa2ee6c4-f697-4e88-a952-dfbe3b5806d2"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "@FixedChannel123",
+        "file": "https://nx10458.your-storageshare.de/s/4w7bEHjjGyEzoXq/download",
+        "additionalFields": {}
+      },
+      "name": "Telegram14",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "777d6bca-1444-4da2-bc76-454702bbbd33"
+    },
+    {
+      "parameters": {
+        "operation": "sendAudio",
+        "chatId": "@FixedChannel123",
+        "file": "http://websrvr90va.audiovideoweb.com/va90web25003/companions/Foundations%20of%20Rock/13.07.mp3",
+        "additionalFields": {}
+      },
+      "name": "Telegram15",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "d6eced32-26b0-417f-832f-0521976847ec"
+    },
+    {
+      "parameters": {
+        "operation": "sendAnimation",
+        "chatId": "@FixedChannel123",
+        "file": "https://media.giphy.com/media/1nR6fu93A17vWZbO9c/giphy.gif",
+        "additionalFields": {}
+      },
+      "name": "Telegram16",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2150,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "64ed5e7e-fa11-447c-b9e8-f8ee091bc447"
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "@FixedChannel123",
+        "file": "http://vod-progressive.akamaized.net/exp=1619203691~acl=%2Fvimeo-prod-skyfire-std-us%2F01%2F3610%2F13%2F343052045%2F1373111309.mp4~hmac=8ede5174dfb91845afeae538f8144fe5d6819b4a4713f700e1ff805261445369/vimeo-prod-skyfire-std-us/01/3610/13/343052045/1373111309.mp4?download=1&filename=Pexels Videos 2519660.mp4",
+        "additionalFields": {}
+      },
+      "name": "Telegram17",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2300,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "148",
+          "name": "Telegram API creds"
+        }
+      },
+      "id": "735e6eeb-4dff-4a56-847f-ac2512d00a18"
+    }
+  ],
+  "connections": {
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Telegram1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram1": {
+      "main": [
+        [
+          {
+            "node": "Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram2": {
+      "main": [
+        [
+          {
+            "node": "Telegram3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram4": {
+      "main": [
+        [
+          {
+            "node": "Telegram5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram5": {
+      "main": [
+        [
+          {
+            "node": "Telegram6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram6": {
+      "main": [
+        [
+          {
+            "node": "Telegram7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram8": {
+      "main": [
+        [
+          {
+            "node": "Telegram10",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram7": {
+      "main": [
+        [
+          {
+            "node": "Telegram8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram9": {
+      "main": [
+        [
+          {
+            "node": "Telegram11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram11": {
+      "main": [
+        [
+          {
+            "node": "Telegram12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram12": {
+      "main": [
+        [
+          {
+            "node": "Telegram13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram13": {
+      "main": [
+        [
+          {
+            "node": "Telegram14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram14": {
+      "main": [
+        [
+          {
+            "node": "Telegram15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram15": {
+      "main": [
+        [
+          {
+            "node": "Telegram16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram16": {
+      "main": [
+        [
+          {
+            "node": "Telegram17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

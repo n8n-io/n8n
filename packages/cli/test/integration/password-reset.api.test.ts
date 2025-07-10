@@ -1,3 +1,13 @@
+import {
+	randomEmail,
+	randomInvalidPassword,
+	randomName,
+	randomValidPassword,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
 import { mock } from 'jest-mock-extended';
@@ -6,8 +16,6 @@ import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { JwtService } from '@/services/jwt.service';
@@ -16,15 +24,7 @@ import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { createUser } from './shared/db/users';
-import {
-	randomEmail,
-	randomInvalidPassword,
-	randomName,
-	randomValidPassword,
-} from './shared/random';
-import * as testDb from './shared/test-db';
 import { getAuthToken, setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -279,7 +279,7 @@ describe('POST /change-password', () => {
 			id: owner.id,
 		});
 
-		const comparisonResult = await compare(passwordToStore, storedPassword);
+		const comparisonResult = await compare(passwordToStore, storedPassword!);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
 

@@ -1,0 +1,406 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rendered"
+            ]
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rendered"
+            ]
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                },
+                "protected": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "rendered",
+                "protected"
+            ]
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                },
+                "protected": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "rendered",
+                "protected"
+            ]
+        },
+        "author": {
+            "type": "integer"
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "parent": {
+            "type": "integer"
+        },
+        "menu_order": {
+            "type": "integer"
+        },
+        "comment_status": {
+            "type": "string"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "footnotes"
+            ]
+        },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "_elementor_import_session_id": {
+            "type": "null"
+        },
+        "_elementor_edit_mode": {
+            "type": "string"
+        },
+        "_elementor_template_type": {
+            "type": "string"
+        },
+        "_elementor_version": {
+            "type": "string"
+        },
+        "_elementor_pro_version": {
+            "type": "string"
+        },
+        "_wp_page_template": {
+            "type": "string"
+        },
+        "_elementor_page_settings": {
+            "type": "null"
+        },
+        "_elementor_css": {
+            "type": "object",
+            "properties": {
+                "0": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "fonts": {
+                    "type": "object",
+                    "properties": {
+                        "0": {
+                            "type": "string"
+                        },
+                        "1": {
+                            "type": "string"
+                        },
+                        "2": {
+                            "type": "string"
+                        },
+                        "6": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "0",
+                        "1",
+                        "2",
+                        "6"
+                    ]
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "0": {
+                            "type": "string"
+                        },
+                        "1": {
+                            "type": "string"
+                        },
+                        "9": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "0",
+                        "1",
+                        "9"
+                    ]
+                },
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "0",
+                "time",
+                "fonts",
+                "icons",
+                "dynamic_elements_ids",
+                "status"
+            ]
+        },
+        "_elementor_data": {
+            "type": "string"
+        },
+        "_elementor_page_assets": {
+            "type": "object",
+            "properties": {
+                "styles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "styles"
+            ]
+        },
+        "_elementor_element_cache": {
+            "type": "string"
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
+                },
+                "version-history": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "href"
+                        ]
+                    }
+                },
+                "predecessor-version": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "href"
+                        ]
+                    }
+                },
+                "wp:attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "href": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "href",
+                            "templated"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "self",
+                "collection",
+                "about",
+                "author",
+                "replies",
+                "version-history",
+                "wp:attachment",
+                "curies"
+            ]
+        }
+    }
+}

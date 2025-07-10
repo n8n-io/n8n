@@ -1,18 +1,20 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { SharedCredentials } from '@n8n/db';
+import {
+	Project,
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ProjectRelation,
+	ProjectRelationRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { Project } from '@/databases/entities/project';
-import { ProjectRelation } from '@/databases/entities/project-relation';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockCredential, mockProject } from '@test/mock-objects';
-import { mockInstance } from '@test/mocking';
 
 import { CacheService } from '../cache/cache.service';
 

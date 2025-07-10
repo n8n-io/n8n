@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { deepCopy, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { v4 as uuid } from 'uuid';
 
@@ -39,8 +39,9 @@ export class Crypto implements INodeType {
 			name: 'Crypto',
 			color: '#408000',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Action',

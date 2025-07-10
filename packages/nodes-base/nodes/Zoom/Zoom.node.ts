@@ -7,7 +7,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
@@ -53,8 +53,9 @@ export class Zoom implements INodeType {
 			name: 'Zoom',
 		},
 		icon: 'file:zoom.svg',
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// create a JWT app on Zoom Marketplace

@@ -1,13 +1,19 @@
+import {
+	randomEmail,
+	randomName,
+	uniqueId,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { AuthProviderSyncHistoryRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap.ee/constants';
 import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
 import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import {
@@ -15,11 +21,8 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import { randomEmail, randomName, uniqueId } from './../shared/random';
-import { getPersonalProject } from '../shared/db/projects';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -47,9 +50,9 @@ beforeEach(async () => {
 		'AuthIdentity',
 		'AuthProviderSyncHistory',
 		'SharedCredentials',
-		'Credentials',
+		'CredentialsEntity',
 		'SharedWorkflow',
-		'Workflow',
+		'WorkflowEntity',
 	]);
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
@@ -470,7 +473,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: ldapUser.mail, password: 'password' });
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
@@ -529,7 +532,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: owner.email, password: 'password' });
+			.send({ emailOrLdapLoginId: owner.email, password: 'password' });
 
 		expect(response.status).toBe(200);
 		expect(response.body.data?.signInType).toBeDefined();

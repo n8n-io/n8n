@@ -2,12 +2,13 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
-import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
+import { type Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createQdrantClient, type QdrantCredential } from './Qdrant.utils';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { qdrantCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
-import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {
 	private static defaultFilter: IDataObject = {};
@@ -21,12 +22,7 @@ class ExtendedQdrantVectorStore extends QdrantVectorStore {
 		return await super.fromExistingCollection(embeddings, args);
 	}
 
-	async similaritySearch(
-		query: string,
-		k: number,
-		filter?: IDataObject,
-		callbacks?: Callbacks | undefined,
-	) {
+	async similaritySearch(query: string, k: number, filter?: IDataObject, callbacks?: Callbacks) {
 		const mergedFilter = { ...ExtendedQdrantVectorStore.defaultFilter, ...filter };
 		return await super.similaritySearch(query, k, mergedFilter, callbacks);
 	}
@@ -79,7 +75,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreQdrant extends createVectorStoreNode({
+export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVectorStore>({
 	meta: {
 		displayName: 'Qdrant Vector Store',
 		name: 'vectorStoreQdrant',
@@ -106,9 +102,10 @@ export class VectorStoreQdrant extends createVectorStoreNode({
 
 		const credentials = await context.getCredentials('qdrantApi');
 
+		const client = createQdrantClient(credentials as QdrantCredential);
+
 		const config: QdrantLibArgs = {
-			url: credentials.qdrantUrl as string,
-			apiKey: credentials.apiKey as string,
+			client,
 			collectionName: collection,
 		};
 
@@ -126,9 +123,10 @@ export class VectorStoreQdrant extends createVectorStoreNode({
 		};
 		const credentials = await context.getCredentials('qdrantApi');
 
+		const client = createQdrantClient(credentials as QdrantCredential);
+
 		const config: QdrantLibArgs = {
-			url: credentials.qdrantUrl as string,
-			apiKey: credentials.apiKey as string,
+			client,
 			collectionName,
 			collectionConfig,
 		};

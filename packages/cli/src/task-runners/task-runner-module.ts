@@ -1,18 +1,19 @@
+import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
+import type { TaskBrokerServer } from './task-broker/task-broker-server';
 import type { LocalTaskRequester } from './task-managers/local-task-requester';
-import type { TaskRunnerServer } from './task-runner-server';
-import { TaskRunnerWsServer } from './task-runner-ws-server';
 
 /**
  * Module responsible for loading and starting task runner. Task runner can be
@@ -21,9 +22,9 @@ import { TaskRunnerWsServer } from './task-runner-ws-server';
  */
 @Service()
 export class TaskRunnerModule {
-	private taskRunnerHttpServer: TaskRunnerServer | undefined;
+	private taskBrokerHttpServer: TaskBrokerServer | undefined;
 
-	private taskRunnerWsServer: TaskRunnerWsServer | undefined;
+	private taskBrokerWsServer: TaskBrokerWsServer | undefined;
 
 	private taskRequester: LocalTaskRequester | undefined;
 
@@ -47,7 +48,7 @@ export class TaskRunnerModule {
 		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
 
 		await this.loadTaskRequester();
-		await this.loadTaskRunnerServer();
+		await this.loadTaskBroker();
 
 		if (mode === 'internal') {
 			await this.startInternalTaskRunner();
@@ -64,9 +65,9 @@ export class TaskRunnerModule {
 		})();
 
 		const stopRunnerServerTask = (async () => {
-			if (this.taskRunnerHttpServer) {
-				await this.taskRunnerHttpServer.stop();
-				this.taskRunnerHttpServer = undefined;
+			if (this.taskBrokerHttpServer) {
+				await this.taskBrokerHttpServer.stop();
+				this.taskBrokerHttpServer = undefined;
 			}
 		})();
 
@@ -82,18 +83,18 @@ export class TaskRunnerModule {
 		Container.set(TaskRequester, this.taskRequester);
 	}
 
-	private async loadTaskRunnerServer() {
+	private async loadTaskBroker() {
 		// These are imported dynamically because we need to set the task manager
 		// instance before importing them
-		const { TaskRunnerServer } = await import('@/task-runners/task-runner-server');
-		this.taskRunnerHttpServer = Container.get(TaskRunnerServer);
-		this.taskRunnerWsServer = Container.get(TaskRunnerWsServer);
+		const { TaskBrokerServer } = await import('@/task-runners/task-broker/task-broker-server');
+		this.taskBrokerHttpServer = Container.get(TaskBrokerServer);
+		this.taskBrokerWsServer = Container.get(TaskBrokerWsServer);
 
-		await this.taskRunnerHttpServer.start();
+		await this.taskBrokerHttpServer.start();
 	}
 
 	private async startInternalTaskRunner() {
-		a.ok(this.taskRunnerWsServer, 'Task Runner WS Server not loaded');
+		a.ok(this.taskBrokerWsServer, 'Task Runner WS Server not loaded');
 
 		const { TaskRunnerProcess } = await import('@/task-runners/task-runner-process');
 		this.taskRunnerProcess = Container.get(TaskRunnerProcess);
@@ -110,7 +111,7 @@ export class TaskRunnerModule {
 		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
 			'@/task-runners/internal-task-runner-disconnect-analyzer'
 		);
-		this.taskRunnerWsServer.setDisconnectAnalyzer(
+		this.taskBrokerWsServer.setDisconnectAnalyzer(
 			Container.get(InternalTaskRunnerDisconnectAnalyzer),
 		);
 	}

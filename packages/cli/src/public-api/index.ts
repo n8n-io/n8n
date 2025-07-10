@@ -95,7 +95,7 @@ async function createApiRouter(
 			res: express.Response,
 			_next: express.NextFunction,
 		) => {
-			return res.status(error.status || 400).json({
+			res.status(error.status || 400).json({
 				message: error.message,
 			});
 		},

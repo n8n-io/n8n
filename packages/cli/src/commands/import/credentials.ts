@@ -1,55 +1,56 @@
+import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
-import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import fs from 'fs';
 import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import * as Db from '@/db';
 
 import { BaseCommand } from '../base-command';
 
-export class ImportCredentialsCommand extends BaseCommand {
-	static description = 'Import credentials';
+const flagsSchema = z.object({
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input file name or directory if --separate is used')
+		.optional(),
+	separate: z
+		.boolean()
+		.default(false)
+		.describe('Imports *.json files from directory provided by --input'),
+	userId: z
+		.string()
+		.describe('The ID of the user to assign the imported credentials to')
+		.optional(),
+	projectId: z
+		.string()
+		.describe('The ID of the project to assign the imported credential to')
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n import:credentials --input=file.json',
-		'$ n8n import:credentials --separate --input=backups/latest/',
-		'$ n8n import:credentials --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-		'$ n8n import:credentials --input=file.json --projectId=Ox8O54VQrmBrb4qL',
-		'$ n8n import:credentials --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		input: Flags.string({
-			char: 'i',
-			description: 'Input file name or directory if --separate is used',
-		}),
-		separate: Flags.boolean({
-			description: 'Imports *.json files from directory provided by --input',
-		}),
-		userId: Flags.string({
-			description: 'The ID of the user to assign the imported credentials to',
-		}),
-		projectId: Flags.string({
-			description: 'The ID of the project to assign the imported credential to',
-		}),
-	};
-
+@Command({
+	name: 'import:credentials',
+	description: 'Import credentials',
+	examples: [
+		'--input=file.json',
+		'--separate --input=backups/latest/',
+		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
+		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+	],
+	flagsSchema,
+})
+export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private transactionManager: EntityManager;
 
 	async run(): Promise<void> {
-		const { flags } = await this.parse(ImportCredentialsCommand);
+		const { flags } = this;
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -66,14 +67,15 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 
 		if (flags.projectId && flags.userId) {
-			throw new ApplicationError(
+			throw new UserError(
 				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 			);
 		}
 
 		const credentials = await this.readCredentials(flags.input, flags.separate);
 
-		await Db.getConnection().transaction(async (transactionManager) => {
+		const { manager: dbManager } = Container.get(ProjectRepository);
+		await dbManager.transaction(async (transactionManager) => {
 			this.transactionManager = transactionManager;
 
 			const project = await this.getProject(flags.userId, flags.projectId);
@@ -81,7 +83,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
 
 			if (!result.success) {
-				throw new ApplicationError(result.message);
+				throw new UserError(result.message);
 			}
 
 			for (const credential of credentials) {
@@ -106,6 +108,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		// @ts-ignore CAT-957
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 
 		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
@@ -202,7 +205,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			);
 
 			if (!Array.isArray(credentialsUnchecked)) {
-				throw new ApplicationError(
+				throw new UserError(
 					'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
 				);
 			}
@@ -252,7 +255,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		if (!userId) {
 			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
 			if (!owner) {
-				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
 			userId = owner.id;
 		}

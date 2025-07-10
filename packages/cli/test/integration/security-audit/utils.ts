@@ -1,12 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import type { InstalledNodes, InstalledPackages } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
 import * as constants from '@/constants';
-import type { InstalledNodes } from '@/databases/entities/installed-nodes';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { Risk } from '@/security-audit/types';
 import { toReportTitle } from '@/security-audit/utils';
 
@@ -114,9 +113,8 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
 	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
 }
@@ -124,9 +122,8 @@ export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSIO
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
 	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
 }

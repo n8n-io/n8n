@@ -1,7 +1,7 @@
 import set from 'lodash/set';
 import {
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -27,8 +27,8 @@ export class AiTransform implements INodeType {
 		defaults: {
 			name: 'AI Transform',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		parameterPane: 'wide',
 		hints: [
 			{

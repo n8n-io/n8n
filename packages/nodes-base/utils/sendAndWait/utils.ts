@@ -1,3 +1,4 @@
+import isbot from 'isbot';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -12,22 +13,30 @@ import type {
 	FormFieldsParameter,
 } from 'n8n-workflow';
 
+import { limitWaitTimeProperties } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
-	createEmailBody,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
+import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import {
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+} from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 
-type SendAndWaitConfig = {
+export type SendAndWaitConfig = {
 	title: string;
 	message: string;
 	url: string;
 	options: Array<{ label: string; value: string; style: string }>;
+	appendAttribution?: boolean;
 };
 
 type FormResponseTypeOptions = {
@@ -35,15 +44,46 @@ type FormResponseTypeOptions = {
 	responseFormTitle?: string;
 	responseFormDescription?: string;
 	responseFormButtonLabel?: string;
+	responseFormCustomCss?: string;
 };
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
+
+const limitWaitTimeOption: INodeProperties = {
+	displayName: 'Limit Wait Time',
+	name: 'limitWaitTime',
+	type: 'fixedCollection',
+	description:
+		'Whether the workflow will automatically resume execution after the specified limit type',
+	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: limitWaitTimeProperties,
+		},
+	],
+};
+
+const appendAttributionOption: INodeProperties = {
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+	description:
+		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+};
 
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
 	resource: string = 'message',
 	additionalProperties: INodeProperties[] = [],
+	options?: {
+		noButtonStyle?: boolean;
+		defaultApproveLabel?: string;
+		defaultDisapproveLabel?: string;
+	},
 ) {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
@@ -61,6 +101,77 @@ export function getSendAndWaitProperties(
 			},
 		],
 	};
+	const approvalOptionsValues = [
+		{
+			displayName: 'Type of Approval',
+			name: 'approvalType',
+			type: 'options',
+			placeholder: 'Add option',
+			default: 'single',
+			options: [
+				{
+					name: 'Approve Only',
+					value: 'single',
+				},
+				{
+					name: 'Approve and Disapprove',
+					value: 'double',
+				},
+			],
+		},
+		{
+			displayName: 'Approve Button Label',
+			name: 'approveLabel',
+			type: 'string',
+			default: options?.defaultApproveLabel || 'Approve',
+			displayOptions: {
+				show: {
+					approvalType: ['single', 'double'],
+				},
+			},
+		},
+		...[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Approve Button Style',
+						name: 'buttonApprovalStyle',
+						displayOptions: {
+							show: {
+								approvalType: ['single', 'double'],
+							},
+						},
+					},
+		],
+		{
+			displayName: 'Disapprove Button Label',
+			name: 'disapproveLabel',
+			type: 'string',
+			default: options?.defaultDisapproveLabel || 'Decline',
+			displayOptions: {
+				show: {
+					approvalType: ['double'],
+				},
+			},
+		},
+		...[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Disapprove Button Style',
+						name: 'buttonDisapprovalStyle',
+						default: 'secondary',
+						displayOptions: {
+							show: {
+								approvalType: ['double'],
+							},
+						},
+					},
+		],
+	].filter((p) => Object.keys(p).length) as INodeProperties[];
+
 	const sendAndWait: INodeProperties[] = [
 		...targetProperties,
 		{
@@ -104,6 +215,15 @@ export function getSendAndWaitProperties(
 				},
 			],
 		},
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			formFieldsProperties,
+		),
+
 		{
 			displayName: 'Approval Options',
 			name: 'approvalOptions',
@@ -114,68 +234,7 @@ export function getSendAndWaitProperties(
 				{
 					displayName: 'Values',
 					name: 'values',
-					values: [
-						{
-							displayName: 'Type of Approval',
-							name: 'approvalType',
-							type: 'options',
-							placeholder: 'Add option',
-							default: 'single',
-							options: [
-								{
-									name: 'Approve Only',
-									value: 'single',
-								},
-								{
-									name: 'Approve and Disapprove',
-									value: 'double',
-								},
-							],
-						},
-						{
-							displayName: 'Approve Button Label',
-							name: 'approveLabel',
-							type: 'string',
-							default: 'Approve',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Approve Button Style',
-							name: 'buttonApprovalStyle',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							displayName: 'Disapprove Button Label',
-							name: 'disapproveLabel',
-							type: 'string',
-							default: 'Decline',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Disapprove Button Style',
-							name: 'buttonDisapprovalStyle',
-							default: 'secondary',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-					],
+					values: approvalOptionsValues,
 				},
 			],
 			displayOptions: {
@@ -184,14 +243,19 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...updateDisplayOptions(
-			{
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [limitWaitTimeOption, appendAttributionOption],
+			displayOptions: {
 				show: {
-					responseType: ['customForm'],
+					responseType: ['approval'],
 				},
 			},
-			formFieldsProperties,
-		),
+		},
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -225,6 +289,19 @@ export function getSendAndWaitProperties(
 					type: 'string',
 					default: 'Submit',
 				},
+				{
+					displayName: 'Response Form Custom Styling',
+					name: 'responseFormCustomCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the response form with CSS',
+				},
+				limitWaitTimeOption,
+				appendAttributionOption,
 			],
 			displayOptions: {
 				show: {
@@ -271,20 +348,29 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 		formTitle,
 		formDescription,
 		buttonLabel,
+		customCss: options.responseFormCustomCss,
 	};
 };
 
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
+	const req = this.getRequestObject();
+
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
 		| 'customForm';
 
+	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
+		res.send('');
+		return { noWebhookResponse: true };
+	}
+
 	if (responseType === 'freeText') {
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
@@ -302,6 +388,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				],
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
 			res.render('form-trigger', data);
@@ -341,7 +428,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
@@ -353,6 +441,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				formFields: fields,
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
 			res.render('form-trigger', data);
@@ -377,7 +466,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 	}
 
-	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
+	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
@@ -401,11 +490,14 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		buttonDisapprovalStyle?: string;
 	};
 
+	const options = context.getNodeParameter('options', 0, {});
+
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
 		url: `${resumeUrl}/${nodeId}`,
 		options: [],
+		appendAttribution: options?.appendAttribution as boolean,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
@@ -446,7 +538,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	return config;
 }
 
-function createButton(url: string, label: string, approved: string, style: string) {
+export function createButton(url: string, label: string, approved: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
@@ -470,14 +562,19 @@ export function createEmail(context: IExecuteFunctions) {
 	for (const option of config.options) {
 		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
-
-	const instanceId = context.getInstanceId();
+	let emailBody: string;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		emailBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		emailBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const email: IEmail = {
 		to,
 		subject: config.title,
 		body: '',
-		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
+		htmlBody: emailBody,
 	};
 
 	return email;

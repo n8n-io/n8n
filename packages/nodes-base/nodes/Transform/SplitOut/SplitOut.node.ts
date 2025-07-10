@@ -1,11 +1,6 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
-import {
-	NodeOperationError,
-	deepCopy,
-	NodeExecutionOutput,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -30,8 +25,8 @@ export class SplitOut implements INodeType {
 		defaults: {
 			name: 'Split Out',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -178,7 +173,7 @@ export class SplitOut implements INodeType {
 					}
 
 					if (typeof entityToSplit !== 'object' || entityToSplit === null) {
-						entityToSplit = [entityToSplit];
+						entityToSplit = [entityToSplit] as unknown as IDataObject[];
 					}
 
 					if (!Array.isArray(entityToSplit)) {
@@ -281,7 +276,9 @@ export class SplitOut implements INodeType {
 				}
 			}
 
-			if (hints.length) return new NodeExecutionOutput([returnData], hints);
+			if (hints.length) {
+				this.addExecutionHints(...hints);
+			}
 		}
 
 		return [returnData];

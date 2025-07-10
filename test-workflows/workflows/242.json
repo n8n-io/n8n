@@ -1,0 +1,115 @@
+{
+  "createdAt": "2024-03-04T20:50:20.300Z",
+  "updatedAt": "2024-03-04T20:55:07.000Z",
+  "id": "242",
+  "name": "BasicLLMChain:OutputParser",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "e130434b-6283-473c-a61d-fbbe26b63acb",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        720
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "Zak03cqeLUOsgkFI",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b712a9c6-575e-4026-a6a0-83590c959267",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchema": "{\n  \"type\": \"array\",\n  \"items\": {\n    \"type\": \"object\",\n    \"properties\": {\n       \"state_name\": \"string\",\n       \"capital\": \"string\",\n       \"electoral_college_votes\": \"number\"\n    }\n  }\n}"
+      },
+      "id": "6db310a2-11ca-4097-92cb-ec9a6a6da51e",
+      "name": "Structured Output Parser1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "What are the top 5 states of US by population?",
+        "hasOutputParser": true
+      },
+      "id": "2a8ca922-5da0-4065-b999-640fd678b0d3",
+      "name": "Open AI Chat - Output Parsing",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1360,
+        560
+      ]
+    }
+  ],
+  "connections": {
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Open AI Chat - Output Parsing",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Open AI Chat - Output Parsing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Open AI Chat - Output Parsing",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "e3bbc2b0-e9cd-431d-89b4-c39db2989e8f",
+  "triggerCount": 0,
+  "tags": []
+}

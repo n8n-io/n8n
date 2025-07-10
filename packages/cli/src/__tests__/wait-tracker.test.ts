@@ -1,18 +1,15 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { Project } from '@/databases/entities/project';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers({ advanceTimers: true });
 
@@ -22,7 +19,6 @@ describe('WaitTracker', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
@@ -35,6 +31,7 @@ describe('WaitTracker', () => {
 			pushRef: 'push_ref',
 			parentExecution: undefined,
 		}),
+		startedAt: undefined,
 	});
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
 
@@ -46,7 +43,6 @@ describe('WaitTracker', () => {
 			ownershipService,
 			activeExecutions,
 			workflowRunner,
-			orchestrationService,
 			instanceSettings,
 		);
 		multiMainSetup.on.mockReturnThis();
@@ -201,6 +197,7 @@ describe('WaitTracker', () => {
 					workflowData: parentExecution.workflowData,
 					projectId: project.id,
 					pushRef: parentExecution.data.pushRef,
+					startedAt: parentExecution.startedAt,
 				},
 				false,
 				false,
@@ -235,7 +232,6 @@ describe('WaitTracker', () => {
 				ownershipService,
 				activeExecutions,
 				workflowRunner,
-				orchestrationService,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
 

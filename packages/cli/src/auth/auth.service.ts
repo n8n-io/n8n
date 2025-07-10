@@ -1,19 +1,20 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Container, Service } from '@n8n/di';
+import { Time } from '@n8n/constants';
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { Logger } from 'n8n-core';
+import type { StringValue as TimeUnitValue } from 'ms';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
-import type { AuthenticatedRequest } from '@/requests';
+import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
@@ -24,6 +25,8 @@ interface AuthJwtPayload {
 	hash: string;
 	/** This is a client generated unique string to prevent session hijacking */
 	browserId?: string;
+	/** This indicates if mfa was used during the creation of this token */
+	usedMfa?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -35,53 +38,74 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
-// The browser-id check needs to be skipped on these endpoints
-const skipBrowserIdCheckEndpoints = [
-	// we need to exclude push endpoint because we can't send custom header on websocket requests
-	// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-	`/${restEndpoint}/push`,
-
-	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-	`/${restEndpoint}/binary-data/`,
-
-	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
-	`/${restEndpoint}/oauth1-credential/callback`,
-	`/${restEndpoint}/oauth2-credential/callback`,
-];
-
 @Service()
 export class AuthService {
+	// The browser-id check needs to be skipped on these endpoints
+	private skipBrowserIdCheckEndpoints: string[];
+
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
+		private readonly mfaService: MfaService,
 	) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		this.authMiddleware = this.authMiddleware.bind(this);
+		const restEndpoint = globalConfig.endpoints.rest;
+		this.skipBrowserIdCheckEndpoints = [
+			// we need to exclude push endpoint because we can't send custom header on websocket requests
+			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+			`/${restEndpoint}/push`,
+
+			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
+			`/${restEndpoint}/binary-data/`,
+
+			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+			`/${restEndpoint}/oauth1-credential/callback`,
+			`/${restEndpoint}/oauth2-credential/callback`,
+		];
 	}
 
-	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		const token = req.cookies[AUTH_COOKIE_NAME];
-		if (token) {
-			try {
-				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
-				if (isInvalid) throw new AuthError('Unauthorized');
-				req.user = await this.resolveJwt(token, req, res);
-			} catch (error) {
-				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
-					this.clearCookie(res);
-				} else {
-					throw error;
+	createAuthMiddleware(allowSkipMFA: boolean) {
+		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			const token = req.cookies[AUTH_COOKIE_NAME];
+			if (token) {
+				try {
+					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+					if (isInvalid) throw new AuthError('Unauthorized');
+					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
+					const mfaEnforced = this.mfaService.isMFAEnforced();
+
+					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
+						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
+						if (user.mfaEnabled) {
+							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
+							throw new AuthError('MFA not used during authentication');
+						} else {
+							// In this case we don't want to clear the cookie, to allow for MFA setup
+							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
+							return;
+						}
+					}
+
+					req.user = user;
+					req.authInfo = {
+						usedMfa,
+					};
+				} catch (error) {
+					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+						this.clearCookie(res);
+					} else {
+						throw error;
+					}
 				}
 			}
-		}
 
-		if (req.user) next();
-		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+			if (req.user) next();
+			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		};
 	}
 
 	clearCookie(res: Response) {
@@ -104,39 +128,45 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, browserId?: string) {
+	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			!user.isOwner &&
+			user.role !== 'global:owner' &&
 			!isWithinUsersLimit
 		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId);
+		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: 'lax',
-			secure: config.getEnv('secure_cookie'),
+			sameSite: samesite,
+			secure,
 		});
 	}
 
-	issueJWT(user: User, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
+			usedMfa,
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
 
-	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<User> {
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -159,7 +189,7 @@ export class AuthService {
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
@@ -171,13 +201,13 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, req.browserId);
+			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
 		}
 
-		return user;
+		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
-	generatePasswordResetToken(user: User, expiresIn = '20m') {
+	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
 		return this.jwtService.sign(payload, { expiresIn });
 	}
@@ -226,8 +256,12 @@ export class AuthService {
 		return user;
 	}
 
-	createJWTHash({ email, password }: User) {
-		return this.hash(email + ':' + password).substring(0, 10);
+	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
+		const payload = [email, password];
+		if (mfaEnabled && mfaSecret) {
+			payload.push(mfaSecret.substring(0, 3));
+		}
+		return this.hash(payload.join(':')).substring(0, 10);
 	}
 
 	private hash(input: string) {

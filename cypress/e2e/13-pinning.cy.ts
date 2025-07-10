@@ -1,6 +1,3 @@
-import { nanoid } from 'nanoid';
-
-import { simpleWebhookCall, waitForWebhook } from './16-webhook-node.cy';
 import {
 	HTTP_REQUEST_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
@@ -109,36 +106,6 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
-	it('Should be able to pin data from canvas (context menu or shortcut)', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, { method: 'overflow-button' });
-		workflowPage.getters
-			.contextMenuAction('toggle_pin')
-			.parent()
-			.should('have.class', 'is-disabled');
-
-		cy.get('body').type('{esc}');
-
-		// Unpin using context menu
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.actions.setPinnedData([{ test: 1 }]);
-		ndv.actions.close();
-		workflowPage.actions.pinNode(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.getters.nodeOutputHint().should('exist');
-		ndv.actions.close();
-
-		// Unpin using shortcut
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.actions.setPinnedData([{ test: 1 }]);
-		ndv.actions.close();
-		workflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).click();
-		workflowPage.actions.hitPinNodeShortcut();
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.getters.nodeOutputHint().should('exist');
-	});
-
 	it('Should show an error when maximum pin data size is exceeded', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
@@ -217,32 +184,6 @@ describe('Data pinning', () => {
 		);
 	});
 
-	it('should show pinned data tooltip', () => {
-		const { callEndpoint } = simpleWebhookCall({
-			method: 'GET',
-			webhookPath: nanoid(),
-			executeNow: false,
-		});
-
-		ndv.actions.close();
-		workflowPage.actions.executeWorkflow();
-		cy.wait(waitForWebhook);
-
-		// hide other visible popper on workflow execute button
-		workflowPage.getters.canvasNodes().eq(0).click();
-
-		callEndpoint((response) => {
-			expect(response.status).to.eq(200);
-			getVisiblePopper().should('have.length', 1);
-			getVisiblePopper()
-				.eq(0)
-				.should(
-					'have.text',
-					'You can pin this output instead of waiting for a test event. Open node to do so.',
-				);
-		});
-	});
-
 	it('should not show pinned data tooltip', () => {
 		cy.createFixtureWorkflow('Pinned_webhook_node.json', 'Test');
 		workflowPage.actions.executeWorkflow();
@@ -255,7 +196,7 @@ describe('Data pinning', () => {
 });
 
 function setExpressionOnStringValueInSet(expression: string) {
-	cy.get('button').contains('Test step').click();
+	cy.get('button').contains('Execute step').click();
 
 	ndv.getters.assignmentCollectionAdd('assignments').click();
 	ndv.getters.assignmentValue('assignments').contains('Expression').invoke('show').click();

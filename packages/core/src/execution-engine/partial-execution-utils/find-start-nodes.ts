@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode, type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data';
@@ -82,7 +82,7 @@ function findStartNodesRecursive(
 			current.name,
 			// last run
 			-1,
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			0,
 		);
 
@@ -111,7 +111,8 @@ function findStartNodesRecursive(
 		// If the node has multiple outputs, only follow the outputs that have run data.
 		const hasNoRunData =
 			nodeRunData === null || nodeRunData === undefined || nodeRunData.data.length === 0;
-		if (hasNoRunData) {
+		const hasNoPinnedData = pinData[outGoingConnection.from.name] === undefined;
+		if (hasNoRunData && hasNoPinnedData) {
 			continue;
 		}
 

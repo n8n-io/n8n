@@ -95,6 +95,7 @@ export async function execute(
 					bom: options.enableBOM as boolean,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					columns: options.headerRow !== false,
+					relax_quotes: options.relaxQuotes as boolean,
 					onRecord: (record) => {
 						if (!options.includeEmptyCells) {
 							record = Object.fromEntries(

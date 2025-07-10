@@ -9,9 +9,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IPairedItemData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type NodeExecutionHint,
-	NodeExecutionOutput,
 } from 'n8n-workflow';
 
 import { addBinariesToItem } from './utils';
@@ -29,8 +28,8 @@ export class Aggregate implements INodeType {
 		defaults: {
 			name: 'Aggregate',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Aggregate',
@@ -432,7 +431,9 @@ export class Aggregate implements INodeType {
 				}
 			}
 
-			if (hints.length) return new NodeExecutionOutput([[returnData]], hints);
+			if (hints.length) {
+				this.addExecutionHints(...hints);
+			}
 		}
 
 		return [[returnData]];

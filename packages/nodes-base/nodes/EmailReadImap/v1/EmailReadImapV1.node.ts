@@ -1,10 +1,10 @@
-import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
+import type { ImapSimple, ImapSimpleOptions, Message, SearchCriteria } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
 import find from 'lodash/find';
 import isEmpty from 'lodash/isEmpty';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -73,16 +73,16 @@ const versionDescription: INodeTypeDescription = {
 		header: '',
 		executionsHelp: {
 			inactive:
-				"<b>While building your workflow</b>, click the 'listen' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			active:
-				"<b>While building your workflow</b>, click the 'listen' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				"<b>While building your workflow</b>, click the 'execute step' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 		},
 		activationHint:
 			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -343,7 +343,7 @@ export class EmailReadImapV1 implements INodeType {
 		// Returns all the new unseen messages
 		const getNewEmails = async (
 			imapConnection: ImapSimple,
-			searchCriteria: Array<string | string[]>,
+			searchCriteria: SearchCriteria[],
 		): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
 
@@ -508,7 +508,7 @@ export class EmailReadImapV1 implements INodeType {
 		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
-			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
+			let searchCriteria: SearchCriteria[] = ['UNSEEN'];
 			if (options.customEmailConfig !== undefined) {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);

@@ -1,0 +1,825 @@
+{
+  "createdAt": "2021-04-20T15:07:09.205Z",
+  "updatedAt": "2021-04-20T15:15:49.518Z",
+  "id": "177",
+  "name": "uProc:Finance:*;",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "6b5f7fea-a0f3-445b-8366-b6631683411e"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "checkCreditcardChecksum",
+        "credit_card": "5564456122310619",
+        "additionalOptions": {}
+      },
+      "name": "uProc1",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        510,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "74ad2ff7-afc0-4327-9fad-600cb2675d92"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCreditcardType",
+        "credit_card": "5564456122310619",
+        "additionalOptions": {}
+      },
+      "name": "uProc2",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        640,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "47cd053a-0375-4e02-944e-57ca74d30b3a"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "checkBankAccountValidEs",
+        "account": "5564456122310619",
+        "additionalOptions": {}
+      },
+      "name": "uProc3",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        770,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "25a3db7b-f396-4cc4-bb1c-2d95c72a3e70"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "bic": "AYGBESMM",
+        "additionalOptions": {}
+      },
+      "name": "uProc4",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        900,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "a96d6b7d-de57-4b0f-9451-da49bcad0023"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getBankIbanByAccount",
+        "account": "9121000418450200051332M",
+        "isocode": "ES",
+        "additionalOptions": {}
+      },
+      "name": "uProc5",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1030,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "48f91455-d72d-404f-8edb-a3113272a656"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getBankIbanLookup",
+        "iban": "ES9121000418450200051332M",
+        "additionalOptions": {}
+      },
+      "name": "uProc6",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "2926e714-090d-4605-ad8a-a3fc6299d953"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "checkBankIbanValid",
+        "iban": "ES9121000418450200051332M",
+        "additionalOptions": {}
+      },
+      "name": "uProc7",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1290,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "851c69bb-ca48-4be7-a536-00de1d6e1705"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyByCountry",
+        "country": "ES",
+        "additionalOptions": {}
+      },
+      "name": "uProc8",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "0783831e-2de6-429b-8b65-0a891c43c524"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyByCountryIsocode",
+        "country_code": "ES",
+        "additionalOptions": {}
+      },
+      "name": "uProc9",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1550,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "b34da6a8-3825-4d75-bb7f-33f2777bd05e"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyByIp",
+        "ip": "104.21.37.3",
+        "additionalOptions": {}
+      },
+      "name": "uProc10",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "a6d4a2b4-16bc-44d6-8f62-289fe44e3150"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyByIsocode",
+        "isocode": "ES",
+        "additionalOptions": {}
+      },
+      "name": "uProc11",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1810,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "df8e1a41-aee5-45b2-96ce-743a871263e9"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyConvertedBetweenIsocodeDate",
+        "date": "104.21.37.3",
+        "amount": "10",
+        "isocode1": "EUR",
+        "isocode2": "JPY",
+        "additionalOptions": {}
+      },
+      "name": "uProc12",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        1940,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "1be97cfc-7d88-4308-8fcc-bf089c1a89a9"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyListByCountry",
+        "additionalOptions": {}
+      },
+      "name": "uProc13",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2070,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "07c56b1c-ec2d-4041-96bb-976c33920f95"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyListByIp",
+        "ip": "104.21.37.3",
+        "additionalOptions": {}
+      },
+      "name": "uProc14",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "e8d0f97f-9d56-412c-9a05-0ba48a923a76"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getCurrencyListByIsocode",
+        "isocode": "DE",
+        "additionalOptions": {}
+      },
+      "name": "uProc15",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2330,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "804d201d-919c-4464-8280-49fd0c6126ca"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "checkCurrencyValidIso",
+        "isocode": "DE",
+        "additionalOptions": {}
+      },
+      "name": "uProc16",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2460,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "dff16814-7b04-4e4c-82f4-a480686e490e"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByAddress",
+        "address": "10115, Berlin, Germany",
+        "additionalOptions": {}
+      },
+      "name": "uProc17",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2590,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "919c88b5-7079-46c4-9c7a-e5c7e29adcce"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByCoordinates",
+        "coordinates": "52.52986092913615, 13.389315284523297",
+        "additionalOptions": {}
+      },
+      "name": "uProc18",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "e93ca526-f829-4793-a05a-9ecab9b45b78"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByIp",
+        "ip": "104.21.37.3",
+        "additionalOptions": {}
+      },
+      "name": "uProc19",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2850,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "c90211c8-5e05-4f0b-bd91-fef5d2d51e3a"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByIsocode",
+        "isocode": "DE",
+        "additionalOptions": {}
+      },
+      "name": "uProc20",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        2980,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "c5be744b-9203-4e74-9626-37afc39a1577"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByNumber",
+        "isocode": "DE",
+        "tin": "44016116G",
+        "additionalOptions": {}
+      },
+      "name": "uProc21",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        3110,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "9a011b5c-ef1a-4b51-bb7a-6a2458116342"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByPhone",
+        "phone": "932187670",
+        "additionalOptions": {}
+      },
+      "name": "uProc22",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        3240,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "094bb0ed-9abf-47e1-8c35-dcb30e1c966a"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "getVatByZipcode",
+        "zipcode": "10115",
+        "additionalOptions": {}
+      },
+      "name": "uProc23",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        3370,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "644bf7bc-3fdf-4e27-91ea-8bbd7912a79c"
+    },
+    {
+      "parameters": {
+        "group": "finance",
+        "tool": "checkVatExist",
+        "isocode": "ES",
+        "tin": "44016116G",
+        "additionalOptions": {}
+      },
+      "name": "uProc24",
+      "type": "n8n-nodes-base.uproc",
+      "typeVersion": 1,
+      "position": [
+        3500,
+        290
+      ],
+      "credentials": {
+        "uprocApi": {
+          "id": "142",
+          "name": "uProc API creds"
+        }
+      },
+      "id": "8d9a2640-f227-4184-8563-16a2054a5992"
+    }
+  ],
+  "connections": {
+    "uProc1": {
+      "main": [
+        [
+          {
+            "node": "uProc2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc2": {
+      "main": [
+        [
+          {
+            "node": "uProc3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc3": {
+      "main": [
+        [
+          {
+            "node": "uProc4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc4": {
+      "main": [
+        [
+          {
+            "node": "uProc5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc5": {
+      "main": [
+        [
+          {
+            "node": "uProc6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc6": {
+      "main": [
+        [
+          {
+            "node": "uProc7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc7": {
+      "main": [
+        [
+          {
+            "node": "uProc8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc8": {
+      "main": [
+        [
+          {
+            "node": "uProc9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc9": {
+      "main": [
+        [
+          {
+            "node": "uProc10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc10": {
+      "main": [
+        [
+          {
+            "node": "uProc11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc11": {
+      "main": [
+        [
+          {
+            "node": "uProc12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc12": {
+      "main": [
+        [
+          {
+            "node": "uProc13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc13": {
+      "main": [
+        [
+          {
+            "node": "uProc14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc14": {
+      "main": [
+        [
+          {
+            "node": "uProc15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc15": {
+      "main": [
+        [
+          {
+            "node": "uProc16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc16": {
+      "main": [
+        [
+          {
+            "node": "uProc17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc17": {
+      "main": [
+        [
+          {
+            "node": "uProc18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc18": {
+      "main": [
+        [
+          {
+            "node": "uProc19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc19": {
+      "main": [
+        [
+          {
+            "node": "uProc20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc20": {
+      "main": [
+        [
+          {
+            "node": "uProc21",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc21": {
+      "main": [
+        [
+          {
+            "node": "uProc22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc22": {
+      "main": [
+        [
+          {
+            "node": "uProc23",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uProc23": {
+      "main": [
+        [
+          {
+            "node": "uProc24",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "uProc1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

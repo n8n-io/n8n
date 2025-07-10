@@ -1,25 +1,39 @@
-import type { INode, IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 
 /**
  * Returns new run data that does not contain data for any node that is a child
- * of any start node.
+ * of any of the passed nodes. This is useful for cleaning run data after start
+ * nodes or dirty nodes.
+ *
  * This does not mutate the `runData` being passed in.
  */
 export function cleanRunData(
 	runData: IRunData,
 	graph: DirectedGraph,
-	startNodes: Set<INode>,
+	nodesToClean: Set<INode>,
 ): IRunData {
 	const newRunData: IRunData = { ...runData };
 
-	for (const startNode of startNodes) {
-		delete newRunData[startNode.name];
-		const children = graph.getChildren(startNode);
+	for (const nodeToClean of nodesToClean) {
+		delete newRunData[nodeToClean.name];
 
-		for (const child of children) {
-			delete newRunData[child.name];
+		const children = graph.getChildren(nodeToClean);
+		for (const node of [nodeToClean, ...children]) {
+			delete newRunData[node.name];
+
+			// Delete runData for subNodes
+			const subNodeConnections = graph.getParentConnections(node);
+			for (const subNodeConnection of subNodeConnections) {
+				// Sub nodes never use the Main connection type, so this filters out
+				// the connection that goes upstream of the node to clean.
+				if (subNodeConnection.type === NodeConnectionTypes.Main) {
+					continue;
+				}
+
+				delete newRunData[subNodeConnection.from.name];
+			}
 		}
 	}
 

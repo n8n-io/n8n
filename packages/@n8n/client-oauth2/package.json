@@ -1,6 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "0.21.0",
+  "version": "0.27.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,5 +22,8 @@
   ],
   "dependencies": {
     "axios": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

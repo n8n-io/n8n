@@ -27,7 +27,7 @@ describe('ADO-2362 ADO-2350 NDV Prevent clipping long parameters and scrolling t
 
 		// next parameter in view should not be visible
 		ndv.getters.inlineExpressionEditorInput().eq(1).should('have.text', 'not visible');
-		ndv.getters.inlineExpressionEditorInput().eq(1).should('not.be.visible');
+		ndv.getters.inlineExpressionEditorInput().eq(1).should('be.visible');
 
 		ndv.actions.close();
 		workflowPage.actions.openNode('Schedule Trigger');

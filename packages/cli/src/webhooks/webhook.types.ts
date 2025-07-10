@@ -9,7 +9,7 @@ export type WebhookRequest = Request<{ path: string }> & {
 };
 
 export type WaitingWebhookRequest = WebhookRequest & {
-	params: WebhookRequest['path'] & { suffix?: string };
+	params: Pick<WebhookRequest['params'], 'path'> & { suffix?: string };
 };
 
 export interface WebhookAccessControlOptions {
@@ -35,3 +35,5 @@ export interface IWebhookResponseCallbackData {
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }
+
+export type Method = NonNullable<IHttpRequestMethods>;

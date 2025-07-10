@@ -1,4 +1,8 @@
-import type { User } from '@/databases/entities/user';
+import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+
 import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
 import {
 	getCurrentAuthenticationMethod,
@@ -7,7 +11,6 @@ import {
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
-import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -32,6 +35,7 @@ beforeAll(async () => {
 	someUser = await createUser({ password: memberPassword });
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
+	Container.get(GlobalConfig).sso.saml.loginEnabled = true;
 });
 
 beforeEach(async () => await enableSaml(false));

@@ -1,0 +1,152 @@
+{
+    "type": "object",
+    "properties": {
+        "destination": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "countryCode": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "details": {
+            "type": "object",
+            "properties": {
+                "pieceIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "product": {
+                    "type": "object",
+                    "properties": {
+                        "productName": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "proofOfDeliverySignedAvailable": {
+                    "type": "boolean"
+                },
+                "totalNumberOfPieces": {
+                    "type": "integer"
+                },
+                "weight": {
+                    "type": "object",
+                    "properties": {
+                        "unitText": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "events": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "object",
+                                "properties": {
+                                    "addressLocality": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "remark": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "statusCode": {
+                        "type": "string"
+                    },
+                    "statusDetailed": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "origin": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "countryCode": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "returnFlag": {
+            "type": "boolean"
+        },
+        "service": {
+            "type": "string"
+        },
+        "serviceUrl": {
+            "type": "string"
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "object",
+                            "properties": {
+                                "addressLocality": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "string"
+                },
+                "statusDetailed": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

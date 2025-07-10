@@ -1,14 +1,17 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { SqliteConfig } from '@n8n/config/src/configs/database.config';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { Not, LessThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { ExecutionEntity } from '@/databases/entities/execution-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mockInstance, mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -67,5 +70,40 @@ describe('ExecutionRepository', () => {
 
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
 		});
+	});
+
+	describe('updateExistingExecution', () => {
+		test.each(['sqlite', 'postgresdb', 'mysqldb'] as const)(
+			'should update execution and data in transaction on %s',
+			async (dbType) => {
+				globalConfig.database.type = dbType;
+				globalConfig.database.sqlite = mock<SqliteConfig>({ poolSize: 1 });
+
+				const executionId = '1';
+				const execution = mock<IExecutionResponse>({
+					id: executionId,
+					data: mock<IRunExecutionData>(),
+					workflowData: mock<IWorkflowBase>(),
+					status: 'success',
+				});
+
+				const txCallback = jest.fn();
+				entityManager.transaction.mockImplementation(async (cb) => {
+					// @ts-expect-error Mock
+					await cb(entityManager);
+					txCallback();
+				});
+
+				await executionRepository.updateExistingExecution(executionId, execution);
+
+				expect(entityManager.transaction).toHaveBeenCalled();
+				expect(entityManager.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					expect.objectContaining({ status: 'success' }),
+				);
+				expect(txCallback).toHaveBeenCalledTimes(1);
+			},
+		);
 	});
 });

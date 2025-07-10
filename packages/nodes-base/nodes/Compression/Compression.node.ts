@@ -1,7 +1,7 @@
 import * as fflate from 'fflate';
 import * as mime from 'mime-types';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IBinaryKeyData,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -56,8 +56,9 @@ export class Compression implements INodeType {
 			name: 'Compression',
 			color: '#408000',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',

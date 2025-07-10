@@ -1,14 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { DbConnection } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import express from 'express';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import * as Db from '@/db';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -49,6 +50,7 @@ export class WorkerServer {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly dbConnection: DbConnection,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
@@ -100,8 +102,12 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			this.app.get('/healthz', async (_, res) => res.send({ status: 'ok' }));
-			this.app.get('/healthz/readiness', async (_, res) => await this.readiness(_, res));
+			this.app.get('/healthz', async (_, res) => {
+				res.send({ status: 'ok' });
+			});
+			this.app.get('/healthz/readiness', async (_, res) => {
+				await this.readiness(_, res);
+			});
 		}
 
 		if (overwrites) {
@@ -118,9 +124,10 @@ export class WorkerServer {
 	}
 
 	private async readiness(_req: express.Request, res: express.Response) {
+		const { connectionState } = this.dbConnection;
 		const isReady =
-			Db.connectionState.connected &&
-			Db.connectionState.migrated &&
+			connectionState.connected &&
+			connectionState.migrated &&
 			this.redisClientService.isConnected();
 
 		return isReady

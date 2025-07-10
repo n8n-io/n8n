@@ -1,0 +1,667 @@
+{
+  "createdAt": "2021-03-02T17:11:06.700Z",
+  "updatedAt": "2021-03-02T17:38:14.995Z",
+  "id": "87",
+  "name": "ActiveCampaign:Deal:create update get createNote updateNote getAll delete:Tag:create update get getAll delete:Connection:create update get getAll delete:List:getAll",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        50,
+        550
+      ],
+      "id": "a2295ea9-244a-4306-8154-22eb9bbcb44e"
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "service": "n8n",
+        "externalid": "={{Date.now()}}",
+        "name": "=Name{{Date.now()}}",
+        "logoUrl": "https://n8n.io/_nuxt/img/df5be1c.png",
+        "linkUrl": "https://n8n.io/"
+      },
+      "name": "ActiveCampaign",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "5a58849c-68a7-4df6-afc6-15bfcf9e542a"
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "operation": "update",
+        "connectionId": "={{$node[\"ActiveCampaign\"].json[\"connection\"][\"id\"]}}",
+        "updateFields": {
+          "syncStatus": 0
+        }
+      },
+      "name": "ActiveCampaign1",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "90f92758-d9a4-4c9f-95b6-a0dfce8ad0a6"
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "operation": "get",
+        "connectionId": "={{$node[\"ActiveCampaign\"].json[\"connection\"][\"id\"]}}"
+      },
+      "name": "ActiveCampaign2",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "2c023901-6976-4e87-a1cd-5578e1b0e39e"
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "ActiveCampaign3",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "3ac46999-9c81-4d69-b5af-b302cbf17495"
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "operation": "delete",
+        "connectionId": "={{$node[\"ActiveCampaign\"].json[\"connection\"][\"id\"]}}"
+      },
+      "name": "ActiveCampaign4",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "6ee06c8c-76b8-421e-a663-1749ab15173c"
+    },
+    {
+      "parameters": {
+        "email": "=fake{{Date.now()}}@gmail.com",
+        "additionalFields": {}
+      },
+      "name": "ActiveCampaign5",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        250,
+        470
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "7b0271b5-ffde-4e57-9389-e35cdc23f7a3"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "title": "=Title{{Date.now()}}",
+        "contact": "={{$node[\"ActiveCampaign5\"].json[\"id\"]}}",
+        "value": 101,
+        "currency": "usd",
+        "group": "1",
+        "stage": "0",
+        "owner": "1",
+        "additionalFields": {}
+      },
+      "name": "ActiveCampaign7",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        400,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "90219b3a-7ebc-497f-b757-f03f7267b82a"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "limit": 1
+      },
+      "name": "ActiveCampaign8",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        250,
+        650
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "0311b73b-b4d4-4e26-a527-f853bbb6e919"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "name": "=Tag{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "ActiveCampaign9",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        250,
+        800
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "f9cb63f2-8f09-4588-b72c-454a2d46d254"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "update",
+        "tagId": "={{$node[\"ActiveCampaign9\"].json[\"id\"]}}",
+        "updateFields": {}
+      },
+      "name": "ActiveCampaign10",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        400,
+        800
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "518317dc-7765-4bf6-9430-9bb38bd15427"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "get",
+        "tagId": "={{$node[\"ActiveCampaign9\"].json[\"id\"]}}"
+      },
+      "name": "ActiveCampaign11",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        550,
+        800
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "b8fa4436-7059-467f-b38e-32d1fb0d1322"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "ActiveCampaign12",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        700,
+        800
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "8c8fda95-bd1d-41c4-9b56-7946e4f8f246"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "delete",
+        "tagId": "={{$node[\"ActiveCampaign9\"].json[\"id\"]}}"
+      },
+      "name": "ActiveCampaign13",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        850,
+        800
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "1e3f23a3-4905-43f3-bace-5c3bc340e6f1"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "update",
+        "dealId": "={{$node[\"ActiveCampaign7\"].json[\"deal\"][\"id\"]}}",
+        "updateFields": {
+          "value": 201
+        }
+      },
+      "name": "ActiveCampaign14",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        550,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "a4c82ca4-f15b-4b4a-9f0c-4fff2720db1f"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "get",
+        "dealId": "={{$node[\"ActiveCampaign7\"].json[\"deal\"][\"id\"]}}"
+      },
+      "name": "ActiveCampaign15",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        700,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "900af275-1075-41e6-983d-f8522ea792c7"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "createNote",
+        "dealId": "={{$node[\"ActiveCampaign7\"].json[\"deal\"][\"id\"]}}",
+        "dealNote": "TestNote"
+      },
+      "name": "ActiveCampaign16",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        850,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "e2fcb50a-69e9-4588-958d-d9d55863bc6d"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "updateNote",
+        "dealId": "={{$node[\"ActiveCampaign7\"].json[\"deal\"][\"id\"]}}",
+        "dealNoteId": "={{$node[\"ActiveCampaign16\"].json[\"note\"][\"id\"]}}",
+        "dealNote": "UpdatedNote"
+      },
+      "name": "ActiveCampaign17",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "eeddfcc2-e580-4f0f-80ad-382a38ef4f31"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "ActiveCampaign18",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "ad04ac82-0369-4006-aacd-e87b8dbbc6f8"
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "delete",
+        "dealId": "={{$node[\"ActiveCampaign7\"].json[\"deal\"][\"id\"]}}"
+      },
+      "name": "ActiveCampaign19",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        550
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "83432217-ae3f-4ecb-8cbb-fe21e1105146"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "contactId": "={{$node[\"ActiveCampaign5\"].json[\"id\"]}}"
+      },
+      "name": "ActiveCampaign6",
+      "type": "n8n-nodes-base.activeCampaign",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        470
+      ],
+      "credentials": {
+        "activeCampaignApi": {
+          "id": "75",
+          "name": "ActiveCampaign creds"
+        }
+      },
+      "id": "7492e380-426b-4c06-98bd-13a5a10b3232"
+    }
+  ],
+  "connections": {
+    "ActiveCampaign": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign1": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign2": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign3": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ActiveCampaign5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ActiveCampaign8",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ActiveCampaign9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign5": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign9": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign10": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign11": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign12": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign7": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign14": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign15": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign16": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign17": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign18": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign19": {
+      "main": [
+        [
+          {
+            "node": "ActiveCampaign6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

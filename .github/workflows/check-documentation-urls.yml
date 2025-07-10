@@ -14,13 +14,16 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
-          cache: 'pnpm'
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -34,7 +37,7 @@ jobs:
         run: node .github/scripts/validate-docs-links.js
 
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

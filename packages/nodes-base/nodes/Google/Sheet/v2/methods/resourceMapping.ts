@@ -31,7 +31,23 @@ export async function getMappingColumns(
 		sheetMode,
 		sheetWithinDocument,
 	);
-	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+
+	const locationDefine = this.getNodeParameter(
+		'options.locationDefine.values',
+		0,
+		{},
+	) as IDataObject;
+
+	let columnNamesRow = 1;
+
+	if (locationDefine.headerRow) {
+		columnNamesRow = locationDefine.headerRow as number;
+	}
+
+	const sheetData = await sheet.getData(
+		`${sheetName}!${columnNamesRow}:${columnNamesRow}`,
+		'FORMATTED_VALUE',
+	);
 
 	const columns = sheet.testFilter(sheetData || [], 0, 0).filter((col) => col !== '');
 
@@ -54,7 +70,7 @@ export async function getMappingColumns(
 			required: false,
 			defaultMatch: false,
 			display: true,
-			type: 'string',
+			type: 'number',
 			canBeUsedToMatch: true,
 			readOnly: true,
 			removed: true,

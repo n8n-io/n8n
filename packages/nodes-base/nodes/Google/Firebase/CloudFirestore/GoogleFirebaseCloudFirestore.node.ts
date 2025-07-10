@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
 
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import { documentFields, documentOperations } from './DocumentDescription';
@@ -32,8 +32,9 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleFirebaseCloudFirestoreOAuth2Api',

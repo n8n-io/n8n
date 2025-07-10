@@ -1,9 +1,15 @@
+import {
+	mockInstance,
+	randomEmail,
+	randomInvalidPassword,
+	randomName,
+	randomValidPassword,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { PasswordUtility } from '@/services/password.utility';
@@ -14,14 +20,7 @@ import {
 	assertStoredUserProps,
 	assertUserInviteResult,
 } from './assertions';
-import { mockInstance } from '../../../shared/mocking';
 import { createMember, createOwner, createUserShell } from '../../shared/db/users';
-import {
-	randomEmail,
-	randomInvalidPassword,
-	randomName,
-	randomValidPassword,
-} from '../../shared/random';
 import * as utils from '../../shared/utils';
 import type { UserInvitationResult } from '../../shared/utils/users';
 
@@ -189,7 +188,7 @@ describe('InvitationController', () => {
 			expect(storedMember.password).not.toBe(memberProps.password);
 
 			const comparisonResult = await Container.get(PasswordUtility).compare(
-				member.password,
+				member.password!,
 				storedMember.password,
 			);
 

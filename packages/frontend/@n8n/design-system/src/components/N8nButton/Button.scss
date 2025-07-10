@@ -1,0 +1,224 @@
+@import '../../css/mixins/utils';
+@import '../../css/common/var';
+
+@mixin n8n-button($override: false) {
+	$important: if($override, !important, '');
+
+	display: inline-block;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+
+	border: var(--border-width-base) $button-border-color var(--border-style-base) unquote($important);
+	color: $button-font-color unquote($important);
+	background-color: $button-background-color unquote($important);
+	font-weight: var(--font-weight-medium) unquote($important);
+	border-radius: $button-border-radius unquote($important);
+	padding: $button-padding-vertical $button-padding-horizontal unquote($important);
+	font-size: $button-font-size unquote($important);
+
+	-webkit-appearance: none;
+	text-align: center;
+	box-sizing: border-box;
+	outline: none;
+	margin: 0;
+	transition:
+		all 0.3s,
+		padding 0s,
+		width 0s,
+		height 0s;
+
+	gap: var(--spacing-3xs);
+
+	@include utils-user-select(none);
+
+	// Solution for a inside button
+	& a {
+		color: $button-font-color unquote($important);
+	}
+
+	&:hover {
+		color: $button-hover-font-color unquote($important);
+		border-color: $button-hover-border-color unquote($important);
+		background-color: $button-hover-background-color unquote($important);
+
+		& a {
+			color: $button-hover-font-color unquote($important);
+		}
+	}
+
+	&:active,
+	&.active {
+		color: $button-active-font-color unquote($important);
+		border-color: $button-active-border-color unquote($important);
+		background-color: $button-active-background-color unquote($important);
+		outline: none;
+
+		& a {
+			color: $button-active-font-color unquote($important);
+		}
+	}
+
+	&:focus-visible:not(:active, .active) {
+		color: $button-focus-font-color unquote($important);
+		border-color: $button-focus-border-color unquote($important);
+		background-color: $button-focus-background-color unquote($important);
+		outline: $focus-outline-width solid $button-focus-outline-color unquote($important);
+
+		& a {
+			color: $button-focus-font-color unquote($important);
+		}
+	}
+
+	&.disabled {
+		&,
+		&:hover,
+		&:active,
+		&:focus-visible {
+			color: $button-disabled-font-color;
+			border-color: $button-disabled-border-color;
+			background-color: $button-disabled-background-color;
+
+			& a {
+				color: $button-disabled-font-color;
+			}
+		}
+	}
+
+	.loading {
+		&,
+		&:hover,
+		&:active,
+		&:focus-visible {
+			color: $button-loading-font-color;
+			border-color: $button-loading-border-color;
+			background-color: $button-loading-background-color;
+
+			& a {
+				color: $button-loading-font-color;
+			}
+		}
+	}
+
+	&::-moz-focus-inner {
+		border: 0;
+	}
+
+	> i {
+		display: none;
+	}
+
+	> span {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+}
+
+@mixin n8n-button-secondary {
+	--button-font-color: var(--color-button-secondary-font);
+	--button-border-color: var(--color-button-secondary-border);
+	--button-background-color: var(--color-button-secondary-background);
+
+	--button-hover-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-hover-border-color: var(--color-button-secondary-hover-active-focus-border);
+	--button-hover-background-color: var(--color-button-secondary-hover-background);
+
+	--button-active-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-active-border-color: var(--color-button-secondary-hover-active-focus-border);
+	--button-active-background-color: var(--color-button-secondary-active-focus-background);
+
+	--button-focus-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-focus-border-color: var(--color-button-secondary-hover-active-focus-border);
+	--button-focus-background-color: var(--color-button-secondary-active-focus-background);
+	--button-focus-outline-color: var(--color-button-secondary-focus-outline);
+
+	--button-disabled-font-color: var(--color-button-secondary-disabled-font);
+	--button-disabled-border-color: var(--color-button-secondary-disabled-border);
+	--button-disabled-background-color: var(--color-button-secondary-background);
+
+	--button-loading-font-color: var(--color-button-secondary-loading-font);
+	--button-loading-border-color: var(--color-button-secondary-loading-border);
+	--button-loading-background-color: var(--color-button-secondary-loading-background);
+}
+
+@mixin n8n-button-success {
+	--button-font-color: var(--color-button-success-font);
+	--button-border-color: var(--color-success);
+	--button-background-color: var(--color-success);
+
+	--button-hover-font-color: var(--color-button-success-font);
+	--button-hover-border-color: var(--color-success-shade-1);
+	--button-hover-background-color: var(--color-success-shade-1);
+
+	--button-active-font-color: var(--color-button-success-font);
+	--button-active-border-color: var(--color-success-shade-1);
+	--button-active-background-color: var(--color-success-shade-1);
+
+	--button-focus-font-color: var(--color-button-success-font);
+	--button-focus-border-color: var(--color-success);
+	--button-focus-background-color: var(--color-success);
+	--button-focus-outline-color: var(--color-success-light);
+
+	--button-disabled-font-color: var(--color-button-success-disabled-font);
+	--button-disabled-border-color: var(--color-success-tint-1);
+	--button-disabled-background-color: var(--color-success-tint-1);
+
+	--button-loading-font-color: var(--color-button-success-font);
+	--button-loading-border-color: var(--color-success);
+	--button-loading-background-color: var(--color-success);
+}
+
+@mixin n8n-button-warning {
+	--button-font-color: var(--color-button-warning-font);
+	--button-border-color: var(--color-warning);
+	--button-background-color: var(--color-warning);
+
+	--button-hover-font-color: var(--color-button-warning-font);
+	--button-hover-border-color: var(--color-warning-shade-1);
+	--button-hover-background-color: var(--color-warning-shade-1);
+
+	--button-active-font-color: var(--color-button-warning-font);
+	--button-active-border-color: var(--color-warning-shade-1);
+	--button-active-background-color: var(--color-warning-shade-1);
+
+	--button-focus-font-color: var(--color-button-warning-font);
+	--button-focus-border-color: var(--color-warning);
+	--button-focus-background-color: var(--color-warning);
+	--button-focus-outline-color: var(--color-warning-tint-1);
+
+	--button-disabled-font-color: var(--color-button-warning-disabled-font);
+	--button-disabled-border-color: var(--color-warning-tint-1);
+	--button-disabled-background-color: var(--color-warning-tint-1);
+
+	--button-loading-font-color: var(--color-button-warning-font);
+	--button-loading-border-color: var(--color-warning);
+	--button-loading-background-color: var(--color-warning);
+}
+
+@mixin n8n-button-danger {
+	--button-font-color: var(--color-button-danger-font);
+	--button-border-color: var(--color-button-danger-border);
+	--button-background-color: var(--color-danger);
+
+	--button-hover-font-color: var(--color-button-danger-font);
+	--button-hover-border-color: var(--color-danger-shade-1);
+	--button-hover-background-color: var(--color-danger-shade-1);
+
+	--button-active-font-color: var(--color-button-danger-font);
+	--button-active-border-color: var(--color-danger-shade-1);
+	--button-active-background-color: var(--color-danger-shade-1);
+
+	--button-focus-font-color: var(--color-button-danger-font);
+	--button-focus-border-color: var(--color-danger);
+	--button-focus-background-color: var(--color-danger);
+	--button-focus-outline-color: var(--color-button-danger-focus-outline);
+
+	--button-disabled-font-color: var(--color-button-danger-disabled-font);
+	--button-disabled-border-color: var(--color-button-danger-disabled-border);
+	--button-disabled-background-color: var(--color-button-danger-disabled-background);
+
+	--button-loading-font-color: var(--color-button-danger-font);
+	--button-loading-border-color: var(--color-danger);
+	--button-loading-background-color: var(--color-danger);
+}

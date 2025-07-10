@@ -1,10 +1,9 @@
-import type { ExecutionError } from 'n8n-workflow/src';
+import type { ExecutionError } from 'n8n-workflow';
 
+import * as logs from '../composables/logs';
 import {
 	closeManualChatModal,
 	getManualChatMessages,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
 	sendManualChatMessage,
 } from '../composables/modals/chat-modal';
 import { setCredentialValues } from '../composables/modals/credential-modal';
@@ -53,7 +52,7 @@ function createRunDataWithError(inputMessage: string) {
 							input: inputMessage,
 							system_message: 'You are a helpful assistant',
 							formatting_instructions:
-								'IMPORTANT: Always call `format_final_response` to format your final response!',
+								'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 						},
 					},
 				},
@@ -68,13 +67,14 @@ function createRunDataWithError(inputMessage: string) {
 									input: inputMessage,
 									system_message: 'You are a helpful assistant',
 									formatting_instructions:
-										'IMPORTANT: Always call `format_final_response` to format your final response!',
+										'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 								},
 							},
 						},
 					],
 				],
 			},
+			source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
 			error: {
 				message: 'Internal error',
 				timestamp: 1722591723244,
@@ -139,7 +139,7 @@ function createRunDataWithError(inputMessage: string) {
 function setupTestWorkflow(chatTrigger: boolean = false) {
 	// Setup test workflow with AI Agent, Postgres Memory Node (source of error), Calculator Tool, and OpenAI Chat Model
 	if (chatTrigger) {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
 	} else {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 	}
@@ -198,10 +198,10 @@ function checkMessages(inputMessage: string, outputMessage: string) {
 	messages.should('contain', inputMessage);
 	messages.should('contain', outputMessage);
 
-	getManualChatModalLogs().should('exist');
-	getManualChatModalLogsEntries()
-		.should('have.length', 1)
-		.should('contain', AI_MEMORY_POSTGRES_NODE_NAME);
+	logs.getOverviewPanelBody().should('exist');
+	logs.getLogEntries().should('have.length', 2);
+	logs.getSelectedLogEntry().should('have.text', 'AI Agent');
+	logs.getOutputPanel().should('contain', AI_MEMORY_POSTGRES_NODE_NAME);
 }
 
 describe("AI-233 Make root node's logs pane active in case of an error in sub-nodes", () => {

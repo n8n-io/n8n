@@ -1,56 +1,77 @@
-import { Service } from '@n8n/di';
-import { sign } from 'aws4';
-import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
-import axios from 'axios';
-import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
-import { ApplicationError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
-import type { Readable } from 'stream';
-
-import { Logger } from '@/logging/logger';
-
 import type {
-	Bucket,
-	ConfigSchemaCredentials,
-	ListPage,
-	MetadataResponseHeaders,
-	RawListPage,
-	RequestOptions,
-} from './types';
-import { isStream, parseXml, writeBlockedMessage } from './utils';
+	PutObjectCommandInput,
+	DeleteObjectsCommandInput,
+	ListObjectsV2CommandInput,
+	S3ClientConfig,
+} from '@aws-sdk/client-s3';
+import {
+	S3Client,
+	HeadBucketCommand,
+	PutObjectCommand,
+	GetObjectCommand,
+	HeadObjectCommand,
+	DeleteObjectCommand,
+	DeleteObjectsCommand,
+	ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
+
+import { ObjectStoreConfig } from './object-store.config';
+import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
+import { streamToBuffer } from '../utils';
 
 @Service()
 export class ObjectStoreService {
-	private host = '';
-
-	private bucket: Bucket = { region: '', name: '' };
-
-	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
+	private s3Client: S3Client;
 
 	private isReady = false;
 
-	private isReadOnly = false;
+	private bucket: string;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly s3Config: ObjectStoreConfig,
+	) {
+		const { bucket } = s3Config;
+		if (bucket.name === '') {
+			throw new UnexpectedError(
+				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
+			);
+		}
 
-	async init(host: string, bucket: Bucket, credentials: ConfigSchemaCredentials) {
-		this.host = host;
-		this.bucket.name = bucket.name;
-		this.bucket.region = bucket.region;
-
-		this.credentials = {
-			accessKeyId: credentials.accessKey,
-			secretAccessKey: credentials.accessSecret,
-		};
-
-		await this.checkConnection();
-
-		this.setReady(true);
+		this.bucket = bucket.name;
+		this.s3Client = new S3Client(this.getClientConfig());
 	}
 
-	setReadonly(newState: boolean) {
-		this.isReadOnly = newState;
+	/** This generates the config for the S3Client to make it work in all various auth configurations */
+	getClientConfig() {
+		const { host, bucket, protocol, credentials } = this.s3Config;
+		const clientConfig: S3ClientConfig = {};
+		const endpoint = host ? `${protocol}://${host}` : undefined;
+		if (endpoint) {
+			clientConfig.endpoint = endpoint;
+			clientConfig.forcePathStyle = true; // Needed for non-AWS S3 compatible services
+		}
+		if (bucket.region.length) {
+			clientConfig.region = bucket.region;
+		}
+		if (!credentials.authAutoDetect) {
+			clientConfig.credentials = {
+				accessKeyId: credentials.accessKey,
+				secretAccessKey: credentials.accessSecret,
+			};
+		}
+		return clientConfig;
+	}
+
+	async init() {
+		await this.checkConnection();
+		this.setReady(true);
 	}
 
 	setReady(newState: boolean) {
@@ -59,104 +80,153 @@ export class ObjectStoreService {
 
 	/**
 	 * Confirm that the configured bucket exists and the caller has permission to access it.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
 		if (this.isReady) return;
 
-		return await this.request('HEAD', this.host, this.bucket.name);
+		try {
+			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket });
+			const command = new HeadBucketCommand({ Bucket: this.bucket });
+			await this.s3Client.send(command);
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Upload an object to the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		if (this.isReadOnly) return await this.blockWrite(filename);
+		try {
+			const params: PutObjectCommandInput = {
+				Bucket: this.bucket,
+				Key: filename,
+				Body: buffer,
+				ContentLength: buffer.length,
+				ContentMD5: createHash('md5').update(buffer).digest('base64'),
+			};
 
-		const headers: Record<string, string | number> = {
-			'Content-Length': buffer.length,
-			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
-		};
+			if (metadata.fileName) {
+				params.Metadata = { filename: metadata.fileName };
+			}
 
-		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
-		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
+			if (metadata.mimeType) {
+				params.ContentType = metadata.mimeType;
+			}
 
-		const path = `/${this.bucket.name}/${filename}`;
-
-		return await this.request('PUT', this.host, path, { headers, body: buffer });
+			this.logger.debug('Sending PUT request to S3', { params });
+			const command = new PutObjectCommand(params);
+			return await this.s3Client.send(command);
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Download an object as a stream or buffer from the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
 	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
 	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
-	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }) {
-		const path = `${this.bucket.name}/${fileId}`;
+	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }): Promise<Buffer | Readable> {
+		this.logger.debug('Sending GET request to S3', { bucket: this.bucket, key: fileId });
 
-		const { data } = await this.request('GET', this.host, path, {
-			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
+		const command = new GetObjectCommand({
+			Bucket: this.bucket,
+			Key: fileId,
 		});
 
-		if (mode === 'stream' && isStream(data)) return data;
+		try {
+			const { Body: body } = await this.s3Client.send(command);
+			if (!body) throw new UnexpectedError('Received empty response body');
 
-		if (mode === 'buffer' && Buffer.isBuffer(data)) return data;
+			if (mode === 'stream') {
+				if (body instanceof Readable) return body;
+				throw new UnexpectedError(`Expected stream but received ${typeof body}.`);
+			}
 
-		throw new TypeError(`Expected ${mode} but received ${typeof data}.`);
+			return await streamToBuffer(body as Readable);
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Retrieve metadata for an object in the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
-	async getMetadata(fileId: string) {
-		const path = `${this.bucket.name}/${fileId}`;
+	async getMetadata(fileId: string): Promise<MetadataResponseHeaders> {
+		try {
+			const command = new HeadObjectCommand({
+				Bucket: this.bucket,
+				Key: fileId,
+			});
 
-		const response = await this.request('HEAD', this.host, path);
+			this.logger.debug('Sending HEAD request to S3', { bucket: this.bucket, key: fileId });
+			const response = await this.s3Client.send(command);
 
-		return response.headers as MetadataResponseHeaders;
+			// Convert response to the expected format for backward compatibility
+			const headers: MetadataResponseHeaders = {};
+
+			if (response.ContentType) headers['content-type'] = response.ContentType;
+			if (response.ContentLength) headers['content-length'] = String(response.ContentLength);
+			if (response.ETag) headers.etag = response.ETag;
+			if (response.LastModified) headers['last-modified'] = response.LastModified.toUTCString();
+
+			// Add metadata with the expected prefix format
+			if (response.Metadata) {
+				Object.entries(response.Metadata).forEach(([key, value]) => {
+					headers[`x-amz-meta-${key.toLowerCase()}`] = value;
+				});
+			}
+
+			return headers;
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Delete a single object in the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
 	async deleteOne(fileId: string) {
-		const path = `${this.bucket.name}/${fileId}`;
+		try {
+			const command = new DeleteObjectCommand({
+				Bucket: this.bucket,
+				Key: fileId,
+			});
 
-		return await this.request('DELETE', this.host, path);
+			this.logger.debug('Sending DELETE request to S3', { bucket: this.bucket, key: fileId });
+			return await this.s3Client.send(command);
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Delete objects with a common prefix in the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 	 */
 	async deleteMany(prefix: string) {
-		const objects = await this.list(prefix);
+		try {
+			const objects = await this.list(prefix);
 
-		if (objects.length === 0) return;
+			if (objects.length === 0) return;
 
-		const innerXml = objects.map(({ key }) => `<Object><Key>${key}</Key></Object>`).join('\n');
+			const params: DeleteObjectsCommandInput = {
+				Bucket: this.bucket,
+				Delete: {
+					Objects: objects.map(({ key }) => ({ Key: key })),
+				},
+			};
 
-		const body = ['<Delete>', innerXml, '</Delete>'].join('\n');
+			this.logger.debug('Sending DELETE MANY request to S3', {
+				bucket: this.bucket,
+				objectCount: objects.length,
+			});
 
-		const headers = {
-			'Content-Type': 'application/xml',
-			'Content-Length': body.length,
-			'Content-MD5': createHash('md5').update(body).digest('base64'),
-		};
-
-		const path = `${this.bucket.name}/?delete`;
-
-		return await this.request('POST', this.host, path, { headers, body });
+			const command = new DeleteObjectsCommand(params);
+			return await this.s3Client.send(command);
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
@@ -164,125 +234,62 @@ export class ObjectStoreService {
 	 */
 	async list(prefix: string) {
 		const items = [];
+		let isTruncated = true;
+		let continuationToken;
 
-		let isTruncated;
-		let nextPageToken;
+		try {
+			while (isTruncated) {
+				const listPage = await this.getListPage(prefix, continuationToken);
 
-		do {
-			const listPage = await this.getListPage(prefix, nextPageToken);
+				if (listPage.contents?.length > 0) {
+					items.push(...listPage.contents);
+				}
 
-			if (listPage.contents?.length > 0) items.push(...listPage.contents);
+				isTruncated = listPage.isTruncated;
+				continuationToken = listPage.nextContinuationToken;
+			}
 
-			isTruncated = listPage.isTruncated;
-			nextPageToken = listPage.nextContinuationToken;
-		} while (isTruncated && nextPageToken);
-
-		return items;
+			return items;
+		} catch (e) {
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
+		}
 	}
 
 	/**
 	 * Fetch a page of objects with a common prefix in the configured bucket.
-	 *
-	 * Max 1000 objects per page - set by AWS.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
-	async getListPage(prefix: string, nextPageToken?: string) {
-		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
-
-		if (nextPageToken) qs['continuation-token'] = nextPageToken;
-
-		const { data } = await this.request('GET', this.host, this.bucket.name, { qs });
-
-		if (typeof data !== 'string') {
-			throw new TypeError(`Expected XML string but received ${typeof data}`);
-		}
-
-		const { listBucketResult: page } = await parseXml<RawListPage>(data);
-
-		if (!page.contents) return { ...page, contents: [] };
-
-		// `explicitArray: false` removes array wrapper on single item array, so restore it
-
-		if (!Array.isArray(page.contents)) page.contents = [page.contents];
-
-		// remove null prototype - https://github.com/Leonidas-from-XIV/node-xml2js/issues/670
-
-		page.contents.forEach((item) => {
-			Object.setPrototypeOf(item, Object.prototype);
-		});
-
-		return page as ListPage;
-	}
-
-	private toPath(rawPath: string, qs?: Record<string, string | number>) {
-		const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-
-		if (!qs) return path;
-
-		const qsParams = Object.entries(qs)
-			.map(([key, value]) => `${key}=${value}`)
-			.join('&');
-
-		return path.concat(`?${qsParams}`);
-	}
-
-	private async blockWrite(filename: string): Promise<AxiosResponse> {
-		const logMessage = writeBlockedMessage(filename);
-
-		this.logger.warn(logMessage);
-
-		return {
-			status: 403,
-			statusText: 'Forbidden',
-			data: logMessage,
-			headers: {},
-			config: {} as InternalAxiosRequestConfig,
-		};
-	}
-
-	private async request<T>(
-		method: Method,
-		host: string,
-		rawPath = '',
-		{ qs, headers, body, responseType }: RequestOptions = {},
-	) {
-		const path = this.toPath(rawPath, qs);
-
-		const optionsToSign: Aws4Options = {
-			method,
-			service: 's3',
-			region: this.bucket.region,
-			host,
-			path,
-		};
-
-		if (headers) optionsToSign.headers = headers;
-		if (body) optionsToSign.body = body;
-
-		const signedOptions = sign(optionsToSign, this.credentials);
-
-		const config: AxiosRequestConfig = {
-			method,
-			url: `https://${host}${path}`,
-			headers: signedOptions.headers,
-		};
-
-		if (body) config.data = body;
-		if (responseType) config.responseType = responseType;
-
+	async getListPage(prefix: string, continuationToken?: string) {
 		try {
-			this.logger.debug('Sending request to S3', { config });
+			const params: ListObjectsV2CommandInput = {
+				Bucket: this.bucket,
+				Prefix: prefix,
+			};
 
-			return await axios.request<T>(config);
+			if (continuationToken) {
+				params.ContinuationToken = continuationToken;
+			}
+
+			this.logger.debug('Sending list request to S3', { bucket: this.bucket, prefix });
+			const command = new ListObjectsV2Command(params);
+			const response = await this.s3Client.send(command);
+
+			// Convert response to match expected format for compatibility
+			const contents =
+				response.Contents?.map((item) => ({
+					key: item.Key ?? '',
+					lastModified: item.LastModified?.toISOString() ?? '',
+					eTag: item.ETag ?? '',
+					size: item.Size ?? 0,
+					storageClass: item.StorageClass ?? '',
+				})) ?? [];
+
+			return {
+				contents,
+				isTruncated: response.IsTruncated ?? false,
+				nextContinuationToken: response.NextContinuationToken,
+			};
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-
-			const message = `Request to S3 failed: ${error.message}`;
-
-			this.logger.error(message, { config });
-
-			throw new ApplicationError(message, { cause: error, extra: { config } });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 }

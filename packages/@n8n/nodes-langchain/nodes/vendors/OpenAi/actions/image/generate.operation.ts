@@ -17,12 +17,16 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for image generation',
 		options: [
 			{
-				name: 'DALL-E-2',
+				name: 'DALL·E 2',
 				value: 'dall-e-2',
 			},
 			{
-				name: 'DALL-E-3',
+				name: 'DALL·E 3',
 				value: 'dall-e-3',
+			},
+			{
+				name: 'GPT Image 1',
+				value: 'gpt-image-1',
 			},
 		],
 	},
@@ -63,7 +67,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Quality',
-				name: 'quality',
+				name: 'dalleQuality',
 				type: 'options',
 				description:
 					'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
@@ -84,6 +88,34 @@ const properties: INodeProperties[] = [
 				},
 				default: 'standard',
 			},
+			{
+				displayName: 'Quality',
+				name: 'quality',
+				type: 'options',
+				description:
+					'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
+				options: [
+					{
+						name: 'High',
+						value: 'high',
+					},
+					{
+						name: 'Medium',
+						value: 'medium',
+					},
+					{
+						name: 'Low',
+						value: 'low',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['gpt-image-1'],
+					},
+				},
+				default: 'medium',
+			},
+
 			{
 				displayName: 'Resolution',
 				name: 'size',
@@ -135,6 +167,32 @@ const properties: INodeProperties[] = [
 				default: '1024x1024',
 			},
 			{
+				displayName: 'Resolution',
+				name: 'size',
+				type: 'options',
+				options: [
+					{
+						name: '1024x1024',
+						value: '1024x1024',
+					},
+					{
+						name: '1024x1536',
+						value: '1024x1536',
+					},
+					{
+						name: '1536x1024',
+						value: '1536x1024',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['gpt-image-1'],
+					},
+				},
+				default: '1024x1024',
+			},
+
+			{
 				displayName: 'Style',
 				name: 'style',
 				type: 'options',
@@ -163,6 +221,11 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return image URL(s) instead of binary file(s)',
+				displayOptions: {
+					hide: {
+						'/model': ['gpt-image-1'],
+					},
+				},
 			},
 			{
 				displayName: 'Put Output in Field',
@@ -205,17 +268,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		delete options.binaryPropertyOutput;
 	}
 
-	delete options.returnImageUrls;
+	if (options.dalleQuality) {
+		options.quality = options.dalleQuality;
+		delete options.dalleQuality;
+	}
 
+	delete options.returnImageUrls;
 	const body: IDataObject = {
 		prompt,
 		model,
-		response_format,
+		response_format: model !== 'gpt-image-1' ? response_format : undefined, // gpt-image-1 does not support response_format
 		...options,
 	};
 
 	const { data } = await apiRequest.call(this, 'POST', '/images/generations', { body });
-
 	if (response_format === 'url') {
 		return ((data as IDataObject[]) || []).map((entry) => ({
 			json: entry,

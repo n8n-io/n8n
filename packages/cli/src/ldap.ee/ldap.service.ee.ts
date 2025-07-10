@@ -1,33 +1,29 @@
-import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import type { LdapConfig } from '@n8n/constants';
+import { LDAP_FEATURE_NAME } from '@n8n/constants';
+import { SettingsRepository } from '@n8n/db';
+import type { User, RunningMode, SyncStatus } from '@n8n/db';
+import { Service, Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
-import { Cipher, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import config from '@/config';
-import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';
-import type { User } from '@/databases/entities/user';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import {
-	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-
-import {
-	BINARY_AD_ATTRIBUTES,
-	LDAP_FEATURE_NAME,
-	LDAP_LOGIN_ENABLED,
-	LDAP_LOGIN_LABEL,
-} from './constants';
-import {
+	createLdapUserOnLocalDb,
+	getUserByEmail,
+	getAuthIdentityByLdapId,
+	isLdapEnabled,
+	mapLdapAttributesToUser,
+	createLdapAuthIdentity,
+	updateLdapUserOnLocalDb,
 	createFilter,
 	deleteAllLdapIdentities,
 	escapeFilter,
@@ -41,8 +37,15 @@ import {
 	resolveEntryBinaryAttributes,
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
-} from './helpers.ee';
-import type { LdapConfig } from './types';
+} from '@/ldap.ee/helpers.ee';
+import {
+	getCurrentAuthenticationMethod,
+	isEmailCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+
+import { BINARY_AD_ATTRIBUTES } from './constants';
 
 @Service()
 export class LdapService {
@@ -89,10 +92,10 @@ export class LdapService {
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
-			throw new ApplicationError(message);
+			throw new UnexpectedError(message);
 		}
 
-		if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
+		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
 			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
 		}
 
@@ -138,24 +141,24 @@ export class LdapService {
 	/** Take the LDAP configuration and set login enabled and login label to the config object */
 	private async setGlobalLdapConfigVariables(ldapConfig: LdapConfig): Promise<void> {
 		await this.setLdapLoginEnabled(ldapConfig.loginEnabled);
-		config.set(LDAP_LOGIN_LABEL, ldapConfig.loginLabel);
+		Container.get(GlobalConfig).sso.ldap.loginLabel = ldapConfig.loginLabel;
 	}
 
 	/** Set the LDAP login enabled to the configuration object */
 	private async setLdapLoginEnabled(enabled: boolean): Promise<void> {
-		if (isEmailCurrentAuthenticationMethod() || isLdapCurrentAuthenticationMethod()) {
-			if (enabled) {
-				config.set(LDAP_LOGIN_ENABLED, true);
-				await setCurrentAuthenticationMethod('ldap');
-			} else if (!enabled) {
-				config.set(LDAP_LOGIN_ENABLED, false);
-				await setCurrentAuthenticationMethod('email');
-			}
-		} else {
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+		if (enabled && !isEmailCurrentAuthenticationMethod() && !isLdapCurrentAuthenticationMethod()) {
 			throw new InternalServerError(
-				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+				`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${currentAuthenticationMethod})`,
 			);
 		}
+
+		Container.get(GlobalConfig).sso.ldap.loginEnabled = enabled;
+
+		const targetAuthenticationMethod =
+			!enabled && currentAuthenticationMethod === 'ldap' ? 'email' : currentAuthenticationMethod;
+
+		await setCurrentAuthenticationMethod(enabled ? 'ldap' : targetAuthenticationMethod);
 	}
 
 	/**
@@ -165,7 +168,7 @@ export class LdapService {
 	 */
 	private async getClient() {
 		if (this.config === undefined) {
-			throw new ApplicationError('Service cannot be used without setting the property config');
+			throw new UnexpectedError('Service cannot be used without setting the property config');
 		}
 		if (this.client === undefined) {
 			const url = formatUrl(
@@ -304,7 +307,7 @@ export class LdapService {
 	/** Schedule a synchronization job based on the interval set in the LDAP config */
 	private scheduleSync(): void {
 		if (!this.config.synchronizationInterval) {
-			throw new ApplicationError('Interval variable has to be defined');
+			throw new UnexpectedError('Interval variable has to be defined');
 		}
 		this.syncTimer = setInterval(async () => {
 			await this.runSync('live');
@@ -435,5 +438,55 @@ export class LdapService {
 	private getUsersToDisable(remoteAdUsers: LdapUser[], localLdapIds: string[]): string[] {
 		const remoteAdUserIds = remoteAdUsers.map((adUser) => adUser[this.config.ldapIdAttribute]);
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
+	}
+
+	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
+		if (!isLdapEnabled()) return undefined;
+
+		if (!this.config.loginEnabled) return undefined;
+
+		const { loginIdAttribute, userFilter } = this.config;
+
+		const ldapUser = await this.findAndAuthenticateLdapUser(
+			loginId,
+			password,
+			loginIdAttribute,
+			userFilter,
+		);
+
+		if (!ldapUser) return undefined;
+
+		const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, this.config);
+
+		const { email: emailAttributeValue } = ldapAttributesValues;
+
+		if (!ldapId || !emailAttributeValue) return undefined;
+
+		const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
+		if (!ldapAuthIdentity) {
+			const emailUser = await getUserByEmail(emailAttributeValue);
+
+			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
+			if (emailUser && emailUser.email === emailAttributeValue) {
+				const identity = await createLdapAuthIdentity(emailUser, ldapId);
+				await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
+			} else {
+				const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
+				Container.get(EventService).emit('user-signed-up', {
+					user,
+					userType: 'ldap',
+					wasDisabledLdapUser: false,
+				});
+				return user;
+			}
+		} else {
+			if (ldapAuthIdentity.user) {
+				if (ldapAuthIdentity.user.disabled) return undefined;
+				await updateLdapUserOnLocalDb(ldapAuthIdentity, ldapAttributesValues);
+			}
+		}
+
+		// Retrieve the user again as user's data might have been updated
+		return (await getAuthIdentityByLdapId(ldapId))?.user;
 	}
 }

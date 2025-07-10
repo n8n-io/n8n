@@ -20,11 +20,11 @@ import type {
 	ITaskMetadata,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { versionDescription } from './versionDescription';
 import type { DynamicZodObject } from '../../../../types/zod.types';
-import { convertJsonSchemaToZod, generateSchema } from '../../../../utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '../../../../utils/schemaParsing';
 
 export class ToolWorkflowV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -148,7 +148,7 @@ export class ToolWorkflowV1 implements INodeType {
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
-			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
 			let response: string = '';
 			let executionError: ExecutionError | undefined;
@@ -189,12 +189,12 @@ export class ToolWorkflowV1 implements INodeType {
 			}
 
 			if (executionError) {
-				void this.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, executionError, metadata);
 			} else {
 				// Output always needs to be an object
 				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
 				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json }]], metadata);
 			}
 			return response;
 		};
@@ -215,7 +215,7 @@ export class ToolWorkflowV1 implements INodeType {
 				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
 				const jsonSchema =
 					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
+						? generateSchemaFromExample(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
 				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);

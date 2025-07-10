@@ -1,0 +1,27 @@
+name: Test Workflows on PR Approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+jobs:
+  eligibility_check:
+    name: Check Eligibility for Test Run
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      is_pr_approved_by_maintainer: true
+
+  run_workflow_tests:
+    name: Run Tests on Approved Internal PR
+    needs: [eligibility_check]
+    if: needs.eligibility_check.outputs.should_run == 'true'
+    uses: ./.github/workflows/test-workflows-callable.yml
+    with:
+      git_ref: ${{ github.event.pull_request.head.sha }}
+      send_webhook_report: true
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets: inherit

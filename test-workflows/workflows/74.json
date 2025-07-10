@@ -1,0 +1,160 @@
+{
+  "createdAt": "2021-02-26T08:35:26.228Z",
+  "updatedAt": "2021-02-26T08:37:00.970Z",
+  "id": "74",
+  "name": "E-goi:Contact:create get getAll update",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "dc6a5a64-8c22-4032-aace-0dea668a571c"
+    },
+    {
+      "parameters": {
+        "list": 1,
+        "email": "=fake{{Date.now()}}@gmail.com",
+        "additionalFields": {}
+      },
+      "name": "E-goi",
+      "type": "n8n-nodes-base.egoi",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "egoiApi": {
+          "id": "63",
+          "name": "E-goi creds"
+        }
+      },
+      "id": "25e5ee3b-abfb-427f-afc3-55b27e204f17"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "list": 1,
+        "contactId": "={{$node[\"E-goi\"].json[\"base\"][\"contact_id\"]}}"
+      },
+      "name": "E-goi1",
+      "type": "n8n-nodes-base.egoi",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "egoiApi": {
+          "id": "63",
+          "name": "E-goi creds"
+        }
+      },
+      "id": "13e4101f-896b-4786-b9b7-ac5a31ad06f5"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "list": 1,
+        "limit": 1
+      },
+      "name": "E-goi2",
+      "type": "n8n-nodes-base.egoi",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "egoiApi": {
+          "id": "63",
+          "name": "E-goi creds"
+        }
+      },
+      "id": "39aa7752-aa1b-4db5-b1ed-988fa169b544"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "list": 1,
+        "contactId": "={{$node[\"E-goi\"].json[\"base\"][\"contact_id\"]}}",
+        "updateFields": {
+          "status": "inactive"
+        }
+      },
+      "name": "E-goi3",
+      "type": "n8n-nodes-base.egoi",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "egoiApi": {
+          "id": "63",
+          "name": "E-goi creds"
+        }
+      },
+      "id": "d9cf87e8-dff7-4b74-adbf-8bdf5c22f541"
+    }
+  ],
+  "connections": {
+    "E-goi": {
+      "main": [
+        [
+          {
+            "node": "E-goi1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E-goi1": {
+      "main": [
+        [
+          {
+            "node": "E-goi2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E-goi2": {
+      "main": [
+        [
+          {
+            "node": "E-goi3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "E-goi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

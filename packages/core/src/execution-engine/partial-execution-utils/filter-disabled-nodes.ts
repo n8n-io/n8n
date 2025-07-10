@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 
@@ -9,7 +9,7 @@ export function filterDisabledNodes(graph: DirectedGraph): DirectedGraph {
 		if (node.disabled) {
 			filteredGraph.removeNode(node, {
 				reconnectConnections: true,
-				skipConnectionFn: (c) => c.type !== NodeConnectionType.Main,
+				skipConnectionFn: (c) => c.type !== NodeConnectionTypes.Main,
 			});
 		}
 	}

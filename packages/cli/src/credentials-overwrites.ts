@@ -1,6 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
@@ -60,7 +60,7 @@ export class CredentialsOverwrites {
 		return returnData;
 	}
 
-	private getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
+	getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];

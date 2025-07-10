@@ -1,0 +1,179 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "When clicking ‘Test workflow’": [
+          {
+            "startTime": 1747344001310,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model": [
+          {
+            "startTime": 1747344001313,
+            "executionTime": 150,
+            "executionIndex": 2,
+            "executionStatus": "error",
+            "source": [
+              {
+                "previousNode": "Basic LLM Chain",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "json array"
+                      ],
+                      "estimatedTokens": 3,
+                      "options": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "json array"
+                      ],
+                      "estimatedTokens": 3,
+                      "options": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model",
+                  "runIndex": 0
+                }
+              ]
+            },
+            "error": {
+              "message": "The resource you are requesting could not be found",
+              "timestamp": 1747344001463,
+              "name": "NodeApiError",
+              "description": "The model `gpt-4o-mini123` does not exist or you do not have access to it.",
+              "context": {},
+              "cause": {
+                "status": 404,
+                "headers": {
+                  "alt-svc": "h3=\":443\"; ma=86400",
+                  "cf-cache-status": "DYNAMIC",
+                  "cf-ray": "9405ad488cd1b881-DUB",
+                  "connection": "keep-alive",
+                  "content-encoding": "gzip",
+                  "content-type": "application/json; charset=utf-8",
+                  "date": "Thu, 15 May 2025 21:20:01 GMT",
+                  "server": "cloudflare",
+                  "set-cookie": "__cf_bm=RxKUPES9cEyDoWlsYmoTb0R_2MnzrTE6J0Dkvn77yFE-1747344001-1.0.1.1-DWgxWjJDJ6mlrytbHI5D5mdX6cG1oppGccnhiiOpAE_S96pwCZY4NuEnJJwGWrH9o9fF9P09A8EwDRwUg0IN8KxyV1CK0GxHHFZi_KkJJkU; path=/; expires=Thu, 15-May-25 21:50:01 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=TfxIIk5sfQ6RMO1kRjn1mpAlnxEg7ILyvvyDNqXvpDY-1747344001498-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None",
+                  "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+                  "transfer-encoding": "chunked",
+                  "vary": "Origin",
+                  "x-content-type-options": "nosniff",
+                  "x-request-id": "req_26d1b9de0d7db778c7849a3a6dd99db1"
+                },
+                "request_id": "req_26d1b9de0d7db778c7849a3a6dd99db1",
+                "error": {
+                  "message": "The model `gpt-4o-mini123` does not exist or you do not have access to it.",
+                  "type": "invalid_request_error",
+                  "param": null,
+                  "code": "model_not_found"
+                },
+                "code": "model_not_found",
+                "param": null,
+                "type": "invalid_request_error",
+                "lc_error_code": "MODEL_NOT_FOUND",
+                "attemptNumber": 1,
+                "retriesLeft": 2
+              }
+            }
+          }
+        ],
+        "Basic LLM Chain": [
+          {
+            "startTime": 1747344001310,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "When clicking ‘Test workflow’"
+              }
+            ],
+            "hints": [],
+            "executionTime": 154,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [],
+                [
+                  {
+                    "json": {
+                      "error": "The resource you are requesting could not be found"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Basic LLM Chain"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {
+        "OpenAI Chat Model": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model",
+                "runIndex": 0
+              }
+            ]
+          }
+        ]
+      },
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:01.310Z",
+  "stoppedAt": "2025-05-15T21:20:01.464Z",
+  "status": "running",
+  "finished": true
+}

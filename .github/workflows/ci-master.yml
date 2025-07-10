@@ -7,30 +7,35 @@ on:
 
 jobs:
   install-and-build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
 
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5
         with:
-          node-version: 20.x
-          cache: pnpm
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
       - name: Build
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: useblacksmith/cache/save@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-base:build
@@ -41,13 +46,14 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.4]
+        node-version: [20.x, 22.x, 24.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
       cacheKey: ${{ github.sha }}-base:build
-      collectCoverage: ${{ matrix.node-version == '20.x' }}
-      ignoreTurboCache: ${{ matrix.node-version == '20.x' }}
+      collectCoverage: ${{ matrix.node-version == '22.x' }}
+      ignoreTurboCache: ${{ matrix.node-version == '22.x' }}
+      skipFrontendTests: ${{ matrix.node-version != '22.x' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -65,7 +71,7 @@ jobs:
     needs: [unit-test, lint]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

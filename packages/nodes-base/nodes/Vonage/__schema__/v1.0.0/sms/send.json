@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "message-id": {
+            "type": "string"
+        },
+        "message-price": {
+            "type": "string"
+        },
+        "network": {
+            "type": "string"
+        },
+        "remaining-balance": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "to": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

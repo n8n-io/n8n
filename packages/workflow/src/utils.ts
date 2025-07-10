@@ -1,15 +1,12 @@
-import {
-	parse as esprimaParse,
-	Syntax,
-	type Node as SyntaxNode,
-	type ExpressionStatement,
-} from 'esprima-next';
+import { parse as esprimaParse, Syntax } from 'esprima-next';
+import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
-import { merge } from 'lodash';
+import merge from 'lodash/merge';
 
-import { ALPHABET } from './Constants';
+import { ALPHABET } from './constants';
 import { ApplicationError } from './errors/application.error';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import { ExecutionCancelledError } from './errors/execution-cancelled.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -155,6 +152,28 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
+/**
+ * Decodes a Base64 string with proper UTF-8 character handling.
+ *
+ * @param str - The Base64 string to decode
+ * @returns The decoded UTF-8 string
+ */
+export const base64DecodeUTF8 = (str: string): string => {
+	try {
+		// Use modern TextDecoder for proper UTF-8 handling
+		const bytes = new Uint8Array(
+			atob(str)
+				.split('')
+				.map((char) => char.charCodeAt(0)),
+		);
+		return new TextDecoder('utf-8').decode(bytes);
+	} catch (error) {
+		// Fallback method for older browsers
+		console.warn('TextDecoder not available, using fallback method');
+		return atob(str);
+	}
+};
+
 export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
@@ -175,6 +194,23 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export const sleep = async (ms: number): Promise<void> =>
 	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
+	});
+
+export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
+	await new Promise((resolve, reject) => {
+		if (abortSignal?.aborted) {
+			reject(new ExecutionCancelledError(''));
+			return;
+		}
+
+		const timeout = setTimeout(resolve, ms);
+
+		const abortHandler = () => {
+			clearTimeout(timeout);
+			reject(new ExecutionCancelledError(''));
+		};
+
+		abortSignal?.addEventListener('abort', abortHandler, { once: true });
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
@@ -275,4 +311,38 @@ export function randomString(minLength: number, maxLength?: number): string {
 	return [...crypto.getRandomValues(new Uint32Array(length))]
 		.map((byte) => ALPHABET[byte % ALPHABET.length])
 		.join('');
+}
+
+/**
+ * Checks if a value is an object with a specific key and provides a type guard for the key.
+ */
+export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is Record<T, unknown> {
+	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
+}
+
+const unsafeObjectProperties = new Set(['__proto__', 'prototype', 'constructor', 'getPrototypeOf']);
+
+/**
+ * Checks if a property key is safe to use on an object, preventing prototype pollution.
+ * setting untrusted properties can alter the object's prototype chain and introduce vulnerabilities.
+ *
+ * @see setSafeObjectProperty
+ */
+export function isSafeObjectProperty(property: string) {
+	return !unsafeObjectProperties.has(property);
+}
+
+/**
+ * Safely sets a property on an object, preventing prototype pollution.
+ *
+ * @see isSafeObjectProperty
+ */
+export function setSafeObjectProperty(
+	target: Record<string, unknown>,
+	property: string,
+	value: unknown,
+) {
+	if (isSafeObjectProperty(property)) {
+		target[property] = value;
+	}
 }

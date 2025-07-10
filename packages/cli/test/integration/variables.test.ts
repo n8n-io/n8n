@@ -1,13 +1,11 @@
+import { testDb } from '@n8n/backend-test-utils';
+import type { Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
+import { createVariable, getVariableById, getVariableByKey } from '@test-integration/db/variables';
 
 import { createOwner, createUser } from './shared/db/users';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -16,32 +14,6 @@ let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;
-
-async function createVariable(key: string, value: string) {
-	const result = await Container.get(VariablesRepository).save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-async function getVariableByKey(key: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-async function getVariableById(id: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			id,
-		},
-	});
-}
 
 beforeAll(async () => {
 	const owner = await createOwner();
@@ -177,7 +149,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
+	test("should not create a new variable and return it if the instance doesn't have a license", async () => {
 		license.disable('feat:variables');
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);

@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "discarded": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "invalidEmails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "invalidVids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "updated": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,1363 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994502,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set": [
+          {
+            "startTime": 1747343994502,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "value1": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set1": [
+          {
+            "startTime": 1747343994502,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "value2": 5
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set2": [
+          {
+            "startTime": 1747343994502,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set3": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop2": 2,
+                      "prop4": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set7": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set6": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop2": 2,
+                      "prop3": -2,
+                      "prop4": -3
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set9": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set8": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 8,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop3": 2,
+                      "prop4": -4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set11": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 9,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set10": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 10,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop3": 2,
+                      "prop4": -4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set13": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 11,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set12": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 12,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop3": 2,
+                      "prop4": -4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function11": [
+          {
+            "startTime": 1747343994503,
+            "executionIndex": 13,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input1item1"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "title": "Input1item2"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "title": "Input1item3"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function12": [
+          {
+            "startTime": 1747343994504,
+            "executionIndex": 14,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item4"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 15,
+            "source": [
+              {
+                "previousNode": "Set"
+              },
+              {
+                "previousNode": "Set1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "value1": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "value2": 5
+                    },
+                    "pairedItem": {
+                      "item": 0,
+                      "input": 1
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge1": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 16,
+            "source": [
+              {
+                "previousNode": "Set2"
+              },
+              {
+                "previousNode": "Set3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge5": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 17,
+            "source": [
+              {
+                "previousNode": "Set7"
+              },
+              {
+                "previousNode": "Set6"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge6": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 18,
+            "source": [
+              {
+                "previousNode": "Set7"
+              },
+              {
+                "previousNode": "Set6"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge7": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 19,
+            "source": [
+              {
+                "previousNode": "Set7"
+              },
+              {
+                "previousNode": "Set6"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge8": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 20,
+            "source": [
+              {
+                "previousNode": "Set9"
+              },
+              {
+                "previousNode": "Set8"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1,
+                      "prop3": 2,
+                      "prop4": -4
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 0
+                      },
+                      {
+                        "item": 0,
+                        "input": 1
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge9": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 21,
+            "source": [
+              {
+                "previousNode": "Set11"
+              },
+              {
+                "previousNode": "Set10"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge10": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 22,
+            "source": [
+              {
+                "previousNode": "Set13"
+              },
+              {
+                "previousNode": "Set12"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge3": [
+          {
+            "startTime": 1747343994506,
+            "executionIndex": 23,
+            "source": [
+              {
+                "previousNode": "Function11"
+              },
+              {
+                "previousNode": "Function12"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 0
+                      },
+                      {
+                        "item": 0,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 1
+                      },
+                      {
+                        "item": 1,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 2
+                      },
+                      {
+                        "item": 2,
+                        "input": 1
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge2": [
+          {
+            "startTime": 1747343994507,
+            "executionIndex": 24,
+            "source": [
+              {
+                "previousNode": "Function11"
+              },
+              {
+                "previousNode": "Function12"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 0
+                      },
+                      {
+                        "item": 0,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 1
+                      },
+                      {
+                        "item": 1,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 2
+                      },
+                      {
+                        "item": 2,
+                        "input": 1
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge4": [
+          {
+            "startTime": 1747343994507,
+            "executionIndex": 25,
+            "source": [
+              {
+                "previousNode": "Function11"
+              },
+              {
+                "previousNode": "Function12"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 0
+                      },
+                      {
+                        "item": 0,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 1
+                      },
+                      {
+                        "item": 1,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 2
+                      },
+                      {
+                        "item": 2,
+                        "input": 1
+                      }
+                    ]
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item4"
+                    },
+                    "pairedItem": {
+                      "item": 3,
+                      "input": 1
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function": [
+          {
+            "startTime": 1747343994507,
+            "executionIndex": 26,
+            "source": [
+              {
+                "previousNode": "Merge"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "value1": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  },
+                  {
+                    "json": {
+                      "value2": 5
+                    },
+                    "pairedItem": {
+                      "item": 1
+                    },
+                    "index": 1
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function1": [
+          {
+            "startTime": 1747343994509,
+            "executionIndex": 27,
+            "source": [
+              {
+                "previousNode": "Merge1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function5": [
+          {
+            "startTime": 1747343994510,
+            "executionIndex": 28,
+            "source": [
+              {
+                "previousNode": "Merge5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function6": [
+          {
+            "startTime": 1747343994511,
+            "executionIndex": 29,
+            "source": [
+              {
+                "previousNode": "Merge6"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function7": [
+          {
+            "startTime": 1747343994512,
+            "executionIndex": 30,
+            "source": [
+              {
+                "previousNode": "Merge7"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop3": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function8": [
+          {
+            "startTime": 1747343994513,
+            "executionIndex": 31,
+            "source": [
+              {
+                "previousNode": "Merge8"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1,
+                      "prop3": 2,
+                      "prop4": -4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function9": [
+          {
+            "startTime": 1747343994514,
+            "executionIndex": 32,
+            "source": [
+              {
+                "previousNode": "Merge9"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function10": [
+          {
+            "startTime": 1747343994515,
+            "executionIndex": 33,
+            "source": [
+              {
+                "previousNode": "Merge10"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "prop1": 1,
+                      "prop2": -1
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function3": [
+          {
+            "startTime": 1747343994516,
+            "executionIndex": 34,
+            "source": [
+              {
+                "previousNode": "Merge3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": {
+                      "item": 1
+                    },
+                    "index": 1
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": {
+                      "item": 2
+                    },
+                    "index": 2
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function2": [
+          {
+            "startTime": 1747343994517,
+            "executionIndex": 35,
+            "source": [
+              {
+                "previousNode": "Merge2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": {
+                      "item": 1
+                    },
+                    "index": 1
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": {
+                      "item": 2
+                    },
+                    "index": 2
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function4": [
+          {
+            "startTime": 1747343994518,
+            "executionIndex": 36,
+            "source": [
+              {
+                "previousNode": "Merge4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "title": "Input2item1"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item2"
+                    },
+                    "pairedItem": {
+                      "item": 1
+                    },
+                    "index": 1
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item3"
+                    },
+                    "pairedItem": {
+                      "item": 2
+                    },
+                    "index": 2
+                  },
+                  {
+                    "json": {
+                      "title": "Input2item4"
+                    },
+                    "pairedItem": {
+                      "item": 3
+                    },
+                    "index": 3
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Function4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.502Z",
+  "stoppedAt": "2025-05-15T21:19:54.519Z",
+  "status": "running",
+  "finished": true
+}

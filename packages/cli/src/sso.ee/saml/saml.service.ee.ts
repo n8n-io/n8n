@@ -1,22 +1,21 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { Settings, User } from '@n8n/db';
+import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
-import { Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
-import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
+import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
 import {
 	createUserFromSamlAttributes,
@@ -95,7 +94,11 @@ export class SamlService {
 		} catch (error) {
 			// If the SAML configuration has been corrupted in the database we'll
 			// delete the corrupted configuration and enable email logins again.
-			if (error instanceof InvalidSamlMetadataError || error instanceof SyntaxError) {
+			if (
+				error instanceof InvalidSamlMetadataUrlError ||
+				error instanceof InvalidSamlMetadataError ||
+				error instanceof SyntaxError
+			) {
 				this.logger.warn(
 					`SAML initialization failed because of invalid metadata in database: ${error.message}. IMPORTANT: Disabling SAML and switching to email-based login for all users. Please review your configuration and re-enable SAML.`,
 				);
@@ -124,7 +127,7 @@ export class SamlService {
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
@@ -132,12 +135,14 @@ export class SamlService {
 			});
 		}
 
+		this.validator.validateIdentiyProvider(this.identityProviderInstance);
+
 		return this.identityProviderInstance;
 	}
 
 	getServiceProviderInstance(): ServiceProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
@@ -237,17 +242,58 @@ export class SamlService {
 		};
 	}
 
-	async setSamlPreferences(prefs: Partial<SamlPreferences>): Promise<SamlPreferences | undefined> {
+	async setSamlPreferences(
+		prefs: Partial<SamlPreferences>,
+		tryFallback: boolean = false,
+	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
+		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
 		if (prefs.metadataUrl) {
-			const fetchedMetadata = await this.fetchMetadataFromUrl();
-			if (fetchedMetadata) {
-				this._samlPreferences.metadata = fetchedMetadata;
+			try {
+				const fetchedMetadata = await this.fetchMetadataFromUrl();
+				if (fetchedMetadata) {
+					this._samlPreferences.metadata = fetchedMetadata;
+				} else {
+					// in this case the metadata url didn't produce a valid metadata for SAML
+					// therefore we are rejecting the change to it
+					throw new InvalidSamlMetadataUrlError(prefs.metadataUrl);
+				}
+			} catch (error) {
+				this._samlPreferences.metadataUrl = previousMetadataUrl;
+				if (!tryFallback) {
+					throw error;
+				}
+				// we were not able to produce correct metadata from the URL, but
+				// in this case we don't care and try to fallback on the saved metadata in the
+				// database.
+				this.logger.error(
+					'SAML initialization detected an invalid metadata URL in database. Trying to initialize from metadata in database if available.',
+
+					{ error },
+				);
 			}
 		} else if (prefs.metadata) {
 			const validationResult = await this.validator.validateMetadata(prefs.metadata);
 			if (!validationResult) {
+				throw new InvalidSamlMetadataError();
+			}
+		}
+		// If SAML login is enabled, we need to ensure that we have valid metadata available
+		// if the metadata url is provided and it was possible to fetch and validate that metadata
+		// it is now stored in this._samlPreferences.metadata.
+		// if no metadata url was provided but metadata directly as XML, it is also already stored
+		// in this._samlPreferences.metadata.
+		if (isSamlLoginEnabled()) {
+			if (this._samlPreferences.metadata) {
+				const validationResult = await this.validator.validateMetadata(
+					this._samlPreferences.metadata,
+				);
+				if (!validationResult) {
+					throw new InvalidSamlMetadataError();
+				}
+			} else {
+				// in this case SAML login is enabled but no valid metadata is available
 				throw new InvalidSamlMetadataError();
 			}
 		}
@@ -289,7 +335,7 @@ export class SamlService {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
 			if (prefs) {
 				if (apply) {
-					await this.setSamlPreferences(prefs);
+					await this.setSamlPreferences(prefs, true);
 				} else {
 					await this.loadPreferencesWithoutValidation(prefs);
 				}

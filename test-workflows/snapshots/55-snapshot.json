@@ -1,0 +1,201 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747344007024,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Hunter": [
+          {
+            "startTime": 1747344007024,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 197,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "value": "ben@n8n.io",
+                      "type": "personal",
+                      "confidence": 99,
+                      "sources": [
+                        "json array"
+                      ],
+                      "first_name": "Ben",
+                      "last_name": "Kiziltug",
+                      "position": "Vice President of Sales",
+                      "position_raw": "VP Sales",
+                      "seniority": "executive",
+                      "department": "sales",
+                      "linkedin": "https://www.linkedin.com/in/benkiziltug",
+                      "twitter": {
+                        "object": true
+                      },
+                      "phone_number": {
+                        "object": true
+                      },
+                      "verification": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Hunter1": [
+          {
+            "startTime": 1747344007221,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Hunter"
+              }
+            ],
+            "hints": [],
+            "executionTime": 372,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "first_name": {
+                        "object": true
+                      },
+                      "last_name": {
+                        "object": true
+                      },
+                      "email": {
+                        "object": true
+                      },
+                      "score": {
+                        "object": true
+                      },
+                      "domain": "n8n.io",
+                      "accept_all": {
+                        "object": true
+                      },
+                      "position": {
+                        "object": true
+                      },
+                      "twitter": {
+                        "object": true
+                      },
+                      "linkedin_url": {
+                        "object": true
+                      },
+                      "phone_number": {
+                        "object": true
+                      },
+                      "company": {
+                        "object": true
+                      },
+                      "sources": [
+                        "json array"
+                      ],
+                      "verification": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Hunter2": [
+          {
+            "startTime": 1747344007593,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Hunter1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 250,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "valid",
+                      "result": "deliverable",
+                      "_deprecation_notice": "Using result is deprecated, use status instead",
+                      "score": 90,
+                      "email": "nodeqa@n8n.io",
+                      "regexp": true,
+                      "gibberish": false,
+                      "disposable": false,
+                      "webmail": false,
+                      "mx_records": true,
+                      "smtp_server": true,
+                      "smtp_check": true,
+                      "accept_all": false,
+                      "block": false,
+                      "sources": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Hunter2"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:07.024Z",
+  "stoppedAt": "2025-05-15T21:20:07.843Z",
+  "status": "running",
+  "finished": true
+}

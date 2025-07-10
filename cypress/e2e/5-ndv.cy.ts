@@ -1,5 +1,10 @@
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, setParameterSelectByContent } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	clickGetBackToCanvas,
+	setParameterSelectByContent,
+} from '../composables/ndv';
+import { openNode } from '../composables/workflow';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -90,7 +95,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
-		workflowPage.actions.openNode('Airtable');
+		workflowPage.actions.openNode('Search records');
 		cy.get('.has-issues').should('have.length', 2);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
@@ -112,7 +117,7 @@ describe('NDV', () => {
 			.nodeRunErrorMessage()
 			.should(
 				'have.text',
-				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 			);
 		ndv.getters
 			.nodeRunErrorDescription()
@@ -249,6 +254,15 @@ describe('NDV', () => {
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
 
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -332,7 +346,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it('should flag issues as soon as params are set', () => {
+	it('webhook shoul fallback to webhookId if path is empty', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -342,13 +356,31 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('path').clear();
 
-		ndv.getters.nodeExecuteButton().should('be.disabled');
-		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		const urrWithUUID =
+			/https?:\/\/[^\/]+\/webhook-test\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urrWithUUID);
+				expect(match, 'Should contain dynamic URL with UUID').to.not.be.null;
+			});
+
 		ndv.actions.close();
-		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.parameterInput('path').type('t');
+		ndv.getters.parameterInput('path').type('test-path');
+
+		const urlWithCustomPath = /https?:\/\/[^\/]+\/webhook-test\/test-path/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urlWithCustomPath);
+				expect(match, 'Should contain URL with custom path').to.not.be.null;
+			});
 
 		ndv.getters.nodeExecuteButton().should('not.be.disabled');
 		ndv.getters.triggerPanelExecuteButton().should('exist');
@@ -373,7 +405,6 @@ describe('NDV', () => {
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
-		cy.wait(200); // allow change to emit before closing modal
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 		ndv.actions.close();
@@ -386,9 +417,8 @@ describe('NDV', () => {
 			.codeEditorFullscreen()
 			.type('{selectall}')
 			.type('{backspace}')
-			.type('SELECT * FROM workflows');
+			.paste('SELECT * FROM workflows');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'SELECT * FROM workflows');
-		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('query')
@@ -404,10 +434,8 @@ describe('NDV', () => {
 			.codeEditorFullscreen()
 			.type('{selectall}')
 			.type('{backspace}')
-			.type('<div>Hello World');
+			.type('<div>Hello World</div>');
 		ndv.getters.codeEditorFullscreen().should('contain.text', '<div>Hello World</div>');
-		cy.wait(200);
-
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('html')
@@ -453,17 +481,10 @@ describe('NDV', () => {
 			return cy.get(`[data-node-placement=${position}]`);
 		}
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with mouse', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -508,16 +529,9 @@ describe('NDV', () => {
 				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
 
-		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
+			workflowPage.actions.deselectAll();
 
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
@@ -529,7 +543,6 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('inputMain').should('exist');
 				getFloatingNodeByPosition('outputMain').should('exist');
 				ndv.actions.close();
-				// These two lines are broken in V2
 				workflowPage.getters.selectedNodes().should('have.length', 1);
 				workflowPage.getters
 					.selectedNodes()
@@ -557,7 +570,6 @@ describe('NDV', () => {
 			getFloatingNodeByPosition('inputSub').should('not.exist');
 			getFloatingNodeByPosition('outputSub').should('not.exist');
 			ndv.actions.close();
-			// These two lines are broken in V2
 			workflowPage.getters.selectedNodes().should('have.length', 1);
 			workflowPage.getters
 				.selectedNodes()
@@ -571,42 +583,76 @@ describe('NDV', () => {
 				{
 					title: 'Language Models',
 					id: 'ai_languageModel',
+					index: 0,
 				},
 				{
 					title: 'Tools',
 					id: 'ai_tool',
+					index: 0,
 				},
 			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
 			connectionGroups.forEach((group) => {
-				cy.getByTestId(`add-subnode-${group.id}`).should('exist');
-				cy.getByTestId(`add-subnode-${group.id}`).click();
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
-				nodeCreator.getters.getNthCreatorItem(1).click();
+				// Add HTTP Request tool
+				nodeCreator.getters.getNthCreatorItem(2).click();
 				getFloatingNodeByPosition('outputSub').should('exist');
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
 				if (group.id === 'ai_languageModel') {
-					cy.getByTestId(`add-subnode-${group.id}`).should('not.exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('not.exist');
 				} else {
-					cy.getByTestId(`add-subnode-${group.id}`).should('exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
 					// Expand the subgroup
-					cy.getByTestId('subnode-connection-group-ai_tool').click();
-					cy.getByTestId(`add-subnode-${group.id}`).click();
-					nodeCreator.getters.getNthCreatorItem(1).click();
+					cy.getByTestId('subnode-connection-group-ai_tool-0').click();
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
+					// Add HTTP Request tool
+					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool')
+					cy.getByTestId('subnode-connection-group-ai_tool-0')
 						.findChildByTestId('floating-subnode')
 						.should('have.length', 2);
 				}
 			});
 
 			// Since language model has no credentials set, it should show an error
-			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			// Since HTTP Request tool requires URL it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
+		});
+
+		it('should have the floating nodes in correct order', () => {
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
+
+			workflowPage.actions.deselectAll();
+
+			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
+			openNode('Merge');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+
+			clickGetBackToCanvas();
+
+			// The second merge node does not have wires crossed, so `Edit Fields0` is first
+			openNode('Merge1');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
 		});
 	});
 
@@ -652,11 +698,11 @@ describe('NDV', () => {
 
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'JSON');
 		ndv.getters
 			.outputDisplayMode()
 			.find('label')
-			.eq(1)
+			.eq(2)
 			.scrollIntoView()
 			.should('be.visible')
 			.click();
@@ -666,12 +712,12 @@ describe('NDV', () => {
 			.outputDataContainer()
 			.should(
 				'have.text',
-				'[{"body": "<?xml version="1.0" encoding="UTF-8"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
+				'[{"body": "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
-		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
+		ndv.getters.outputDisplayMode().find('label').eq(0).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(0).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
 			.findChildByTestId('run-data-schema-item-value')
@@ -697,7 +743,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator
-		workflowPage.actions.openNode('When clicking ‘Test workflow’');
+		workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
@@ -864,7 +910,7 @@ describe('NDV', () => {
 			.should('contain.text', 'onlyOnItem3');
 	});
 
-	it('should keep search expanded after Test step node run', () => {
+	it('should keep search expanded after Execute step node run', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();
@@ -902,7 +948,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
 		ndv.getters
 			.outputPanel()
-			.contains('To search field contents rather than just names, use Table or JSON view')
+			.contains('To search field values, switch to table or JSON view.')
 			.should('exist');
 	});
 

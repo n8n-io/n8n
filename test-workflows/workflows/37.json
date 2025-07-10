@@ -1,0 +1,466 @@
+{
+  "createdAt": "2024-02-14T09:47:52.198Z",
+  "updatedAt": "2024-02-14T09:47:52.198Z",
+  "id": "37",
+  "name": "GitLab:Repository:get getIssues:Issue:create createComment edit get lock:Release:create get getAll update delete:User:getRepositories",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "57d13714-f0f8-46af-a51c-4d6691fe9a52"
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "operation": "get",
+        "owner": "nodeqa",
+        "repository": "nodemationQA"
+      },
+      "name": "Gitlab",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        560,
+        180
+      ],
+      "id": "63131b59-53e5-431c-9c4e-daf68d14629c",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=topics"
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "getRepositoryIssuesFilters": {}
+      },
+      "name": "Gitlab1",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        820,
+        180
+      ],
+      "id": "6d4cf9da-8e20-45ac-a97e-b78365c53ae9",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      },
+      "notes": "CAP_RESULTS_LENGTH=1"
+    },
+    {
+      "parameters": {
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "title": "=Issue - {{(new Date()).toDateString()}}",
+        "body": "=QA Test on {{(new Date()).toDateString()}}",
+        "labels": [],
+        "assignee_ids": []
+      },
+      "name": "Gitlab2",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        550,
+        330
+      ],
+      "id": "6fd68a0d-f82b-4470-8ba0-624caac71815",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "createComment",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "issueNumber": "={{$node[\"Gitlab2\"].json[\"iid\"]}}",
+        "body": "=Comment on issue - {{(new Date()).toString()}}"
+      },
+      "name": "Gitlab3",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        710,
+        330
+      ],
+      "id": "f996bfa2-d08a-4943-bd32-6c3042345c24",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "edit",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "issueNumber": "={{$node[\"Gitlab2\"].json[\"iid\"]}}",
+        "editFields": {
+          "description": "=Edited {{$node[\"Gitlab2\"].json[\"description\"]}}"
+        }
+      },
+      "name": "Gitlab4",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        870,
+        330
+      ],
+      "id": "1dfade56-7b02-4c36-952f-729006aa4dbd",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "issueNumber": "={{$node[\"Gitlab2\"].json[\"iid\"]}}"
+      },
+      "name": "Gitlab5",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        330
+      ],
+      "id": "1ff45615-93bb-41b3-83d2-6a6135a77ee9",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "lock",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "issueNumber": "={{$node[\"Gitlab2\"].json[\"iid\"]}}"
+      },
+      "name": "Gitlab6",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        330
+      ],
+      "id": "f6367788-80ca-45a4-a018-c66b8815f911",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "releaseTag": "=Release-tag-test{{Date.now()}}",
+        "additionalFields": {
+          "name": "=Release{{Date.now()}}",
+          "ref": "master"
+        }
+      },
+      "name": "Gitlab7",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        540,
+        490
+      ],
+      "id": "5744f348-d468-45cd-90d8-b37502f20f49",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "user",
+        "owner": "n8nqa"
+      },
+      "name": "Gitlab8",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        540,
+        640
+      ],
+      "id": "919f48e5-1999-40af-89c2-8adce98e843b",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=topics"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "get",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "projectId": "24497029",
+        "tag_name": "={{$node[\"Gitlab7\"].json[\"tag_name\"]}}"
+      },
+      "name": "Gitlab9",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        710,
+        490
+      ],
+      "id": "782007ea-d789-442c-b44d-fc34e737e467",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "getAll",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "projectId": "24497029",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Gitlab10",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        870,
+        490
+      ],
+      "id": "b441f646-eaef-41b8-934a-d349ae7563b5",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "update",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "projectId": "24497029",
+        "tag_name": "={{$node[\"Gitlab7\"].json[\"tag_name\"]}}",
+        "additionalFields": {
+          "name": "=Updated{{$node[\"Gitlab7\"].json[\"name\"]}}"
+        }
+      },
+      "name": "Gitlab11",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        490
+      ],
+      "id": "f2598d6c-084c-4d97-9e95-b36e1f56faa2",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "delete",
+        "owner": "nodeqa",
+        "repository": "nodemationQA",
+        "projectId": "24497029",
+        "tag_name": "={{$node[\"Gitlab7\"].json[\"tag_name\"]}}"
+      },
+      "name": "Gitlab12",
+      "type": "n8n-nodes-base.gitlab",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        490
+      ],
+      "id": "36983c2c-6114-4692-b925-279a5ec8055b",
+      "credentials": {
+        "gitlabApi": {
+          "id": "19",
+          "name": "Gitlap token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gitlab": {
+      "main": [
+        [
+          {
+            "node": "Gitlab1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Gitlab",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gitlab2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gitlab7",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gitlab8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab2": {
+      "main": [
+        [
+          {
+            "node": "Gitlab3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab3": {
+      "main": [
+        [
+          {
+            "node": "Gitlab4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab4": {
+      "main": [
+        [
+          {
+            "node": "Gitlab5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab5": {
+      "main": [
+        [
+          {
+            "node": "Gitlab6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab7": {
+      "main": [
+        [
+          {
+            "node": "Gitlab9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab9": {
+      "main": [
+        [
+          {
+            "node": "Gitlab10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab10": {
+      "main": [
+        [
+          {
+            "node": "Gitlab11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gitlab11": {
+      "main": [
+        [
+          {
+            "node": "Gitlab12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "pinData": {},
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

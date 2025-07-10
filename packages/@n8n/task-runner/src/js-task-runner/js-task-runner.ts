@@ -1,7 +1,14 @@
+import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject, Expression } from 'n8n-workflow';
+import {
+	WorkflowDataProxy,
+	Workflow,
+	ObservableObject,
+	Expression,
+	jsonStringify,
+} from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -19,20 +26,19 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { inspect } from 'node:util';
 import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import type { TaskParams } from '@/task-runner';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import { noOp, TaskRunner } from '@/task-runner';
+import type { TaskParams } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
@@ -89,6 +95,8 @@ export class JsTaskRunner extends TaskRunner {
 
 	private readonly taskDataReconstruct = new DataRequestResponseReconstruct();
 
+	private readonly mode: 'secure' | 'insecure' = 'secure';
+
 	constructor(config: MainConfig, name = 'JS Task Runner') {
 		super({
 			taskType: 'javascript',
@@ -98,22 +106,46 @@ export class JsTaskRunner extends TaskRunner {
 		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
-			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
+			moduleList === '*'
+				? '*'
+				: new Set(
+						moduleList
+							.split(',')
+							.map((x) => x.trim())
+							.filter((x) => x !== ''),
+					);
+
+		const allowedBuiltInModules = parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? '');
+		const allowedExternalModules = parseModuleAllowList(
+			jsRunnerConfig.allowedExternalModules ?? '',
+		);
+		this.mode = jsRunnerConfig.insecureMode ? 'insecure' : 'secure';
 
 		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
-			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
+			allowedBuiltInModules,
+			allowedExternalModules,
 		});
 
-		this.preventPrototypePollution();
+		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
 	}
 
-	private preventPrototypePollution() {
-		// Freeze globals, except for Jest
+	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
+		if (allowedExternalModules instanceof Set) {
+			// This is a workaround to enable the allowed external libraries to mutate
+			// prototypes directly. For example momentjs overrides .toString() directly
+			// on the Moment.prototype, which doesn't work if Object.prototype has been
+			// frozen. This works as long as the overrides are done when the library is
+			// imported.
+			for (const module of allowedExternalModules) {
+				require(module);
+			}
+		}
+
+		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
 		if (process.env.NODE_ENV !== 'test') {
 			Object.getOwnPropertyNames(globalThis)
 				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				.map((name) => globalThis[name])
 				.filter((value) => typeof value === 'function')
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
@@ -224,14 +256,15 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const preventPrototypeManipulation =
-					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
+				let taskResult: Promise<TaskResultData['result']>;
 
-				const taskResult = runInContext(
-					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-					context,
-					{ timeout: this.taskTimeout * 1000 },
-				) as Promise<TaskResultData['result']>;
+				if (this.mode === 'secure') {
+					taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+						timeout: this.taskTimeout * 1000,
+					}) as Promise<TaskResultData['result']>;
+				} else {
+					taskResult = this.runDirectly<TaskResultData['result']>(settings.code, context);
+				}
 
 				void taskResult
 					.then(resolve)
@@ -277,10 +310,12 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
+		const context = this.buildContext(taskId, workflow, data.node);
+
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
+
+			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -290,11 +325,15 @@ export class JsTaskRunner extends TaskRunner {
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInContext(
-						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-						context,
-						{ timeout: this.taskTimeout * 1000 },
-					) as Promise<INodeExecutionData>;
+					let taskResult: Promise<INodeExecutionData>;
+
+					if (this.mode === 'secure') {
+						taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
+							timeout: this.taskTimeout * 1000,
+						}) as Promise<INodeExecutionData>;
+					} else {
+						taskResult = this.runDirectly<INodeExecutionData>(settings.code, context);
+					}
 
 					void taskResult
 						.then(resolve)
@@ -470,7 +509,11 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const formattedLogArgs = args.map((arg) => inspect(arg));
+				const formattedLogArgs = args.map((arg) => {
+					if (isObject(arg) && '__isExecutionContext' in arg) return '[[ExecutionContext]]';
+					if (typeof arg === 'string') return `'${arg}'`;
+					return jsonStringify(arg, { replaceCircularRefs: true });
+				});
 				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
 			},
 		};
@@ -489,11 +532,11 @@ export class JsTaskRunner extends TaskRunner {
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy: IWorkflowDataProxyData,
+		dataProxy?: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({
-			[inspect.custom]: () => '[[ExecutionContext]]',
+			__isExecutionContext: true,
 			require: this.requireResolver,
 			module: {},
 			console: this.buildCustomConsole(taskId),
@@ -503,5 +546,31 @@ export class JsTaskRunner extends TaskRunner {
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
 		});
+	}
+
+	private createVmExecutableCode(code: string) {
+		return [
+			// shim for `global` compatibility
+			'globalThis.global = globalThis',
+
+			// prevent prototype manipulation
+			'Object.getPrototypeOf = () => ({})',
+			'Reflect.getPrototypeOf = () => ({})',
+			'Object.setPrototypeOf = () => false',
+			'Reflect.setPrototypeOf = () => false',
+
+			// wrap user code
+			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
+		].join('; ');
+	}
+
+	private async runDirectly<T>(code: string, context: Context): Promise<T> {
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const fn = new Function(
+			'context',
+			`with(context) { return (async function() {${code}\n})(); }`,
+		);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
+		return await fn(context);
 	}
 }

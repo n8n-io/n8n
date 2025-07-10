@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "created": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastUpdated": {
+            "type": "string"
+        },
+        "profile": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
 import { awsApiRequestAllItems, awsApiRequestREST } from './GenericFunctions';
@@ -22,8 +22,8 @@ export class AwsCertificateManager implements INodeType {
 		defaults: {
 			name: 'AWS Certificate Manager',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',

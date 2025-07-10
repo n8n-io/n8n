@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "CustomerRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DepositToAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain": {
+            "type": "string"
+        },
+        "ExchangeRate": {
+            "type": "integer"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "LineEx": {
+                        "type": "object",
+                        "properties": {
+                            "any": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "declaredType": {
+                                            "type": "string"
+                                        },
+                                        "globalScope": {
+                                            "type": "boolean"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "nil": {
+                                            "type": "boolean"
+                                        },
+                                        "scope": {
+                                            "type": "string"
+                                        },
+                                        "typeSubstituted": {
+                                            "type": "boolean"
+                                        },
+                                        "value": {
+                                            "type": "object",
+                                            "properties": {
+                                                "Name": {
+                                                    "type": "string"
+                                                },
+                                                "Value": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "LinkedTxn": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "TxnId": {
+                                    "type": "string"
+                                },
+                                "TxnType": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "PaymentMethodRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "PaymentRefNum": {
+            "type": "string"
+        },
+        "ProcessPayment": {
+            "type": "boolean"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "TxnDate": {
+            "type": "string"
+        },
+        "UnappliedAmt": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

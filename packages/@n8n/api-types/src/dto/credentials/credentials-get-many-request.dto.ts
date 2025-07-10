@@ -1,6 +1,6 @@
 import { Z } from 'zod-class';
 
-import { booleanFromString } from '../../schemas/booleanFromString';
+import { booleanFromString } from '../../schemas/boolean-from-string';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
 	/**
@@ -19,4 +19,6 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * This switches `includeScopes` to true to be able to check for the scopes
 	 */
 	includeData: booleanFromString.optional(),
+
+	onlySharedWithMe: booleanFromString.optional(),
 }) {}

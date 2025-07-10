@@ -3,13 +3,14 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
+import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
-import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Get, Post, Query, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -22,7 +23,10 @@ import { MfaService } from '@/mfa/mfa.service';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import {
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -62,30 +66,33 @@ export class PasswordResetController {
 
 		// User should just be able to reset password if one is already present
 		const user = await this.userRepository.findNonShellUser(email);
+		if (!user) {
+			this.logger.debug('No user found in the system');
+			return;
+		}
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
+
 		if (
-			isSamlCurrentAuthenticationMethod() &&
-			!(
-				user?.hasGlobalScope('user:resetPassword') === true ||
-				user?.settings?.allowSSOManualLogin === true
-			)
+			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 		) {
+			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 			this.logger.debug(
-				'Request to send password reset email failed because login is handled by SAML',
+				`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
 			);
 			throw new ForbiddenError(
-				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
+				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
 			);
 		}
 
-		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
-		if (!user?.password || (ldapIdentity && user.disabled)) {
+		const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
+		if (!user.password || (ldapIdentity && user.disabled)) {
 			this.logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',
 				{ invalidEmail: email },
@@ -140,7 +147,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },
@@ -182,7 +189,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

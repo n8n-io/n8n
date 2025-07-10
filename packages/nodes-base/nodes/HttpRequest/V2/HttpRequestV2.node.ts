@@ -14,7 +14,7 @@ import {
 	NodeOperationError,
 	sleep,
 	removeCircularRefs,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -46,8 +46,8 @@ export class HttpRequestV2 implements INodeType {
 				color: '#2200DD',
 			},
 			version: 2,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'httpBasicAuth',
@@ -640,6 +640,7 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
@@ -653,6 +654,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -959,6 +964,11 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
+			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
@@ -1165,7 +1175,6 @@ export class HttpRequestV2 implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

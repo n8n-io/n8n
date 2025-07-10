@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { couponFields, couponOperations } from './CouponDescription';
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -36,8 +36,9 @@ export class Paddle implements INodeType {
 		defaults: {
 			name: 'Paddle',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'paddleApi',

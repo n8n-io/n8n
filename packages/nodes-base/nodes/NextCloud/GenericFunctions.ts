@@ -28,6 +28,8 @@ import {
 	body: object | string | Buffer,
 	headers: IDataObject = {},
 	encoding?: null | undefined,
+	headers?: IDataObject,
+	encoding?: null,
 	query?: IDataObject,
   ) {
 	const resource = this.getNodeParameter('resource', 0) as string;

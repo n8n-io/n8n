@@ -1,3 +1,4 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import type {
 	INode,
 	IConnections,
@@ -5,10 +6,11 @@ import type {
 	IRunData,
 	StartNodeData,
 	ITaskData,
+	IWorkflowBase,
+	AiAgentRequest,
 } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/interfaces';
-import type { AuthenticatedRequest, ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -22,11 +24,12 @@ export declare namespace WorkflowRequest {
 		hash: string;
 		meta: Record<string, unknown>;
 		projectId: string;
+		parentFolderId?: string;
 	}>;
 
 	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
+		workflowData: IWorkflowBase;
+		runData?: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		dirtyNodeNames?: string[];
@@ -34,17 +37,25 @@ export declare namespace WorkflowRequest {
 			name: string;
 			data?: ITaskData;
 		};
+		agentRequest?: AiAgentRequest;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & {
+			includeScopes?: string;
+			includeFolders?: string;
+			onlySharedWithMe?: string;
+		}
+	> & {
 		listQueryOptions: ListQuery.Options;
 	};
-
-	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
 		{ workflowId: string },
@@ -55,18 +66,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		ManualRunPayload,
-		{ partialExecutionVersion?: string }
-	>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
-
-	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		{ destinationProjectId: string }
-	>;
 }

@@ -1,17 +1,10 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-import * as transport from '../../../../v2/transport/discord.api';
-
-const discordApiRequestSpy = jest.spyOn(transport, 'discordApiRequest');
-
-discordApiRequestSpy.mockImplementation(async (method: string) => {
-	if (method === 'GET') {
-		return {
+describe('Test DiscordV2, message => get', () => {
+	nock('https://discord.com/api/v10')
+		.get('/channels/1168516240332034067/messages/1168777380144369718')
+		.reply(200, {
 			id: '1168777380144369718',
 			channel_id: '1168516240332034067',
 			author: {
@@ -32,44 +25,9 @@ discordApiRequestSpy.mockImplementation(async (method: string) => {
 			content: 'msg 3',
 			timestamp: '2023-10-31T05:04:02.260000+00:00',
 			type: 0,
-		};
-	}
-});
-
-describe('Test DiscordV2, message => get', () => {
-	const workflows = ['nodes/Discord/test/v2/node/message/get.workflow.json'];
-	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.resetAllMocks();
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-
-		const resultNodeData = getResultNodeData(result, testData);
-
-		resultNodeData.forEach(({ nodeName, resultData }) => {
-			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 		});
 
-		expect(discordApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(discordApiRequestSpy).toHaveBeenCalledWith(
-			'GET',
-			'/channels/1168516240332034067/messages/1168777380144369718',
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['get.workflow.json'],
+	});
 });

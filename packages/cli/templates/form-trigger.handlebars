@@ -1,15 +1,80 @@
+<!DOCTYPE html>
 <html lang='en'>
 	<head>
 		<meta charset='UTF-8' />
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+		<meta name="description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:title" content="{{formTitle}}" />
+		<meta property="og:description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:type" content="website" />
+		<meta property="og:image" content="/static/og_image.png" />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
-		<link
-			href='https://fonts.googleapis.com/css?family=Open+Sans'
-			rel='stylesheet'
-			type='text/css'
-		/>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 		<title>{{formTitle}}</title>
 		<style>
+			:root {
+				/* Fonts */
+				--font-family: "Open Sans", sans-serif;
+				--font-size-body: 12px;
+				--font-size-label: 14px;
+				--font-size-test-notice: 12px;
+				--font-size-input: 14px;
+				--font-size-header: 20px;
+				--font-size-paragraph: 14px;
+				--font-size-link: 12px;
+				--font-size-error: 12px;
+				--font-size-html-h1: 28px;
+				--font-size-html-h2: 20px;
+				--font-size-html-h3: 16px;
+				--font-size-html-h4: 14px;
+				--font-size-html-h5: 12px;
+				--font-size-html-h6: 10px;
+
+				/* Colors */
+				--color-background: #fbfcfe;
+				--color-test-notice-text: #e6a23d;
+				--color-test-notice-bg: #fefaf6;
+				--color-test-notice-border: #f6dcb7;
+				--color-card-bg: #ffffff;
+				--color-card-border: #dbdfe7;
+				--color-card-shadow: rgba(99, 77, 255, 0.06);
+				--color-link: #7e8186;
+				--color-header: #525356;
+				--color-label: #555555;
+				--color-input-border: #dbdfe7;
+				--color-input-text: #71747A;
+				--color-focus-border: rgb(90, 76, 194);
+				--color-submit-btn-bg: #ff6d5a;
+				--color-submit-btn-text: #ffffff;
+				--color-error: #ea1f30;
+				--color-required: #ff6d5a;
+				--color-clear-button-bg: #7e8186;
+				--color-html-text: #555;
+				--color-html-link: #FF6D5A;
+
+				/* Border Radii */
+				--border-radius-card: 8px;
+				--border-radius-input: 6px;
+				--border-radius-clear-btn: 50%;
+
+				/* Spacing */
+				--padding-container-top: 24px;
+				--padding-card: 24px;
+				--padding-test-notice-vertical: 12px;
+				--padding-test-notice-horizontal: 24px;
+				--margin-bottom-card: 16px;
+				--padding-form-input: 12px;
+
+				/* Dimensions */
+				--container-width: 448px;
+				--submit-btn-height: 48px;
+				--checkbox-size: 18px;
+
+				/* Others */
+				--box-shadow-card: 0px 4px 16px 0px var(--color-card-shadow);
+				--opacity-placeholder: 0.5;
+			}
+
 			*,
 			::after,
 			::before {
@@ -19,53 +84,51 @@
 			}
 
 			body {
-				font-family:
-					Open Sans,
-					sans-serif;
+				font-family: var(--font-family);
 				font-weight: 400;
-				font-size: 12px;
+				font-size: var(--font-size-body);
 				display: flex;
 				flex-direction: column;
 				justify-content: start;
-				background-color: #fbfcfe;
+				background-color: var(--color-background);
 			}
 
 			.container {
 				margin: auto;
 				text-align: center;
-				padding-top: 24px;
-				width: 448px;
+				padding-top: var(--padding-container-top);
+				width: var(--container-width);
 			}
 
 			.test-notice {
-				padding: 12px 24px;
-				color: #e6a23d;
-				background-color: #fefaf6;
-				border-radius: 8px;
-				border: 1px solid #f6dcb7;
-				font-size: 12px;
+				padding: var(--padding-test-notice-vertical) var(--padding-test-notice-horizontal);
+				color: var(--color-test-notice-text);
+				background-color: var(--color-test-notice-bg);
+				border-radius: var(--border-radius-card);
+				border: 1px solid var(--color-test-notice-border);
+				font-size: var(--font-size-test-notice);
 				font-weight: 400;
 				line-height: 16px;
 				text-align: left;
-				margin-bottom: 16px;
+				margin-bottom: var(--margin-bottom-card);
 			}
 
 			.card {
-				padding: 24px;
-				background-color: white;
-				border: 1px solid #dbdfe7;
-				border-radius: 8px;
-				box-shadow: 0px 4px 16px 0px #634dff0f;
-				margin-bottom: 16px;
+				padding: var(--padding-card);
+				background-color: var(--color-card-bg);
+				border: 1px solid var(--color-card-border);
+				border-radius: var(--border-radius-card);
+				box-shadow: var(--box-shadow-card);
+				margin-bottom: var(--margin-bottom-card);
 			}
 
 			.n8n-link {
-				padding-bottom: 24px;
+				padding-bottom: var(--padding-container-top);
 			}
 			.n8n-link a {
-				color: #7e8186;
+				color: var(--color-link);
 				font-weight: 600;
-				font-size: 12px;
+				font-size: var(--font-size-link);
 				text-decoration: none;
 			}
 
@@ -75,93 +138,93 @@
 			}
 
 			.form-header h1 {
-				color: #525356;
-				font-size: 20px;
+				color: var(--color-header);
+				font-size: var(--font-size-header);
 				font-weight: 400;
 			}
 
 			.form-header p {
 				padding-top: 8px;
-				color: #7e8186;
-				font-size: 14px;
+				color: var(--color-link);
+				font-size: var(--font-size-paragraph);
 				font-weight: 400;
 			}
 
 			.inputs-wrapper {
-				padding-top: 24px;
-				padding-bottom: 24px;
+				padding-top: var(--padding-container-top);
+				padding-bottom: var(--padding-container-top);
 			}
 
 			form label {
 				display: block;
 				text-align: left;
-				font-size: 14px;
+				font-size: var(--font-size-label);
 				font-weight: 600;
-				color: #555555;
+				color: var(--color-label);
 				padding-bottom: 6px;
 			}
 
+			form textarea {
+				max-width: 100%;
+			}
+
 			form .form-input {
-				border: 1px solid #dbdfe7;
-				border-radius: 6px;
+				border: 1px solid var(--color-input-border);
+				border-radius: var(--border-radius-input);
 				width: 100%;
-				font-size: 14px;
-				color: #71747A;
+				font-size: var(--font-size-input);
+				color: var(--color-input-text);
 				font-weight: 400;
-				padding: 12px;
+				padding: var(--padding-form-input);
 			}
 
 			form textarea:focus,
 			form input:focus {
 				outline: none;
-				border-color: rgb(90, 76, 194);
+				border-color: var(--color-focus-border);
 			}
 
 			.select-input {
-				border: 1px solid #dbdfe7;
-				border-radius: 6px;
+				border: 1px solid var(--color-input-border);
+				border-radius: var(--border-radius-input);
 			}
 
 			.select-input:focus-within {
-				border: 1px solid rgb(90, 76, 194);
+				border: 1px solid var(--color-focus-border);
 			}
 
 			form select {
 				outline: transparent;
 				border: none;
-				border-radius: 6px;
+				border-radius: var(--border-radius-input);
 				width: 100%;
-				font-size: 14px;
-				color: #71747A;
+				font-size: var(--font-size-input);
+				color: var(--color-input-text);
 				font-weight: 400;
-				background-color: white;
-				padding: 12px;
+				background-color: var(--color-card-bg);
+				padding: var(--padding-form-input);
 				border-right: 12px solid transparent;
 			}
 
 			input[type='date'] {
-				font-family:
-					Open Sans,
-					sans-serif;
+				font-family: var(--font-family);
 			}
 
 			::placeholder {
-				opacity: 0.5;
+				opacity: var(--opacity-placeholder);
 			}
 
 			#submit-btn {
 				width: 100%;
-				height: 48px;
-				padding: 12px;
-				border-radius: 6px;
+				height: var(--submit-btn-height);
+				padding: var(--padding-form-input);
+				border-radius: var(--border-radius-input);
 				border: 0;
-				font-size: 14px;
+				font-size: var(--font-size-input);
 				font-weight: 600;
-				font-family:
-					Open Sans,
-					sans-serif;
-				background-color: #ff6d5a;
-				color: #ffffff;
+				font-family: var(--font-family);
+				background-color: var(--color-submit-btn-bg);
+				color: var(--color-submit-btn-text);
 				cursor: pointer;
 			}
 
@@ -173,7 +236,7 @@
 			#submit-btn span svg {
 				display: inline-block;
 				vertical-align: middle;
-				fill: #ffffff;
+				fill: var(--color-submit-btn-text);
 				animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 			}
 
@@ -193,9 +256,9 @@
 			.error-hidden {
 				display: block;
 				position: relative;
-				color: #ea1f30;
+				color: var(--color-error);
 				text-align: left;
-				font-size: 12px;
+				font-size: var(--font-size-error);
 				font-weight: 400;
 				visibility: hidden;
 				padding-top: 6px;
@@ -219,33 +282,33 @@
 
 			.multiselect-option label {
 				padding-left: 12px;
-				color: #7e8186;
+				color: var(--color-link);
 				font-weight: 400;
 				cursor: pointer;
 			}
 
 			.multiselect-checkbox {
 				vertical-align: middle;
-				min-width: 18px;
+				min-width: var(--checkbox-size);
 			}
 
 			input[type='checkbox'] {
-				width: 18px;
-				height: 18px;
+				width: var(--checkbox-size);
+				height: var(--checkbox-size);
 				cursor: pointer;
 			}
 			/* required field ----------------------------- */
 			.form-required {
 			}
 			label.form-required::after {
-					content: ' *';
-					color: #ff6d5a;
+				content: ' *';
+				color: var(--color-required);
 			}
 
 			hr {
 				border: 0;
 				height: 1px;
-				border-top: 1px solid #dbdfe7;
+				border-top: 1px solid var(--color-input-border);
 				margin-top: 24px;
 				margin-bottom: 24px;
 				display: none;
@@ -263,14 +326,12 @@
 				right: 5px;
 				top: 50%;
 				transform: translateY(-65%);
-				background-color: #7e8186;
+				background-color: var(--color-clear-button-bg);
 				border: none;
-				border-radius: 50%;
+				border-radius: var(--border-radius-clear-btn);
 				font-size: 14px;
 				font-weight: 600;
-				font-family:
-					Open Sans,
-					sans-serif;
+				font-family: var(--font-family);
 				color: white;
 				width: 20px;
 				height: 20px;
@@ -280,12 +341,66 @@
 				display: none;
 			}
 			input[type="file"]:not(:empty) + .clear-button {
-					display: inline-block;
+				display: inline-block;
+			}
+
+			div.html {
+				text-align: left;
+				color: var(--color-html-text);
+				font-size: var(--font-size-input);
+			}
+			div.html h1, div.html h2, div.html h3, div.html h4, div.html h5, div.html h6, div.html p, div.html ul, div.html ol, div.html a {
+				font-weight: 400;
+				font-style: normal;
+				margin-bottom: 8px;
+			}
+			div.html li {
+				margin-bottom: 8px;
+				margin-left: 24px;
+			}
+			div.html ul, div.html ol {
+				font-size: var(--font-size-input);
+				display: flex;
+				flex-direction: column;
+				align-self: stretch;
+				line-height: normal;
+			}
+			div.html b {
+				font-weight: 600;
+			}
+			div.html h1 {
+				font-size: var(--font-size-html-h1);
+				line-height: 35px;
+			}
+			div.html h2 {
+				font-size: var(--font-size-html-h2);
+				line-height: 26px;
+			}
+			div.html h3 {
+				font-size: var(--font-size-html-h3);
+				line-height: 24px;
+			}
+			div.html h4 {
+				font-size: var(--font-size-html-h4);
+				line-height: 18px;
+			}
+			div.html h5 {
+				font-size: var(--font-size-html-h5);
+			}
+			div.html h6 {
+				font-size: var(--font-size-html-h6);
+			}
+			div.html p {
+				margin-bottom: 8px;
+			}
+			div.html a {
+				color: var(--color-html-link);
+				font-size: var(--font-size-input);
 			}
 
 			@media only screen and (max-width: 500px) {
 				body {
-					background-color: white;
+					background-color: var(--color-background);
 				}
 				hr {
 					display: block;
@@ -294,21 +409,26 @@
 					width: 95%;
 					min-height: 100vh;
 					padding: 24px;
-					background-color: white;
-					border: 0px solid #dbdfe7;
+					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
-					box-shadow: 0px 0px 0px 0px white;
+					box-shadow: 0px 0px 0px 0px #ffffff;
 				}
 				.card {
 					padding: 0px;
-					background-color: white;
-					border: 0px solid #dbdfe7;
+					background-color: var(--color-card-bg);
+					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
-					box-shadow: 0px 0px 0px 0px white;
+					box-shadow: 0px 0px 0px 0px #ffffff;
 					margin-bottom: 0px;
 				}
 			}
 		</style>
+
+		{{#if dangerousCustomCss}}
+			<style>
+				{{{ dangerousCustomCss }}}
+			</style>
+		{{/if}}
 	</head>
 
 	<body>
@@ -316,137 +436,130 @@
 			<section>
 				{{#if testRun}}
 					<div class='test-notice'>
-						<p>This is test version of your form</p>
+						<p>This is a test version of your form</p>
 					</div>
 					<hr>
 				{{/if}}
 
-
-
-				{{#if validForm}}
-					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
-						<div class='form-header'>
-							<h1>{{formTitle}}</h1>
-							<p style="white-space: pre-line">{{formDescription}} </p>
-						</div>
-
-						<div class='inputs-wrapper'>
-							{{#each formFields}}
-								{{#if isMultiSelect}}
-									<div>
-										<label class='form-label {{inputRequired}}'>{{label}}</label>
-										<div class='multiselect {{inputRequired}}' id='{{id}}'>
-											{{#each multiSelectOptions}}
-												<div class='multiselect-option'>
-													<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
-													<label for='{{id}}'>{{label}}</label>
-												</div>
-											{{/each}}
-										</div>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isSelect}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<div class='select-input'>
-											<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
-												<option value='' disabled selected>Select an option ...</option>
-												{{#each selectOptions}}
-													<option value='{{this}}'>{{this}}</option>
-												{{/each}}
-											</select>
-										</div>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isTextarea}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<textarea
-											class='form-input {{inputRequired}}'
-											id='{{id}}'
-											name='{{id}}'
-											placeholder="{{placeholder}}"
-										>{{defaultValue}}</textarea>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isFileInput}}
-									<div class='form-group file-input-wrapper'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<input
-											class='form-input {{inputRequired}}'
-											type='file'
-											id='{{id}}'
-											name='{{id}}'
-											accept='{{acceptFileTypes}}'
-											{{multipleFiles}}
-											placeholder="{{placeholder}}"
-										/>
-										<button class="clear-button">&times;</button>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isInput}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<input
-											class='form-input {{inputRequired}}'
-											type='{{type}}'
-											id='{{id}}'
-											name='{{id}}'
-											value="{{defaultValue}}"
-											placeholder="{{placeholder}}"
-										/>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-							{{/each}}
-						</div>
-
-						<button id='submit-btn' type='submit'>
-							<span><svg
-									xmlns='http://www.w3.org/2000/svg'
-									height='18px'
-									viewBox='0 0 512 512'
-								><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. -->
-									<path
-										d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
-									/>
-								</svg></span>
-							{{ buttonLabel }}
-						</button>
-					</form>
-				{{else}}
-					<div class='card'>
-						<div class='form-header'>
-							{{#if testRun}}
-								<h1>Please add at least one field to your form</h1>
-							{{else}}
-								<h1>Problem loading form</h1>
-								<p>
-									This usually occurs if the n8n workflow serving this form is deactivated or no
-									longer exist
-								</p>
-							{{/if}}
-						</div>
+				<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
+					<div class='form-header'>
+						<h1>{{formTitle}}</h1>
+						<p style="white-space: pre-line">{{{formDescription}}} </p>
 					</div>
-				{{/if}}
+
+					<div class='inputs-wrapper'>
+						{{#each formFields}}
+							{{#if isMultiSelect}}
+								<div>
+									<label class='form-label {{inputRequired}}'>{{label}}</label>
+									<div class='multiselect {{inputRequired}}' id='{{id}}'>
+										{{#each multiSelectOptions}}
+											<div class='multiselect-option'>
+												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
+												<label for='{{id}}'>{{label}}</label>
+											</div>
+										{{/each}}
+									</div>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isSelect}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<div class='select-input'>
+										<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
+											<option value='' disabled selected>Select an option ...</option>
+											{{#each selectOptions}}
+												<option value='{{this}}'>{{this}}</option>
+											{{/each}}
+										</select>
+									</div>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isHtml}}
+								<div class="form-group html">
+									{{{html}}}
+									<input type="hidden" id="{{id}}" name="{{id}}" value="{{html}}" />
+								</div>
+							{{/if}}
+
+							{{#if isHidden}}
+								<input type="hidden" id="{{id}}" name="{{id}}" value="{{hiddenValue}}" />
+							{{/if}}
+
+							{{#if isTextarea}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<textarea
+										class='form-input {{inputRequired}}'
+										id='{{id}}'
+										name='{{id}}'
+										placeholder="{{placeholder}}"
+									>{{defaultValue}}</textarea>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isFileInput}}
+								<div class='form-group file-input-wrapper'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<input
+										class='form-input {{inputRequired}}'
+										type='file'
+										id='{{id}}'
+										name='{{id}}'
+										accept='{{acceptFileTypes}}'
+										{{multipleFiles}}
+										placeholder="{{placeholder}}"
+									/>
+									<button class="clear-button">&times;</button>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isInput}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<input
+										class='form-input {{inputRequired}}'
+										type='{{type}}'
+										id='{{id}}'
+										name='{{id}}'
+										value="{{defaultValue}}"
+										placeholder="{{placeholder}}"
+									/>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+						{{/each}}
+					</div>
+
+					<button id='submit-btn' type='submit'>
+						<span><svg
+								xmlns='http://www.w3.org/2000/svg'
+								height='18px'
+								viewBox='0 0 512 512'
+							>
+								<path
+									d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
+								/>
+							</svg></span>
+						{{ buttonLabel }}
+					</button>
+				</form>
 
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>
@@ -497,8 +610,6 @@
 						</a>
 					</div>
 				{{/if}}
-
-
 
 				{{#if redirectUrl}}
 					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
@@ -576,12 +687,12 @@
 			const form = document.querySelector('#n8n-form');
 
 			document.querySelectorAll("input[type=number]").forEach(function (element) {
-        element.addEventListener("wheel", function(event) {
-            if (document.activeElement === event.target) {
-                event.preventDefault();
-            }
-        });
-    	});
+				element.addEventListener("wheel", function(event) {
+					if (document.activeElement === event.target) {
+						event.preventDefault();
+					}
+				});
+			});
 
 			document.querySelectorAll('input[type="file"]').forEach(fileInput => {
 				const clearButton = fileInput.nextElementSibling;
@@ -591,8 +702,8 @@
 					const files = fileInput.files;
 
 					if (files.length > 0) {
-							previousFiles = Array.from(files);
-							clearButton.style.display = 'inline-block';
+						previousFiles = Array.from(files);
+						clearButton.style.display = 'inline-block';
 					} else {
 						if (previousFiles.length > 0) {
 							const dataTransfer = new DataTransfer();
@@ -636,15 +747,65 @@
 				const errorSelector = `.error-${input.id}`;
 				const error = document.querySelector(errorSelector);
 
-        input.addEventListener("input", function(event) {
+				input.addEventListener("input", function(event) {
 					const value = input.value.trim();
 					if (value === "") {
 						error.classList.remove('error-show');
 					} else {
 						validateEmailInput(value, error);
 					}
-        });
-    	});
+				});
+			});
+
+			let interval = 1000;
+			let timeoutId;
+			let formWaitingUrl;
+
+			const checkExecutionStatus = async () => {
+				if (!interval) return;
+
+				try {
+					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
+					const text = (await response.text()).trim();
+
+					if (text === "form-waiting") {
+						window.location.replace(formWaitingUrl ?? window.location.href);
+						return;
+					}
+
+					if (text === "success") {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					if (text === "null") {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						document.querySelector('#submitted-header').textContent = 'Could not get execution status';
+						document.querySelector('#submitted-content').textContent =
+							'Make sure "Save successful production executions" is enabled in your workflow settings';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					if(["canceled", "crashed", "error" ].includes(text)) {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+						document.querySelector('#submitted-content').textContent =
+							'Please try again or contact support if the problem persists';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					interval = Math.round(interval * 1.1);
+					timeoutId = setTimeout(checkExecutionStatus, interval);
+				} catch (error) {
+					console.error("Error fetching data:", error);
+				}
+			};
 
 			form.addEventListener('submit', (e) => {
 				const valid = [];
@@ -686,16 +847,20 @@
 							}
 						}
 					}
-
 					document.querySelectorAll('.multiselect').forEach((multiselect) => {
-						const selectedValues = getSelectedValues(multiselect);
-						formData.append(multiselect.id, JSON.stringify(selectedValues));
-					});
-
+ 						const selectedValues = getSelectedValues(multiselect);
+ 						formData.append(multiselect.id, JSON.stringify(selectedValues));
+ 					});
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
-					fetch('', {
+
+					let postUrl = '';
+					if (!window.location.href.includes('form-waiting')) {
+						postUrl = window.location.search;
+					}
+
+					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
 					})
@@ -710,17 +875,37 @@
 									json = JSON.parse(text);
 								} catch (e) {}
 
+								if(json?.formWaitingUrl) {
+									formWaitingUrl = json.formWaitingUrl;
+									clearTimeout(timeoutId);
+									timeoutId = setTimeout(checkExecutionStatus, interval);
+									return;
+								}
+
 								if (json?.redirectURL) {
 									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
 									window.location.replace(url);
-								} else if (json?.formSubmittedText) {
+									return;
+								}
+
+								if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
-								} else {
-									document.body.innerHTML = text;
+									return;
 								}
-								return;
+
+								if (text) {
+									document.body.innerHTML = text;
+									return;
+								}
+
+								if (text === '') {
+									// this is empty cleanup response from responsePromise
+									// no need to keep checking execution status
+									clearTimeout(timeoutId);
+									interval = 0;
+								}
 							}
 
 							if (response.status === 200) {
@@ -747,19 +932,13 @@
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
-						});
-
-					const isWaitingForm = window.location.href.includes('form-waiting');
-					if(isWaitingForm) {
-						const interval = setInterval(function() {
-							const isSubmited = document.querySelector('#submitted-form').style.display;
-							if(isSubmited === 'block') {
-								clearInterval(interval);
-								return;
+						})
+						.finally(() => {
+							if (window.location.href.includes('form-waiting')) {
+								clearTimeout(timeoutId);
+								timeoutId = setTimeout(checkExecutionStatus, interval);
 							}
-							window.location.reload();
-						}, 2000);
-					}
+						});
 				}
 			});
 		</script>

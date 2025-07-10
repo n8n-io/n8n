@@ -7,6 +7,9 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
+const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+const getEditor = () => getParameter().find('.cm-content').should('exist');
+
 describe('Code node', () => {
 	describe('Code editor', () => {
 		beforeEach(() => {
@@ -40,15 +43,28 @@ describe('Code node', () => {
 			successToast().contains('Node executed successfully');
 		});
 
-		it('should show lint errors in `runOnceForAllItems` mode', () => {
-			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
-			const getEditor = () => getParameter().find('.cm-content').should('exist');
+		it('should allow switching between sibling code nodes', () => {
+			// Setup
+			getEditor().type('{selectall}').paste("console.log('code node 1')");
+			ndv.actions.close();
+			WorkflowPage.actions.addNodeToCanvas('Code', true, true);
+			getEditor().type('{selectall}').paste("console.log('code node 2')");
+			ndv.actions.close();
 
+			WorkflowPage.actions.openNode('Code');
+			ndv.actions.clickFloatingNode('Code1');
+			getEditor().should('have.text', "console.log('code node 2')");
+
+			ndv.actions.clickFloatingNode('Code');
+			getEditor().should('have.text', "console.log('code node 1')");
+		});
+
+		it('should show lint errors in `runOnceForAllItems` mode', () => {
 			getEditor()
 				.type('{selectall}')
 				.paste(`$input.itemMatching()
 $input.item
-$('When clicking ‘Test workflow’').item
+$('When clicking ‘Execute workflow’').item
 $input.first(1)
 
 for (const item of $input.all()) {
@@ -66,9 +82,6 @@ return
 		});
 
 		it('should show lint errors in `runOnceForEachItem` mode', () => {
-			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
-			const getEditor = () => getParameter().find('.cm-content').should('exist');
-
 			ndv.getters.parameterInput('mode').click();
 			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 			getEditor()
@@ -154,8 +167,9 @@ return []
 				const askAiReq = cy.wait('@ask-ai');
 
 				askAiReq.its('request.body').should('have.keys', ['question', 'context', 'forNode']);
-
-				askAiReq.its('context').should('have.keys', ['schema', 'ndvPushRef', 'pushRef']);
+				askAiReq
+					.its('context')
+					.should('have.keys', ['schema', 'ndvPushRef', 'pushRef', 'inputSchema']);
 
 				cy.contains('Code generation completed').should('be.visible');
 				cy.getByTestId('code-node-tab-code').should('contain.text', 'console.log("Hello World")');
@@ -166,7 +180,11 @@ return []
 				{ code: 400, message: 'Code generation failed due to an unknown reason' },
 				{ code: 413, message: 'Your workflow data is too large for AI to process' },
 				{ code: 429, message: "We've hit our rate limit with our AI partner" },
-				{ code: 500, message: 'Code generation failed due to an unknown reason' },
+				{
+					code: 500,
+					message:
+						'Code generation failed with error: Request failed with status code 500. Try again in a few minutes',
+				},
 			];
 
 			handledCodes.forEach(({ code, message }) => {

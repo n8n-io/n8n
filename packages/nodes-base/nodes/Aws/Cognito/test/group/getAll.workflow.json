@@ -1,0 +1,89 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"returnAll": true,
+				"includeUsers": true,
+				"requestOptions": {}
+			},
+			"id": "f1d96de9-a43f-4452-8760-94fc13990e0b",
+			"name": "getAllGroups",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [460, 360],
+			"alwaysOutputData": true,
+			"credentials": {
+				"aws": {
+					"id": "testId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getAllGroups": [
+			{
+				"json": {
+					"CreationDate": 1732740693.563,
+					"Description": "Updated",
+					"GroupName": "MyNewGroup",
+					"LastModifiedDate": 1733422336.443,
+					"Precedence": 0,
+					"RoleArn": "arn:aws:iam::123456789012:group/Admins",
+					"UserPoolId": "eu-central-1_KkXQgdCJv",
+					"Users": []
+				}
+			},
+			{
+				"json": {
+					"CreationDate": 1733424987.825,
+					"Description": "Updated description",
+					"GroupName": "MyNewTesttttt",
+					"LastModifiedDate": 1741609241.742,
+					"Precedence": 5,
+					"UserPoolId": "eu-central-1_KkXQgdCJv",
+					"Users": []
+				}
+			},
+			{
+				"json": {
+					"CreationDate": 1733398042.783,
+					"Description": "test",
+					"GroupName": "MyNewTest1",
+					"LastModifiedDate": 1733691256.447,
+					"Precedence": 5,
+					"UserPoolId": "eu-central-1_KkXQgdCJv",
+					"Users": []
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllGroups",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

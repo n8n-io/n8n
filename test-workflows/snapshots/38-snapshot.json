@@ -1,0 +1,107 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1676891387033,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Medium": [
+          {
+            "startTime": 1676891387034,
+            "executionTime": 642,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "537ba1e07580",
+                      "title": "Medium node TestQA Draft Mon, 20 Feb 2023 11:09:47 GMT",
+                      "authorId": "14cdac018d33eefeb5cc1a5acbb70b7a7baea3b748f4a7183f782fb3dcac8b393",
+                      "url": "https://medium.com/@nodeqa/537ba1e07580",
+                      "canonicalUrl": "",
+                      "publishStatus": "draft",
+                      "license": "",
+                      "licenseUrl": "https://policy.medium.com/medium-terms-of-service-9db0094a1e0f",
+                      "tags": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Medium1": [
+          {
+            "startTime": 1676891387677,
+            "executionTime": 430,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "f639e888aee4",
+                      "name": "TestPublication[n8n]",
+                      "description": "test",
+                      "url": "https://medium.com/testpublication-n8n",
+                      "imageUrl": "https://cdn-images-1.medium.com/fit/c/400/400/1*F027-8q7ncDC6CAC5c4ong.png"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Medium1"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-02-20T11:09:47.032Z",
+  "stoppedAt": "2023-02-20T11:09:48.107Z",
+  "status": "running",
+  "finished": true
+}

@@ -1,3 +1,4 @@
+import * as ndvComposables from '../composables/ndv';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
@@ -71,39 +72,35 @@ describe('NDV', () => {
 		ndv.getters
 			.outputRunSelector()
 			.find('input')
-			.should('exist')
+			.should('be.visible')
 			.should('have.value', '2 of 2 (6 items)');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
 
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
-		ndv.getters.outputHoveringItem().should('not.exist');
+		// Default hover state should have first item from input node highlighted
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyInputHoverState('1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
+		// Select different input node and check that the hover state is updated
 		ndv.actions.selectInputNode('Set1');
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
+		ndvComposables.verifyInputHoverState('1000');
 
-		ndv.getters.inputTableRow(1).should('have.text', '1000');
+		ndvComposables.hoverInputItemByText('1000');
+		ndvComposables.verifyOutputHoverState('1000');
 
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-
-		ndv.actions.dragMainPanelToRight();
-		ndv.getters.inputTbodyCell(1, 0).realMouseMove(10, 1);
-		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
 		ndv.actions.selectInputNode('Sort');
-		ndv.actions.dragMainPanelToLeft();
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
 
-		ndv.getters.inputTableRow(1).should('have.text', '1111');
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyInputHoverState('1111');
 
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
-		ndv.actions.dragMainPanelToRight();
-		ndv.getters.inputTbodyCell(1, 0).realMouseMove(10, 1);
-		ndv.getters.outputHoveringItem().should('have.text', '1111');
+		ndvComposables.hoverInputItemByText('1111');
+		ndvComposables.verifyOutputHoverState('1111');
+
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 	});
 
@@ -117,6 +114,15 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
+
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
 
 		ndv.getters
 			.inputRunSelector()
@@ -243,38 +249,38 @@ describe('NDV', () => {
 		// biome-ignore format:
 		const PINNED_DATA = [
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
-					}
-				]
+						id: 'abc',
+					},
+				],
 			},
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
+						id: 'abc',
 					},
 					{
-						"id": "abc"
+						id: 'abc',
 					},
 					{
-						"id": "abc"
-					}
-				]
+						id: 'abc',
+					},
+				],
 			},
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
-					}
-				]
-			}
+						id: 'abc',
+					},
+				],
+			},
 		];
 		workflowPage.actions.openNode('Get thread details1');
 		ndv.actions.pastePinnedData(PINNED_DATA);
@@ -284,6 +290,13 @@ describe('NDV', () => {
 		workflowPage.actions.openNode('Switch1');
 		ndv.actions.execute();
 
-		ndv.getters.parameterExpressionPreview('output').should('include.text', '1');
+		ndv.getters.parameterExpressionPreview('output').should('have.text', '1');
+		ndv.getters.inlineExpressionEditorInput().click();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '3');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
 	});
 });

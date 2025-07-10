@@ -6,7 +6,7 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'complete valid login request',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaCode: '123456',
 				},
@@ -14,14 +14,14 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'login request without optional MFA',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 				},
 			},
 			{
 				name: 'login request with both mfaCode and mfaRecoveryCode',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaCode: '123456',
 					mfaRecoveryCode: 'recovery-code-123',
@@ -30,7 +30,7 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'login request with only mfaRecoveryCode',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaRecoveryCode: 'recovery-code-123',
 				},
@@ -44,42 +44,34 @@ describe('LoginRequestDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
-				name: 'invalid email',
+				name: 'invalid emailOrLdapLoginId',
 				request: {
-					email: 'invalid-email',
+					emailOrLdapLoginId: 0,
 					password: 'securePassword123',
 				},
-				expectedErrorPath: ['email'],
+				expectedErrorPath: ['emailOrLdapLoginId'],
 			},
 			{
 				name: 'empty password',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: '',
 				},
 				expectedErrorPath: ['password'],
 			},
 			{
-				name: 'missing email',
+				name: 'missing emailOrLdapLoginId',
 				request: {
 					password: 'securePassword123',
 				},
-				expectedErrorPath: ['email'],
+				expectedErrorPath: ['emailOrLdapLoginId'],
 			},
 			{
 				name: 'missing password',
 				request: {
-					email: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 				},
 				expectedErrorPath: ['password'],
-			},
-			{
-				name: 'whitespace in email and password',
-				request: {
-					email: '  test@example.com  ',
-					password: '  securePassword123  ',
-				},
-				expectedErrorPath: ['email'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = LoginRequestDto.safeParse(request);

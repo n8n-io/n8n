@@ -1,0 +1,336 @@
+{
+  "createdAt": "2021-07-02T07:59:24.159Z",
+  "updatedAt": "2021-07-09T10:56:03.728Z",
+  "id": "222",
+  "name": "Lemlist:Lead:create get unsubscribe delete:Campaign:getAll:Activity:getAll:Team:get:Unsubscribe:add getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "3fd92007-e246-4af4-a0bd-af520944645a"
+    },
+    {
+      "parameters": {
+        "limit": 1,
+        "filters": {
+          "campaignId": "={{$node[\"Lemlist1\"].json[\"_id\"]}}"
+        }
+      },
+      "name": "Lemlist",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        590,
+        300
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "487b4ba3-99b4-468f-b462-d0c7afb9c13f"
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "limit": 1
+      },
+      "name": "Lemlist1",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "7d261b8d-cff1-4d87-b356-7a4f3be78428"
+    },
+    {
+      "parameters": {
+        "resource": "team"
+      },
+      "name": "Lemlist2",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        450,
+        150
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "df32604f-1d9a-4a7f-9add-1b154962f7ac"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "campaignId": "={{$node[\"Lemlist1\"].json[\"_id\"]}}",
+        "email": "=fake{{Date.now()}}@gmail.com",
+        "additionalFields": {}
+      },
+      "name": "Lemlist3",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        600,
+        150
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "1432df44-c5b6-4637-a3f2-379e34f75fae"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "get",
+        "email": "={{$node[\"Lemlist3\"].json[\"email\"]}}"
+      },
+      "name": "Lemlist4",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        750,
+        150
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "ded2cabd-92e8-4881-ab92-a469efccaef1"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "unsubscribe",
+        "campaignId": "={{$node[\"Lemlist1\"].json[\"_id\"]}}",
+        "email": "={{$node[\"Lemlist3\"].json[\"email\"]}}"
+      },
+      "name": "Lemlist5",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        900,
+        150
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "de9bdf0c-0f64-4d90-bd11-4f11fb1e7184"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "delete",
+        "campaignId": "={{$node[\"Lemlist1\"].json[\"_id\"]}}",
+        "email": "={{$node[\"Lemlist3\"].json[\"email\"]}}"
+      },
+      "name": "Lemlist6",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        150
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "364bf6ff-2417-46b0-a0ee-5a4727cf7228"
+    },
+    {
+      "parameters": {
+        "resource": "unsubscribe",
+        "email": "=fakeemail{{Date.now()}}@mail.test"
+      },
+      "name": "Lemlist7",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        450,
+        450
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "2d0091c7-b0d9-43ff-b523-7e31bd14c872"
+    },
+    {
+      "parameters": {
+        "resource": "unsubscribe",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Lemlist9",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        600,
+        450
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "a9b87222-01ce-42d8-9d58-21c82f3fd2eb"
+    },
+    {
+      "parameters": {
+        "resource": "unsubscribe",
+        "operation": "delete",
+        "email": "={{$node[\"Lemlist7\"].json[\"email\"]}}"
+      },
+      "name": "Lemlist10",
+      "type": "n8n-nodes-base.lemlist",
+      "typeVersion": 1,
+      "position": [
+        750,
+        450
+      ],
+      "credentials": {
+        "lemlistApi": {
+          "id": "215",
+          "name": "Lemlist API creds"
+        }
+      },
+      "id": "d967d1a8-66ac-46f7-9930-10509859fe1c"
+    }
+  ],
+  "connections": {
+    "Lemlist": {
+      "main": [
+        []
+      ]
+    },
+    "Lemlist1": {
+      "main": [
+        [
+          {
+            "node": "Lemlist",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lemlist3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist3": {
+      "main": [
+        [
+          {
+            "node": "Lemlist4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist4": {
+      "main": [
+        [
+          {
+            "node": "Lemlist5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist5": {
+      "main": [
+        [
+          {
+            "node": "Lemlist6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Lemlist1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lemlist2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lemlist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist7": {
+      "main": [
+        [
+          {
+            "node": "Lemlist9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lemlist9": {
+      "main": [
+        [
+          {
+            "node": "Lemlist10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

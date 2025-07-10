@@ -1,0 +1,220 @@
+{
+  "createdAt": "2021-03-03T09:55:59.197Z",
+  "updatedAt": "2021-03-03T09:56:30.684Z",
+  "id": "90",
+  "name": "Date&Time:formatDate",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "9f4c1cf1-66f7-4a2e-86a3-0ef54cff1666"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "c1251fbd-cd97-4d51-bbf0-4ecce33e588a"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "toFormat": "YYYY/MM/DD",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time1",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "id": "57ab6614-af49-4555-8158-11ee5771b2e7"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "toFormat": "MMMM DD YYYY",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time2",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "bf0a4b07-62ce-4234-8dfe-a2f582d40bd8"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "toFormat": "MM-DD-YYYY",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time3",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "id": "8b429a06-bce9-49d0-9277-038bc06c8463"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "toFormat": "YYYY-MM-DD",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time4",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "id": "8e0681ff-dd9f-4e6d-83cf-18a1e72fe1e1"
+    },
+    {
+      "parameters": {
+        "value": "1614764492648",
+        "toFormat": "X",
+        "options": {
+          "fromFormat": "x"
+        }
+      },
+      "name": "Date & Time5",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        300
+      ],
+      "id": "4917a56c-7455-4354-a018-cec74552e203"
+    },
+    {
+      "parameters": {
+        "functionCode": "\n// mm/dd/yyyy\nif($node[\"Date & Time\"].json[\"data\"] !== \"03/03/2021\")\n{\n    throw new Error(\"Error convert date to mm/dd/yyyy\");\n}\n// yyyy/mm/dd\nif($node[\"Date & Time1\"].json[\"data\"] !== \"2021/03/03\")\n{\n    throw new Error(\"Error convert date to yyyy/mm/dd\");\n}\n// mmmm dd yyyy\nif($node[\"Date & Time2\"].json[\"data\"] !== \"March 03 2021\")\n{\n    throw new Error(\"Error convert date to mmmm dd yyyy\");\n}\n// mm-dd-yyyy\nif($node[\"Date & Time3\"].json[\"data\"] !== \"03-03-2021\")\n{\n    throw new Error(\"Error convert date to mm-dd-yyyy\");\n}\n// yyyy-mm-dd\nif($node[\"Date & Time4\"].json[\"data\"] !== \"2021-03-03\")\n{   \n    throw new Error(\"Error convert date to yyyy-mm-dd\");\n}\n// unix timestamp\nif($node[\"Date & Time5\"].json[\"data\"] !== \"1614764492\")\n{   \n    throw new Error(\"Error convert date to unix timestamp\");\n}\nreturn items;"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        300
+      ],
+      "id": "fe192bd8-40ce-4b2d-b467-837c1c208ee3"
+    }
+  ],
+  "connections": {
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Date & Time1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time1": {
+      "main": [
+        [
+          {
+            "node": "Date & Time2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time2": {
+      "main": [
+        [
+          {
+            "node": "Date & Time3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time3": {
+      "main": [
+        [
+          {
+            "node": "Date & Time4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time4": {
+      "main": [
+        [
+          {
+            "node": "Date & Time5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time5": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

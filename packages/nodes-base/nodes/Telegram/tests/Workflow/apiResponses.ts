@@ -397,3 +397,41 @@ export const getMemberResponse = {
 		is_anonymous: false,
 	},
 };
+
+export const sendMessageWithBinaryDataAndReplyMarkupResponse = {
+	ok: true,
+	result: {
+		message_id: 123,
+		from: {
+			id: 1234578901,
+			is_bot: true,
+			first_name: 'TestBot',
+			username: 'TestBot',
+		},
+		chat: {
+			id: 987654321,
+			first_name: 'Some',
+			last_name: 'Guy',
+			username: 'SomeGuy',
+			type: 'private',
+		},
+		date: 1750195377,
+		document: {
+			file_name: 'file.json',
+			mime_type: 'application/json',
+			file_id: 'BQACAgIAAxkDAANFaFHcsX7_6XEYxKTw3Y93hBKxdPEAAm1_AAJ3NpBKL3xbHXAyvIU2BA',
+			file_unique_id: 'AgADbX8AAnc2kEo',
+			file_size: 24,
+		},
+		reply_markup: {
+			inline_keyboard: [
+				[
+					{
+						text: 'Test Button',
+						callback_data: '123',
+					},
+				],
+			],
+		},
+	},
+};

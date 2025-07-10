@@ -1,6 +1,9 @@
+import { Logger } from '@n8n/backend-common';
+import type { WebhookEntity } from '@n8n/db';
+import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { HookContext, WebhookContext, Logger } from 'n8n-core';
-import { ApplicationError, Node, NodeHelpers } from 'n8n-workflow';
+import { HookContext, WebhookContext } from 'n8n-core';
+import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -14,12 +17,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import type { WebhookEntity } from '@/databases/entities/webhook-entity';
-import { WebhookRepository } from '@/databases/repositories/webhook.repository';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
-type Method = NonNullable<IHttpRequestMethods>;
+import type { Method } from './webhook.types';
 
 @Service()
 export class WebhookService {
@@ -31,29 +32,32 @@ export class WebhookService {
 	) {}
 
 	async populateCache() {
-		const allWebhooks = await this.webhookRepository.find();
+		const staticWebhooks = await this.webhookRepository.getStaticWebhooks();
 
-		if (!allWebhooks) return;
+		if (staticWebhooks.length === 0) return;
 
-		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
+		void this.cacheService.setMany(staticWebhooks.map((w) => [w.cacheKey, w]));
+	}
+
+	async findAll() {
+		return await this.webhookRepository.find();
 	}
 
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedWebhook = await this.cacheService.get(cacheKey);
+		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
 
-		if (cachedWebhook) return this.webhookRepository.create(cachedWebhook);
+		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
-		let dbWebhook = await this.findStaticWebhook(method, path);
+		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
-		if (dbWebhook === null) {
-			dbWebhook = await this.findDynamicWebhook(method, path);
+		if (dbStaticWebhook) {
+			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			return dbStaticWebhook;
 		}
 
-		void this.cacheService.set(cacheKey, dbWebhook);
-
-		return dbWebhook;
+		return await this.findDynamicWebhook(method, path);
 	}
 
 	/**
@@ -133,6 +137,17 @@ export class WebhookService {
 		return await this.webhookRepository
 			.find({ select: ['method'], where: { webhookPath: path } })
 			.then((rows) => rows.map((r) => r.method));
+	}
+
+	private isDynamicPath(rawPath: string) {
+		const firstSlashIndex = rawPath.indexOf('/');
+		const path = firstSlashIndex !== -1 ? rawPath.substring(firstSlashIndex + 1) : rawPath;
+
+		// if dynamic, first segment is webhook ID so disregard it
+
+		if (path === '' || path === ':' || path === '/:') return false;
+
+		return path.startsWith(':') || path.includes('/:');
 	}
 
 	/**
@@ -228,7 +243,8 @@ export class WebhookService {
 			}
 
 			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+
+			if (this.isDynamicPath(path) && node.webhookId) {
 				webhookId = node.webhookId;
 			}
 
@@ -321,7 +337,7 @@ export class WebhookService {
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType.webhook === undefined) {
-			throw new ApplicationError('Node does not have any webhooks defined', {
+			throw new UnexpectedError('Node does not have any webhooks defined', {
 				extra: { nodeName: node.name },
 			});
 		}

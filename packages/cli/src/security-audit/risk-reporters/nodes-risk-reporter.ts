@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import glob from 'fast-glob';
+import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
@@ -24,7 +24,7 @@ export class NodesRiskReporter implements RiskReporter {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	async report(workflows: WorkflowEntity[]) {
+	async report(workflows: IWorkflowBase[]) {
 		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
 			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
 		);

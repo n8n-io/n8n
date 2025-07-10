@@ -40,7 +40,6 @@ export const describeCommonTests = (
 		executeData: IExecuteData;
 	},
 ) => {
-	// @ts-expect-error `additionalData` is private
 	const additionalData = context.additionalData as MockProxy<IWorkflowExecuteAdditionalData>;
 
 	describe('getExecutionCancelSignal', () => {

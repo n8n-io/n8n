@@ -16,7 +16,7 @@ class HealthConfig {
 
 	/** IP address for worker server to listen on. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
-	address: string = '0.0.0.0';
+	address: string = '::';
 }
 
 @Config
@@ -52,6 +52,10 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	/** Whether to enable dual-stack hostname resolution for Redis connections. */
+	@Env('QUEUE_BULL_REDIS_DUALSTACK')
+	dualStack: boolean = false;
 }
 
 @Config

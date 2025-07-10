@@ -5,7 +5,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as fromFile from './fromFile.operation';
 import * as toFile from './toFile.operation';
@@ -22,8 +22,8 @@ export class SpreadsheetFileV2 implements INodeType {
 				name: 'Spreadsheet File',
 				color: '#2244FF',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [operationProperty, ...fromFile.description, ...toFile.description],
 		};
 	}

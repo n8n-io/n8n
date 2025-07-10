@@ -1,23 +1,23 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
+import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
-import type { IRun, ITaskData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import config from '../config';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -28,9 +28,88 @@ import type {
 
 const re = /\d+/;
 
-export class ExecuteBatch extends BaseCommand {
-	static description = '\nExecutes multiple workflows once';
+interface ISkipList {
+	workflowId: string;
+	status: string;
+	skipReason: string;
+	ticketReference: string;
+}
 
+const flagsSchema = z.object({
+	debug: z
+		.boolean()
+		.describe('Toggles on displaying all errors and debug messages.')
+		.default(false),
+	ids: z
+		.string()
+		.describe(
+			'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
+		)
+		.optional(),
+	concurrency: z
+		.number()
+		.int()
+		.default(1)
+		.describe('How many workflows can run in parallel. Defaults to 1 which means no concurrency.'),
+	output: z
+		.string()
+		.describe(
+			'Enable execution saving, You must inform an existing folder to save execution via this param',
+		)
+		.optional(),
+	snapshot: z
+		.string()
+		.describe(
+			'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
+		)
+		.optional(),
+	compare: z
+		.string()
+		.describe(
+			'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
+		)
+		.optional(),
+	shallow: z
+		.boolean()
+		.describe(
+			'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
+		)
+		.optional(),
+	githubWorkflow: z
+		.boolean()
+		.describe(
+			'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
+		)
+		.optional(),
+	skipList: z
+		.string()
+		.describe('File containing a comma separated list of workflow IDs to skip.')
+		.optional(),
+	retries: z
+		.number()
+		.int()
+		.default(1)
+		.describe('Retries failed workflows up to N tries. Default is 1. Set 0 to disable.'),
+	shortOutput: z
+		.boolean()
+		.describe('Omits the full execution information from output, displaying only summary.')
+		.optional(),
+});
+
+@Command({
+	name: 'execute-batch',
+	description: 'Executes multiple workflows once',
+	examples: [
+		'',
+		'--concurrency=10 --skipList=/data/skipList.json',
+		'--debug --output=/data/output.json',
+		'--ids=10,13,15 --shortOutput',
+		'--snapshot=/data/snapshots --shallow',
+		'--compare=/data/previousExecutionData --retries=2',
+	],
+	flagsSchema,
+})
+export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 	static cancelled = false;
 
 	static workflowExecutionsProgress: IWorkflowExecutionProgress[][];
@@ -51,66 +130,11 @@ export class ExecuteBatch extends BaseCommand {
 
 	static instanceOwner: User;
 
-	static examples = [
-		'$ n8n executeBatch',
-		'$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt',
-		'$ n8n executeBatch --debug --output=/data/output.json',
-		'$ n8n executeBatch --ids=10,13,15 --shortOutput',
-		'$ n8n executeBatch --snapshot=/data/snapshots --shallow',
-		'$ n8n executeBatch --compare=/data/previousExecutionData --retries=2',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		debug: Flags.boolean({
-			description: 'Toggles on displaying all errors and debug messages.',
-		}),
-		ids: Flags.string({
-			description:
-				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
-		}),
-		concurrency: Flags.integer({
-			default: 1,
-			description:
-				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
-		}),
-		output: Flags.string({
-			description:
-				'Enable execution saving, You must inform an existing folder to save execution via this param',
-		}),
-		snapshot: Flags.string({
-			description:
-				'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
-		}),
-		compare: Flags.string({
-			description:
-				'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
-		}),
-		shallow: Flags.boolean({
-			description:
-				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
-		}),
-
-		githubWorkflow: Flags.boolean({
-			description:
-				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
-		}),
-
-		skipList: Flags.string({
-			description: 'File containing a comma separated list of workflow IDs to skip.',
-		}),
-		retries: Flags.integer({
-			description: 'Retries failed workflows up to N tries. Default is 1. Set 0 to disable.',
-			default: 1,
-		}),
-		shortOutput: Flags.boolean({
-			description: 'Omits the full execution information from output, displaying only summary.',
-		}),
-	};
-
 	static aliases = ['executeBatch'];
 
 	override needsCommunityPackages = true;
+
+	override needsTaskRunner = true;
 
 	/**
 	 * Gracefully handles exit.
@@ -173,7 +197,7 @@ export class ExecuteBatch extends BaseCommand {
 
 	// eslint-disable-next-line complexity
 	async run() {
-		const { flags } = await this.parse(ExecuteBatch);
+		const { flags } = this;
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
@@ -243,12 +267,15 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(
-					...contents
-						.trimEnd()
-						.split(',')
-						.filter((id) => re.exec(id)),
-				);
+				try {
+					const parsedSkipList = JSON.parse(contents) as ISkipList[];
+					parsedSkipList.forEach((item) => {
+						skipIds.push(item.workflowId);
+					});
+				} catch (error) {
+					this.logger.error('Skip list file is not a valid JSON. Exiting.');
+					return;
+				}
 			} else {
 				this.logger.error('Skip list file not found. Exiting.');
 				return;
@@ -275,7 +302,7 @@ export class ExecuteBatch extends BaseCommand {
 			query.andWhere('workflows.id not in (:...skipIds)', { skipIds });
 		}
 
-		const allWorkflows = (await query.getMany()) as IWorkflowDb[];
+		const allWorkflows = (await query.getMany()) as IWorkflowBase[];
 
 		if (ExecuteBatch.debug) {
 			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
@@ -333,9 +360,8 @@ export class ExecuteBatch extends BaseCommand {
 		await this.stopProcess(true);
 
 		if (results.summary.failedExecutions > 0) {
-			this.exit(1);
+			process.exit(1);
 		}
-		this.exit(0);
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {
@@ -378,7 +404,7 @@ export class ExecuteBatch extends BaseCommand {
 		});
 	}
 
-	private async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
+	private async runTests(allWorkflows: IWorkflowBase[]): Promise<IResult> {
 		const result: IResult = {
 			totalWorkflows: allWorkflows.length,
 			slackMessage: '',
@@ -401,7 +427,7 @@ export class ExecuteBatch extends BaseCommand {
 			const promisesArray = [];
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
-					let workflow: IWorkflowDb | undefined;
+					let workflow: IWorkflowBase | undefined;
 					while (allWorkflows.length > 0) {
 						workflow = allWorkflows.shift();
 						if (ExecuteBatch.cancelled) {
@@ -473,7 +499,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new ApplicationError('Wrong execution status - cannot proceed');
+								throw new UnexpectedError('Wrong execution status - cannot proceed');
 							}
 						});
 					}
@@ -563,7 +589,7 @@ export class ExecuteBatch extends BaseCommand {
 		}
 	}
 
-	async startThread(workflowData: IWorkflowDb): Promise<IExecutionResult> {
+	async startThread(workflowData: IWorkflowBase): Promise<IExecutionResult> {
 		// This will be the object returned by the promise.
 		// It will be updated according to execution progress below.
 		const executionResult: IExecutionResult = {
@@ -610,6 +636,13 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.warn('`executeBatch` does not support queue mode. Falling back to regular mode.');
+			workflowRunner.setExecutionMode('regular');
+		}
+
 		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
@@ -631,7 +664,7 @@ export class ExecuteBatch extends BaseCommand {
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const executionId = await Container.get(WorkflowRunner).run(runData);
+				const executionId = await workflowRunner.run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);

@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import {
 	type ITriggerFunctions,
 	type IDataObject,
@@ -14,8 +14,8 @@ describe('Cron Node', () => {
 		const fakeExecuteFunction = {
 			getNodeParameter(
 				parameterName: string,
-				fallbackValue?: IDataObject | undefined,
-				options?: IGetNodeParameterOptions | undefined,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
 			) {
 				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 
@@ -31,10 +31,6 @@ describe('Cron Node', () => {
 		triggerTimes: {
 			item: [],
 		},
-	});
-
-	afterAll(() => {
-		jest.resetAllMocks();
 	});
 
 	it('should return a function to trigger', async () => {

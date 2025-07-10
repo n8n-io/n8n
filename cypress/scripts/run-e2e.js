@@ -57,17 +57,6 @@ switch (scenario) {
 			},
 		});
 		break;
-	case 'dev:v2':
-		runTests({
-			startCommand: 'develop',
-			url: 'http://localhost:8080/favicon.ico',
-			testCommand: 'cypress open',
-			customEnv: {
-				CYPRESS_NODE_VIEW_VERSION: 2,
-				CYPRESS_BASE_URL: 'http://localhost:8080',
-			},
-		});
-		break;
 	case 'all':
 		const specSuiteFilter = process.argv[3];
 		const specParam = specSuiteFilter ? ` --spec **/*${specSuiteFilter}*` : '';
@@ -78,6 +67,30 @@ switch (scenario) {
 			testCommand: `cypress run --headless ${specParam}`,
 		});
 		break;
+	case 'debugFlaky': {
+		const filter = process.argv[3];
+		const burnCount = process.argv[4] || 5;
+
+		const envArgs = [`burn=${burnCount}`];
+
+		if (filter) {
+			envArgs.push(`grep=${filter}`);
+			envArgs.push(`grepFilterSpecs=true`);
+		}
+
+		const envString = envArgs.join(',');
+		const testCommand = `cypress run --headless --env "${envString}"`;
+
+		console.log(`Executing test command: ${testCommand}`);
+
+		runTests({
+			startCommand: 'start',
+			url: 'http://localhost:5678/favicon.ico',
+			testCommand: testCommand,
+			failFast: true,
+		});
+		break;
+	}
 	default:
 		console.error('Unknown scenario');
 		process.exit(1);

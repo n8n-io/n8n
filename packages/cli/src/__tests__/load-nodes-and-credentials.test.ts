@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
@@ -47,12 +47,12 @@ describe('LoadNodesAndCredentials', () => {
 				description: {
 					displayName: 'Test Node',
 					name: 'testNode',
-					group: ['test'],
+					group: ['input'],
 					description: 'A test node',
 					version: 1,
 					defaults: {},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [],
 				},
 			};
@@ -67,7 +67,7 @@ describe('LoadNodesAndCredentials', () => {
 		it('should update inputs and outputs', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.inputs).toEqual([]);
-			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
+			expect(result.description.outputs).toEqual([NodeConnectionTypes.AiTool]);
 		});
 
 		it('should remove the usableAsTool property', () => {
@@ -107,7 +107,7 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [existingProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
+			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
 			expect(result.description.properties).toContainEqual(existingProp);
 		});
 
@@ -121,9 +121,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
 		});
 
 		it('should handle nodes with operation property', () => {
@@ -136,9 +136,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with both resource and operation properties', () => {
@@ -158,17 +158,17 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp, operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
-			expect(result.description.properties[4]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
+			expect(result.description.properties[3]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with empty properties', () => {
 			fullNodeWrapper.description.properties = [];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2);
-			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties).toHaveLength(1);
+			expect(result.description.properties[0].name).toBe('toolDescription');
 		});
 
 		it('should handle nodes with existing codex property', () => {
@@ -194,6 +194,30 @@ describe('LoadNodesAndCredentials', () => {
 			});
 		});
 
+		it('should handle nodes with existing codex with tool subcategory overwrite', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			};
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			});
+		});
+
 		it('should handle nodes with very long names', () => {
 			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
 			fullNodeWrapper.description.displayName =
@@ -209,6 +233,163 @@ describe('LoadNodesAndCredentials', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.name).toBe('special@#$%NodeTool');
 			expect(result.description.displayName).toBe('Special @#$% Node Tool');
+		});
+	});
+
+	describe('resolveSchema', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
+			};
+		});
+
+		it('should return undefined if the node is not known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.doesNotExist',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toBeUndefined();
+		});
+
+		it('should return the correct path if the node is known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0/account/get.json');
+		});
+
+		it('should return the correct path if there is no resource or operation', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
+		});
+	});
+
+	describe('createAiTools', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.types.nodes = [
+				{
+					name: 'testNode',
+					displayName: 'Test Node',
+					group: ['input'],
+					description: 'A test node',
+					usableAsTool: true,
+					properties: [], // need properties to test this
+				},
+			] as unknown as INodeTypeDescription[];
+			// private field
+
+			instance['known'].nodes.testNode = { className: 'TestNode', sourcePath: '/path/to/testNode' };
+
+			instance['known'].credentials['testCredential'] = {
+				className: 'TestCredential',
+				sourcePath: '/path/to/testCredential',
+				supportedNodes: ['testNode'],
+			};
+		});
+
+		it('should create AI tools for nodes marked as usableAsTool', () => {
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(2); // Original node + AI tool
+			expect(instance.types.nodes[1]).toEqual({
+				codex: {
+					categories: ['AI'],
+					resources: {},
+					subcategories: { AI: ['Tools'], Tools: ['Other Tools'] },
+				},
+				description: 'A test node',
+				name: 'testNodeTool',
+				displayName: 'Test Node Tool',
+				group: ['input'],
+				inputs: [],
+				outputs: ['ai_tool'],
+				properties: [
+					{
+						default: 'A test node',
+						description:
+							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+						displayName: 'Description',
+						name: 'toolDescription',
+						required: true,
+						type: 'string',
+						typeOptions: {
+							rows: 2,
+						},
+					},
+				],
+			});
+		});
+
+		it('should duplicate supportedNodes for AI tools', () => {
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(2);
+			// accesses private property
+
+			expect(instance['known'].credentials.testCredential.supportedNodes).toEqual([
+				'testNode',
+				'testNodeTool',
+			]);
+		});
+
+		it('should not modify nodes without usableAsTool property', () => {
+			instance.types.nodes[0].usableAsTool = undefined;
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(1); // No AI tool created
+			expect(instance.types.nodes[0].name).toBe('testNode');
+		});
+
+		it('should handle nodes with usableAsTool as an object with replacements', () => {
+			instance.types.nodes[0].usableAsTool = {
+				replacements: {
+					displayName: 'Custom Tool Name',
+				},
+			};
+			instance.createAiTools();
+			expect(instance.types.nodes[1]).toEqual({
+				name: 'testNodeTool',
+				displayName: 'Custom Tool Name Tool',
+				group: ['input'],
+				inputs: [],
+				outputs: ['ai_tool'],
+				description: 'A test node',
+				properties: [
+					{
+						displayName: 'Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: 'A test node',
+						required: true,
+						typeOptions: { rows: 2 },
+						description:
+							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					},
+				],
+				codex: {
+					categories: ['AI'],
+					subcategories: {
+						AI: ['Tools'],
+						Tools: ['Other Tools'],
+					},
+					resources: {},
+				},
+			});
 		});
 	});
 });

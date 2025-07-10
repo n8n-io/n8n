@@ -1,11 +1,12 @@
 import { Container, Service } from '@n8n/di';
 import type { RequesterMessage } from '@n8n/task-runner';
 
+import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import type { RequesterMessageCallback } from '@/task-runners/task-broker/task-broker.service';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 
 import { TaskRequester } from './task-requester';
-import type { RequesterMessageCallback } from '../task-broker.service';
-import { TaskBroker } from '../task-broker.service';
 
 @Service()
 export class LocalTaskRequester extends TaskRequester {
@@ -13,8 +14,8 @@ export class LocalTaskRequester extends TaskRequester {
 
 	id = 'local-task-requester';
 
-	constructor(nodeTypes: NodeTypes) {
-		super(nodeTypes);
+	constructor(nodeTypes: NodeTypes, eventService: EventService) {
+		super(nodeTypes, eventService);
 		this.registerRequester();
 	}
 

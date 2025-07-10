@@ -1,30 +1,16 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { NodeConnectionTypes, parseErrorMetadata, sleep } from 'n8n-workflow';
 import {
-	ChatPromptTemplate,
-	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	PromptTemplate,
-} from '@langchain/core/prompts';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-import { RetrievalQAChain } from 'langchain/chains';
-import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
-import { getPromptInputByType, isChatInstance } from '@utils/helpers';
-import { getTemplateNoticeField } from '@utils/sharedFields';
-import { getTracingConfig } from '@utils/tracing';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
-const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question.
-If you don't know the answer, just say that you don't know, don't try to make up an answer.
-----------------
-{context}`;
+import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, systemPromptOption } from './constants';
+import { processItem } from './processItem';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +19,7 @@ export class ChainRetrievalQa implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -53,23 +39,23 @@ export class ChainRetrievalQa implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -122,11 +108,12 @@ export class ChainRetrievalQa implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
 				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
 				typeOptions: {
 					rows: 2,
 				},
@@ -144,16 +131,28 @@ export class ChainRetrievalQa implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'System Prompt Template',
-						name: 'systemPromptTemplate',
-						type: 'string',
-						default: SYSTEM_PROMPT_TEMPLATE,
-						description:
-							'Template string used for the system prompt. This should include the variable `{context}` for the provided context. For text completion models, you should also include the variable `{question}` for the user’s query.',
-						typeOptions: {
-							rows: 6,
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${LEGACY_INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 1.5 } }],
+							},
 						},
 					},
+					{
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.6 } }],
+						},
+					}),
 				],
 			},
 		],
@@ -162,78 +161,80 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
-
 		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
 
-		// Run for each item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				let query;
+		if (this.getNode().typeVersion >= 1.6 && batchSize >= 1) {
+			// Run in batches
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					return await processItem(this, i + batchItemIndex);
+				});
 
-				if (this.getNode().typeVersion <= 1.2) {
-					query = this.getNodeParameter('query', itemIndex) as string;
-				} else {
-					query = getPromptInputByType({
-						ctx: this,
-						i: itemIndex,
-						inputKey: 'text',
-						promptTypeKey: 'promptType',
-					});
-				}
+				const batchResults = await Promise.allSettled(batchPromises);
 
-				if (query === undefined) {
-					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
-				}
-
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					systemPromptTemplate?: string;
-				};
-
-				const chainParameters = {} as {
-					prompt?: PromptTemplate | ChatPromptTemplate;
-				};
-
-				if (options.systemPromptTemplate !== undefined) {
-					if (isChatInstance(model)) {
-						const messages = [
-							SystemMessagePromptTemplate.fromTemplate(options.systemPromptTemplate),
-							HumanMessagePromptTemplate.fromTemplate('{question}'),
-						];
-						const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
-
-						chainParameters.prompt = chatPromptTemplate;
-					} else {
-						const completionPromptTemplate = new PromptTemplate({
-							template: options.systemPromptTemplate,
-							inputVariables: ['context', 'question'],
-						});
-
-						chainParameters.prompt = completionPromptTemplate;
+				batchResults.forEach((response, index) => {
+					if (response.status === 'rejected') {
+						const error = response.reason;
+						if (this.continueOnFail()) {
+							const metadata = parseErrorMetadata(error);
+							returnData.push({
+								json: { error: error.message },
+								pairedItem: { item: index },
+								metadata,
+							});
+							return;
+						} else {
+							throw error;
+						}
 					}
+					const output = response.value;
+					const answer = output.answer as string;
+					if (this.getNode().typeVersion >= 1.5) {
+						returnData.push({ json: { response: answer } });
+					} else {
+						// Legacy format for versions 1.4 and below is { text: string }
+						returnData.push({ json: { response: { text: answer } } });
+					}
+				});
+
+				// Add delay between batches if not the last batch
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
 				}
+			}
+		} else {
+			// Run for each item
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const response = await processItem(this, itemIndex);
+					const answer = response.answer as string;
+					if (this.getNode().typeVersion >= 1.5) {
+						returnData.push({ json: { response: answer } });
+					} else {
+						// Legacy format for versions 1.4 and below is { text: string }
+						returnData.push({ json: { response: { text: answer } } });
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						const metadata = parseErrorMetadata(error);
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: itemIndex },
+							metadata,
+						});
+						continue;
+					}
 
-				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
-
-				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
-				returnData.push({ json: { response } });
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
+					throw error;
 				}
-
-				throw error;
 			}
 		}
 		return [returnData];

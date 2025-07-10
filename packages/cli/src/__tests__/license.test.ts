@@ -1,3 +1,4 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
@@ -5,7 +6,6 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { mockLogger } from '@test/mocking';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -16,10 +16,16 @@ const MOCK_ACTIVATION_KEY = 'activation-key';
 const MOCK_FEATURE_FLAG = 'feat:sharing';
 const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
+function makeDateWithHourOffset(offsetInHours: number): Date {
+	const date = new Date();
+	date.setHours(date.getHours() + offsetInHours);
+	return date;
+}
+
 const licenseConfig: GlobalConfig['license'] = {
 	serverUrl: MOCK_SERVER_URL,
 	autoRenewalEnabled: true,
-	autoRenewOffset: MOCK_RENEW_OFFSET,
+	detachFloatingOnShutdown: true,
 	activationKey: MOCK_ACTIVATION_KEY,
 	tenantId: 1,
 	cert: '',
@@ -54,6 +60,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -84,6 +91,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -105,13 +113,13 @@ describe('License', () => {
 	});
 
 	test('check if feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -123,7 +131,7 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		license.getFeatureValue(MOCK_FEATURE_FLAG);
+		license.getValue(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -134,7 +142,7 @@ describe('License', () => {
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
 
-	test('getMainPlan() returns the right entitlement', async () => {
+	test('getMainPlan() returns the latest main entitlement', async () => {
 		// mock entitlements response
 		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
 			{
@@ -143,8 +151,21 @@ describe('License', () => {
 				productMetadata: {},
 				features: {},
 				featureOverrides: {},
-				validFrom: new Date(),
-				validTo: new Date(),
+				validFrom: makeDateWithHourOffset(-3),
+				validTo: makeDateWithHourOffset(1),
+			},
+			{
+				id: '95b9c852-1349-478d-9ad1-b3f55510e488',
+				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
+				productMetadata: {
+					terms: {
+						isMainPlan: true,
+					},
+				},
+				features: {},
+				featureOverrides: {},
+				validFrom: makeDateWithHourOffset(-2),
+				validTo: makeDateWithHourOffset(1),
 			},
 			{
 				id: MOCK_MAIN_PLAN_ID,
@@ -156,8 +177,8 @@ describe('License', () => {
 				},
 				features: {},
 				featureOverrides: {},
-				validFrom: new Date(),
-				validTo: new Date(),
+				validFrom: makeDateWithHourOffset(-1), // this is the LATEST / newest plan
+				validTo: makeDateWithHourOffset(1),
 			},
 		]);
 		jest.fn(license.getMainPlan).mockReset();
@@ -175,8 +196,8 @@ describe('License', () => {
 				productMetadata: {}, // has no `productMetadata.terms.isMainPlan`!
 				features: {},
 				featureOverrides: {},
-				validFrom: new Date(),
-				validTo: new Date(),
+				validFrom: makeDateWithHourOffset(-1),
+				validTo: makeDateWithHourOffset(1),
 			},
 			{
 				id: 'c1aae471-c24e-4874-ad88-b97107de486c',
@@ -184,14 +205,72 @@ describe('License', () => {
 				productMetadata: {}, // has no `productMetadata.terms.isMainPlan`!
 				features: {},
 				featureOverrides: {},
-				validFrom: new Date(),
-				validTo: new Date(),
+				validFrom: makeDateWithHourOffset(-1),
+				validTo: makeDateWithHourOffset(1),
 			},
 		]);
 		jest.fn(license.getMainPlan).mockReset();
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan).toBeUndefined();
+	});
+
+	describe('onExpirySoon', () => {
+		it.each([
+			{
+				instanceType: 'main' as const,
+				isLeader: true,
+				shouldReload: false,
+				description: 'Leader main should not reload',
+			},
+			{
+				instanceType: 'main' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Follower main should reload',
+			},
+			{
+				instanceType: 'worker' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Worker should reload',
+			},
+			{
+				instanceType: 'webhook' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Webhook should reload',
+			},
+		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
+			const logger = mockLogger();
+			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
+
+			license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig }),
+			);
+
+			await license.init();
+
+			const licenseManager = LicenseManager as jest.MockedClass<typeof LicenseManager>;
+			const calls = licenseManager.mock.calls;
+			const licenseManagerCall = calls[calls.length - 1][0];
+			const onExpirySoon = licenseManagerCall.onExpirySoon;
+
+			if (shouldReload) {
+				expect(onExpirySoon).toBeDefined();
+				onExpirySoon!();
+				expect(reloadSpy).toHaveBeenCalled();
+			} else {
+				expect(onExpirySoon).toBeUndefined();
+				expect(reloadSpy).not.toHaveBeenCalled();
+			}
+		});
 	});
 });
 
@@ -251,21 +330,19 @@ describe('License', () => {
 
 			expect(LicenseManager).toHaveBeenCalledWith(expect.objectContaining(expectedRenewalSettings));
 		});
-	});
 
-	describe('reinit', () => {
-		it('should reinitialize license manager', async () => {
-			const license = new License(mockLogger(), mock(), mock(), mock(), mock());
-			await license.init();
+		it('when CLI command with N8N_LICENSE_AUTO_RENEW_ENABLED=true, should enable renewal', async () => {
+			const globalConfig = mock<GlobalConfig>({
+				license: { ...licenseConfig, autoRenewalEnabled: true },
+			});
 
-			const initSpy = jest.spyOn(license, 'init');
+			await new License(mockLogger(), mock(), mock(), mock(), globalConfig).init({
+				isCli: true,
+			});
 
-			await license.reinit();
-
-			expect(initSpy).toHaveBeenCalledWith(true);
-
-			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
-			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+			);
 		});
 	});
 });

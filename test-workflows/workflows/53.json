@@ -1,0 +1,410 @@
+{
+  "createdAt": "2021-02-22T09:25:07.982Z",
+  "updatedAt": "2021-06-01T10:33:44.740Z",
+  "id": "53",
+  "name": "ConvertKit:CustomField:create getAll update delete:Form:getAll addSubscriber getSubscriptions:Tag:create getAll:TagSubscriber:add getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "524988a0-a07b-4aca-8284-22aa6f951ca0"
+    },
+    {
+      "parameters": {
+        "resource": "customField",
+        "operation": "create",
+        "label": "=testField{{$evaluateExpression(Math.random())}}"
+      },
+      "name": "ConvertKit",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        450,
+        240
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "dcc8137a-d346-418a-b782-11cc2249b029"
+    },
+    {
+      "parameters": {
+        "resource": "customField",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "ConvertKit1",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        600,
+        240
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "be466a4d-3611-4f4d-bca6-997b894d1a07"
+    },
+    {
+      "parameters": {
+        "resource": "customField",
+        "id": "={{$node[\"ConvertKit\"].json[\"id\"]}}",
+        "label": "UpdatedTestField"
+      },
+      "name": "ConvertKit2",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        750,
+        240
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "c09251ba-7a0a-4221-9f52-c40061f2b62b"
+    },
+    {
+      "parameters": {
+        "resource": "customField",
+        "operation": "delete",
+        "id": "={{$node[\"ConvertKit\"].json[\"id\"]}}"
+      },
+      "name": "ConvertKit3",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        900,
+        240
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "d3073227-93de-4e3e-a82e-410659aeb65a"
+    },
+    {
+      "parameters": {
+        "operation": "getAll"
+      },
+      "name": "ConvertKit4",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "9792b051-1166-4ab6-bac6-2aae6f269f0a"
+    },
+    {
+      "parameters": {
+        "id": 2059113,
+        "email": "=fakeemail{{Date.now()}}@gmail.com",
+        "additionalFields": {}
+      },
+      "name": "ConvertKit5",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "195f9241-fc99-4184-aed1-b7a7a2672b2f"
+    },
+    {
+      "parameters": {
+        "operation": "getSubscriptions",
+        "id": 2059113,
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "ConvertKit6",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        1490,
+        400
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "0ceb3aa2-56ef-4bb6-b08c-50f8267d85be"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "name": "=tag{{Date.now()}}"
+      },
+      "name": "ConvertKit7",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        750,
+        490
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "9d905c82-8c32-4114-881a-28268f3238e7"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "ConvertKit8",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        890,
+        490
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "c5461704-d54f-4ad2-b0e1-fa9f217888ed"
+    },
+    {
+      "parameters": {
+        "resource": "tagSubscriber",
+        "operation": "add",
+        "tagId": "={{$node[\"ConvertKit7\"].json[\"id\"]}}",
+        "email": "={{$node[\"ConvertKit5\"].json[\"subscriber\"][\"email_address\"]}}",
+        "additionalFields": {}
+      },
+      "name": "ConvertKit9",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        550
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "2b123134-1ed6-415f-b9c2-d20b0e1782c6"
+    },
+    {
+      "parameters": {
+        "resource": "tagSubscriber",
+        "operation": "getAll",
+        "tagId": "={{$node[\"ConvertKit7\"].json[\"id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "ConvertKit10",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        550
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "6b44a0a6-9252-48b3-848f-74feb59c7845"
+    },
+    {
+      "parameters": {
+        "resource": "tagSubscriber",
+        "operation": "delete",
+        "tagId": "={{$node[\"ConvertKit7\"].json[\"id\"]}}",
+        "email": "={{$node[\"ConvertKit5\"].json[\"subscriber\"][\"email_address\"]}}"
+      },
+      "name": "ConvertKit11",
+      "type": "n8n-nodes-base.convertKit",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        550
+      ],
+      "credentials": {
+        "convertKitApi": {
+          "id": "38",
+          "name": "ConvertKit creds"
+        }
+      },
+      "id": "4c309c5b-a55f-47da-9dee-8620b505e501"
+    }
+  ],
+  "connections": {
+    "ConvertKit": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit1": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit2": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ConvertKit4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit5": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit4": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit7": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit8": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit9": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit10": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConvertKit11": {
+      "main": [
+        [
+          {
+            "node": "ConvertKit6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

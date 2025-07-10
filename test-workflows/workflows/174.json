@@ -1,0 +1,337 @@
+{
+  "createdAt": "2021-04-20T08:36:34.927Z",
+  "updatedAt": "2021-04-20T08:36:34.927Z",
+  "id": "174",
+  "name": "Vero:User:create alias addTags removeTags unsubscribe resubscribe delete:Event:track",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "b7de37cc-c85a-4eac-beec-1f0c1ea5190a"
+    },
+    {
+      "parameters": {
+        "id": "={{$node[\"Set id & email\"].json[\"id\"]}}",
+        "additionalFields": {
+          "email": "={{$node[\"Set id & email\"].json[\"email\"]}}"
+        },
+        "dataAttributesUi": {
+          "dataAttributesValues": []
+        }
+      },
+      "name": "Vero",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "d27a15f1-3855-42b0-b3d9-bca97501ed10"
+    },
+    {
+      "parameters": {
+        "operation": "alias",
+        "id": "={{$node[\"Set id & email\"].json[\"id\"]}}",
+        "newId": "={{$node[\"Set id & email\"].json[\"email\"]}}"
+      },
+      "name": "Vero1",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "ea140d44-f58b-4d57-9ac3-5bf93cddbe93"
+    },
+    {
+      "parameters": {
+        "operation": "addTags",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}",
+        "tags": "TEST,"
+      },
+      "name": "Vero2",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "903d206c-c3c4-4d20-81b7-a6ea73aeaebf"
+    },
+    {
+      "parameters": {
+        "operation": "removeTags",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}",
+        "tags": "TEST,"
+      },
+      "name": "Vero3",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "1e426c6f-88d4-4c23-8c01-9ffcca7bed76"
+    },
+    {
+      "parameters": {
+        "operation": "unsubscribe",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}"
+      },
+      "name": "Vero4",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "a92a41ef-d98b-4ff8-931d-d2488777ecf8"
+    },
+    {
+      "parameters": {
+        "operation": "resubscribe",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}"
+      },
+      "name": "Vero5",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "629e08e8-9f31-4824-afc1-f09c7fbfdf1a"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}"
+      },
+      "name": "Vero6",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        300
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "5da2dd1f-d40e-490c-bb38-9adaf10ebc92"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "=fake{{Date.now()}}@email.com"
+            }
+          ],
+          "number": [
+            {
+              "name": "id",
+              "value": "={{Math.round(Math.random()*1000)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set id & email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "76d32334-89e0-4fc0-aa81-e56eaeb206c2"
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "id": "={{$node[\"Set id & email\"].json[\"email\"]}}",
+        "email": "={{$node[\"Set id & email\"].json[\"email\"]}}",
+        "eventName": "=Event{{Date.now()}}",
+        "dataAttributesUi": {
+          "dataAttributesValues": [
+            {
+              "key": "Type",
+              "value": "Test"
+            }
+          ]
+        },
+        "extraAttributesUi": {
+          "extraAttributesValues": []
+        }
+      },
+      "name": "Vero7",
+      "type": "n8n-nodes-base.vero",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        400
+      ],
+      "credentials": {
+        "veroApi": {
+          "id": "144",
+          "name": "Vero API creds"
+        }
+      },
+      "id": "89b0e1de-a2b6-4f67-a63b-1d7dafdba2c2"
+    }
+  ],
+  "connections": {
+    "Vero1": {
+      "main": [
+        [
+          {
+            "node": "Vero2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set id & email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero": {
+      "main": [
+        [
+          {
+            "node": "Vero1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero2": {
+      "main": [
+        [
+          {
+            "node": "Vero3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero3": {
+      "main": [
+        [
+          {
+            "node": "Vero4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero4": {
+      "main": [
+        [
+          {
+            "node": "Vero5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero5": {
+      "main": [
+        [
+          {
+            "node": "Vero7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set id & email": {
+      "main": [
+        [
+          {
+            "node": "Vero",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vero7": {
+      "main": [
+        [
+          {
+            "node": "Vero6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

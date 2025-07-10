@@ -1,0 +1,165 @@
+{
+  "createdAt": "2021-03-04T08:38:05.147Z",
+  "updatedAt": "2021-03-04T08:38:05.147Z",
+  "id": "98",
+  "name": "Disqus:Forum:get getCategories getThreads getPosts",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "9468a1d9-c07c-4001-804d-f308db6f79a3"
+    },
+    {
+      "parameters": {
+        "id": "disqus-demo-page",
+        "additionalFields": {}
+      },
+      "name": "Disqus",
+      "type": "n8n-nodes-base.disqus",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "disqusApi": {
+          "id": "5",
+          "name": "Disqus token"
+        }
+      },
+      "id": "8c4e3006-b4d8-4015-9eeb-5cb77b7a46aa"
+    },
+    {
+      "parameters": {
+        "operation": "getCategories",
+        "id": "disqus-demo-page",
+        "limit": 1,
+        "additionalFields": {
+          "order": "asc"
+        }
+      },
+      "name": "Disqus1",
+      "type": "n8n-nodes-base.disqus",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "disqusApi": {
+          "id": "5",
+          "name": "Disqus token"
+        }
+      },
+      "id": "f1db25d5-8f78-4f29-a4f3-d27a3571370e"
+    },
+    {
+      "parameters": {
+        "operation": "getThreads",
+        "id": "disqus-demo-page",
+        "limit": 1,
+        "additionalFields": {
+          "order": "desc"
+        }
+      },
+      "name": "Disqus2",
+      "type": "n8n-nodes-base.disqus",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ],
+      "credentials": {
+        "disqusApi": {
+          "id": "5",
+          "name": "Disqus token"
+        }
+      },
+      "id": "4fcd6985-5dc8-4425-b852-25824964082a"
+    },
+    {
+      "parameters": {
+        "operation": "getPosts",
+        "id": "disqus-demo-page",
+        "limit": 1,
+        "additionalFields": {
+          "order": "desc"
+        }
+      },
+      "name": "Disqus3",
+      "type": "n8n-nodes-base.disqus",
+      "typeVersion": 1,
+      "position": [
+        950,
+        300
+      ],
+      "credentials": {
+        "disqusApi": {
+          "id": "5",
+          "name": "Disqus token"
+        }
+      },
+      "id": "0dfe850e-186a-4072-b722-f35e15deeb16"
+    }
+  ],
+  "connections": {
+    "Disqus2": {
+      "main": [
+        [
+          {
+            "node": "Disqus3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disqus1": {
+      "main": [
+        [
+          {
+            "node": "Disqus2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disqus": {
+      "main": [
+        [
+          {
+            "node": "Disqus1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Disqus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

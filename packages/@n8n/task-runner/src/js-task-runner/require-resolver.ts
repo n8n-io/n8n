@@ -6,15 +6,15 @@ import { ExecutionError } from './errors/execution-error';
 export type RequireResolverOpts = {
 	/**
 	 * List of built-in nodejs modules that are allowed to be required in the
-	 * execution sandbox. `null` means all are allowed.
+	 * execution sandbox. `"*"` means all are allowed.
 	 */
-	allowedBuiltInModules: Set<string> | null;
+	allowedBuiltInModules: Set<string> | '*';
 
 	/**
 	 * List of external modules that are allowed to be required in the
-	 * execution sandbox. `null` means all are allowed.
+	 * execution sandbox. `"*"` means all are allowed.
 	 */
-	allowedExternalModules: Set<string> | null;
+	allowedExternalModules: Set<string> | '*';
 };
 
 export type RequireResolver = (request: string) => unknown;
@@ -24,8 +24,8 @@ export function createRequireResolver({
 	allowedExternalModules,
 }: RequireResolverOpts) {
 	return (request: string) => {
-		const checkIsAllowed = (allowList: Set<string> | null, moduleName: string) => {
-			return allowList ? allowList.has(moduleName) : true;
+		const checkIsAllowed = (allowList: Set<string> | '*', moduleName: string) => {
+			return allowList === '*' || allowList.has(moduleName);
 		};
 
 		const isAllowed = isBuiltin(request)
@@ -37,7 +37,6 @@ export function createRequireResolver({
 			throw new ExecutionError(error);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		return require(request) as unknown;
 	};
 }

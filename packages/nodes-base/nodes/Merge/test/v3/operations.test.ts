@@ -1,6 +1,7 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
+
 import * as mode from '../../v3/actions/mode';
 
 const node: INode = {
@@ -257,6 +258,195 @@ describe('Test MergeV3, combineBySql operation', () => {
 			data: 'aa',
 			name: 'Sam',
 			country: 'PL',
+		});
+	});
+
+	it('should collect pairedItems data, if version >= 3.1 and SELECT query', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 LEFT JOIN input2 ON input1.id = input2.id',
+		};
+
+		const inputs = [
+			[
+				{
+					json: {
+						id: 1,
+						data: 'a',
+						name: 'Sam',
+					},
+					pairedItem: {
+						item: 0,
+						input: undefined,
+					},
+				},
+				{
+					json: {
+						id: 2,
+						data: 'b',
+						name: 'Dan',
+					},
+					pairedItem: {
+						item: 1,
+						input: undefined,
+					},
+				},
+				{
+					json: {
+						id: 3,
+						data: 'c',
+						name: 'Jon',
+					},
+					pairedItem: {
+						item: 2,
+						input: undefined,
+					},
+				},
+			],
+			[
+				{
+					json: {
+						id: 1,
+						data: 'aa',
+						country: 'PL',
+					},
+					pairedItem: {
+						item: 0,
+						input: 1,
+					},
+				},
+				{
+					json: {
+						id: 2,
+						data: 'bb',
+						country: 'FR',
+					},
+					pairedItem: {
+						item: 1,
+						input: 1,
+					},
+				},
+				{
+					json: {
+						id: 3,
+						data: 'cc',
+						country: 'UA',
+					},
+					pairedItem: {
+						item: 2,
+						input: 1,
+					},
+				},
+			],
+		];
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.1 }),
+			inputs,
+		);
+
+		expect(returnData.length).toEqual(1);
+		expect(returnData).toEqual([
+			[
+				{
+					json: {
+						name: 'Sam',
+					},
+					pairedItem: [
+						{
+							item: 0,
+							input: undefined,
+						},
+						{
+							item: 0,
+							input: 1,
+						},
+					],
+				},
+				{
+					json: {
+						name: 'Dan',
+					},
+					pairedItem: [
+						{
+							item: 1,
+							input: undefined,
+						},
+						{
+							item: 1,
+							input: 1,
+						},
+					],
+				},
+				{
+					json: {
+						name: 'Jon',
+					},
+					pairedItem: [
+						{
+							item: 2,
+							input: undefined,
+						},
+						{
+							item: 2,
+							input: 1,
+						},
+					],
+				},
+			],
+		]);
+	});
+
+	it('Empty successful query should return [{ success: true }] at version <= 3.1', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.1 }),
+			[[]],
+		);
+
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(1);
+		expect(returnData[0][0].json).toEqual({
+			success: true,
+		});
+	});
+
+	it('Empty successful query should return [] at version >= 3.2 if no option set', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			[[]],
+		);
+
+		expect(returnData).toEqual([[]]);
+	});
+
+	it('Empty successful query should return [{ success: true }] at version >= 3.2 if option set', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+			options: {
+				emptyQueryResult: 'success',
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			[[]],
+		);
+
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(1);
+		expect(returnData[0][0].json).toEqual({
+			success: true,
 		});
 	});
 });

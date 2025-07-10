@@ -1,0 +1,181 @@
+{
+    "type": "object",
+    "properties": {
+        "context_team_id": {
+            "type": "string"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "creator": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "is_channel": {
+            "type": "boolean"
+        },
+        "is_ext_shared": {
+            "type": "boolean"
+        },
+        "is_general": {
+            "type": "boolean"
+        },
+        "is_group": {
+            "type": "boolean"
+        },
+        "is_im": {
+            "type": "boolean"
+        },
+        "is_member": {
+            "type": "boolean"
+        },
+        "is_mpim": {
+            "type": "boolean"
+        },
+        "is_org_shared": {
+            "type": "boolean"
+        },
+        "is_pending_ext_shared": {
+            "type": "boolean"
+        },
+        "is_private": {
+            "type": "boolean"
+        },
+        "is_shared": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "name_normalized": {
+            "type": "string"
+        },
+        "parent_conversation": {
+            "type": "null"
+        },
+        "previous_names": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "canvas": {
+                    "type": "object",
+                    "properties": {
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "quip_thread_id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "data": {
+                                "type": "object",
+                                "properties": {
+                                    "folder_bookmark_id": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "is_disabled": {
+                                "type": "boolean"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "tabz": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "data": {
+                                "type": "object",
+                                "properties": {
+                                    "folder_bookmark_id": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "is_disabled": {
+                                "type": "boolean"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "purpose": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "type": "string"
+                },
+                "last_set": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "shared_team_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "topic": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "type": "string"
+                },
+                "last_set": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "unlinked": {
+            "type": "integer"
+        },
+        "updated": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

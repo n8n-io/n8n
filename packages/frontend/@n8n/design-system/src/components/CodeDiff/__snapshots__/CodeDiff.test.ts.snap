@@ -1,0 +1,1110 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CodeDiff > renders code diff correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="code-diff-suggestion"
+  >
+    <div
+      class="title"
+    >
+      Lao Tzu example unified diff
+    </div>
+    <div
+      class="diffSection"
+    >
+      
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            const SIGNING_SECRET = $input.first().json.slack_secret_signature;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            const item = $('Webhook to call for Slack command').first();
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           1
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            const SIGNING_SECRET = items[0].json.slack_secret_signature;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           2
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            const item = items[0];
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="seperator diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+            ...
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            const crypto = require('crypto');
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span />
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           7
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             const { binary: { data } } = item;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           8
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             if (
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           9
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             const rawBody = Buffer.from(data.data, 'base64').toString()
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           10
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           11
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             // compute the 
+          </span>
+        </div>
+      </div>
+      
+    </div>
+    <div
+      class="actions"
+    >
+      <n8n-button-stub
+        active="false"
+        block="false"
+        data-test-id="replace-code-button"
+        disabled="false"
+        element="button"
+        icon="refresh-cw"
+        label=""
+        loading="false"
+        outline="false"
+        size="mini"
+        square="false"
+        text="false"
+        type="primary"
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CodeDiff > renders error state correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="code-diff-suggestion"
+  >
+    <div
+      class="title"
+    >
+      Lao Tzu example unified diff
+    </div>
+    <div
+      class="diffSection"
+    >
+      
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Way that can be told of is not the eternal Way;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The name that can be named is not the eternal name.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           1
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           2
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span />
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           3
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             The two are the same,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           4
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             But after they are produced,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           5
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             they have different names.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           6
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            They both may be called deep and profound.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           7
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            Deeper and more profound,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           8
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The door of all subtleties!
+          </span>
+        </div>
+      </div>
+      
+    </div>
+    <div
+      class="actions"
+    >
+      <div>
+        <n8n-icon-stub
+          class="mr-5xs"
+          color="danger"
+          icon="triangle-alert"
+          spin="false"
+        />
+        <span
+          class="infoText"
+        >
+          Could not replace code
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CodeDiff > renders replaced code diff correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="code-diff-suggestion"
+  >
+    <div
+      class="title"
+    >
+      Lao Tzu example unified diff
+    </div>
+    <div
+      class="diffSection"
+    >
+      
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Way that can be told of is not the eternal Way;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The name that can be named is not the eternal name.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           1
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           2
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span />
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           3
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             The two are the same,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           4
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             But after they are produced,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           5
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             they have different names.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           6
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            They both may be called deep and profound.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           7
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            Deeper and more profound,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           8
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The door of all subtleties!
+          </span>
+        </div>
+      </div>
+      
+    </div>
+    <div
+      class="actions"
+    >
+      <div>
+        <n8n-button-stub
+          active="false"
+          block="false"
+          data-test-id="undo-replace-button"
+          disabled="false"
+          element="button"
+          icon="undo-2"
+          label=""
+          loading="false"
+          outline="false"
+          size="mini"
+          square="false"
+          text="false"
+          type="secondary"
+        />
+        <n8n-icon-stub
+          class="ml-xs"
+          color="success"
+          icon="check"
+          spin="false"
+        />
+        <span
+          class="infoText"
+          data-test-id="code-replaced-message"
+        >
+          Code replaced
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CodeDiff > renders replacing code diff correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="code-diff-suggestion"
+  >
+    <div
+      class="title"
+    >
+      Lao Tzu example unified diff
+    </div>
+    <div
+      class="diffSection"
+    >
+      
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Way that can be told of is not the eternal Way;
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The name that can be named is not the eternal name.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           
+        </div>
+        <div
+          class="del diffContent"
+        >
+          <span>
+             - 
+          </span>
+          <span>
+            The Named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           1
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The named is the mother of all things.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           2
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span />
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           3
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             The two are the same,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           4
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             But after they are produced,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           5
+        </div>
+        <div
+          class="normal diffContent"
+        >
+          <span>
+               
+          </span>
+          <span>
+             they have different names.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           6
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            They both may be called deep and profound.
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           7
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            Deeper and more profound,
+          </span>
+        </div>
+      </div>
+      <div
+        class="diff"
+      >
+        <div
+          class="lineNumber"
+        >
+          <!-- ln1 is line number in original text -->
+          <!-- ln2 is line number in updated text -->
+           8
+        </div>
+        <div
+          class="add diffContent"
+        >
+          <span>
+             + 
+          </span>
+          <span>
+            The door of all subtleties!
+          </span>
+        </div>
+      </div>
+      
+    </div>
+    <div
+      class="actions"
+    >
+      <n8n-button-stub
+        active="false"
+        block="false"
+        data-test-id="replace-code-button"
+        disabled="false"
+        element="button"
+        icon="refresh-cw"
+        label=""
+        loading="true"
+        outline="false"
+        size="mini"
+        square="false"
+        text="false"
+        type="secondary"
+      />
+    </div>
+  </div>
+</div>
+`;

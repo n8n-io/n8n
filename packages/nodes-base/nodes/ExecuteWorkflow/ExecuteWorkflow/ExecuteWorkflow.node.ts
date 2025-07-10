@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
 	IExecuteFunctions,
@@ -7,15 +7,15 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { findPairedItemTroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
+import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
-import {
-	getCurrentWorkflowInputData,
-	loadWorkflowInputMappings,
-} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Execute Workflow',
+		displayName: 'Execute Sub-workflow',
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
@@ -27,8 +27,8 @@ export class ExecuteWorkflow implements INodeType {
 			name: 'Execute Workflow',
 			color: '#ff6d5a',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -38,7 +38,7 @@ export class ExecuteWorkflow implements INodeType {
 				default: 'call_workflow',
 				options: [
 					{
-						name: 'Call Another Workflow',
+						name: 'Execute a Sub-Workflow',
 						value: 'call_workflow',
 					},
 				],
@@ -132,7 +132,6 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '',
 				required: true,
-				hint: "Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
 			// ----------------------------------
 			//         source:localFile
@@ -210,7 +209,7 @@ export class ExecuteWorkflow implements INodeType {
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
-						localResourceMapperMethod: 'loadWorkflowInputMappings',
+						localResourceMapperMethod: 'loadSubWorkflowInputs',
 						valuesLabel: 'Workflow Inputs',
 						mode: 'map',
 						fieldWords: {
@@ -272,12 +271,21 @@ export class ExecuteWorkflow implements INodeType {
 				],
 			},
 		],
+		hints: [
+			{
+				type: 'info',
+				message:
+					"Note on using an expression for workflow ID: Since this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+				displayCondition:
+					'={{ $rawParameter.workflowId.startsWith("=") && $parameter.mode === "once" && $nodeVersion >= 1.2 }}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
+			},
+		],
 	};
 
 	methods = {
-		localResourceMapping: {
-			loadWorkflowInputMappings,
-		},
+		localResourceMapping,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -364,7 +372,12 @@ export class ExecuteWorkflow implements INodeType {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
-						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						const metadata = parseErrorMetadata(error);
+						returnData[i].push({
+							json: { error: error.message },
+							pairedItem: { item: i },
+							metadata,
+						});
 						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
@@ -414,6 +427,8 @@ export class ExecuteWorkflow implements INodeType {
 					return [items];
 				}
 
+				const workflowRunData = await this.getExecutionDataById(executionResult.executionId);
+
 				const workflowResult = executionResult.data as INodeExecutionData[][];
 
 				const fallbackPairedItemData = generatePairedItemData(items.length);
@@ -422,7 +437,20 @@ export class ExecuteWorkflow implements INodeType {
 					const sameLength = output.length === items.length;
 
 					for (const [itemIndex, item] of output.entries()) {
-						if (item.pairedItem) continue;
+						if (item.pairedItem) {
+							// If the item already has a paired item, we need to follow these to the start of the child workflow
+							if (workflowRunData !== undefined) {
+								const pairedItem = findPairedItemTroughWorkflowData(
+									workflowRunData,
+									item,
+									itemIndex,
+								);
+								if (pairedItem !== undefined) {
+									item.pairedItem = pairedItem;
+								}
+							}
+							continue;
+						}
 
 						if (sameLength) {
 							item.pairedItem = { item: itemIndex };
@@ -436,7 +464,16 @@ export class ExecuteWorkflow implements INodeType {
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message }, pairedItem }]];
+					const metadata = parseErrorMetadata(error);
+					return [
+						[
+							{
+								json: { error: error.message },
+								metadata,
+								pairedItem,
+							},
+						],
+					];
 				}
 				throw error;
 			}

@@ -42,9 +42,7 @@ export class QdrantApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.qdrantUrl}}',
-			headers: {
-				accept: 'application/json; charset=utf-8',
-			},
+			url: '/collections',
 		},
 	};
 }

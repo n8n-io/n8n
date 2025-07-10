@@ -1,0 +1,112 @@
+name: Test Workflows on PR Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  handle_comment_command:
+    name: Handle /test-workflows Command
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test-workflows')
+    runs-on: ubuntu-latest
+    outputs:
+      permission_granted: ${{ steps.pr_check_and_details.outputs.permission_granted }}
+      git_ref: ${{ steps.pr_check_and_details.outputs.head_sha }}
+      pr_number: ${{ steps.pr_check_and_details.outputs.pr_number_string }}
+
+    steps:
+      - name: Validate User, Get PR Details, and React
+        id: pr_check_and_details
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commenter = context.actor;
+            const issueOwner = context.repo.owner;
+            const issueRepo = context.repo.repo;
+            const commentId = context.payload.comment.id;
+            const prNumber = context.issue.number; // In issue_comment on a PR, issue.number is the PR number
+
+            // Function to add a reaction to the comment
+            async function addReaction(content) {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner: issueOwner,
+                  repo: issueRepo,
+                  comment_id: commentId,
+                  content: content
+                });
+              } catch (reactionError) {
+                // Log if reaction fails but don't fail the script for this
+                console.log(`Failed to add reaction '${content}': ${reactionError.message}`);
+              }
+            }
+
+            // Initialize outputs to a non-triggering state
+            core.setOutput('permission_granted', 'false');
+            core.setOutput('head_sha', '');
+            core.setOutput('pr_number_string', '');
+
+            // 1. Check user permissions
+            try {
+              const { data: permissions } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: issueOwner,
+                repo: issueRepo,
+                username: commenter
+              });
+
+              const allowedPermissions = ['admin', 'write', 'maintain'];
+              if (!allowedPermissions.includes(permissions.permission)) {
+                console.log(`User @${commenter} has '${permissions.permission}' permission. Needs 'admin', 'write', or 'maintain'.`);
+                await addReaction('-1'); // User does not have permission
+                return; // Exit script, tests will not be triggered
+              }
+              console.log(`User @${commenter} has '${permissions.permission}' permission.`);
+            } catch (error) {
+              console.log(`Could not verify permissions for @${commenter}: ${error.message}`);
+              await addReaction('confused'); // Error checking permissions
+              return; // Exit script
+            }
+
+            // 2. Fetch PR details (if permission check passed)
+            let headSha;
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: issueOwner,
+                repo: issueRepo,
+                pull_number: prNumber,
+              });
+              headSha = pr.head.sha;
+              console.log(`Workspaced PR details: SHA - ${headSha}, PR Number - ${prNumber}`);
+
+              // Set outputs for the next job
+              core.setOutput('permission_granted', 'true');
+              core.setOutput('head_sha', headSha);
+              core.setOutput('pr_number_string', prNumber.toString());
+              await addReaction('+1'); // Command accepted, tests will be triggered
+
+            } catch (error) {
+              console.log(`Failed to fetch PR details for PR #${prNumber}: ${error.message}`);
+              core.setOutput('permission_granted', 'false'); // Ensure this is false if PR fetch fails
+              await addReaction('confused'); // Error fetching PR details
+            }
+
+  trigger_reusable_tests:
+    name: Trigger Reusable Test Workflow
+    needs: handle_comment_command
+
+    if: >
+      always() &&
+      needs.handle_comment_command.result != 'skipped' &&
+      needs.handle_comment_command.outputs.permission_granted == 'true' &&
+      needs.handle_comment_command.outputs.git_ref != ''
+    uses: ./.github/workflows/test-workflows-callable.yml
+    with:
+      git_ref: ${{ needs.handle_comment_command.outputs.git_ref }}
+      send_webhook_report: true
+      pr_number: ${{ needs.handle_comment_command.outputs.pr_number }}
+    secrets: inherit

@@ -28,6 +28,11 @@ export const regions = [
 		location: 'Mumbai',
 	},
 	{
+		name: 'ap-south-2',
+		displayName: 'Asia Pacific',
+		location: 'Hyderabad',
+	},
+	{
 		name: 'ap-southeast-1',
 		displayName: 'Asia Pacific',
 		location: 'Singapore',
@@ -41,6 +46,21 @@ export const regions = [
 		name: 'ap-southeast-3',
 		displayName: 'Asia Pacific',
 		location: 'Jakarta',
+	},
+	{
+		name: 'ap-southeast-4',
+		displayName: 'Asia Pacific',
+		location: 'Melbourne',
+	},
+	{
+		name: 'ap-southeast-5',
+		displayName: 'Asia Pacific',
+		location: 'Malaysia',
+	},
+	{
+		name: 'ap-southeast-7',
+		displayName: 'Asia Pacific',
+		location: 'Thailand',
 	},
 	{
 		name: 'ap-northeast-1',
@@ -63,9 +83,29 @@ export const regions = [
 		location: 'Central',
 	},
 	{
+		name: 'ca-west-1',
+		displayName: 'Canada West',
+		location: 'Calgary',
+	},
+	{
+		name: 'cn-north-1',
+		displayName: 'China',
+		location: 'Beijing',
+	},
+	{
+		name: 'cn-northwest-1',
+		displayName: 'China',
+		location: 'Ningxia',
+	},
+	{
 		name: 'eu-central-1',
 		displayName: 'Europe',
 		location: 'Frankfurt',
+	},
+	{
+		name: 'eu-central-2',
+		displayName: 'Europe',
+		location: 'Zurich',
 	},
 	{
 		name: 'eu-north-1',
@@ -76,6 +116,11 @@ export const regions = [
 		name: 'eu-south-1',
 		displayName: 'Europe',
 		location: 'Milan',
+	},
+	{
+		name: 'eu-south-2',
+		displayName: 'Europe',
+		location: 'Spain',
 	},
 	{
 		name: 'eu-west-1',
@@ -93,9 +138,24 @@ export const regions = [
 		location: 'Paris',
 	},
 	{
+		name: 'il-central-1',
+		displayName: 'Israel',
+		location: 'Tel Aviv',
+	},
+	{
+		name: 'me-central-1',
+		displayName: 'Middle East',
+		location: 'UAE',
+	},
+	{
 		name: 'me-south-1',
 		displayName: 'Middle East',
 		location: 'Bahrain',
+	},
+	{
+		name: 'mx-central-1',
+		displayName: 'Mexico',
+		location: 'Central',
 	},
 	{
 		name: 'sa-east-1',
@@ -113,6 +173,11 @@ export const regions = [
 		location: 'Ohio',
 	},
 	{
+		name: 'us-gov-east-1',
+		displayName: 'US East',
+		location: 'GovCloud',
+	},
+	{
 		name: 'us-west-1',
 		displayName: 'US West',
 		location: 'N. California',
@@ -121,6 +186,11 @@ export const regions = [
 		name: 'us-west-2',
 		displayName: 'US West',
 		location: 'Oregon',
+	},
+	{
+		name: 'us-gov-west-1',
+		displayName: 'US West',
+		location: 'GovCloud',
 	},
 ] as const;
 
@@ -138,6 +208,7 @@ export type AwsCredentialsType = {
 	sesEndpoint?: string;
 	sqsEndpoint?: string;
 	s3Endpoint?: string;
+	ssmEndpoint?: string;
 };
 
 // Some AWS services are global and don't have a region
@@ -294,6 +365,19 @@ export class Aws implements ICredentialType {
 			default: '',
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
+		{
+			displayName: 'SSM Endpoint',
+			name: 'ssmEndpoint',
+			description: 'Endpoint for AWS Systems Manager (SSM)',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://ssm.{region}.amazonaws.com',
+		},
 	];
 
 	async authenticate(
@@ -352,10 +436,10 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.sesEndpoint;
 				} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
 					endpointString = credentials.rekognitionEndpoint;
-				} else if (service === 'sqs' && credentials.sqsEndpoint) {
-					endpointString = credentials.sqsEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
+				} else if (service === 'ssm' && credentials.ssmEndpoint) {
+					endpointString = credentials.ssmEndpoint;
 				}
 				endpoint = new URL(endpointString!.replace('{region}', region) + path);
 			} else {
@@ -390,15 +474,31 @@ export class Aws implements ICredentialType {
 
 		path = endpoint.pathname + endpoint.search;
 
+		// ! aws4.sign *must* have the body to sign, but we might have .form instead of .body
+		const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
+		let bodyContent = body !== '' ? body : undefined;
+		let contentTypeHeader: string | undefined = undefined;
+		if (requestWithForm.form) {
+			const params = new URLSearchParams();
+			for (const key in requestWithForm.form) {
+				params.append(key, requestWithForm.form[key]);
+			}
+			bodyContent = params.toString();
+			contentTypeHeader = 'application/x-www-form-urlencoded';
+		}
+
 		const signOpts = {
 			...requestOptions,
-			headers: requestOptions.headers ?? {},
+			headers: {
+				...(requestOptions.headers ?? {}),
+				...(contentTypeHeader && { 'content-type': contentTypeHeader }),
+			},
 			host: endpoint.host,
 			method,
 			path,
-			body: body !== '' ? body : undefined,
+			body: bodyContent,
 			region,
-		} as Request;
+		} as unknown as Request;
 
 		const securityHeaders = {
 			accessKeyId: `${credentials.accessKeyId}`.trim(),

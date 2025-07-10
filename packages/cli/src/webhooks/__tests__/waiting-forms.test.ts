@@ -1,12 +1,15 @@
+import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { FORM_NODE_TYPE, type Workflow } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WaitingForms } from '@/webhooks/waiting-forms';
+
+import type { WaitingWebhookRequest } from '../webhook.types';
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingWebhooks = new WaitingForms(mock(), mock(), executionRepository, mock());
+	const waitingForms = new WaitingForms(mock(), mock(), executionRepository, mock());
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -27,7 +30,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const result = waitingWebhooks.findCompletionPage(workflow, {}, 'Form1');
+			const result = waitingForms.findCompletionPage(workflow, {}, 'Form1');
 			expect(result).toBe('Form1');
 		});
 
@@ -45,7 +48,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const result = waitingWebhooks.findCompletionPage(workflow, {}, 'Form1');
+			const result = waitingForms.findCompletionPage(workflow, {}, 'Form1');
 			expect(result).toBeUndefined();
 		});
 
@@ -61,7 +64,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const result = waitingWebhooks.findCompletionPage(workflow, {}, 'NonForm');
+			const result = waitingForms.findCompletionPage(workflow, {}, 'NonForm');
 			expect(result).toBeUndefined();
 		});
 
@@ -79,7 +82,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const result = waitingWebhooks.findCompletionPage(workflow, {}, 'Form1');
+			const result = waitingForms.findCompletionPage(workflow, {}, 'Form1');
 			expect(result).toBeUndefined();
 		});
 
@@ -121,7 +124,7 @@ describe('WaitingForms', () => {
 				Form3: [],
 			};
 
-			const result = waitingWebhooks.findCompletionPage(workflow, runData, 'LastNode');
+			const result = waitingForms.findCompletionPage(workflow, runData, 'LastNode');
 			expect(result).toBe('Form3');
 		});
 
@@ -151,7 +154,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const result = waitingWebhooks.findCompletionPage(workflow, {}, 'LastNode');
+			const result = waitingForms.findCompletionPage(workflow, {}, 'LastNode');
 			expect(result).toBeUndefined();
 		});
 
@@ -192,8 +195,30 @@ describe('WaitingForms', () => {
 				Form2: [],
 			};
 
-			const result = waitingWebhooks.findCompletionPage(workflow, runData, 'LastNode');
+			const result = waitingForms.findCompletionPage(workflow, runData, 'LastNode');
 			expect(result).toBe('Form2');
+		});
+
+		it('should return status of execution if suffix is WAITING_FORMS_EXECUTION_STATUS', async () => {
+			const execution = mock<IExecutionResponse>({
+				status: 'success',
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: WAITING_FORMS_EXECUTION_STATUS,
+				},
+			});
+
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.send).toHaveBeenCalledWith(execution.status);
 		});
 	});
 });

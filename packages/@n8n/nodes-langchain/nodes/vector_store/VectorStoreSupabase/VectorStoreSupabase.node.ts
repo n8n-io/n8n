@@ -4,9 +4,9 @@ import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 const queryNameField: INodeProperties = {
 	displayName: 'Query Name',
@@ -41,7 +41,7 @@ const retrieveFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [...insertFields];
 
-export class VectorStoreSupabase extends createVectorStoreNode({
+export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorStore>({
 	meta: {
 		description: 'Work with your data in Supabase Vector Store',
 		icon: 'file:supabase.svg',

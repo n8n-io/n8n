@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
 
@@ -765,8 +765,8 @@ export class EditImage implements INodeType {
 			name: 'Edit Image',
 			color: '#553399',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',

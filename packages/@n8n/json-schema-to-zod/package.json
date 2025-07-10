@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -21,11 +21,11 @@
     "dev": "tsc -w",
     "format": "biome format --write src",
     "format:check": "biome ci src",
-    "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint src --quiet",
+    "lintfix": "eslint src --fix",
     "build:types": "tsc -p tsconfig.types.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.js",
-    "build:esm": "tsc -p tsconfig.esm.json && node postesm.js",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",
+    "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
     "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
     "dry": "pnpm run build && pnpm pub --dry-run",
     "test": "jest",
@@ -62,6 +62,7 @@
     "zod": "^3.0.0"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
     "zod": "catalog:"
   }

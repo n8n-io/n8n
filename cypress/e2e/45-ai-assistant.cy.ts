@@ -35,8 +35,8 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('renders placeholder UI', () => {
-		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().should('be.visible');
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.placeholderMessage().should('be.visible');
 		aiAssistant.getters.chatInput().should('be.visible');
@@ -47,8 +47,9 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should resize assistant chat up', () => {
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.getters.askAssistantSidebarResizer().should('be.visible');
+		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.askAssistantChat().then((element) => {
 			const { width, left } = element[0].getBoundingClientRect();
 			cy.drag(aiAssistant.getters.askAssistantSidebarResizer(), [left - 10, 0], {
@@ -63,8 +64,9 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should resize assistant chat down', () => {
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.getters.askAssistantSidebarResizer().should('be.visible');
+		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.askAssistantChat().then((element) => {
 			const { width, left } = element[0].getBoundingClientRect();
 			cy.drag(aiAssistant.getters.askAssistantSidebarResizer(), [left + 10, 0], {
@@ -298,11 +300,11 @@ describe('AI Assistant::enabled', () => {
 				}
 			});
 		}).as('chatRequest');
-		aiAssistant.actions.openChat();
+		aiAssistant.actions.openChatFromCanvas();
 		aiAssistant.actions.sendMessage('Hello');
 		cy.wait('@chatRequest');
 		aiAssistant.actions.closeChat();
-		aiAssistant.actions.openChat();
+		aiAssistant.actions.openChatFromCanvas();
 		// After closing and reopening the chat, all messages should be still there
 		aiAssistant.getters.chatMessagesAll().should('have.length', 2);
 		// End the session
@@ -311,7 +313,7 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
 		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
 		aiAssistant.actions.closeChat();
-		aiAssistant.actions.openChat();
+		aiAssistant.actions.openChatFromCanvas();
 		// Now, session should be reset
 		aiAssistant.getters.placeholderMessage().should('be.visible');
 	});
@@ -322,7 +324,7 @@ describe('AI Assistant::enabled', () => {
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
 		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		aiAssistant.actions.openChat();
+		aiAssistant.actions.openChatFromCanvas();
 		aiAssistant.actions.sendMessage('Hello');
 		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.getters.nodeExecuteButton().click();
@@ -337,7 +339,7 @@ describe('AI Assistant::enabled', () => {
 		}).as('chatRequest');
 
 		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		aiAssistant.actions.openChat();
+		aiAssistant.actions.openChatFromCanvas();
 		nodeCreatorFeature.actions.openNodeCreator();
 		aiAssistant.getters.chatInput().type('Hello{Enter}');
 
@@ -362,7 +364,7 @@ describe('AI Assistant Credential Help', () => {
 		}).as('chatRequest');
 		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
-		wf.actions.openNode('Gmail');
+		wf.actions.openNode('Add label to message');
 		openCredentialSelect();
 		clickCreateNewCredential();
 		aiAssistant.getters.credentialEditAssistantButton().find('button').should('be.visible');
@@ -486,8 +488,8 @@ describe('General help', () => {
 			fixture: 'aiAssistant/responses/code_snippet_response.json',
 		}).as('chatRequest');
 
-		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().should('be.visible');
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.placeholderMessage().should('be.visible');
 		aiAssistant.getters.chatInput().should('be.visible');
@@ -535,7 +537,7 @@ describe('General help', () => {
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
 
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.actions.sendMessage('What is wrong with this workflow?');
 
 		cy.wait('@chatRequest').then((interception) => {
@@ -555,7 +557,7 @@ describe('General help', () => {
 			fixture: 'aiAssistant/responses/simple_message_response.json',
 		}).as('chatRequest');
 
-		aiAssistant.getters.askAssistantFloatingButton().click();
+		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		wf.getters.zoomToFitButton().click();
 
 		aiAssistant.actions.sendMessage('What is wrong with this workflow?');

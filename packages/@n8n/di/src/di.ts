@@ -11,13 +11,15 @@ type AbstractConstructable<T = unknown> = abstract new (...args: unknown[]) => T
 
 type ServiceIdentifier<T = unknown> = Constructable<T> | AbstractConstructable<T>;
 
+type Factory<T = unknown> = (...args: unknown[]) => T;
+
 interface Metadata<T = unknown> {
 	instance?: T;
-	factory?: () => T;
+	factory?: Factory<T>;
 }
 
 interface Options<T> {
-	factory?: () => T;
+	factory?: Factory<T>;
 }
 
 const instances = new Map<ServiceIdentifier, Metadata>();
@@ -28,9 +30,9 @@ const instances = new Map<ServiceIdentifier, Metadata>();
  * @param options.factory Optional factory function to create instances of this class
  * @returns A class decorator to be applied to the target class
  */
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export function Service<T = unknown>(): Function;
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export function Service<T = unknown>(options: Options<T>): Function;
 export function Service<T>({ factory }: Options<T> = {}) {
 	return function (target: Constructable<T>) {
@@ -84,20 +86,20 @@ class ContainerClass {
 		try {
 			let instance: T;
 
-			if (metadata?.factory) {
-				instance = metadata.factory();
-			} else {
-				const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ??
-					[]) as Constructable[];
+			const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ?? []) as Constructable[];
 
-				const dependencies = paramTypes.map(<P>(paramType: Constructable<P>, index: number) => {
-					if (paramType === undefined) {
-						throw new DIError(
-							`Circular dependency detected in ${type.name} at index ${index}.\n${resolutionStack.map((t) => t.name).join(' -> ')}\n`,
-						);
-					}
-					return this.get(paramType);
-				});
+			const dependencies = paramTypes.map(<P>(paramType: Constructable<P>, index: number) => {
+				if (paramType === undefined) {
+					throw new DIError(
+						`Circular dependency detected in ${type.name} at index ${index}.\n${resolutionStack.map((t) => t.name).join(' -> ')}\n`,
+					);
+				}
+				return this.get(paramType);
+			});
+
+			if (metadata?.factory) {
+				instance = metadata.factory(...dependencies);
+			} else {
 				// Create new instance with resolved dependencies
 				instance = new (type as Constructable)(...dependencies) as T;
 			}

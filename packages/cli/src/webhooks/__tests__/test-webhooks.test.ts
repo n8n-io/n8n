@@ -1,17 +1,17 @@
+import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
-import type { ITaskData } from 'n8n-workflow';
-import {
-	type IWebhookData,
-	type IWorkflowExecuteAdditionalData,
-	type Workflow,
+import type {
+	ITaskData,
+	IWorkflowBase,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import type { IWorkflowDb } from '@/interfaces';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
@@ -26,7 +26,7 @@ jest.mock('@/workflow-execute-additional-data');
 
 const mockedAdditionalData = AdditionalData as jest.Mocked<typeof AdditionalData>;
 
-const workflowEntity = mock<IWorkflowDb>({ id: generateNanoId(), nodes: [] });
+const workflowEntity = mock<IWorkflowBase>({ id: generateNanoId(), nodes: [] });
 
 const httpMethod = 'GET';
 const path = uuid();
@@ -57,7 +57,7 @@ describe('TestWebhooks', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	describe('needsWebhook()', () => {
@@ -191,6 +191,21 @@ describe('TestWebhooks', () => {
 			await testWebhooks.deactivateWebhooks(workflow);
 
 			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
+		});
+	});
+
+	describe('getWebhookMethods()', () => {
+		test('should normalize trailing slash', async () => {
+			const METHOD = 'POST';
+			const PATH_WITH_SLASH = 'register/';
+			const PATH_WITHOUT_SLASH = 'register';
+			registrations.getAllKeys.mockResolvedValue([`${METHOD}|${PATH_WITHOUT_SLASH}`]);
+
+			const resultWithSlash = await testWebhooks.getWebhookMethods(PATH_WITH_SLASH);
+			const resultWithoutSlash = await testWebhooks.getWebhookMethods(PATH_WITHOUT_SLASH);
+
+			expect(resultWithSlash).toEqual([METHOD]);
+			expect(resultWithoutSlash).toEqual([METHOD]);
 		});
 	});
 });

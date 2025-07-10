@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { inDevelopment, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
-
-import { inDevelopment } from '@/constants';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
 
@@ -153,7 +152,7 @@ export function send<T, R extends Request, S extends Response>(
 	processFunction: (req: R, res: S) => Promise<T>,
 	raw = false,
 ) {
-	return async (req: R, res: S) => {
+	return async (req: R, res: S): Promise<void> => {
 		try {
 			const data = await processFunction(req, res);
 

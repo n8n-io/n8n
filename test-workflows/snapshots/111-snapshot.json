@@ -1,0 +1,320 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994482,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function": [
+          {
+            "startTime": 1747343994482,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "names": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Spreadsheet File": [
+          {
+            "startTime": 1747343994484,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Function"
+              }
+            ],
+            "hints": [],
+            "executionTime": 7,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/html",
+                        "fileType": "html",
+                        "fileExtension": "html",
+                        "data": "PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMCIgaWQ9InNqcy1BMSI+bmFtZXMuMDwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJuYW1lcy4xIiBpZD0ic2pzLUIxIj5uYW1lcy4xPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9Im5hbWVzLjIiIGlkPSJzanMtQzEiPm5hbWVzLjI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMyIgaWQ9InNqcy1EMSI+bmFtZXMuMzwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MSIgaWQ9InNqcy1BMiI+dGVzdDE8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEyIiBpZD0ic2pzLUIyIj50ZXN0MTI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEzIiBpZD0ic2pzLUMyIj50ZXN0MTM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDE0IiBpZD0ic2pzLUQyIj50ZXN0MTQ8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDIiIGlkPSJzanMtQTMiPnRlc3QyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMiIgaWQ9InNqcy1CMyI+dGVzdDIyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMyIgaWQ9InNqcy1DMyI+dGVzdDIzPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyNCIgaWQ9InNqcy1EMyI+dGVzdDI0PC90ZD48L3RyPjx0cj48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QzIiBpZD0ic2pzLUE0Ij50ZXN0MzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzIiIGlkPSJzanMtQjQiPnRlc3QzMjwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzMiIGlkPSJzanMtQzQiPnRlc3QzMzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzQiIGlkPSJzanMtRDQiPnRlc3QzNDwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0NCIgaWQ9InNqcy1BNSI+dGVzdDQ8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQyIiBpZD0ic2pzLUI1Ij50ZXN0NDI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQzIiBpZD0ic2pzLUM1Ij50ZXN0NDM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQ0IiBpZD0ic2pzLUQ1Ij50ZXN0NDQ8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==",
+                        "fileName": "spreadsheet.html",
+                        "fileSize": "1.24 kB"
+                      }
+                    },
+                    "pairedItem": [
+                      {
+                        "item": 0
+                      },
+                      {
+                        "item": 1
+                      },
+                      {
+                        "item": 2
+                      },
+                      {
+                        "item": 3
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function1": [
+          {
+            "startTime": 1747343994491,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Spreadsheet File"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/html",
+                        "fileType": "html",
+                        "fileExtension": "html",
+                        "data": "PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMCIgaWQ9InNqcy1BMSI+bmFtZXMuMDwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJuYW1lcy4xIiBpZD0ic2pzLUIxIj5uYW1lcy4xPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9Im5hbWVzLjIiIGlkPSJzanMtQzEiPm5hbWVzLjI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0ibmFtZXMuMyIgaWQ9InNqcy1EMSI+bmFtZXMuMzwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MSIgaWQ9InNqcy1BMiI+dGVzdDE8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEyIiBpZD0ic2pzLUIyIj50ZXN0MTI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDEzIiBpZD0ic2pzLUMyIj50ZXN0MTM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDE0IiBpZD0ic2pzLUQyIj50ZXN0MTQ8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDIiIGlkPSJzanMtQTMiPnRlc3QyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMiIgaWQ9InNqcy1CMyI+dGVzdDIyPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyMyIgaWQ9InNqcy1DMyI+dGVzdDIzPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QyNCIgaWQ9InNqcy1EMyI+dGVzdDI0PC90ZD48L3RyPjx0cj48dGQgZGF0YS10PSJzIiBkYXRhLXY9InRlc3QzIiBpZD0ic2pzLUE0Ij50ZXN0MzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzIiIGlkPSJzanMtQjQiPnRlc3QzMjwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzMiIGlkPSJzanMtQzQiPnRlc3QzMzwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0MzQiIGlkPSJzanMtRDQiPnRlc3QzNDwvdGQ+PC90cj48dHI+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJ0ZXN0NCIgaWQ9InNqcy1BNSI+dGVzdDQ8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQyIiBpZD0ic2pzLUI1Ij50ZXN0NDI8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQzIiBpZD0ic2pzLUM1Ij50ZXN0NDM8L3RkPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0idGVzdDQ0IiBpZD0ic2pzLUQ1Ij50ZXN0NDQ8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==",
+                        "fileName": "spreadsheet.html",
+                        "fileSize": "1.24 kB"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Spreadsheet File1": [
+          {
+            "startTime": 1747343994493,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Spreadsheet File"
+              }
+            ],
+            "hints": [],
+            "executionTime": 3,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "names.0": "test1",
+                      "names.1": "test12",
+                      "names.2": "test13",
+                      "names.3": "test14"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names.0": "test2",
+                      "names.1": "test22",
+                      "names.2": "test23",
+                      "names.3": "test24"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names.0": "test3",
+                      "names.1": "test32",
+                      "names.2": "test33",
+                      "names.3": "test34"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "names.0": "test4",
+                      "names.1": "test42",
+                      "names.2": "test43",
+                      "names.3": "test44"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function2": [
+          {
+            "startTime": 1747343994496,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Spreadsheet File1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "names.0": "test1",
+                      "names.1": "test12",
+                      "names.2": "test13",
+                      "names.3": "test14"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  },
+                  {
+                    "json": {
+                      "names.0": "test2",
+                      "names.1": "test22",
+                      "names.2": "test23",
+                      "names.3": "test24"
+                    },
+                    "pairedItem": {
+                      "item": 1
+                    },
+                    "index": 1
+                  },
+                  {
+                    "json": {
+                      "names.0": "test3",
+                      "names.1": "test32",
+                      "names.2": "test33",
+                      "names.3": "test34"
+                    },
+                    "pairedItem": {
+                      "item": 2
+                    },
+                    "index": 2
+                  },
+                  {
+                    "json": {
+                      "names.0": "test4",
+                      "names.1": "test42",
+                      "names.2": "test43",
+                      "names.3": "test44"
+                    },
+                    "pairedItem": {
+                      "item": 3
+                    },
+                    "index": 3
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Function2"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.482Z",
+  "stoppedAt": "2025-05-15T21:19:54.498Z",
+  "status": "running",
+  "finished": true
+}

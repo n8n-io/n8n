@@ -10,7 +10,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +24,9 @@ export class GraphQL implements INodeType {
 		defaults: {
 			name: 'GraphQL',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'httpBasicAuth',
