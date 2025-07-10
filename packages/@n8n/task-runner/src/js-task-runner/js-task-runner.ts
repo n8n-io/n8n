@@ -103,6 +103,8 @@ export class CodeTaskRunner extends TaskRunner {
 
 	private readonly mode: 'secure' | 'insecure' = 'secure';
 
+	private arePrototypesFrozen = false;
+
 	constructor(config: MainConfig, name = 'Code Task Runner') {
 		super({
 			taskType: 'code',
@@ -132,10 +134,10 @@ export class CodeTaskRunner extends TaskRunner {
 			allowedExternalModules,
 		});
 
-		// if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
+		this.prepareAllowedModules(allowedExternalModules);
 	}
 
-	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
+	private prepareAllowedModules(allowedExternalModules: Set<string> | '*') {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
@@ -146,7 +148,9 @@ export class CodeTaskRunner extends TaskRunner {
 				require(module);
 			}
 		}
+	}
 
+	private freezePrototypes() {
 		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
 		if (process.env.NODE_ENV !== 'test') {
 			Object.getOwnPropertyNames(globalThis)
@@ -172,6 +176,10 @@ export class CodeTaskRunner extends TaskRunner {
 		a.ok(settings, 'Code not sent to runner');
 
 		this.validateTaskSettings(settings);
+
+		if (settings.language === 'javaScript' && this.mode === 'secure' && !this.arePrototypesFrozen) {
+			this.freezePrototypes();
+		}
 
 		let neededBuiltIns: BuiltInsParserState;
 

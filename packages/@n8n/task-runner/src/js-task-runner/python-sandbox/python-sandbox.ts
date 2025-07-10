@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ApplicationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import { DateTime, Interval, Duration } from 'luxon';
+import {
+	ApplicationError,
+	Expression,
+	Workflow,
+	WorkflowDataProxy,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 import type { PyDict } from 'pyodide/ffi';
 
 import type { SandboxContext } from './code-sandbox';
@@ -121,6 +129,8 @@ export class PythonSandbox extends CodeSandbox {
 			globalsDict.set('_helpers_js', this.helpers);
 			await pyodide.runPythonAsync(PYTHON_HELPERS_CODE, { globals: globalsDict });
 
+			this.freezePrototypes();
+
 			const runCode = `
 async def __main():
 ${this.pythonCode
@@ -154,5 +164,23 @@ await __main()`;
 		}
 
 		return error;
+	}
+
+	private freezePrototypes() {
+		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
+		if (process.env.NODE_ENV !== 'test') {
+			Object.getOwnPropertyNames(globalThis)
+				// @ts-expect-error globalThis does not have string in index signature
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				.map((name) => globalThis[name])
+				.filter((value) => typeof value === 'function')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				.forEach((fn) => Object.freeze(fn.prototype));
+		}
+
+		// Freeze internal classes
+		[Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration]
+			.map((constructor) => constructor.prototype)
+			.forEach(Object.freeze);
 	}
 }
