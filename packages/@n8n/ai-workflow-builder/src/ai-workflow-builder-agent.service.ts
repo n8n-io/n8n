@@ -218,39 +218,37 @@ export class AiWorkflowBuilderService {
 			? `workflow-${payload.workflowId}-user-${user?.id ?? new Date().getTime()}`
 			: `user-${user?.id ?? new Date().getTime()}-default`;
 
-		// Configure thread
+		// Configure thread for checkpointing
 		const threadConfig = {
 			configurable: {
 				thread_id: threadId,
 			},
 		};
 
-		// Check if this is a subsequent message (not the first)
+		// Check if this is a subsequent message
 		// If so, update the workflowJSON with the current editor state
 		const existingCheckpoint = await this.checkpointer.getTuple(threadConfig);
 
 		let stream;
 
 		if (existingCheckpoint?.checkpoint) {
-			// This is a subsequent message - update the state with current workflow
+			// Subsequent message - update the state with current workflow
 			const stateUpdate: Partial<typeof WorkflowState.State> = {
 				workflowOperations: [], // Clear any pending operations from previous message
 				executionData: payload.executionData, // Update with latest execution data
+				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
 			};
 
-			// Since the reducer now treats updates with both nodes and connections as replacements,
-			// we can just pass the workflow directly
 			if (payload.currentWorkflowJSON) {
 				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
-			} else {
-				// If no workflow provided, clear it
-				stateUpdate.workflowJSON = { nodes: [], connections: {} };
 			}
 
 			// We need to mark the workflow as an override operation
 			// to make sure the reducer treats it as a replacement
 			// otherwise it would be merged with the previous state
-			stateUpdate.workflowJSON.__reducer_operation = 'override';
+			if (stateUpdate.workflowJSON) {
+				stateUpdate.workflowJSON.__reducer_operation = 'override';
+			}
 
 			// Stream with just the new message
 			stream = await agent.stream(
