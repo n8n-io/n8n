@@ -19,6 +19,8 @@ import {
 	prepareMessageFromLastNode,
 	shouldResumeImmediately,
 } from './utils';
+import { ErrorReporter } from 'n8n-core';
+import { IExecutionResponse } from '@n8n/db';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;
@@ -60,6 +62,7 @@ export class ChatService {
 	constructor(
 		private readonly executionManager: ChatExecutionManager,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.heartbeatIntervalId = setInterval(
 			async () => await this.checkHeartbeats(),
@@ -77,7 +80,12 @@ export class ChatService {
 			throw new UnexpectedError('WebSocket connection is missing');
 		}
 
-		const execution = await this.executionManager.checkExecutionExists(executionId);
+		if (!sessionId || !executionId) {
+			ws.close(1008);
+			return;
+		}
+
+		const execution = await this.executionManager.checkIfExecutionExists(executionId);
 
 		if (!execution) {
 			ws.send(`Execution with id "${executionId}" does not exist`);
@@ -96,7 +104,7 @@ export class ChatService {
 		}
 
 		const onMessage = this.incomingMessageHandler(key);
-		const respondToChat = this.outgoingMessageHandler(key);
+		const respondToChat = this.pollAndProcessChatResponses(key);
 
 		const intervalId = setInterval(async () => await respondToChat(), CHECK_FOR_RESPONSE_INTERVAL);
 
@@ -123,92 +131,97 @@ export class ChatService {
 		ws.send(N8N_HEARTBEAT);
 	}
 
-	private outgoingMessageHandler(sessionKey: string) {
-		return async () => {
-			let session: Session | undefined;
-			try {
-				session = this.sessions.get(sessionKey);
+	private async processWaitingExecution(
+		execution: IExecutionResponse,
+		session: Session,
+		sessionKey: string,
+	) {
+		const message = getMessage(execution);
 
-				if (!session) return;
-				if (session.isProcessing) {
-					return;
-				}
+		if (message === undefined) return;
+
+		session.connection.send(message);
+
+		const lastNode = getLastNodeExecuted(execution);
+
+		if (lastNode && shouldResumeImmediately(lastNode)) {
+			session.connection.send(N8N_CONTINUE);
+			const data: ChatMessage = {
+				action: 'sendMessage',
+				chatInput: '',
+				sessionId: session.sessionId,
+			};
+			await this.resumeExecution(session.executionId, data, sessionKey);
+			session.nodeWaitingForChatResponse = undefined;
+		} else {
+			session.nodeWaitingForChatResponse = lastNode?.name;
+		}
+	}
+
+	private processSuccessExecution(execution: IExecutionResponse, session: Session) {
+		const shouldNotReturnLastNodeResponse =
+			!session.isPublic || (session.isPublic && isResponseNodeMode(execution));
+
+		if (shouldNotReturnLastNodeResponse) {
+			closeConnection(session.connection);
+			return;
+		}
+
+		const textMessage = prepareMessageFromLastNode(execution);
+
+		session.connection.send(textMessage, () => {
+			closeConnection(session.connection);
+		});
+	}
+
+	private waitForChatResponseOrContinue(execution: IExecutionResponse, session: Session) {
+		const lastNode = getLastNodeExecuted(execution);
+
+		if (execution.status === 'waiting' && lastNode?.name !== session.nodeWaitingForChatResponse) {
+			session.connection.send(N8N_CONTINUE);
+			session.nodeWaitingForChatResponse = undefined;
+		}
+	}
+
+	private pollAndProcessChatResponses(sessionKey: string) {
+		return async () => {
+			const session = this.sessions.get(sessionKey);
+
+			if (!session) return;
+			if (session.isProcessing) return;
+
+			try {
 				session.isProcessing = true;
 
-				const { connection, executionId, sessionId, waitingNodeName, isPublic } = session;
+				if (!session.executionId || !session.connection) return;
 
-				if (!executionId || !connection) {
-					session.isProcessing = false;
-					return;
-				}
+				const execution = await this.getExecutionOrCleanupSession(session.executionId, sessionKey);
 
-				const execution = await this.getExecutionOrCleanupSession(executionId, sessionKey);
+				if (!execution) return;
 
-				if (!execution) {
-					session.isProcessing = false;
-					return;
-				}
-
-				if (waitingNodeName) {
-					const lastNode = getLastNodeExecuted(execution);
-
-					if (execution.status === 'waiting' && lastNode?.name !== waitingNodeName) {
-						connection.send(N8N_CONTINUE);
-						session.waitingNodeName = undefined;
-					}
-					session.isProcessing = false;
+				if (session.nodeWaitingForChatResponse) {
+					this.waitForChatResponseOrContinue(execution, session);
 					return;
 				}
 
 				if (execution.status === 'waiting') {
-					const message = getMessage(execution);
-
-					if (message !== undefined) {
-						connection.send(message);
-
-						const lastNode = getLastNodeExecuted(execution);
-
-						if (lastNode && shouldResumeImmediately(lastNode)) {
-							connection.send(N8N_CONTINUE);
-							const data: ChatMessage = { action: 'sendMessage', chatInput: '', sessionId };
-							await this.resumeExecution(executionId, data, sessionKey);
-							session.waitingNodeName = undefined;
-						} else {
-							session.waitingNodeName = lastNode?.name;
-						}
-					}
-
-					session.isProcessing = false;
+					await this.processWaitingExecution(execution, session, sessionKey);
 					return;
 				}
 
 				if (execution.status === 'success') {
-					const shouldNotReturnLastNodeResponse =
-						!isPublic || (isPublic && isResponseNodeMode(execution));
-
-					if (shouldNotReturnLastNodeResponse) {
-						closeConnection(connection);
-						session.isProcessing = false;
-						return;
-					}
-
-					const textMessage = prepareMessageFromLastNode(execution);
-
-					connection.send(textMessage, () => {
-						closeConnection(connection);
-					});
-
-					session.isProcessing = false;
+					this.processSuccessExecution(execution, session);
 					return;
 				}
-
-				session.isProcessing = false;
 			} catch (e) {
 				const error = ensureError(e);
-				if (session) session.isProcessing = false;
+				this.errorReporter.error(error);
+
 				this.logger.error(
 					`Error sending message to chat in session ${sessionKey}: ${error.message}`,
 				);
+			} finally {
+				session.isProcessing = false;
 			}
 		};
 	}
@@ -229,10 +242,11 @@ export class ChatService {
 
 				const executionId = session.executionId;
 
-				await this.resumeExecution(executionId, this.prepareChatMessage(message), sessionKey);
-				session.waitingNodeName = undefined;
+				await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
+				session.nodeWaitingForChatResponse = undefined;
 			} catch (e) {
 				const error = ensureError(e);
+				this.errorReporter.error(error);
 				this.logger.error(
 					`Error processing message from chat in session ${sessionKey}: ${error.message}`,
 				);
@@ -277,7 +291,7 @@ export class ChatService {
 		clearInterval(session.intervalId);
 	}
 
-	private prepareChatMessage(message: string): ChatMessage {
+	private parseChatMessage(message: string): ChatMessage {
 		try {
 			const parsedMessage = chatMessageSchema.parse(jsonParse(message));
 
@@ -291,7 +305,7 @@ export class ChatService {
 			return parsedMessage;
 		} catch (error) {
 			if (error instanceof z.ZodError) {
-				throw new Error(
+				throw new UnexpectedError(
 					`Chat message validation error: ${error.errors.map((error) => error.message).join(', ')}`,
 				);
 			}
@@ -318,6 +332,7 @@ export class ChatService {
 						this.cleanupSession(session);
 						disconnected.push(key);
 						const error = ensureError(e);
+						this.errorReporter.error(error);
 						this.logger.error(`Error sending heartbeat to session ${key}: ${error.message}`);
 					}
 				}
@@ -330,6 +345,7 @@ export class ChatService {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.errorReporter.error(error);
 			this.logger.error(`Error checking heartbeats: ${error.message}`);
 		}
 	}

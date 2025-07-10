@@ -5,19 +5,22 @@ import { WebSocket } from 'ws';
 import type { ChatExecutionManager } from '../chat-execution-manager';
 import { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
+import type { ErrorReporter } from 'n8n-core';
 
 jest.useFakeTimers();
 
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;
 	let mockLogger: ReturnType<typeof mock<Logger>>;
+	let mockErrorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let chatService: ChatService;
 	let mockWs: ReturnType<typeof mock<WebSocket>>;
 
 	beforeEach(() => {
 		mockExecutionManager = mock<ChatExecutionManager>();
 		mockLogger = mock<Logger>();
-		chatService = new ChatService(mockExecutionManager, mockLogger);
+		mockErrorReporter = mock<ErrorReporter>();
+		chatService = new ChatService(mockExecutionManager, mockLogger, mockErrorReporter);
 		mockWs = mock<WebSocket>();
 	});
 
@@ -69,7 +72,7 @@ describe('ChatService', () => {
 				},
 			} as unknown as ChatRequest;
 
-			mockExecutionManager.checkExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
 
 			await chatService.startSession(req);
 
@@ -109,7 +112,7 @@ describe('ChatService', () => {
 				isPublic: false,
 			});
 
-			mockExecutionManager.checkExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
 
 			await chatService.startSession(req);
 
@@ -213,7 +216,7 @@ describe('ChatService', () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
 				executionId: '123',
-				waitingNodeName: 'test',
+				nodeWaitingForChatResponse: 'test',
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 
@@ -228,7 +231,7 @@ describe('ChatService', () => {
 			await incomingMessageHandler(data);
 
 			expect(mockExecutionManager.runWorkflow).toHaveBeenCalled();
-			expect(session.waitingNodeName).toBeUndefined();
+			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
 		it('should handle errors during message processing', async () => {
@@ -246,11 +249,13 @@ describe('ChatService', () => {
 		});
 	});
 
-	describe('outgoingMessageHandler', () => {
+	describe('pollAndProcessChatResponses', () => {
 		it('should return if session does not exist', async () => {
 			const sessionKey = 'nonexistent';
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(mockExecutionManager.findExecution).not.toHaveBeenCalled();
 		});
@@ -259,8 +264,10 @@ describe('ChatService', () => {
 			const sessionKey = 'abc|123|public';
 			(chatService as any).sessions.set(sessionKey, { isProcessing: true });
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(mockExecutionManager.findExecution).not.toHaveBeenCalled();
 		});
@@ -270,23 +277,25 @@ describe('ChatService', () => {
 			(chatService as any).sessions.set(sessionKey, {
 				isProcessing: false,
 				executionId: '123',
-				waitingNodeName: undefined,
+				nodeWaitingForChatResponse: undefined,
 			});
 			mockExecutionManager.findExecution.mockResolvedValue(undefined);
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(mockWs.send).not.toHaveBeenCalled();
 		});
 
-		it('should send continue if execution status is waiting and last node name is different from waitingNodeName', async () => {
+		it('should send continue if execution status is waiting and last node name is different from nodeWaitingForChatResponse', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
 				isProcessing: false,
 				executionId: '123',
 				connection: { send: jest.fn() },
-				waitingNodeName: 'node1',
+				nodeWaitingForChatResponse: 'node1',
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 			mockExecutionManager.findExecution.mockResolvedValue({
@@ -295,11 +304,13 @@ describe('ChatService', () => {
 				workflowData: { nodes: [{ name: 'node1' }] },
 			} as any);
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(session.connection.send).toHaveBeenCalledWith('n8n|continue');
-			expect(session.waitingNodeName).toBeUndefined();
+			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
 		it('should send message if execution status is waiting and a message exists', async () => {
@@ -309,7 +320,7 @@ describe('ChatService', () => {
 				executionId: '123',
 				connection: { send: jest.fn() },
 				sessionId: 'abc',
-				waitingNodeName: undefined,
+				nodeWaitingForChatResponse: undefined,
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 			mockExecutionManager.findExecution.mockResolvedValue({
@@ -326,11 +337,13 @@ describe('ChatService', () => {
 
 			(chatService as any).resumeExecution = jest.fn();
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(session.connection.send).toHaveBeenCalledWith('test message');
-			expect(session.waitingNodeName).toEqual('node1');
+			expect(session.nodeWaitingForChatResponse).toEqual('node1');
 		});
 
 		it('should close connection if execution status is success and shouldNotReturnLastNodeResponse is false', async () => {
@@ -350,8 +363,10 @@ describe('ChatService', () => {
 			} as any);
 			(chatService as any).isResponseNodeMode = jest.fn().mockReturnValue(true);
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(session.connection.once).toHaveBeenCalled();
 			expect(session.connection.once).toHaveBeenCalledWith('drain', expect.any(Function));
@@ -363,13 +378,15 @@ describe('ChatService', () => {
 				isProcessing: false,
 				executionId: '123',
 				connection: mockWs,
-				waitingNodeName: undefined,
+				nodeWaitingForChatResponse: undefined,
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 			mockExecutionManager.findExecution.mockRejectedValue(new Error('test error'));
 
-			const outgoingMessageHandler = (chatService as any).outgoingMessageHandler(sessionKey);
-			await outgoingMessageHandler();
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
 
 			expect(mockLogger.error).toHaveBeenCalled();
 		});

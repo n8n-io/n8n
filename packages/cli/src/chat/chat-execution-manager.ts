@@ -54,7 +54,7 @@ export class ChatExecutionManager {
 			unflattenData: true,
 		});
 	}
-	async checkExecutionExists(executionId: string) {
+	async checkIfExecutionExists(executionId: string) {
 		return await this.executionRepository.findSingleExecution(executionId);
 	}
 
@@ -70,6 +70,21 @@ export class ChatExecutionManager {
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
+	}
+
+	private async mapFilesToBinaryData(context: ExecuteContext, files: ChatMessage['files']) {
+		if (!files) return;
+		const binary: IBinaryKeyData = {};
+
+		for (const [index, file] of files.entries()) {
+			const base64 = file.data;
+			const buffer = Buffer.from(base64, BINARY_ENCODING);
+			const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
+
+			binary[`data_${index}`] = binaryData;
+		}
+
+		return binary;
 	}
 
 	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
@@ -98,20 +113,10 @@ export class ChatExecutionManager {
 		);
 
 		const { sessionId, action, chatInput, files } = message;
-		const binary: IBinaryKeyData = {};
-
-		if (files) {
-			for (const [index, file] of files.entries()) {
-				const base64 = file.data;
-				const buffer = Buffer.from(base64, BINARY_ENCODING);
-				const binaryData = await context.helpers.prepareBinaryData(buffer, file.name, file.type);
-
-				binary[`data_${index}`] = binaryData;
-			}
-		}
+		const binary = await this.mapFilesToBinaryData(context, files);
 
 		const nodeExecutionData: INodeExecutionData = { json: { sessionId, action, chatInput } };
-		if (Object.keys(binary).length > 0) {
+		if (binary && Object.keys(binary).length > 0) {
 			nodeExecutionData.binary = binary;
 		}
 
@@ -120,8 +125,6 @@ export class ChatExecutionManager {
 		}
 
 		return [[nodeExecutionData]];
-
-		return null;
 	}
 
 	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {

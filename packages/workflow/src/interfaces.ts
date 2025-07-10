@@ -1631,7 +1631,8 @@ export interface INodeType {
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
 	/**
-	 * On message from chat do additional processing on the data
+	 * A function called when a node receives a chat message. Allows it to react
+	 * to the message before it gets executed.
 	 */
 	onMessage?(context: IExecuteFunctions, data: INodeExecutionData): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;

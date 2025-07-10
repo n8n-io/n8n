@@ -17,24 +17,12 @@ export type Session = {
 	executionId: string;
 	sessionId: string;
 	intervalId: NodeJS.Timeout;
-	waitingNodeName?: string;
+	nodeWaitingForChatResponse?: string;
 	isPublic: boolean;
 	isProcessing: boolean;
 	lastHeartbeat?: number;
 };
 
-/**
- *  Message sent by the chat frontends
- *
- *  sessionId - Session ID
- *
- *  action - 'sendMessage';
- *
- *  chatInput - User message
- *
- *  files - Optional files
- *
- * */
 export const chatMessageSchema = z.object({
 	sessionId: z.string(),
 	action: z.literal('sendMessage'),

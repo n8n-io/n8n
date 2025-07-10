@@ -222,7 +222,7 @@ export class Chat implements INodeType {
 			);
 		}
 
-		const message = this.getNodeParameter('message', 0) as string;
+		const message = (this.getNodeParameter('message', 0) as string) ?? '';
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};
