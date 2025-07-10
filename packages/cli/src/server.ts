@@ -415,7 +415,7 @@ export class Server extends AbstractServer {
 			});
 
 			// Route all UI urls to index.html to support history-api
-			const nonUIRoutes: Readonly<string[]> = [
+			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',

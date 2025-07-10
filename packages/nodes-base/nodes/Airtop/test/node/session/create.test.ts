@@ -60,6 +60,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -95,6 +96,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -125,6 +127,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -153,6 +156,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -181,6 +185,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -224,6 +229,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
@@ -256,6 +262,7 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);

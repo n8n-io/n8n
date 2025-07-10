@@ -13,8 +13,8 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {

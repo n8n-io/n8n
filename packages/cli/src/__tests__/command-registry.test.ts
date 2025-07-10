@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { CommandRegistry } from '../command-registry';
 
 jest.mock('fast-glob');
-// eslint-disable-next-line import-x/no-default-export
+
 import glob from 'fast-glob';
 
 describe('CommandRegistry', () => {

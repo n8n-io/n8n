@@ -23,7 +23,7 @@ if (inE2ETests) {
 	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	globalConfig.auth.cookie.secure = false;
-	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'false';
 }
 
 // Load schema after process.env has been overwritten

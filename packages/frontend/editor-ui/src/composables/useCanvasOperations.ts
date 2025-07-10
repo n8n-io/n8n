@@ -53,6 +53,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -152,6 +153,7 @@ export function useCanvasOperations() {
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
+	const focusPanelStore = useFocusPanelStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
@@ -1607,6 +1609,8 @@ export function useCanvasOperations() {
 		workflowsStore.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
 		workflowsStore.setActiveExecutionId(undefined);
+
+		focusPanelStore.reset();
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();

@@ -101,6 +101,7 @@ describe('POST /license/renew', () => {
 	});
 
 	test('errors out properly', async () => {
+		License.prototype.getPlanName = jest.fn().mockReturnValue('Enterprise');
 		License.prototype.renew = jest.fn().mockImplementation(() => {
 			throw new Error(GENERIC_ERROR_MESSAGE);
 		});

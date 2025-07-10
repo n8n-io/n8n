@@ -1,40 +1,23 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
+import type { INodeProperties } from 'n8n-workflow';
+import type { MockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
+import type { INodeUi } from '@/Interface';
 
 describe('useNodeSettingsParameters', () => {
-	beforeEach(() => {
-		setActivePinia(createTestingPinia());
-	});
-
-	afterEach(() => {
-		vi.clearAllMocks();
-	});
-
-	describe('nameIsParameter', () => {
-		it.each([
-			['', false],
-			['parameters', false],
-			['parameters.', true],
-			['parameters.path.to.some', true],
-			['', false],
-		])('%s should be %s', (input, expected) => {
-			const { nameIsParameter } = useNodeSettingsParameters();
-			const result = nameIsParameter({ name: input } as never);
-			expect(result).toBe(expected);
-		});
-
-		it('should reject path on other input', () => {
-			const { nameIsParameter } = useNodeSettingsParameters();
-			const result = nameIsParameter({
-				name: 'aName',
-				value: 'parameters.path.to.parameters',
-			} as never);
-			expect(result).toBe(false);
-		});
-	});
-
 	describe('setValue', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
 		it('mutates nodeValues as expected', () => {
 			const nodeSettingsParameters = useNodeSettingsParameters();
 
@@ -64,6 +47,78 @@ describe('useNodeSettingsParameters', () => {
 			nodeSettingsParameters.setValue('newProperty', 'newValue');
 
 			expect(nodeSettingsParameters.nodeValues.value.newProperty).toBe('newValue');
+		});
+	});
+
+	describe('handleFocus', () => {
+		let ndvStore: MockedStore<typeof useNDVStore>;
+		let focusPanelStore: MockedStore<typeof useFocusPanelStore>;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+
+			ndvStore = mockedStore(useNDVStore);
+			focusPanelStore = mockedStore(useFocusPanelStore);
+
+			ndvStore.activeNode = {
+				id: '123',
+				name: 'myParam',
+				parameters: {},
+				position: [0, 0],
+				type: 'test',
+				typeVersion: 1,
+			};
+			ndvStore.activeNodeName = 'Node1';
+			ndvStore.setActiveNodeName = vi.fn();
+			ndvStore.resetNDVPushRef = vi.fn();
+			focusPanelStore.setFocusedNodeParameter = vi.fn();
+			focusPanelStore.focusPanelActive = false;
+		});
+
+		it('sets focused node parameter and activates panel', () => {
+			const { handleFocus } = useNodeSettingsParameters();
+			const node: INodeUi = {
+				id: '1',
+				name: 'Node1',
+				position: [0, 0],
+				typeVersion: 1,
+				type: 'test',
+				parameters: {},
+			};
+			const path = 'parameters.foo';
+			const parameter: INodeProperties = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				default: '',
+			};
+
+			handleFocus(node, path, parameter);
+
+			expect(focusPanelStore.setFocusedNodeParameter).toHaveBeenCalledWith({
+				nodeId: node.id,
+				parameterPath: path,
+				parameter,
+			});
+			expect(focusPanelStore.focusPanelActive).toBe(true);
+
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
+		});
+
+		it('does nothing if node is undefined', () => {
+			const { handleFocus } = useNodeSettingsParameters();
+
+			const parameter: INodeProperties = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				default: '',
+			};
+
+			handleFocus(undefined, 'parameters.foo', parameter);
+
+			expect(focusPanelStore.setFocusedNodeParameter).not.toHaveBeenCalled();
 		});
 	});
 });

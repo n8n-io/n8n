@@ -100,7 +100,7 @@ describe('CredentialsOverwrites', () => {
 
 			expect(firstCall).toEqual(secondCall);
 			expect(credentialTypes.getByName).toHaveBeenCalledTimes(2);
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			expect(credentialsOverwrites['resolvedTypes']).toEqual(['parent', 'test']);
 		});
 

@@ -1,10 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import type { Variables } from '@n8n/db';
-import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
-import type { TagEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { TagRepository } from '@n8n/db';
+import type {
+	Variables,
+	FolderWithWorkflowAndSubFolderCount,
+	TagEntity,
+	User,
+	FolderRepository,
+	TagRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';

@@ -61,6 +61,10 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
+
+	/** Whether to include a label for workflow name on workflow metrics. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
+	includeWorkflowNameLabel: boolean = false;
 }
 
 @Config

@@ -20,6 +20,7 @@ import {
 	setupRedis,
 } from './n8n-test-container-dependencies';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
+import { N8nImagePullPolicy } from './n8n-image-pull-policy';
 
 // --- Constants ---
 
@@ -313,6 +314,7 @@ async function createN8NContainer({
 			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
 			instance: instanceNumber.toString(),
 		})
+		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withReuse();
 
