@@ -1,4 +1,4 @@
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -277,24 +277,6 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/module-settings`,
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
-
-			this.app.get('/config.js', (_req, res) => {
-				const feSentryConfig = {
-					dsn: this.globalConfig.sentry.frontendDsn,
-					// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-					environment: process.env.ENVIRONMENT || 'development',
-					serverName: process.env.DEPLOYMENT_NAME,
-					release: `n8n@${N8N_VERSION}`,
-				};
-				const configContent = [
-					`window.BASE_PATH = '${this.globalConfig.path}';`,
-					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
-					`window.sentry = ${JSON.stringify(feSentryConfig)};`,
-				].join('\n');
-
-				res.type('application/javascript');
-				res.send(configContent);
-			});
 		}
 
 		// ----------------------------------------
@@ -426,6 +408,7 @@ export class Server extends AbstractServer {
 				'healthz',
 				'metrics',
 				'e2e',
+				'config.js',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
 				isApiEnabled() ? '' : publicApiEndpoint,
