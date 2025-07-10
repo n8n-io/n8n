@@ -279,6 +279,52 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
+				displayName: 'Variables',
+				name: 'websocketVariables',
+				type: 'json',
+				default: '',
+				description: 'Query variables as JSON object',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation Name',
+				name: 'websocketOperationName',
+				type: 'string',
+				default: '',
+				description: 'Name of operation to execute (optional for WebSocket)',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
+				displayName: 'Response Format',
+				name: 'websocketResponseFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'JSON',
+						value: 'json',
+					},
+					{
+						name: 'String',
+						value: 'string',
+					},
+				],
+				default: 'json',
+				description: 'The format in which the data gets returned from the WebSocket',
+				displayOptions: {
+					show: {
+						connectionMode: ['websocket'],
+					},
+				},
+			},
+			{
 				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
@@ -487,6 +533,22 @@ export class GraphQL implements INodeType {
 						300,
 					) as number;
 
+					const variables = this.getNodeParameter(
+						'websocketVariables',
+						itemIndex,
+						{},
+					) as IDataObject;
+					const operationName = this.getNodeParameter(
+						'websocketOperationName',
+						itemIndex,
+						'',
+					) as string;
+					const responseFormat = this.getNodeParameter(
+						'websocketResponseFormat',
+						itemIndex,
+						'json',
+					) as string;
+
 					const {
 						parameter: websocketHeaders,
 					}: { parameter?: Array<{ name: string; value: string }> } = this.getNodeParameter(
@@ -542,6 +604,8 @@ export class GraphQL implements INodeType {
 							id: '1',
 							payload: {
 								query,
+								variables,
+								...(operationName && { operationName }),
 							},
 						};
 
