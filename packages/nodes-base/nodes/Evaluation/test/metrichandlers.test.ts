@@ -3,7 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, AssignmentCollectionValue } from 'n8n-workflow';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 
-import { metricHandlers } from '../utils/cannedMetrics';
+import { metricHandlers } from '../utils/metrichandlers';
 
 // Mock the validateEntry function
 jest.mock('../../Set/v2/helpers/utils', () => ({

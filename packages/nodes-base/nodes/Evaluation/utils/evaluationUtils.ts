@@ -6,7 +6,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import { metricHandlers } from './cannedMetrics';
+import { metricHandlers } from './metrichandlers';
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
 
