@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 const check = (
 	val: unknown,
 	path = 'value',

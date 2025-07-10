@@ -22,8 +22,8 @@ catalogs:
       specifier: 0.3.20-12
       version: 0.3.20-12
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.14.1
-      version: 1.14.1
+      specifier: 1.15.0
+      version: 1.15.0
     '@sentry/node':
       specifier: 8.52.1
       version: 8.52.1
@@ -37,7 +37,7 @@ catalogs:
       specifier: ^9.0.9
       version: 9.0.9
     '@types/lodash':
-      specifier: ^4.17.17
+      specifier: 4.17.17
       version: 4.17.17
     '@types/uuid':
       specifier: ^10.0.0
@@ -401,7 +401,7 @@ importers:
         version: link:../di
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.14.1
+        version: 1.15.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -830,6 +830,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       '@types/imap':
         specifier: ^0.8.40
         version: 0.8.40
@@ -842,6 +845,9 @@ importers:
       '@types/uuencode':
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@5.8.3)(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.1)(jiti@1.21.7)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -1089,6 +1095,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)))(typescript@5.8.3)
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -1302,7 +1311,7 @@ importers:
         version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3))
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.14.1
+        version: 1.15.0
       '@n8n_io/license-sdk':
         specifier: 2.22.0
         version: 2.22.0
@@ -2895,6 +2904,9 @@ importers:
       '@testcontainers/redis':
         specifier: ^11.0.3
         version: 11.0.3
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
       testcontainers:
         specifier: ^11.0.3
         version: 11.0.3
@@ -2907,6 +2919,9 @@ importers:
       '@playwright/test':
         specifier: 1.53.0
         version: 1.53.0
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       eslint-plugin-playwright:
         specifier: 2.2.0
         version: 2.2.0(eslint@9.29.0(jiti@1.21.7))
@@ -5511,8 +5526,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.14.1':
-    resolution: {integrity: sha512-I2WXfNnDltrSqaMTXFJUZKq/uff6wuHBhFv0oiCyi0NK+CNwFkU1FCcmPWLQrQlj9llda4urwv5MuXygH0zUVw==}
+  '@n8n_io/ai-assistant-sdk@1.15.0':
+    resolution: {integrity: sha512-M/bNnxyVGxwLGU/mzQrZOkZK4NkR9x8cUMZHfVJlv1z6YTlHX56BYH+0jSlb2c15DEwPkku9l0RFVLTTt0ExQQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.22.0':
@@ -6868,8 +6883,8 @@ packages:
   '@types/docker-modem@3.0.6':
     resolution: {integrity: sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==}
 
-  '@types/dockerode@3.3.41':
-    resolution: {integrity: sha512-5kOi6bcnEjqfJ68ZNV/bBvSMLNIucc0XbRmBO4hg5OoFCoP99eSRcbMysjkzV7ZxQEmmc/zMnv4A7odwuKFzDA==}
+  '@types/dockerode@3.3.42':
+    resolution: {integrity: sha512-U1jqHMShibMEWHdxYhj3rCMNCiLx5f35i4e3CEUuW+JSSszc/tVqc6WCAPdhwBymG5R/vgbcceagK0St7Cq6Eg==}
 
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
@@ -11524,10 +11539,6 @@ packages:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
     engines: {node: '>=10'}
 
-  lilconfig@3.1.2:
-    resolution: {integrity: sha512-eop+wDAvpItUys0FWkHIKeC9ybYrTGbU41U5K7+bttZZeohvnY7M9dZ5kB21GNWiFT2q1OoPTvncPCgSOVO5ow==}
-    engines: {node: '>=14'}
-
   lilconfig@3.1.3:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
     engines: {node: '>=14'}
@@ -14220,6 +14231,7 @@ packages:
   supertest@7.1.1:
     resolution: {integrity: sha512-aI59HBTlG9e2wTjxGJV+DygfNLgnWbGdZxiA/sgrnNNikIW8lbDvCtF6RnhZoJ82nU7qv7ZLjrvWqCEm52fAmw==}
     engines: {node: '>=14.18.0'}
+    deprecated: Please upgrade to supertest v7.1.3+, see release notes at https://github.com/forwardemail/supertest/releases/tag/v7.1.3 - maintenance is supported by Forward Email @ https://forwardemail.net
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
@@ -17744,7 +17756,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.10.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.10.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.10.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -18989,7 +19001,7 @@ snapshots:
   '@n8n/localtunnel@3.0.0':
     dependencies:
       axios: 1.10.0(debug@4.3.6)
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -19074,7 +19086,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.14.1': {}
+  '@n8n_io/ai-assistant-sdk@1.15.0': {}
 
   '@n8n_io/license-sdk@2.22.0':
     dependencies:
@@ -19175,13 +19187,13 @@ snapshots:
       ansis: 3.2.0
       clean-stack: 3.0.1
       cli-spinners: 2.9.2
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
       ejs: 3.1.10
       get-package-type: 0.1.0
       globby: 11.1.0
       indent-string: 4.0.0
       is-wsl: 2.2.0
-      lilconfig: 3.1.2
+      lilconfig: 3.1.3
       minimatch: 9.0.5
       string-width: 4.2.3
       supports-color: 8.1.1
@@ -20861,7 +20873,7 @@ snapshots:
       '@types/node': 20.19.1
       '@types/ssh2': 1.11.6
 
-  '@types/dockerode@3.3.41':
+  '@types/dockerode@3.3.42':
     dependencies:
       '@types/docker-modem': 3.0.6
       '@types/node': 20.19.1
@@ -22266,11 +22278,6 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.10.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.10.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
       axios: 1.10.0(debug@4.4.1)
@@ -23484,11 +23491,9 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
-  debug@4.3.6(supports-color@8.1.1):
+  debug@4.3.6:
     dependencies:
       ms: 2.1.2
-    optionalDependencies:
-      supports-color: 8.1.1
 
   debug@4.4.0:
     dependencies:
@@ -24069,7 +24074,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -24093,7 +24098,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3)
       eslint: 9.29.0(jiti@1.21.7)
@@ -24132,7 +24137,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -24685,7 +24690,7 @@ snapshots:
 
   follow-redirects@1.15.9(debug@4.3.6):
     optionalDependencies:
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.6
 
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
@@ -25062,7 +25067,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26727,8 +26732,6 @@ snapshots:
 
   lilconfig@2.1.0: {}
 
-  lilconfig@3.1.2: {}
-
   lilconfig@3.1.3: {}
 
   lines-and-columns@1.2.4: {}
@@ -28207,7 +28210,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -28388,7 +28391,7 @@ snapshots:
 
   postcss-load-config@4.0.2(postcss@8.4.49)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)):
     dependencies:
-      lilconfig: 3.1.2
+      lilconfig: 3.1.3
       yaml: 2.3.4
     optionalDependencies:
       postcss: 8.4.49
@@ -29113,7 +29116,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -30117,7 +30120,7 @@ snapshots:
   testcontainers@11.0.3:
     dependencies:
       '@balena/dockerignore': 1.0.2
-      '@types/dockerode': 3.3.41
+      '@types/dockerode': 3.3.42
       archiver: 7.0.1
       async-lock: 1.4.1
       byline: 5.0.0

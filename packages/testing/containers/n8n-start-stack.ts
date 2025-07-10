@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
-import { DockerImageNotFoundError } from './docker-image-not-found-error';
 
 // ANSI colors for terminal output
 const colors = {
@@ -41,6 +41,9 @@ ${colors.yellow}Options:${colors.reset}
   --name <name>     Project name for parallel runs
   --env KEY=VALUE   Set environment variables
   --help, -h        Show this help
+
+${colors.yellow}Environment Variables:${colors.reset}
+  • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
 
 ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Simple SQLite instance${colors.reset}
@@ -162,6 +165,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	const usePostgres = config.postgres || config.queueMode;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
@@ -172,7 +176,7 @@ function displayConfig(config: N8NConfig) {
 			log.info('(PostgreSQL automatically enabled for queue mode)');
 		}
 		if (qm.mains && qm.mains > 1) {
-			log.info('(nginx load balancer will be configured)');
+			log.info('(load balancer will be configured)');
 		}
 	} else {
 		log.info('Queue mode: disabled');
@@ -183,7 +187,7 @@ function displayConfig(config: N8NConfig) {
 		if (envCount > 0) {
 			log.info(`Environment variables: ${envCount} custom variable(s)`);
 			Object.entries(config.env).forEach(([key, value]) => {
-				console.log(`  ${key}=${value as string}`);
+				console.log(`  ${key}=${value}`);
 			});
 		}
 	}

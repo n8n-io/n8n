@@ -3,8 +3,8 @@ import {
 	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
+	testDb,
 } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';

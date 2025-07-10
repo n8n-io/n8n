@@ -712,7 +712,7 @@ describe('NDV', () => {
 			.outputDataContainer()
 			.should(
 				'have.text',
-				'[{"body": "<?xml version="1.0" encoding="UTF-8"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
+				'[{"body": "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 

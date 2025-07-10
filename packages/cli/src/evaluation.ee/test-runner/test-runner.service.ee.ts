@@ -108,6 +108,7 @@ export class TestRunnerService {
 
 		const unconfiguredMetricsNode = metricsNodes.find(
 			(node) =>
+				node.disabled === true ||
 				!node.parameters ||
 				!node.parameters.metric ||
 				(node.parameters.metric === 'customMetrics' &&

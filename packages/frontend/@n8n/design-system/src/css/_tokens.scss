@@ -310,10 +310,11 @@
 	--execution-select-all-text: var(--color-danger);
 
 	// NDV
-	--color-run-data-background: var(--color-background-base);
+	--color-run-data-background: var(--prim-gray-70);
 	--color-ndv-droppable-parameter: var(--color-secondary);
 	--color-ndv-droppable-parameter-background: var(--prim-color-secondary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
+	--color-ndv-overlay-background: var(--prim-color-alt-j-alpha-095);
 	--color-ndv-back-font: var(--prim-gray-0);
 
 	// Notice

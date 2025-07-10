@@ -532,7 +532,7 @@ const onDragEnd = (el: HTMLElement) => {
 }
 
 .scroller {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--ndv-spacing);
 	padding-bottom: var(--spacing-2xl);
 
 	.compact & {
@@ -548,14 +548,14 @@ const onDragEnd = (el: HTMLElement) => {
 	text-align: center;
 	height: 100%;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing-xl) var(--ndv-spacing);
 }
 
 .icon {
 	display: inline-flex;
 	margin-left: var(--spacing-xl);
 	color: var(--color-text-light);
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {

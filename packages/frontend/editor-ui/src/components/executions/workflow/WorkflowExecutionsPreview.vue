@@ -45,6 +45,7 @@ const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 const executionId = computed(() => route.params.executionId as string);
+const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
 	props.execution ? executionHelpers.getUIDetails(props.execution) : null,
 );
@@ -327,6 +328,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			loader-type="spinner"
 			:execution-id="executionId"
 			:execution-mode="execution?.mode || ''"
+			:node-id="nodeId"
 		/>
 	</div>
 </template>

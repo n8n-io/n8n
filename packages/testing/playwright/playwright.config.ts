@@ -1,4 +1,4 @@
-/* eslint-disable import/no-default-export */
+/* eslint-disable import-x/no-default-export */
 import type { Project } from '@playwright/test';
 import { defineConfig } from '@playwright/test';
 
@@ -117,6 +117,7 @@ export default defineConfig({
 		viewport: { width: 1536, height: 960 },
 		actionTimeout: 10000,
 		navigationTimeout: 10000,
+		channel: 'chromium',
 	},
 
 	projects: process.env.N8N_BASE_URL

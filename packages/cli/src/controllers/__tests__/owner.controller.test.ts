@@ -1,9 +1,12 @@
 import type { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { PublicUser, SettingsRepository } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	User,
+	PublicUser,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 

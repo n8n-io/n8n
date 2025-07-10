@@ -96,7 +96,7 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 
-//computed
+// computed
 
 const pushRef = computed(() => ndvStore.pushRef);
 

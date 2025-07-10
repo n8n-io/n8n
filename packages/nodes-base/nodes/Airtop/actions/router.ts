@@ -51,7 +51,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 
 			// Get cleaner output when called as tool
-			if (isCalledAsTool && !['session', 'window'].includes(resource)) {
+			if (isCalledAsTool) {
 				responseData = cleanOutputForToolUse(responseData);
 			}
 

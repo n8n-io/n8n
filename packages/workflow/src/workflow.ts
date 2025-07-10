@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
@@ -534,7 +533,7 @@ export class Workflow {
 			}
 			connectionsByIndex =
 				this.connectionsByDestinationNode[nodeName][NodeConnectionTypes.Main][connectionIndex];
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 			connectionsByIndex?.forEach((connection) => {
 				if (checkedNodes.includes(connection.node)) {
 					// Node got checked already before
@@ -730,7 +729,6 @@ export class Workflow {
 			const toAdd = [...queue];
 			queue = [];
 
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			toAdd.forEach((curr) => {
 				if (visited[curr.name]) {
 					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
@@ -770,7 +768,7 @@ export class Workflow {
 			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
 
 			if (
-				!!outputs.find(
+				outputs.find(
 					(output) =>
 						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
 				)

@@ -1,5 +1,6 @@
 // services/api-helper.ts
 import type { APIRequestContext } from '@playwright/test';
+import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -115,7 +116,7 @@ export class ApiHelpers {
 			throw new TestError(errorText);
 		}
 		// Adding small delay to ensure database is reset
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await wait(1000);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {

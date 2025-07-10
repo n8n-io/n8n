@@ -7,7 +7,7 @@ import type {
 	NodeParameterValue,
 	INodeCredentialDescription,
 } from 'n8n-workflow';
-import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
@@ -15,15 +15,23 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import {
+	BASE_NODE_SURVEY_URL,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+	NDV_UI_OVERHAUL_EXPERIMENT,
+} from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { nameIsParameter } from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -39,6 +47,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
@@ -90,6 +99,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -110,7 +120,7 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
-const openPanel = ref<'params' | 'settings'>('params');
+const openPanel = ref<Tab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -236,6 +246,20 @@ const credentialOwnerName = computed(() => {
 	return credentialsStore.getCredentialOwnerName(credential);
 });
 
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
+
+const featureRequestUrl = computed(() => {
+	if (!nodeType.value) {
+		return '';
+	}
+	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
+});
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
 
@@ -346,7 +370,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
 		}
-	} else if (nodeSettingsParameters.nameIsParameter(parameterData)) {
+	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
 		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
 	} else {
@@ -411,6 +435,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
@@ -419,6 +444,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.executeOnce.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
@@ -427,6 +453,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.retryOnFail.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
@@ -444,6 +471,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.maxTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
@@ -461,6 +489,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.onError.displayName'),
@@ -490,6 +519,7 @@ const populateSettings = () => {
 					default: 'stopWorkflow',
 					description: i18n.baseText('nodeSettings.onError.description'),
 					noDataExpression: true,
+					isNodeSetting: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -506,6 +536,7 @@ const populateSettings = () => {
 				default: '',
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notes.description'),
+				isNodeSetting: true,
 			},
 			{
 				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
@@ -514,6 +545,7 @@ const populateSettings = () => {
 				default: false,
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notesInFlow.description'),
+				isNodeSetting: true,
 			},
 		] as INodeProperties[]),
 	);
@@ -695,8 +727,21 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: 'params' | 'settings') => {
+const onTabSelect = (tab: Tab) => {
 	openPanel.value = tab;
+};
+
+const onFeatureRequestClick = () => {
+	window.open(featureRequestUrl.value, '_blank');
+	if (node.value) {
+		telemetry.track('User clicked ndv link', {
+			node_type: node.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: props.pushRef,
+			pane: NodeConnectionTypes.Main,
+			type: 'i-wish-this-node-would',
+		});
+	}
 };
 
 watch(node, () => {
@@ -749,7 +794,7 @@ function handleWheelEvent(event: WheelEvent) {
 		}"
 		@keydown.stop
 	>
-		<div :class="$style.header">
+		<div v-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -783,6 +828,21 @@ function handleWheelEvent(event: WheelEvent) {
 				@update:model-value="onTabSelect"
 			/>
 		</div>
+		<NodeSettingsHeader
+			v-else-if="node"
+			:selected-tab="openPanel"
+			:node-name="node.name"
+			:node-type="nodeType"
+			:execute-button-tooltip="executeButtonTooltip"
+			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
+			:hide-tabs="!nodeValid"
+			:push-ref="pushRef"
+			@execute="onNodeExecute"
+			@stop-execution="onStopExecution"
+			@value-changed="valueChanged"
+			@tab-changed="onTabSelect"
+		/>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
 				<n8n-icon icon="triangle-alert" />
@@ -832,6 +892,7 @@ function handleWheelEvent(event: WheelEvent) {
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
+				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
 			@wheel="noWheel ? handleWheelEvent : undefined"
@@ -925,6 +986,12 @@ function handleWheelEvent(event: WheelEvent) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
+			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
+				<a target="_blank" @click="onFeatureRequestClick">
+					<N8nIcon icon="lightbulb" />
+					{{ i18n.baseText('ndv.featureRequest') }}
+				</a>
+			</div>
 		</div>
 		<NDVSubConnections
 			v-if="node && !props.isEmbeddedInCanvas"
@@ -950,6 +1017,22 @@ function handleWheelEvent(event: WheelEvent) {
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
+}
+
+.featureRequest {
+	margin-top: auto;
+	align-self: center;
+
+	a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+		margin-top: var(--spacing-xl);
+
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-light);
+	}
 }
 </style>
 
@@ -993,9 +1076,15 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	.node-parameters-wrapper {
+		display: flex;
+		flex-direction: column;
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+
+		&.ndv-v2 {
+			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+		}
 	}
 
 	&.embedded .node-parameters-wrapper {

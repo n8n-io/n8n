@@ -1,10 +1,7 @@
 import type { CredentialPayload } from '@n8n/backend-test-utils';
-import { createTeamProject } from '@n8n/backend-test-utils';
-import { randomName } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
@@ -14,8 +11,7 @@ import {
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SaveCredentialFunction } from '../shared/types';
-import type { SuperAgentTest } from '../shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;

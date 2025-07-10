@@ -1,10 +1,13 @@
-import { randomEmail, randomName, uniqueId } from '@n8n/backend-test-utils';
-import { getPersonalProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
+import {
+	randomEmail,
+	randomName,
+	uniqueId,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { AuthProviderSyncHistoryRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { AuthProviderSyncHistoryRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
