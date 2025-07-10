@@ -116,11 +116,20 @@ describe('GET /insights/by-workflow', () => {
 			features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
 		});
 	});
-	test('Call should work with valid query parameters', async () => {
-		await agents.owner
-			.get('/insights/by-workflow')
-			.query({ skip: '10', take: '20', sortBy: 'total:desc' })
-			.expect(200);
+
+	test.each([
+		{
+			skip: '10',
+			take: '20',
+			sortBy: 'total:desc',
+		},
+		{
+			skip: '1',
+			take: '25',
+			sortBy: 'workflowName:asc',
+		},
+	])('Call should work with valid query parameters: %s', async (queryParams) => {
+		await agents.owner.get('/insights/by-workflow').query(queryParams).expect(200);
 	});
 
 	test.each<{ skip: string; take?: string; sortBy?: string }>([
@@ -148,21 +157,5 @@ describe('GET /insights/by-workflow', () => {
 				sortBy: 'not_a_sortby',
 			})
 			.expect(400);
-	});
-
-	test('Call should work with workflowName sorting', async () => {
-		await agents.owner
-			.get('/insights/by-workflow')
-			.query({
-				sortBy: 'workflowName:asc',
-			})
-			.expect(200);
-
-		await agents.owner
-			.get('/insights/by-workflow')
-			.query({
-				sortBy: 'workflowName:desc',
-			})
-			.expect(200);
 	});
 });
