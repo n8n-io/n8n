@@ -152,6 +152,7 @@ type Props = {
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableAiContent?: boolean;
+	collapsingTableColumnName: string | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -207,6 +208,7 @@ const emit = defineEmits<{
 		},
 	];
 	displayModeChange: [IRunDataDisplayMode];
+	collapsingTableColumnChanged: [columnName: string | null];
 }>();
 
 const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
@@ -1436,6 +1438,16 @@ defineExpose({ enterEditMode });
 					/>
 				</Suspense>
 
+				<N8nIconButton
+					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
+					:class="$style.resetCollapseButton"
+					text
+					icon="chevrons-up-down"
+					size="xmini"
+					type="tertiary"
+					@click="emit('collapsingTableColumnChanged', null)"
+				/>
+
 				<RunDataDisplayModeSelect
 					v-show="
 						hasPreviewSchema ||
@@ -1443,7 +1455,6 @@ defineExpose({ enterEditMode });
 							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
 							!editMode.enabled)
 					"
-					:class="$style.displayModeSelect"
 					:compact="props.compact"
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
@@ -1455,8 +1466,6 @@ defineExpose({ enterEditMode });
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
-
-				<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 
 				<N8nIconButton
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -1497,6 +1506,8 @@ defineExpose({ enterEditMode });
 					/>
 				</div>
 			</div>
+
+			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
@@ -1844,9 +1855,11 @@ defineExpose({ enterEditMode });
 					:header-bg-color="tableHeaderBgColor"
 					:compact="props.compact"
 					:disable-hover-highlight="props.disableHoverHighlight"
+					:collapsing-column-name="collapsingTableColumnName"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
+					@collapsing-column-changed="emit('collapsingTableColumnChanged', $event)"
 				/>
 			</Suspense>
 
@@ -1872,7 +1885,12 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi
+					render-type="rendered"
+					:compact="compact"
+					:content="parsedAiContent"
+					:search="search"
+				/>
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
@@ -2057,6 +2075,7 @@ defineExpose({ enterEditMode });
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
+		gap: var(--spacing-2xs);
 	}
 
 	> *:first-child {
@@ -2236,6 +2255,15 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+		visibility: hidden;
+
+		:global(.el-input__prefix) {
+			transition-duration: 0ms;
+		}
+	}
+
+	.compact:hover & {
+		visibility: visible;
 	}
 }
 
@@ -2317,22 +2345,14 @@ defineExpose({ enterEditMode });
 	padding: 0 var(--ndv-spacing);
 }
 
-.search,
-.displayModeSelect {
-	.compact:not(:hover) & {
-		opacity: 0;
-		display: none;
-	}
-
-	.compact:hover & {
-		opacity: 1;
-	}
-}
-
 .executingMessage {
 	.compact & {
 		color: var(--color-text-light);
 	}
+}
+
+.resetCollapseButton {
+	color: var(--color-foreground-xdark);
 }
 
 @container (max-width: 240px) {

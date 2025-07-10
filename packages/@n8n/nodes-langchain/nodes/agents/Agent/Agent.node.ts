@@ -45,6 +45,7 @@ export class Agent extends VersionedNodeType {
 			2: new AgentV2(baseDescription),
 			2.1: new AgentV2(baseDescription),
 			2.2: new AgentV2(baseDescription),
+			// IMPORTANT Reminder to update AgentTool
 		};
 
 		super(nodeVersions, baseDescription);

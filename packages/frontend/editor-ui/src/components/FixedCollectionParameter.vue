@@ -314,7 +314,7 @@ const trackWorkflowInputFieldAdded = () => {
 						<N8nIconButton
 							type="tertiary"
 							text
-							size="mini"
+							size="small"
 							icon="trash-2"
 							data-test-id="fixed-collection-delete"
 							:title="locale.baseText('fixedCollectionParameter.deleteItem')"

@@ -1,13 +1,15 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { User } from '@n8n/db';
-import type { SharedCredentials } from '@n8n/db';
-import type { SharedWorkflow } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { TagRepository } from '@n8n/db';
-import type { WorkflowTagMappingRepository } from '@n8n/db';
-import type { SharedCredentialsRepository } from '@n8n/db';
-import type { SharedWorkflowRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import type {
+	SharedCredentials,
+	SharedWorkflow,
+	FolderRepository,
+	TagRepository,
+	WorkflowTagMappingRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';

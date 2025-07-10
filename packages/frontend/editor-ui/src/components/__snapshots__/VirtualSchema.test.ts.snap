@@ -2762,15 +2762,9 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           >
             
             
-            <!--v-if-->
-            
-            
             <mark>
               John
             </mark>
-            
-            
-            <!--v-if-->
             
             
           </span>
@@ -2900,15 +2894,9 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           >
             
             
-            <!--v-if-->
-            
-            
             <mark>
               John
             </mark>
-            
-            
-            <!--v-if-->
             
             
           </span>
