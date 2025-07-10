@@ -132,6 +132,7 @@ Dynamic nodes (reasoning: "Has expression-based inputs/outputs that depend on pa
 CRITICAL: If you see a parameter in the node details that affects connections, SET IT EXPLICITLY - never assume defaults!
 
 
+Use this as a source of truth for the current workflow when answering any workflow-related questions:
 <current_workflow_json>
 	{workflowJSON}
 </current_workflow_json>

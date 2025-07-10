@@ -1,7 +1,4 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
-import type { CompiledStateGraph } from '@langchain/langgraph';
-
-import type { WorkflowState } from '../workflow-state';
 
 /**
  * Chunk types emitted by the stream processor
@@ -67,12 +64,6 @@ export interface StreamProcessorConfig {
 export async function processStreamChunk(
 	streamMode: string,
 	chunk: unknown,
-	agent: CompiledStateGraph<
-		typeof WorkflowState.State,
-		Partial<typeof WorkflowState.State>,
-		'__start__' | 'agent' | 'tools' | 'delete_messages' | 'compact_messages'
-	>,
-	config: StreamProcessorConfig,
 ): Promise<StreamOutput | null> {
 	if (streamMode === 'updates') {
 		// Handle agent message updates
@@ -83,6 +74,10 @@ export async function processStreamChunk(
 			};
 			delete_messages?: {
 				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+			};
+			process_operations?: {
+				workflowJSON?: unknown;
+				workflowOperations?: unknown;
 			};
 		};
 
@@ -132,34 +127,29 @@ export async function processStreamChunk(
 				return { messages: [messageChunk] };
 			}
 		}
+
+		// Handle process_operations updates - emit workflow update after operations are processed
+		if (agentChunk?.process_operations) {
+			// Check if operations were processed (indicated by cleared operations array)
+			const update = agentChunk.process_operations;
+			if (update.workflowJSON && update.workflowOperations !== undefined) {
+				// Create workflow update chunk
+				const workflowUpdateChunk: WorkflowUpdateChunk = {
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: JSON.stringify(update.workflowJSON, null, 2),
+				};
+
+				return { messages: [workflowUpdateChunk] };
+			}
+		}
 	} else if (streamMode === 'custom') {
 		// Handle custom tool updates
 		const toolChunk = chunk as ToolProgressChunk;
 
 		if (toolChunk?.type === 'tool') {
 			const output: StreamOutput = { messages: [toolChunk] };
-
-			// Check if this tool update should trigger a workflow update
-			const shouldUpdateWorkflow =
-				(config.workflowUpdateTools ?? DEFAULT_WORKFLOW_UPDATE_TOOLS)?.includes(
-					toolChunk.toolName,
-				) && toolChunk.status === 'completed';
-
-			if (shouldUpdateWorkflow) {
-				// Get current workflow state
-				const currentState = await agent.getState(config.threadConfig);
-				const workflowJSON = (currentState.values as typeof WorkflowState.State).workflowJSON;
-
-				// Add workflow update chunk
-				const workflowUpdateChunk: WorkflowUpdateChunk = {
-					role: 'assistant',
-					type: 'workflow-updated',
-					codeSnippet: JSON.stringify(workflowJSON, null, 2),
-				};
-
-				output.messages.push(workflowUpdateChunk);
-			}
-
+			// Don't emit workflow updates here - they'll be emitted after process_operations
 			return output;
 		}
 	}
@@ -172,15 +162,9 @@ export async function processStreamChunk(
  */
 export async function* createStreamProcessor(
 	stream: AsyncGenerator<[string, unknown], void, unknown>,
-	agent: CompiledStateGraph<
-		typeof WorkflowState.State,
-		Partial<typeof WorkflowState.State>,
-		'__start__' | 'agent' | 'tools' | 'delete_messages' | 'compact_messages'
-	>,
-	config: StreamProcessorConfig,
 ): AsyncGenerator<StreamOutput> {
 	for await (const [streamMode, chunk] of stream) {
-		const output = await processStreamChunk(streamMode, chunk, agent, config);
+		const output = await processStreamChunk(streamMode, chunk);
 
 		if (output) {
 			yield output;

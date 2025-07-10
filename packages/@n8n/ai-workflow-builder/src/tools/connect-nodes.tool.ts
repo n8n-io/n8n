@@ -2,13 +2,14 @@ import { tool } from '@langchain/core/tools';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { SimpleWorkflow } from '@/types';
+
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateWorkflowConnections } from './helpers/state';
 import { validateNodeExists } from './helpers/validation';
 import {
 	validateConnection,
-	createConnection,
 	formatConnectionMessage,
 	inferConnectionType,
 } from './utils/connection.utils';
@@ -63,6 +64,7 @@ export const nodeConnectionSchema = z.object({
  */
 export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
+		// eslint-disable-next-line complexity
 		async (input, config) => {
 			const reporter = createProgressReporter(config, 'connect_nodes');
 
@@ -212,15 +214,28 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				// Track if nodes were swapped either during inference or validation
 				const swapped = inferredSwap || !!validation.shouldSwap;
 
-				// Create the connection
-				const updatedConnections = createConnection(
-					{ ...workflow.connections },
-					actualSourceNode.name,
-					actualTargetNode.name,
-					connectionType,
-					validatedInput.sourceOutputIndex,
-					validatedInput.targetInputIndex,
-				);
+				// Create only the new connection (not the full connections object)
+				// This is important for parallel execution - each tool only returns its own connection
+				const sourceIndex = validatedInput.sourceOutputIndex ?? 0;
+				const targetIndex = validatedInput.targetInputIndex ?? 0;
+
+				const newConnection: SimpleWorkflow['connections'] = {
+					[actualSourceNode.name]: {
+						[connectionType]: Array(sourceIndex + 1)
+							.fill(null)
+							.map((_, i) =>
+								i === sourceIndex
+									? [
+											{
+												node: actualTargetNode.name,
+												type: connectionType,
+												index: targetIndex,
+											},
+										]
+									: [],
+							),
+					},
+				};
 
 				// Build success message
 				const message = formatConnectionMessage(
@@ -245,7 +260,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				reporter.complete(output);
 
 				// Return success with state updates
-				const stateUpdates = updateWorkflowConnections(updatedConnections);
+				const stateUpdates = updateWorkflowConnections(newConnection);
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors

@@ -16,9 +16,10 @@ import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import { SimpleWorkflow } from './types';
+import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
-import { WorkflowState, CLEAR_WORKFLOW_MARKER } from './workflow-state';
+import { WorkflowState } from './workflow-state';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -168,18 +169,6 @@ export class AiWorkflowBuilderService {
 			const messages = state.messages;
 			return {
 				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
-				workflowJSON: {
-					nodes: [
-						{
-							id: 'clear',
-							name: 'Clear',
-							type: CLEAR_WORKFLOW_MARKER,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					connections: {},
-				},
 			};
 		}
 
@@ -199,10 +188,12 @@ export class AiWorkflowBuilderService {
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addNode('tools', customToolExecutor)
+			.addNode('process_operations', processOperations)
 			.addNode('delete_messages', deleteMessages)
 			.addNode('compact_messages', compactSession)
 			.addConditionalEdges('__start__', shouldModifyState)
-			.addEdge('tools', 'agent')
+			.addEdge('tools', 'process_operations')
+			.addEdge('process_operations', 'agent')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
@@ -234,26 +225,64 @@ export class AiWorkflowBuilderService {
 			},
 		};
 
-		const initialState: typeof WorkflowState.State = {
-			messages: [new HumanMessage({ content: payload.question })],
-			prompt: payload.question,
-			workflowJSON: payload.currentWorkflowJSON
-				? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
-				: { nodes: [], connections: {} },
-			isWorkflowPrompt: false,
-			executionData: payload.executionData,
-		};
+		// Check if this is a subsequent message (not the first)
+		// If so, update the workflowJSON with the current editor state
+		const existingCheckpoint = await this.checkpointer.getTuple(threadConfig);
 
-		const stream = await agent.stream(initialState, {
-			...threadConfig,
-			streamMode: ['updates', 'custom'],
-			recursionLimit: 80,
-		});
+		let stream;
+
+		if (existingCheckpoint?.checkpoint) {
+			// This is a subsequent message - update the state with current workflow
+			const stateUpdate: Partial<typeof WorkflowState.State> = {
+				workflowOperations: [], // Clear any pending operations from previous message
+				executionData: payload.executionData, // Update with latest execution data
+			};
+
+			// Since the reducer now treats updates with both nodes and connections as replacements,
+			// we can just pass the workflow directly
+			if (payload.currentWorkflowJSON) {
+				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
+			} else {
+				// If no workflow provided, clear it
+				stateUpdate.workflowJSON = { nodes: [], connections: {} };
+			}
+
+			// We need to mark the workflow as an override operation
+			// to make sure the reducer treats it as a replacement
+			// otherwise it would be merged with the previous state
+			stateUpdate.workflowJSON.__reducer_operation = 'override';
+
+			// Stream with just the new message
+			stream = await agent.stream(
+				{ messages: [new HumanMessage({ content: payload.question })], ...stateUpdate },
+				{
+					...threadConfig,
+					streamMode: ['updates', 'custom'],
+					recursionLimit: 80,
+				},
+			);
+		} else {
+			// First message - use initial state
+			const initialState: typeof WorkflowState.State = {
+				messages: [new HumanMessage({ content: payload.question })],
+				prompt: payload.question,
+				workflowJSON: payload.currentWorkflowJSON
+					? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
+					: { nodes: [], connections: {} },
+				workflowOperations: [],
+				isWorkflowPrompt: false,
+				executionData: payload.executionData,
+			};
+
+			stream = await agent.stream(initialState, {
+				...threadConfig,
+				streamMode: ['updates', 'custom'],
+				recursionLimit: 80,
+			});
+		}
 
 		// Use the stream processor utility to handle chunk processing
-		const streamProcessor = createStreamProcessor(stream, agent, {
-			threadConfig,
-		});
+		const streamProcessor = createStreamProcessor(stream);
 
 		for await (const output of streamProcessor) {
 			yield output;

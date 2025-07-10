@@ -1,6 +1,8 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
-export type SimpleWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections'>;
+export type SimpleWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections'> & {
+	__reducer_operation?: 'override';
+};
 
 export interface QuickReplyOption {
 	text: string;

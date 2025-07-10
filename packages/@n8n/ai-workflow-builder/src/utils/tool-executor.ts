@@ -1,16 +1,9 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
-import type { Command } from '@langchain/langgraph';
 import { isCommand } from '@langchain/langgraph';
 
-import {
-	type WorkflowState,
-	type WorkflowUpdate,
-	type WorkflowStatePartialUpdate,
-	isWorkflowRemovalUpdate,
-	isSimpleWorkflow,
-} from '../workflow-state';
+import type { WorkflowState, WorkflowOperation } from '../workflow-state';
 
 /**
  * SIMPLIFIED PARALLEL TOOL EXECUTION
@@ -40,7 +33,7 @@ export interface ToolExecutorOptions {
  */
 export async function executeToolsInParallel(
 	options: ToolExecutorOptions,
-): Promise<WorkflowStatePartialUpdate> {
+): Promise<Partial<typeof WorkflowState.State>> {
 	const { state, toolMap } = options;
 	const lastMessage = state.messages.at(-1);
 
@@ -53,8 +46,6 @@ export async function executeToolsInParallel(
 		throw new Error('AIMessage must have tool calls');
 	}
 
-	console.log(`Executing ${aiMessage.tool_calls.length} tools in parallel`);
-
 	// Execute all tools in parallel
 	const toolResults = await Promise.all(
 		aiMessage.tool_calls.map(async (toolCall) => {
@@ -62,17 +53,15 @@ export async function executeToolsInParallel(
 			if (!tool) {
 				throw new Error(`Tool ${toolCall.name} not found`);
 			}
-			console.log(`Executing tool: ${toolCall.name}`);
 
-			const result = await tool.invoke(toolCall.args, {
+			const result: unknown = await tool.invoke(toolCall.args ?? {}, {
 				toolCall: {
 					id: toolCall.id,
 					name: toolCall.name,
-					args: toolCall.args,
+					args: toolCall.args ?? {},
 				},
 			});
 
-			console.log(`Tool ${toolCall.name} completed`);
 			return result;
 		}),
 	);
@@ -101,59 +90,29 @@ export async function executeToolsInParallel(
 		}
 	});
 
-	// Merge all workflow updates into a single update
-	// The reducer will handle the actual merging logic
-	let mergedWorkflowUpdate: WorkflowUpdate | undefined = undefined;
+	// Collect all workflow operations
+	const allOperations: WorkflowOperation[] = [];
 
 	for (const update of stateUpdates) {
-		if (update.workflowJSON) {
-			const workflowUpdate = update.workflowJSON;
-
-			if (!mergedWorkflowUpdate) {
-				// First workflow update
-				mergedWorkflowUpdate = workflowUpdate;
-			} else {
-				// Check if we have removal operations to merge
-				if (
-					isWorkflowRemovalUpdate(workflowUpdate) &&
-					isWorkflowRemovalUpdate(mergedWorkflowUpdate)
-				) {
-					// Merge removal operations
-					mergedWorkflowUpdate = {
-						_operation: 'remove',
-						_nodeIds: [...mergedWorkflowUpdate._nodeIds, ...workflowUpdate._nodeIds],
-					};
-				} else if (isSimpleWorkflow(workflowUpdate) && isSimpleWorkflow(mergedWorkflowUpdate)) {
-					// Both are regular workflow updates - merge nodes and connections
-					mergedWorkflowUpdate = {
-						nodes: [...(mergedWorkflowUpdate.nodes ?? []), ...(workflowUpdate.nodes ?? [])],
-						connections: {
-							// @ts-ignore
-							...(mergedWorkflowUpdate.connections || {}),
-							...(workflowUpdate.connections || {}),
-						},
-					};
-				} else {
-					// Mixed operation types - this shouldn't happen in normal usage
-					console.warn('Mixed workflow update types in parallel execution');
-					// Just use the latest update
-					mergedWorkflowUpdate = workflowUpdate;
-				}
-			}
+		if (update.workflowOperations && Array.isArray(update.workflowOperations)) {
+			allOperations.push(...update.workflowOperations);
 		}
 	}
 
 	// Return the combined update
-	const finalUpdate: WorkflowStatePartialUpdate = {
+	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
 	};
 
-	if (mergedWorkflowUpdate) {
-		finalUpdate.workflowJSON = mergedWorkflowUpdate;
+	if (allOperations.length > 0) {
+		finalUpdate.workflowOperations = allOperations;
 	}
 
-	console.log(
-		`Returning updates: ${allMessages.length} messages, workflow update: ${!!mergedWorkflowUpdate}`,
-	);
+	// Log only if there are operations
+	if (allOperations.length > 0) {
+		console.log(
+			`Tool executor: ${allOperations.length} operations from ${aiMessage.tool_calls.length} tools`,
+		);
+	}
 	return finalUpdate;
 }

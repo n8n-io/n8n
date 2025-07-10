@@ -1,8 +1,19 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
-import type { IRunExecutionData, INode } from 'n8n-workflow';
+import type { IRunExecutionData, INode, IConnections } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from './types';
+
+/**
+ * Workflow operation types that can be applied to the workflow state
+ */
+export type WorkflowOperation =
+	| { type: 'clear' }
+	| { type: 'removeNodes'; nodeIds: string[] }
+	| { type: 'addNodes'; nodes: INode[] }
+	| { type: 'updateNode'; nodeId: string; updates: Partial<INode> }
+	| { type: 'setConnections'; connections: IConnections }
+	| { type: 'mergeConnections'; connections: IConnections };
 
 /**
  * Special workflow update type for removal operations
@@ -52,6 +63,27 @@ export function isSimpleWorkflow(update: WorkflowUpdate): update is SimpleWorkfl
 }
 
 /**
+ * Reducer for collecting workflow operations from parallel tool executions.
+ * This reducer intelligently merges operations, avoiding duplicates and handling special cases.
+ */
+function operationsReducer(
+	current: WorkflowOperation[],
+	update: WorkflowOperation[] | null | undefined,
+): WorkflowOperation[] {
+	if (!update || update.length === 0) {
+		return current;
+	}
+
+	// For clear operations, we can reset everything
+	if (update.some((op) => op.type === 'clear')) {
+		return update.filter((op) => op.type === 'clear').slice(-1); // Keep only the last clear
+	}
+
+	// Otherwise, append new operations
+	return [...current, ...update];
+}
+
+/**
  * Custom reducer for merging workflow JSON updates from parallel tool executions.
  * This reducer intelligently merges nodes and connections from multiple updates
  * while handling special cases like node removals and parameter updates.
@@ -66,18 +98,27 @@ function workflowJSONReducer(
 		return current;
 	}
 
-	// Check for clear marker in nodes
-	if (
-		'nodes' in update &&
-		update.nodes.length === 1 &&
-		update.nodes[0].type === CLEAR_WORKFLOW_MARKER
-	) {
-		return { nodes: [], connections: {} };
-	}
-
 	// Handle special clear operation
 	if (isWorkflowClearUpdate(update)) {
 		return { nodes: [], connections: {} };
+	}
+
+	// This is a reducer override operation
+	// Return the update as-is
+	if ((update as SimpleWorkflow)?.__reducer_operation === 'override') {
+		return update as SimpleWorkflow;
+	}
+
+	// Check if update has empty nodes and connections - treat as replacement
+	if (
+		'nodes' in update &&
+		'connections' in update &&
+		update.nodes.length === 0 &&
+		Object.keys(update.connections).length === 0
+	) {
+		// This is a clear operation followed by replacement
+		// Return the update as-is (empty workflow)
+		return update;
 	}
 
 	// Handle special removal operations
@@ -115,9 +156,8 @@ function workflowJSONReducer(
 		};
 	}
 
-	// Regular workflow update - merge nodes and connections
+	// Regular workflow update
 	const workflowUpdate = update;
-
 	// Merge nodes by ID - newer updates override older ones for the same node
 	const nodeMap = new Map<string, INode>();
 
@@ -204,6 +244,11 @@ export const WorkflowState = Annotation.Root({
 		) => SimpleWorkflow,
 		default: () => ({ nodes: [], connections: {} }),
 	}),
+	// Operations to apply to the workflow - processed by a separate node
+	workflowOperations: Annotation<WorkflowOperation[]>({
+		reducer: operationsReducer,
+		default: () => [],
+	}),
 	// Whether the user prompt is a workflow prompt.
 	isWorkflowPrompt: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
 	// The execution data from the last workflow run.
@@ -211,11 +256,6 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => y ?? x ?? undefined,
 	}),
 });
-
-/**
- * Special marker node to signal a clear operation
- */
-export const CLEAR_WORKFLOW_MARKER = '__CLEAR_WORKFLOW__';
 
 /**
  * Type for partial state updates that can include WorkflowUpdate operations

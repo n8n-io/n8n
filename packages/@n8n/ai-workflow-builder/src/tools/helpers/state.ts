@@ -2,11 +2,7 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
-import type {
-	WorkflowState,
-	WorkflowStatePartialUpdate,
-	WorkflowRemovalUpdate,
-} from '../../workflow-state';
+import type { WorkflowState } from '../../workflow-state';
 
 /**
  * Get the current workflow from state in a type-safe manner
@@ -44,19 +40,14 @@ export function updateWorkflowNodes(
 
 /**
  * Create a state update for workflow connections
- * Note: The connections passed should be the full connections object since
- * the connect-nodes tool builds the complete connections structure
+ * Note: This now uses mergeConnections to support parallel execution
  */
 export function updateWorkflowConnections(
 	connections: SimpleWorkflow['connections'],
 ): Partial<typeof WorkflowState.State> {
-	// For connections, we need to return the full connections object
-	// because the connect-nodes tool already builds the complete structure
+	// Return an operation to merge connections (not replace them)
 	return {
-		workflowJSON: {
-			nodes: [],
-			connections,
-		},
+		workflowOperations: [{ type: 'mergeConnections', connections }],
 	};
 }
 
@@ -90,51 +81,40 @@ export function addNodeToWorkflow(
 
 /**
  * Add multiple nodes to the workflow state
- * Returns only the new nodes for the reducer to merge
+ * Returns operations for the new architecture
  */
 export function addNodesToWorkflow(nodes: INode[]): Partial<typeof WorkflowState.State> {
-	// Return only the new nodes - the reducer will merge them
+	// Return an operation to add nodes
 	return {
-		workflowJSON: {
-			nodes,
-			connections: {},
-		},
+		workflowOperations: [{ type: 'addNodes', nodes }],
 	};
 }
 
 /**
  * Remove a node from the workflow state
- * Returns a special removal operation for the reducer
+ * Returns operations for the new architecture
  */
-export function removeNodeFromWorkflow(nodeId: string): WorkflowStatePartialUpdate {
-	// Return a special removal operation that the reducer understands
-	const removalUpdate: WorkflowRemovalUpdate = {
-		_operation: 'remove',
-		_nodeIds: [nodeId],
-	};
+export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowState.State> {
+	// Return an operation to remove nodes
 	return {
-		workflowJSON: removalUpdate,
+		workflowOperations: [{ type: 'removeNodes', nodeIds: [nodeId] }],
 	};
 }
 
 /**
  * Remove multiple nodes from the workflow state
- * Returns a special removal operation for the reducer
+ * Returns operations for the new architecture
  */
-export function removeNodesFromWorkflow(nodeIds: string[]): WorkflowStatePartialUpdate {
-	// Return a special removal operation that the reducer understands
-	const removalUpdate: WorkflowRemovalUpdate = {
-		_operation: 'remove',
-		_nodeIds: nodeIds,
-	};
+export function removeNodesFromWorkflow(nodeIds: string[]): Partial<typeof WorkflowState.State> {
+	// Return an operation to remove nodes
 	return {
-		workflowJSON: removalUpdate,
+		workflowOperations: [{ type: 'removeNodes', nodeIds }],
 	};
 }
 
 /**
  * Update a node in the workflow state
- * Returns only the updated node for the reducer to merge
+ * Returns operations for the new architecture
  */
 export function updateNodeInWorkflow(
 	state: typeof WorkflowState.State,
@@ -146,12 +126,9 @@ export function updateNodeInWorkflow(
 		return {};
 	}
 
-	// Return only the updated node - the reducer will merge it
+	// Return an operation to update the node
 	return {
-		workflowJSON: {
-			nodes: [{ ...existingNode, ...updates }],
-			connections: {},
-		},
+		workflowOperations: [{ type: 'updateNode', nodeId, updates }],
 	};
 }
 
