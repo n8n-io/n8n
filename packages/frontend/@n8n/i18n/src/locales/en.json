@@ -1523,6 +1523,7 @@
 	"nodeView.showError.mounted2.message": "There was a problem initializing the workflow",
 	"nodeView.showError.mounted2.title": "Init Problem",
 	"nodeView.showError.openExecution.title": "Problem loading execution",
+	"nodeView.showError.openExecution.node": "Problem opening node in execution",
 	"nodeView.showError.openWorkflow.title": "Problem opening workflow",
 	"nodeView.showError.stopExecution.title": "Problem stopping execution",
 	"nodeView.showError.stopWaitingForWebhook.title": "Problem deleting test webhook",

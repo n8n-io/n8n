@@ -247,7 +247,7 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: ':executionId',
+				path: ':executionId/:nodeId?',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
 					executionPreview: WorkflowExecutionsPreview,
