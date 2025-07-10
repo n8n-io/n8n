@@ -543,11 +543,6 @@ export class GraphQL implements INodeType {
 						itemIndex,
 						'',
 					) as string;
-					const responseFormat = this.getNodeParameter(
-						'websocketResponseFormat',
-						itemIndex,
-						'json',
-					) as string;
 
 					const {
 						parameter: websocketHeaders,
