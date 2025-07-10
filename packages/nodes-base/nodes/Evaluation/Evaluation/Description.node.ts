@@ -281,6 +281,18 @@ export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName: 'Metric',
 		name: 'metric',
+		type: 'hidden',
+		default: 'customMetrics',
+		displayOptions: {
+			show: {
+				operation: ['setMetrics'],
+				'@version': [4.6],
+			},
+		},
+	},
+	{
+		displayName: 'Metric',
+		name: 'metric',
 		type: 'options',
 		noDataExpression: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
@@ -326,6 +338,7 @@ export const setMetricsProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
+				'@version': [{ _cnd: { gte: 4.7 } }],
 			},
 		},
 	},

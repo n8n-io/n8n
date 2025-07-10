@@ -27,7 +27,7 @@ export class Evaluation implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluation',
 		group: ['transform'],
-		version: 4.6,
+		version: [4.6, 4.7],
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		subtitle: '={{$parameter["operation"]}}',
