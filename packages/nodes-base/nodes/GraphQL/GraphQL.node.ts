@@ -630,11 +630,27 @@ export class GraphQL implements INodeType {
 						300,
 					) as number;
 
-					const variables = this.getNodeParameter(
+					const variablesParam = this.getNodeParameter(
 						'websocketVariables',
 						itemIndex,
 						{},
 					) as IDataObject;
+
+					// Parse variables if they're a string, otherwise use as object
+					let variables: IDataObject;
+					if (typeof variablesParam === 'string') {
+						try {
+							variables = JSON.parse(variablesParam as string);
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Failed to parse variables JSON: ${error}`,
+								{ itemIndex },
+							);
+						}
+					} else {
+						variables = variablesParam;
+					}
 					const operationName = this.getNodeParameter(
 						'websocketOperationName',
 						itemIndex,
@@ -691,26 +707,60 @@ export class GraphQL implements INodeType {
 						clearTimeout(connectionTimeoutId);
 						connectionEstablished = true;
 
-						// Send GraphQL subscription
-						const subscriptionMessage = {
-							type: 'start',
-							id: '1',
-							payload: {
-								query,
-								variables,
-								...(operationName && { operationName }),
-							},
-						};
+						// Send connection initialization for graphql-transport-ws
+						if (subprotocol === 'graphql-transport-ws') {
+							const initMessage = {
+								type: 'connection_init',
+								payload: {},
+							};
+							console.log('Sending connection init message:', initMessage);
+							ws.send(JSON.stringify(initMessage));
+						} else {
+							// For other protocols, send subscription directly
+							let subscriptionMessage: any;
 
-						ws.send(JSON.stringify(subscriptionMessage));
+							if (subprotocol === 'graphql-ws') {
+								subscriptionMessage = {
+									type: 'start',
+									id: '1',
+									payload: {
+										query,
+										variables,
+										...(operationName && { operationName }),
+									},
+								};
+							} else {
+								// Legacy graphql protocol
+								subscriptionMessage = {
+									type: 'start',
+									id: '1',
+									payload: {
+										query,
+										variables,
+										...(operationName && { operationName }),
+									},
+								};
+							}
+
+							console.log('Sending subscription message:', subscriptionMessage);
+							ws.send(JSON.stringify(subscriptionMessage));
+						}
 					});
 
 					ws.on('message', (data: any) => {
 						try {
 							const message = JSON.parse(data.toString());
+							console.log('WebSocket message received:', message);
 
-							if (message.type === 'data') {
-								messages.push(message.payload);
+							// Handle different GraphQL subscription message types
+							if (message.type === 'data' || message.type === 'next') {
+								// Standard GraphQL subscription data
+								const payload = message.payload || message.data;
+								if (payload) {
+									messages.push(payload);
+								} else {
+									messages.push(message);
+								}
 								clearTimeout(subscriptionTimeoutId);
 
 								// Reset subscription timeout for next message
@@ -724,13 +774,55 @@ export class GraphQL implements INodeType {
 								}, subscriptionTimeout * 1000);
 
 								subscriptionTimeoutId = newTimeoutId;
-							} else if (message.type === 'error') {
+							} else if (message.type === 'error' || message.type === 'connection_error') {
 								ws.close();
-								throw new NodeApiError(this.getNode(), message.payload, {
-									message: 'GraphQL subscription error',
+								let errorMessage = 'GraphQL subscription error';
+								if (message.payload) {
+									if (Array.isArray(message.payload)) {
+										errorMessage = message.payload.map((err: any) => err.message).join(', ');
+									} else if (typeof message.payload === 'string') {
+										errorMessage = message.payload;
+									} else {
+										errorMessage = JSON.stringify(message.payload);
+									}
+								}
+								throw new NodeApiError(this.getNode(), message.payload || {}, {
+									message: errorMessage,
 								});
-							} else if (message.type === 'complete') {
+							} else if (message.type === 'complete' || message.type === 'done') {
 								ws.close();
+							} else if (message.type === 'connection_ack') {
+								// Connection acknowledged, now send subscription for graphql-transport-ws
+								console.log('WebSocket connection acknowledged');
+
+								if (subprotocol === 'graphql-transport-ws') {
+									const subscriptionMessage = {
+										type: 'subscribe',
+										id: '1',
+										payload: {
+											query,
+											variables,
+										},
+									};
+									console.log(
+										'Sending subscription message after connection ack:',
+										subscriptionMessage,
+									);
+									ws.send(JSON.stringify(subscriptionMessage));
+								}
+							} else if (message.type === 'ping' || message.type === 'ka') {
+								// Handle ping/keepalive messages
+								console.log('Received ping/keepalive message');
+								// Send pong response if needed
+								const pongMessage = {
+									type: 'pong',
+									payload: { message: 'keepalive' },
+								};
+								ws.send(JSON.stringify(pongMessage));
+							} else {
+								// Unknown message type, but still collect it
+								console.log('Unknown message type:', message.type);
+								messages.push(message);
 							}
 						} catch (error) {
 							ws.close();
@@ -766,21 +858,46 @@ export class GraphQL implements INodeType {
 
 					// Wait for connection and messages
 					await new Promise<void>((resolve: () => void, reject: (error: Error) => void) => {
+						let messageReceived = false;
+
 						ws.on('open', () => {
 							// Connection established, wait for messages
+							console.log('WebSocket connection opened');
 						});
 
-						ws.on('message', () => {
-							// Message received, continue processing
+						ws.on('message', (data: any) => {
+							try {
+								const message = JSON.parse(data.toString());
+								console.log('Message in Promise handler:', message);
+
+								// If we receive actual data (not just ping), mark as received
+								if (message.type === 'data' || message.type === 'next') {
+									messageReceived = true;
+									console.log('Data message received, resolving...');
+									resolve();
+								}
+							} catch (error) {
+								console.log('Error parsing message in Promise:', error);
+							}
 						});
 
 						ws.on('close', () => {
-							resolve();
+							console.log('WebSocket connection closed');
+							if (!messageReceived) {
+								resolve(); // Resolve even if no data received
+							}
 						});
 
 						ws.on('error', (error: Error) => {
+							console.log('WebSocket error in Promise:', error);
 							reject(error);
 						});
+
+						// Set a timeout to resolve if no data received
+						setTimeout(() => {
+							console.log('Timeout reached, resolving...');
+							resolve();
+						}, subscriptionTimeout * 1000);
 					});
 
 					// Return collected messages
