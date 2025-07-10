@@ -555,18 +555,16 @@ describe('metricHandlers', () => {
 				score: 4,
 			};
 
-			// Mock the entire chain pipeline properly
-			const mockFinalChain = {
+			// Mock the LLM with withStructuredOutput
+			const mockLLMWithStructuredOutput = {
 				invoke: jest.fn().mockResolvedValue(mockResponse),
 			};
 
-			const mockMiddleChain = {
-				pipe: jest.fn().mockReturnValue(mockFinalChain),
-			};
+			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
 			// Mock ChatPromptTemplate.fromMessages to return a chain that can be piped
 			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockMiddleChain),
+				pipe: jest.fn().mockReturnValue(mockLLMWithStructuredOutput),
 			};
 
 			// Mock the static method
@@ -674,16 +672,15 @@ describe('metricHandlers', () => {
 				score: 5,
 			};
 
-			const mockFinalChain = {
+			// Mock the LLM with withStructuredOutput
+			const mockLLMWithStructuredOutput = {
 				invoke: jest.fn().mockResolvedValue(mockResponse),
 			};
 
-			const mockMiddleChain = {
-				pipe: jest.fn().mockReturnValue(mockFinalChain),
-			};
+			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
 			const mockChatPromptTemplate = {
-				pipe: jest.fn().mockReturnValue(mockMiddleChain),
+				pipe: jest.fn().mockReturnValue(mockLLMWithStructuredOutput),
 			};
 
 			const ChatPromptTemplate = require('@langchain/core/prompts').ChatPromptTemplate;

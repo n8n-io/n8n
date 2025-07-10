@@ -5,7 +5,6 @@ import {
 } from '@langchain/core/prompts';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { distance } from 'fastest-levenshtein';
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	FieldType,
@@ -98,13 +97,13 @@ export const metricHandlers = {
 
 		// Calculate individual tool usage (1 if used, 0 if not used)
 		const toolUsageScores = normalizedExpectedTools.map((normalizedTool) => {
-			return intermediateSteps.filter((step) => {
+			return intermediateSteps.some((step) => {
 				// Handle malformed intermediate steps gracefully
 				if (!step || !step.action || typeof step.action.tool !== 'string') {
 					return false;
 				}
 				return step.action.tool.toLowerCase() === normalizedTool;
-			})?.length >= 1
+			})
 				? 1
 				: 0;
 		});
@@ -219,14 +218,8 @@ export const metricHandlers = {
 				.describe('integer from 1 to 5 representing the helpfulness score'),
 		});
 
-		// Create structured output parser
-		const parser = StructuredOutputParser.fromZodSchema(responseSchema);
-
-		// Create LangChain prompt templates with format instructions
-		const formatInstructions = parser.getFormatInstructions();
-		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate(
-			'{systemPrompt}\n\n{format_instructions}',
-		);
+		// Create LangChain prompt templates
+		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate('{systemPrompt}');
 		const humanMessageTemplate = HumanMessagePromptTemplate.fromTemplate(inputPromptTemplate);
 
 		// Create the chat prompt template
@@ -235,15 +228,24 @@ export const metricHandlers = {
 			humanMessageTemplate,
 		]);
 
-		// Create and execute the chain
-		const chain = chatPrompt.pipe(llm).pipe(parser);
+		// Create chain with structured output
+		if (!llm.withStructuredOutput) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Language model does not support structured output',
+				{
+					description:
+						'The connected language model does not support structured output. Please use a compatible model.',
+				},
+			);
+		}
+		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema));
 
 		try {
 			const response = await chain.invoke({
 				systemPrompt,
 				user_query: userQuery,
 				actual_answer: actualAnswer,
-				format_instructions: formatInstructions,
 			});
 
 			const metricName = this.getNodeParameter('options.metricName', i, 'Helpfulness') as string;
@@ -307,14 +309,8 @@ export const metricHandlers = {
 				.describe('integer from 1 to 5 representing the similarity score'),
 		});
 
-		// Create structured output parser
-		const parser = StructuredOutputParser.fromZodSchema(responseSchema);
-
-		// Create LangChain prompt templates with format instructions
-		const formatInstructions = parser.getFormatInstructions();
-		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate(
-			'{systemPrompt}\n\n{format_instructions}',
-		);
+		// Create LangChain prompt templates
+		const systemMessageTemplate = SystemMessagePromptTemplate.fromTemplate('{systemPrompt}');
 		const humanMessageTemplate = HumanMessagePromptTemplate.fromTemplate(inputPromptTemplate);
 
 		// Create the chat prompt template
@@ -323,15 +319,24 @@ export const metricHandlers = {
 			humanMessageTemplate,
 		]);
 
-		// Create and execute the chain
-		const chain = chatPrompt.pipe(llm).pipe(parser);
+		// Create chain with structured output
+		if (!llm.withStructuredOutput) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Language model does not support structured output',
+				{
+					description:
+						'The connected language model does not support structured output. Please use a compatible model.',
+				},
+			);
+		}
+		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema));
 
 		try {
 			const response = await chain.invoke({
 				systemPrompt,
 				actual_answer: actualAnswer,
 				expected_answer: expectedAnswer,
-				format_instructions: formatInstructions,
 			});
 
 			const metricName = this.getNodeParameter('options.metricName', i, 'Correctness') as string;
