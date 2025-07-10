@@ -184,10 +184,10 @@ export const parseMessage = async (
 		};
 	} else {
 		let content: IDataObject | string = message.content.toString();
-		if (options.jsonParseBody) {
+		if ('jsonParseBody' in options && options.jsonParseBody) {
 			content = jsonParse(content);
 		}
-		if (options.onlyContent) {
+		if ('onlyContent' in options && options.onlyContent) {
 			return { json: content as IDataObject };
 		} else {
 			message.content = content as unknown as Buffer;

@@ -26,6 +26,7 @@ const {
 	outputs,
 	connections,
 	isDisabled,
+	isReadOnly,
 	isSelected,
 	hasPinnedData,
 	executionStatus,
@@ -136,6 +137,8 @@ function onActivate(event: MouseEvent) {
 		:node-id="id"
 		:class="classes"
 		:style="styles"
+		:is-read-only="isReadOnly"
+		:is-configurable="renderOptions.configurable ?? false"
 	/>
 	<div
 		v-else
@@ -234,7 +237,8 @@ function onActivate(event: MouseEvent) {
 
 		&.configuration {
 			.icon {
-				margin-left: calc((var(--canvas-node--height) - var(--node-icon-size)) / 2);
+				// 4px represents calc(var(--handle--indicator--width) - configuration node offset) / 2)
+				margin-left: calc((var(--canvas-node--height) - var(--node-icon-size) - 4px) / 2);
 			}
 
 			&:not(.running) {
@@ -313,6 +317,7 @@ function onActivate(event: MouseEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
+	pointer-events: none;
 }
 
 .label,

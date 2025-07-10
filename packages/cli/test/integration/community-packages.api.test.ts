@@ -1,6 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { InstalledNodes } from '@n8n/db';
-import type { InstalledPackages } from '@n8n/db';
+import type { InstalledNodes, InstalledPackages } from '@n8n/db';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

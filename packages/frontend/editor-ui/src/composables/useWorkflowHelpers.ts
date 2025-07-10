@@ -388,7 +388,6 @@ export function executeData(
 			workflowRunData[parentNodeName].length <= parentRunIndex ||
 			!workflowRunData[parentNodeName][parentRunIndex] ||
 			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
-			workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
 			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
@@ -923,13 +922,10 @@ export function useWorkflowHelpers() {
 
 	function getWebhookPath(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
-			return trigger.parameters.path as string;
+			return (trigger.parameters.path as string) || (trigger.webhookId as string);
 		}
 		if (trigger.type === FORM_TRIGGER_NODE_TYPE) {
-			return (
-				(((trigger.parameters.options as { path: string }) || {}).path as string) ??
-				trigger.webhookId
-			);
+			return ((trigger.parameters.options as { path: string }) || {}).path ?? trigger.webhookId;
 		}
 		return '';
 	}

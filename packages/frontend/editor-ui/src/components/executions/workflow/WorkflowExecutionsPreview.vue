@@ -45,6 +45,7 @@ const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 const executionId = computed(() => route.params.executionId as string);
+const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
 	props.execution ? executionHelpers.getUIDetails(props.execution) : null,
 );
@@ -229,7 +230,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						| ID#{{ execution.id }}
 					</N8nText>
 				</div>
-				<div :class="$style.executionDetailsRetry" v-if="execution.mode === 'retry'">
+				<div v-if="execution.mode === 'retry'" :class="$style.executionDetailsRetry">
 					<N8nText color="text-base" size="small">
 						{{ locale.baseText('executionDetails.retry') }}
 						<RouterLink
@@ -306,8 +307,8 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				</ElDropdown>
 
 				<WorkflowExecutionAnnotationPanel
-					:execution="activeExecution"
 					v-if="isAnnotationEnabled && activeExecution"
+					:execution="activeExecution"
 				/>
 
 				<N8nIconButton
@@ -327,6 +328,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			loader-type="spinner"
 			:execution-id="executionId"
 			:execution-mode="execution?.mode || ''"
+			:node-id="nodeId"
 		/>
 	</div>
 </template>

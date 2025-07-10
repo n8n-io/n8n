@@ -27,15 +27,13 @@ before(() => {
 });
 
 beforeEach(() => {
-	if (!cy.config('disableAutoLogin')) {
-		cy.signinAsOwner();
-	}
-
 	cy.window().then((win): void => {
 		win.localStorage.setItem('N8N_THEME', 'light');
 		win.localStorage.setItem('N8N_AUTOCOMPLETE_ONBOARDED', 'true');
 		win.localStorage.setItem('N8N_MAPPING_ONBOARDED', 'true');
 	});
+
+	// #region ===== Intercepts =====
 
 	cy.intercept('GET', '/rest/settings', (req) => {
 		// Disable cache
@@ -106,4 +104,10 @@ beforeEach(() => {
 			items: [],
 		},
 	).as('getWhatsNew');
+
+	// #endregion ===== Intercepts =====
+
+	if (!cy.config('disableAutoLogin')) {
+		cy.signinAsOwner();
+	}
 });

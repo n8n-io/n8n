@@ -1,6 +1,11 @@
-import { Project, type ProjectRepository, User, WorkflowEntity } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import {
+	type FolderRepository,
+	type WorkflowRepository,
+	Project,
+	type ProjectRepository,
+	User,
+	WorkflowEntity,
+} from '@n8n/db';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';

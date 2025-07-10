@@ -36,7 +36,7 @@ describe('error-handling', () => {
 				429,
 				{ code: 'rate_limit_exceeded' },
 				'Rate limit exceeded',
-				{},
+				new Headers(),
 			);
 
 			try {

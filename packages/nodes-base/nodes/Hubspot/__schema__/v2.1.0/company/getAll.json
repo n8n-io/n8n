@@ -33,9 +33,6 @@
                                     "name": {
                                         "type": "string"
                                     },
-                                    "requestId": {
-                                        "type": "string"
-                                    },
                                     "source": {
                                         "type": "string"
                                     },
@@ -57,21 +54,7 @@
                     }
                 }
             }
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                }
-            }
         }
     },
-    "version": 4
+    "version": 5
 }

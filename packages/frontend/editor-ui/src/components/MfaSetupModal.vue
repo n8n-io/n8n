@@ -4,6 +4,7 @@ import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	MFA_SETUP_MODAL_KEY,
+	VIEWS,
 } from '../constants';
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
@@ -13,6 +14,8 @@ import { useToast } from '@/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/stores/settings.store';
+import router from '@/router';
 
 // ---------------------------------------------------------------------------
 // #region Reactive properties
@@ -39,6 +42,7 @@ const loadingQrCode = ref(true);
 
 const clipboard = useClipboard();
 const userStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 
@@ -104,6 +108,10 @@ const onSetupClick = async () => {
 			type: 'success',
 			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
 		});
+		if (settingsStore.isMFAEnforced) {
+			await userStore.logout();
+			await router.push({ name: VIEWS.SIGNIN });
+		}
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
 			toast.showMessage({
@@ -227,7 +235,7 @@ onMounted(async () => {
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<i18nn-t keypath="mfa.setup.step2.infobox.description" tag="span">
+					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
 						<template #part1>
 							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
 						</template>
@@ -236,7 +244,7 @@ onMounted(async () => {
 								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
 							</n8n-text>
 						</template>
-					</i18nn-t>
+					</i18n-t>
 				</n8n-info-tip>
 				<div>
 					<n8n-button

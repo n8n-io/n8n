@@ -1,0 +1,25 @@
+{
+  "name": "n8n-playwright",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:local:reset": "N8N_BASE_URL=http://localhost:5678 RESET_E2E_DB=true playwright test --workers=4",
+    "test:local": "N8N_BASE_URL=http://localhost:5678 playwright test",
+    "test:standard": "playwright test --project=mode:standard*",
+    "test:postgres": "playwright test --project=mode:postgres*",
+    "test:queue": "playwright test --project=mode:queue*",
+    "test:multi-main": "playwright test --project=mode:multi-main*",
+    "test:clean": "docker rm -f $(docker ps -aq --filter 'name=n8n-*') 2>/dev/null || true && docker network prune -f",
+    "lint": "eslint . --quiet",
+    "lintfix": "eslint . --fix",
+    "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps --no-shell",
+    "install-browsers:local": "playwright install chromium --with-deps --no-shell"
+  },
+  "devDependencies": {
+    "@currents/playwright": "1.14.1",
+    "@playwright/test": "1.53.0",
+    "@types/lodash": "catalog:",
+    "eslint-plugin-playwright": "2.2.0",
+    "n8n-containers": "workspace:*"
+  }
+}

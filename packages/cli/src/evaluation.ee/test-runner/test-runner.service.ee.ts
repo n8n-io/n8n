@@ -108,6 +108,7 @@ export class TestRunnerService {
 
 		const unconfiguredMetricsNode = metricsNodes.find(
 			(node) =>
+				node.disabled === true ||
 				!node.parameters ||
 				!node.parameters.metrics ||
 				(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
@@ -130,7 +131,7 @@ export class TestRunnerService {
 	private validateSetOutputsNodes(workflow: IWorkflowBase) {
 		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
 		if (setOutputsNodes.length === 0) {
-			throw new TestRunError('SET_OUTPUTS_NODE_NOT_FOUND');
+			return; // No outputs nodes are strictly required, so we can skip validation
 		}
 
 		const unconfiguredSetOutputsNode = setOutputsNodes.find(
