@@ -14,7 +14,13 @@ RUN \
   find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
 
 # Install essential OS dependencies
-RUN apk add --no-cache git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
+
+# Install essential OS dependencies with edge repositories: Gets latest releases so we get security fixes
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk upgrade && \
+    apk add --no-cache git openssh openssl graphicsmagick tini tzdata ca-certificates libc6-compat jq
 
 # Update npm, install full-icu and npm@11.4.2 to fix brace-expansion vulnerability
 # Remove npm update after vulnerability is fixed in in node image
