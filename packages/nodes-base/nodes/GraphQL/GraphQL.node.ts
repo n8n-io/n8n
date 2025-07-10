@@ -22,7 +22,7 @@ export class GraphQL implements INodeType {
 		group: ['input'],
 		version: [1, 1.1, 1.2],
 		description:
-			'Makes a GraphQL request and returns the received data. Supports both HTTP and WebSocket connections for real-time GraphQL subscriptions.',
+			'Makes a GraphQL request and returns the received data. Supports both HTTP and WebSocket connections for real-time GraphQL subscriptions. For WebSocket usage examples, see the n8n documentation.',
 		defaults: {
 			name: 'GraphQL',
 		},
