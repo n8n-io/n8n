@@ -135,7 +135,7 @@ describe('ChatInput', () => {
 		wrapper.vm.chatStore.ws = mockWs;
 		wrapper.vm.waitingForChatResponse = true;
 
-		await wrapper.vm.respondToChat(mockWs, 'Test message');
+		await wrapper.vm.respondToChatNode(mockWs, 'Test message');
 
 		expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"chatInput":"Test message"'));
 	});
