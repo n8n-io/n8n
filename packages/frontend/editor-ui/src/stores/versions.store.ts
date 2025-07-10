@@ -130,7 +130,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				const versions = await versionsApi.getNextVersions(endpoint, current, instanceId);
 				setVersions({ versions, currentVersion: current });
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error('Failed to fetch versions:', e);
+		}
 	};
 
 	const setVersions = (params: SetVersionParams) => {
@@ -208,7 +210,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 					}
 				}
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error('Failed to fetch Whats New section:', e);
+		}
 	};
 
 	const initialize = (settings: IVersionNotificationSettings) => {
