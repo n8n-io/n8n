@@ -233,7 +233,7 @@ export function useNodeSettingsParameters() {
 		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
-		focusPanelStore.setFocusedNodeParameter({
+		focusPanelStore.openWithFocusedNodeParameter({
 			nodeId: node.id,
 			parameterPath: path,
 			parameter,
@@ -243,8 +243,6 @@ export function useNodeSettingsParameters() {
 			ndvStore.setActiveNodeName(null);
 			ndvStore.resetNDVPushRef();
 		}
-
-		focusPanelStore.focusPanelActive = true;
 	}
 
 	function shouldDisplayNodeParameter(
