@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -13,10 +14,11 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
+import { BaseCommand } from './base-command';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -31,8 +33,6 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
-
-import { BaseCommand } from './base-command';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -151,6 +151,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -164,18 +167,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const generateConfigFile = async () => {
 			const configPath = path.join(staticCacheDir, 'config.js');
 
-			const feSentryConfig = {
-				dsn: this.globalConfig.sentry.frontendDsn,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				environment: process.env.ENVIRONMENT || 'development',
-				serverName: process.env.DEPLOYMENT_NAME,
-				release: `n8n@${N8N_VERSION}`,
-			};
-
 			const configContent = [
 				`window.BASE_PATH = '${n8nPath}';`,
 				`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
-				`window.sentry = ${JSON.stringify(feSentryConfig)};`,
 			].join('\n');
 
 			await writeFile(configPath, configContent, 'utf-8');

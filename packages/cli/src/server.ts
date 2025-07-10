@@ -1,4 +1,4 @@
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -277,6 +277,21 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/module-settings`,
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
+
+			// Return Sentry config as a static file
+			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
+				res.type('js');
+				res.write('window.sentry=');
+				res.write(
+					JSON.stringify({
+						dsn: this.globalConfig.sentry.frontendDsn,
+						environment: process.env.ENVIRONMENT || 'development',
+						serverName: process.env.DEPLOYMENT_NAME,
+						release: `n8n@${N8N_VERSION}`,
+					}),
+				);
+				res.end();
+			});
 		}
 
 		// ----------------------------------------
