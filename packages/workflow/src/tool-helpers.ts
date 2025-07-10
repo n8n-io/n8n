@@ -6,5 +6,5 @@ import type { INode } from './interfaces';
  */
 export function nodeNameToToolName(nodeOrName: INode | string): string {
 	const name = typeof nodeOrName === 'string' ? nodeOrName : nodeOrName.name;
-	return name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
+	return name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$_]+/g, '_');
 }
