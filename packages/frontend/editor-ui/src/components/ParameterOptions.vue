@@ -90,8 +90,9 @@ const isFocusPanelFeatureEnabled = computed(() => {
 const hasFocusAction = computed(
 	() =>
 		isFocusPanelFeatureEnabled.value &&
+		!props.parameter.isNodeSetting &&
 		!props.isReadOnly &&
-		activeNode.value &&
+		activeNode.value && // checking that it's inside ndv
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),
 );
 
