@@ -78,6 +78,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const fileName = this.getNodeParameter('options.fileName', i, 'file') as string;
+	// TODO: make this a helper (i.e. getBaseUrl)?
 	const credentials = await this.getCredentials('anthropicApi');
 	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
 

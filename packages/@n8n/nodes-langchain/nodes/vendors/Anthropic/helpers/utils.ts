@@ -31,11 +31,11 @@ export async function uploadFile(
 	this: IExecuteFunctions,
 	fileContent: Buffer,
 	mimeType: string,
-	fileName: string,
+	fileName?: string,
 ) {
 	const form = new FormData();
 	form.append('file', fileContent, {
-		filename: fileName,
+		filename: fileName ?? 'file',
 		contentType: mimeType,
 	});
 	return (await apiRequest.call(this, 'POST', '/v1/files', {

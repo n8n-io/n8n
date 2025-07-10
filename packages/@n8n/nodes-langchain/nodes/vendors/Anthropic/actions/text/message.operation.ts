@@ -5,12 +5,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { Content, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
+import type { Content, File, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
+import { downloadFile, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -65,6 +66,64 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Add Attachments',
+		name: 'addAttachments',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to add attachments to the message',
+	},
+	{
+		displayName: 'Attachments Input Type',
+		name: 'attachmentsInputType',
+		type: 'options',
+		default: 'url',
+		description: 'The type of input to use for the attachments',
+		options: [
+			{
+				name: 'URL(s)',
+				value: 'url',
+			},
+			{
+				name: 'Binary File(s)',
+				value: 'binary',
+			},
+		],
+		displayOptions: {
+			show: {
+				addAttachments: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Attachment URL(s)',
+		name: 'attachmentsUrls',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. https://example.com/image.png',
+		description: 'URL(s) of the file(s) to attach, multiple URLs can be added separated by comma',
+		displayOptions: {
+			show: {
+				addAttachments: [true],
+				attachmentsInputType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'Attachment Input Data Field Name(s)',
+		name: 'binaryPropertyNames',
+		type: 'string',
+		default: 'data',
+		placeholder: 'e.g. data',
+		description:
+			'Name of the binary field(s) which contains the file(s) to attach, multiple field names can be added separated by comma',
+		displayOptions: {
+			show: {
+				addAttachments: [true],
+				attachmentsInputType: ['binary'],
+			},
+		},
 	},
 	{
 		displayName: 'Simplify Output',
@@ -206,6 +265,21 @@ function getToolCalls(contents: Content[]) {
 	return contents.filter((c) => c.type === 'tool_use');
 }
 
+function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image' | 'document' {
+	if (mimeType?.startsWith('image/')) {
+		return 'image';
+	}
+
+	if (mimeType === 'application/pdf') {
+		return 'document';
+	}
+
+	throw new NodeOperationError(
+		this.getNode(),
+		`Unsupported file type: ${mimeType}. Only images and PDFs are supported.`,
+	);
+}
+
 interface MessagesResponse {
 	content: Content[];
 	stop_reason: string;
@@ -214,6 +288,7 @@ interface MessagesResponse {
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
+	const addAttachments = this.getNodeParameter('addAttachments', i, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as {
 		codeExecution?: boolean;
@@ -257,6 +332,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			allowed_domains: allowedDomains,
 			blocked_domains: blockedDomains,
 		});
+	}
+
+	if (addAttachments) {
+		if (options.codeExecution) {
+			await addCodeAttachmentsToMessages.call(this, i, messages);
+		} else {
+			await addRegularAttachmentsToMessages.call(this, i, messages);
+		}
 	}
 
 	const body = {
@@ -360,4 +443,136 @@ async function handleToolUse(
 	}
 
 	messages.push(toolResults);
+}
+
+// TODO: make this a helper?
+async function addRegularAttachmentsToMessages(
+	this: IExecuteFunctions,
+	i: number,
+	messages: Message[],
+) {
+	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
+	const credentials = await this.getCredentials('anthropicApi');
+	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const fileUrlPrefix = `${baseUrl}/v1/files/`;
+
+	let content: Content[];
+	if (inputType === 'url') {
+		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
+		const promises = urls
+			.split(',')
+			.map((url) => url.trim())
+			.filter((url) => url)
+			.map(async (url) => {
+				if (url.startsWith(fileUrlPrefix)) {
+					const response = (await apiRequest.call(this, 'GET', url)) as File;
+					const type = getFileTypeOrThrow.call(this, response.mime_type);
+					return {
+						type,
+						source: {
+							type: 'file',
+							file_id: url.replace(fileUrlPrefix, ''),
+						},
+					} as Content;
+				} else {
+					// TODO: downloading the whole just for the mime type is not ideal
+					const response = await downloadFile.call(this, url);
+					const type = getFileTypeOrThrow.call(this, response.mimeType);
+					return {
+						type,
+						source: {
+							type: 'url',
+							url,
+						},
+					} as Content;
+				}
+			});
+
+		content = await Promise.all(promises);
+	} else {
+		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
+		const promises = binaryPropertyNames
+			.split(',')
+			.map((binaryPropertyName) => binaryPropertyName.trim())
+			.filter((binaryPropertyName) => binaryPropertyName)
+			.map(async (binaryPropertyName) => {
+				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+				const type = getFileTypeOrThrow.call(this, binaryData.mimeType);
+				const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+				const fileBase64 = buffer.toString('base64');
+				return {
+					type,
+					source: {
+						type: 'base64',
+						media_type: binaryData.mimeType,
+						data: fileBase64,
+					},
+				} as Content;
+			});
+
+		content = await Promise.all(promises);
+	}
+
+	messages.push({
+		role: 'user',
+		content,
+	});
+}
+
+async function addCodeAttachmentsToMessages(
+	this: IExecuteFunctions,
+	i: number,
+	messages: Message[],
+) {
+	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
+	const credentials = await this.getCredentials('anthropicApi');
+	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const fileUrlPrefix = `${baseUrl}/v1/files/`;
+
+	let content: Content[];
+	if (inputType === 'url') {
+		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
+		const promises = urls
+			.split(',')
+			.map((url) => url.trim())
+			.filter((url) => url)
+			.map(async (url) => {
+				if (url.startsWith(fileUrlPrefix)) {
+					return url.replace(fileUrlPrefix, '');
+				} else {
+					const { fileContent, mimeType } = await downloadFile.call(this, url);
+					const response = await uploadFile.call(this, fileContent, mimeType);
+					return response.id;
+				}
+			});
+
+		const fileIds = await Promise.all(promises);
+		content = fileIds.map((fileId) => ({
+			type: 'container_upload',
+			file_id: fileId,
+		}));
+	} else {
+		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
+		const promises = binaryPropertyNames
+			.split(',')
+			.map((binaryPropertyName) => binaryPropertyName.trim())
+			.filter((binaryPropertyName) => binaryPropertyName)
+			.map(async (binaryPropertyName) => {
+				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+				const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+				const response = await uploadFile.call(this, buffer, binaryData.mimeType);
+				return response.id;
+			});
+
+		const fileIds = await Promise.all(promises);
+		content = fileIds.map((fileId) => ({
+			type: 'container_upload',
+			file_id: fileId,
+		}));
+	}
+
+	messages.push({
+		role: 'user',
+		content,
+	});
 }

@@ -39,6 +39,10 @@ export type Content =
 			type: 'tool_result';
 			tool_use_id: string;
 			content: string;
+	  }
+	| {
+			type: 'container_upload';
+			file_id: string;
 	  };
 
 export interface Message {
