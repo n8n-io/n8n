@@ -86,7 +86,7 @@ function onClick() {
 				size="small"
 				@click="trackTemplatesClick(TemplateClickSource.emptyWorkflowLink)"
 			>
-				{{ i18n.baseText('executionsLandingPage.emptyState.noTrigger.templateLinkText') }}
+				{{ i18n.baseText('nodeView.templateLink') }}
 			</N8nLink>
 		</p>
 	</div>
