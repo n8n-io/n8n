@@ -97,10 +97,9 @@ export class ChatService {
 
 		const key = `${sessionId}|${executionId}|${isPublic ? 'public' : 'integrated'}`;
 
-		if (this.sessions.has(key)) {
-			this.sessions.get(key)?.connection.terminate();
-			clearInterval(this.sessions.get(key)?.intervalId);
-			this.sessions.delete(key);
+		const existingSession = this.sessions.get(key);
+		if (existingSession) {
+			this.cleanupSession(existingSession, key);
 		}
 
 		const onMessage = this.incomingMessageHandler(key);
@@ -221,7 +220,11 @@ export class ChatService {
 					`Error sending message to chat in session ${sessionKey}: ${error.message}`,
 				);
 			} finally {
-				session.isProcessing = false;
+				// get only active sessions, as it could have been deleted, and set isProcessing to false
+				const activeSession = this.sessions.get(sessionKey);
+				if (activeSession) {
+					activeSession.isProcessing = false;
+				}
 			}
 		};
 	}
@@ -268,8 +271,7 @@ export class ChatService {
 
 			if (!session) return null;
 
-			this.cleanupSession(session);
-			this.sessions.delete(sessionKey);
+			this.cleanupSession(session, sessionKey);
 			return null;
 		}
 
@@ -286,9 +288,10 @@ export class ChatService {
 		return buffer.toString('utf8');
 	}
 
-	private cleanupSession(session: Session) {
+	private cleanupSession(session: Session, sessionKey: string) {
 		session.connection.terminate();
 		clearInterval(session.intervalId);
+		if (sessionKey) this.sessions.delete(sessionKey);
 	}
 
 	private parseChatMessage(message: string): ChatMessage {
@@ -316,31 +319,22 @@ export class ChatService {
 	private async checkHeartbeats() {
 		try {
 			const now = Date.now();
-			const disconnected: string[] = [];
 
 			for (const [key, session] of this.sessions.entries()) {
 				const timeSinceLastHeartbeat = now - (session.lastHeartbeat ?? 0);
 
 				if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
 					await this.executionManager.cancelExecution(session.executionId);
-					this.cleanupSession(session);
-					disconnected.push(key);
+					this.cleanupSession(session, key);
 				} else {
 					try {
 						session.connection.send(N8N_HEARTBEAT);
 					} catch (e) {
-						this.cleanupSession(session);
-						disconnected.push(key);
+						this.cleanupSession(session, key);
 						const error = ensureError(e);
 						this.errorReporter.error(error);
 						this.logger.error(`Error sending heartbeat to session ${key}: ${error.message}`);
 					}
-				}
-			}
-
-			if (disconnected.length) {
-				for (const key of disconnected) {
-					this.sessions.delete(key);
 				}
 			}
 		} catch (e) {
@@ -352,8 +346,8 @@ export class ChatService {
 
 	@OnShutdown()
 	shutdown() {
-		for (const session of this.sessions.values()) {
-			this.cleanupSession(session);
+		for (const [key, session] of this.sessions.entries()) {
+			this.cleanupSession(session, key);
 		}
 
 		this.sessions.clear();
