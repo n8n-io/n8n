@@ -7,6 +7,10 @@ import {
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
+import { splitTextBySearch } from '@/utils/stringUtils';
+import { escapeHtml } from 'xss';
+import type MarkdownIt from 'markdown-it';
+import { unescapeAll } from 'markdown-it/lib/common/utils';
 
 export interface AIResult {
 	node: string;
@@ -197,4 +201,53 @@ export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTok
 	);
 
 	return tokenUsage;
+}
+
+export function createHtmlFragmentWithSearchHighlight(
+	text: string,
+	search: string | undefined,
+): string {
+	const escaped = escapeHtml(text);
+
+	return search
+		? splitTextBySearch(escaped, search)
+				.map((part) => (part.isMatched ? `<mark>${part.content}</mark>` : part.content))
+				.join('')
+		: escaped;
+}
+
+export function createSearchHighlightPlugin(search: string | undefined) {
+	return (md: MarkdownIt) => {
+		md.renderer.rules.text = (tokens, idx) =>
+			createHtmlFragmentWithSearchHighlight(tokens[idx].content, search);
+
+		md.renderer.rules.code_inline = (tokens, idx, _, __, slf) =>
+			`<code${slf.renderAttrs(tokens[idx])}>${createHtmlFragmentWithSearchHighlight(tokens[idx].content, search)}</code>`;
+
+		md.renderer.rules.code_block = (tokens, idx, _, __, slf) =>
+			`<pre${slf.renderAttrs(tokens[idx])}><code>${createHtmlFragmentWithSearchHighlight(tokens[idx].content, search)}</code></pre>\n`;
+
+		md.renderer.rules.fence = (tokens, idx, options, _, slf) => {
+			const token = tokens[idx];
+			const info = token.info ? unescapeAll(token.info).trim() : '';
+			let langName = '';
+			let langAttrs = '';
+
+			if (info) {
+				const arr = info.split(/(\s+)/g);
+				langName = arr[0];
+				langAttrs = arr.slice(2).join('');
+			}
+
+			const highlighted =
+				options.highlight?.(token.content, langName, langAttrs) ??
+				createHtmlFragmentWithSearchHighlight(token.content, search);
+
+			if (highlighted.indexOf('<pre') === 0) {
+				return highlighted + '\n';
+			}
+
+			return `<pre><code${slf.renderAttrs(token)}>${highlighted}</code></pre>\n`;
+		};
+	};
 }

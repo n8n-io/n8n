@@ -223,6 +223,12 @@ export abstract class ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
 
+	abstract updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
@@ -2336,6 +2342,7 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	startedAt?: Date;
 }
 
 export interface ExecuteWorkflowOptions {

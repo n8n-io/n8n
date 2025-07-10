@@ -311,9 +311,7 @@ const subworkflowExecutionError = computed(() => {
 	} as NodeError;
 });
 
-const hasSubworkflowExecutionError = computed(() =>
-	Boolean(workflowsStore.subWorkflowExecutionError),
-);
+const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
@@ -1775,7 +1773,7 @@ defineExpose({ enterEditMode });
 				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
 				:class="$style.center"
 			>
-				<slot name="no-output-data">xxx</slot>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div
@@ -1885,7 +1883,12 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi
+					render-type="rendered"
+					:compact="compact"
+					:content="parsedAiContent"
+					:search="search"
+				/>
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
