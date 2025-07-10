@@ -1322,13 +1322,13 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function onOpenExecution(executionId: string) {
+async function onOpenExecution(executionId: string, nodeId?: string) {
 	canvasStore.startLoading();
 
 	resetWorkspace();
 	await initializeData();
 
-	const data = await openExecution(executionId);
+	const data = await openExecution(executionId, nodeId);
 	if (!data) {
 		return;
 	}
@@ -1581,7 +1581,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				isProductionExecutionPreview.value =
 					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
-				await onOpenExecution(json.executionId);
+				await onOpenExecution(json.executionId, json.nodeId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
