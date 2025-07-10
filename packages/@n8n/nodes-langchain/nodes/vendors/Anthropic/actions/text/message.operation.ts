@@ -124,7 +124,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Attachment Input Data Field Name(s)',
-		name: 'binaryPropertyNames',
+		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		placeholder: 'e.g. data',
@@ -485,7 +485,9 @@ async function addRegularAttachmentsToMessages(
 		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
 		const promises = splitByComma(urls).map(async (url) => {
 			if (url.startsWith(fileUrlPrefix)) {
-				const response = (await apiRequest.call(this, 'GET', url)) as File;
+				const response = (await apiRequest.call(this, 'GET', '', {
+					option: { url },
+				})) as File;
 				const type = getFileTypeOrThrow.call(this, response.mime_type);
 				return {
 					type,
