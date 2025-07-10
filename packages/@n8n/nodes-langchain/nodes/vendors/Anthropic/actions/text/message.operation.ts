@@ -261,6 +261,19 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+interface MessageOptions {
+	codeExecution?: boolean;
+	webSearch?: boolean;
+	allowedDomains?: string;
+	blockedDomains?: string;
+	maxUses?: number;
+	maxTokens?: number;
+	system?: string;
+	temperature?: number;
+	topP?: number;
+	topK?: number;
+}
+
 function getToolCalls(contents: Content[]) {
 	return contents.filter((c) => c.type === 'tool_use');
 }
@@ -290,47 +303,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const addAttachments = this.getNodeParameter('addAttachments', i, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {}) as {
-		codeExecution?: boolean;
-		webSearch?: boolean;
-		allowedDomains?: string;
-		blockedDomains?: string;
-		maxUses?: number;
-		maxTokens?: number;
-		system?: string;
-		temperature?: number;
-		topP?: number;
-		topK?: number;
-	};
+	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
 
-	const availableTools = await getConnectedTools(this, true);
-	const tools: AnthropicTool[] = availableTools.map((t) => ({
-		type: 'custom',
-		name: t.name,
-		input_schema: zodToJsonSchema(t.schema),
-		description: t.description,
-	}));
-	if (options.codeExecution) {
-		tools.push({
-			type: 'code_execution_20250522',
-			name: 'code_execution',
-		});
-	}
-	if (options.webSearch) {
-		const allowedDomains = options.allowedDomains
-			? splitByComma(options.allowedDomains)
-			: undefined;
-		const blockedDomains = options.blockedDomains
-			? splitByComma(options.blockedDomains)
-			: undefined;
-		tools.push({
-			type: 'web_search_20250305',
-			name: 'web_search',
-			max_uses: options.maxUses,
-			allowed_domains: allowedDomains,
-			blocked_domains: blockedDomains,
-		});
-	}
+	const { tools, connectedTools } = await getTools.call(this, options);
 
 	if (addAttachments) {
 		if (options.codeExecution) {
@@ -375,7 +350,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				break;
 			}
 
-			await handleToolUse.call(this, response, messages, availableTools);
+			await handleToolUse.call(this, response, messages, connectedTools);
 			currentIteration++;
 		} else if (response.stop_reason === 'pause_turn') {
 			// if the model has paused (can happen for the web search or code execution tool), we just retry 3 times
@@ -409,11 +384,43 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	];
 }
 
+async function getTools(this: IExecuteFunctions, options: MessageOptions) {
+	const connectedTools = await getConnectedTools(this, true);
+	const tools: AnthropicTool[] = connectedTools.map((t) => ({
+		type: 'custom',
+		name: t.name,
+		input_schema: zodToJsonSchema(t.schema),
+		description: t.description,
+	}));
+	if (options.codeExecution) {
+		tools.push({
+			type: 'code_execution_20250522',
+			name: 'code_execution',
+		});
+	}
+	if (options.webSearch) {
+		const allowedDomains = options.allowedDomains
+			? splitByComma(options.allowedDomains)
+			: undefined;
+		const blockedDomains = options.blockedDomains
+			? splitByComma(options.blockedDomains)
+			: undefined;
+		tools.push({
+			type: 'web_search_20250305',
+			name: 'web_search',
+			max_uses: options.maxUses,
+			allowed_domains: allowedDomains,
+			blocked_domains: blockedDomains,
+		});
+	}
+	return { tools, connectedTools };
+}
+
 async function handleToolUse(
 	this: IExecuteFunctions,
 	response: MessagesResponse,
 	messages: Message[],
-	availableTools: Tool[],
+	connectedTools: Tool[],
 ) {
 	const toolCalls = getToolCalls(response.content);
 	if (!toolCalls.length) {
@@ -426,9 +433,9 @@ async function handleToolUse(
 	};
 	for (const toolCall of toolCalls) {
 		let toolResponse;
-		for (const availableTool of availableTools) {
-			if (availableTool.name === toolCall.name) {
-				toolResponse = (await availableTool.invoke(toolCall.input)) as IDataObject;
+		for (const connectedTool of connectedTools) {
+			if (connectedTool.name === toolCall.name) {
+				toolResponse = (await connectedTool.invoke(toolCall.input)) as IDataObject;
 			}
 		}
 
@@ -443,7 +450,6 @@ async function handleToolUse(
 	messages.push(toolResults);
 }
 
-// TODO: make this a helper?
 async function addRegularAttachmentsToMessages(
 	this: IExecuteFunctions,
 	i: number,

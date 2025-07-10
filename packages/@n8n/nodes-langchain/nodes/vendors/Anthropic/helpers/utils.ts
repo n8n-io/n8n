@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 import type { File } from './interfaces';
@@ -51,7 +51,7 @@ export function splitByComma(str: string) {
 		.filter((s) => s);
 }
 
-export async function getBaseUrl(this: IExecuteFunctions) {
+export async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('anthropicApi');
 	return (credentials.url ?? 'https://api.anthropic.com') as string;
 }
