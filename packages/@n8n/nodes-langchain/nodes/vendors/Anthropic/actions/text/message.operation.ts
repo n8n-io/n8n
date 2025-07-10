@@ -389,12 +389,14 @@ async function getTools(this: IExecuteFunctions, options: MessageOptions) {
 		input_schema: zodToJsonSchema(t.schema),
 		description: t.description,
 	}));
+
 	if (options.codeExecution) {
 		tools.push({
 			type: 'code_execution_20250522',
 			name: 'code_execution',
 		});
 	}
+
 	if (options.webSearch) {
 		const allowedDomains = options.allowedDomains
 			? splitByComma(options.allowedDomains)
@@ -410,6 +412,7 @@ async function getTools(this: IExecuteFunctions, options: MessageOptions) {
 			blocked_domains: blockedDomains,
 		});
 	}
+
 	return { tools, connectedTools };
 }
 

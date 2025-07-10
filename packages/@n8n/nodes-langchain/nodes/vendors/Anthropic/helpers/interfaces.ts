@@ -83,3 +83,12 @@ export interface MessagesResponse {
 	content: Content[];
 	stop_reason: string;
 }
+
+export interface PromptResponse {
+	messages: Message[];
+	system: string;
+}
+
+export interface TemplatizeResponse extends PromptResponse {
+	variable_values: IDataObject;
+}

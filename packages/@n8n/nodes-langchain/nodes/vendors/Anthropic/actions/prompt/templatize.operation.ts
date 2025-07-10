@@ -1,12 +1,7 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import type { Message } from '../../helpers/interfaces';
+import type { Message, TemplatizeResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -108,7 +103,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/v1/experimental/templatize_prompt', {
 		body,
 		enableAnthropicBetas: { promptTools: true },
-	})) as { messages: Message[]; system: string; variable_values: IDataObject };
+	})) as TemplatizeResponse;
 
 	if (simplify) {
 		return [
@@ -125,7 +120,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: response,
+			json: { ...response },
 			pairedItem: { item: i },
 		},
 	];
