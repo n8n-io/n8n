@@ -27,30 +27,33 @@ export class TelemetryController {
 
 	@Post('/proxy/:version/track', { skipAuth: true })
 	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		this.proxy(req, res, next);
-		return;
+		await this.proxy(req, res, next);
 	}
 
 	@Post('/proxy/:version/identify', { skipAuth: true })
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		this.proxy(req, res, next);
-		return;
+		await this.proxy(req, res, next);
 	}
 
 	@Post('/proxy/:version/page', { skipAuth: true })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		this.proxy(req, res, next);
-		return;
+		await this.proxy(req, res, next);
 	}
 	@Get('/rudderstack/sourceConfig', { skipAuth: true })
 	async sourceConfig() {
-		const config = await fetch('https://api-rs.n8n.io/sourceConfig', {
+		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
 			headers: {
-				Authorization:
+				authorization:
 					'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
 			},
 		});
 
-		return await config.json();
+		if (!response.ok) {
+			throw new Error(`Failed to fetch source config: ${response.statusText}`);
+		}
+
+		const config: unknown = await response.json();
+
+		return config;
 	}
 }
