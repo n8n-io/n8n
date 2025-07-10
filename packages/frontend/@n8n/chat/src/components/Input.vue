@@ -147,40 +147,45 @@ function setupWebsocketConnection(executionId: string) {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
-		const wsUrl = constructChatWebsocketUrl(
-			options.webhookUrl,
-			executionId,
-			chatStore.currentSessionId.value,
-			true,
-		);
-		chatStore.ws = new WebSocket(wsUrl);
-		chatStore.ws.onmessage = (e) => {
-			if (e.data === 'n8n|heartbeat') {
-				chatStore.ws?.send('n8n|heartbeat-ack');
-				return;
-			}
+		try {
+			const wsUrl = constructChatWebsocketUrl(
+				options.webhookUrl,
+				executionId,
+				chatStore.currentSessionId.value,
+				true,
+			);
+			chatStore.ws = new WebSocket(wsUrl);
+			chatStore.ws.onmessage = (e) => {
+				if (e.data === 'n8n|heartbeat') {
+					chatStore.ws?.send('n8n|heartbeat-ack');
+					return;
+				}
 
-			if (e.data === 'n8n|continue') {
-				waitingForChatResponse.value = false;
-				chatStore.waitingForResponse.value = true;
-				return;
-			}
-			const newMessage: ChatMessage = {
-				id: uuidv4(),
-				text: e.data,
-				sender: 'bot',
+				if (e.data === 'n8n|continue') {
+					waitingForChatResponse.value = false;
+					chatStore.waitingForResponse.value = true;
+					return;
+				}
+				const newMessage: ChatMessage = {
+					id: uuidv4(),
+					text: e.data,
+					sender: 'bot',
+				};
+
+				chatStore.messages.value.push(newMessage);
+				waitingForChatResponse.value = true;
+				chatStore.waitingForResponse.value = false;
 			};
 
-			chatStore.messages.value.push(newMessage);
-			waitingForChatResponse.value = true;
-			chatStore.waitingForResponse.value = false;
-		};
-
-		chatStore.ws.onclose = () => {
-			chatStore.ws = null;
-			waitingForChatResponse.value = false;
-			chatStore.waitingForResponse.value = false;
-		};
+			chatStore.ws.onclose = () => {
+				chatStore.ws = null;
+				waitingForChatResponse.value = false;
+				chatStore.waitingForResponse.value = false;
+			};
+		} catch (error) {
+			// do not throw error here as it should work with n8n versions that do not support websockets
+			console.error('Error setting up websocket connection', error);
+		}
 	}
 }
 
@@ -210,7 +215,7 @@ async function processFiles(data: File[] | undefined) {
 	return await Promise.all(filePromises);
 }
 
-async function respondToChat(ws: WebSocket, messageText: string) {
+async function respondToChatNode(ws: WebSocket, messageText: string) {
 	const sentMessage: ChatMessage = {
 		id: uuidv4(),
 		text: messageText,
@@ -243,7 +248,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	isSubmitting.value = true;
 
 	if (chatStore.ws && waitingForChatResponse.value) {
-		await respondToChat(chatStore.ws, messageText);
+		await respondToChatNode(chatStore.ws, messageText);
 		return;
 	}
 
