@@ -11,7 +11,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 import { getConnectedTools } from '@utils/helpers';
 
 import type { Content, File, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
-import { downloadFile, getBaseUrl, uploadFile } from '../../helpers/utils';
+import { downloadFile, getBaseUrl, splitByComma, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -318,13 +318,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 	if (options.webSearch) {
 		const allowedDomains = options.allowedDomains
-			?.split(',')
-			.map((d) => d.trim())
-			.filter((d) => d);
+			? splitByComma(options.allowedDomains)
+			: undefined;
 		const blockedDomains = options.blockedDomains
-			?.split(',')
-			.map((d) => d.trim())
-			.filter((d) => d);
+			? splitByComma(options.blockedDomains)
+			: undefined;
 		tools.push({
 			type: 'web_search_20250305',
 			name: 'web_search',
@@ -458,56 +456,48 @@ async function addRegularAttachmentsToMessages(
 	let content: Content[];
 	if (inputType === 'url') {
 		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
-		const promises = urls
-			.split(',')
-			.map((url) => url.trim())
-			.filter((url) => url)
-			.map(async (url) => {
-				if (url.startsWith(fileUrlPrefix)) {
-					const response = (await apiRequest.call(this, 'GET', url)) as File;
-					const type = getFileTypeOrThrow.call(this, response.mime_type);
-					return {
-						type,
-						source: {
-							type: 'file',
-							file_id: url.replace(fileUrlPrefix, ''),
-						},
-					} as Content;
-				} else {
-					// TODO: downloading the whole just for the mime type is not ideal
-					const response = await downloadFile.call(this, url);
-					const type = getFileTypeOrThrow.call(this, response.mimeType);
-					return {
-						type,
-						source: {
-							type: 'url',
-							url,
-						},
-					} as Content;
-				}
-			});
+		const promises = splitByComma(urls).map(async (url) => {
+			if (url.startsWith(fileUrlPrefix)) {
+				const response = (await apiRequest.call(this, 'GET', url)) as File;
+				const type = getFileTypeOrThrow.call(this, response.mime_type);
+				return {
+					type,
+					source: {
+						type: 'file',
+						file_id: url.replace(fileUrlPrefix, ''),
+					},
+				} as Content;
+			} else {
+				// TODO: downloading the whole just for the mime type is not ideal
+				const response = await downloadFile.call(this, url);
+				const type = getFileTypeOrThrow.call(this, response.mimeType);
+				return {
+					type,
+					source: {
+						type: 'url',
+						url,
+					},
+				} as Content;
+			}
+		});
 
 		content = await Promise.all(promises);
 	} else {
 		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
-		const promises = binaryPropertyNames
-			.split(',')
-			.map((binaryPropertyName) => binaryPropertyName.trim())
-			.filter((binaryPropertyName) => binaryPropertyName)
-			.map(async (binaryPropertyName) => {
-				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-				const type = getFileTypeOrThrow.call(this, binaryData.mimeType);
-				const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-				const fileBase64 = buffer.toString('base64');
-				return {
-					type,
-					source: {
-						type: 'base64',
-						media_type: binaryData.mimeType,
-						data: fileBase64,
-					},
-				} as Content;
-			});
+		const promises = splitByComma(binaryPropertyNames).map(async (binaryPropertyName) => {
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+			const type = getFileTypeOrThrow.call(this, binaryData.mimeType);
+			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+			const fileBase64 = buffer.toString('base64');
+			return {
+				type,
+				source: {
+					type: 'base64',
+					media_type: binaryData.mimeType,
+					data: fileBase64,
+				},
+			} as Content;
+		});
 
 		content = await Promise.all(promises);
 	}
@@ -530,19 +520,15 @@ async function addCodeAttachmentsToMessages(
 	let content: Content[];
 	if (inputType === 'url') {
 		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
-		const promises = urls
-			.split(',')
-			.map((url) => url.trim())
-			.filter((url) => url)
-			.map(async (url) => {
-				if (url.startsWith(fileUrlPrefix)) {
-					return url.replace(fileUrlPrefix, '');
-				} else {
-					const { fileContent, mimeType } = await downloadFile.call(this, url);
-					const response = await uploadFile.call(this, fileContent, mimeType);
-					return response.id;
-				}
-			});
+		const promises = splitByComma(urls).map(async (url) => {
+			if (url.startsWith(fileUrlPrefix)) {
+				return url.replace(fileUrlPrefix, '');
+			} else {
+				const { fileContent, mimeType } = await downloadFile.call(this, url);
+				const response = await uploadFile.call(this, fileContent, mimeType);
+				return response.id;
+			}
+		});
 
 		const fileIds = await Promise.all(promises);
 		content = fileIds.map((fileId) => ({
@@ -551,16 +537,12 @@ async function addCodeAttachmentsToMessages(
 		}));
 	} else {
 		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
-		const promises = binaryPropertyNames
-			.split(',')
-			.map((binaryPropertyName) => binaryPropertyName.trim())
-			.filter((binaryPropertyName) => binaryPropertyName)
-			.map(async (binaryPropertyName) => {
-				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-				const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-				const response = await uploadFile.call(this, buffer, binaryData.mimeType);
-				return response.id;
-			});
+		const promises = splitByComma(binaryPropertyNames).map(async (binaryPropertyName) => {
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+			const response = await uploadFile.call(this, buffer, binaryData.mimeType);
+			return response.id;
+		});
 
 		const fileIds = await Promise.all(promises);
 		content = fileIds.map((fileId) => ({
