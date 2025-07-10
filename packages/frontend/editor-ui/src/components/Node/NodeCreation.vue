@@ -147,6 +147,7 @@ function onAskAssistantButtonClick() {
 				size="large"
 				square
 				:class="$style.icon"
+				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
 			>
 				<template #default>
