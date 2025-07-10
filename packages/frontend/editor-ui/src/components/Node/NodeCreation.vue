@@ -19,8 +19,10 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -46,6 +48,7 @@ const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const assistantStore = useAssistantStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -94,6 +97,17 @@ function toggleFocusPanel() {
 		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
 	});
 }
+
+function onAskAssistantButtonClick() {
+	if (!assistantStore.chatWindowOpen)
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
+
+	assistantStore.toggleChatOpen();
+}
 </script>
 
 <template>
@@ -132,6 +146,24 @@ function toggleFocusPanel() {
 		>
 			<n8n-icon-button type="tertiary" size="large" icon="list" @click="toggleFocusPanel" />
 		</KeyboardShortcutTooltip>
+		<n8n-tooltip placement="left">
+			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+			<n8n-button
+				v-if="assistantStore.canShowAssistantButtonsOnCanvas"
+				type="tertiary"
+				size="large"
+				square
+				:class="$style.icon"
+				data-test-id="ask-assistant-canvas-action-button"
+				@click="onAskAssistantButtonClick"
+			>
+				<template #default>
+					<div>
+						<AssistantIcon size="large" />
+					</div>
+				</template>
+			</n8n-button>
+		</n8n-tooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -152,5 +184,15 @@ function toggleFocusPanel() {
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-s);
 	pointer-events: all !important;
+}
+
+.icon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>

@@ -195,6 +195,7 @@
 	"aiAssistant.prompts.currentView.credentialsList": "The user is currently looking at the list of credentials.",
 	"aiAssistant.prompts.currentView.executionsView": "The user is currently looking at the list of executions for the currently open workflow.",
 	"aiAssistant.prompts.currentView.workflowEditor": "The user is currently looking at the current workflow in n8n editor, without any specific node selected.",
+	"aiAssistant.tooltip": "Ask Assistant",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",

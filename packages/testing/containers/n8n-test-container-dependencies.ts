@@ -3,6 +3,9 @@ import { RedisContainer } from '@testcontainers/redis';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
+import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { setTimeout as wait } from 'node:timers/promises';
+
 export async function setupRedis({
 	redisImage,
 	projectName,
@@ -73,35 +76,45 @@ export async function setupPostgres({
 export async function setupNginxLoadBalancer({
 	nginxImage,
 	projectName,
-	mainInstances,
+	mainCount,
 	network,
+	port,
 }: {
 	nginxImage: string;
 	projectName: string;
-	mainInstances: StartedTestContainer[];
+	mainCount: number;
 	network: StartedNetwork;
+	port: number;
 }): Promise<StartedTestContainer> {
 	// Generate upstream server entries from the list of main instances.
-	const upstreamServers = mainInstances
-		.map((_, index) => `  server ${projectName}-n8n-main-${index + 1}:5678;`)
-		.join('\n');
+	const upstreamServers = Array.from(
+		{ length: mainCount },
+		(_, index) => `  server ${projectName}-n8n-main-${index + 1}:5678;`,
+	).join('\n');
 
 	// Build the NGINX configuration with dynamic upstream servers.
 	// This allows us to have the port allocation be dynamic.
 	const nginxConfig = buildNginxConfig(upstreamServers);
 
-	return await new GenericContainer(nginxImage)
-		.withNetwork(network)
-		.withExposedPorts(80)
-		.withCopyContentToContainer([{ content: nginxConfig, target: '/etc/nginx/nginx.conf' }])
-		.withWaitStrategy(Wait.forListeningPorts())
-		.withLabels({
-			'com.docker.compose.project': projectName,
-			'com.docker.compose.service': 'nginx-lb',
-		})
-		.withName(`${projectName}-nginx-lb`)
-		.withReuse()
-		.start();
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(nginxImage)
+			.withNetwork(network)
+			.withExposedPorts({ container: 80, host: port })
+			.withCopyContentToContainer([{ content: nginxConfig, target: '/etc/nginx/nginx.conf' }])
+			.withWaitStrategy(Wait.forListeningPorts())
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'nginx-lb',
+			})
+			.withName(`${projectName}-nginx-lb`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
 }
 
 /**
@@ -182,6 +195,125 @@ function buildNginxConfig(upstreamServers: string): string {
       }
     }
   }`;
+}
+
+/**
+ * Builds Caddy configuration for load balancing n8n instances
+ * @param upstreamServers Array of upstream server addresses
+ * @returns The complete Caddyfile configuration as a string
+ */
+function buildCaddyConfig(upstreamServers: string[]): string {
+	const backends = upstreamServers.join(' ');
+	return `
+:80 {
+  # Reverse proxy with load balancing
+  reverse_proxy ${backends} {
+    # Enable sticky sessions using cookie
+    lb_policy cookie
+
+    # Health check (optional)
+    health_uri /healthz
+    health_interval 10s
+
+    # Timeouts
+    transport http {
+      dial_timeout 60s
+      read_timeout 60s
+      write_timeout 60s
+    }
+  }
+
+  # Set max request body size
+  request_body {
+    max_size 50MB
+  }
+}`;
+}
+
+/**
+ * Setup Caddy for multi-main instances
+ * @param caddyImage The Docker image for Caddy
+ * @param projectName Project name for container naming
+ * @param mainCount Number of main instances
+ * @param network The shared Docker network
+ * @returns A promise that resolves to the started Caddy container
+ */
+export async function setupCaddyLoadBalancer({
+	caddyImage = 'caddy:2-alpine',
+	projectName,
+	mainCount,
+	network,
+}: {
+	caddyImage?: string;
+	projectName: string;
+	mainCount: number;
+	network: StartedNetwork;
+}): Promise<StartedTestContainer> {
+	// Generate upstream server addresses
+	const upstreamServers = Array.from(
+		{ length: mainCount },
+		(_, index) => `${projectName}-n8n-main-${index + 1}:5678`,
+	);
+
+	// Build the Caddy configuration
+	const caddyConfig = buildCaddyConfig(upstreamServers);
+
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(caddyImage)
+			.withNetwork(network)
+			.withExposedPorts(80)
+			.withCopyContentToContainer([{ content: caddyConfig, target: '/etc/caddy/Caddyfile' }])
+			.withWaitStrategy(Wait.forListeningPorts())
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'caddy-lb',
+			})
+			.withName(`${projectName}-caddy-lb`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
+/**
+ * Polls a container's HTTP endpoint until it returns a 200 status.
+ * Logs a warning if the endpoint does not return 200 within the specified timeout.
+ *
+ * @param container The started container.
+ * @param endpoint The HTTP health check endpoint (e.g., '/healthz/readiness').
+ * @param timeoutMs Total timeout in milliseconds (default: 60,000ms).
+ */
+export async function pollContainerHttpEndpoint(
+	container: StartedTestContainer,
+	endpoint: string,
+	timeoutMs: number = 60000,
+): Promise<void> {
+	const startTime = Date.now();
+	const url = `http://${container.getHost()}:${container.getFirstMappedPort()}${endpoint}`;
+	const retryIntervalMs = 1000;
+
+	while (Date.now() - startTime < timeoutMs) {
+		try {
+			const response = await fetch(url);
+			if (response.status === 200) {
+				return;
+			}
+		} catch (error) {
+			// Don't log errors, just retry
+		}
+
+		await wait(retryIntervalMs);
+	}
+
+	console.error(
+		`WARNING: HTTP endpoint at ${url} did not return 200 within ${
+			timeoutMs / 1000
+		} seconds. Proceeding with caution.`,
+	);
 }
 
 // TODO: Look at Ollama container?

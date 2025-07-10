@@ -5,7 +5,13 @@ import { computed, nextTick, ref } from 'vue';
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
+import type { ChatMessage, ChatOptions, ChatMessageText } from '@n8n/chat/types';
+import { StreamingMessageManager, createBotMessage } from '@n8n/chat/utils/streaming';
+import {
+	handleStreamingChunk,
+	handleNodeStart,
+	handleNodeComplete,
+} from '@n8n/chat/utils/streamingHandlers';
 
 export const ChatPlugin: Plugin<ChatOptions> = {
 	install(app, options) {
@@ -38,31 +44,72 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				chatEventBus.emit('scrollToBottom');
 			});
 
-			const sendMessageResponse = await api.sendMessage(
-				text,
-				files,
-				currentSessionId.value as string,
-				options,
-			);
+			const receivedMessage = ref<ChatMessageText | null>(null);
+			const streamingManager = new StreamingMessageManager();
 
-			let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+			try {
+				if (options?.enableStreaming) {
+					const handlers: api.StreamingEventHandlers = {
+						onChunk: (chunk: string, nodeId?: string, runIndex?: number) => {
+							handleStreamingChunk(
+								chunk,
+								nodeId,
+								streamingManager,
+								receivedMessage,
+								messages,
+								runIndex,
+							);
+						},
+						onBeginMessage: (nodeId: string, runIndex?: number) => {
+							handleNodeStart(nodeId, streamingManager, runIndex);
+						},
+						onEndMessage: (nodeId: string, runIndex?: number) => {
+							handleNodeComplete(nodeId, streamingManager, runIndex);
+						},
+					};
 
-			if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
-				try {
-					textMessage = JSON.stringify(sendMessageResponse, null, 2);
-				} catch (e) {
-					// Failed to stringify the object so fallback to empty string
+					await api.sendMessageStreaming(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+						handlers,
+					);
+				} else {
+					receivedMessage.value = createBotMessage();
+
+					const sendMessageResponse = await api.sendMessage(
+						text,
+						files,
+						currentSessionId.value as string,
+						options,
+					);
+
+					let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+
+					if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+						try {
+							textMessage = JSON.stringify(sendMessageResponse, null, 2);
+						} catch (e) {
+							// Failed to stringify the object so fallback to empty string
+						}
+					}
+
+					receivedMessage.value.text = textMessage;
+					messages.value.push(receivedMessage.value);
 				}
+			} catch (error) {
+				if (!receivedMessage.value) {
+					receivedMessage.value = createBotMessage();
+					messages.value.push(receivedMessage.value);
+				}
+				if (receivedMessage.value && 'text' in receivedMessage.value) {
+					receivedMessage.value.text = 'Error: Failed to receive response';
+				}
+				console.error('Chat API error:', error);
+			} finally {
+				waitingForResponse.value = false;
 			}
-
-			const receivedMessage: ChatMessage = {
-				id: uuidv4(),
-				text: textMessage,
-				sender: 'bot',
-			};
-			messages.value.push(receivedMessage);
-
-			waitingForResponse.value = false;
 
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
