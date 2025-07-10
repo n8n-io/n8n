@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { File } from '../../helpers/interfaces';
-import { downloadFile, uploadFile } from '../../helpers/utils';
+import { downloadFile, getBaseUrl, uploadFile } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -78,9 +78,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const fileName = this.getNodeParameter('options.fileName', i, 'file') as string;
-	// TODO: make this a helper (i.e. getBaseUrl)?
-	const credentials = await this.getCredentials('anthropicApi');
-	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const baseUrl = await getBaseUrl.call(this);
 
 	let response: File;
 	if (inputType === 'url') {

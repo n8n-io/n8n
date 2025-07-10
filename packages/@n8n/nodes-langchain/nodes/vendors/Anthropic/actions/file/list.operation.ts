@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { File } from '../../helpers/interfaces';
+import { getBaseUrl } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 
 interface FileListResponse {
@@ -49,8 +50,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', i, false);
 	const limit = this.getNodeParameter('limit', i, 50);
-	const credentials = await this.getCredentials('anthropicApi');
-	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const baseUrl = await getBaseUrl.call(this);
 	if (returnAll) {
 		return await getAllFiles.call(this, baseUrl, i);
 	} else {

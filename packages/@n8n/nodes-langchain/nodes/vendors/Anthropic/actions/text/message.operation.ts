@@ -11,7 +11,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 import { getConnectedTools } from '@utils/helpers';
 
 import type { Content, File, Message, Tool as AnthropicTool } from '../../helpers/interfaces';
-import { downloadFile, uploadFile } from '../../helpers/utils';
+import { downloadFile, getBaseUrl, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -452,8 +452,7 @@ async function addRegularAttachmentsToMessages(
 	messages: Message[],
 ) {
 	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
-	const credentials = await this.getCredentials('anthropicApi');
-	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const baseUrl = await getBaseUrl.call(this);
 	const fileUrlPrefix = `${baseUrl}/v1/files/`;
 
 	let content: Content[];
@@ -525,8 +524,7 @@ async function addCodeAttachmentsToMessages(
 	messages: Message[],
 ) {
 	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
-	const credentials = await this.getCredentials('anthropicApi');
-	const baseUrl = (credentials.url ?? 'https://api.anthropic.com') as string;
+	const baseUrl = await getBaseUrl.call(this);
 	const fileUrlPrefix = `${baseUrl}/v1/files/`;
 
 	let content: Content[];

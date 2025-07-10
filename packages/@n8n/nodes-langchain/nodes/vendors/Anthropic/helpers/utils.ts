@@ -43,3 +43,15 @@ export async function uploadFile(
 		body: form,
 	})) as File;
 }
+
+export function splitByComma(str: string) {
+	return str
+		.split(',')
+		.map((s) => s.trim())
+		.filter((s) => s);
+}
+
+export async function getBaseUrl(this: IExecuteFunctions) {
+	const credentials = await this.getCredentials('anthropicApi');
+	return (credentials.url ?? 'https://api.anthropic.com') as string;
+}
