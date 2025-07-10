@@ -3,7 +3,7 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { parameterUpdaterChain } from '../chains/parameter-updater';
+import { createParameterUpdaterChain } from '../chains/parameter-updater-v2';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
@@ -109,8 +109,12 @@ export function createUpdateNodeParametersTool(
 					// Get the node's properties definition as JSON
 					const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
 
-					// Call the parameter updater chain
-					const parametersChain = parameterUpdaterChain(llm);
+					// Call the parameter updater chain with dynamic prompt building
+					const parametersChain = createParameterUpdaterChain(llm, {
+						nodeType: node.type,
+						nodeDefinition: nodeType,
+						requestedChanges: changes,
+					});
 					const newParameters = await parametersChain.invoke({
 						user_workflow_prompt: state.prompt,
 						workflow_json: JSON.stringify(workflow, null, 2),
@@ -131,7 +135,7 @@ export function createUpdateNodeParametersTool(
 					// Merge the new parameters with existing ones
 					const updatedParameters = mergeParameters(
 						currentParameters,
-						newParameters as INodeParameters,
+						newParameters.parameters as INodeParameters,
 					);
 
 					// Validate the updated parameters

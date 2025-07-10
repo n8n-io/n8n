@@ -95,11 +95,10 @@ function formatNodeDetails(
 
 	// Parameters
 	if (withParameters && details.properties.length > 0) {
-		parts.push('<properties>');
-		for (const prop of details.properties) {
-			parts.push(`<property>${JSON.stringify(prop)}</property>`);
-		}
-		parts.push('</properties>');
+		const stringifiedProperties = JSON.stringify(details.properties, null, 2);
+		parts.push(`<properties>
+			${stringifiedProperties.length > 1000 ? stringifiedProperties.slice(0, 1000) + '... Rest of properties omitted' : stringifiedProperties}
+			</properties>`);
 	}
 
 	// Connections
