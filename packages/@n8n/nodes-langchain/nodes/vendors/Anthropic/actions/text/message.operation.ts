@@ -17,7 +17,13 @@ import type {
 	MessagesResponse,
 	Tool as AnthropicTool,
 } from '../../helpers/interfaces';
-import { downloadFile, getBaseUrl, splitByComma, uploadFile } from '../../helpers/utils';
+import {
+	downloadFile,
+	getBaseUrl,
+	getMimeType,
+	splitByComma,
+	uploadFile,
+} from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -489,9 +495,13 @@ async function addRegularAttachmentsToMessages(
 					},
 				} as Content;
 			} else {
-				// TODO: downloading the whole just for the mime type is not ideal
-				const response = await downloadFile.call(this, url);
-				const type = getFileTypeOrThrow.call(this, response.mimeType);
+				const response = (await this.helpers.httpRequest.call(this, {
+					url,
+					method: 'HEAD',
+					returnFullResponse: true,
+				})) as { headers: IDataObject };
+				const mimeType = getMimeType(response.headers['content-type'] as string);
+				const type = getFileTypeOrThrow.call(this, mimeType);
 				return {
 					type,
 					source: {

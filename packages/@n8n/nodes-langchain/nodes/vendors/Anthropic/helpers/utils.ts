@@ -4,12 +4,11 @@ import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-
 import { apiRequest } from '../transport';
 import type { File } from './interfaces';
 
-export async function downloadFile(
-	this: IExecuteFunctions,
-	url: string,
-	fallbackMimeType?: string,
-	qs?: IDataObject,
-) {
+export function getMimeType(contentType?: string) {
+	return contentType?.split(';')?.[0];
+}
+
+export async function downloadFile(this: IExecuteFunctions, url: string, qs?: IDataObject) {
 	const downloadResponse = (await this.helpers.httpRequest({
 		method: 'GET',
 		url,
@@ -19,7 +18,7 @@ export async function downloadFile(
 	})) as { body: ArrayBuffer; headers: IDataObject };
 
 	const mimeType =
-		(downloadResponse.headers?.['content-type'] as string)?.split(';')?.[0] ?? fallbackMimeType;
+		getMimeType(downloadResponse.headers?.['content-type'] as string) ?? 'application/octet-stream';
 	const fileContent = Buffer.from(downloadResponse.body);
 	return {
 		fileContent,
