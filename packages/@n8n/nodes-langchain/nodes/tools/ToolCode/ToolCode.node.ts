@@ -12,7 +12,12 @@ import type {
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	nodeNameToToolName,
+} from 'n8n-workflow';
 
 import {
 	buildInputSchemaField,
@@ -20,7 +25,6 @@ import {
 	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { nodeNameToToolName } from 'n8n-workflow';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
