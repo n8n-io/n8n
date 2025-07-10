@@ -16,7 +16,7 @@ describe('telemetry', () => {
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		telemetry.init(
-			{ enabled: true, config: { url: '', key: '' } },
+			{ enabled: true, config: { proxy: '', key: '', sourceConfig: '', url: '' } },
 			{ versionCli: '1', instanceId: '1' },
 		);
 	});
