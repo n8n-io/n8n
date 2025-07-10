@@ -31,4 +31,5 @@ module.exports = defineConfig({
 			return config;
 		},
 	},
+	reporter: 'mocha-junit-reporter',
 });

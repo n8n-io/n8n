@@ -1,9 +1,8 @@
 name: Test Playwright (Docker Build)
 
 on:
-  push:
-    branches:
-      - playwright-ci-test
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   build-and-test:

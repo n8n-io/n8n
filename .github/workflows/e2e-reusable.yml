@@ -40,6 +40,9 @@ on:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
         required: true
+      CURRENTS_RECORD_KEY:
+        description: 'Currents record key.'
+        required: true
     outputs:
       tests_passed:
         description: 'True if all E2E tests passed, otherwise false'
@@ -168,6 +171,22 @@ jobs:
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
+
+      - name: Upload results to Currents
+        if: always()
+        working-directory: cypress
+        run: |
+          npm install -g @currents/cmd
+          npx @currents/cmd convert \
+            --input-format=junit \
+            --input-file=test-results.xml \
+            --output-dir=.currents \
+            --framework=node \
+            --framework-version=cypress-14.4.0
+
+          npx @currents/cmd upload \
+            --project-id=I0yzoc \
+            --key=${{ secrets.CURRENTS_RECORD_KEY }}
 
   # Check if all tests passed and set the output variable
   check_testing_matrix:

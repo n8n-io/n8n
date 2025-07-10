@@ -7,9 +7,6 @@ on:
         required: false
         default: '[1]'
         type: string
-  push:
-    branches:
-      - playwright-ci-test
 
 jobs:
   testing:
