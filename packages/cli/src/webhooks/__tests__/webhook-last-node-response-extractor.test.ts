@@ -18,32 +18,32 @@ import { Readable } from 'node:stream';
 import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor';
 
 describe('extractWebhookLastNodeResponse', () => {
-	let mockWorkflow: MockProxy<Workflow>;
-	let mockWorkflowStartNode: MockProxy<INode>;
-	let mockWebhookData: MockProxy<IWebhookData>;
-	let mockLastNodeRunData: MockProxy<ITaskData>;
-	let mockBinaryDataService: MockProxy<BinaryDataService>;
-	let mockAdditionalKeys: MockProxy<IWorkflowDataProxyAdditionalKeys>;
+	let workflow: MockProxy<Workflow>;
+	let workflowStartNode: MockProxy<INode>;
+	let webhookData: MockProxy<IWebhookData>;
+	let lastNodeRunData: MockProxy<ITaskData>;
+	let binaryDataService: MockProxy<BinaryDataService>;
+	let additionalKeys: MockProxy<IWorkflowDataProxyAdditionalKeys>;
 
 	beforeEach(() => {
-		mockWorkflow = mock<Workflow>();
-		mockWorkflowStartNode = mock<INode>();
-		mockWebhookData = mock<IWebhookData>({
+		workflow = mock<Workflow>();
+		workflowStartNode = mock<INode>();
+		webhookData = mock<IWebhookData>({
 			webhookDescription: {
 				responsePropertyName: undefined,
 				responseContentType: undefined,
 				responseBinaryPropertyName: undefined,
 			},
 		});
-		mockLastNodeRunData = mock<ITaskData>();
-		mockBinaryDataService = mock<BinaryDataService>();
-		mockAdditionalKeys = mock<IWorkflowDataProxyAdditionalKeys>();
+		lastNodeRunData = mock<ITaskData>();
+		binaryDataService = mock<BinaryDataService>();
+		additionalKeys = mock<IWorkflowDataProxyAdditionalKeys>();
 
-		mockWorkflow.expression = mock<Expression>({
+		workflow.expression = mock<Expression>({
 			getSimpleParameterValue: jest.fn(),
 		});
 
-		Container.set(BinaryDataService, mockBinaryDataService);
+		Container.set(BinaryDataService, binaryDataService);
 	});
 
 	afterEach(() => {
@@ -53,18 +53,18 @@ describe('extractWebhookLastNodeResponse', () => {
 	describe('responseDataType: firstEntryJson', () => {
 		it('should return first entry JSON data', async () => {
 			const jsonData = { foo: 'bar', test: 123 };
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[{ json: jsonData }]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryJson',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -78,18 +78,18 @@ describe('extractWebhookLastNodeResponse', () => {
 		});
 
 		it('should return error when no item to return', async () => {
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryJson',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -98,23 +98,23 @@ describe('extractWebhookLastNodeResponse', () => {
 
 		it('should extract specific property when responsePropertyName is set', async () => {
 			const jsonData = { foo: 'bar', nested: { value: 'test' } };
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[{ json: jsonData }]],
 			};
 
-			mockWebhookData.webhookDescription.responsePropertyName = 'nested.value';
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock)
+			webhookData.webhookDescription.responsePropertyName = 'nested.value';
+			(workflow.expression.getSimpleParameterValue as jest.Mock)
 				.mockReturnValueOnce('nested.value')
 				.mockReturnValueOnce(undefined);
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryJson',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -129,23 +129,23 @@ describe('extractWebhookLastNodeResponse', () => {
 
 		it('should set content type when responseContentType is provided', async () => {
 			const jsonData = { foo: 'bar' };
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[{ json: jsonData }]],
 			};
 
-			mockWebhookData.webhookDescription.responseContentType = 'application/xml';
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock)
+			webhookData.webhookDescription.responseContentType = 'application/xml';
+			(workflow.expression.getSimpleParameterValue as jest.Mock)
 				.mockReturnValueOnce(undefined)
 				.mockReturnValueOnce('application/xml');
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryJson',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -169,21 +169,21 @@ describe('extractWebhookLastNodeResponse', () => {
 				json: {},
 				binary: { data: binaryData },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
-			mockWebhookData.webhookDescription.responseBinaryPropertyName = 'data';
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue('data');
+			webhookData.webhookDescription.responseBinaryPropertyName = 'data';
+			(workflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue('data');
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -198,7 +198,7 @@ describe('extractWebhookLastNodeResponse', () => {
 
 		it('should return binary data as stream when ID is present', async () => {
 			const mockStream = new Readable();
-			mockBinaryDataService.getAsStream.mockResolvedValue(mockStream);
+			binaryDataService.getAsStream.mockResolvedValue(mockStream);
 
 			const binaryData: IBinaryData = {
 				id: 'binary-123',
@@ -209,21 +209,21 @@ describe('extractWebhookLastNodeResponse', () => {
 				json: {},
 				binary: { data: binaryData },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
-			mockWebhookData.webhookDescription.responseBinaryPropertyName = 'data';
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue('data');
+			webhookData.webhookDescription.responseBinaryPropertyName = 'data';
+			(workflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue('data');
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -234,22 +234,22 @@ describe('extractWebhookLastNodeResponse', () => {
 					contentType: 'image/jpeg',
 				},
 			});
-			assert(mockBinaryDataService.getAsStream.mock.calls[0][0] === 'binary-123');
+			assert(binaryDataService.getAsStream.mock.calls[0][0] === 'binary-123');
 		});
 
 		it('should return error when no item found', async () => {
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -261,18 +261,18 @@ describe('extractWebhookLastNodeResponse', () => {
 			const nodeExecutionData: INodeExecutionData = {
 				json: { foo: 'bar' },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -285,20 +285,20 @@ describe('extractWebhookLastNodeResponse', () => {
 				json: {},
 				binary: { data: { data: 'test', mimeType: 'text/plain' } },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(undefined);
+			(workflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(undefined);
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -311,20 +311,20 @@ describe('extractWebhookLastNodeResponse', () => {
 				json: {},
 				binary: { data: { data: 'test', mimeType: 'text/plain' } },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(123);
+			(workflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(123);
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -337,22 +337,22 @@ describe('extractWebhookLastNodeResponse', () => {
 				json: {},
 				binary: { otherProperty: { data: 'test', mimeType: 'text/plain' } },
 			};
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[nodeExecutionData]],
 			};
 
-			(mockWorkflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(
+			(workflow.expression.getSimpleParameterValue as jest.Mock).mockReturnValue(
 				'nonExistentProperty',
 			);
 
 			const result = await extractWebhookLastNodeResponse(
 				'firstEntryBinary',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			assert(!result.ok);
@@ -367,12 +367,12 @@ describe('extractWebhookLastNodeResponse', () => {
 		it('should return undefined body and contentType', async () => {
 			const result = await extractWebhookLastNodeResponse(
 				'noData',
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -391,18 +391,18 @@ describe('extractWebhookLastNodeResponse', () => {
 			const jsonData1 = { foo: 'bar' };
 			const jsonData2 = { test: 123 };
 			const jsonData3 = { nested: { value: 'test' } };
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[{ json: jsonData1 }, { json: jsonData2 }, { json: jsonData3 }]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				undefined,
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
@@ -416,18 +416,18 @@ describe('extractWebhookLastNodeResponse', () => {
 		});
 
 		it('should return empty array when no entries', async () => {
-			mockLastNodeRunData.data = {
+			lastNodeRunData.data = {
 				main: [[]],
 			};
 
 			const result = await extractWebhookLastNodeResponse(
 				undefined,
-				mockLastNodeRunData,
-				mockWorkflow,
-				mockWorkflowStartNode,
-				mockWebhookData,
+				lastNodeRunData,
+				workflow,
+				workflowStartNode,
+				webhookData,
 				'manual',
-				mockAdditionalKeys,
+				additionalKeys,
 			);
 
 			expect(result).toEqual({
