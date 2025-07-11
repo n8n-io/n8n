@@ -129,8 +129,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (result.thinkingMessage) {
 			assistantThinkingMessage.value = result.thinkingMessage;
 		}
-
-		console.log('🚀 ~ addAssistantMessages ~ messages:', result.messages);
 	}
 
 	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {

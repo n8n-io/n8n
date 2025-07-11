@@ -2,7 +2,7 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
-import type { WorkflowState, WorkflowOperation } from '../../workflow-state';
+import type { WorkflowState } from '../../workflow-state';
 
 /**
  * Get the current workflow from state in a type-safe manner
@@ -24,17 +24,6 @@ export function getCurrentWorkflowFromTaskInput(): SimpleWorkflow {
 }
 
 /**
- * Create a state update for workflow nodes
- * @deprecated Use addNodesToWorkflow or updateNodeInWorkflow instead
- */
-export function updateWorkflowNodes(nodes: INode[]): Partial<typeof WorkflowState.State> {
-	// Replace all nodes - use setNodes operation
-	return {
-		workflowOperations: [{ type: 'clear' }, { type: 'addNodes', nodes }],
-	};
-}
-
-/**
  * Create a state update for workflow connections
  * Note: This now uses mergeConnections to support parallel execution
  */
@@ -44,30 +33,6 @@ export function updateWorkflowConnections(
 	// Return an operation to merge connections (not replace them)
 	return {
 		workflowOperations: [{ type: 'mergeConnections', connections }],
-	};
-}
-
-/**
- * Create a state update for both nodes and connections
- * @deprecated Use specific operations instead
- */
-export function updateWorkflow(updates: {
-	nodes?: INode[];
-	connections?: SimpleWorkflow['connections'];
-}): Partial<typeof WorkflowState.State> {
-	const operations: WorkflowOperation[] = [];
-
-	if (updates.nodes) {
-		operations.push({ type: 'clear' });
-		operations.push({ type: 'addNodes', nodes: updates.nodes });
-	}
-
-	if (updates.connections) {
-		operations.push({ type: 'setConnections', connections: updates.connections });
-	}
-
-	return {
-		workflowOperations: operations,
 	};
 }
 
@@ -153,35 +118,6 @@ export function addConnectionToWorkflow(
 		],
 	};
 }
-
-/**
- * Remove all connections for a node
- */
-// function removeNodeConnections(
-// 	connections: SimpleWorkflow['connections'],
-// 	nodeId: string,
-// ): SimpleWorkflow['connections'] {
-// 	const newConnections = { ...connections };
-
-// 	// Remove outgoing connections
-// 	delete newConnections[nodeId];
-
-// 	// Remove incoming connections
-// 	for (const [_sourceId, nodeConnections] of Object.entries(newConnections)) {
-// 		for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
-// 			if (Array.isArray(outputs)) {
-// 				nodeConnections[connectionType] = outputs.map((outputConnections) => {
-// 					if (Array.isArray(outputConnections)) {
-// 						return outputConnections.filter((conn) => conn.node !== nodeId);
-// 					}
-// 					return outputConnections;
-// 				});
-// 			}
-// 		}
-// 	}
-
-// 	return newConnections;
-// }
 
 /**
  * Get all node IDs from the workflow

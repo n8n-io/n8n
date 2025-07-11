@@ -6,19 +6,16 @@ import { createNodeInstance, generateUniqueName } from './utils/node-creation.ut
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
 import type { ToolError } from './helpers/progress';
-import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
+import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, addNodesToWorkflow, getWorkflowState } from './helpers/state';
+import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
 
 /**
- * Output type for the add nodes tool
+ * Output type for the add node tool
  */
-interface AddNodesOutput {
-	addedNodes: AddedNode[];
-	errors: string[];
-	totalRequested: number;
-	successCount: number;
+interface AddNodeOutput {
+	addedNode: AddedNode;
 	message: string;
 }
 
@@ -44,11 +41,9 @@ export const nodeCreationSchema = z.object({
 });
 
 /**
- * Schema for batch node creation
+ * Schema for single node creation - using the nodeCreationSchema directly
  */
-export const addNodesSchema = z.object({
-	nodes: z.array(nodeCreationSchema).describe('Array of nodes to add to the workflow'),
-});
+export const addNodeSchema = nodeCreationSchema;
 
 /**
  * Result of adding a node
@@ -94,40 +89,16 @@ function createNode(
 }
 
 /**
- * Build the response message for added nodes
+ * Build the response message for added node
  */
-function buildResponseMessage(
-	addedNodes: AddedNode[],
-	errors: string[],
-	nodeTypes: INodeTypeDescription[],
-): string {
-	const parts: string[] = [];
-
-	// Success message
-	if (addedNodes.length > 0) {
-		parts.push(`Successfully added ${addedNodes.length} node${addedNodes.length > 1 ? 's' : ''}:`);
-
-		for (const node of addedNodes) {
-			const nodeType = nodeTypes.find((nt) => nt.name === node.type);
-			const nodeTypeInfo = nodeType && isSubNode(nodeType) ? ' (sub-node)' : '';
-			parts.push(
-				`- "${node.name}" (${node.displayName ?? node.type})${nodeTypeInfo} with ID ${node.id}`,
-			);
-		}
-	}
-
-	// Error messages
-	if (errors.length > 0) {
-		if (parts.length > 0) parts.push('');
-		parts.push('Errors:');
-		errors.forEach((error) => parts.push(`- ${error}`));
-	}
-
-	return parts.join('\n');
+function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescription[]): string {
+	const nodeType = nodeTypes.find((nt) => nt.name === addedNode.type);
+	const nodeTypeInfo = nodeType && isSubNode(nodeType) ? ' (sub-node)' : '';
+	return `Successfully added "${addedNode.name}" (${addedNode.displayName ?? addedNode.type})${nodeTypeInfo} with ID ${addedNode.id}`;
 }
 
 /**
- * Factory function to create the add nodes tool
+ * Factory function to create the add node tool
  */
 export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
@@ -136,8 +107,9 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 
 			try {
 				// Validate input using Zod schema
-				const validatedInput = addNodesSchema.parse(input);
-				const { nodes } = validatedInput;
+				const validatedInput = addNodeSchema.parse(input);
+				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
+					validatedInput;
 
 				// Report tool start
 				reporter.start(validatedInput);
@@ -146,82 +118,52 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
 
-				const addedNodes: INode[] = [];
-				const addedNodeInfo: AddedNode[] = [];
-				const errors: string[] = [];
+				// Report progress with reasoning
+				reporter.progress(`Adding ${name} (${connectionParametersReasoning})`);
 
-				// Create a copy of current nodes to track additions
-				const currentNodes = [...workflow.nodes];
-
-				// Create batch reporter for progress tracking
-				const batchReporter = createBatchProgressReporter(reporter, 'Adding nodes');
-				batchReporter.init(nodes.length);
-
-				// Process each node in the array
-				for (let i = 0; i < nodes.length; i++) {
-					const nodeInput = nodes[i];
-					const { nodeType, name, connectionParametersReasoning, connectionParameters } = nodeInput;
-
-					// Report progress with reasoning
-					batchReporter.next(`${name} (${connectionParametersReasoning})`);
-
-					// Find the node type
-					const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
-					if (!nodeTypeDesc) {
-						errors.push(`Node type "${nodeType}" not found`);
-						continue;
-					}
-
-					// Create the new node
-					const newNode = createNode(
-						nodeTypeDesc,
-						name,
-						currentNodes,
-						nodeTypes,
-						connectionParameters as INodeParameters,
-					);
-
-					addedNodes.push(newNode);
-					addedNodeInfo.push({
-						id: newNode.id,
-						name: newNode.name,
-						type: newNode.type,
-						displayName: nodeTypeDesc.displayName,
-						position: newNode.position,
-						parameters: newNode.parameters,
-					});
-					currentNodes.push(newNode);
-				}
-
-				// Complete batch reporting
-				batchReporter.complete();
-
-				// Check if all nodes failed
-				if (addedNodes.length === 0 && errors.length > 0) {
+				// Find the node type
+				const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
+				if (!nodeTypeDesc) {
 					const error = {
-						message: `Failed to add nodes: ${errors.join(', ')}`,
-						code: 'ALL_NODES_FAILED',
-						details: { errors },
+						message: `Node type "${nodeType}" not found`,
+						code: 'NODE_TYPE_NOT_FOUND',
+						details: { nodeType },
 					};
 					reporter.error(error);
 					return createErrorResponse(config, error);
 				}
 
+				// Create the new node
+				const newNode = createNode(
+					nodeTypeDesc,
+					name,
+					workflow.nodes, // Use current workflow nodes
+					nodeTypes,
+					connectionParameters as INodeParameters,
+				);
+
+				// Build node info
+				const addedNodeInfo: AddedNode = {
+					id: newNode.id,
+					name: newNode.name,
+					type: newNode.type,
+					displayName: nodeTypeDesc.displayName,
+					position: newNode.position,
+					parameters: newNode.parameters,
+				};
+
 				// Build success message
-				const message = buildResponseMessage(addedNodeInfo, errors, nodeTypes);
+				const message = buildResponseMessage(addedNodeInfo, nodeTypes);
 
 				// Report completion
-				const output: AddNodesOutput = {
-					addedNodes: addedNodeInfo,
-					errors,
-					totalRequested: nodes.length,
-					successCount: addedNodes.length,
+				const output: AddNodeOutput = {
+					addedNode: addedNodeInfo,
 					message,
 				};
 				reporter.complete(output);
 
-				// Return success with state updates
-				const stateUpdates = addNodesToWorkflow(addedNodes);
+				// Return success with state updates - single node
+				const stateUpdates = addNodeToWorkflow(newNode);
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
@@ -237,9 +179,11 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 		},
 		{
 			name: 'add_nodes',
-			description: `Add one or more nodes to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what each node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.
+			description: `Add a node to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what the node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.
 
-CRITICAL: For EVERY node, you MUST provide:
+To add multiple nodes, call this tool multiple times in parallel.
+
+CRITICAL: You MUST provide:
 1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using {}
 2. connectionParameters - The actual parameters (use {} for nodes without special needs)
 
@@ -266,7 +210,7 @@ CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
 - Regular nodes (HTTP Request, Set, Code, etc.): {}
 
 Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
-			schema: addNodesSchema,
+			schema: addNodeSchema,
 		},
 	);
 }
