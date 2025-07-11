@@ -12,7 +12,7 @@ import { transformInsightsAverageRunTime } from '@/features/insights/insights.ut
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
-import { Line } from 'vue-chartjs';
+import { Bar, Line } from 'vue-chartjs';
 import type { ChartProps } from './insightChartProps';
 
 const props = defineProps<ChartProps>();
@@ -63,7 +63,12 @@ const chartData = computed<ChartData<'line'>>(() => {
 </script>
 
 <template>
-	<Line :data="chartData" :options="chartOptions" :plugins="[Filler]" />
+	<Line
+		data-test-id="insights-chart-average-runtime"
+		:data="chartData"
+		:options="chartOptions"
+		:plugins="[Filler]"
+	/>
 </template>
 
 <style lang="scss" module></style>
