@@ -26,21 +26,27 @@ This separation ensures user code cannot affect n8n's stability or security.
 
 ```mermaid
 graph LR
-    subgraph "n8n CLI Process"
-        WF[Workflow Executor]
+    subgraph "Main n8n Process"
+        CN[Code Node]
         TB[Task Broker]
         LTR[Local Task Requester]
     end
-
-    subgraph "Task Runner Process"
-        TR[Task Runner]
-        JS[JS Executor]
+    
+    subgraph "Launcher Process"
+        L[Launcher]
     end
-
-    WF --> LTR
+    
+    subgraph "Task Runner Process"
+        TR[Task Runner<br/>with JS Execution]
+    end
+    
+    CN --> LTR
     LTR --> TB
-    TB <--> |WebSocket :5679| TR
-    TR --> JS
+    TB <--> |WebSocket| TR
+    TB <--> |Manage| L
+    L -.-> |Spawn| TR
+    
+    TR <--> |RPC Calls| TB
 ```
 
 ### Key Components
@@ -72,22 +78,24 @@ graph LR
 
 ### Task Execution Flow
 
-1. **Task Request**: When a Code node needs to execute, the workflow executor creates a task request
-2. **Task Offer**: Available runners send offers to the broker indicating they can accept tasks
-3. **Task Assignment**: The broker matches requests with offers and assigns tasks to runners
-4. **Code Execution**: The runner executes the JavaScript code in an isolated context
-5. **Result Return**: Execution results are sent back through the broker to the workflow
+1. **Code Node Execution**: When workflow reaches a Code node, it creates a task request
+2. **Task Offer**: Available runners continuously send offers to the broker (every 250ms)
+3. **Task Assignment**: Broker matches request with valid offer and assigns task to runner
+4. **Data Exchange**: Runner requests execution data, makes RPC calls for helpers
+5. **JavaScript Execution**: Runner executes code in isolated VM context
+6. **Result Return**: Execution results sent back through broker to Code node
 
 ### Task Lifecycle Sequence
 
 ```mermaid
 sequenceDiagram
-    participant WF as Workflow Executor
+    participant CN as Code Node
     participant TB as Task Broker
+    participant L as Launcher
     participant TR as Task Runner
-    participant JS as JS Executor
 
-    Note over TR: Runner Startup
+    Note over TR: Runner Startup (Internal Mode)
+    L->>TR: Spawn runner process
     TR->>TB: WebSocket Connect
     TB->>TR: broker:inforequest
     TR->>TB: runner:info (name, types)
@@ -98,35 +106,53 @@ sequenceDiagram
         TR->>TB: runner:taskoffer (taskType, validFor: 5000ms)
     end
     
-    Note over WF: Task Execution Request
-    WF->>TB: Request task execution
+    Note over CN: Task Execution Request
+    CN->>TB: Request task execution
     TB->>TR: broker:taskofferaccept (taskId, offerId)
-    TR->>TB: runner:taskaccepted (taskId)
     
-    Note over TB: Send Task Settings
+    alt Offer still valid
+        TR->>TB: runner:taskaccepted (taskId)
+    else Offer expired
+        TR->>TB: runner:taskrejected (taskId, reason: "Offer expired")
+        Note over TB: Find another runner
+    end
+    
     TB->>TR: broker:tasksettings (taskId, settings)
     
     Note over TR: Data Request
     TR->>TB: runner:taskdatarequest (taskId, requestParams)
-    TB->>WF: Request execution data
-    WF->>TB: Provide execution data
+    TB->>CN: Request execution data
+    CN->>TB: Provide execution data
     TB->>TR: broker:taskdataresponse (taskId, data)
     
-    Note over TR,JS: Code Execution
-    TR->>JS: Execute JavaScript code
-    JS-->>TR: Return results
+    Note over TR: RPC Calls During Execution
+    loop As needed
+        TR->>TB: runner:rpc (callId, name: "helpers.httpRequest", params)
+        TB->>CN: Execute helper method
+        CN->>TB: Return result
+        TB->>TR: broker:rpcresponse (callId, status: "success", data)
+    end
     
-    Note over TR: Success Path
-    TR->>TB: runner:taskdone (taskId, results)
-    TB->>WF: Task completed
+    Note over TR: Code Execution
+    TR->>TR: Execute JavaScript in VM
     
-    Note over TR: Error Path (alternative)
-    TR->>TB: runner:taskerror (taskId, error)
-    TB->>WF: Task failed
-    
-    Note over TR: Cancellation (alternative)
-    TB->>TR: broker:taskcancel (taskId, reason)
-    TR->>JS: Abort execution
+    alt Success
+        TR->>TB: runner:taskdone (taskId, results)
+        TB->>CN: Task completed
+    else Execution Error
+        TR->>TB: runner:taskerror (taskId, error)
+        TB->>CN: Task failed
+    else Timeout
+        Note over TR: Task exceeds timeout
+        TR->>TB: runner:taskerror (taskId, TimeoutError)
+        TB->>CN: Task timed out
+    else Cancellation
+        TB->>TR: broker:taskcancel (taskId, reason)
+        TR->>TR: Abort execution
+        Note over TR: Cleanup and acknowledge
+    else Missing Task ID
+        TR->>TB: runner:taskerror (taskId, "Unknown task")
+    end
 ```
 
 ### Communication Protocol Messages
