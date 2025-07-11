@@ -48,6 +48,7 @@
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
