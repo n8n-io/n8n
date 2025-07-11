@@ -252,4 +252,17 @@ export class SourceControlController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
+
+	@Get('/get-workflow/:workflowId', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async getFileContent(req: AuthenticatedRequest & { params: { workflowId: string } }) {
+		try {
+			const workflowId = req.params.workflowId;
+			const content = await this.sourceControlService.getFileContent(
+				`workflows/${workflowId}.json`,
+			);
+			return { content };
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
 }
