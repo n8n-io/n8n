@@ -5,7 +5,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 
-import { metricHandlers } from '../utils/metrichandlers';
+import { metricHandlers } from '../utils/metricHandlers';
 
 // Mock the validateEntry function
 jest.mock('../../Set/v2/helpers/utils', () => ({
