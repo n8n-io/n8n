@@ -4,7 +4,7 @@ import { Command, type LangGraphRunnableConfig } from '@langchain/langgraph';
 
 import type { ToolError } from './progress';
 import type { SimpleWorkflow } from '../../types';
-import type { WorkflowState } from '../../workflow-state';
+import type { WorkflowState, WorkflowOperation } from '../../workflow-state';
 
 export type StateUpdater<TState = typeof WorkflowState.State> =
 	| Partial<TState>
@@ -58,13 +58,20 @@ export function createErrorResponse(config: ToolRunnableConfig, error: ToolError
 
 /**
  * Create a response with workflow JSON updates
+ * @deprecated Use operations-based updates instead
  */
 export function createResponseWithWorkflow(
 	config: LangGraphRunnableConfig,
 	message: string,
 	workflowJSON: SimpleWorkflow,
 ): Command {
-	return createSuccessResponse(config, message, { workflowJSON });
+	// Convert to operations-based update
+	const operations: WorkflowOperation[] = [
+		{ type: 'clear' },
+		{ type: 'addNodes', nodes: workflowJSON.nodes },
+		{ type: 'setConnections', connections: workflowJSON.connections },
+	];
+	return createSuccessResponse(config, message, { workflowOperations: operations });
 }
 
 /**
@@ -80,11 +87,18 @@ export function createResponseWithState<TState = typeof WorkflowState.State>(
 
 /**
  * Helper to build state updates for workflow JSON
+ * @deprecated Use operations-based updates instead
  */
 export function buildWorkflowUpdate(
 	workflowJSON: SimpleWorkflow,
 ): Partial<typeof WorkflowState.State> {
-	return { workflowJSON };
+	// Convert to operations-based update
+	const operations: WorkflowOperation[] = [
+		{ type: 'clear' },
+		{ type: 'addNodes', nodes: workflowJSON.nodes },
+		{ type: 'setConnections', connections: workflowJSON.connections },
+	];
+	return { workflowOperations: operations };
 }
 
 /**

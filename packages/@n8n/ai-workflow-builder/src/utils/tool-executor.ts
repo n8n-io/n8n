@@ -6,15 +6,16 @@ import { isCommand } from '@langchain/langgraph';
 import type { WorkflowState, WorkflowOperation } from '../workflow-state';
 
 /**
- * SIMPLIFIED PARALLEL TOOL EXECUTION
+ * PARALLEL TOOL EXECUTION
  *
- * With the custom workflowJSONReducer in place, we no longer need complex manual merging.
- * The reducer handles all the complexity of merging parallel updates to the workflow state.
+ * This executor handles running multiple tools in parallel and collecting their results.
+ * All workflow modifications are done through operations that are processed by the
+ * operations processor node.
  *
- * This executor now simply:
+ * This executor:
  * 1. Executes all tools in parallel
- * 2. Collects their state updates and messages
- * 3. Returns a single merged update that LangGraph will apply through the reducers
+ * 2. Collects their operations and messages
+ * 3. Returns a single update with all operations to be processed
  */
 
 export interface ToolExecutorOptions {
@@ -25,8 +26,8 @@ export interface ToolExecutorOptions {
 /**
  * Execute multiple tools in parallel and collect their state updates
  *
- * The custom reducers in workflow-state.ts handle all the merging complexity,
- * so this function just needs to execute tools and collect their updates.
+ * Tools return operations that will be processed by the operations processor node.
+ * This function executes tools and collects all their operations and messages.
  *
  * @param options - Contains the current state and tool map
  * @returns Combined state updates from all tool executions

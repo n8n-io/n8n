@@ -2,7 +2,7 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
-import type { WorkflowState } from '../../workflow-state';
+import type { WorkflowState, WorkflowOperation } from '../../workflow-state';
 
 /**
  * Get the current workflow from state in a type-safe manner
@@ -25,16 +25,12 @@ export function getCurrentWorkflowFromTaskInput(): SimpleWorkflow {
 
 /**
  * Create a state update for workflow nodes
+ * @deprecated Use addNodesToWorkflow or updateNodeInWorkflow instead
  */
-export function updateWorkflowNodes(
-	state: typeof WorkflowState.State,
-	nodes: INode[],
-): Partial<typeof WorkflowState.State> {
+export function updateWorkflowNodes(nodes: INode[]): Partial<typeof WorkflowState.State> {
+	// Replace all nodes - use setNodes operation
 	return {
-		workflowJSON: {
-			...state.workflowJSON,
-			nodes,
-		},
+		workflowOperations: [{ type: 'clear' }, { type: 'addNodes', nodes }],
 	};
 }
 
@@ -53,30 +49,33 @@ export function updateWorkflowConnections(
 
 /**
  * Create a state update for both nodes and connections
+ * @deprecated Use specific operations instead
  */
-export function updateWorkflow(
-	state: typeof WorkflowState.State,
-	updates: {
-		nodes?: INode[];
-		connections?: SimpleWorkflow['connections'];
-	},
-): Partial<typeof WorkflowState.State> {
+export function updateWorkflow(updates: {
+	nodes?: INode[];
+	connections?: SimpleWorkflow['connections'];
+}): Partial<typeof WorkflowState.State> {
+	const operations: WorkflowOperation[] = [];
+
+	if (updates.nodes) {
+		operations.push({ type: 'clear' });
+		operations.push({ type: 'addNodes', nodes: updates.nodes });
+	}
+
+	if (updates.connections) {
+		operations.push({ type: 'setConnections', connections: updates.connections });
+	}
+
 	return {
-		workflowJSON: {
-			nodes: updates.nodes ?? state.workflowJSON.nodes,
-			connections: updates.connections ?? state.workflowJSON.connections,
-		},
+		workflowOperations: operations,
 	};
 }
 
 /**
  * Add a node to the workflow state
  */
-export function addNodeToWorkflow(
-	state: typeof WorkflowState.State,
-	node: INode,
-): Partial<typeof WorkflowState.State> {
-	return updateWorkflowNodes(state, [...state.workflowJSON.nodes, node]);
+export function addNodeToWorkflow(node: INode): Partial<typeof WorkflowState.State> {
+	return addNodesToWorkflow([node]);
 }
 
 /**
@@ -134,23 +133,24 @@ export function updateNodeInWorkflow(
 
 /**
  * Add a connection to the workflow state
- * Returns only the new connection for the reducer to merge
  */
 export function addConnectionToWorkflow(
 	sourceNodeId: string,
 	_targetNodeId: string,
 	connection: IConnection,
 ): Partial<typeof WorkflowState.State> {
-	// Return only the new connection - the reducer will merge it
+	// Use mergeConnections operation to add the new connection
 	return {
-		workflowJSON: {
-			nodes: [],
-			connections: {
-				[sourceNodeId]: {
-					main: [[connection]],
+		workflowOperations: [
+			{
+				type: 'mergeConnections',
+				connections: {
+					[sourceNodeId]: {
+						main: [[connection]],
+					},
 				},
 			},
-		},
+		],
 	};
 }
 

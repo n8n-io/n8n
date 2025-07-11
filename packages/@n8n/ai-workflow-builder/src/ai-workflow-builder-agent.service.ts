@@ -180,7 +180,6 @@ export class AiWorkflowBuilderService {
 				workflowJSON: {
 					nodes: [],
 					connections: {},
-					__reducer_operation: 'override',
 				},
 			};
 
@@ -258,12 +257,7 @@ export class AiWorkflowBuilderService {
 				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
 			}
 
-			// We need to mark the workflow as an override operation
-			// to make sure the reducer treats it as a replacement
-			// otherwise it would be merged with the previous state
-			if (stateUpdate.workflowJSON) {
-				stateUpdate.workflowJSON.__reducer_operation = 'override';
-			}
+			// The workflow JSON is now replaced directly without special operations
 
 			// Stream with just the new message
 			stream = await agent.stream(
