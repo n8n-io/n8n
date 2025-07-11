@@ -11,7 +11,7 @@ async function pullImagesForCI() {
 
 	console.log(`🔄 Images pulled for ${process.env.N8N_DOCKER_IMAGE}...`);
 
-	stack.stop();
+	await stack.stop();
 }
 
 async function globalSetup() {

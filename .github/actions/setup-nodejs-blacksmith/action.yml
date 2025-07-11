@@ -34,7 +34,7 @@ runs:
       uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
     - name: Setup Blacksmith Buildx for Docker Cache
-      if: ${{ inputs.enable-docker-cache == true }}
+      if: ${{ inputs.enable-docker-cache == 'true' }}
       uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2.0
 
     - name: Build Project
