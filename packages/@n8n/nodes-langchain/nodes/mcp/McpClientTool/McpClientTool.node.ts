@@ -173,6 +173,26 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 60000,
+						description: 'Time in ms to wait for tool calls to finish',
+					},
+				],
+			},
 		],
 	};
 
@@ -188,6 +208,7 @@ export class McpClientTool implements INodeType {
 			itemIndex,
 		) as McpAuthenticationOption;
 		const sseEndpoint = this.getNodeParameter('sseEndpoint', itemIndex) as string;
+		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
@@ -242,7 +263,7 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client.result, (error) => {
+					createCallTool(tool.name, client.result, timeout, (error) => {
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
 						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
 							description: error,
