@@ -1,16 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock, type MockProxy } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
-import type {
-	INode,
-	ITaskData,
-	IWebhookData,
-	Workflow,
-	IWorkflowDataProxyAdditionalKeys,
-	INodeExecutionData,
-	IBinaryData,
-	Expression,
-} from 'n8n-workflow';
+import type { ITaskData, INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Readable } from 'node:stream';
@@ -20,32 +11,14 @@ import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-ex
 import type { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 
 describe('extractWebhookLastNodeResponse', () => {
-	let workflow: MockProxy<Workflow>;
-	let workflowStartNode: MockProxy<INode>;
-	let webhookData: MockProxy<IWebhookData>;
+	let context: MockProxy<WebhookExecutionContext>;
 	let lastNodeTaskData: MockProxy<ITaskData>;
 	let binaryDataService: MockProxy<BinaryDataService>;
-	let additionalKeys: MockProxy<IWorkflowDataProxyAdditionalKeys>;
-	let context: MockProxy<WebhookExecutionContext>;
 
 	beforeEach(() => {
-		workflow = mock<Workflow>();
-		workflowStartNode = mock<INode>();
-		webhookData = mock<IWebhookData>({
-			webhookDescription: {
-				responsePropertyName: undefined,
-				responseContentType: undefined,
-				responseBinaryPropertyName: undefined,
-			},
-		});
+		context = mock<WebhookExecutionContext>();
 		lastNodeTaskData = mock<ITaskData>();
 		binaryDataService = mock<BinaryDataService>();
-		additionalKeys = mock<IWorkflowDataProxyAdditionalKeys>();
-		context = mock<WebhookExecutionContext>();
-
-		workflow.expression = mock<Expression>({
-			getSimpleParameterValue: jest.fn(),
-		});
 
 		Container.set(BinaryDataService, binaryDataService);
 	});
