@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { onBeforeUnmount, ref, computed } from 'vue';
+import { onBeforeUnmount, ref, computed, provide } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
@@ -8,6 +8,9 @@ import NodeTitle from '@/components/NodeTitle.vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -55,6 +58,37 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
+
+provide(
+	ExpressionLocalResolveContextSymbol,
+	computed<ExpressionLocalResolveContext | undefined>(() => {
+		if (!node.value) {
+			return undefined;
+		}
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const runIndex = 0; // not changeable for now
+		const execution = workflowsStore.workflowExecutionData;
+		const taskData = (execution?.data?.resultData.runData[node.value.name] ?? [])[runIndex];
+		const source = taskData?.source[0];
+
+		return {
+			localResolve: true,
+			envVars: useEnvironmentsStore().variablesAsObject,
+			workflow,
+			execution,
+			nodeName: node.value.name,
+			additionalKeys: {},
+			inputNode: source
+				? {
+						name: source.previousNode,
+						branchIndex: source.previousNodeOutput ?? 0,
+						runIndex: source.previousNodeRun ?? 0,
+					}
+				: undefined,
+		};
+	}),
+);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;

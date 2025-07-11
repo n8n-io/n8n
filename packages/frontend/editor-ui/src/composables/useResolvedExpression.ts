@@ -2,10 +2,12 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
-import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toRef, toValue, inject, type MaybeRefOrGetter } from 'vue';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { watchDebounced } from '@vueuse/core';
 
 export function useResolvedExpression({
 	expression,
@@ -25,6 +27,11 @@ export function useResolvedExpression({
 
 	const { resolveExpression } = useWorkflowHelpers();
 
+	const expressionLocalResolveCtx = inject(
+		ExpressionLocalResolveContextSymbol,
+		computed(() => undefined),
+	);
+
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
 
@@ -37,28 +44,26 @@ export function useResolvedExpression({
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
-	function resolve(): Result<unknown, Error> {
+	function resolve(ctx?: ExpressionLocalResolveContext): Result<unknown, Error> {
 		const expressionString = toValue(expression);
 
 		if (!isExpression.value || typeof expressionString !== 'string') {
 			return { ok: true, result: '' };
 		}
 
-		let options: ResolveParameterOptions = {
+		const options: ResolveParameterOptions | ExpressionLocalResolveContext = ctx ?? {
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),
 			contextNodeName: toValue(contextNodeName),
+			...(contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
+				? {
+						targetItem: targetItem.value ?? undefined,
+						inputNodeName: ndvStore.ndvInputNodeName,
+						inputRunIndex: ndvStore.ndvInputRunIndex,
+						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+					}
+				: {}),
 		};
-
-		if (contextNodeName === undefined && ndvStore.isInputParentOfActiveNode) {
-			options = {
-				...options,
-				targetItem: targetItem.value ?? undefined,
-				inputNodeName: ndvStore.ndvInputNodeName,
-				inputRunIndex: ndvStore.ndvInputRunIndex,
-				inputBranchIndex: ndvStore.ndvInputBranchIndex,
-			};
-		}
 
 		try {
 			const resolvedValue = resolveExpression(
@@ -74,30 +79,26 @@ export function useResolvedExpression({
 		}
 	}
 
-	const debouncedUpdateExpression = debounce(updateExpression, 200);
-
-	function updateExpression() {
-		if (isExpression.value) {
-			const resolved = resolve();
-			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
-		} else {
-			resolvedExpression.value = null;
-			resolvedExpressionString.value = '';
-		}
-	}
-
-	watch(
+	watchDebounced(
 		[
+			expressionLocalResolveCtx,
 			toRef(expression),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
 			targetItem,
 		],
-		debouncedUpdateExpression,
+		([latestCtx]) => {
+			if (isExpression.value) {
+				const resolved = resolve(latestCtx);
+				resolvedExpression.value = resolved.ok ? resolved.result : null;
+				resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+			} else {
+				resolvedExpression.value = null;
+				resolvedExpressionString.value = '';
+			}
+		},
+		{ immediate: true, debounce: 200 },
 	);
-
-	onMounted(updateExpression);
 
 	return { resolvedExpression, resolvedExpressionString, isExpression };
 }
