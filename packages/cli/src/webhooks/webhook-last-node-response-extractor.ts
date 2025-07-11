@@ -15,8 +15,9 @@ import type {
 import { BINARY_ENCODING, createResultError, createResultOk, OperationalError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-type NonStreamResponse = {
-	type: 'nonstream';
+/** Response that is not a stream */
+type StaticResponse = {
+	type: 'static';
 	body: unknown;
 	contentType: string | undefined;
 };
@@ -39,7 +40,7 @@ export async function extractWebhookLastNodeResponse(
 	webhookData: IWebhookData,
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-): Promise<Result<NonStreamResponse | StreamResponse, OperationalError>> {
+): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	if (responseDataType === 'firstEntryJson') {
 		return extractFirstEntryJsonFromRunData(
 			lastNodeRunData,
@@ -64,7 +65,7 @@ export async function extractWebhookLastNodeResponse(
 
 	if (responseDataType === 'noData') {
 		return createResultOk({
-			type: 'nonstream',
+			type: 'static',
 			body: undefined,
 			contentType: undefined,
 		});
@@ -84,7 +85,7 @@ function extractFirstEntryJsonFromRunData(
 	webhookData: IWebhookData,
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-): Result<NonStreamResponse, OperationalError> {
+): Result<StaticResponse, OperationalError> {
 	if (lastNodeRunData.data!.main[0]![0] === undefined) {
 		return createResultError(new OperationalError('No item to return was found'));
 	}
@@ -116,7 +117,7 @@ function extractFirstEntryJsonFromRunData(
 	) as string | undefined;
 
 	return createResultOk({
-		type: 'nonstream',
+		type: 'static',
 		body: lastNodeFirstJsonItem,
 		contentType: responseContentType,
 	});
@@ -132,7 +133,7 @@ async function extractFirstEntryBinaryFromRunData(
 	webhookData: IWebhookData,
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-): Promise<Result<NonStreamResponse | StreamResponse, OperationalError>> {
+): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	// Return the binary data of the first entry
 	const lastNodeFirstJsonItem: INodeExecutionData = lastNodeRunData.data!.main[0]![0];
 
@@ -179,7 +180,7 @@ async function extractFirstEntryBinaryFromRunData(
 		});
 	} else {
 		return createResultOk({
-			type: 'nonstream',
+			type: 'static',
 			body: Buffer.from(binaryData.data, BINARY_ENCODING),
 			contentType: binaryData.mimeType,
 		});
@@ -191,14 +192,14 @@ async function extractFirstEntryBinaryFromRunData(
  */
 function extractAllEntriesJsonFromRunData(
 	lastNodeRunData: ITaskData,
-): Result<NonStreamResponse, OperationalError> {
+): Result<StaticResponse, OperationalError> {
 	const data: unknown[] = [];
 	for (const entry of lastNodeRunData.data!.main[0]!) {
 		data.push(entry.json);
 	}
 
 	return createResultOk({
-		type: 'nonstream',
+		type: 'static',
 		body: data,
 		// No content-type override in this case. User can set the content-type
 		// header if they wish. We default to application/json later on when the

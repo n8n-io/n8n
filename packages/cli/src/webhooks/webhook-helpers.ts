@@ -717,7 +717,7 @@ export async function executeWebhook(
 
 					responseCallback(
 						null,
-						response.type === 'nonstream'
+						response.type === 'static'
 							? createNonStreamResponse(response.body, responseCode, responseHeaders)
 							: createStreamResponse(response.stream, responseCode, responseHeaders),
 					);

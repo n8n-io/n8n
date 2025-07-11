@@ -70,7 +70,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: jsonData,
 					contentType: undefined,
 				},
@@ -120,7 +120,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: 'test',
 					contentType: undefined,
 				},
@@ -151,7 +151,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: jsonData,
 					contentType: 'application/xml',
 				},
@@ -189,7 +189,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: Buffer.from('test binary data'),
 					contentType: 'text/plain',
 				},
@@ -378,7 +378,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: undefined,
 					contentType: undefined,
 				},
@@ -408,7 +408,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: [jsonData1, jsonData2, jsonData3],
 					contentType: undefined,
 				},
@@ -433,7 +433,7 @@ describe('extractWebhookLastNodeResponse', () => {
 			expect(result).toEqual({
 				ok: true,
 				result: {
-					type: 'nonstream',
+					type: 'static',
 					body: [],
 					contentType: undefined,
 				},
