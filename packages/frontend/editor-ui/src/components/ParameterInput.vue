@@ -42,6 +42,7 @@ import {
 	isResourceLocatorParameterType,
 	isValidParameterOption,
 	parseFromExpression,
+	shouldSkipParamValidation,
 } from '@/utils/nodeSettingsUtils';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 
@@ -426,7 +427,7 @@ const getIssues = computed<string[]>(() => {
 
 		let checkValues: string[] = [];
 
-		if (!nodeSettingsParameters.shouldSkipParamValidation(displayValue.value)) {
+		if (!shouldSkipParamValidation(displayValue.value)) {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {

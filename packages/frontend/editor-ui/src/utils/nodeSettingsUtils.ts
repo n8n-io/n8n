@@ -19,7 +19,7 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
-import { SWITCH_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import isEqual from 'lodash/isEqual';
 import get from 'lodash/get';
 import set from 'lodash/set';
@@ -352,4 +352,8 @@ export function parseFromExpression(
 	}
 
 	return null;
+}
+
+export function shouldSkipParamValidation(value: string | number | boolean | null) {
+	return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
 }
