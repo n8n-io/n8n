@@ -359,7 +359,10 @@ export function parseFromExpression(
 	return null;
 }
 
-export function shouldSkipParamValidation(parameter: INodeProperties, value: JsonValue) {
+export function shouldSkipParamValidation(
+	parameter: INodeProperties,
+	value: NodeParameterValueType,
+) {
 	return (
 		(typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY)) ||
 		(['options', 'multiOptions'].includes(parameter.type) &&
