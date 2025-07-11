@@ -10,6 +10,7 @@ import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -33,7 +34,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:modelValue': [value: string];
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'menu-expanded': [visible: boolean];
 }>();
 
@@ -41,12 +44,28 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const posthogStore = usePostHog();
 
+const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
+const isHtmlEditor = computed(
+	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
+);
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+
+const isFocusPanelFeatureEnabled = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
+const hasFocusAction = computed(
+	() =>
+		isFocusPanelFeatureEnabled.value &&
+		!props.parameter.isNodeSetting &&
+		!props.isReadOnly &&
+		activeNode.value && // checking that it's inside ndv
+		(props.parameter.type === 'string' || props.parameter.type === 'json'),
+);
+
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
 		return false;
@@ -71,7 +90,6 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
-const activeNode = computed(() => ndvStore.activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -83,18 +101,6 @@ const resetValueLabel = computed(() => {
 
 	return i18n.baseText('parameterInput.resetValue');
 });
-
-const isFocusPanelFeatureEnabled = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
-const hasFocusAction = computed(
-	() =>
-		isFocusPanelFeatureEnabled.value &&
-		!props.parameter.isNodeSetting &&
-		!props.isReadOnly &&
-		activeNode.value && // checking that it's inside ndv
-		(props.parameter.type === 'string' || props.parameter.type === 'json'),
-);
 
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
@@ -160,17 +166,6 @@ const onViewSelected = (selected: string) => {
 	if (selected === 'fixed' && isValueAnExpression.value) {
 		emit('update:modelValue', 'removeExpression');
 	}
-};
-const getArgument = (argumentName: string) => {
-	if (props.parameter.typeOptions === undefined) {
-		return undefined;
-	}
-
-	if (props.parameter.typeOptions[argumentName] === undefined) {
-		return undefined;
-	}
-
-	return props.parameter.typeOptions[argumentName];
 };
 </script>
 

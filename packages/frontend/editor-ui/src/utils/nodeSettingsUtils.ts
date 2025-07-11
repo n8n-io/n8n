@@ -166,7 +166,12 @@ export function removeMismatchedOptionValues(
 	nodeType.properties.forEach((prop) => {
 		const displayOptions = prop.displayOptions;
 		// Not processing parameters that are not set or don't have options
-		if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+		if (
+			!nodeParameterValues ||
+			!Object.prototype.hasOwnProperty.call(nodeParameterValues, prop.name) ||
+			!displayOptions ||
+			!prop.options
+		) {
 			return;
 		}
 		// Only process the parameters that depend on the updated parameter
