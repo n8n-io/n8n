@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
+import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,7 +13,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	jsonParse,
-	BINARY_ENCODING,
 	NodeOperationError,
 	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
@@ -22,8 +22,9 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { configuredOutputs } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import { configuredOutputs } from './utils/outputs';
+import { getBinaryResponse } from './utils/binary';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -359,6 +360,9 @@ export class RespondToWebhook implements INodeType {
 				}
 			}
 
+			const hasHtmlContentType =
+				headers['content-type'] && isHtmlRenderedContentType(headers['content-type'] as string);
+
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
 			if (respondWith === 'json') {
@@ -412,7 +416,12 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
-				responseBody = this.getNodeParameter('responseBody', 0) as string;
+				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
+				if (hasHtmlContentType || !headers['content-type']) {
+					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
+				} else {
+					responseBody = this.getNodeParameter('responseBody', 0) as string;
+				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];
 
@@ -438,16 +447,8 @@ export class RespondToWebhook implements INodeType {
 				}
 
 				const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
-				if (binaryData.id) {
-					responseBody = { binaryData };
-				} else {
-					responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
-					headers['content-length'] = (responseBody as Buffer).length;
-				}
 
-				if (!headers['content-type']) {
-					headers['content-type'] = binaryData.mimeType;
-				}
+				responseBody = getBinaryResponse(binaryData, headers);
 			} else if (respondWith === 'redirect') {
 				headers.location = this.getNodeParameter('redirectURL', 0) as string;
 				statusCode = (options.responseCode as number) ?? 307;
@@ -456,6 +457,15 @@ export class RespondToWebhook implements INodeType {
 					this.getNode(),
 					`The Response Data option "${respondWith}" is not supported!`,
 				);
+			}
+
+			if (
+				hasHtmlContentType &&
+				respondWith !== 'text' &&
+				respondWith !== 'binary' &&
+				responseBody
+			) {
+				responseBody = sandboxHtmlResponse(JSON.stringify(responseBody as string));
 			}
 
 			response = {
