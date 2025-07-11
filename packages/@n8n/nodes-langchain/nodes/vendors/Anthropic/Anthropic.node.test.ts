@@ -375,6 +375,194 @@ describe('Anthropic Node', () => {
 		});
 	});
 
+	describe('File -> List', () => {
+		it('should list files with a limit', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'returnAll':
+						return false;
+					case 'limit':
+						return 10;
+					default:
+						return undefined;
+				}
+			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			apiRequestMock.mockResolvedValue({
+				data: [
+					{
+						id: 'file_123',
+						filename: 'test.pdf',
+						mime_type: 'application/pdf',
+					},
+					{
+						id: 'file_456',
+						filename: 'test.png',
+						mime_type: 'image/png',
+					},
+				],
+				first_id: '',
+				last_id: '',
+				has_more: false,
+			});
+
+			const result = await file.list.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						id: 'file_123',
+						filename: 'test.pdf',
+						mime_type: 'application/pdf',
+						url: 'https://api.anthropic.com/v1/files/file_123',
+					},
+					pairedItem: { item: 0 },
+				},
+				{
+					json: {
+						id: 'file_456',
+						filename: 'test.png',
+						mime_type: 'image/png',
+						url: 'https://api.anthropic.com/v1/files/file_456',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1/files', {
+				qs: {
+					limit: 10,
+				},
+			});
+		});
+
+		it('should list all files', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'returnAll':
+						return true;
+					default:
+						return undefined;
+				}
+			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			apiRequestMock.mockResolvedValueOnce({
+				data: [
+					{
+						id: 'file_001',
+						filename: 'test-1.pdf',
+						mime_type: 'application/pdf',
+					},
+					{
+						id: 'file_002',
+						filename: 'test-2.pdf',
+						mime_type: 'application/pdf',
+					},
+				],
+				first_id: 'file_001',
+				last_id: 'file_002',
+				has_more: true,
+			});
+			apiRequestMock.mockResolvedValueOnce({
+				data: [
+					{
+						id: 'file_003',
+						filename: 'test-3.pdf',
+						mime_type: 'application/pdf',
+					},
+				],
+				first_id: 'file_003',
+				last_id: 'file_003',
+				has_more: false,
+			});
+
+			const result = await file.list.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						id: 'file_001',
+						filename: 'test-1.pdf',
+						mime_type: 'application/pdf',
+						url: 'https://api.anthropic.com/v1/files/file_001',
+					},
+					pairedItem: { item: 0 },
+				},
+				{
+					json: {
+						id: 'file_002',
+						filename: 'test-2.pdf',
+						mime_type: 'application/pdf',
+						url: 'https://api.anthropic.com/v1/files/file_002',
+					},
+					pairedItem: { item: 0 },
+				},
+				{
+					json: {
+						id: 'file_003',
+						filename: 'test-3.pdf',
+						mime_type: 'application/pdf',
+						url: 'https://api.anthropic.com/v1/files/file_003',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
+	});
+
+	describe('File -> Delete', () => {
+		it('should delete file', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'fileId':
+						return 'file_123';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestMock.mockResolvedValue({
+				id: 'file_123',
+			});
+
+			const result = await file.delete.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([{ json: { id: 'file_123' }, pairedItem: { item: 0 } }]);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', '/v1/files/file_123');
+		});
+	});
+
+	describe('File -> Get', () => {
+		it('should get file', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'fileId':
+						return 'file_123';
+					default:
+						return undefined;
+				}
+			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			apiRequestMock.mockResolvedValue({
+				id: 'file_123',
+				filename: 'test.pdf',
+				mime_type: 'application/pdf',
+			});
+
+			const result = await file.get.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						id: 'file_123',
+						filename: 'test.pdf',
+						mime_type: 'application/pdf',
+						url: 'https://api.anthropic.com/v1/files/file_123',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
+	});
+
 	describe('Image -> Analyze', () => {
 		it('should analyze image from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
