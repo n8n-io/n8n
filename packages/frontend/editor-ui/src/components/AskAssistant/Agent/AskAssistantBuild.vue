@@ -132,21 +132,27 @@ function onUpdateWorkflow(code: string) {
 		return;
 	}
 
-	// Capture current node positions before removing nodes
+	// Capture current node positions and IDs before removing nodes
 	const nodePositions = new Map<string, [number, number]>();
+	const existingNodeIds = new Set<string>();
 	workflowsStore.allNodes.forEach((node) => {
 		nodePositions.set(node.id, [...node.position]);
+		existingNodeIds.add(node.id);
 	});
 
 	workflowsStore.removeAllConnections({ setStateDirty: false });
 	workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 
-	// Restore positions for nodes that still exist
+	// Restore positions for nodes that still exist and identify new nodes
+	const nodesIdsToTidyUp: string[] = [];
 	if (workflowData.nodes) {
 		workflowData.nodes = workflowData.nodes.map((node) => {
 			const savedPosition = nodePositions.get(node.id);
 			if (savedPosition) {
 				return { ...node, position: savedPosition };
+			} else {
+				// This is a new node, add it to the tidy up list
+				nodesIdsToTidyUp.push(node.id);
 			}
 			return node;
 		});
@@ -154,7 +160,8 @@ function onUpdateWorkflow(code: string) {
 
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: workflowData,
-		tidyUp: false,
+		tidyUp: true,
+		nodesIdsToTidyUp,
 		regenerateIds: false,
 	});
 }
@@ -220,7 +227,6 @@ watch(currentRoute, () => {
 watch(
 	() => workflowsStore.workflowId,
 	async (workflowId) => {
-		console.log('🚀 ~ onMounted ~ workflowId:', workflowId);
 		if (workflowId && !workflowsStore.isNewWorkflow) {
 			await builderStore.loadSessions();
 		}
