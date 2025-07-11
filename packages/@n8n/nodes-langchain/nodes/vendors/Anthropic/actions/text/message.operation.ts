@@ -343,16 +343,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		messages.push({
-			role: 'assistant',
-			content: response.content,
-		});
-
 		if (response.stop_reason === 'tool_use') {
 			if (maxToolsIterations > 0 && currentIteration >= maxToolsIterations) {
 				break;
 			}
 
+			messages.push({
+				role: 'assistant',
+				content: response.content,
+			});
 			await handleToolUse.call(this, response, messages, connectedTools);
 			currentIteration++;
 		} else if (response.stop_reason === 'pause_turn') {
@@ -361,6 +360,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				break;
 			}
 
+			messages.push({
+				role: 'assistant',
+				content: response.content,
+			});
 			pauseTurns++;
 		} else {
 			break;
