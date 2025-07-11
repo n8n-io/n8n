@@ -263,7 +263,7 @@ describe('SentimentAnalysis Node', () => {
 			const result = await node.execute.call(mockExecuteFunctions);
 
 			expect(result[0]).toHaveLength(2); // Positive and error item
-			expect(result[0][0].json.sentimentAnalysis.category).toBe('Positive');
+			expect((result[0][0].json.sentimentAnalysis as any).category).toBe('Positive');
 			expect(result[0][1].json).toHaveProperty('error');
 			expect(result[2]).toHaveLength(1); // Negative
 		});
