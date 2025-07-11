@@ -209,7 +209,9 @@ export class Chat implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const connectedNodes = this.getParentNodes(this.getNode().name);
+		const connectedNodes = this.getParentNodes(this.getNode().name, {
+			includeNodeParameters: true,
+		});
 
 		const chatTrigger = connectedNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
@@ -219,6 +221,15 @@ export class Chat implements INodeType {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Workflow must be started from a chat trigger node',
+			);
+		}
+
+		if (
+			(chatTrigger.parameters?.options as { responseMode: string })?.responseMode === 'streaming'
+		) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Streaming mode is not supported, change it in chat trigger node to "Last Node" or "Respond to Webhook" node',
 			);
 		}
 
