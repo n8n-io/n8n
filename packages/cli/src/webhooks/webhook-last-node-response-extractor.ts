@@ -34,7 +34,7 @@ type StreamResponse = {
  */
 export async function extractWebhookLastNodeResponse(
 	responseDataType: WebhookResponseData | undefined,
-	lastNodeRunData: ITaskData,
+	lastNodeTaskData: ITaskData,
 	workflow: Workflow,
 	workflowStartNode: INode,
 	webhookData: IWebhookData,
@@ -42,8 +42,8 @@ export async function extractWebhookLastNodeResponse(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	if (responseDataType === 'firstEntryJson') {
-		return extractFirstEntryJsonFromRunData(
-			lastNodeRunData,
+		return extractFirstEntryJsonFromTaskData(
+			lastNodeTaskData,
 			workflow,
 			workflowStartNode,
 			webhookData,
@@ -53,8 +53,8 @@ export async function extractWebhookLastNodeResponse(
 	}
 
 	if (responseDataType === 'firstEntryBinary') {
-		return await extractFirstEntryBinaryFromRunData(
-			lastNodeRunData,
+		return await extractFirstEntryBinaryFromTaskData(
+			lastNodeTaskData,
 			workflow,
 			workflowStartNode,
 			webhookData,
@@ -72,25 +72,25 @@ export async function extractWebhookLastNodeResponse(
 	}
 
 	// Default to all entries JSON
-	return extractAllEntriesJsonFromRunData(lastNodeRunData);
+	return extractAllEntriesJsonFromTaskData(lastNodeTaskData);
 }
 
 /**
  * Extracts the JSON data of the first item of the last node
  */
-function extractFirstEntryJsonFromRunData(
-	lastNodeRunData: ITaskData,
+function extractFirstEntryJsonFromTaskData(
+	lastNodeTaskData: ITaskData,
 	workflow: Workflow,
 	workflowStartNode: INode,
 	webhookData: IWebhookData,
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ): Result<StaticResponse, OperationalError> {
-	if (lastNodeRunData.data!.main[0]![0] === undefined) {
+	if (lastNodeTaskData.data!.main[0]![0] === undefined) {
 		return createResultError(new OperationalError('No item to return was found'));
 	}
 
-	let lastNodeFirstJsonItem: unknown = lastNodeRunData.data!.main[0]![0].json;
+	let lastNodeFirstJsonItem: unknown = lastNodeTaskData.data!.main[0]![0].json;
 
 	const responsePropertyName = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
@@ -126,8 +126,8 @@ function extractFirstEntryJsonFromRunData(
 /**
  * Extracts the binary data of the first item of the last node
  */
-async function extractFirstEntryBinaryFromRunData(
-	lastNodeRunData: ITaskData,
+async function extractFirstEntryBinaryFromTaskData(
+	lastNodeTaskData: ITaskData,
 	workflow: Workflow,
 	workflowStartNode: INode,
 	webhookData: IWebhookData,
@@ -135,7 +135,7 @@ async function extractFirstEntryBinaryFromRunData(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	// Return the binary data of the first entry
-	const lastNodeFirstJsonItem: INodeExecutionData = lastNodeRunData.data!.main[0]![0];
+	const lastNodeFirstJsonItem: INodeExecutionData = lastNodeTaskData.data!.main[0]![0];
 
 	if (lastNodeFirstJsonItem === undefined) {
 		return createResultError(new OperationalError('No item was found to return'));
@@ -190,11 +190,11 @@ async function extractFirstEntryBinaryFromRunData(
 /**
  * Extracts the JSON data of all the items of the last node
  */
-function extractAllEntriesJsonFromRunData(
-	lastNodeRunData: ITaskData,
+function extractAllEntriesJsonFromTaskData(
+	lastNodeTaskData: ITaskData,
 ): Result<StaticResponse, OperationalError> {
 	const data: unknown[] = [];
-	for (const entry of lastNodeRunData.data!.main[0]!) {
+	for (const entry of lastNodeTaskData.data!.main[0]!) {
 		data.push(entry.json);
 	}
 
