@@ -1,4 +1,4 @@
-import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import { type INode, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Determines if a node is a sub-node (has no main input connections)
@@ -6,10 +6,17 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
  * @param nodeType - The node type description to check
  * @returns true if the node is a sub-node, false otherwise
  */
-export function isSubNode(nodeType: INodeTypeDescription): boolean {
+export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean {
 	console.log(`[isSubNode] Checking node type: ${nodeType.name}`);
 	console.log('[isSubNode] Inputs:', nodeType.inputs);
 
+	if (node?.parameters?.mode === 'retrieve-as-tool') {
+		return true;
+	}
+	// Treating agent as main node always
+	if (nodeType.name === '@n8n/n8n-nodes-langchain.agent') {
+		return false;
+	}
 	// If no inputs at all, it's definitely a sub-node
 	if (!nodeType.inputs || (Array.isArray(nodeType.inputs) && nodeType.inputs.length === 0)) {
 		console.log('[isSubNode] Result: true (no inputs)');

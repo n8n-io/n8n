@@ -4,7 +4,6 @@ import { COMMON_PATTERNS } from './base/common-patterns';
 import { CORE_INSTRUCTIONS } from './base/core-instructions';
 import { EXPRESSION_RULES } from './base/expression-rules';
 import { OUTPUT_FORMAT } from './base/output-format';
-import { COMPLEX_UPDATE_EXAMPLES } from './examples/advanced/complex-updates';
 import { RESOURCE_LOCATOR_EXAMPLES } from './examples/advanced/resource-locator-examples';
 import { TOOL_NODE_EXAMPLES } from './examples/advanced/tool-node-examples';
 import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
@@ -162,14 +161,7 @@ export class ParameterUpdatePromptBuilder {
 			examples.push(SET_NODE_EXAMPLES);
 		} else if (this.isIfNode(context.nodeType)) {
 			examples.push(IF_NODE_EXAMPLES);
-		} else if (this.isHttpRequestNode(context.nodeType)) {
-			// Check if we need header/body examples
-			const changesText = context.requestedChanges.join(' ').toLowerCase();
-			if (changesText.includes('header') || changesText.includes('body')) {
-				examples.push(COMPLEX_UPDATE_EXAMPLES);
-			}
 		}
-
 		// Add resource locator examples if needed
 		if (context.hasResourceLocatorParams) {
 			examples.push(RESOURCE_LOCATOR_EXAMPLES);

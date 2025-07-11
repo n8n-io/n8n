@@ -108,8 +108,8 @@ export function validateConnection(
 		};
 	}
 
-	const sourceIsSubNode = isSubNode(sourceNodeType);
-	const targetIsSubNode = isSubNode(targetNodeType);
+	const sourceIsSubNode = isSubNode(sourceNodeType, sourceNode);
+	const targetIsSubNode = isSubNode(targetNodeType, targetNode);
 
 	// For AI connections, validate and potentially suggest swapping
 	if (connectionType.startsWith('ai_')) {
@@ -153,13 +153,17 @@ export function validateConnection(
  * @returns True if the node supports the output type
  */
 export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType: string): boolean {
+	if (typeof nodeType.outputs === 'string') {
+		return nodeType.outputs === connectionType || nodeType.outputs.includes(connectionType);
+	}
+
 	if (!nodeType.outputs || !Array.isArray(nodeType.outputs)) {
 		return false;
 	}
 
 	return nodeType.outputs.some((output) => {
 		if (typeof output === 'string') {
-			return output === connectionType;
+			return output === connectionType || output.includes(connectionType);
 		}
 		return output.type === connectionType;
 	});
@@ -175,13 +179,17 @@ export function nodeAcceptsInputType(
 	nodeType: INodeTypeDescription,
 	connectionType: string,
 ): boolean {
+	if (typeof nodeType.inputs === 'string') {
+		return nodeType.inputs === connectionType || nodeType.inputs.includes(connectionType);
+	}
+
 	if (!nodeType.inputs || !Array.isArray(nodeType.inputs)) {
 		return false;
 	}
 
 	return nodeType.inputs.some((input) => {
 		if (typeof input === 'string') {
-			return input === connectionType;
+			return input === connectionType || input.includes(connectionType);
 		}
 		return input.type === connectionType;
 	});
@@ -498,10 +506,12 @@ export function inferConnectionType(
 
 	// Use the dynamic check for nodes with expression-based inputs
 	const sourceIsSubNode =
-		isSubNode(sourceNodeType) || (typeof sourceNodeType.inputs === 'string' && !sourceHasMainInput);
+		isSubNode(sourceNodeType, sourceNode) ||
+		(typeof sourceNodeType.inputs === 'string' && !sourceHasMainInput);
 
 	const targetIsSubNode =
-		isSubNode(targetNodeType) || (typeof targetNodeType.inputs === 'string' && !targetHasMainInput);
+		isSubNode(targetNodeType, targetNode) ||
+		(typeof targetNodeType.inputs === 'string' && !targetHasMainInput);
 
 	console.log(`Source has main input: ${sourceHasMainInput}, is sub-node: ${sourceIsSubNode}`);
 	console.log(`Target has main input: ${targetHasMainInput}, is sub-node: ${targetIsSubNode}`);

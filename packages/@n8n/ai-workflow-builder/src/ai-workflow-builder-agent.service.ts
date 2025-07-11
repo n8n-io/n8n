@@ -80,6 +80,8 @@ export class AiWorkflowBuilderService {
 	}
 
 	private getNodeTypes(): INodeTypeDescription[] {
+		// These types are ignored because they tend to cause issues when generating workflows
+		const ignoredTypes = ['@n8n/n8n-nodes-langchain.toolVectorStore'];
 		const nodeTypesKeys = Object.keys(this.nodeTypes.getKnownTypes());
 
 		const nodeTypes = nodeTypesKeys
@@ -93,7 +95,9 @@ export class AiWorkflowBuilderService {
 			})
 			.filter(
 				(nodeType): nodeType is INodeTypeDescription =>
-					nodeType !== undefined && nodeType.hidden !== true,
+					nodeType !== undefined &&
+					nodeType.hidden !== true &&
+					!ignoredTypes.includes(nodeType.name),
 			)
 			.map((nodeType, _index, nodeTypes: INodeTypeDescription[]) => {
 				// If the node type is a tool, we need to find the corresponding non-tool node type
@@ -275,7 +279,7 @@ export class AiWorkflowBuilderService {
 			stream = await agent.stream(initialState, {
 				...threadConfig,
 				streamMode: ['updates', 'custom'],
-				recursionLimit: 80,
+				recursionLimit: 30,
 			});
 		}
 

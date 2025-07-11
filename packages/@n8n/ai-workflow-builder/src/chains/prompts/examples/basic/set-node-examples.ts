@@ -85,4 +85,60 @@ Expected Output:
     ]
   },
   "options": {}
-}`;
+}
+
+#### Example 4: Set Node - Complex Object and Array Creation
+Current Parameters:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "existing-1",
+        "name": "orderId",
+        "value": "12345",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+
+Requested Changes:
+- Keep orderId
+- Add customer object with name and email from previous nodes
+- Add items array from JSON string
+- Set processed timestamp
+
+Expected Output:
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "existing-1",
+        "name": "orderId",
+        "value": "12345",
+        "type": "string"
+      },
+      {
+        "id": "id-2",
+        "name": "customer",
+        "value": "={{ JSON.stringify({ \\"name\\": $('Form').item.json.customerName, \\"email\\": $('Form').item.json.customerEmail }) }}",
+        "type": "object"
+      },
+      {
+        "id": "id-3",
+        "name": "items",
+        "value": "={{ $('HTTP Request').item.json.itemsJson }}",
+        "type": "array"
+      },
+      {
+        "id": "id-4",
+        "name": "processedAt",
+        "value": "={{ $now.toISO() }}",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+`;

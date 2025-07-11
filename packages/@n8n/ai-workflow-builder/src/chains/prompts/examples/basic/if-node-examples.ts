@@ -85,4 +85,50 @@ Expected Output:
     ],
     "combinator": "and"
   }
-}`;
+}
+
+#### Example 3: IF Node - Complex Multi-Type Conditions
+Current Parameters: {}
+
+Requested Changes:
+- Check if email is not empty AND verified is true AND permissions array contains "write"
+
+Expected Output:
+{
+  "conditions": {
+    "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict"
+    },
+    "conditions": [
+      {
+        "id": "id-1",
+        "leftValue": "={{ $('Set').item.json.email }}",
+        "operator": {
+          "type": "string",
+          "operation": "notEmpty"
+        }
+      },
+      {
+        "id": "id-2",
+        "leftValue": "={{ $('Set').item.json.verified }}",
+        "operator": {
+          "type": "boolean",
+          "operation": "true"
+        }
+      },
+      {
+        "id": "id-3",
+        "leftValue": "={{ $('Set').item.json.permissions }}",
+        "rightValue": "write",
+        "operator": {
+          "type": "array",
+          "operation": "contains"
+        }
+      }
+    ],
+    "combinator": "and"
+  }
+}
+`;

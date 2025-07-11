@@ -60,4 +60,50 @@ export const HTTP_REQUEST_GUIDE = `
    - Can reference previous node data
 
 4. **Query Parameters**:
-   - Can be part of URL or set in options.queryParameters`;
+   - Can be part of URL or set in options.queryParameters
+
+#### Example: HTTP Request with Headers and Body
+Current Parameters:
+{
+  "method": "GET",
+  "url": "https://api.example.com/data"
+}
+
+Requested Changes:
+- Change to POST method
+- Add API key header
+- Add JSON body with user ID and status
+
+Expected Output:
+{
+  "method": "POST",
+  "url": "https://api.example.com/data",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "X-API-Key",
+        "value": "={{ $credentials.apiKey }}"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      }
+    ]
+  },
+  "sendBody": true,
+  "contentType": "json",
+  "bodyParameters": {
+    "parameters": [
+      {
+        "name": "userId",
+        "value": "={{ $('Previous Node').item.json.id }}"
+      },
+      {
+        "name": "status",
+        "value": "active"
+      }
+    ]
+  },
+  "options": {}
+}`;

@@ -61,7 +61,7 @@ export function categorizeNodes(
 
 	for (const node of nodes) {
 		const nodeType = nodeTypes.find((nt) => nt.name === node.type);
-		if (nodeType && isSubNode(nodeType)) {
+		if (nodeType && isSubNode(nodeType, node)) {
 			subNodes.push(node);
 		} else {
 			mainNodes.push(node);
