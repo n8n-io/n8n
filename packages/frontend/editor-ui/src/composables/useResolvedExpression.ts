@@ -2,12 +2,21 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
+import debounce from 'lodash/debounce';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
-import { computed, ref, toRef, toValue, inject, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	onMounted,
+	ref,
+	toRef,
+	toValue,
+	inject,
+	type MaybeRefOrGetter,
+	watch,
+} from 'vue';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { watchDebounced } from '@vueuse/core';
 
 export function useResolvedExpression({
 	expression,
@@ -79,7 +88,24 @@ export function useResolvedExpression({
 		}
 	}
 
-	watchDebounced(
+	const debouncedUpdateExpression = debounce(updateExpression, 200);
+
+	function updateExpression(
+		watchValues?:
+			| []
+			| [ExpressionLocalResolveContext | undefined, unknown, unknown, unknown, unknown],
+	) {
+		if (isExpression.value) {
+			const resolved = resolve(watchValues?.[0]);
+			resolvedExpression.value = resolved.ok ? resolved.result : null;
+			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+		} else {
+			resolvedExpression.value = null;
+			resolvedExpressionString.value = '';
+		}
+	}
+
+	watch(
 		[
 			expressionLocalResolveCtx,
 			toRef(expression),
@@ -87,18 +113,10 @@ export function useResolvedExpression({
 			() => workflowsStore.getWorkflowRunData,
 			targetItem,
 		],
-		([latestCtx]) => {
-			if (isExpression.value) {
-				const resolved = resolve(latestCtx);
-				resolvedExpression.value = resolved.ok ? resolved.result : null;
-				resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
-			} else {
-				resolvedExpression.value = null;
-				resolvedExpressionString.value = '';
-			}
-		},
-		{ immediate: true, debounce: 200 },
+		debouncedUpdateExpression,
 	);
+
+	onMounted(updateExpression);
 
 	return { resolvedExpression, resolvedExpressionString, isExpression };
 }
