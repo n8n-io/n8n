@@ -11,6 +11,9 @@ const setContentLength = (responseBody: IN8nHttpResponse | Readable, headers: ID
 	}
 };
 
+/**
+ * Returns a response body for a binary data and sets the content-type header.
+ */
 export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject) => {
 	const contentType = headers['content-type'] as string;
 	const shouldSandboxResponseData =
