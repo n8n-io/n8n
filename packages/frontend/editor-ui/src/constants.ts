@@ -747,6 +747,12 @@ export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
+	name: '034_extra_template_links',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const FOCUS_PANEL_EXPERIMENT = {
 	name: 'focus_panel',
 	control: 'control',
@@ -756,6 +762,7 @@ export const FOCUS_PANEL_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
+	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 ];
 export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
 
@@ -889,7 +896,7 @@ export const MOUSE_EVENT_BUTTONS = {
  */
 export const TEMPLATES_URLS = {
 	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
-	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
+	BASE_WEBSITE_URL: 'https://n8n.io/workflows/',
 	UTM_QUERY: {
 		utm_source: 'n8n_app',
 		utm_medium: 'template_library',
