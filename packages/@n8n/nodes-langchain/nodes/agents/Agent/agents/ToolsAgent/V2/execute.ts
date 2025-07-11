@@ -82,6 +82,7 @@ function createAgentExecutor(
 async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
+	itemIndex: number,
 	returnIntermediateSteps: boolean = false,
 ): Promise<{ output: string; intermediateSteps?: any[] }> {
 	const agentResult: { output: string; intermediateSteps?: any[] } = {
@@ -92,7 +93,7 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	ctx.sendChunk('begin');
+	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
@@ -108,7 +109,7 @@ async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', chunkText);
+					ctx.sendChunk('item', itemIndex, chunkText);
 
 					agentResult.output += chunkText;
 				}
@@ -155,7 +156,7 @@ async function processEventStream(
 				break;
 		}
 	}
-	ctx.sendChunk('end');
+	ctx.sendChunk('end', itemIndex);
 
 	return agentResult;
 }
@@ -274,7 +275,12 @@ export async function toolsAgentExecute(
 					},
 				);
 
-				return await processEventStream(this, eventStream, options.returnIntermediateSteps);
+				return await processEventStream(
+					this,
+					eventStream,
+					itemIndex,
+					options.returnIntermediateSteps,
+				);
 			} else {
 				// Handle regular execution
 				return await executor.invoke(invokeParams, executeOptions);

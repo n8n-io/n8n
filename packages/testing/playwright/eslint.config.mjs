@@ -1,21 +1,10 @@
-const sharedOptions = require('@n8n/eslint-config/shared');
+import { defineConfig, globalIgnores } from 'eslint/config';
+import { baseConfig } from '@n8n/eslint-config/base';
+import playwrightPlugin from 'eslint-plugin-playwright';
 
-/**
- * @type {import('@types/eslint').ESLint.ConfigData}
- */
-module.exports = {
-	extends: ['@n8n/eslint-config/base', 'plugin:playwright/recommended'],
-
-	...sharedOptions(__dirname),
-
-	plugins: ['playwright'],
-
-	env: {
-		node: true,
-	},
-
+export default defineConfig(baseConfig, playwrightPlugin.configs['flat/recommended'], {
+	ignores: ['playwright-report/**'],
 	rules: {
-		// TODO: remove these rules
 		'@typescript-eslint/no-explicit-any': 'off',
 		'@typescript-eslint/no-unsafe-argument': 'off',
 		'@typescript-eslint/no-unsafe-assignment': 'off',
@@ -28,9 +17,9 @@ module.exports = {
 		'n8n-local-rules/no-uncaught-json-parse': 'off',
 		'playwright/expect-expect': 'warn',
 		'playwright/max-nested-describe': 'warn',
-		'playwright/no-conditional-in-test': 'warn',
+		'playwright/no-conditional-in-test': 'error',
 		'playwright/no-skipped-test': 'warn',
-		'import/no-extraneous-dependencies': [
+		'import-x/no-extraneous-dependencies': [
 			'error',
 			{
 				devDependencies: ['**/tests/**', '**/e2e/**', '**/playwright/**'],
@@ -38,4 +27,4 @@ module.exports = {
 			},
 		],
 	},
-};
+});

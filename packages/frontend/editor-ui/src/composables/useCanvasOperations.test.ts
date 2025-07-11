@@ -29,7 +29,6 @@ import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { waitFor } from '@testing-library/vue';
@@ -2823,7 +2822,6 @@ describe('useCanvasOperations', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
 			const executionsStore = mockedStore(useExecutionsStore);
-			const focusPanelStore = mockedStore(useFocusPanelStore);
 
 			const nodeHelpers = { credentialsUpdated: { value: true } };
 
@@ -2834,7 +2832,6 @@ describe('useCanvasOperations', () => {
 			workflowsStore.resetState = vi.fn();
 			workflowsStore.setActiveExecutionId = vi.fn();
 			uiStore.resetLastInteractedWith = vi.fn();
-			focusPanelStore.reset = vi.fn();
 			executionsStore.activeExecution = null;
 
 			workflowsStore.executionWaitingForWebhook = true;
@@ -2872,7 +2869,6 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.resetState).toHaveBeenCalled();
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
 			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
-			expect(focusPanelStore.reset).toHaveBeenCalled();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 			expect(executionsStore.activeExecution).toBeNull();

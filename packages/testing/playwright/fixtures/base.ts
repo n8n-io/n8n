@@ -2,6 +2,7 @@ import { test as base, expect, type TestInfo } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
+import { setTimeout as wait } from 'node:timers/promises';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
@@ -28,6 +29,7 @@ interface ContainerConfig {
 		mains: number;
 		workers: number;
 	};
+	env?: Record<string, string>;
 }
 
 /**
@@ -40,6 +42,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	containerConfig: [
 		async ({}, use, testInfo: TestInfo) => {
 			const config = (testInfo.project.use?.containerConfig as ContainerConfig) || {};
+			config.env = {
+				...config.env,
+				E2E_TESTS: 'true',
+			};
+
 			await use(config);
 		},
 		{ scope: 'worker' },
@@ -60,7 +67,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			const container = await createN8NStack(containerConfig);
 
 			// TODO: Remove this once we have a better way to wait for the container to be ready (e.g. healthcheck)
-			await new Promise((resolve) => setTimeout(resolve, 5000));
+			await wait(3000);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 

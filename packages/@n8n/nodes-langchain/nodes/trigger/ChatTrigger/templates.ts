@@ -12,6 +12,7 @@ export function createPage({
 	allowFileUploads,
 	allowedFilesMimeTypes,
 	customCss,
+	enableStreaming,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -26,6 +27,7 @@ export function createPage({
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
 	customCss?: string;
+	enableStreaming?: boolean;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -124,6 +126,7 @@ export function createPage({
 							${en ? `en: ${JSON.stringify(en)},` : ''}
 						},
 						${initialMessages.length ? `initialMessages: ${JSON.stringify(initialMessages)},` : ''}
+						enableStreaming: ${!!enableStreaming},
 					});
 				})();
 			</script>
