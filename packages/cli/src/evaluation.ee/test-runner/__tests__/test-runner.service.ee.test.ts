@@ -1157,6 +1157,250 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).validateSetMetricsNodes(workflow);
 			}).not.toThrow();
 		});
+
+		describe('Version-based validation', () => {
+			it('should pass for version < 4.7 with valid custom metrics (no metric parameter needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version < 4.7 with invalid custom metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should fail for version >= 4.7 with missing metric parameter', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				// Missing metric parameter - this should fail for versions >= 4.7
+				workflow.nodes[0].parameters.metric = undefined;
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should pass for version >= 4.7 with valid customMetrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should pass for version >= 4.7 with non-customMetrics metric (no metrics validation needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'correctness',
+								// No metrics parameter needed for non-customMetrics
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version >= 4.7 with customMetrics but invalid metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should handle mixed versions correctly', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics Old',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter for old version
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+						{
+							id: 'node2',
+							name: 'Set Metrics New',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [100, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'correctness',
+								// No metrics parameter needed for non-customMetrics
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+		});
 	});
 
 	describe('validateSetOutputsNodes', () => {
