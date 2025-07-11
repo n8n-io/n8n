@@ -19,6 +19,7 @@ import {
 	updateNodeWithParameters,
 	validateParameters,
 	mergeParameters,
+	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
 
 /**
@@ -115,7 +116,7 @@ export function createUpdateNodeParametersTool(
 						nodeDefinition: nodeType,
 						requestedChanges: changes,
 					});
-					const newParameters = await parametersChain.invoke({
+					const newParameters = (await parametersChain.invoke({
 						user_workflow_prompt: state.prompt,
 						workflow_json: JSON.stringify(workflow, null, 2),
 						execution_data_schema: JSON.stringify(state.executionData, null, 2),
@@ -125,17 +126,20 @@ export function createUpdateNodeParametersTool(
 						current_parameters: JSON.stringify(currentParameters, null, 2),
 						node_definition: nodePropertiesJson,
 						changes: formattedChanges,
-					});
+					})) as INodeParameters;
 
 					// Ensure newParameters is a valid object
 					if (!newParameters || typeof newParameters !== 'object') {
 						throw new Error('Invalid parameters returned from LLM');
 					}
 
+					// Fix expression prefixes in the new parameters
+					const fixedParameters = fixExpressionPrefixes(newParameters.parameters);
+
 					// Merge the new parameters with existing ones
 					const updatedParameters = mergeParameters(
 						currentParameters,
-						newParameters.parameters as INodeParameters,
+						fixedParameters as INodeParameters,
 					);
 
 					// Validate the updated parameters
