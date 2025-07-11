@@ -171,9 +171,18 @@ export class AiWorkflowBuilderService {
 
 		function deleteMessages(state: typeof WorkflowState.State) {
 			const messages = state.messages;
-			return {
+			const stateUpdate: Partial<typeof WorkflowState.State> = {
+				workflowOperations: null,
+				executionData: undefined,
 				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
+				workflowJSON: {
+					nodes: [],
+					connections: {},
+					__reducer_operation: 'override',
+				},
 			};
+
+			return stateUpdate;
 		}
 
 		const compactSession = async (state: typeof WorkflowState.State) => {

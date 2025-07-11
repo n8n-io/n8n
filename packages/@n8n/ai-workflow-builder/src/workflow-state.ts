@@ -67,11 +67,15 @@ export function isSimpleWorkflow(update: WorkflowUpdate): update is SimpleWorkfl
  * This reducer intelligently merges operations, avoiding duplicates and handling special cases.
  */
 function operationsReducer(
-	current: WorkflowOperation[],
+	current: WorkflowOperation[] | null,
 	update: WorkflowOperation[] | null | undefined,
 ): WorkflowOperation[] {
+	if (update === null) {
+		return [];
+	}
+
 	if (!update || update.length === 0) {
-		return current;
+		return current ?? [];
 	}
 
 	// For clear operations, we can reset everything
@@ -79,8 +83,11 @@ function operationsReducer(
 		return update.filter((op) => op.type === 'clear').slice(-1); // Keep only the last clear
 	}
 
+	if (!current && !update) {
+		return [];
+	}
 	// Otherwise, append new operations
-	return [...current, ...update];
+	return [...(current ?? []), ...update];
 }
 
 /**
@@ -106,6 +113,7 @@ function workflowJSONReducer(
 	// This is a reducer override operation
 	// Return the update as-is
 	if ((update as SimpleWorkflow)?.__reducer_operation === 'override') {
+		delete (update as SimpleWorkflow)['__reducer_operation'];
 		return update as SimpleWorkflow;
 	}
 
@@ -245,7 +253,7 @@ export const WorkflowState = Annotation.Root({
 		default: () => ({ nodes: [], connections: {} }),
 	}),
 	// Operations to apply to the workflow - processed by a separate node
-	workflowOperations: Annotation<WorkflowOperation[]>({
+	workflowOperations: Annotation<WorkflowOperation[] | null>({
 		reducer: operationsReducer,
 		default: () => [],
 	}),
@@ -253,7 +261,7 @@ export const WorkflowState = Annotation.Root({
 	isWorkflowPrompt: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
 	// The execution data from the last workflow run.
 	executionData: Annotation<IRunExecutionData['resultData'] | undefined>({
-		reducer: (x, y) => y ?? x ?? undefined,
+		reducer: (x, y) => (y === undefined ? undefined : (y ?? x ?? undefined)),
 	}),
 });
 

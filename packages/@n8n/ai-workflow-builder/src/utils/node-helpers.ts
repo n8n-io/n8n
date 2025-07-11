@@ -7,9 +7,6 @@ import { type INode, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-
  * @returns true if the node is a sub-node, false otherwise
  */
 export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean {
-	console.log(`[isSubNode] Checking node type: ${nodeType.name}`);
-	console.log('[isSubNode] Inputs:', nodeType.inputs);
-
 	if (node?.parameters?.mode === 'retrieve-as-tool') {
 		return true;
 	}
@@ -19,7 +16,6 @@ export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean
 	}
 	// If no inputs at all, it's definitely a sub-node
 	if (!nodeType.inputs || (Array.isArray(nodeType.inputs) && nodeType.inputs.length === 0)) {
-		console.log('[isSubNode] Result: true (no inputs)');
 		return true;
 	}
 
@@ -34,8 +30,6 @@ export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean
 			return input.type === NodeConnectionTypes.Main || input.type.toLowerCase() === 'main';
 		});
 
-		console.log(`[isSubNode] Has main input: ${hasMainInput}`);
-		console.log(`[isSubNode] Result: ${!hasMainInput}`);
 		return !hasMainInput;
 	}
 	// Handle expression-based inputs (dynamic)
@@ -75,11 +69,8 @@ export function isSubNode(nodeType: INodeTypeDescription, node?: INode): boolean
 				nodeType.inputs.toLowerCase().includes(pattern.toLowerCase()),
 		);
 
-		console.log(`[isSubNode] Expression has main input: ${hasMainInput}`);
-		console.log(`[isSubNode] Result: ${!hasMainInput}`);
 		return !hasMainInput;
 	}
 	// If we can't determine, assume it's not a sub-node (safer default)
-	console.log('[isSubNode] Result: false (default)');
 	return false;
 }

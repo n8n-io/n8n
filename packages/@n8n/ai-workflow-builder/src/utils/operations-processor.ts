@@ -143,7 +143,7 @@ export function applyOperations(
  * Process operations node for the LangGraph workflow
  * This node applies accumulated operations to the workflow state
  */
-export async function processOperations(state: typeof WorkflowState.State) {
+export function processOperations(state: typeof WorkflowState.State) {
 	const { workflowJSON, workflowOperations } = state;
 
 	// If no operations to process, return unchanged
@@ -165,6 +165,6 @@ export async function processOperations(state: typeof WorkflowState.State) {
 	// Return updated state with cleared operations
 	return {
 		workflowJSON: newWorkflow,
-		workflowOperations: [], // Clear processed operations
+		workflowOperations: null, // Clear processed operations
 	};
 }
