@@ -116,7 +116,10 @@ const scrollRight = () => scroll(50);
 						@click="() => handleTabClick(option.value)"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
-						<span v-if="option.label">{{ option.label }}</span>
+						<span v-if="option.label" :class="$style.notificationContainer"
+							>{{ option.label }}
+							<div v-if="option.notification" :class="$style.notification"><div></div></div
+						></span>
 					</div>
 				</N8nTooltip>
 			</div>
@@ -209,6 +212,26 @@ const scrollRight = () => scroll(50);
 	display: flex;
 	align-items: center;
 	font-weight: var(--font-weight-bold);
+}
+
+.notificationContainer {
+	display: flex;
+	position: relative;
+}
+
+.notification {
+	display: flex;
+	position: absolute;
+	right: -0.5em;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 0.3em;
+		width: 0.3em;
+		background-color: var(--color-primary);
+		border-radius: 50%;
+	}
 }
 
 .back {
