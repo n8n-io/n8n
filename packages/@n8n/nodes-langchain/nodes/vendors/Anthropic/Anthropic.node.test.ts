@@ -9,7 +9,7 @@ import * as prompt from './actions/prompt';
 import * as text from './actions/text';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
-import { File } from './helpers/interfaces';
+import type { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
