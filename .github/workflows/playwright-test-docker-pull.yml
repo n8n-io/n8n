@@ -1,0 +1,36 @@
+name: Test Playwright (Docker Pull)
+
+on:
+  workflow_call:
+    inputs:
+      shards:
+        description: 'Shards for parallel execution'
+        required: false
+        default: '[1]'
+        type: string
+      image:
+        description: 'Image to use'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: 'Shards for parallel execution'
+        required: false
+        default: '[1]'
+        type: string
+      image:
+        description: 'Image to use'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-pull
+      shards: ${{ inputs.shards || '[1]' }}
+      docker-image: ${{ inputs.image || 'n8nio/n8n:nightly' }}
+    secrets: inherit

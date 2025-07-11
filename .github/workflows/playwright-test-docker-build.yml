@@ -1,0 +1,12 @@
+name: Test Playwright (Docker Build)
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+    secrets: inherit

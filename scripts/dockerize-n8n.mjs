@@ -14,7 +14,6 @@ import path from 'path';
 // Disable verbose mode for cleaner output
 $.verbose = false;
 process.env.FORCE_COLOR = '1';
-process.env.DOCKER_BUILDKIT = '1';
 
 // #region ===== Helper Functions =====
 
@@ -136,10 +135,12 @@ async function buildDockerImage() {
 	echo(chalk.yellow('INFO: Building Docker image...'));
 
 	try {
-		const { stdout } = await $`DOCKER_BUILDKIT=1 docker build \
+		const { stdout } = await $`docker build \
 			--platform ${platform} \
+			--build-arg TARGETPLATFORM=${platform} \
 			-t ${config.fullImageName} \
 			-f ${config.dockerfilePath} \
+			--load \
 			${config.buildContext}`;
 
 		echo(stdout);

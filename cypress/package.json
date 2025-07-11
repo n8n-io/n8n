@@ -20,6 +20,7 @@
     "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
     "eslint-plugin-cypress": "^4.3.0",
+    "mocha-junit-reporter": "^2.2.1",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
