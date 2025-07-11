@@ -1,6 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole, Scope } from '@n8n/permissions';
 

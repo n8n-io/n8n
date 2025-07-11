@@ -259,6 +259,22 @@ export function isValidParameterOption(
 	return 'value' in option && isPresent(option.value) && isPresent(option.name);
 }
 
+export function mustHideDuringCustomApiCall(
+	parameter: INodeProperties,
+	nodeParameters: INodeParameters,
+): boolean {
+	if (parameter?.displayOptions?.hide) return true;
+
+	const MUST_REMAIN_VISIBLE = [
+		'authentication',
+		'resource',
+		'operation',
+		...Object.keys(nodeParameters),
+	];
+
+	return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+}
+
 export function nameIsParameter(
 	parameterData: IUpdateInformation,
 ): parameterData is IUpdateInformation & { name: `parameters.${string}` } {

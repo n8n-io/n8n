@@ -58,7 +58,7 @@ export class OidcService {
 
 	async init() {
 		this.oidcConfig = await this.loadConfig(true);
-		console.log(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
+		this.logger.debug(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 	}
 
@@ -156,6 +156,9 @@ export class OidcService {
 		if (currentConfig) {
 			try {
 				const oidcConfig = jsonParse<OidcConfigDto>(currentConfig.value);
+
+				if (oidcConfig.discoveryEndpoint === '') return DEFAULT_OIDC_RUNTIME_CONFIG;
+
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
 				if (oidcConfig.clientSecret && decryptSecret) {
@@ -168,7 +171,7 @@ export class OidcService {
 			} catch (error) {
 				this.logger.warn(
 					'Failed to load OIDC configuration from database, falling back to default configuration.',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					{ error },
 				);
 			}
