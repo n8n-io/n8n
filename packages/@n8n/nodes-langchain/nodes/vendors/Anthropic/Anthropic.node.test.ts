@@ -1,5 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 
