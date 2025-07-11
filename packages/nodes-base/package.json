@@ -896,6 +896,7 @@
     "currency-codes": "2.1.0",
     "eventsource": "2.0.2",
     "fast-glob": "catalog:",
+    "fastest-levenshtein": "^1.0.16",
     "fflate": "0.7.4",
     "generate-schema": "2.6.0",
     "get-system-fonts": "2.0.2",
