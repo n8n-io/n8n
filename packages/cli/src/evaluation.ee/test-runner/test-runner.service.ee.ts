@@ -106,16 +106,34 @@ export class TestRunnerService {
 			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
 		}
 
-		const unconfiguredMetricsNode = metricsNodes.find(
-			(node) =>
-				node.disabled === true ||
-				!node.parameters ||
-				!node.parameters.metrics ||
-				(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
-				(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(
-					(assignment) => !assignment.name || assignment.value === null,
-				),
-		);
+		const unconfiguredMetricsNode = metricsNodes.find((node) => {
+			if (node.disabled === true || !node.parameters) {
+				return true;
+			}
+
+			// For versions 4.7+, check if metric parameter is missing
+			if (node.typeVersion >= 4.7 && !node.parameters.metric) {
+				return true;
+			}
+
+			// Check customMetrics configuration if:
+			// - Version 4.7+ and metric is 'customMetrics'
+			// - Version < 4.7 (customMetrics is default)
+			const isCustomMetricsMode =
+				node.typeVersion >= 4.7 ? node.parameters.metric === 'customMetrics' : true;
+
+			if (isCustomMetricsMode) {
+				return (
+					!node.parameters.metrics ||
+					(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
+					(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(
+						(assignment) => !assignment.name || assignment.value === null,
+					)
+				);
+			}
+
+			return false;
+		});
 
 		if (unconfiguredMetricsNode) {
 			throw new TestRunError('SET_METRICS_NODE_NOT_CONFIGURED', {
