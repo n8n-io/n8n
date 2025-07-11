@@ -11,6 +11,11 @@ import type {
 	workflowSharingRoleSchema,
 } from './schemas.ee';
 
+export type ScopeInformation = {
+	displayName: string;
+	description?: string | null;
+};
+
 /** Represents a resource that can have permissions applied to it */
 export type Resource = keyof typeof RESOURCES;
 

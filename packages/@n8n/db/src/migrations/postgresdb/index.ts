@@ -88,6 +88,7 @@ import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -181,4 +182,5 @@ export const postgresMigrations: Migration[] = [
 	ClearEvaluation1745322634000,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
+	AddScopeTables1750252139166,
 ];
