@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Plugin } from 'vue';
 import { computed, nextTick, ref } from 'vue';
+import type { Plugin } from 'vue';
 
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
@@ -85,7 +85,15 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						options,
 					);
 
-					let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+					if (sendMessageResponse?.executionStarted) {
+						return sendMessageResponse;
+					}
+
+					let textMessage =
+						sendMessageResponse.output ??
+						sendMessageResponse.text ??
+						sendMessageResponse.message ??
+						'';
 
 					if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
 						try {
@@ -114,6 +122,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
 			});
+
+			return null;
 		}
 
 		async function loadPreviousSession() {
