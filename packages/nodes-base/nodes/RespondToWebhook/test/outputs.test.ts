@@ -1,4 +1,4 @@
-import { configuredOutputs } from '../utils';
+import { configuredOutputs } from '../utils/outputs';
 
 describe('configuredOutputs', () => {
 	it('returns array of objects when version >= 1.3', () => {
