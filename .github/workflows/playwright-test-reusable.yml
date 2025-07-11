@@ -44,7 +44,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Environment
-        uses: ./.github/actions/setup-blacksmith
+        uses: ./.github/actions/setup-nodejs-blacksmith
         with:
           build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
           enable-docker-cache: ${{ inputs.test-mode != 'local' }}

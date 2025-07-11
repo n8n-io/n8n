@@ -1,5 +1,5 @@
-name: 'Setup Environment with Blacksmith Tools'
-description: 'Configures Node.js with pnpm, installs dependencies, (optional) enables Turborepo caching, (optional) sets up Docker layer caching, and (optional) builds the project.'
+name: 'Blacksmith Node.js Build Setup'
+description: 'Configures Node.js with pnpm, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
 
 inputs:
   node-version:
@@ -12,7 +12,7 @@ inputs:
     default: 'false'
     type: boolean
   build-command:
-    description: 'Command to execute for building the project. Leave empty to skip build step.'
+    description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
     type: string

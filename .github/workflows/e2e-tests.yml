@@ -47,7 +47,7 @@ jobs:
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'PR User' }}
-      spec: e2e/1-workflows.cy.ts
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
     secrets: inherit
 
   run-playwright-tests:
@@ -58,7 +58,7 @@ jobs:
   calls-success-url-notify:
     name: Calls success URL and notifies
     runs-on: ubuntu-latest
-    needs: [run-e2e-tests]
+    needs: [run-e2e-tests, run-playwright-tests]
     if: ${{ github.event.inputs.success-url != '' }}
     steps:
       - name: Notify Slack on failure

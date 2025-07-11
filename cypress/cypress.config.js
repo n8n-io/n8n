@@ -32,4 +32,7 @@ module.exports = defineConfig({
 		},
 	},
 	reporter: 'mocha-junit-reporter',
+	reporterOptions: {
+		mochaFile: 'test-results-[hash].xml',
+	},
 });
