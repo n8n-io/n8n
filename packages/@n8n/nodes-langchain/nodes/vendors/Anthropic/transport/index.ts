@@ -6,8 +6,6 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { getBaseUrl } from '../helpers/utils';
-
 type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string | FormData;
@@ -27,7 +25,8 @@ export async function apiRequest(
 ) {
 	const { body, qs, option, headers } = parameters ?? {};
 
-	const baseUrl = await getBaseUrl.call(this);
+	const credentials = await this.getCredentials('anthropicApi');
+	const baseUrl = credentials.url ?? 'https://api.anthropic.com';
 	const url = `${baseUrl}${endpoint}`;
 
 	const betas = ['files-api-2025-04-14'];
