@@ -1466,6 +1466,8 @@ export interface INodeProperties {
 	// allows to skip validation during execution or set custom validation/casting logic inside node
 	// inline error messages would still be shown in UI
 	ignoreValidationDuringExecution?: boolean;
+	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
+	allowArbitraryValues?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {

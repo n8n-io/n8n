@@ -14,11 +14,11 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 
 describe('useNodeSettingsParameters', () => {
-	describe('setValue', () => {
-		beforeEach(() => {
-			setActivePinia(createTestingPinia());
-		});
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
 
+	describe('setValue', () => {
 		afterEach(() => {
 			vi.clearAllMocks();
 		});
