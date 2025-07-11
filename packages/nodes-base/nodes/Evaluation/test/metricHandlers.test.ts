@@ -478,7 +478,7 @@ describe('metricHandlers', () => {
 	});
 
 	describe('stringSimilarity', () => {
-		it('should return Levenshtein distance', async () => {
+		it('should return inverted similarity score', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'expectedAnswer') return 'hello';
 				if (paramName === 'actualAnswer') return 'helo';
@@ -488,10 +488,11 @@ describe('metricHandlers', () => {
 
 			const result = await metricHandlers.stringSimilarity.call(mockExecuteFunctions, 0);
 
-			expect(result).toEqual({ 'String similarity': 1 });
+			// Edit distance is 1, longer string length is 5, so similarity = 1 - (1/5) = 0.8
+			expect(result).toEqual({ 'String similarity': 0.8 });
 		});
 
-		it('should return 0 for identical strings', async () => {
+		it('should return 1 for identical strings', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'expectedAnswer') return 'hello';
 				if (paramName === 'actualAnswer') return 'hello';
@@ -501,7 +502,7 @@ describe('metricHandlers', () => {
 
 			const result = await metricHandlers.stringSimilarity.call(mockExecuteFunctions, 0);
 
-			expect(result).toEqual({ 'String similarity': 0 });
+			expect(result).toEqual({ 'String similarity': 1 });
 		});
 
 		it('should handle whitespace trimming', async () => {
@@ -514,7 +515,35 @@ describe('metricHandlers', () => {
 
 			const result = await metricHandlers.stringSimilarity.call(mockExecuteFunctions, 0);
 
-			expect(result).toEqual({ 'String similarity': 0 });
+			expect(result).toEqual({ 'String similarity': 1 });
+		});
+
+		it('should return low similarity for very different strings', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'expectedAnswer') return 'hello';
+				if (paramName === 'actualAnswer') return 'world';
+				if (paramName === 'options.metricName') return 'String similarity';
+				return undefined;
+			});
+
+			const result = await metricHandlers.stringSimilarity.call(mockExecuteFunctions, 0);
+
+			// Edit distance is 4, longer string length is 5, so similarity = 1 - (4/5) = 0.2
+			expect(result['String similarity']).toBeCloseTo(0.2, 2);
+		});
+
+		it('should handle different string lengths', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'expectedAnswer') return 'hello';
+				if (paramName === 'actualAnswer') return 'hello world';
+				if (paramName === 'options.metricName') return 'String similarity';
+				return undefined;
+			});
+
+			const result = await metricHandlers.stringSimilarity.call(mockExecuteFunctions, 0);
+
+			// Edit distance is 6, longer string length is 11, so similarity = 1 - (6/11) ≈ 0.45
+			expect(result['String similarity']).toBeCloseTo(0.45, 2);
 		});
 
 		it('should throw error for missing expected answer', async () => {
