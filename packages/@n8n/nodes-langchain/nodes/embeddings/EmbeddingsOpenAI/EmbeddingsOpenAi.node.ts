@@ -10,6 +10,8 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { logWrapper } from '@utils/logWrapper';
+
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
@@ -225,6 +227,12 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
+		}
+
+		if (configuration.baseURL) {
+			configuration.fetchOptions = {
+				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+			};
 		}
 
 		const embeddings = new OpenAIEmbeddings({
