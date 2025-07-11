@@ -862,25 +862,26 @@ function evaluateResponseHeaders(
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ): WebhookResponseHeaders | undefined {
-	let headers: WebhookResponseHeaders | undefined = undefined;
+	if (webhookData.webhookDescription.responseHeaders === undefined) {
+		return undefined;
+	}
 
-	if (webhookData.webhookDescription.responseHeaders !== undefined) {
-		const evaluatedHeaders = workflow.expression.getComplexParameterValue(
-			workflowStartNode,
-			webhookData.webhookDescription.responseHeaders,
-			executionMode,
-			additionalKeys,
-			undefined,
-			undefined,
-		) as WebhookNodeResponseHeaders | undefined;
+	const evaluatedHeaders = workflow.expression.getComplexParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseHeaders,
+		executionMode,
+		additionalKeys,
+		undefined,
+		undefined,
+	) as WebhookNodeResponseHeaders | undefined;
+	if (evaluatedHeaders?.entries === undefined) {
+		return undefined;
+	}
 
-		if (evaluatedHeaders?.entries) {
-			headers = new Map();
+	const headers = new Map();
 
-			for (const entry of evaluatedHeaders.entries) {
-				headers.set(entry.name.toLowerCase(), entry.value);
-			}
-		}
+	for (const entry of evaluatedHeaders.entries) {
+		headers.set(entry.name.toLowerCase(), entry.value);
 	}
 
 	return headers;
