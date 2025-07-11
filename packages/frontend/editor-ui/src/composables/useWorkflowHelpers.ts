@@ -80,7 +80,7 @@ export function resolveParameter<T = IDataObject>(
 	if ('localResolve' in opts && opts.localResolve) {
 		return resolveParameterImpl(
 			parameter,
-			opts.workflow,
+			() => opts.workflow,
 			opts.envVars,
 			opts.workflow.getNode(opts.nodeName),
 			opts.execution,
@@ -99,7 +99,7 @@ export function resolveParameter<T = IDataObject>(
 
 	return resolveParameterImpl(
 		parameter,
-		workflowsStore.getCurrentWorkflow(),
+		workflowsStore.getCurrentWorkflow,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
@@ -112,7 +112,7 @@ export function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflow: Workflow,
+	getContextWorkflow: () => Workflow,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
 	executionData: IExecutionResponse | null,
@@ -121,6 +121,8 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+
+	const workflow = getContextWorkflow();
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -202,7 +204,7 @@ function resolveParameterImpl<T = IDataObject>(
 		contextNode!.name,
 		inputName,
 		runIndexParent,
-		workflow,
+		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
@@ -217,7 +219,7 @@ function resolveParameterImpl<T = IDataObject>(
 			contextNode.name,
 			inputName,
 			0,
-			workflow,
+			getContextWorkflow,
 			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
@@ -267,7 +269,7 @@ function resolveParameterImpl<T = IDataObject>(
 		contextNode!.name,
 		inputName,
 		runIndexCurrent,
-		workflow,
+		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
@@ -281,7 +283,7 @@ function resolveParameterImpl<T = IDataObject>(
 			contextNode!.name,
 			inputName,
 			runIndexParent,
-			workflow,
+			getContextWorkflow,
 			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
@@ -384,7 +386,7 @@ function connectionInputData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	workflow: Workflow,
+	getContextWorkflow: () => Workflow,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
@@ -396,7 +398,7 @@ function connectionInputData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflow,
+		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		workflowRunData,
@@ -442,7 +444,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.getCurrentWorkflow(),
+		workflowsStore.getCurrentWorkflow,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
 		workflowsStore.getWorkflowRunData,
@@ -456,7 +458,7 @@ function executeDataImpl(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	workflow: Workflow,
+	getContextWorkflow: () => Workflow,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
@@ -505,6 +507,8 @@ function executeDataImpl(
 					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
+				const workflow = getContextWorkflow();
+
 				let previousNodeOutput: number | undefined;
 				// As the node can be connected through either of the outputs find the correct one
 				// and set it to make pairedItem work on not executed nodes
