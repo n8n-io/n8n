@@ -5,7 +5,6 @@ import type {
 	INodeTypeDescription,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	setCheckIfEvaluatingProperties,
@@ -14,7 +13,13 @@ import {
 } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions, credentialTest } from '../methods';
-import { checkIfEvaluating, setMetrics, setOutputs, setOutput } from '../utils/evaluationUtils';
+import {
+	checkIfEvaluating,
+	setMetrics,
+	setInputs,
+	setOutputs,
+	setOutput,
+} from '../utils/evaluationUtils';
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +27,7 @@ export class Evaluation implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluation',
 		group: ['transform'],
-		version: 4.6,
+		version: [4.6, 4.7],
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		subtitle: '={{$parameter["operation"]}}',
@@ -30,7 +35,7 @@ export class Evaluation implements INodeType {
 			name: 'Evaluation',
 			color: '#c3c9d5',
 		},
-		inputs: [NodeConnectionTypes.Main],
+		inputs: `={{(${setInputs})($parameter)}}`,
 		outputs: `={{(${setOutputs})($parameter)}}`,
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
