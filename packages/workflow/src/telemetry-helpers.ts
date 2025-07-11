@@ -3,6 +3,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -365,6 +366,18 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+			nodeItem.response_mode = (node.parameters?.responseMode as string) ?? 'onReceived';
+		} else if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+			// Capture streaming response mode parameter
+			const options = node.parameters?.options as IDataObject;
+			if (options && typeof options.responseMode === 'string') {
+				nodeItem.response_mode = options.responseMode;
+			}
+			// Capture public chat setting
+			const isPublic = node.parameters?.public;
+			if (typeof isPublic === 'boolean') {
+				nodeItem.public_chat = isPublic;
+			}
 		} else if (
 			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
 			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
