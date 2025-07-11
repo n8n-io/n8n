@@ -184,6 +184,7 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		nodesExecuted: string[];
 	}>;
 
 	type AccessFields = {

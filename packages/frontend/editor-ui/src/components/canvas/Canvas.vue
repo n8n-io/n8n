@@ -53,10 +53,14 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import { isOutsideSelected } from '@/utils/htmlUtils';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 
+const router = useRouter();
+
+const route = useRoute();
 const $style = useCssModule();
 
 const emit = defineEmits<{
@@ -109,6 +113,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'filter-executions-by': [ids: string[]];
 }>();
 
 const props = withDefaults(
@@ -657,6 +662,19 @@ function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, '
 	});
 }
 
+async function onFilterExecutionBy(input: { ids: string[] }) {
+	const workflowId = route.params.name as string;
+	if (!workflowId || !input || !input.ids || input.ids.length === 0) return;
+	const customFilter = nodeDataById.value[input.ids[0]]?.name || undefined;
+
+	emit('filter-executions-by', input.ids);
+
+	void router.push({
+		path: `/workflow/${workflowId}/executions/`,
+		query: { custom_filter: customFilter },
+	});
+}
+
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
 	onOpenContextMenu(event);
 }
@@ -708,6 +726,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
+		case 'filter_executions_by':
+			return await onFilterExecutionBy({ ids: nodeIds });
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
@@ -802,6 +822,7 @@ onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
+	props.eventBus.on('filter_executions_by', onFilterExecutionBy);
 	window.addEventListener('blur', onWindowBlur);
 });
 
@@ -809,6 +830,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
+	props.eventBus.off('filter_executions_by', onFilterExecutionBy);
 	window.removeEventListener('blur', onWindowBlur);
 });
 

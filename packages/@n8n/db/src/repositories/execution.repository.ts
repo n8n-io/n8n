@@ -951,6 +951,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			annotationTags,
 			vote,
 			projectId,
+			nodesExecuted,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -960,8 +961,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
-			.innerJoin('execution.workflow', 'workflow')
-			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+			.innerJoin('execution.workflow', 'workflow');
+
+		// Add join to execution_data only if nodesExecuted is not null or not an empty array
+		if (!Array.isArray(nodesExecuted) || nodesExecuted.length > 0) {
+			qb.innerJoin('execution_data', 'execution_data', 'execution.id = execution_data.executionId');
+		}
+
+		qb.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
 			const { limit, firstId, lastId } = query.range;
@@ -1028,6 +1035,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
 				.andWhere('sw.projectId = :projectId', { projectId });
+		}
+
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+
+		if (query.nodesExecuted && query.nodesExecuted.length > 0) {
+			const idConditions: string[] = [];
+			query.nodesExecuted.forEach((node, idx) => {
+				const fragment = isPostgres
+					? `(execution_data.data->4 ? :nodeName${idx})`
+					: `json_type(json_extract(execution_data.data, '$[4].' || :nodeName${idx})) IS NOT NULL`;
+				idConditions.push(fragment);
+				qb.setParameter(`nodeName${idx}`, node);
+			});
+			qb.andWhere('(' + idConditions.join(' OR ') + ')');
 		}
 
 		return qb;
