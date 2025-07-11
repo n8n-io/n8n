@@ -184,6 +184,13 @@ jobs:
             --framework=node \
             --framework-version=cypress-14.4.0
 
+          # Debug: Check what was created
+          echo "Contents of .currents directory:"
+          find .currents -type f -name "*.json" || echo "No files found"
+          ls -la .currents
+          echo "Contents of cypress directory:"
+          ls -la cypress
+
           npx @currents/cmd upload \
             --project-id=I0yzoc \
             --key=${{ secrets.CURRENTS_RECORD_KEY }}
