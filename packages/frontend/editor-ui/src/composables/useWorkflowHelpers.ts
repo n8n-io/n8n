@@ -78,9 +78,6 @@ export function resolveParameter<T = IDataObject>(
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): T | null {
 	if ('localResolve' in opts && opts.localResolve) {
-		if (opts.nodeName === 'Execution Data') {
-			debugger;
-		}
 		return resolveParameterImpl(
 			parameter,
 			opts.workflow,
