@@ -303,7 +303,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [1],
 								resource: ['user'],
 							},
@@ -324,7 +323,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [2],
 								resource: ['user'],
 							},
@@ -369,7 +367,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [1, 2],
 								resource: ['user'],
 							},
