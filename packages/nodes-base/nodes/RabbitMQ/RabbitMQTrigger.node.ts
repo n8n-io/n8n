@@ -15,6 +15,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { rabbitDefaultOptions } from './DefaultOptions';
 import { MessageTracker, rabbitmqConnectQueue, parseMessage } from './GenericFunctions';
 import type { TriggerOptions } from './types';
+import { setCloseFunction } from './utils/close';
 
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -207,8 +208,11 @@ export class RabbitMQTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as TriggerOptions;
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
+		let parallelMessages = options.parallelMessages ?? -1;
+		let manualTriggerFunction;
+
 		if (this.getMode() === 'manual') {
-			const manualTriggerFunction = async () => {
+			manualTriggerFunction = async () => {
 				// Do only catch a single message when executing manually, else messages will leak
 				await channel.prefetch(1);
 
@@ -227,19 +231,11 @@ export class RabbitMQTrigger implements INodeType {
 				else await channel.consume(queue, processMessage);
 			};
 
-			const closeFunction = async () => {
-				await channel.close();
-				await channel.connection.close();
-				return;
-			};
-
-			return {
-				closeFunction,
-				manualTriggerFunction,
-			};
+			parallelMessages = 1; // Set parallel messages to 1 for manual trigger mode
 		}
 
-		const parallelMessages = options.parallelMessages ?? -1;
+		const messageTracker = new MessageTracker();
+
 		if (isNaN(parallelMessages) || parallelMessages === 0 || parallelMessages < -1) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -256,18 +252,9 @@ export class RabbitMQTrigger implements INodeType {
 			acknowledgeMode = 'executionFinishes';
 		}
 
-		const messageTracker = new MessageTracker();
-		let closeGotCalled = false;
-
 		if (parallelMessages !== -1) {
 			await channel.prefetch(parallelMessages);
 		}
-
-		channel.on('close', () => {
-			if (!closeGotCalled) {
-				this.emitError(new Error('Connection got closed unexpectedly'));
-			}
-		});
 
 		const consumerInfo = await channel.consume(queue, async (message) => {
 			if (message !== null) {
@@ -331,29 +318,19 @@ export class RabbitMQTrigger implements INodeType {
 				}
 			}
 		});
-		const consumerTag = consumerInfo.consumerTag;
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		const closeFunction = async () => {
-			closeGotCalled = true;
-			try {
-				return await messageTracker.closeChannel(channel, consumerTag);
-			} catch (error) {
-				const workflow = this.getWorkflow();
-				const node = this.getNode();
-				this.logger.error(
-					`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
-					{
-						node: node.name,
-						workflowId: workflow.id,
-					},
-				);
-			}
-		};
+		const closeFunction = setCloseFunction.call(
+			this,
+			channel,
+			messageTracker,
+			consumerInfo.consumerTag,
+		);
 
 		return {
 			closeFunction,
+			manualTriggerFunction: this.getMode() === 'manual' ? manualTriggerFunction : undefined,
 		};
 	}
 }
