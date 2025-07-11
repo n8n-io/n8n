@@ -84,6 +84,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			) as AuthenticationType;
 			const modelName = this.getNodeParameter('model', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
+			const appKey = this.getNodeParameter('appKey', itemIndex, '') as string;
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
@@ -123,6 +124,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					: undefined,
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			});
+			if (appKey !== '') {
+				model.user = JSON.stringify({appkey: appKey});
+			}
 
 			this.logger.info(`Azure OpenAI client initialized for deployment: ${modelName}`);
 
