@@ -1,7 +1,7 @@
 import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
-import { verifyIntegrity } from '../npm-utils';
+import { verifyIntegrity, isVersionExists } from '../npm-utils';
 
 describe('verifyIntegrity', () => {
 	const registryUrl = 'https://registry.npmjs.org';
@@ -63,5 +63,78 @@ describe('verifyIntegrity', () => {
 			expect(error.cause).toBeDefined();
 			expect(error.cause.message).toContain('Network failure');
 		}
+	});
+});
+
+describe('isVersionExists', () => {
+	const registryUrl = 'https://registry.npmjs.org';
+	const packageName = 'test-package';
+	const version = '1.0.0';
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	it('should return true when package version exists', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, {
+				name: packageName,
+				version,
+			});
+
+		const result = await isVersionExists(packageName, version, registryUrl);
+		expect(result).toBe(true);
+	});
+
+	it('should throw UnexpectedError when package version does not exist (404)', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(404);
+
+		await expect(isVersionExists(packageName, version, registryUrl)).rejects.toThrow(
+			UnexpectedError,
+		);
+	});
+
+	it('should throw UnexpectedError with proper message on 404', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(404);
+
+		try {
+			await isVersionExists(packageName, version, registryUrl);
+			throw new Error('Expected error was not thrown');
+		} catch (error: any) {
+			expect(error).toBeInstanceOf(UnexpectedError);
+			expect(error.message).toBe('Package version does not exist');
+			expect(error.cause).toBeDefined();
+		}
+	});
+
+	it('should throw UnexpectedError for network failures', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		try {
+			await isVersionExists(packageName, version, registryUrl);
+			throw new Error('Expected error was not thrown');
+		} catch (error: any) {
+			expect(error).toBeInstanceOf(UnexpectedError);
+			expect(error.message).toBe('Failed to check package version existence');
+			expect(error.cause).toBeDefined();
+			expect(error.cause.message).toContain('Network failure');
+		}
+	});
+
+	it('should throw UnexpectedError for server errors (500)', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(500);
+
+		await expect(isVersionExists(packageName, version, registryUrl)).rejects.toThrow(
+			UnexpectedError,
+		);
 	});
 });

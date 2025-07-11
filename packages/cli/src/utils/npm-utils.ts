@@ -25,3 +25,24 @@ export async function verifyIntegrity(
 		throw new UnexpectedError('Checksum verification failed', { cause: error });
 	}
 }
+
+export async function isVersionExists(
+	packageName: string,
+	version: string,
+	registryUrl: string,
+): Promise<boolean> {
+	const timeoutOption = { timeout: REQUEST_TIMEOUT };
+
+	try {
+		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
+		await axios.get(`${url}/${version}`, timeoutOption);
+		return true;
+	} catch (error) {
+		if (axios.isAxiosError(error) && error.response?.status === 404) {
+			throw new UnexpectedError('Package version does not exist', {
+				cause: error,
+			});
+		}
+		throw new UnexpectedError('Failed to check package version existence', { cause: error });
+	}
+}
