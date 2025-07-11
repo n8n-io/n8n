@@ -1,4 +1,4 @@
-name: id
+name: variableId
 in: path
 description: The ID of the variable.
 required: true

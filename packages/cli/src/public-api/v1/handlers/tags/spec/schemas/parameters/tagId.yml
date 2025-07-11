@@ -1,4 +1,4 @@
-name: id
+name: tagId
 in: path
 description: The ID of the tag.
 required: true

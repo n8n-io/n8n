@@ -6,7 +6,7 @@ get:
   summary: Get user by ID/Email
   description: Retrieve a user from your instance. Only available for the instance owner.
   parameters:
-    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/userId.yml'
     - $ref: '../schemas/parameters/includeRole.yml'
   responses:
     '200':
@@ -25,7 +25,7 @@ delete:
   summary: Delete a user
   description: Delete a user from your instance.
   parameters:
-    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/userId.yml'
   responses:
     '204':
       description: Operation successful.
