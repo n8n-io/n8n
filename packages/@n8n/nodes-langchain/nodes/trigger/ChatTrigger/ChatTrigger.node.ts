@@ -210,8 +210,7 @@ export class ChatTrigger extends Node {
 		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2],
-		// Keep the default version as 1.1 to avoid releasing streaming in broken state
-		defaultVersion: 1.1,
+		defaultVersion: 1.2,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
