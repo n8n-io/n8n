@@ -1,3 +1,13 @@
+## [1.101.2](https://github.com/n8n-io/n8n/compare/n8n@1.101.1...n8n@1.101.2) (2025-07-11)
+
+
+### Bug Fixes
+
+* align file with master ([f481c23](https://github.com/n8n-io/n8n/commit/f481c236c22448979e6839e8cd75534abe777e41))
+* **Token Splitter Node:** Cache tokenizer JSONs in memory ([#17201](https://github.com/n8n-io/n8n/issues/17201)) ([3c807ac](https://github.com/n8n-io/n8n/commit/3c807aca4f5c30c69fbe9e208c974ac1b62f0a7b))
+
+
+
 ## [1.101.1](https://github.com/n8n-io/n8n/compare/n8n@1.101.0...n8n@1.101.1) (2025-07-03)
 
 
