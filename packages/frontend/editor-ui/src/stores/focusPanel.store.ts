@@ -35,7 +35,7 @@ const DEFAULT_FOCUS_PANEL_DATA: FocusPanelData = { isActive: false, parameters: 
 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const workflowsStore = useWorkflowsStore();
-	const focusPanelStorage = useStorage(String(LOCAL_STORAGE_FOCUS_PANEL));
+	const focusPanelStorage = useStorage(LOCAL_STORAGE_FOCUS_PANEL);
 
 	const focusPanelData = computed((): FocusPanelDataByWid => {
 		const defaultValue: FocusPanelDataByWid = {

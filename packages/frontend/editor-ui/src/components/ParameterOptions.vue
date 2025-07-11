@@ -34,9 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:modelValue': [value: string];
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'menu-expanded': [visible: boolean];
 }>();
 
