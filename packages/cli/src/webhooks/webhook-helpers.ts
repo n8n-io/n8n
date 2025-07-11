@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
@@ -47,6 +46,14 @@ import {
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
+import { WebhookService } from './webhook.service';
+import type {
+	IWebhookResponseCallbackData,
+	WebhookRequest,
+	WebhookNodeResponseHeaders,
+	WebhookResponseHeaders,
+} from './webhook.types';
+
 import { ActiveExecutions } from '@/active-executions';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -60,9 +67,6 @@ import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
-
-import { WebhookService } from './webhook.service';
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -486,30 +490,18 @@ export async function executeWebhook(
 			};
 		}
 
-		if (webhookData.webhookDescription.responseHeaders !== undefined) {
-			const responseHeaders = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseHeaders,
-				executionMode,
-				additionalKeys,
-				undefined,
-				undefined,
-			) as {
-				entries?:
-					| Array<{
-							name: string;
-							value: string;
-					  }>
-					| undefined;
-			};
+		const responseHeaders = evaluateResponseHeaders(
+			webhookData,
+			workflow,
+			workflowStartNode,
+			executionMode,
+			additionalKeys,
+		);
 
-			if (!res.headersSent) {
-				// Only set given headers if they haven't been sent yet, e.g. for streaming
-				if (responseHeaders?.entries !== undefined) {
-					for (const item of responseHeaders.entries) {
-						res.setHeader(item.name, item.value);
-					}
-				}
+		if (!res.headersSent && responseHeaders) {
+			// Only set given headers if they haven't been sent yet, e.g. for streaming
+			for (const [name, value] of responseHeaders.entries()) {
+				res.setHeader(name, value);
 			}
 		}
 
@@ -962,4 +954,38 @@ async function parseRequestBody(
 			await parseBody(req);
 		}
 	}
+}
+
+/**
+ * Evaluates the `responseHeaders` parameter of a webhook node
+ */
+function evaluateResponseHeaders(
+	webhookData: IWebhookData,
+	workflow: Workflow,
+	workflowStartNode: INode,
+	executionMode: WorkflowExecuteMode,
+	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+): WebhookResponseHeaders | undefined {
+	let headers: WebhookResponseHeaders | undefined = undefined;
+
+	if (webhookData.webhookDescription.responseHeaders !== undefined) {
+		const evaluatedHeaders = workflow.expression.getComplexParameterValue(
+			workflowStartNode,
+			webhookData.webhookDescription.responseHeaders,
+			executionMode,
+			additionalKeys,
+			undefined,
+			undefined,
+		) as WebhookNodeResponseHeaders | undefined;
+
+		if (evaluatedHeaders?.entries) {
+			headers = new Map();
+
+			for (const entry of evaluatedHeaders.entries) {
+				headers.set(entry.name.toLowerCase(), entry.value);
+			}
+		}
+	}
+
+	return headers;
 }
