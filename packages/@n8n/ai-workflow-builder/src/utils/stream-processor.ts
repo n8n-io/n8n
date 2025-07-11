@@ -61,10 +61,7 @@ export interface StreamProcessorConfig {
  * Process a single chunk from the LangGraph stream
  */
 // eslint-disable-next-line complexity
-export async function processStreamChunk(
-	streamMode: string,
-	chunk: unknown,
-): Promise<StreamOutput | null> {
+export function processStreamChunk(streamMode: string, chunk: unknown): StreamOutput | null {
 	if (streamMode === 'updates') {
 		// Handle agent message updates
 		const agentChunk = chunk as {
@@ -164,7 +161,7 @@ export async function* createStreamProcessor(
 	stream: AsyncGenerator<[string, unknown], void, unknown>,
 ): AsyncGenerator<StreamOutput> {
 	for await (const [streamMode, chunk] of stream) {
-		const output = await processStreamChunk(streamMode, chunk);
+		const output = processStreamChunk(streamMode, chunk);
 
 		if (output) {
 			yield output;
@@ -185,6 +182,30 @@ export function formatMessages(
 				text: msg.content,
 			});
 		} else if (msg instanceof AIMessage) {
+			// Add the AI message content if it exists
+			if (msg.content) {
+				if (Array.isArray(msg.content)) {
+					// Handle array content (multi-part messages)
+					const textMessages = msg.content.filter((c) => c.type === 'text');
+
+					textMessages.forEach((textMessage) => {
+						if (textMessage.type !== 'text') {
+							return;
+						}
+						formattedMessages.push({
+							role: 'assistant',
+							type: 'message',
+							text: textMessage.text,
+						});
+					});
+				} else {
+					formattedMessages.push({
+						role: 'assistant',
+						type: 'message',
+						text: msg.content,
+					});
+				}
+			}
 			// Handle tool calls in AI messages
 			if (msg.tool_calls && msg.tool_calls.length > 0) {
 				// Add tool messages for each tool call
@@ -204,15 +225,6 @@ export function formatMessages(
 						],
 					});
 				}
-			}
-
-			// Add the AI message content if it exists
-			if (msg.content) {
-				formattedMessages.push({
-					role: 'assistant',
-					type: 'message',
-					text: msg.content,
-				});
 			}
 		} else if (msg instanceof ToolMessage) {
 			// Find the tool message by ID and add the output
