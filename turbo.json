@@ -83,6 +83,14 @@
 				"@n8n/json-schema-to-zod#lint"
 			]
 		},
+		"lint:testing": {
+			"dependsOn": [
+				"@n8n/eslint-config#build",
+				"^build",
+				"n8n-playwright#lint",
+				"n8n-containers#lint"
+			]
+		},
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
