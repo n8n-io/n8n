@@ -176,7 +176,7 @@ describe('Init', () => {
 				typeof useUsersStore
 			>);
 
-			await initializeAuthenticatedFeatures();
+			await initializeAuthenticatedFeatures(false);
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe('Init', () => {
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {
-			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize');
+			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
@@ -192,7 +192,7 @@ describe('Init', () => {
 				typeof useUsersStore
 			>);
 
-			await initializeAuthenticatedFeatures();
+			await initializeAuthenticatedFeatures(false);
 
 			expect(cloudStoreSpy).toHaveBeenCalled();
 			expect(sourceControlSpy).toHaveBeenCalled();
@@ -204,7 +204,46 @@ describe('Init', () => {
 			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should handle cloud plan initialization error', async () => {
+			const cloudStoreSpy = vi
+				.spyOn(cloudPlanStore, 'initialize')
+				.mockRejectedValue(new AxiosError('Something went wrong', '404'));
+			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
+			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
+			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
+				typeof useUsersStore
+			>);
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(cloudStoreSpy).toHaveBeenCalled();
+			expect(sourceControlSpy).toHaveBeenCalled();
+			expect(nodeTranslationSpy).toHaveBeenCalled();
+			expect(versionsSpy).toHaveBeenCalled();
+		});
+
+		it('should initialize even if cloud requests get stuck', async () => {
+			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10000));
+			});
+			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
+			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
+			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
+				typeof useUsersStore
+			>);
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(cloudStoreSpy).toHaveBeenCalled();
+			expect(sourceControlSpy).toHaveBeenCalled();
+			expect(nodeTranslationSpy).toHaveBeenCalled();
+			expect(versionsSpy).toHaveBeenCalled();
+		}, 5000);
+
 		it('should handle source control initialization error', async () => {
+			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
 				typeof useUsersStore
 			>);
