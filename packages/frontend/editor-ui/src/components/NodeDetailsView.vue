@@ -778,7 +778,7 @@ onBeforeUnmount(() => {
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
-						v-else-if="!isTriggerNode"
+						v-else-if="!isTriggerNode && inputNodeName"
 						:workflow="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
@@ -789,6 +789,8 @@ onBeforeUnmount(() => {
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
 						:display-mode="inputPanelDisplayMode"
+						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+						:focused-mappable-input="ndvStore.focusedMappableInput"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"

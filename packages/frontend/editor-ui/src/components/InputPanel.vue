@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import uniqBy from 'lodash/uniqBy';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -22,7 +21,6 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
-import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -38,17 +36,20 @@ export type Props = {
 	runIndex: number;
 	workflow: Workflow;
 	pushRef: string;
-	currentNodeName?: string;
+	currentNodeName: string;
 	canLinkRuns?: boolean;
 	linkedRuns?: boolean;
 	readOnly?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	displayMode: IRunDataDisplayMode;
+	compact?: boolean;
+	disableDisplayModeSelection?: boolean;
+	focusedMappableInput: string;
+	isMappingOnboarded: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	currentNodeName: '',
 	canLinkRuns: false,
 	readOnly: false,
 	isProductionExecutionPreview: false,
@@ -91,15 +92,10 @@ const inputModes = [
 ];
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const posthogStore = usePostHog();
 
-const {
-	activeNode,
-	focusedMappableInput,
-	isMappingOnboarded: isUserOnboarded,
-} = storeToRefs(ndvStore);
+const activeNode = computed(() => workflowsStore.getNodeByName(props.currentNodeName));
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
@@ -128,7 +124,7 @@ const showDraggableHint = computed(() => {
 		return false;
 	}
 
-	return !!focusedMappableInput.value && !isUserOnboarded.value;
+	return !!props.focusedMappableInput && !props.isMappingOnboarded;
 });
 
 const isActiveNodeConfig = computed(() => {
@@ -396,6 +392,8 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		data-test-id="ndv-input-panel"
 		:disable-ai-content="true"
 		:collapsing-table-column-name="collapsingColumnName"
+		:compact="compact"
+		:disable-display-mode-selection="disableDisplayModeSelection"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -408,9 +406,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	>
 		<template #header>
 			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
-				<span :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">{{
-					i18n.baseText('ndv.input')
-				}}</span>
+				<N8nText
+					:bold="true"
+					color="text-light"
+					:size="compact ? 'small' : 'medium'"
+					:class="[$style.title, { [$style.titleV2]: isNDVV2 }]"
+				>
+					{{ i18n.baseText('ndv.input') }}
+				</N8nText>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -686,10 +689,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
 	letter-spacing: 3px;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 }
 
 .titleV2 {
