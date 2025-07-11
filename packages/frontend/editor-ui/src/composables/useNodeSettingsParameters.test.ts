@@ -172,7 +172,7 @@ describe('useNodeSettingsParameters', () => {
 			setActivePinia(createTestingPinia());
 
 			nodeTypesStore = mockedStore(useNodeTypesStore);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValueOnce(mockNodeType);
 		});
 
 		afterEach(() => {
@@ -189,7 +189,7 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('returns false for custom API call with mustHideDuringCustomApiCall', () => {
-			vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValue(true);
+			vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);
 			mockNodeHelpers({ isCustomApiCallSelected: true });
 
 			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -199,8 +199,8 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('returns false if parameter is auth-related', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValue(true);
-			vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValue(mockParameter.name);
+			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
+			vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(mockParameter);
 			mockNodeHelpers();
 
 			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -210,7 +210,7 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('returns true if displayOptions is undefined', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValue(false);
+			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 			mockNodeHelpers();
 
 			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
@@ -223,13 +223,13 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('calls displayParameter with correct arguments', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValue(false);
+			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 			mockNodeHelpers();
-			displayParameterSpy.mockReturnValue(false);
+			displayParameterSpy.mockReturnValueOnce(false);
 
 			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-			const parameter = {
+			const parameter: INodeProperties = {
 				name: 'foo',
 				type: 'string',
 				displayName: 'Foo',
@@ -265,9 +265,9 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('calls displayParameter with default displayOptions', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValue(false);
+			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 			mockNodeHelpers();
-			displayParameterSpy.mockReturnValue(true);
+			displayParameterSpy.mockReturnValueOnce(true);
 
 			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
@@ -294,10 +294,12 @@ describe('useNodeSettingsParameters', () => {
 		});
 
 		it('resolves expressions and calls displayParameter with resolved parameters', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValue(false);
+			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
 			mockNodeHelpers();
-			displayParameterSpy.mockReturnValue(true);
+			displayParameterSpy.mockReturnValueOnce(true);
+			const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 			vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+				...originalWorkflowHelpers,
 				resolveExpression: (expr: string) => (expr === '=1+1' ? 2 : expr),
 			}));
 
