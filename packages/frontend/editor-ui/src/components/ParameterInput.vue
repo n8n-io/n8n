@@ -78,6 +78,7 @@ import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -141,6 +142,7 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -998,6 +1000,11 @@ async function optionSelected(command: string) {
 
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
+			telemetry.track('User opened focus panel', {
+				source: 'parameterDropdown',
+				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+			});
 			return;
 	}
 

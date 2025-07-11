@@ -21,6 +21,7 @@ import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
@@ -46,6 +47,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 
 const { getAddedNodesAndConnections } = useActions();
@@ -84,6 +86,16 @@ function closeNodeCreator(hasAddedNodes = false) {
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
+}
+
+function toggleFocusPanel() {
+	focusPanelStore.toggleFocusPanel();
+
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasButton',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+	});
 }
 
 function onAskAssistantButtonClick() {
@@ -132,12 +144,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
-				type="tertiary"
-				size="large"
-				icon="list"
-				@click="focusPanelStore.toggleFocusPanel"
-			/>
+			<n8n-icon-button type="tertiary" size="large" icon="list" @click="toggleFocusPanel" />
 		</KeyboardShortcutTooltip>
 		<n8n-tooltip placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
