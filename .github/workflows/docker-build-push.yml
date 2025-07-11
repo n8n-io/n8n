@@ -158,7 +158,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
-      image_ref: ${{ steps.determine-tags.outputs.primary_tag }}
+      image_ref: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.primary_ghcr_manifest_tag }}
     steps:
       - name: Checkout code
@@ -201,11 +201,18 @@ jobs:
 
           PRIMARY_GHCR_MANIFEST_TAG_VALUE=""
 
+          # Validate inputs
           if [[ "$RELEASE_TYPE" == "stable" && -z "$N8N_VERSION_TAG" ]]; then
             echo "Error: N8N_VERSION_TAG is empty for a stable release."
             exit 1
           fi
 
+          if [[ "$RELEASE_TYPE" == "branch" && -z "$N8N_VERSION_TAG" ]]; then
+            echo "Error: N8N_VERSION_TAG is empty for a branch release."
+            exit 1
+          fi
+
+          # Determine tags based on release type
           case "$RELEASE_TYPE" in
             "stable")
               PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
@@ -225,10 +232,12 @@ jobs:
               ;;
             "dev"|*)
               if [[ "$N8N_VERSION_TAG" == pr-* ]]; then
+                # PR builds only go to GHCR
                 PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
                 GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
                 DOCKER_TAGS_FOR_PUSH=""
               else
+                # Regular dev builds go to both registries
                 PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:dev"
                 GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
                 DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:dev-${PLATFORM}"
@@ -236,6 +245,7 @@ jobs:
               ;;
           esac
 
+          # Combine all tags
           ALL_TAGS="${GHCR_TAGS_FOR_PUSH}"
           if [[ -n "$DOCKER_TAGS_FOR_PUSH" ]]; then
             ALL_TAGS="${ALL_TAGS}\n${DOCKER_TAGS_FOR_PUSH}"
@@ -361,7 +371,6 @@ jobs:
               ${MANIFEST_TAG}-arm64
           fi
 
-      # Create Docker Hub multi-arch manifest
       - name: Create Docker Hub multi-arch manifest
         if: steps.dockerhub_check.outputs.CREATE_DOCKERHUB_MANIFEST == 'true'
         run: |
@@ -378,10 +387,15 @@ jobs:
     name: Call Success URL
     needs: [create_multi_arch_manifest]
     runs-on: ubuntu-latest
+    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
     steps:
-      - name: Call Success URL - optionally
-        if: ${{ github.event.inputs.success_url != '' }}
-        run: curl -v ${{github.event.inputs.success_url}} || echo ""
+      - name: Call Success URL
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success_url }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
+        run: |
+          echo "Calling success URL: ${{ env.SUCCESS_URL }}"
+          curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
 
   security-scan:
