@@ -458,10 +458,17 @@ export class RespondToWebhook implements INodeType {
 				}
 			} else if (respondWith === 'text') {
 				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
+				const rawBody = this.getNodeParameter('responseBody', 0) as string;
 				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
+					responseBody = sandboxHtmlResponse(rawBody);
 				} else {
-					responseBody = this.getNodeParameter('responseBody', 0) as string;
+					responseBody = rawBody;
+				}
+				// Send the raw body to the stream
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, rawBody);
+					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];

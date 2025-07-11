@@ -155,7 +155,7 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	if (!isRespondToWebhookConnected && ['responseNode', 'streaming'].includes(responseMode)) {
+	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error('No Respond to Webhook node found in the workflow'),
