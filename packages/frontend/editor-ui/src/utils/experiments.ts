@@ -7,7 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 export const isExtraTemplateLinksExperimentEnabled = () => {
 	return (
 		usePostHog().getVariant(EXTRA_TEMPLATE_LINKS_EXPERIMENT.name) ===
-		EXTRA_TEMPLATE_LINKS_EXPERIMENT.variant
+			EXTRA_TEMPLATE_LINKS_EXPERIMENT.variant && useCloudPlanStore().userIsTrialing
 	);
 };
 
