@@ -1,14 +1,24 @@
 import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createTestWorkflow } from '@/__tests__/mocks';
-import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
+import {
+	NodeConnectionTypes,
+	WEBHOOK_NODE_TYPE,
+	type AssignmentCollectionValue,
+} from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 
@@ -868,6 +878,82 @@ describe('useWorkflowHelpers', () => {
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();
+		});
+	});
+});
+
+describe(resolveParameter, () => {
+	describe('with local resolve context', () => {
+		it('should resolve parameter without execution data', () => {
+			const result = resolveParameter(
+				{
+					f0: '={{ 2 + 2 }}',
+					f1: '={{ $vars.foo }}',
+					f2: '={{ String($exotic).toUpperCase() }}',
+				},
+				{
+					localResolve: true,
+					envVars: {
+						foo: 'hello!',
+					},
+					additionalKeys: {
+						$exotic: true,
+					},
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'n0' })],
+					}),
+					execution: null,
+					nodeName: 'n0',
+				},
+			);
+
+			expect(result).toEqual({ f0: 4, f1: 'hello!', f2: 'TRUE' });
+		});
+
+		it('should resolve parameter with execution data', () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
+				connections: {
+					n0: {
+						[NodeConnectionTypes.Main]: [
+							[{ type: NodeConnectionTypes.Main, index: 0, node: 'n1' }],
+						],
+					},
+				},
+			});
+			const result = resolveParameter(
+				{
+					f0: '={{ $json }}',
+					f1: '={{ $("n0").item.json }}',
+				},
+				{
+					localResolve: true,
+					envVars: {},
+					additionalKeys: {},
+					workflow: createTestWorkflowObject(workflowData),
+					execution: createTestWorkflowExecutionResponse({
+						workflowData,
+						data: {
+							resultData: {
+								runData: {
+									n0: [
+										createTestTaskData({
+											data: { [NodeConnectionTypes.Main]: [[{ json: { foo: 777 } }]] },
+										}),
+									],
+								},
+							},
+						},
+					}),
+					nodeName: 'n1',
+					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
+				},
+			);
+
+			expect(result).toEqual({
+				f0: { foo: 777 },
+				f1: { foo: 777 },
+			});
 		});
 	});
 });
