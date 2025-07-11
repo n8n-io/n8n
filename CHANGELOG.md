@@ -1,3 +1,12 @@
+## [1.102.2](https://github.com/n8n-io/n8n/compare/n8n@1.102.1...n8n@1.102.2) (2025-07-11)
+
+
+### Bug Fixes
+
+* **Token Splitter Node:** Cache tokenizer JSONs in memory ([#17201](https://github.com/n8n-io/n8n/issues/17201)) ([55eb224](https://github.com/n8n-io/n8n/commit/55eb22480f410161ee6a8814b5f5819567f842d5))
+
+
+
 ## [1.102.1](https://github.com/n8n-io/n8n/compare/n8n@1.102.0...n8n@1.102.1) (2025-07-09)
 
 
