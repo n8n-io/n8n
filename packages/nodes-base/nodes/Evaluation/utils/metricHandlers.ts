@@ -166,8 +166,12 @@ export const metricHandlers = {
 			'String similarity',
 		) as string;
 
+		const editDistance = distance(expectedAnswer, actualAnswer);
+		const longerStringLength = Math.max(expectedAnswer.length, actualAnswer.length);
+		const similarity = longerStringLength === 0 ? 1 : 1 - editDistance / longerStringLength;
+
 		return {
-			[metricName]: distance(expectedAnswer, actualAnswer),
+			[metricName]: similarity,
 		};
 	},
 
