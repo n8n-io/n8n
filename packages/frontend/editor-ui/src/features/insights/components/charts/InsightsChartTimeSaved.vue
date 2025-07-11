@@ -12,7 +12,7 @@ import {
 } from '@/features/insights/insights.constants';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
-import { Bar, Line } from 'vue-chartjs';
+import { Line } from 'vue-chartjs';
 
 import type { ChartProps } from './insightChartProps';
 
