@@ -60,6 +60,7 @@ import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
+import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import type { WebhookResponse } from '@/webhooks/webhook-response';
@@ -364,6 +365,14 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
+	const context = new WebhookExecutionContext(
+		workflow,
+		workflowStartNode,
+		webhookData,
+		executionMode,
+		additionalKeys,
+	);
+
 	let project: Project | undefined = undefined;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
@@ -493,13 +502,7 @@ export async function executeWebhook(
 			};
 		}
 
-		const responseHeaders = evaluateResponseHeaders(
-			webhookData,
-			workflow,
-			workflowStartNode,
-			executionMode,
-			additionalKeys,
-		);
+		const responseHeaders = evaluateResponseHeaders(context);
 
 		if (!res.headersSent && responseHeaders) {
 			// Only set given headers if they haven't been sent yet, e.g. for streaming
@@ -695,13 +698,9 @@ export async function executeWebhook(
 					}
 
 					const result = await extractWebhookLastNodeResponse(
+						context,
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
-						workflow,
-						workflowStartNode,
-						webhookData,
-						executionMode,
-						additionalKeys,
 					);
 					if (!result.ok) {
 						responseCallback(result.error, {});
@@ -856,24 +855,16 @@ async function parseRequestBody(
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
 function evaluateResponseHeaders(
-	webhookData: IWebhookData,
-	workflow: Workflow,
-	workflowStartNode: INode,
-	executionMode: WorkflowExecuteMode,
-	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	context: WebhookExecutionContext,
 ): WebhookResponseHeaders | undefined {
-	if (webhookData.webhookDescription.responseHeaders === undefined) {
+	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
 		return undefined;
 	}
 
-	const evaluatedHeaders = workflow.expression.getComplexParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseHeaders,
-		executionMode,
-		additionalKeys,
-		undefined,
-		undefined,
-	) as WebhookNodeResponseHeaders | undefined;
+	const evaluatedHeaders =
+		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
+			'responseHeaders',
+		);
 	if (evaluatedHeaders?.entries === undefined) {
 		return undefined;
 	}
