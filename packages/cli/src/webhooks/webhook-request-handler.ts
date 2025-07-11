@@ -23,6 +23,7 @@ import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
+	WebhookResponseHeaders,
 } from '@/webhooks/webhook.types';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
@@ -114,15 +115,8 @@ class WebhookRequestHandler {
 	private async sendStreamResponse(res: express.Response, webhookResponse: WebhookResponseStream) {
 		const { stream, code, headers } = webhookResponse;
 
-		if (code !== undefined) {
-			res.status(code);
-		}
-
-		if (headers) {
-			for (const [name, value] of headers.entries()) {
-				res.setHeader(name, value);
-			}
-		}
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
 
 		stream.pipe(res, { end: false });
 		await finished(stream);
@@ -132,20 +126,27 @@ class WebhookRequestHandler {
 	private sendNonStreamResponse(res: express.Response, webhookResponse: WebhookNonStreamResponse) {
 		const { body, code, headers } = webhookResponse;
 
-		if (code !== undefined) {
-			res.status(code);
-		}
-
-		if (headers) {
-			for (const [name, value] of headers.entries()) {
-				res.setHeader(name, value);
-			}
-		}
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
 
 		if (typeof body === 'string') {
 			res.send(body);
 		} else {
 			res.json(body);
+		}
+	}
+
+	private setResponseStatus(res: express.Response, statusCode?: number) {
+		if (statusCode !== undefined) {
+			res.status(statusCode);
+		}
+	}
+
+	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
+		if (headers) {
+			for (const [name, value] of headers.entries()) {
+				res.setHeader(name, value);
+			}
 		}
 	}
 
