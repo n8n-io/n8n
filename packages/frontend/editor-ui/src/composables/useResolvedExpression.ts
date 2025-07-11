@@ -90,13 +90,9 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
-	function updateExpression(
-		watchValues?:
-			| []
-			| [ExpressionLocalResolveContext | undefined, unknown, unknown, unknown, unknown],
-	) {
+	function updateExpression() {
 		if (isExpression.value) {
-			const resolved = resolve(watchValues?.[0]);
+			const resolved = resolve(expressionLocalResolveCtx.value);
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
 			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
 		} else {
