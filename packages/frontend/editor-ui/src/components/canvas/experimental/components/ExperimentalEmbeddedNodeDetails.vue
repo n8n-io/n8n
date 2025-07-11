@@ -62,7 +62,35 @@ const isVisible = computed(() =>
 );
 const isOnceVisible = ref(isVisible.value);
 const containerRef = useTemplateRef('container');
+const inputPanelContainerRef = useTemplateRef('inputPanelContainer');
 const activeElement = useActiveElement();
+
+const shouldShowInputPanel = computed(() => {
+	if (ndvStore.isDraggableDragging) {
+		return true;
+	}
+
+	if (!activeElement.value) {
+		return false;
+	}
+
+	if (inputPanelContainerRef.value?.contains(activeElement.value)) {
+		// User is interacting with input panel
+		return true;
+	}
+
+	if (
+		containerRef.value?.contains(activeElement.value) &&
+		activeElement.value.closest('[data-test-id=inline-expression-editor-input]')
+	) {
+		// User is interacting with a parameter in expression mode
+		// TODO: find a way to implement this reliably
+
+		return true;
+	}
+
+	return false;
+});
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
@@ -121,20 +149,12 @@ provide(
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
 });
-
-const shouldShowInputPanel = computed(
-	() =>
-		ndvStore.isDraggableDragging ||
-		(activeElement.value &&
-			containerRef.value?.contains(activeElement.value) &&
-			activeElement.value.closest('[data-test-id=inline-expression-editor-input]')), // TODO: find a way to implement this reliably
-);
 </script>
 
 <template>
 	<div
 		ref="container"
-		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed, 'nodrag']"
+		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
