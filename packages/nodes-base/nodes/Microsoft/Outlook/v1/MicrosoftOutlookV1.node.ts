@@ -323,7 +323,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 							`/messages/${messageId}/send`,
 						);
 
-						returnData.push({ success: true });
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -336,6 +336,49 @@ export class MicrosoftOutlookV1 implements INodeType {
 		}
 
 		if (resource === 'message') {
+			if (operation === 'createForward') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const messageId = this.getNodeParameter('messageId', i) as string;
+						const toRecipients = (this.getNodeParameter('toRecipients', i, '') as string)
+							.split(',')
+							.map((email) => email.trim())
+							.filter((email) => !!email);
+						const messageOptions = this.getNodeParameter('messageOptions', i) as string;
+
+						const body: IDataObject = {
+							toRecipients: toRecipients.map((recipient: string) => makeRecipient(recipient)),
+						};
+
+						if (messageOptions === 'comment') {
+							const comment = this.getNodeParameter('comment', i) as string;
+							body.comment = comment;
+						} else {
+							const messageBody = this.getNodeParameter('body', i) as string;
+							body.message = {
+								body: {
+									content: messageBody,
+								},
+							};
+						}
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/messages/${messageId}/createForward`,
+							body,
+						);
+						returnData.push({ success: true });
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
+
 			if (operation === 'reply') {
 				for (let i = 0; i < length; i++) {
 					try {
