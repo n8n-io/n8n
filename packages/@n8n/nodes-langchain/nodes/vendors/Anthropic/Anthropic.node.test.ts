@@ -9,6 +9,7 @@ import * as prompt from './actions/prompt';
 import * as text from './actions/text';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
+import { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
@@ -16,6 +17,7 @@ describe('Anthropic Node', () => {
 	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
 	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
 	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
+	const getBaseUrlMock = jest.spyOn(utils, 'getBaseUrl');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -37,6 +39,8 @@ describe('Anthropic Node', () => {
 						return {
 							system: 'You are a helpful assistant.',
 							codeExecution: true,
+							webSearch: true,
+							allowedDomains: 'https://example.com',
 							maxTokens: 1024,
 							temperature: 0.7,
 							topP: 0.9,
@@ -82,11 +86,175 @@ describe('Anthropic Node', () => {
 							type: 'code_execution_20250522',
 							name: 'code_execution',
 						},
+						{
+							type: 'web_search_20250305',
+							name: 'web_search',
+							allowed_domains: ['https://example.com'],
+						},
 					],
 				},
 				enableAnthropicBetas: {
 					codeExecution: true,
 				},
+			});
+		});
+
+		it('should add code execution attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return true;
+					case 'attachmentsInputType':
+						return 'url';
+					case 'attachmentsUrls':
+						return 'https://example.com/file.pdf';
+					case 'options':
+						return {
+							codeExecution: true,
+						};
+					default:
+						return undefined;
+				}
+			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			downloadFileMock.mockResolvedValue({
+				fileContent: Buffer.from('abcdefgh'),
+				mimeType: 'application/pdf',
+			});
+			uploadFileMock.mockResolvedValue({
+				id: 'file_123',
+			} as File);
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hello! How can I help you today?' }],
+				stop_reason: 'end_turn',
+			});
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						type: 'text',
+						text: 'Hello! How can I help you today?',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/file.pdf');
+			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('abcdefgh'), 'application/pdf');
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [
+						{
+							role: 'user',
+							content: 'Hello, world!',
+						},
+						{
+							role: 'user',
+							content: [
+								{
+									type: 'container_upload',
+									file_id: 'file_123',
+								},
+							],
+						},
+					],
+					tools: [
+						{
+							type: 'code_execution_20250522',
+							name: 'code_execution',
+						},
+					],
+				},
+				enableAnthropicBetas: {
+					codeExecution: true,
+				},
+			});
+		});
+
+		it('should add regular attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return true;
+					case 'attachmentsInputType':
+						return 'url';
+					case 'attachmentsUrls':
+						return 'https://example.com/file.pdf';
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			executeFunctionsMock.helpers.httpRequest.mockResolvedValue({
+				headers: {
+					'content-type': 'application/pdf',
+				},
+			});
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hello! How can I help you today?' }],
+				stop_reason: 'end_turn',
+			});
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						type: 'text',
+						text: 'Hello! How can I help you today?',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(executeFunctionsMock.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'HEAD',
+				url: 'https://example.com/file.pdf',
+				returnFullResponse: true,
+			});
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [
+						{
+							role: 'user',
+							content: 'Hello, world!',
+						},
+						{
+							role: 'user',
+							content: [
+								{
+									type: 'document',
+									source: {
+										type: 'url',
+										url: 'https://example.com/file.pdf',
+									},
+								},
+							],
+						},
+					],
+					tools: [],
+				},
+				enableAnthropicBetas: {},
 			});
 		});
 	});
