@@ -71,9 +71,10 @@ describe('Test YouTube Node', () => {
 		beforeAll(() => {
 			youtubeNock
 				.post('/v3/playlists', {
-					snippet: { title: 'Playlist 1', privacyStatus: 'public', defaultLanguage: 'en' },
+					snippet: { title: 'Playlist 1', defaultLanguage: 'en' },
+					status: { privacyStatus: 'public' },
 				})
-				.query({ part: 'snippet' })
+				.query({ part: 'snippet,status' })
 				.reply(200, playlists[0]);
 			youtubeNock
 				.put('/v3/playlists', {
