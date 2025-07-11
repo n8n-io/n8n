@@ -16,7 +16,11 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"include": [
+		"src/**/*.ts",
+		"test/**/*.ts",
+		"../../node_modules/jest-expect-message/types/index.d.ts"
+	],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
