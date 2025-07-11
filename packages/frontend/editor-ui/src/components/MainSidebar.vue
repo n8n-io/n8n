@@ -27,6 +27,7 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
+import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -250,13 +251,6 @@ onBeforeUnmount(() => {
 	window.removeEventListener('resize', onResize);
 });
 
-const trackTemplatesClick = () => {
-	telemetry.track('User clicked on templates', {
-		role: cloudPlanStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
-	});
-};
-
 const trackHelpItemClick = (itemType: string) => {
 	telemetry.track('User clicked help resource', {
 		type: itemType,
@@ -297,7 +291,7 @@ const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
 			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick();
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			}
 			break;
 		case 'about': {
