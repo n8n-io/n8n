@@ -135,7 +135,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 
 	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
 
-	if (!match || !match.groups) return undefined;
+	if (!match?.groups) return undefined;
 
 	return match.groups.token;
 }

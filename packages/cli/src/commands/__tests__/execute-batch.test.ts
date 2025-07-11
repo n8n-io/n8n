@@ -1,8 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
-import { DbConnection } from '@n8n/db';
+import { WorkflowRepository, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';

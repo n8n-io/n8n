@@ -13,6 +13,7 @@ import { CanvasComposer } from '../composables/CanvasComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
 	readonly page: Page;
 

@@ -71,11 +71,11 @@ describe('useNodeSettingsParameters', () => {
 			ndvStore.activeNodeName = 'Node1';
 			ndvStore.setActiveNodeName = vi.fn();
 			ndvStore.resetNDVPushRef = vi.fn();
-			focusPanelStore.setFocusedNodeParameter = vi.fn();
+			focusPanelStore.openWithFocusedNodeParameter = vi.fn();
 			focusPanelStore.focusPanelActive = false;
 		});
 
-		it('sets focused node parameter and activates panel', () => {
+		it('sets focused node parameter', () => {
 			const { handleFocus } = useNodeSettingsParameters();
 			const node: INodeUi = {
 				id: '1',
@@ -95,12 +95,11 @@ describe('useNodeSettingsParameters', () => {
 
 			handleFocus(node, path, parameter);
 
-			expect(focusPanelStore.setFocusedNodeParameter).toHaveBeenCalledWith({
+			expect(focusPanelStore.openWithFocusedNodeParameter).toHaveBeenCalledWith({
 				nodeId: node.id,
 				parameterPath: path,
 				parameter,
 			});
-			expect(focusPanelStore.focusPanelActive).toBe(true);
 
 			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
 			expect(ndvStore.resetNDVPushRef).toHaveBeenCalled();
@@ -118,7 +117,7 @@ describe('useNodeSettingsParameters', () => {
 
 			handleFocus(undefined, 'parameters.foo', parameter);
 
-			expect(focusPanelStore.setFocusedNodeParameter).not.toHaveBeenCalled();
+			expect(focusPanelStore.openWithFocusedNodeParameter).not.toHaveBeenCalled();
 		});
 	});
 });

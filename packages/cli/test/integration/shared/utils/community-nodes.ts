@@ -1,7 +1,5 @@
 import { randomName } from '@n8n/backend-test-utils';
-import { InstalledPackages } from '@n8n/db';
-import { InstalledNodesRepository } from '@n8n/db';
-import { InstalledPackagesRepository } from '@n8n/db';
+import { InstalledPackages, InstalledNodesRepository, InstalledPackagesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { NODE_PACKAGE_PREFIX } from '@/constants';

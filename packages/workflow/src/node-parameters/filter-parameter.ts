@@ -60,7 +60,6 @@ const withIndefiniteArticle = (noun: string): string => {
 	return `${article} ${noun}`;
 };
 
-// eslint-disable-next-line complexity
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,

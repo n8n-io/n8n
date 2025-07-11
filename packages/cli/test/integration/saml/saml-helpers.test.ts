@@ -1,5 +1,4 @@
-import { getPersonalProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 
 import * as helpers from '@/sso.ee/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso.ee/saml/types';
