@@ -656,8 +656,8 @@ export async function executeWebhook(
 						runData.data.resultData.pinData = pinData;
 					}
 
-					const lastNodeRunData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
-					if (runData.data.resultData.error || lastNodeRunData?.error !== undefined) {
+					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {
 								data: {
@@ -676,7 +676,7 @@ export async function executeWebhook(
 						return undefined;
 					}
 
-					if (lastNodeRunData === undefined) {
+					if (lastNodeTaskData === undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {
 								data: {
@@ -696,7 +696,7 @@ export async function executeWebhook(
 
 					const result = await extractWebhookLastNodeResponse(
 						responseData as WebhookResponseData,
-						lastNodeRunData,
+						lastNodeTaskData,
 						workflow,
 						workflowStartNode,
 						webhookData,
