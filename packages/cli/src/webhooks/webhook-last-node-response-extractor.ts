@@ -28,7 +28,7 @@ type StreamResponse = {
 };
 
 /**
- * Extracts the response for a webhook when the responde mode is set to
++ * Extracts the response for a webhook when the response mode is set to
  * `lastNode`.
  */
 export async function extractWebhookLastNodeResponse(
