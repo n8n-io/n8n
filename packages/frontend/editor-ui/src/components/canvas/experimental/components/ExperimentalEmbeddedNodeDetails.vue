@@ -69,23 +69,41 @@ provide(
 		const workflow = workflowsStore.getCurrentWorkflow();
 		const runIndex = 0; // not changeable for now
 		const execution = workflowsStore.workflowExecutionData;
-		const taskData = (execution?.data?.resultData.runData[node.value.name] ?? [])[runIndex];
-		const source = taskData?.source[0];
+		const nodeName = node.value.name;
+
+		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
+			const taskData = (execution?.data?.resultData.runData[nodeName] ?? [])[runIndex];
+			const source = taskData?.source[0];
+
+			if (source) {
+				return {
+					name: source.previousNode,
+					branchIndex: source.previousNodeOutput ?? 0,
+					runIndex: source.previousNodeRun ?? 0,
+				};
+			}
+
+			const inputs = workflow.getParentNodesByDepth(nodeName, 1);
+
+			if (inputs.length > 0) {
+				return {
+					name: inputs[0].name,
+					branchIndex: inputs[0].indicies[0] ?? 0,
+					runIndex: 0,
+				};
+			}
+
+			return undefined;
+		}
 
 		return {
 			localResolve: true,
 			envVars: useEnvironmentsStore().variablesAsObject,
 			workflow,
 			execution,
-			nodeName: node.value.name,
+			nodeName,
 			additionalKeys: {},
-			inputNode: source
-				? {
-						name: source.previousNode,
-						branchIndex: source.previousNodeOutput ?? 0,
-						runIndex: source.previousNodeRun ?? 0,
-					}
-				: undefined,
+			inputNode: findInputNode(),
 		};
 	}),
 );
