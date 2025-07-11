@@ -86,7 +86,7 @@ function extractFirstEntryJsonFromRunData(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ): Result<NonStreamResponse, OperationalError> {
 	if (lastNodeRunData.data!.main[0]![0] === undefined) {
-		return createResultError(new OperationalError('No item to return got found'));
+		return createResultError(new OperationalError('No item to return was found'));
 	}
 
 	let lastNodeFirstJsonItem: unknown = lastNodeRunData.data!.main[0]![0].json;
