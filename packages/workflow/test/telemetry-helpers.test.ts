@@ -2389,6 +2389,79 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 	});
 
+	it('should capture Agent node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						options: {
+							enableStreaming: false,
+						},
+					},
+					id: 'agent-id-streaming-disabled',
+					name: 'Agent with streaming disabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						agent: 'conversationalAgent',
+						options: {
+							enableStreaming: true,
+						},
+					},
+					id: 'agent-id-streaming-enabled',
+					name: 'Agent with streaming enabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [300, 100],
+				},
+				{
+					parameters: {
+						agent: 'openAiFunctionsAgent',
+					},
+					id: 'agent-id-default-streaming',
+					name: 'Agent with default streaming',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [500, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'agent-id-streaming-disabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [100, 100],
+			agent: 'toolsAgent',
+			is_streaming: false,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'agent-id-streaming-enabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [300, 100],
+			agent: 'conversationalAgent',
+			is_streaming: true,
+		});
+
+		expect(result.nodeGraph.nodes['2']).toEqual({
+			id: 'agent-id-default-streaming',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [500, 100],
+			agent: 'openAiFunctionsAgent',
+			is_streaming: true,
+		});
+	});
+
 	it('should capture Chat Trigger node streaming parameters', () => {
 		const workflow: Partial<IWorkflowBase> = {
 			nodes: [

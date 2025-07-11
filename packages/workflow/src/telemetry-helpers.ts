@@ -255,6 +255,15 @@ export function generateNodesGraph(
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
+
+			if (node.typeVersion >= 2.1) {
+				const options = node.parameters?.options as IDataObject;
+				if (options?.['enableStreaming'] === false) {
+					nodeItem.is_streaming = false;
+				} else {
+					nodeItem.is_streaming = true;
+				}
+			}
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
 
