@@ -39,7 +39,9 @@ describe('setCloseFunction', () => {
 				'consumerTag123',
 			);
 
-			await closeFunction();
+			if (closeFunction) {
+				await closeFunction();
+			}
 
 			expect(mockChannel.close).toHaveBeenCalledTimes(1);
 			expect(mockConnection.close).toHaveBeenCalledTimes(1);
@@ -61,8 +63,9 @@ describe('setCloseFunction', () => {
 					tag,
 				);
 
-				await closeFunction();
-
+				if (closeFunction) {
+					await closeFunction();
+				}
 				expect(mockMessageTracker.closeChannel).toHaveBeenCalledWith(mockChannel, tag);
 			}
 
