@@ -1,4 +1,5 @@
 import {
+	getTemplatePathByRole,
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
@@ -67,6 +68,24 @@ describe('Utils: experiments', () => {
 				expect(isExtraTemplateLinksExperimentEnabled()).toEqual(enabled);
 			},
 		);
+	});
+
+	describe('getTemplatePathByRole()', () => {
+		it.each([
+			['Executive/Owner', 'categories/ai/'],
+			['Product & Design', 'categories/ai/'],
+			['Support', 'categories/support/'],
+			['Sales', 'categories/sales/'],
+			['IT', 'categories/it-ops/'],
+			['Engineering', 'categories/it-ops/'],
+			['Marketing', 'categories/marketing/'],
+			['Other', 'categories/other/'],
+			[null, ''],
+			[undefined, ''],
+			['Unknown Role', ''],
+		])('should return correct path for role "%s"', (role, expectedPath) => {
+			expect(getTemplatePathByRole(role)).toBe(expectedPath);
+		});
 	});
 
 	describe('trackTemplatesClick()', () => {

@@ -17,6 +17,37 @@ export const enum TemplateClickSource {
 	sidebarButton = 'sidebar_button',
 }
 
+export const getTemplatePathByRole = (role: string | null | undefined) => {
+	if (!role) {
+		return '';
+	}
+
+	switch (role) {
+		case 'Executive/Owner':
+		case 'Product & Design':
+			return 'categories/ai/';
+
+		case 'Support':
+			return 'categories/support/';
+
+		case 'Sales':
+			return 'categories/sales/';
+
+		case 'IT':
+		case 'Engineering':
+			return 'categories/it-ops/';
+
+		case 'Marketing':
+			return 'categories/marketing/';
+
+		case 'Other':
+			return 'categories/other/';
+
+		default:
+			return '';
+	}
+};
+
 export const trackTemplatesClick = (source: TemplateClickSource) => {
 	useTelemetry().track('User clicked on templates', {
 		role: useCloudPlanStore().currentUserCloudInfo?.role,
