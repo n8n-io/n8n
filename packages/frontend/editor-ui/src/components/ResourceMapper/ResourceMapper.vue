@@ -40,6 +40,7 @@ type Props = {
 	teleported?: boolean;
 	dependentParametersValues?: string | null;
 	isReadOnly?: boolean;
+	isAllowEmptyValues?: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
@@ -50,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	dependentParametersValues: null,
 	isReadOnly: false,
+	isAllowEmptyValues: false,
 });
 
 const { onDocumentVisible } = useDocumentVisibility();
@@ -436,8 +438,8 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	let newValue = null;
 	if (
 		updateInfo.value !== undefined &&
-		updateInfo.value !== '' &&
 		updateInfo.value !== null &&
+		(props.isAllowEmptyValues || updateInfo.value !== '') &&
 		isResourceMapperValue(updateInfo.value)
 	) {
 		newValue = updateInfo.value;
