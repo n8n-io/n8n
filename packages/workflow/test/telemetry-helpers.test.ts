@@ -500,6 +500,7 @@ describe('generateNodesGraph', () => {
 						type: 'n8n-nodes-base.webhook',
 						version: 1.1,
 						position: [520, 380],
+						response_mode: 'onReceived',
 					},
 				},
 				notes: {},
@@ -2385,6 +2386,60 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		expect(result).toEqual({
 			num_tools: 0,
 			model_name: 'gemini-1.5-pro',
+		});
+	});
+
+	it('should capture Chat Trigger node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						public: true,
+						options: {
+							responseMode: 'streaming',
+						},
+					},
+					id: 'chat-trigger-id',
+					name: 'Chat Trigger',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						public: false,
+						options: {
+							responseMode: 'lastNode',
+						},
+					},
+					id: 'chat-trigger-id-2',
+					name: 'Chat Trigger 2',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [300, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'chat-trigger-id',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [100, 100],
+			response_mode: 'streaming',
+			public_chat: true,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'chat-trigger-id-2',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [300, 100],
+			response_mode: 'lastNode',
+			public_chat: false,
 		});
 	});
 });

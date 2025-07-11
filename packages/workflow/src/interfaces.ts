@@ -2621,7 +2621,7 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
-	response_mode?: WebhookResponseMode; // Webhook and Chat Trigger node response mode
+	response_mode?: string; // Webhook and Chat Trigger node response mode
 	public_chat?: boolean; // Chat Trigger node public setting
 	runs?: number;
 	items_total?: number;
