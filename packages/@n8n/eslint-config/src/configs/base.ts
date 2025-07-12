@@ -402,8 +402,8 @@ export const baseConfig = tseslint.config(
 			/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
 			'unicorn/no-useless-promise-resolve-reject': 'error',
 
-			'lodash/path-style': ['error', 'as-needed'],
-			'lodash/import-scope': ['error', 'method'],
+			'es-toolkit/path-style': ['error', 'as-needed'],
+			'es-toolkit/import-scope': ['error', 'method'],
 		},
 	},
 	{

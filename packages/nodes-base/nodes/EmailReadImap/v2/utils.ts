@@ -5,7 +5,7 @@ import {
 	type MessagePart,
 	type SearchCriteria,
 } from '@n8n/imap';
-import find from 'lodash/find';
+import { find } from 'es-toolkit/compat';
 import { simpleParser, type Source as ParserSource } from 'mailparser';
 import {
 	type IBinaryData,

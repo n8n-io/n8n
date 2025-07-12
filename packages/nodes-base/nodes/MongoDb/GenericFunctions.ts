@@ -1,5 +1,4 @@
-import get from 'lodash/get';
-import set from 'lodash/set';
+import { get, set } from 'es-toolkit/compat';
 import { MongoClient, ObjectId } from 'mongodb';
 import { NodeOperationError } from 'n8n-workflow';
 import type {

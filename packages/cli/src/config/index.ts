@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import convict from 'convict';
 import { flatten } from 'flat';
 import { readFileSync } from 'fs';
-import merge from 'lodash/merge';
+import { merge } from 'es-toolkit/compat';
 import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 

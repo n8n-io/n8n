@@ -1,5 +1,4 @@
-import isEqual from 'lodash/isEqual';
-import uniqWith from 'lodash/uniqWith';
+import { isEqual, uniqWith } from 'es-toolkit/compat';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { compact as oCompact } from './object-extensions';

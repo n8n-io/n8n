@@ -36,9 +36,6 @@ catalogs:
     '@types/jsonwebtoken':
       specifier: ^9.0.9
       version: 9.0.9
-    '@types/lodash':
-      specifier: 4.17.17
-      version: 4.17.17
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -57,6 +54,9 @@ catalogs:
     callsites:
       specifier: 3.1.0
       version: 3.1.0
+    es-toolkit:
+      specifier: 1.39.7
+      version: 1.39.7
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -84,9 +84,6 @@ catalogs:
     jsonwebtoken:
       specifier: 9.0.2
       version: 9.0.2
-    lodash:
-      specifier: 4.17.21
-      version: 4.17.21
     luxon:
       specifier: 3.4.4
       version: 3.4.4
@@ -350,12 +347,12 @@ importers:
       cypress-real-events:
         specifier: ^1.14.0
         version: 1.14.0(cypress@14.4.0)
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
@@ -369,9 +366,6 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../packages/@n8n/api-types
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       eslint-plugin-cypress:
         specifier: ^4.3.0
         version: 4.3.0(eslint@9.29.0(jiti@1.21.7))
@@ -623,12 +617,12 @@ importers:
       class-validator:
         specifier: 0.14.0
         version: 0.14.0
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       n8n-core:
         specifier: workspace:^
         version: link:../../core
@@ -654,9 +648,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       express:
         specifier: 5.1.0
         version: 5.1.0
@@ -672,9 +663,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:^
         version: link:../permissions
-      lodash:
+      es-toolkit:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 1.39.7
       n8n-workflow:
         specifier: workspace:^
         version: link:../../workflow
@@ -685,9 +676,6 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
 
   packages/@n8n/di:
     dependencies:
@@ -992,6 +980,9 @@ importers:
       epub2:
         specifier: 3.0.2
         version: 3.0.2(ts-toolbelt@9.6.0)
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       form-data:
         specifier: 'catalog:'
         version: 4.0.0
@@ -1013,9 +1004,6 @@ importers:
       langchain:
         specifier: 0.3.29
         version: 0.3.29(@langchain/anthropic@0.3.23(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67))))(@langchain/aws@0.1.11(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67))))(@langchain/cohere@0.3.4(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13))(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(@langchain/google-genai@0.2.13(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67))))(@langchain/google-vertexai@0.2.13(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67))))(@langchain/groq@0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13))(@langchain/mistralai@0.2.1(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67))(@langchain/ollama@0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67))))(axios@1.10.0(debug@4.4.1))(cheerio@1.0.0)(handlebars@4.7.8)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(ws@8.18.2)
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       mammoth:
         specifier: 1.7.2
         version: 1.7.2
@@ -1180,9 +1168,9 @@ importers:
       acorn-walk:
         specifier: 8.3.4
         version: 8.3.4
-      lodash:
+      es-toolkit:
         specifier: 'catalog:'
-        version: 4.17.21
+        version: 1.39.7
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -1202,9 +1190,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
 
   packages/@n8n/typescript-config: {}
 
@@ -1363,6 +1348,9 @@ importers:
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       express:
         specifier: 5.1.0
         version: 5.1.0
@@ -1417,9 +1405,6 @@ importers:
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -1580,9 +1565,6 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/psl':
         specifier: ^1.1.0
         version: 1.1.0
@@ -1682,6 +1664,9 @@ importers:
       cron:
         specifier: 3.1.7
         version: 3.1.7
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -1703,9 +1688,6 @@ importers:
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.2
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -1761,9 +1743,6 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/mime-types':
         specifier: ^2.1.0
         version: 2.1.1
@@ -1943,12 +1922,12 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.13(typescript@5.8.3))
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -2004,9 +1983,6 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.8.3))
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/markdown-it':
         specifier: ^13.0.9
         version: 13.0.9
@@ -2382,6 +2358,9 @@ importers:
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -2403,9 +2382,6 @@ importers:
       jsonpath:
         specifier: ^1.1.1
         version: 1.1.1
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -2518,9 +2494,6 @@ importers:
       '@types/jsonpath':
         specifier: ^0.2.0
         version: 0.2.0
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/uuid':
         specifier: 'catalog:'
         version: 10.0.0
@@ -2657,6 +2630,9 @@ importers:
       currency-codes:
         specifier: 2.1.0
         version: 2.1.0
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       eventsource:
         specifier: 2.0.2
         version: 2.0.2
@@ -2708,9 +2684,6 @@ importers:
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       lossless-json:
         specifier: 1.0.5
         version: 1.0.5
@@ -2853,9 +2826,6 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/lossless-json':
         specifier: ^1.0.0
         version: 1.0.1
@@ -2922,9 +2892,6 @@ importers:
       '@playwright/test':
         specifier: 1.53.0
         version: 1.53.0
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       eslint-plugin-playwright:
         specifier: 2.2.0
         version: 2.2.0(eslint@9.29.0(jiti@1.21.7))
@@ -2943,6 +2910,9 @@ importers:
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
+      es-toolkit:
+        specifier: 'catalog:'
+        version: 1.39.7
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -2958,9 +2928,6 @@ importers:
       jssha:
         specifier: 3.3.1
         version: 3.3.1
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -3001,9 +2968,6 @@ importers:
       '@types/jmespath':
         specifier: ^0.15.0
         version: 0.15.0
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@types/luxon':
         specifier: 3.2.0
         version: 3.2.0
@@ -6982,8 +6946,8 @@ packages:
   '@types/lodash-es@4.17.12':
     resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
 
-  '@types/lodash@4.17.17':
-    resolution: {integrity: sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ==}
+  '@types/lodash@4.17.20':
+    resolution: {integrity: sha512-H3MHACvFUEiujabxhaI/ImO6gUrd8oOurg7LQtS7mbwIXA/cUqWrvBsaeJ23aZEPk1TAYkurjfMbSELfoCXlGA==}
 
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
@@ -9453,6 +9417,9 @@ packages:
   es-to-primitive@1.3.0:
     resolution: {integrity: sha512-w+5mJ3GuFL+NjVtJlvydShqE1eN3h3PbI7/5LAsYJP/2qtuMXjfL2LpHSRqo4b4eSF5K/DH1JXKUAHSB2UW50g==}
     engines: {node: '>= 0.4'}
+
+  es-toolkit@1.39.7:
+    resolution: {integrity: sha512-ek/wWryKouBrZIjkwW2BFf91CWOIMvoy2AE5YYgUrfWsJQM2Su1LoLtrw8uusEpN9RfqLlV/0FVNjT0WMv8Bxw==}
 
   es6-promise@3.3.1:
     resolution: {integrity: sha512-SOp9Phqvqn7jtEUxPWdWfWoLmyt2VaJ6MpvP9Comy1MceMXqE6bxvaTu4iaxpYYPzhny28Lc+M87/c2cPK6lDg==}
@@ -21007,9 +20974,9 @@ snapshots:
 
   '@types/lodash-es@4.17.12':
     dependencies:
-      '@types/lodash': 4.17.17
+      '@types/lodash': 4.17.20
 
-  '@types/lodash@4.17.17': {}
+  '@types/lodash@4.17.20': {}
 
   '@types/long@4.0.2': {}
 
@@ -23779,7 +23746,7 @@ snapshots:
       '@element-plus/icons-vue': 2.3.1(vue@3.5.13(typescript@5.8.3))
       '@floating-ui/dom': 1.7.0
       '@popperjs/core': '@sxzz/popperjs-es@2.11.7'
-      '@types/lodash': 4.17.17
+      '@types/lodash': 4.17.20
       '@types/lodash-es': 4.17.12
       '@vueuse/core': 9.13.0(vue@3.5.13(typescript@5.8.3))
       async-validator: 4.2.5
@@ -24015,6 +23982,8 @@ snapshots:
       is-callable: 1.2.7
       is-date-object: 1.1.0
       is-symbol: 1.1.1
+
+  es-toolkit@1.39.7: {}
 
   es6-promise@3.3.1: {}
 
@@ -31543,7 +31512,7 @@ snapshots:
   yup@0.32.11:
     dependencies:
       '@babel/runtime': 7.26.10
-      '@types/lodash': 4.17.17
+      '@types/lodash': 4.17.20
       lodash: 4.17.21
       lodash-es: 4.17.21
       nanoclone: 0.2.1

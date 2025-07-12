@@ -1,6 +1,6 @@
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

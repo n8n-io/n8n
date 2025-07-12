@@ -8,7 +8,7 @@ import type {
 	SearchCriteria,
 } from '@n8n/imap';
 import { connect as imapConnect } from '@n8n/imap';
-import isEmpty from 'lodash/isEmpty';
+import { isEmpty } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 import type {
 	ITriggerFunctions,

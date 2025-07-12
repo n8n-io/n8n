@@ -1,4 +1,4 @@
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 
 export const telegramNode: INode = {

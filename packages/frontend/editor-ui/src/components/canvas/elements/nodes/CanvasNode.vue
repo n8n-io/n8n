@@ -32,7 +32,7 @@ import {
 } from '@/utils/canvasUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import isEqual from 'lodash/isEqual';
+import { isEqual } from 'es-toolkit/compat';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
 import { CONFIGURATION_NODE_OFFSET, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';

@@ -22,7 +22,7 @@ describe('requireCompletions', () => {
 	it('should return completions for explicit empty context', () => {
 		vi.spyOn(settingsStore, 'allowedModules', 'get').mockReturnValue({
 			builtIn: ['fs', 'path'],
-			external: ['lodash'],
+			external: ['es-toolkit'],
 		});
 		const state = EditorState.create({ doc: 'req', selection: { anchor: 3 } });
 		const context = new CompletionContext(state, 3, true);
@@ -33,7 +33,7 @@ describe('requireCompletions', () => {
 			expect.arrayContaining([
 				expect.objectContaining({ label: "require('fs');" }),
 				expect.objectContaining({ label: "require('path');" }),
-				expect.objectContaining({ label: "require('lodash');" }),
+				expect.objectContaining({ label: "require('es-toolkit');" }),
 			]),
 		);
 	});
@@ -41,7 +41,7 @@ describe('requireCompletions', () => {
 	it('should return completions for partial match', () => {
 		vi.spyOn(settingsStore, 'allowedModules', 'get').mockReturnValue({
 			builtIn: ['fs', 'path'],
-			external: ['lodash'],
+			external: ['es-toolkit'],
 		});
 		const state = EditorState.create({ doc: 'req', selection: { anchor: 3 } });
 		const context = new CompletionContext(state, 3, true);
@@ -52,7 +52,7 @@ describe('requireCompletions', () => {
 			expect.arrayContaining([
 				expect.objectContaining({ label: "require('fs');" }),
 				expect.objectContaining({ label: "require('path');" }),
-				expect.objectContaining({ label: "require('lodash');" }),
+				expect.objectContaining({ label: "require('es-toolkit');" }),
 			]),
 		);
 	});
@@ -85,7 +85,7 @@ describe('requireCompletions', () => {
 	it('should return completions for mixed built-in and external modules', () => {
 		vi.spyOn(settingsStore, 'allowedModules', 'get').mockReturnValue({
 			builtIn: ['fs'],
-			external: ['lodash', 'axios'],
+			external: ['es-toolkit', 'axios'],
 		});
 		const state = EditorState.create({ doc: 'req', selection: { anchor: 3 } });
 		const context = new CompletionContext(state, 3, true);
@@ -95,7 +95,7 @@ describe('requireCompletions', () => {
 		expect(result?.options).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ label: "require('fs');" }),
-				expect.objectContaining({ label: "require('lodash');" }),
+				expect.objectContaining({ label: "require('es-toolkit');" }),
 				expect.objectContaining({ label: "require('axios');" }),
 			]),
 		);

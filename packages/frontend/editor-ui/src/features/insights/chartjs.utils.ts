@@ -1,4 +1,4 @@
-import merge from 'lodash/merge';
+import { merge } from 'es-toolkit/compat';
 import { type ChartOptions, type ScriptableContext } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';

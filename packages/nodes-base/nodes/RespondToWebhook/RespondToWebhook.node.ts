@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,

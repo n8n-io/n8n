@@ -1,4 +1,4 @@
-import mergeWith from 'lodash/mergeWith';
+import { mergeWith } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

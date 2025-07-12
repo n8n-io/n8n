@@ -28,7 +28,7 @@ import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import pickBy from 'lodash/pickBy';
+import { pickBy } from 'es-toolkit/compat';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';

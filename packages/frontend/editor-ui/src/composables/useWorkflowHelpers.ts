@@ -45,7 +45,7 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

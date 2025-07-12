@@ -15,7 +15,7 @@ import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { LUXON_RECOMMENDED_OPTIONS, STRING_RECOMMENDED_OPTIONS } from './constants';
-import uniqBy from 'lodash/uniqBy';
+import { uniqBy } from 'es-toolkit/compat';
 
 beforeEach(async () => {
 	setActivePinia(createTestingPinia());

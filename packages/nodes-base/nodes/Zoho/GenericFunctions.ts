@@ -1,5 +1,4 @@
-import flow from 'lodash/flow';
-import sortBy from 'lodash/sortBy';
+import { flow, sortBy } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,

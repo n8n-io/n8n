@@ -1,4 +1,4 @@
-import map from 'lodash/map';
+import { map } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

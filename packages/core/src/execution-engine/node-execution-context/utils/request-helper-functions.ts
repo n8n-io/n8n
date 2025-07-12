@@ -23,10 +23,7 @@ import { IncomingMessage, Agent as HttpAgent } from 'http';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { type AgentOptions, Agent as HttpsAgent } from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import get from 'lodash/get';
-import isEmpty from 'lodash/isEmpty';
-import merge from 'lodash/merge';
-import pick from 'lodash/pick';
+import { get, isEmpty, merge, pick } from 'es-toolkit/compat';
 import {
 	NodeApiError,
 	NodeOperationError,

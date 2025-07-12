@@ -1,5 +1,4 @@
-import get from 'lodash/get';
-import set from 'lodash/set';
+import { get, set } from 'es-toolkit/compat';
 import { ApplicationError, type IDataObject } from 'n8n-workflow';
 
 export function splitAndTrim(str: string | string[]) {

@@ -1,5 +1,5 @@
 import { camelCase, capitalCase, snakeCase } from 'change-case';
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import moment from 'moment-timezone';
 import type {
 	IBinaryKeyData,

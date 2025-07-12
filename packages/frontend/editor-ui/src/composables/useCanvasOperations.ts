@@ -110,8 +110,7 @@ import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
-import cloneDeep from 'lodash/cloneDeep';
-import uniq from 'lodash/uniq';
+import { cloneDeep, uniq } from 'es-toolkit/compat';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;

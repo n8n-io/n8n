@@ -1,5 +1,4 @@
-import isEqual from 'lodash/isEqual';
-import zip from 'lodash/zip';
+import { isEqual, zip } from 'es-toolkit/compat';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
 import * as XLSX from 'xlsx';
 

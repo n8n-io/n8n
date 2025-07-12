@@ -1,6 +1,6 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import pickBy from 'lodash/pickBy';
+import { pickBy } from 'es-toolkit/compat';
 import type {
 	FieldValueOption,
 	FieldType,

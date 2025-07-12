@@ -9,7 +9,7 @@ import type {
 	CompletionResult,
 	CompletionSection,
 } from '@codemirror/autocomplete';
-import uniqBy from 'lodash/uniqBy';
+import { uniqBy } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';

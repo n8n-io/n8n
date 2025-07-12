@@ -5,7 +5,7 @@ import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import chunk from 'lodash/chunk';
+import { chunk } from 'es-toolkit/compat';
 import {
 	ActiveWorkflows,
 	ErrorReporter,

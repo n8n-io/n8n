@@ -1,7 +1,5 @@
 import iconv from 'iconv-lite';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
+import { get, set, unset } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

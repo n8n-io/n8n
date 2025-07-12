@@ -1,6 +1,4 @@
-import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
+import { get, isEqual, lt } from 'es-toolkit/compat';
 import {
 	NodeOperationError,
 	type IDataObject,

@@ -38,7 +38,7 @@ import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
-import orderBy from 'lodash/orderBy';
+import { orderBy } from 'es-toolkit/compat';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';

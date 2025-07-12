@@ -1,6 +1,6 @@
 import { capitalCase } from 'change-case';
-import omit from 'lodash/omit';
-import pickBy from 'lodash/pickBy';
+import { omit } from 'es-toolkit/compat';
+import { pickBy } from 'es-toolkit/compat';
 import { NodeApiError } from 'n8n-workflow';
 import type {
 	IDataObject,

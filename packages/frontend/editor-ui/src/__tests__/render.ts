@@ -8,7 +8,7 @@ import type { Pinia } from 'pinia';
 import { PiniaVuePlugin } from 'pinia';
 import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
-import merge from 'lodash/merge';
+import { merge } from 'es-toolkit/compat';
 import type { TestingPinia } from '@pinia/testing';
 import * as components from '@n8n/design-system/components';
 

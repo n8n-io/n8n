@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import { ErrorReporter } from 'n8n-core';
 import path from 'node:path';
 import type { Transporter } from 'nodemailer';

@@ -1,4 +1,4 @@
-import isObject from 'lodash/isObject';
+import { isObject } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 
 import { ApplicationError } from './errors';

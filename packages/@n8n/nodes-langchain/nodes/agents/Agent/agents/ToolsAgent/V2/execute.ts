@@ -11,7 +11,7 @@ import {
 } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
-import omit from 'lodash/omit';
+import { omit } from 'es-toolkit/compat';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -316,14 +316,13 @@ export async function toolsAgentExecute(
 
 			// Omit internal keys before returning the result.
 			const itemResult = {
-				json: omit(
-					response,
+				json: omit(response as Record<string, any>, [
 					'system_message',
 					'formatting_instructions',
 					'input',
 					'chat_history',
 					'agent_scratchpad',
-				),
+				]),
 				pairedItem: { item: itemIndex },
 			};
 

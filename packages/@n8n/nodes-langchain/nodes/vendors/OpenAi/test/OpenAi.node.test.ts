@@ -1,4 +1,4 @@
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import * as assistant from '../actions/assistant';

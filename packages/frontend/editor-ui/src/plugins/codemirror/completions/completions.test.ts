@@ -28,8 +28,7 @@ import {
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 } from './constants';
-import set from 'lodash/set';
-import uniqBy from 'lodash/uniqBy';
+import { set, uniqBy } from 'es-toolkit/compat';
 import { mockNodes } from '@/__tests__/mocks';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;

@@ -20,7 +20,7 @@ import {
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
-import difference from 'lodash/difference';
+import { difference } from 'es-toolkit/compat';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 

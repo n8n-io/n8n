@@ -21,10 +21,7 @@ import {
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
-import isEqual from 'lodash/isEqual';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
+import { get, isEqual, set, unset } from 'es-toolkit/compat';
 
 import { captureException } from '@sentry/vue';
 import { isPresent } from './typesUtils';

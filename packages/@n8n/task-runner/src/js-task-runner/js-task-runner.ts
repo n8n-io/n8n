@@ -1,5 +1,4 @@
-import isObject from 'lodash/isObject';
-import set from 'lodash/set';
+import { isObject, set } from 'es-toolkit/compat';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
 import {

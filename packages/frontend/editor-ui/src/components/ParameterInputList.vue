@@ -33,7 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import {
 	N8nCallout,
 	N8nIcon,

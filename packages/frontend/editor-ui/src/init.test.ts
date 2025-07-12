@@ -9,7 +9,7 @@ import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
-import merge from 'lodash/merge';
+import { merge } from 'es-toolkit/compat';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useSSOStore } from '@/stores/sso.store';

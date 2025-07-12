@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import capitalize from 'lodash/capitalize';
+import { capitalize } from 'es-toolkit/compat';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
 import config from '@/config';

@@ -1,5 +1,4 @@
-import isEmpty from 'lodash/isEmpty';
-import partialRight from 'lodash/partialRight';
+import { isEmpty, partialRight } from 'es-toolkit/compat';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,

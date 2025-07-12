@@ -1,5 +1,4 @@
-import get from 'lodash/get';
-import unset from 'lodash/unset';
+import { get, unset } from 'es-toolkit/compat';
 import type {
 	IBinaryData,
 	IDataObject,

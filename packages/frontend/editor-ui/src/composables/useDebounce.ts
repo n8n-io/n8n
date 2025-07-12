@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import _debounce from 'lodash/debounce';
+import { debounce as _debounce } from 'es-toolkit/compat';
 
 export interface DebounceOptions {
 	debounceTime: number;

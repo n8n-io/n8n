@@ -1,5 +1,5 @@
 import { Get, Post, Put, RestController, GlobalScope } from '@n8n/decorators';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';

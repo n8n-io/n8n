@@ -2,9 +2,7 @@ import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oaut
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
-import omit from 'lodash/omit';
-import set from 'lodash/set';
-import split from 'lodash/split';
+import { omit, set, split } from 'es-toolkit/compat';
 import {
 	ensureError,
 	type ICredentialDataDecryptedObject,

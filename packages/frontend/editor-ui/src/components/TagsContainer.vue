@@ -5,7 +5,7 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import debounce from 'lodash/debounce';
+import { debounce } from 'es-toolkit/compat';
 
 interface TagsContainerProps {
 	tagIds: string[];

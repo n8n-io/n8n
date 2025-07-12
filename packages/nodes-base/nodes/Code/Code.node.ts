@@ -1,6 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import {
 	NodeConnectionTypes,
 	type CodeExecutionMode,

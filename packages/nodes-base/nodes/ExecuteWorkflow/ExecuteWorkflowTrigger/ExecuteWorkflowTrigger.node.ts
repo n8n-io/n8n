@@ -1,4 +1,4 @@
-import pickBy from 'lodash/pickBy';
+import { pickBy } from 'es-toolkit/compat';
 import {
 	type INodeExecutionData,
 	NodeConnectionTypes,

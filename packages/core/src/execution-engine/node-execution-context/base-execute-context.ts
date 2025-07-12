@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type {
 	Workflow,
 	INode,

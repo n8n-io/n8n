@@ -34,8 +34,7 @@ import {
 	type SelectionRange,
 } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import debounce from 'lodash/debounce';
-import isEqual from 'lodash/isEqual';
+import { debounce, isEqual } from 'es-toolkit/compat';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';

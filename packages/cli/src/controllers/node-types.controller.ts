@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import { readFile } from 'fs/promises';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';

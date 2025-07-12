@@ -1,7 +1,5 @@
 import FormData from 'form-data';
-import get from 'lodash/get';
-import isPlainObject from 'lodash/isPlainObject';
-import set from 'lodash/set';
+import { get, isPlainObject, set } from 'es-toolkit/compat';
 import {
 	deepCopy,
 	setSafeObjectProperty,

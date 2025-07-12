@@ -39,7 +39,7 @@
     "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
-    "lodash": "catalog:",
+    "es-toolkit": "catalog:",
     "luxon": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
@@ -47,7 +47,6 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:"
+    "@n8n/typescript-config": "workspace:*"
   }
 }

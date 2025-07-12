@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import get from 'lodash/get';
-import set from 'lodash/set';
+import { get } from 'es-toolkit/compat';
+import { set } from 'es-toolkit/compat';
 
 import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';

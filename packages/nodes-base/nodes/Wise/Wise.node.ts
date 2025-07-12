@@ -1,4 +1,4 @@
-import omit from 'lodash/omit';
+import { omit } from 'es-toolkit/compat';
 import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
@@ -505,7 +505,7 @@ export class Wise implements INodeType {
 
 						const filters = this.getNodeParameter('filters', i) as TransferFilters;
 
-						Object.keys(omit(filters, 'range')).forEach((key) => {
+						Object.keys(omit(filters, ['range'])).forEach((key) => {
 							qs[key] = filters[key];
 						});
 

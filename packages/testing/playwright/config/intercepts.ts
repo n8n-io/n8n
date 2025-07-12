@@ -1,8 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies */
 import type { FrontendSettings } from '@n8n/api-types';
 import type { BrowserContext, Route } from '@playwright/test';
-import cloneDeep from 'lodash/cloneDeep';
-import merge from 'lodash/merge';
+import { cloneDeep, merge } from 'es-toolkit/compat';
 
 export let settings: Partial<FrontendSettings>;
 

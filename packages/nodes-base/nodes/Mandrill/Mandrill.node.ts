@@ -1,5 +1,4 @@
-import isEmpty from 'lodash/isEmpty';
-import map from 'lodash/map';
+import { isEmpty, map } from 'es-toolkit/compat';
 import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,

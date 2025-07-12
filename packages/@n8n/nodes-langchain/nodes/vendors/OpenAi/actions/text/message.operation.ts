@@ -1,5 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import _omit from 'lodash/omit';
+import _omit from 'es-toolkit/omit';
 import type {
 	INodeProperties,
 	IExecuteFunctions,

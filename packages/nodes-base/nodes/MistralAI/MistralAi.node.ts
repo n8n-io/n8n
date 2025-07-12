@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import chunk from 'lodash/chunk';
+import { chunk } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

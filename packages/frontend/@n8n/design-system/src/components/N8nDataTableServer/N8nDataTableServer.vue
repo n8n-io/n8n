@@ -39,7 +39,7 @@ import type {
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
 import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
 import N8nPagination from '../N8nPagination';

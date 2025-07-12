@@ -515,7 +515,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
+		const { default: debounce } = await import('es-toolkit/debounce');
 
 		const { watch } = await import('chokidar');
 

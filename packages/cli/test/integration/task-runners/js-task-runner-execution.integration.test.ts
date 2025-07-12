@@ -255,14 +255,14 @@ describe('JS TaskRunner execution on internal mode', () => {
 		it('should not allow importing disallowed external module', async () => {
 			// Act
 			const result = await runTaskWithCode(`
-				const lodash = require("lodash");
-				return [{ obj: lodash.cloneDeep({}) }]
+				const es = require("es-toolkit");
+				return [{ obj: es.cloneDeep({}) }]
 			`);
 
 			expect(result).toEqual({
 				ok: false,
 				error: expect.objectContaining({
-					message: "Cannot find module 'lodash' [line 2]",
+					message: "Cannot find module 'es-toolkit' [line 2]",
 				}),
 			});
 		});

@@ -3,7 +3,7 @@ import WorkflowExtractionNameModal from '@/components/WorkflowExtractionNameModa
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
-import cloneDeep from 'lodash/cloneDeep';
+import { cloneDeep } from 'es-toolkit/compat';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';

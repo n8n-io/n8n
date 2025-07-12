@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
+import { get } from 'es-toolkit/compat';
+import { set } from 'es-toolkit/compat';
+import { unset } from 'es-toolkit/compat';
 
 import type {
 	IDataObject,

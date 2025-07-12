@@ -1,5 +1,4 @@
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
+import { isEmpty, omit } from 'es-toolkit/compat';
 import moment from 'moment-timezone';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {

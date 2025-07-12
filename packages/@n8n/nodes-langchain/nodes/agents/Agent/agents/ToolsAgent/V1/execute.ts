@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import omit from 'lodash/omit';
+import { omit } from 'es-toolkit';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
@@ -112,14 +112,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 			// Omit internal keys before returning the result.
 			const itemResult = {
-				json: omit(
-					response,
+				json: omit(response as Record<string, any>, [
 					'system_message',
 					'formatting_instructions',
 					'input',
 					'chat_history',
 					'agent_scratchpad',
-				),
+				]),
 			};
 
 			returnData.push(itemResult);

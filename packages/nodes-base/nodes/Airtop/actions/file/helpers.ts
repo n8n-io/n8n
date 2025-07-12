@@ -1,4 +1,4 @@
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 

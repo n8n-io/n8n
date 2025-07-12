@@ -31,7 +31,7 @@
     "@n8n/typeorm": "catalog:",
     "class-validator": "0.14.0",
     "flatted": "catalog:",
-    "lodash": "catalog:",
+    "es-toolkit": "catalog:",
     "n8n-core": "workspace:^",
     "n8n-workflow": "workspace:^",
     "nanoid": "catalog:",
@@ -42,7 +42,6 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:",
     "express": "5.1.0"
   }
 }
