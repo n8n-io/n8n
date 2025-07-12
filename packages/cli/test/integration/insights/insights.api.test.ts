@@ -291,8 +291,7 @@ describe('GET /insights/by-workflow', () => {
 			const periodStart = DateTime.utc().startOf('day');
 
 			// Create insights events for each workflow individually to avoid race conditions
-			await workflows.reduce(async (previousPromise, workflow, index) => {
-				await previousPromise;
+			for (const [index, workflow] of workflows.entries()) {
 				const data = testData[index];
 
 				await createCompactedInsightsEvent(workflow, {
@@ -308,7 +307,7 @@ describe('GET /insights/by-workflow', () => {
 					periodUnit: 'day',
 					periodStart,
 				});
-			}, Promise.resolve());
+			}
 
 			const response = await agents.owner
 				.get('/insights/by-workflow')
