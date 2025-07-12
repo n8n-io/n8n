@@ -711,7 +711,7 @@ export async function executeWebhook(
 					const response = result.result;
 					// Apply potential content-type override
 					if (response.contentType) {
-						responseHeaders?.set('content-type', response.contentType);
+						responseHeaders.set('content-type', response.contentType);
 					}
 
 					responseCallback(
@@ -854,11 +854,11 @@ async function parseRequestBody(
 /**
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
-function evaluateResponseHeaders(
-	context: WebhookExecutionContext,
-): WebhookResponseHeaders | undefined {
+function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
+	const headers = new Map<string, string>();
+
 	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
-		return undefined;
+		return headers;
 	}
 
 	const evaluatedHeaders =
@@ -866,10 +866,8 @@ function evaluateResponseHeaders(
 			'responseHeaders',
 		);
 	if (evaluatedHeaders?.entries === undefined) {
-		return undefined;
+		return headers;
 	}
-
-	const headers = new Map();
 
 	for (const entry of evaluatedHeaders.entries) {
 		headers.set(entry.name.toLowerCase(), entry.value);
