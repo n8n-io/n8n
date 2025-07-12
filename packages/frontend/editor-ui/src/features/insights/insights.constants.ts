@@ -2,13 +2,21 @@ import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
+export const INSIGHT_TYPES = {
+	TOTAL: 'total',
+	FAILED: 'failed',
+	FAILURE_RATE: 'failureRate',
+	TIME_SAVED: 'timeSaved',
+	AVERAGE_RUN_TIME: 'averageRunTime',
+} as const;
+
 export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
-	'total',
-	'failed',
-	'failureRate',
-	'timeSaved',
-	'averageRunTime',
-];
+	INSIGHT_TYPES.TOTAL,
+	INSIGHT_TYPES.FAILED,
+	INSIGHT_TYPES.FAILURE_RATE,
+	INSIGHT_TYPES.TIME_SAVED,
+	INSIGHT_TYPES.AVERAGE_RUN_TIME,
+] as const;
 
 export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) => string> = {
 	total: () => '',

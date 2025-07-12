@@ -74,6 +74,7 @@ const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
+	cover?: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -433,6 +434,13 @@ const table = useVueTable({
 						</tr>
 					</thead>
 					<tbody>
+						<template v-if="slots.cover">
+							<tr>
+								<td class="cover" :colspan="table.getVisibleFlatColumns().length">
+									<slot name="cover" />
+								</td>
+							</tr>
+						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
 							<tr v-for="item in itemsPerPage" :key="item">
 								<td
@@ -566,6 +574,14 @@ const table = useVueTable({
 		}
 		&:last-child {
 			padding-right: 16px;
+		}
+
+		&.cover {
+			width: 0;
+			height: 0;
+			padding: 0;
+			border: 0;
+			overflow: visible;
 		}
 	}
 }
