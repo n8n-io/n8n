@@ -138,40 +138,44 @@ export function addAdditionalFields(
 			if (specifyKeyboard === 'json') {
 				// Handle JSON input - expect only the button array
 				const keyboardJson = this.getNodeParameter('keyboardJson', index, '') as string;
-				if (keyboardJson) {
-					try {
-						const buttonArray = JSON.parse(keyboardJson);
-						if (!Array.isArray(buttonArray)) {
-							throw new Error('Keyboard JSON must be an array');
-						}
+				if (!keyboardJson || keyboardJson.trim() === '') {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Keyboard JSON parameter is required when specifyKeyboard is set to "json"',
+						{
+							itemIndex: index,
+						},
+					);
+				}
 
-						// Build the keyboard object based on the markup type
-						const keyboard: IDataObject = {};
-
-						if (replyMarkupOption === 'inlineKeyboard') {
-							keyboard.inline_keyboard = buttonArray;
-						} else if (replyMarkupOption === 'replyKeyboard') {
-							keyboard.keyboard = buttonArray;
-
-							// Add other keyboard options from UI fields
-							const replyKeyboardOptions = this.getNodeParameter(
-								'replyKeyboardOptions',
-								index,
-								{},
-							) as IMarkupReplyKeyboardOptions;
-							Object.assign(keyboard, replyKeyboardOptions);
-						}
-
-						body.reply_markup = keyboard;
-					} catch (error) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Invalid keyboard JSON: ${error.message}`,
-							{
-								itemIndex: index,
-							},
-						);
+				try {
+					const buttonArray = JSON.parse(keyboardJson);
+					if (!Array.isArray(buttonArray)) {
+						throw new Error('Keyboard JSON must be an array');
 					}
+
+					// Build the keyboard object based on the markup type
+					const keyboard: IDataObject = {};
+
+					if (replyMarkupOption === 'inlineKeyboard') {
+						keyboard.inline_keyboard = buttonArray;
+					} else if (replyMarkupOption === 'replyKeyboard') {
+						keyboard.keyboard = buttonArray;
+
+						// Add other keyboard options from UI fields
+						const replyKeyboardOptions = this.getNodeParameter(
+							'replyKeyboardOptions',
+							index,
+							{},
+						) as IMarkupReplyKeyboardOptions;
+						Object.assign(keyboard, replyKeyboardOptions);
+					}
+
+					body.reply_markup = keyboard;
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `Invalid keyboard JSON: ${error.message}`, {
+						itemIndex: index,
+					});
 				}
 			} else {
 				// Handle UI input (existing logic)
