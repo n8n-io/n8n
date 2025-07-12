@@ -7,10 +7,8 @@ import {
 	transformInsightsTimeSaved,
 } from '@/features/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
-import { N8nTooltip } from '@n8n/design-system';
-import N8nDataTableServer, {
-	type TableHeader,
-} from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import { N8nTooltip, N8nDataTableServer } from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
@@ -34,7 +32,6 @@ const headers = ref<Array<TableHeader<Item>>>([
 		title: 'Name',
 		key: 'workflowName',
 		width: 400,
-		disableSort: true,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.total'),
