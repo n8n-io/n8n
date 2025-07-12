@@ -7,14 +7,23 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { mockedStore, type MockedStore, useEmitters, waitAllPromises } from '@/__tests__/utils';
 import { within, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { FrontendModuleSettings, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import type {
+	FrontendModuleSettings,
+	InsightsByTime,
+	InsightsByWorkflow,
+	InsightsSummaryType,
+} from '@n8n/api-types';
 import { INSIGHT_TYPES } from '@/features/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import { vi } from 'vitest';
 
 const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 
-const mockRoute = reactive({
+const mockRoute = reactive<{
+	params: {
+		insightType: InsightsSummaryType;
+	};
+}>({
 	params: { insightType: INSIGHT_TYPES.TOTAL },
 });
 vi.mock('vue-router', () => ({
@@ -340,8 +349,10 @@ describe('InsightsDashboard', () => {
 				throw new Error('Actions menu not found');
 			}
 
+			// Select a range that requires an enterprise plan
 			await userEvent.click(actions.querySelectorAll('li')[3]);
 
+			// Verify the select value is remained the original, default value, as unlicensed options should not change the selection
 			expect((select as HTMLInputElement).value).toBe('Last 7 days');
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();

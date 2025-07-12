@@ -30,7 +30,7 @@ const telemetry = useTelemetry();
 
 type Item = InsightsByWorkflow['data'][number];
 
-const sampleWorkflows: InsightsByWorkflow['data'] = Array.from({ length: 10 }).map((_, i) => ({
+const sampleWorkflows: InsightsByWorkflow['data'] = Array.from({ length: 10 }, (_, i) => ({
 	workflowId: `sample-workflow-${i + 1}`,
 	workflowName: `Sample Workflow ${i + 1}`,
 	total: Math.floor(Math.random() * 2000) + 500,
@@ -49,7 +49,8 @@ const sampleData: InsightsByWorkflow = {
 	count: sampleWorkflows.length,
 };
 
-const rows = computed(() => (props.isDashboardEnabled ? props.data.data : sampleData.data));
+const tableData = computed(() => (props.isDashboardEnabled ? props.data : sampleData));
+const rows = computed(() => tableData.value.data);
 
 const headers = ref<Array<TableHeader<Item>>>([
 	{
@@ -163,13 +164,17 @@ watch(sortBy, (newValue) => {
 			v-model:items-per-page="itemsPerPage"
 			:items="rows"
 			:headers="headers"
-			:items-length="data.count"
+			:items-length="tableData.count"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
-				<router-link :to="getWorkflowLink(item)" class="link" @click="trackWorkflowClick(item)">
+				<router-link
+					:to="getWorkflowLink(item)"
+					:class="$style.link"
+					@click="trackWorkflowClick(item)"
+				>
 					<N8nTooltip :content="item.workflowName" placement="top">
-						<div class="ellipsis">
+						<div :class="$style.ellipsis">
 							{{ item.workflowName }}
 						</div>
 					</N8nTooltip>
