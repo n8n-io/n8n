@@ -21,6 +21,15 @@ export class SlackApi implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		{
+			displayName: 'Signing Secret',
+			name: 'signingSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signing secret from your Slack app settings, used for webhook signature verification',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

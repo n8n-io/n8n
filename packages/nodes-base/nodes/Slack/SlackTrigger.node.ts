@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import {
 	type INodeListSearchItems,
 	type ILoadOptionsFunctions,
@@ -55,6 +56,13 @@ export class SlackTrigger implements INodeType {
 				displayName:
 					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>',
 				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName:
+					"For enhanced security, add your Slack app's signing secret to the credentials. Signature verification will be performed automatically when the signing secret is configured.",
+				name: 'signatureNotice',
 				type: 'notice',
 				default: '',
 			},
@@ -329,6 +337,40 @@ export class SlackTrigger implements INodeType {
 			return {
 				noWebhookResponse: true,
 			};
+		}
+
+		const credentials = await this.getCredentials('slackApi');
+		const signingSecret = credentials.signingSecret as string;
+
+		// Verify signature automatically if signing secret is configured
+		if (signingSecret) {
+			const headerData = this.getHeaderData() as IDataObject;
+			const slackSignature = headerData['x-slack-signature'] as string;
+			const slackTimestamp = headerData['x-slack-request-timestamp'] as string;
+			if (!slackSignature || !slackTimestamp) {
+				return {};
+			}
+
+			// Check timestamp to prevent replay attacks (within 5 minutes)
+			const currentTimeSec = Math.floor(Date.now() / 1000);
+			const requestTimeSec = parseInt(slackTimestamp, 10);
+			if (Math.abs(currentTimeSec - requestTimeSec) > 60 * 5) {
+				return {};
+			}
+
+			const expectedSignature = `v0=${createHmac('sha256', signingSecret)
+				.update(`v0:${slackTimestamp}:${req.rawBody}`)
+				.digest('hex')}`;
+
+			// Use timing-safe comparison to prevent timing attacks
+			const signatureBuffer = Buffer.from(slackSignature);
+			const expectedBuffer = Buffer.from(expectedSignature);
+			if (
+				signatureBuffer.length !== expectedBuffer.length ||
+				!timingSafeEqual(signatureBuffer, expectedBuffer)
+			) {
+				return {};
+			}
 		}
 
 		// Check if the event type is in the filters
