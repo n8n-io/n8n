@@ -557,7 +557,6 @@ export class GraphQL implements INodeType {
 								type: 'connection_init',
 								payload: {},
 							};
-							console.log('Sending connection init message:', initMessage);
 							ws.send(JSON.stringify(initMessage));
 						} else {
 							// For other protocols, send subscription directly
@@ -586,7 +585,6 @@ export class GraphQL implements INodeType {
 								};
 							}
 
-							console.log('Sending subscription message:', subscriptionMessage);
 							ws.send(JSON.stringify(subscriptionMessage));
 						}
 					});
@@ -594,7 +592,6 @@ export class GraphQL implements INodeType {
 					ws.on('message', (data: any) => {
 						try {
 							const message = JSON.parse(data.toString());
-							console.log('WebSocket message received:', message);
 
 							// Handle different GraphQL subscription message types
 							if (message.type === 'data' || message.type === 'next') {
@@ -636,9 +633,6 @@ export class GraphQL implements INodeType {
 							} else if (message.type === 'complete' || message.type === 'done') {
 								ws.close();
 							} else if (message.type === 'connection_ack') {
-								// Connection acknowledged, now send subscription for graphql-transport-ws
-								console.log('WebSocket connection acknowledged');
-
 								if (subprotocol === 'graphql-transport-ws') {
 									const subscriptionMessage = {
 										type: 'subscribe',
@@ -648,15 +642,10 @@ export class GraphQL implements INodeType {
 											variables,
 										},
 									};
-									console.log(
-										'Sending subscription message after connection ack:',
-										subscriptionMessage,
-									);
 									ws.send(JSON.stringify(subscriptionMessage));
 								}
 							} else if (message.type === 'ping' || message.type === 'ka') {
 								// Handle ping/keepalive messages
-								console.log('Received ping/keepalive message');
 								// Send pong response if needed
 								const pongMessage = {
 									type: 'pong',
@@ -665,7 +654,6 @@ export class GraphQL implements INodeType {
 								ws.send(JSON.stringify(pongMessage));
 							} else {
 								// Unknown message type, but still collect it
-								console.log('Unknown message type:', message.type);
 								messages.push(message);
 							}
 						} catch (error) {
@@ -704,42 +692,34 @@ export class GraphQL implements INodeType {
 					await new Promise<void>((resolve: () => void, reject: (error: Error) => void) => {
 						let messageReceived = false;
 
-						ws.on('open', () => {
-							// Connection established, wait for messages
-							console.log('WebSocket connection opened');
-						});
+						ws.on('open', () => {});
 
 						ws.on('message', (data: any) => {
 							try {
 								const message = JSON.parse(data.toString());
-								console.log('Message in Promise handler:', message);
 
 								// If we receive actual data (not just ping), mark as received
 								if (message.type === 'data' || message.type === 'next') {
 									messageReceived = true;
-									console.log('Data message received, resolving...');
 									resolve();
 								}
 							} catch (error) {
-								console.log('Error parsing message in Promise:', error);
+								// Error parsing message
 							}
 						});
 
 						ws.on('close', () => {
-							console.log('WebSocket connection closed');
 							if (!messageReceived) {
 								resolve(); // Resolve even if no data received
 							}
 						});
 
 						ws.on('error', (error: Error) => {
-							console.log('WebSocket error in Promise:', error);
 							reject(error);
 						});
 
 						// Set a timeout to resolve if no data received
 						setTimeout(() => {
-							console.log('Timeout reached, resolving...');
 							resolve();
 						}, subscriptionTimeout * 1000);
 					});
