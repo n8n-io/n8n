@@ -202,7 +202,7 @@ watch(sortBy, (newValue) => {
 			</template>
 			<template v-if="!isDashboardEnabled" #cover>
 				<div :class="$style.blurryCover">
-					<InsightsPaywall data-test-id="insights-dashboard-unlicensed" />
+					<InsightsPaywall />
 				</div>
 			</template>
 		</N8nDataTableServer>

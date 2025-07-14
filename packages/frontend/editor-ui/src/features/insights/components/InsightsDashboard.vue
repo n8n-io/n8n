@@ -187,7 +187,7 @@ onMounted(() => {
 						/>
 					</div>
 				</div>
-				<InsightsPaywall v-else data-test-id="insights-dashboard-unlicensed" />
+				<InsightsPaywall v-else />
 			</div>
 		</div>
 	</div>

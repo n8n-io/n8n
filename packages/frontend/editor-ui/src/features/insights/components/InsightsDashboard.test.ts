@@ -296,7 +296,12 @@ describe('InsightsDashboard', () => {
 			await waitFor(() => {
 				expect(screen.queryByTestId('insights-chart-total')).not.toBeInTheDocument();
 				expect(screen.queryByTestId('insights-table')).not.toBeInTheDocument();
-				expect(screen.getByTestId('insights-dashboard-unlicensed')).toBeInTheDocument();
+				expect(
+					screen.getByRole('heading', {
+						level: 4,
+						name: 'Upgrade to access more detailed insights',
+					}),
+				).toBeInTheDocument();
 			});
 		});
 	});
