@@ -7,20 +7,26 @@ import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import { computed } from 'vue';
+import { createSearchHighlightPlugin } from '@/components/RunDataAi/utils';
 
 const {
 	content,
 	compact = false,
 	renderType,
+	search,
 } = defineProps<{
 	content: ParsedAiContent;
 	compact?: boolean;
+	search?: string;
 	renderType: 'rendered' | 'json';
 }>();
 
 const i18n = useI18n();
 const clipboard = useClipboard();
 const { showMessage } = useToast();
+
+const vueMarkdownPlugins = computed(() => [createSearchHighlightPlugin(search)]);
 
 function isJsonString(text: string) {
 	try {
@@ -39,7 +45,7 @@ const markdownOptions = {
 			} catch {}
 		}
 
-		return ''; // use external default escaping
+		return undefined; // use external default escaping
 	},
 };
 
@@ -108,17 +114,20 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
 					:class="$style.markdown"
 					:options="markdownOptions"
+					:plugins="vueMarkdownPlugins"
 				/>
 				<VueMarkdown
 					v-else-if="parsedContent.type === 'markdown'"
 					:source="parsedContent.data"
 					:class="$style.markdown"
 					:options="markdownOptions"
+					:plugins="vueMarkdownPlugins"
 				/>
-				<p
+				<TextWithHighlights
 					v-else-if="parsedContent.type === 'text'"
 					:class="$style.runText"
-					v-text="parsedContent.data"
+					:content="String(parsedContent.data)"
+					:search="search"
 				/>
 			</template>
 			<!-- We weren't able to parse text or raw switch -->
@@ -131,7 +140,11 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 					icon="files"
 					@click="onCopyToClipboard(raw)"
 				/>
-				<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+				<VueMarkdown
+					:source="jsonToMarkdown(raw as JsonMarkdown)"
+					:class="$style.markdown"
+					:plugins="vueMarkdownPlugins"
+				/>
 			</div>
 		</div>
 	</div>

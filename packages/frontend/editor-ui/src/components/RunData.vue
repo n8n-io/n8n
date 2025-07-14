@@ -311,9 +311,7 @@ const subworkflowExecutionError = computed(() => {
 	} as NodeError;
 });
 
-const hasSubworkflowExecutionError = computed(() =>
-	Boolean(workflowsStore.subWorkflowExecutionError),
-);
+const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
@@ -1455,7 +1453,6 @@ defineExpose({ enterEditMode });
 							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
 							!editMode.enabled)
 					"
-					:class="$style.displayModeSelect"
 					:compact="props.compact"
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
@@ -1467,8 +1464,6 @@ defineExpose({ enterEditMode });
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
-
-				<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 
 				<N8nIconButton
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -1509,6 +1504,8 @@ defineExpose({ enterEditMode });
 					/>
 				</div>
 			</div>
+
+			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
@@ -1776,7 +1773,7 @@ defineExpose({ enterEditMode });
 				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
 				:class="$style.center"
 			>
-				<slot name="no-output-data">xxx</slot>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div
@@ -1886,7 +1883,12 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi
+					render-type="rendered"
+					:compact="compact"
+					:content="parsedAiContent"
+					:search="search"
+				/>
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
@@ -2071,6 +2073,7 @@ defineExpose({ enterEditMode });
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
+		gap: var(--spacing-2xs);
 	}
 
 	> *:first-child {
@@ -2250,6 +2253,15 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+		visibility: hidden;
+
+		:global(.el-input__prefix) {
+			transition-duration: 0ms;
+		}
+	}
+
+	.compact:hover & {
+		visibility: visible;
 	}
 }
 
@@ -2329,18 +2341,6 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
-}
-
-.search,
-.displayModeSelect {
-	.compact:not(:hover) & {
-		opacity: 0;
-		display: none;
-	}
-
-	.compact:hover & {
-		opacity: 1;
-	}
 }
 
 .executingMessage {

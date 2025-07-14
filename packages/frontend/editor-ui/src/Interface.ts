@@ -132,7 +132,6 @@ declare global {
 				disallowReturnToOpener?: boolean;
 			}) => Promise<Window>;
 		};
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
 }

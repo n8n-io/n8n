@@ -66,6 +66,7 @@ import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
+import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
@@ -460,6 +461,7 @@ export const updatedIconSet = {
 	cog: IconLucideCog,
 	contrast: IconLucideContrast,
 	copy: IconLucideCopy,
+	crosshair: IconLucideCrosshair,
 	database: IconLucideDatabase,
 	earth: IconLucideEarth,
 	ellipsis: IconLucideEllipsis,

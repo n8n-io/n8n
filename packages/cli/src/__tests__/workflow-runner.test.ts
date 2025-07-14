@@ -301,6 +301,177 @@ describe('enqueueExecution', () => {
 	});
 });
 
+describe('workflow timeout with startedAt', () => {
+	let mockSetTimeout: jest.SpyInstance;
+	let recordedTimeout: number | undefined = undefined;
+
+	beforeAll(() => {
+		// Mock setTimeout globally to capture the timeout value
+		mockSetTimeout = jest.spyOn(global, 'setTimeout').mockImplementation((_fn, timeout) => {
+			// There can be multiple calls to setTimeout with 60000ms, these happen
+			// when accessing the database, we only capture the first one not equal to 60000ms
+			if (timeout !== 60000) {
+				recordedTimeout = timeout; // Capture the timeout value for assertions
+			}
+			return {} as NodeJS.Timeout;
+		});
+	});
+
+	afterAll(() => {
+		// Restore the original setTimeout after tests
+		mockSetTimeout.mockRestore();
+	});
+
+	it('should calculate timeout based on startedAt date when provided', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+
+		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+			startedAt,
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		// The timeout should be adjusted: 10 seconds - 5 seconds elapsed = ~5 seconds remaining
+		expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
+
+		// Should be approximately 5000ms (5 seconds remaining), allowing for timing differences
+		expect(recordedTimeout).toBeLessThan(6000);
+		expect(recordedTimeout).toBeGreaterThan(4000);
+
+		recordedTimeout = undefined; // Reset for next test
+
+		// Execution should not be stopped immediately
+		expect(mockStopExecution).not.toHaveBeenCalled();
+	});
+
+	it('should stop execution immediately when timeout has already elapsed', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+
+		const startedAt = new Date(Date.now() - 15000); // 15 seconds ago (timeout already elapsed)
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+			startedAt,
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		// The execution should be stopped immediately because the timeout has already elapsed
+		expect(mockStopExecution).toHaveBeenCalledWith('1');
+	});
+
+	it('should use original timeout logic when startedAt is not provided', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+			// No startedAt provided
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		// The execution should not be stopped immediately (original timeout logic)
+		expect(mockStopExecution).not.toHaveBeenCalled();
+	});
+});
+
 describe('streaming functionality', () => {
 	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
 		// ARRANGE

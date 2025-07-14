@@ -75,7 +75,7 @@ exports[`InputPanel > should render 1`] = `
         <!---->
         <!--v-if-->
         <div
-          class="n8n-radio-buttons radioGroup displayModeSelect"
+          class="n8n-radio-buttons radioGroup"
           data-test-id="ndv-run-data-display-mode"
           data-v-2e5cd75c=""
           role="radiogroup"
@@ -130,7 +130,6 @@ exports[`InputPanel > should render 1`] = `
         </div>
         <!--v-if-->
         <!--v-if-->
-        <!--v-if-->
         <div
           class="editModeActions"
           data-v-2e5cd75c=""
@@ -158,6 +157,7 @@ exports[`InputPanel > should render 1`] = `
           </button>
         </div>
       </div>
+      <!--v-if-->
     </div>
     <!--v-if-->
     <!--v-if-->
