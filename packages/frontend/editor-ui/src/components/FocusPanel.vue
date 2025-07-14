@@ -204,11 +204,13 @@ function optionSelected(command: string) {
 	if (!resolvedParameter.value) return;
 
 	switch (command) {
-		case 'resetValue':
-			return (
-				typeof resolvedParameter.value.parameter.default === 'string' &&
-				valueChanged(resolvedParameter.value.parameter.default)
-			);
+		case 'resetValue': {
+			if (typeof resolvedParameter.value.parameter.default === 'string') {
+				valueChanged(resolvedParameter.value.parameter.default);
+			}
+			void setFocus();
+			break;
+		}
 
 		case 'addExpression': {
 			const newValue = formatAsExpression(
@@ -239,7 +241,7 @@ function optionSelected(command: string) {
 
 		case 'formatHtml':
 			htmlEditorEventBus.emit('format-html');
-			return;
+			break;
 	}
 }
 
@@ -252,9 +254,8 @@ function focusWithDelay() {
 	}, 50);
 }
 
-watch(
-	() => focusPanelStore.lastFocusTimestamp,
-	() => focusWithDelay(),
+watch([() => focusPanelStore.lastFocusTimestamp, () => expressionModeEnabled.value], () =>
+	focusWithDelay(),
 );
 </script>
 
