@@ -9,31 +9,153 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import { type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
-import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
 import { findStartNodes, isDirty } from '../find-start-nodes';
+import { createNodeData, toITaskData } from './helpers';
 
 describe('isDirty', () => {
-	test("if the node has pinned data it's not dirty", () => {
-		const node = createNodeData({ name: 'Basic Node' });
+	it("if the node has pinned data it's not dirty", () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
 
 		const pinData: IPinData = {
-			[node.name]: [{ json: { value: 1 } }],
+			test: [{ json: { test: 'data' } }],
 		};
 
-		expect(isDirty(node, undefined, pinData)).toBe(false);
+		expect(isDirty(node, {}, pinData)).toBe(false);
 	});
 
-	test("if the node has run data it's not dirty", () => {
-		const node = createNodeData({ name: 'Basic Node' });
-
-		const runData: IRunData = {
-			[node.name]: [toITaskData([{ data: { value: 1 } }])],
+	it("if the node has run data it's not dirty", () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
 		};
 
-		expect(isDirty(node, runData)).toBe(false);
+		const runData: IRunData = {
+			test: [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: { main: [[{ json: { test: 'data' } }]] },
+				},
+			],
+		};
+
+		expect(isDirty(node, runData, {})).toBe(false);
+	});
+
+	it('if node parameters have changed since last execution, it is dirty', () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { newParam: 'newValue' },
+		};
+
+		const runData: IRunData = {
+			test: [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: { main: [[{ json: { test: 'data' } }]] },
+					metadata: {
+						nodeParameters: { oldParam: 'oldValue' },
+					},
+				},
+			],
+		};
+
+		expect(isDirty(node, runData, {})).toBe(true);
+	});
+
+	it('if node parameters have not changed since last execution, it is not dirty', () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { param: 'value' },
+		};
+
+		const runData: IRunData = {
+			test: [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: { main: [[{ json: { test: 'data' } }]] },
+					metadata: {
+						nodeParameters: { param: 'value' },
+					},
+				},
+			],
+		};
+
+		expect(isDirty(node, runData, {})).toBe(false);
+	});
+
+	it('if node has an error from previous execution, it is dirty', () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const runData: IRunData = {
+			test: [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: { main: [[{ json: { test: 'data' } }]] },
+					error: {
+						name: 'NodeOperationError',
+						message: 'Test error',
+						description: 'Test error description',
+					},
+				},
+			],
+		};
+
+		expect(isDirty(node, runData, {})).toBe(true);
+	});
+
+	it('if node is disabled, it is dirty', () => {
+		const node: INode = {
+			id: '1',
+			name: 'test',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			disabled: true,
+		};
+
+		expect(isDirty(node, {}, {})).toBe(true);
 	});
 });
 

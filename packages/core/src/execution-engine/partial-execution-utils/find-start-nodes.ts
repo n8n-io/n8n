@@ -1,20 +1,37 @@
-import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type IPinData,
+	type IRunData,
+	type ITaskMetadata,
+} from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data';
 
 /**
  * A node is dirty if either of the following is true:
- *   - it's properties or options changed since last execution (not implemented yet)
+ *   - it's properties or options changed since last execution
  *   - one of it's parents is disabled
- *   - it has an error (not implemented yet)
+ *   - it has an error from previous execution
  *   - it neither has run data nor pinned data
  */
 export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData = {}): boolean {
 	// Check if properties or options changed since last execution
-	// This is a simplified implementation - in a full implementation, you would
-	// compare the current node parameters with the last execution's parameters
-	const propertiesOrOptionsChanged = false; // TODO: implement parameter comparison logic
+	// Compare the current node parameters with the last execution's parameters
+	const nodeRunData = runData?.[node.name];
+	const lastExecutionTaskData = nodeRunData?.[nodeRunData.length - 1];
+
+	let propertiesOrOptionsChanged = false;
+
+	// If we have previous execution data, compare parameters
+	if (lastExecutionTaskData?.metadata?.nodeParameters) {
+		const previousParameters = lastExecutionTaskData.metadata.nodeParameters;
+		const currentParameters = node.parameters;
+
+		// Deep comparison of parameters
+		propertiesOrOptionsChanged = !isEqual(previousParameters, currentParameters);
+	}
 
 	if (propertiesOrOptionsChanged) {
 		return true;
@@ -30,7 +47,6 @@ export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData =
 	}
 
 	// Check if the node has an error from previous execution
-	const nodeRunData = runData?.[node.name];
 	const hasAnError = nodeRunData?.some((taskData) => taskData.error !== undefined) ?? false;
 
 	if (hasAnError) {
@@ -50,6 +66,50 @@ export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData =
 	}
 
 	return true;
+}
+
+/**
+ * Deep equality check for objects
+ */
+function isEqual(a: any, b: any): boolean {
+	if (a === b) return true;
+
+	if (a == null || b == null) return a === b;
+
+	if (typeof a !== typeof b) return false;
+
+	if (typeof a !== 'object') return a === b;
+
+	if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+	if (Array.isArray(a)) {
+		if (a.length !== b.length) return false;
+		for (let i = 0; i < a.length; i++) {
+			if (!isEqual(a[i], b[i])) return false;
+		}
+		return true;
+	}
+
+	const keysA = Object.keys(a);
+	const keysB = Object.keys(b);
+
+	if (keysA.length !== keysB.length) return false;
+
+	for (const key of keysA) {
+		if (!keysB.includes(key)) return false;
+		if (!isEqual(a[key], b[key])) return false;
+	}
+
+	return true;
+}
+
+/**
+ * Creates metadata with node parameters for dirty node detection
+ */
+export function createNodeParametersMetadata(node: INode): ITaskMetadata {
+	return {
+		nodeParameters: node.parameters,
+	};
 }
 
 function findStartNodesRecursive(

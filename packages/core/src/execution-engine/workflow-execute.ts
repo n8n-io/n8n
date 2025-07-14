@@ -75,6 +75,7 @@ import {
 	filterDisabledNodes,
 	rewireGraph,
 	getNextExecutionIndex,
+	createNodeParametersMetadata,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -1512,6 +1513,15 @@ export class WorkflowExecute {
 							'Stopped execution because it seems to be in an endless loop',
 						);
 					}
+
+					// Add node parameters to metadata for dirty node detection
+					if (!executionData.metadata) {
+						executionData.metadata = {};
+					}
+					executionData.metadata = {
+						...executionData.metadata,
+						...createNodeParametersMetadata(executionNode),
+					};
 
 					if (
 						this.runExecutionData.startData!.runNodeFilter !== undefined &&

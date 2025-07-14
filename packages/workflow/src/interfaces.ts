@@ -2222,6 +2222,7 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	nodeParameters?: INodeParameters;
 }
 
 /** The data that gets returned when a node execution starts */
