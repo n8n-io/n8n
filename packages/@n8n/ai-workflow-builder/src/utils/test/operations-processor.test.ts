@@ -1,9 +1,9 @@
 import type { INode, IConnections, IRunExecutionData } from 'n8n-workflow';
 
-import type { SimpleWorkflow, WorkflowOperation } from '../../src/types/workflow';
-import { applyOperations, processOperations } from '../../src/utils/operations-processor';
-import type { WorkflowState } from '../../src/workflow-state';
-import { createNode, createWorkflow } from '../test-utils';
+import { createNode, createWorkflow } from '../../../test/test-utils';
+import type { SimpleWorkflow, WorkflowOperation } from '../../types/workflow';
+import type { WorkflowState } from '../../workflow-state';
+import { applyOperations, processOperations } from '../operations-processor';
 
 describe('operations-processor', () => {
 	describe('applyOperations', () => {

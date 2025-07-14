@@ -5,12 +5,8 @@ import type {
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
-} from '../../src/types/streaming';
-import {
-	processStreamChunk,
-	createStreamProcessor,
-	formatMessages,
-} from '../../src/utils/stream-processor';
+} from '../../types/streaming';
+import { processStreamChunk, createStreamProcessor, formatMessages } from '../stream-processor';
 
 describe('stream-processor', () => {
 	describe('processStreamChunk', () => {

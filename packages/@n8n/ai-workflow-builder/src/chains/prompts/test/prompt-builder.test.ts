@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { ParameterUpdatePromptBuilder } from './prompt-builder';
+import { ParameterUpdatePromptBuilder } from '../prompt-builder';
 
 // Mock node type definition
 const mockSetNodeDefinition: INodeTypeDescription = {

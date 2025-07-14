@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { createNodeDetailsTool } from '../../src/tools/node-details.tool';
+import { createNodeDetailsTool } from '../node-details.tool';
 import {
 	nodeTypes,
 	parseToolResult,
@@ -15,7 +15,7 @@ import {
 	expectXMLTag,
 	type ParsedToolContent,
 	createNodeType,
-} from '../test-utils';
+} from '../../../test/test-utils';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({

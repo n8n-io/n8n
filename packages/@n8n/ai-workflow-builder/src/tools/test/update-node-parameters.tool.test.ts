@@ -2,7 +2,6 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import { createUpdateNodeParametersTool } from '../../src/tools/update-node-parameters.tool';
 import {
 	createNode,
 	createWorkflow,
@@ -19,7 +18,8 @@ import {
 	buildUpdateNodeInput,
 	mockParameterUpdaterChain,
 	type ParsedToolContent,
-} from '../test-utils';
+} from '../../../test/test-utils';
+import { createUpdateNodeParametersTool } from '../update-node-parameters.tool';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({
@@ -30,7 +30,7 @@ jest.mock('@langchain/langgraph', () => ({
 }));
 
 // Mock the parameter updater chain
-jest.mock('../../src/chains/parameter-updater', () => ({
+jest.mock('../../../src/chains/parameter-updater', () => ({
 	createParameterUpdaterChain: jest.fn(),
 }));
 
@@ -54,7 +54,7 @@ describe('UpdateNodeParametersTool', () => {
 		// Setup mock parameter updater chain
 		mockChain = mockParameterUpdaterChain();
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-		const parameterUpdaterModule = require('../../src/chains/parameter-updater');
+		const parameterUpdaterModule = require('../../../src/chains/parameter-updater');
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		parameterUpdaterModule.createParameterUpdaterChain.mockReturnValue(mockChain);
 
@@ -581,7 +581,7 @@ describe('UpdateNodeParametersTool', () => {
 
 			// Verify createParameterUpdaterChain was called with correct config
 			// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-			const paramUpdaterModule = require('../../src/chains/parameter-updater');
+			const paramUpdaterModule = require('../../../src/chains/parameter-updater');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(paramUpdaterModule.createParameterUpdaterChain).toHaveBeenCalledWith(
 				mockLLM,

@@ -4,8 +4,8 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
-import { NodeSearchEngine, SCORE_WEIGHTS } from '../../../src/tools/engines/node-search-engine';
-import { createNodeType } from '../../test-utils';
+import { createNodeType } from '../../../../test/test-utils';
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../../engines/node-search-engine';
 
 describe('NodeSearchEngine', () => {
 	let searchEngine: NodeSearchEngine;

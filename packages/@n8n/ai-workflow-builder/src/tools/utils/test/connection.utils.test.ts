@@ -10,7 +10,7 @@ import {
 	getNodeConnections,
 	formatConnectionMessage,
 	inferConnectionType,
-} from '../../../src/tools/utils/connection.utils';
+} from '../connection.utils';
 
 describe('connection.utils', () => {
 	// Mock node types

@@ -4,13 +4,11 @@ import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Command as CommandType } from '@langchain/langgraph';
 import type { IRunExecutionData } from 'n8n-workflow';
 
-import type { ToolExecutorOptions } from '../../src/types/config';
-import type { WorkflowOperation } from '../../src/types/workflow';
-import { executeToolsInParallel } from '../../src/utils/tool-executor';
-import type { WorkflowState } from '../../src/workflow-state';
-import { createWorkflow, createNode } from '../test-utils';
-
-// Import Command type from the source
+import { createWorkflow, createNode } from '../../../test/test-utils';
+import type { ToolExecutorOptions } from '../../types/config';
+import type { WorkflowOperation } from '../../types/workflow';
+import type { WorkflowState } from '../../workflow-state';
+import { executeToolsInParallel } from '../tool-executor';
 
 // Type for our mocked Command
 type MockedCommand = CommandType & { _isCommand: boolean };

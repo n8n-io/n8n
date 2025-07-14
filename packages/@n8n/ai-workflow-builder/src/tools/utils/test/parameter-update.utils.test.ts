@@ -9,7 +9,7 @@ import {
 	updateNodeWithParameters,
 	formatChangesForPrompt,
 	fixExpressionPrefixes,
-} from '../../src/tools/utils/parameter-update.utils';
+} from '../parameter-update.utils';
 
 describe('parameter-update.utils', () => {
 	// Mock node for testing

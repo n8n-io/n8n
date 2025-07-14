@@ -1,7 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription, INode } from 'n8n-workflow';
 
-import { createAddNodeTool } from '../../src/tools/add-node.tool';
 import {
 	createNode,
 	createWorkflow,
@@ -18,7 +17,8 @@ import {
 	buildAddNodeInput,
 	REASONING,
 	type ParsedToolContent,
-} from '../test-utils';
+} from '../../../test/test-utils';
+import { createAddNodeTool } from '../add-node.tool';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({

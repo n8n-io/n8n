@@ -1,6 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 
-import { createRemoveNodeTool } from '../../src/tools/remove-node.tool';
+import { createRemoveNodeTool } from '../remove-node.tool';
 import {
 	createNode,
 	createWorkflow,
@@ -15,7 +15,7 @@ import {
 	expectNodeRemoved,
 	createConnection,
 	type ParsedToolContent,
-} from '../test-utils';
+} from '../../../test/test-utils';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({
