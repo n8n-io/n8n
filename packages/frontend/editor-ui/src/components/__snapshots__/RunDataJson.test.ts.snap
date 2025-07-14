@@ -106,12 +106,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.list }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "list"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -165,12 +164,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.list[0] }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         1
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -215,12 +213,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.list[1] }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         2
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -265,12 +262,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.list[2] }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         3
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -339,12 +335,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.record }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "record"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -396,12 +391,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.record.name }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "name"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -423,12 +417,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.record.name }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         "Joe"
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -497,12 +490,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.myNumber }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "myNumber"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -524,12 +516,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.myNumber }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         123
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -569,12 +560,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.myStringNumber }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "myStringNumber"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -596,12 +586,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.myStringNumber }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         "456"
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -641,12 +630,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.myStringText }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "myStringText"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -668,12 +656,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.myStringText }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         "abc"
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -713,12 +700,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.nil }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "nil"
                     </span>
-                    
                   </span>
                   
                   <span
@@ -740,12 +726,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-target="mappable"
                       data-value="{{ $('Set').item.json.nil }}"
                     >
-                      
-                      <span>
-                        <!--v-if-->
+                      <span
+                        style="white-space: pre-wrap;"
+                      >
                         null
                       </span>
-                      
                     </span>
                     
                   </span>
@@ -785,12 +770,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-target="mappable"
                     data-value="{{ $('Set').item.json.d }}"
                   >
-                    
-                    <span>
-                      <!--v-if-->
+                    <span
+                      style="white-space: pre-wrap;"
+                    >
                       "d"
                     </span>
-                    
                   </span>
                   
                   <span

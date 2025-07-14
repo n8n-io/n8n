@@ -22,7 +22,7 @@ describe('TextWithHighlights', () => {
 		});
 
 		expect(wrapper.html()).toEqual(
-			'<span class="content"><span><!--v-if-->Test content</span></span>',
+			'<span class="content"><span style="white-space: pre-wrap;">Test content</span></span>',
 		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
@@ -113,8 +113,6 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toContain(
-			'<span class="content"><span><!--v-if-->Line 1</span><span><span class="newLine">\\n</span> Line 2</span><span><span class="newLine">\\n</span>Line 3</span></span>',
-		);
+		expect(wrapper.text()).toBe('Line 1\n Line 2\nLine 3');
 	});
 });

@@ -166,12 +166,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 account
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -224,12 +223,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 id
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -238,12 +236,9 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
-              
-            </span>
-            
+            <span
+              style="white-space: pre-wrap;"
+            />
           </span>
         </div>
         
@@ -511,12 +506,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 empty
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -579,12 +573,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 emptyArray
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -647,12 +640,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 nested
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -715,12 +707,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 nested[0]
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -783,12 +774,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 empty
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -851,12 +841,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 emptyArray
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -976,12 +965,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 name
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -990,12 +978,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               John
             </span>
-            
           </span>
         </div>
         
@@ -1037,12 +1024,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 age
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1051,12 +1037,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               22
             </span>
-            
           </span>
         </div>
         
@@ -1108,12 +1093,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 hobbies
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1164,12 +1148,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 hobbies[0]
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1178,12 +1161,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               surfing
             </span>
-            
           </span>
         </div>
         
@@ -1225,12 +1207,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 hobbies[1]
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1239,12 +1220,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               traveling
             </span>
-            
           </span>
         </div>
         
@@ -1400,12 +1380,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 hello world
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1468,12 +1447,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 hello world[0]
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1536,12 +1514,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 test
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1594,12 +1571,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 more to think about
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1608,12 +1584,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               1
             </span>
-            
           </span>
         </div>
         
@@ -1657,12 +1632,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 test.how
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1671,12 +1645,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               ignore
             </span>
-            
           </span>
         </div>
         
@@ -1955,12 +1928,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 $now
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -1969,12 +1941,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               2025-01-01T00:00:00.000+00:00
             </span>
-            
           </span>
         </div>
         
@@ -2016,12 +1987,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 $today
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2030,12 +2000,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               2025-01-01T00:00:00.000+00:00
             </span>
-            
           </span>
         </div>
         
@@ -2077,12 +2046,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 $vars
               </span>
-              
             </span>
           </div>
           
@@ -2153,12 +2121,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 $execution
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2209,12 +2176,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 id
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2223,12 +2189,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               [filled at execution time]
             </span>
-            
           </span>
         </div>
         
@@ -2270,12 +2235,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 mode
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2284,12 +2248,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               test
             </span>
-            
           </span>
         </div>
         
@@ -2331,12 +2294,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 resumeUrl
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2345,12 +2307,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               The URL for resuming a 'Wait' node
             </span>
-            
           </span>
         </div>
         
@@ -2402,12 +2363,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 $workflow
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2458,12 +2418,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 id
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2472,12 +2431,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               123
             </span>
-            
           </span>
         </div>
         
@@ -2519,12 +2477,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 name
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2533,12 +2490,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               Test Workflow
             </span>
-            
           </span>
         </div>
         
@@ -2580,12 +2536,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="content title"
               data-v-0f5e7239=""
             >
-              
-              <span>
-                <!--v-if-->
+              <span
+                style="white-space: pre-wrap;"
+              >
                 active
               </span>
-              
             </span>
           </div>
           <!--v-if-->
@@ -2594,12 +2549,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
-            
-            <span>
-              <!--v-if-->
+            <span
+              style="white-space: pre-wrap;"
+            >
               true
             </span>
-            
           </span>
         </div>
         
