@@ -1,8 +1,12 @@
+import type { ToolRunnableConfig } from '@langchain/core/tools';
+import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeTypeDescription, INodeParameters, IConnection } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import type { ProgressReporter } from '../src/types/tools';
+import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
 // Mock progress reporter with strong typing
@@ -181,3 +185,171 @@ export const expectConnectionToExist = (
 		expect.arrayContaining([expect.objectContaining({ node: toId })]),
 	);
 };
+
+// ========== LangGraph Testing Utilities ==========
+
+// Types for mocked Command results
+export type MockedCommandResult = { content: string };
+
+// Common parsed content structure for tool results
+export interface ParsedToolContent {
+	update: {
+		messages: Array<{ kwargs: { content: string } }>;
+		workflowOperations?: Array<{
+			type: string;
+			nodes?: INode[];
+			[key: string]: unknown;
+		}>;
+	};
+}
+
+// Setup LangGraph mocks
+export const setupLangGraphMocks = () => {
+	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
+		typeof getCurrentTaskInput
+	>;
+
+	jest.mock('@langchain/langgraph', () => ({
+		getCurrentTaskInput: jest.fn(),
+		Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
+			content: JSON.stringify(params),
+		})),
+	}));
+
+	return { mockGetCurrentTaskInput };
+};
+
+// Parse tool result with double-wrapped content handling
+export const parseToolResult = <T = ParsedToolContent>(result: unknown): T => {
+	const parsed = jsonParse<{ content?: string }>((result as MockedCommandResult).content);
+	return parsed.content ? jsonParse<T>(parsed.content) : (parsed as T);
+};
+
+// ========== Progress Message Utilities ==========
+
+// Extract progress messages from mockWriter
+export const extractProgressMessages = (
+	mockWriter: jest.Mock,
+): Array<ToolProgressMessage<string>> => {
+	const progressCalls: Array<ToolProgressMessage<string>> = [];
+
+	mockWriter.mock.calls.forEach((call) => {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const [arg] = call;
+		progressCalls.push(arg as ToolProgressMessage<string>);
+	});
+	return progressCalls;
+};
+
+// Find specific progress message by type
+export const findProgressMessage = (
+	messages: Array<ToolProgressMessage<string>>,
+	status: 'running' | 'completed' | 'error',
+	updateType?: string,
+): ToolProgressMessage<string> | undefined => {
+	return messages.find(
+		(msg) => msg.status === status && (!updateType || msg.updates[0]?.type === updateType),
+	);
+};
+
+// ========== Tool Config Helpers ==========
+
+// Create basic tool config
+export const createToolConfig = (
+	toolName: string,
+	callId: string = 'test-call',
+): ToolRunnableConfig => ({
+	toolCall: { id: callId, name: toolName, args: {} },
+});
+
+// Create tool config with writer for progress tracking
+export const createToolConfigWithWriter = (
+	toolName: string,
+	callId: string = 'test-call',
+): ToolRunnableConfig & LangGraphRunnableConfig & { writer: jest.Mock } => {
+	const mockWriter = jest.fn();
+	return {
+		toolCall: { id: callId, name: toolName, args: {} },
+		writer: mockWriter,
+	};
+};
+
+// ========== Workflow State Helpers ==========
+
+// Setup workflow state with mockGetCurrentTaskInput
+export const setupWorkflowState = (
+	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	workflow: SimpleWorkflow = createWorkflow([]),
+) => {
+	mockGetCurrentTaskInput.mockReturnValue({
+		workflowJSON: workflow,
+	});
+};
+
+// ========== Common Tool Assertions ==========
+
+// Expect tool success message
+export const expectToolSuccess = (
+	content: ParsedToolContent,
+	expectedMessage: string | RegExp,
+): void => {
+	const message = content.update.messages[0]?.kwargs.content;
+	expect(message).toBeDefined();
+	if (typeof expectedMessage === 'string') {
+		expect(message).toContain(expectedMessage);
+	} else {
+		expect(message).toMatch(expectedMessage);
+	}
+};
+
+// Expect tool error message
+export const expectToolError = (content: ParsedToolContent, expectedError: string): void => {
+	expect(content.update.messages[0]?.kwargs.content).toBe(expectedError);
+};
+
+// Expect workflow operation of specific type
+export const expectWorkflowOperation = (
+	content: ParsedToolContent,
+	operationType: string,
+	matcher?: Record<string, unknown>,
+): void => {
+	const operation = content.update.workflowOperations?.[0];
+	expect(operation).toBeDefined();
+	expect(operation?.type).toBe(operationType);
+	if (matcher) {
+		expect(operation).toMatchObject(matcher);
+	}
+};
+
+// Expect node was added
+export const expectNodeAdded = (content: ParsedToolContent, expectedNode: Partial<INode>): void => {
+	expectWorkflowOperation(content, 'addNodes');
+	const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
+	expect(addedNode).toBeDefined();
+	expect(addedNode).toMatchObject(expectedNode);
+};
+
+// ========== Test Data Builders ==========
+
+// Build add node input
+export const buildAddNodeInput = (overrides: {
+	nodeType: string;
+	name?: string;
+	connectionParametersReasoning?: string;
+	connectionParameters?: Record<string, unknown>;
+}) => ({
+	nodeType: overrides.nodeType,
+	name: overrides.name ?? 'Test Node',
+	connectionParametersReasoning:
+		overrides.connectionParametersReasoning ??
+		'Standard node with static inputs/outputs, no connection parameters needed',
+	connectionParameters: overrides.connectionParameters ?? {},
+});
+
+// Common reasoning strings
+export const REASONING = {
+	STATIC_NODE: 'Node has static inputs/outputs, no connection parameters needed',
+	DYNAMIC_AI_NODE: 'AI node has dynamic inputs, setting connection parameters',
+	TRIGGER_NODE: 'Trigger node, no connection parameters needed',
+	WEBHOOK_NODE: 'Webhook is a trigger node, no connection parameters needed',
+} as const;
