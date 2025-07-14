@@ -563,9 +563,8 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			// Verify chain was called with correct context
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 			expect(mockChain.invoke).toHaveBeenCalledWith(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				expect.objectContaining({
 					user_workflow_prompt: 'Test workflow prompt',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -586,7 +585,7 @@ describe('UpdateNodeParametersTool', () => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(paramUpdaterModule.createParameterUpdaterChain).toHaveBeenCalledWith(
 				mockLLM,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				expect.objectContaining({
 					nodeType: 'n8n-nodes-base.httpRequest',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
