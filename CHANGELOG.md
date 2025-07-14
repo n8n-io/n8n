@@ -1,3 +1,17 @@
+## [1.102.3](https://github.com/n8n-io/n8n/compare/n8n@1.102.2...n8n@1.102.3) (2025-07-14)
+
+
+### Bug Fixes
+
+* Pick docker-build-push.yml from master ([da3bc61](https://github.com/n8n-io/n8n/commit/da3bc61de9b3fcb894fb7a7eb0ecc6e226dd05df))
+
+
+### Features
+
+* **editor:** Add new ways to discover templates ([#17183](https://github.com/n8n-io/n8n/issues/17183)) ([6069a88](https://github.com/n8n-io/n8n/commit/6069a88201330b3a81121bf63784e0ad06bb1dd4))
+
+
+
 ## [1.102.2](https://github.com/n8n-io/n8n/compare/n8n@1.102.1...n8n@1.102.2) (2025-07-11)
 
 
