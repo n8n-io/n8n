@@ -72,7 +72,7 @@ const isDisabled = computed(() => {
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
-			'',
+			resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
 			'disabledOptions',
 		)
 	);
@@ -85,7 +85,7 @@ const isDisplayed = computed(() => {
 		resolvedParameter.value.node.parameters,
 		resolvedParameter.value.node,
 		resolvedParameter.value.parameter,
-		'',
+		resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
 		'displayOptions',
 	);
 });
