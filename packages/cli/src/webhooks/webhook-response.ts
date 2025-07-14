@@ -15,8 +15,8 @@ export type WebhookNoResponse = {
 /**
  * Result that indicates that a non-stream response needs to be sent.
  */
-export type WebhookNonStreamResponse = {
-	[WebhookResponseTag]: 'nonstream';
+export type WebhookStaticResponse = {
+	[WebhookResponseTag]: 'static';
 	body: unknown;
 	headers: WebhookResponseHeaders | undefined;
 	code: number | undefined;
@@ -32,7 +32,7 @@ export type WebhookResponseStream = {
 	headers: WebhookResponseHeaders | undefined;
 };
 
-export type WebhookResponse = WebhookNoResponse | WebhookNonStreamResponse | WebhookResponseStream;
+export type WebhookResponse = WebhookNoResponse | WebhookStaticResponse | WebhookResponseStream;
 
 export const isWebhookResponse = (response: unknown): response is WebhookResponse => {
 	return typeof response === 'object' && response !== null && WebhookResponseTag in response;
@@ -42,10 +42,8 @@ export const isWebhookNoResponse = (response: unknown): response is WebhookNoRes
 	return isWebhookResponse(response) && response[WebhookResponseTag] === 'noResponse';
 };
 
-export const isWebhookNonStreamResponse = (
-	response: unknown,
-): response is WebhookNonStreamResponse => {
-	return isWebhookResponse(response) && response[WebhookResponseTag] === 'nonstream';
+export const isWebhookStaticResponse = (response: unknown): response is WebhookStaticResponse => {
+	return isWebhookResponse(response) && response[WebhookResponseTag] === 'static';
 };
 
 export const isWebhookStreamResponse = (response: unknown): response is WebhookResponseStream => {
@@ -58,13 +56,13 @@ export const createNoResponse = (): WebhookNoResponse => {
 	};
 };
 
-export const createNonStreamResponse = (
+export const createStaticResponse = (
 	body: unknown,
 	code: number | undefined,
 	headers: WebhookResponseHeaders | undefined,
-): WebhookNonStreamResponse => {
+): WebhookStaticResponse => {
 	return {
-		[WebhookResponseTag]: 'nonstream',
+		[WebhookResponseTag]: 'static',
 		body,
 		code,
 		headers,

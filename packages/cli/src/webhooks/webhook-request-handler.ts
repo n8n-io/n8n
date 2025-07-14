@@ -9,13 +9,13 @@ import { WebhookService } from './webhook.service';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
 import type {
-	WebhookNonStreamResponse,
+	WebhookStaticResponse,
 	WebhookResponse,
 	WebhookResponseStream,
 } from '@/webhooks/webhook-response';
 import {
 	isWebhookNoResponse,
-	isWebhookNonStreamResponse,
+	isWebhookStaticResponse,
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
@@ -104,8 +104,8 @@ class WebhookRequestHandler {
 			return;
 		}
 
-		if (isWebhookNonStreamResponse(webhookResponse)) {
-			this.sendNonStreamResponse(res, webhookResponse);
+		if (isWebhookStaticResponse(webhookResponse)) {
+			this.sendStaticResponse(res, webhookResponse);
 			return;
 		}
 
@@ -126,7 +126,7 @@ class WebhookRequestHandler {
 		process.nextTick(() => res.end());
 	}
 
-	private sendNonStreamResponse(res: express.Response, webhookResponse: WebhookNonStreamResponse) {
+	private sendStaticResponse(res: express.Response, webhookResponse: WebhookStaticResponse) {
 		const { body, code, headers } = webhookResponse;
 
 		this.setResponseStatus(res, code);

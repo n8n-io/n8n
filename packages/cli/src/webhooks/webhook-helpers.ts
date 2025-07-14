@@ -64,7 +64,7 @@ import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import type { WebhookResponse } from '@/webhooks/webhook-response';
-import { createNonStreamResponse, createStreamResponse } from '@/webhooks/webhook-response';
+import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -717,7 +717,7 @@ export async function executeWebhook(
 					responseCallback(
 						null,
 						response.type === 'static'
-							? createNonStreamResponse(response.body, responseCode, responseHeaders)
+							? createStaticResponse(response.body, responseCode, responseHeaders)
 							: createStreamResponse(response.stream, responseCode, responseHeaders),
 					);
 					didSendResponse = true;
