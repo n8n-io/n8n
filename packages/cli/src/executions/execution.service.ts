@@ -1,16 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
-	User,
 	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	User,
 } from '@n8n/db';
 import {
+	AnnotationTagMappingRepository,
 	ExecutionAnnotationRepository,
 	ExecutionRepository,
-	AnnotationTagMappingRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,8 +21,8 @@ import type {
 	INode,
 	IRunExecutionData,
 	IWorkflowBase,
-	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	ExecutionStatusList,
@@ -429,12 +429,21 @@ export class ExecutionService {
 		if (!execution) {
 			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
 				executionId,
+				accessibleWorkflowCount: sharedWorkflowIds.length,
 			});
 
+			// Use consistent error message to prevent execution ID enumeration
 			throw new MissingExecutionStopError(executionId);
 		}
 
 		this.assertStoppable(execution);
+
+		// Log successful stop operation for security audit
+		this.logger.info(`Execution "${executionId}" stopped successfully`, {
+			executionId,
+			workflowId: execution.workflowId,
+			status: execution.status,
+		});
 
 		const { mode, startedAt, stoppedAt, finished, status } =
 			config.getEnv('executions.mode') === 'regular'
