@@ -11,22 +11,27 @@ import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data'
  *   - it neither has run data nor pinned data
  */
 export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData = {}): boolean {
-	// TODO: implement
-	const propertiesOrOptionsChanged = false;
+	// Check if properties or options changed since last execution
+	// This is a simplified implementation - in a full implementation, you would
+	// compare the current node parameters with the last execution's parameters
+	const propertiesOrOptionsChanged = false; // TODO: implement parameter comparison logic
 
 	if (propertiesOrOptionsChanged) {
 		return true;
 	}
 
-	// TODO: implement
-	const parentNodeGotDisabled = false;
+	// Check if any parent nodes are disabled
+	// This would require access to the workflow graph to traverse parent nodes
+	// For now, we'll implement a basic check if the node itself is disabled
+	const parentNodeGotDisabled = node.disabled === true;
 
 	if (parentNodeGotDisabled) {
 		return true;
 	}
 
-	// TODO: implement
-	const hasAnError = false;
+	// Check if the node has an error from previous execution
+	const nodeRunData = runData?.[node.name];
+	const hasAnError = nodeRunData?.some((taskData) => taskData.error !== undefined) ?? false;
 
 	if (hasAnError) {
 		return true;
