@@ -64,7 +64,10 @@ class WebhookRequestHandler {
 			if (isWebhookResponse(response)) {
 				await this.sendWebhookResponse(res, response);
 			} else {
-				// Legacy way of responding to webhooks
+				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
+				// pass the response from the webhookManager. However, we still have code
+				// that doesn't use that yet. We need to keep this here until all codepaths
+				// return a `WebhookResponse` instead.
 				if (response.noWebhookResponse !== true) {
 					ResponseHelper.sendSuccessResponse(
 						res,
