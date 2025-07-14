@@ -110,7 +110,6 @@
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
-      "pdfjs-dist@5.3.31": "patches/pdfjs-dist@5.3.31.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
       "@types/ws@8.18.1": "patches/@types__ws@8.18.1.patch",
