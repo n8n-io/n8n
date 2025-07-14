@@ -1,26 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
-import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
+import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
+import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 
-import { conversationCompactChain } from './chains/conversation-compact';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
-import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
-import { SimpleWorkflow } from './types/workflow';
-import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages } from './utils/stream-processor';
-import { executeToolsInParallel } from './utils/tool-executor';
-import { WorkflowState } from './workflow-state';
+import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -31,6 +18,8 @@ export class AiWorkflowBuilderService {
 	private llmComplexTask: BaseChatModel | undefined;
 
 	private checkpointer = new MemorySaver();
+
+	private agent: WorkflowBuilderAgent | undefined;
 
 	constructor(
 		private readonly nodeTypes: INodeTypes,
@@ -126,95 +115,15 @@ export class AiWorkflowBuilderService {
 			await this.setupModels(user);
 		}
 
-		const tools = [
-			createNodeSearchTool(this.parsedNodeTypes),
-			createNodeDetailsTool(this.parsedNodeTypes),
-			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes, this.logger),
-			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!, this.logger),
-		];
+		this.agent ??= new WorkflowBuilderAgent({
+			parsedNodeTypes: this.parsedNodeTypes,
+			llmSimpleTask: this.llmSimpleTask!,
+			llmComplexTask: this.llmComplexTask!,
+			logger: this.logger,
+			checkpointer: this.checkpointer,
+		});
 
-		// Create a map for quick tool lookup
-		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
-
-		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmComplexTask, 'LLM not setup');
-			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
-
-			const prompt = await mainAgentPrompt.invoke(state);
-			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
-
-			return { messages: [response] };
-		};
-		const shouldModifyState = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as HumanMessage;
-
-			if (lastMessage.content === '/compact') {
-				return 'compact_messages';
-			}
-
-			if (lastMessage.content === '/clear') {
-				return 'delete_messages';
-			}
-
-			return 'agent';
-		};
-		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as AIMessage;
-
-			if (lastMessage.tool_calls?.length) {
-				return 'tools';
-			}
-			return END;
-		};
-
-		const customToolExecutor = async (state: typeof WorkflowState.State) => {
-			return await executeToolsInParallel({ state, toolMap });
-		};
-
-		function deleteMessages(state: typeof WorkflowState.State) {
-			const messages = state.messages;
-			const stateUpdate: Partial<typeof WorkflowState.State> = {
-				workflowOperations: null,
-				executionData: undefined,
-				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
-				workflowJSON: {
-					nodes: [],
-					connections: {},
-				},
-			};
-
-			return stateUpdate;
-		}
-
-		const compactSession = async (state: typeof WorkflowState.State) => {
-			assert(this.llmSimpleTask, 'LLM not setup');
-			const messages = state.messages;
-			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
-
-			return {
-				messages: [
-					...messages.map((m) => new RemoveMessage({ id: m.id! })),
-					...compactedMessages.newMessages,
-				],
-			};
-		};
-
-		const workflow = new StateGraph(WorkflowState)
-			.addNode('agent', callModel)
-			.addNode('tools', customToolExecutor)
-			.addNode('process_operations', processOperations)
-			.addNode('delete_messages', deleteMessages)
-			.addNode('compact_messages', compactSession)
-			.addConditionalEdges('__start__', shouldModifyState)
-			.addEdge('tools', 'process_operations')
-			.addEdge('process_operations', 'agent')
-			.addEdge('delete_messages', END)
-			.addEdge('compact_messages', END)
-			.addConditionalEdges('agent', shouldContinue);
-
-		return workflow;
+		return this.agent;
 	}
 
 	async *chat(
@@ -226,112 +135,22 @@ export class AiWorkflowBuilderService {
 		},
 		user?: IUser,
 	) {
-		const agent = (await this.getAgent(user)).compile({ checkpointer: this.checkpointer });
+		const agent = await this.getAgent(user);
 
-		// Generate thread ID from workflowId and userId
-		// This ensures one session per workflow per user
-		const threadId = payload.workflowId
-			? `workflow-${payload.workflowId}-user-${user?.id ?? new Date().getTime()}`
-			: `user-${user?.id ?? new Date().getTime()}-default`;
-
-		// Configure thread for checkpointing
-		const threadConfig = {
-			configurable: {
-				thread_id: threadId,
-			},
+		const chatPayload: ChatPayload = {
+			question: payload.question,
+			currentWorkflowJSON: payload.currentWorkflowJSON,
+			workflowId: payload.workflowId,
+			executionData: payload.executionData,
 		};
 
-		// Check if this is a subsequent message
-		// If so, update the workflowJSON with the current editor state
-		const existingCheckpoint = await this.checkpointer.getTuple(threadConfig);
-
-		let stream;
-
-		if (!existingCheckpoint?.checkpoint) {
-			// First message - use initial state
-			const initialState: typeof WorkflowState.State = {
-				messages: [new HumanMessage({ content: payload.question })],
-				prompt: payload.question,
-				workflowJSON: payload.currentWorkflowJSON
-					? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
-					: { nodes: [], connections: {} },
-				workflowOperations: [],
-				isWorkflowPrompt: false,
-				executionData: payload.executionData,
-			};
-
-			stream = await agent.stream(initialState, {
-				...threadConfig,
-				streamMode: ['updates', 'custom'],
-				recursionLimit: 30,
-			});
-		} else {
-			// Subsequent message - update the state with current workflow
-			const stateUpdate: Partial<typeof WorkflowState.State> = {
-				workflowOperations: [], // Clear any pending operations from previous message
-				executionData: payload.executionData, // Update with latest execution data
-				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
-			};
-
-			if (payload.currentWorkflowJSON) {
-				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
-			}
-
-			// Stream with just the new message
-			stream = await agent.stream(
-				{ messages: [new HumanMessage({ content: payload.question })], ...stateUpdate },
-				{
-					...threadConfig,
-					streamMode: ['updates', 'custom'],
-					recursionLimit: 80,
-				},
-			);
-		}
-
-		// Use the stream processor utility to handle chunk processing
-		const streamProcessor = createStreamProcessor(stream);
-
-		for await (const output of streamProcessor) {
+		for await (const output of agent.chat(chatPayload, user?.id?.toString())) {
 			yield output;
 		}
 	}
 
 	async getSessions(workflowId: string | undefined, user?: IUser) {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently in a production implementation
-		const sessions = [];
-
-		if (workflowId) {
-			const threadId = `workflow-${workflowId}-user-${user?.id ?? 'anonymous'}`;
-			const threadConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
-
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
-
-				if (checkpoint?.checkpoint) {
-					const messages =
-						(checkpoint.checkpoint.channel_values?.messages as Array<
-							AIMessage | HumanMessage | ToolMessage
-						>) ?? [];
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formatMessages(messages),
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
-				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				console.log('No session found for workflow:', workflowId);
-			}
-		}
-
-		return { sessions };
+		const agent = await this.getAgent(user);
+		return await agent.getSessions(workflowId, user?.id?.toString());
 	}
 }
