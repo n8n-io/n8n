@@ -2,16 +2,29 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { finished } from 'stream/promises';
+
+import { WebhookService } from './webhook.service';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
 import type {
+	WebhookStaticResponse,
+	WebhookResponse,
+	WebhookResponseStream,
+} from '@/webhooks/webhook-response';
+import {
+	isWebhookNoResponse,
+	isWebhookStaticResponse,
+	isWebhookResponse,
+	isWebhookStreamResponse,
+} from '@/webhooks/webhook-response';
+import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
+	WebhookResponseHeaders,
 } from '@/webhooks/webhook.types';
-
-import { WebhookService } from './webhook.service';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -47,15 +60,23 @@ class WebhookRequestHandler {
 		try {
 			const response = await this.webhookManager.executeWebhook(req, res);
 
-			// Don't respond, if already responded
-			if (response.noWebhookResponse !== true) {
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
+			// Modern way of responding to webhooks
+			if (isWebhookResponse(response)) {
+				await this.sendWebhookResponse(res, response);
+			} else {
+				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
+				// pass the response from the webhookManager. However, we still have code
+				// that doesn't use that yet. We need to keep this here until all codepaths
+				// return a `WebhookResponse` instead.
+				if (response.noWebhookResponse !== true) {
+					ResponseHelper.sendSuccessResponse(
+						res,
+						response.data,
+						true,
+						response.responseCode,
+						response.headers,
+					);
+				}
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -75,6 +96,60 @@ class WebhookRequestHandler {
 			}
 
 			return ResponseHelper.sendErrorResponse(res, error);
+		}
+	}
+
+	private async sendWebhookResponse(res: express.Response, webhookResponse: WebhookResponse) {
+		if (isWebhookNoResponse(webhookResponse)) {
+			return;
+		}
+
+		if (isWebhookStaticResponse(webhookResponse)) {
+			this.sendStaticResponse(res, webhookResponse);
+			return;
+		}
+
+		if (isWebhookStreamResponse(webhookResponse)) {
+			await this.sendStreamResponse(res, webhookResponse);
+			return;
+		}
+	}
+
+	private async sendStreamResponse(res: express.Response, webhookResponse: WebhookResponseStream) {
+		const { stream, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		stream.pipe(res, { end: false });
+		await finished(stream);
+		process.nextTick(() => res.end());
+	}
+
+	private sendStaticResponse(res: express.Response, webhookResponse: WebhookStaticResponse) {
+		const { body, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		if (typeof body === 'string') {
+			res.send(body);
+		} else {
+			res.json(body);
+		}
+	}
+
+	private setResponseStatus(res: express.Response, statusCode?: number) {
+		if (statusCode !== undefined) {
+			res.status(statusCode);
+		}
+	}
+
+	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
+		if (headers) {
+			for (const [name, value] of headers.entries()) {
+				res.setHeader(name, value);
+			}
 		}
 	}
 
