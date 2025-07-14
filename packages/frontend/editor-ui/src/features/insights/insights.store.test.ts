@@ -39,7 +39,6 @@ describe('useInsightsStore', () => {
 	beforeEach(() => {
 		createTestingPinia();
 
-		// Create mocked store instances
 		settingsStore = mockedStore(useSettingsStore);
 		rootStore = mockedStore(useRootStore);
 		usersStore = mockedStore(useUsersStore);
