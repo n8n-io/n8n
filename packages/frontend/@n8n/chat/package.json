@@ -38,6 +38,7 @@
   "dependencies": {
     "@n8n/design-system": "workspace:*",
     "@vueuse/core": "catalog:frontend",
+    "dompurify": "^3.1.7",
     "highlight.js": "catalog:frontend",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "catalog:",
