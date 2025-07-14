@@ -1,22 +1,22 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, TestRun } from '@n8n/db';
+import type { TestRun, User } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
+import type {
+	AssignmentCollectionValue,
+	GenericValue,
+	IDataObject,
+	IExecuteData,
+	INodeExecutionData,
+	IRun,
+	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
-} from 'n8n-workflow';
-import type {
-	IDataObject,
-	IRun,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-	INodeExecutionData,
-	AssignmentCollectionValue,
-	GenericValue,
-	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -613,11 +613,20 @@ export class TestRunnerService {
 					}
 				} catch (e) {
 					const completedAt = new Date();
-					// FIXME: this is a temporary log
+
+					// Log test case execution failure with structured context
 					this.logger.error('Test case execution failed', {
 						workflowId,
 						testRunId: testRun.id,
-						error: e,
+						error:
+							e instanceof Error
+								? {
+										name: e.name,
+										message: e.message,
+										stack: e.stack,
+									}
+								: e,
+						timestamp: completedAt.toISOString(),
 					});
 
 					telemetryMeta.errored_test_case_count++;
