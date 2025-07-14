@@ -1,0 +1,517 @@
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
+import type { Command as CommandType } from '@langchain/langgraph';
+import type { IRunExecutionData } from 'n8n-workflow';
+
+import type { ToolExecutorOptions } from '../../src/types/config';
+import type { WorkflowOperation } from '../../src/types/workflow';
+import { executeToolsInParallel } from '../../src/utils/tool-executor';
+import type { WorkflowState } from '../../src/workflow-state';
+import { createWorkflow, createNode } from '../test-utils';
+
+// Import Command type from the source
+
+// Type for our mocked Command
+type MockedCommand = CommandType & { _isCommand: boolean };
+
+// Mock LangGraph dependencies
+jest.mock('@langchain/langgraph', () => {
+	// Mock Command class
+	class MockCommand {
+		_isCommand = true;
+		update: unknown;
+
+		constructor(params: { update: unknown }) {
+			this.update = params.update;
+		}
+	}
+
+	return {
+		isCommand: jest.fn((obj: unknown) => {
+			return (
+				obj instanceof MockCommand || (obj && (obj as { _isCommand?: boolean })._isCommand === true)
+			);
+		}),
+		Command: MockCommand,
+	};
+});
+
+// Get properly typed Command from mock
+const MockCommand = jest.requireMock<{
+	Command: new (params: { update: unknown }) => MockedCommand;
+}>('@langchain/langgraph').Command;
+
+describe('tool-executor', () => {
+	describe('executeToolsInParallel', () => {
+		// Helper to create mock state
+		const createState = (messages: BaseMessage[]): typeof WorkflowState.State => ({
+			workflowJSON: createWorkflow([]),
+			workflowOperations: null,
+			messages,
+			prompt: '',
+			isWorkflowPrompt: true,
+			executionData: {
+				runData: {},
+			} as IRunExecutionData['resultData'],
+		});
+
+		// Helper to create mock tool
+		const createMockTool = (result: unknown) =>
+			({
+				invoke: jest.fn().mockResolvedValue(result),
+				name: 'mock-tool',
+				description: 'Mock tool',
+				schema: {},
+				func: jest.fn(),
+			}) as unknown as DynamicStructuredTool;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should execute single tool successfully', async () => {
+			const toolMessage = new ToolMessage({
+				content: 'Tool executed successfully',
+				tool_call_id: 'call-1',
+			});
+			const mockTool = createMockTool(toolMessage);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'test_tool',
+					args: { param: 'value' },
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([new HumanMessage('Test'), aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(mockTool.invoke).toHaveBeenCalledWith(
+				{ param: 'value' },
+				{
+					toolCall: {
+						id: 'call-1',
+						name: 'test_tool',
+						args: { param: 'value' },
+					},
+				},
+			);
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages?.[0]).toBe(toolMessage);
+			expect(result.workflowOperations).toBeUndefined();
+		});
+
+		it('should execute multiple tools in parallel', async () => {
+			const toolMessage1 = new ToolMessage({
+				content: 'Tool 1 result',
+				tool_call_id: 'call-1',
+			});
+			const toolMessage2 = new ToolMessage({
+				content: 'Tool 2 result',
+				tool_call_id: 'call-2',
+			});
+
+			const mockTool1 = createMockTool(toolMessage1);
+			const mockTool2 = createMockTool(toolMessage2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'tool1',
+					args: { param: 'value1' },
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'tool2',
+					args: { param: 'value2' },
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['tool1', mockTool1],
+				['tool2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(mockTool1.invoke).toHaveBeenCalled();
+			expect(mockTool2.invoke).toHaveBeenCalled();
+			expect(result.messages).toHaveLength(2);
+			expect(result.messages).toContain(toolMessage1);
+			expect(result.messages).toContain(toolMessage2);
+		});
+
+		it('should handle tool returning Command with state updates', async () => {
+			const operations: WorkflowOperation[] = [
+				{ type: 'addNodes', nodes: [createNode({ id: 'node1' })] },
+			];
+			const stateUpdate: Partial<typeof WorkflowState.State> = {
+				workflowOperations: operations,
+				messages: [new ToolMessage({ content: 'Added node', tool_call_id: 'call-1' })],
+			};
+
+			const command = new MockCommand({ update: stateUpdate });
+			const mockTool = createMockTool(command);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'n8n-nodes-base.code' },
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['add_nodes', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.workflowOperations).toEqual(operations);
+		});
+
+		it('should handle tool returning regular messages', async () => {
+			const toolMessage = new ToolMessage({
+				content: 'Regular message',
+				tool_call_id: 'call-1',
+			});
+			const mockTool = createMockTool(toolMessage);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'test_tool',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toEqual([toolMessage]);
+			expect(result.workflowOperations).toBeUndefined();
+		});
+
+		it('should collect all workflow operations from multiple tools', async () => {
+			const operations1: WorkflowOperation[] = [
+				{ type: 'addNodes', nodes: [createNode({ id: 'node1' })] },
+			];
+			const operations2: WorkflowOperation[] = [{ type: 'setConnections', connections: {} }];
+
+			const command1 = new MockCommand({
+				update: {
+					workflowOperations: operations1,
+					messages: [],
+				},
+			});
+			const command2 = new MockCommand({
+				update: {
+					workflowOperations: operations2,
+					messages: [],
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'tool1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'tool2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['tool1', mockTool1],
+				['tool2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.workflowOperations).toHaveLength(2);
+			expect(result.workflowOperations).toEqual([...operations1, ...operations2]);
+		});
+
+		it('should merge messages from both direct returns and state updates', async () => {
+			const directMessage = new ToolMessage({
+				content: 'Direct message',
+				tool_call_id: 'call-1',
+			});
+			const stateMessage = new ToolMessage({
+				content: 'State message',
+				tool_call_id: 'call-2',
+			});
+
+			const command = new MockCommand({
+				update: {
+					messages: [stateMessage],
+					workflowOperations: [],
+				},
+			});
+
+			const mockTool1 = createMockTool(directMessage);
+			const mockTool2 = createMockTool(command);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'tool1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'tool2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['tool1', mockTool1],
+				['tool2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toHaveLength(2);
+			expect(result.messages).toContain(directMessage);
+			expect(result.messages).toContain(stateMessage);
+		});
+
+		describe('error handling', () => {
+			it('should throw when last message is not AIMessage', async () => {
+				const state = createState([new HumanMessage('Test')]);
+				const toolMap = new Map<string, DynamicStructuredTool>();
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Most recent message must be an AIMessage with tool calls',
+				);
+			});
+
+			it('should throw when AIMessage has no tool_calls', async () => {
+				const aiMessage = new AIMessage('No tool calls');
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>();
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'AIMessage must have tool calls',
+				);
+			});
+
+			it('should throw when tool is not found in toolMap', async () => {
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'non_existent_tool',
+						args: {},
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>(); // Empty map
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Tool non_existent_tool not found',
+				);
+			});
+		});
+
+		it('should handle tools with no operations (only messages)', async () => {
+			const message = new ToolMessage({
+				content: 'Message only',
+				tool_call_id: 'call-1',
+			});
+
+			const command = new MockCommand({
+				update: {
+					messages: [message],
+					// No workflowOperations
+				},
+			});
+
+			const mockTool = createMockTool(command);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'test_tool',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toEqual([message]);
+			expect(result.workflowOperations).toBeUndefined();
+		});
+
+		it('should handle tools with no messages (only operations)', async () => {
+			const operations: WorkflowOperation[] = [{ type: 'clear' }];
+
+			const command = new MockCommand({
+				update: {
+					workflowOperations: operations,
+					// No messages
+				},
+			});
+
+			const mockTool = createMockTool(command);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'clear_tool',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['clear_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toEqual([]);
+			expect(result.workflowOperations).toEqual(operations);
+		});
+
+		it('should handle empty tool_calls array', async () => {
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = []; // Empty array
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>();
+
+			const options: ToolExecutorOptions = { state, toolMap };
+
+			await expect(executeToolsInParallel(options)).rejects.toThrow(
+				'AIMessage must have tool calls',
+			);
+		});
+
+		it('should handle tool calls without args', async () => {
+			const toolMessage = new ToolMessage({
+				content: 'Success',
+				tool_call_id: 'call-1',
+			});
+			const mockTool = createMockTool(toolMessage);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'test_tool',
+					args: {}, // No args
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(mockTool.invoke).toHaveBeenCalledWith(
+				{}, // Empty object when args is undefined
+				{
+					toolCall: {
+						id: 'call-1',
+						name: 'test_tool',
+						args: {},
+					},
+				},
+			);
+			expect(result.messages).toEqual([toolMessage]);
+		});
+
+		it('should handle multiple state updates with various message types', async () => {
+			const aiResultMessage = new AIMessage('Result from tool');
+			const toolResultMessage = new ToolMessage({
+				content: 'Tool result',
+				tool_call_id: 'call-1',
+			});
+
+			const command = new MockCommand({
+				update: {
+					messages: [aiResultMessage, toolResultMessage],
+					workflowOperations: [{ type: 'clear' }],
+				},
+			});
+
+			const mockTool = createMockTool(command);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'test_tool',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.messages).toHaveLength(2);
+			expect(result.messages).toContain(aiResultMessage);
+			expect(result.messages).toContain(toolResultMessage);
+			expect(result.workflowOperations).toHaveLength(1);
+		});
+	});
+});
