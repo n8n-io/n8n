@@ -132,6 +132,43 @@ export const nodeTypes = {
 		outputs: ['main'],
 		properties: [],
 	}),
+	openAiModel: createNodeType({
+		displayName: 'OpenAI Chat Model',
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		group: ['output'],
+		inputs: [],
+		outputs: ['ai_languageModel'],
+		properties: [],
+	}),
+	setNode: createNodeType({
+		displayName: 'Set',
+		name: 'n8n-nodes-base.set',
+		group: ['transform'],
+		properties: [
+			{
+				displayName: 'Values to Set',
+				name: 'values',
+				type: 'collection',
+				default: {},
+			},
+		],
+	}),
+	ifNode: createNodeType({
+		displayName: 'If',
+		name: 'n8n-nodes-base.if',
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main', 'main'],
+		outputNames: ['true', 'false'],
+		properties: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				type: 'collection',
+				default: {},
+			},
+		],
+	}),
 };
 
 // Helper to create connections
@@ -303,8 +340,16 @@ export const expectToolSuccess = (
 };
 
 // Expect tool error message
-export const expectToolError = (content: ParsedToolContent, expectedError: string): void => {
-	expect(content.update.messages[0]?.kwargs.content).toBe(expectedError);
+export const expectToolError = (
+	content: ParsedToolContent,
+	expectedError: string | RegExp,
+): void => {
+	const message = content.update.messages[0]?.kwargs.content;
+	if (typeof expectedError === 'string') {
+		expect(message).toBe(expectedError);
+	} else {
+		expect(message).toMatch(expectedError);
+	}
 };
 
 // Expect workflow operation of specific type
@@ -329,6 +374,35 @@ export const expectNodeAdded = (content: ParsedToolContent, expectedNode: Partia
 	expect(addedNode).toMatchObject(expectedNode);
 };
 
+// Expect node was removed
+export const expectNodeRemoved = (content: ParsedToolContent, nodeId: string): void => {
+	expectWorkflowOperation(content, 'removeNode', { nodeId });
+};
+
+// Expect connections were added
+export const expectConnectionsAdded = (
+	content: ParsedToolContent,
+	expectedCount?: number,
+): void => {
+	expectWorkflowOperation(content, 'addConnections');
+	if (expectedCount !== undefined) {
+		const connections = content.update.workflowOperations?.[0]?.connections;
+		expect(connections).toHaveLength(expectedCount);
+	}
+};
+
+// Expect node was updated
+export const expectNodeUpdated = (
+	content: ParsedToolContent,
+	nodeId: string,
+	expectedUpdates?: Record<string, unknown>,
+): void => {
+	expectWorkflowOperation(content, 'updateNode', {
+		nodeId,
+		...(expectedUpdates ? { updates: expect.objectContaining(expectedUpdates) } : {}),
+	});
+};
+
 // ========== Test Data Builders ==========
 
 // Build add node input
@@ -344,6 +418,36 @@ export const buildAddNodeInput = (overrides: {
 		overrides.connectionParametersReasoning ??
 		'Standard node with static inputs/outputs, no connection parameters needed',
 	connectionParameters: overrides.connectionParameters ?? {},
+});
+
+// Build connect nodes input
+export const buildConnectNodesInput = (overrides: {
+	sourceNodeId: string;
+	targetNodeId: string;
+	sourceOutputIndex?: number;
+	targetInputIndex?: number;
+}) => ({
+	sourceNodeId: overrides.sourceNodeId,
+	targetNodeId: overrides.targetNodeId,
+	sourceOutputIndex: overrides.sourceOutputIndex ?? 0,
+	targetInputIndex: overrides.targetInputIndex ?? 0,
+});
+
+// Build node search query
+export const buildNodeSearchQuery = (
+	queryType: 'name' | 'subNodeSearch',
+	query?: string,
+	connectionType?: string,
+) => ({
+	queryType,
+	...(query && { query }),
+	...(connectionType && { connectionType }),
+});
+
+// Build update node parameters input
+export const buildUpdateNodeInput = (nodeId: string, changes: string[]) => ({
+	nodeId,
+	changes,
 });
 
 // Common reasoning strings
