@@ -1,23 +1,24 @@
-import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
-import WorkflowsView from '@/views/WorkflowsView.vue';
-import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useProjectsStore } from '@/stores/projects.store';
-import { createTestingPinia } from '@pinia/testing';
-import { VIEWS } from '@/constants';
-import { STORES } from '@n8n/stores';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import type { IUser, WorkflowListResource } from '@/Interface';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import type { Project } from '@/types/projects.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useTagsStore } from '@/stores/tags.store';
-import { createRouter, createWebHistory } from 'vue-router';
 import * as usersApi from '@/api/users';
-import { useFoldersStore } from '@/stores/folders.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
+import { VIEWS } from '@/constants';
+import type { IUser, WorkflowListResource } from '@/Interface';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { Project } from '@/types/projects.types';
+import { TemplateClickSource } from '@/utils/experiments';
+import WorkflowsView from '@/views/WorkflowsView.vue';
+import { STORES } from '@n8n/stores';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import { createRouter, createWebHistory } from 'vue-router';
 
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
@@ -33,6 +34,20 @@ vi.mock('@/composables/useProjectPages', () => ({
 		isSharedSubPage: false,
 	}),
 }));
+vi.mock('@/utils/experiments', async (importOriginal) => {
+	const actual = await importOriginal<object>();
+
+	return {
+		...actual,
+		isExtraTemplateLinksExperimentEnabled: vi.fn(() => true),
+	};
+});
+const mockTrack = vi.fn();
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: vi.fn(() => ({
+		track: mockTrack,
+	})),
+}));
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -44,6 +59,11 @@ const router = createRouter({
 		{
 			path: '/workflow',
 			name: VIEWS.NEW_WORKFLOW,
+			component: { template: '<div></div>' },
+		},
+		{
+			path: '/templates',
+			name: VIEWS.TEMPLATES,
 			component: { template: '<div></div>' },
 		},
 	],
@@ -149,6 +169,36 @@ describe('WorkflowsView', () => {
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
+		});
+
+		it('should show template card', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('new-workflow-from-template-card')).toBeInTheDocument();
+		});
+
+		it('should track template card click', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const card = getByTestId('new-workflow-from-template-card');
+			await userEvent.click(card);
+
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User clicked on templates',
+				expect.objectContaining({
+					source: TemplateClickSource.emptyInstanceCard,
+				}),
+			);
 		});
 	});
 

@@ -83,7 +83,9 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		// Keep the default version at 1.4 until streaming is fully supported
+		defaultVersion: 1.4,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
@@ -315,6 +317,19 @@ export class RespondToWebhook implements INodeType {
 						description: 'The name of the response field to put all items in',
 						placeholder: 'e.g. data',
 					},
+					{
+						displayName: 'Enable Streaming',
+						name: 'enableStreaming',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to enable streaming to the response',
+						displayOptions: {
+							show: {
+								['/respondWith']: ['allIncomingItems', 'firstIncomingItem', 'text', 'json', 'jwt'],
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -343,6 +358,11 @@ export class RespondToWebhook implements INodeType {
 
 		const connectedNodes = this.getParentNodes(this.getNode().name);
 
+		const options = this.getNodeParameter('options', 0, {});
+
+		const shouldStream =
+			nodeVersion >= 1.5 && this.isStreaming() && options.enableStreaming !== false;
+
 		try {
 			if (nodeVersion >= 1.1) {
 				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
@@ -358,7 +378,6 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const respondWith = this.getNodeParameter('respondWith', 0) as string;
-			const options = this.getNodeParameter('options', 0, {});
 
 			const headers = {} as IDataObject;
 			if (options.responseHeaders) {
@@ -392,6 +411,12 @@ export class RespondToWebhook implements INodeType {
 						}
 					}
 				}
+
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, responseBody as IDataObject);
+					this.sendChunk('end', 0);
+				}
 			} else if (respondWith === 'jwt') {
 				try {
 					const { keyType, secret, algorithm, privateKey } = await this.getCredentials<{
@@ -411,13 +436,24 @@ export class RespondToWebhook implements INodeType {
 					const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
 					const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });
 					responseBody = { token };
+
+					if (shouldStream) {
+						this.sendChunk('begin', 0);
+						this.sendChunk('item', 0, responseBody as IDataObject);
+						this.sendChunk('end', 0);
+					}
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error as Error, {
 						message: 'Error signing JWT token',
 					});
 				}
 			} else if (respondWith === 'allIncomingItems') {
-				const respondItems = items.map((item) => item.json);
+				const respondItems = items.map((item, index) => {
+					this.sendChunk('begin', index);
+					this.sendChunk('item', index, item.json);
+					this.sendChunk('end', index);
+					return item.json;
+				});
 				responseBody = options.responseKey
 					? set({}, options.responseKey as string, respondItems)
 					: respondItems;
@@ -425,12 +461,24 @@ export class RespondToWebhook implements INodeType {
 				responseBody = options.responseKey
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, items[0].json);
+					this.sendChunk('end', 0);
+				}
 			} else if (respondWith === 'text') {
 				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
+				const rawBody = this.getNodeParameter('responseBody', 0) as string;
 				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(this.getNodeParameter('responseBody', 0) as string);
+					responseBody = sandboxHtmlResponse(rawBody);
 				} else {
-					responseBody = this.getNodeParameter('responseBody', 0) as string;
+					responseBody = rawBody;
+				}
+				// Send the raw body to the stream
+				if (shouldStream) {
+					this.sendChunk('begin', 0);
+					this.sendChunk('item', 0, rawBody);
+					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];
@@ -508,7 +556,9 @@ export class RespondToWebhook implements INodeType {
 				statusCode,
 			};
 
-			this.sendResponse(response);
+			if (!shouldStream || respondWith === 'binary') {
+				this.sendResponse(response);
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const itemData = generatePairedItemData(items.length);
