@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       test-mode:
-        description: 'Test mode: local, docker-build, or docker-pull'
+        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
         required: false
         default: 'local'
         type: string
@@ -26,7 +26,7 @@ on:
 env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
   NODE_OPTIONS: --max-old-space-size=4096
-  TESTCONTAINERS_RYUK_DISABLED: true
+  TESTCONTAINERS_RYUK_DISABLED: true # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
 
 jobs:
   test:
@@ -55,8 +55,10 @@ jobs:
 
       - name: Start Local Server
         if: inputs.test-mode == 'local'
+        env:
+          E2E_TESTS: true
         run: |
-          E2E_TESTS=true pnpm start &
+          pnpm start &
           npx wait-on http://localhost:5678 --timeout 15000
 
       - name: Run Tests (Local)

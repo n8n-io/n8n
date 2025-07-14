@@ -1,4 +1,5 @@
-name: Test Playwright (Docker Build)
+name: Run Playwright Tests (Docker Build)
+# This workflow is used to run Playwright tests in a Docker container built from the current branch
 
 on:
   workflow_call:
