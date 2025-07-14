@@ -90,7 +90,7 @@ function formatNodeDetails(
 	parts.push(`<description>${details.description}</description>`);
 
 	if (details.subtitle) {
-		parts.push(`  <subtitle>${details.subtitle}</subtitle>`);
+		parts.push(`<subtitle>${details.subtitle}</subtitle>`);
 	}
 
 	// Parameters
@@ -119,7 +119,7 @@ function formatNodeDetails(
  */
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
-		async (input: unknown, config) => {
+		(input: unknown, config) => {
 			const reporter = createProgressReporter(config, 'get_node_details');
 
 			try {
