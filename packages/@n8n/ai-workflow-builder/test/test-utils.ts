@@ -3,7 +3,13 @@ import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { INode, INodeTypeDescription, INodeParameters, IConnection } from 'n8n-workflow';
+import type {
+	INode,
+	INodeTypeDescription,
+	INodeParameters,
+	IConnection,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
@@ -195,7 +201,7 @@ export const nodeTypes = {
 		name: '@n8n/n8n-nodes-langchain.vectorStore',
 		subtitle: '={{$parameter["mode"] === "retrieve" ? "Retrieve" : "Insert"}}',
 		group: ['transform'],
-		inputs: `={{ ((parameter) => { 
+		inputs: `={{ ((parameter) => {
 			function getInputs(parameters) {
 				const mode = parameters?.mode;
 				const inputs = [];
@@ -217,10 +223,10 @@ export const nodeTypes = {
 					});
 				}
 				return inputs;
-			}; 
-			return getInputs(parameter) 
+			};
+			return getInputs(parameter)
 		})($parameter) }}`,
-		outputs: `={{ ((parameter) => { 
+		outputs: `={{ ((parameter) => {
 			function getOutputs(parameters) {
 				const mode = parameters?.mode;
 				if (mode === 'retrieve-as-tool') {
@@ -230,8 +236,8 @@ export const nodeTypes = {
 				} else {
 					return ['main'];
 				}
-			}; 
-			return getOutputs(parameter) 
+			};
+			return getOutputs(parameter)
 		})($parameter) }}`,
 		properties: [
 			{
@@ -516,7 +522,7 @@ export const buildConnectNodesInput = (overrides: {
 export const buildNodeSearchQuery = (
 	queryType: 'name' | 'subNodeSearch',
 	query?: string,
-	connectionType?: string,
+	connectionType?: NodeConnectionType,
 ) => ({
 	queryType,
 	...(query && { query }),
