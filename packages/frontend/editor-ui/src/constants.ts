@@ -10,7 +10,8 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 } from '@/types';
-import type { InjectionKey, Ref } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
+import type { ExpressionLocalResolveContext } from './types/expressions';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -928,6 +929,9 @@ export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeI
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
 export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
+export const ExpressionLocalResolveContextSymbol = Symbol(
+	'ExpressionLocalResolveContext',
+) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
 
 /** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
