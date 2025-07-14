@@ -24,7 +24,7 @@ export function applyOperations(
 				result = { nodes: [], connections: {} };
 				break;
 
-			case 'removeNodes': {
+			case 'removeNode': {
 				const nodesToRemove = new Set(operation.nodeIds);
 
 				// Filter out removed nodes

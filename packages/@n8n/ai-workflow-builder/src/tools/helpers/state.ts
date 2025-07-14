@@ -61,7 +61,7 @@ export function addNodesToWorkflow(nodes: INode[]): Partial<typeof WorkflowState
 export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowState.State> {
 	// Return an operation to remove nodes
 	return {
-		workflowOperations: [{ type: 'removeNodes', nodeIds: [nodeId] }],
+		workflowOperations: [{ type: 'removeNode', nodeIds: [nodeId] }],
 	};
 }
 
@@ -72,7 +72,7 @@ export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowS
 export function removeNodesFromWorkflow(nodeIds: string[]): Partial<typeof WorkflowState.State> {
 	// Return an operation to remove nodes
 	return {
-		workflowOperations: [{ type: 'removeNodes', nodeIds }],
+		workflowOperations: [{ type: 'removeNode', nodeIds }],
 	};
 }
 

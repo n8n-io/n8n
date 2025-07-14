@@ -260,7 +260,7 @@ export const nodeTypes = {
 export const createConnection = (
 	_fromId: string,
 	toId: string,
-	type: string = 'main',
+	type: NodeConnectionType = 'main',
 	index: number = 0,
 ) => ({
 	node: toId,
@@ -461,7 +461,7 @@ export const expectNodeAdded = (content: ParsedToolContent, expectedNode: Partia
 
 // Expect node was removed
 export const expectNodeRemoved = (content: ParsedToolContent, nodeId: string): void => {
-	expectWorkflowOperation(content, 'removeNode', { nodeId });
+	expectWorkflowOperation(content, 'removeNode', { nodeIds: [nodeId] });
 };
 
 // Expect connections were added

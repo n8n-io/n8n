@@ -10,7 +10,7 @@ export type SimpleWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections'>;
  */
 export type WorkflowOperation =
 	| { type: 'clear' }
-	| { type: 'removeNodes'; nodeIds: string[] }
+	| { type: 'removeNode'; nodeIds: string[] }
 	| { type: 'addNodes'; nodes: INode[] }
 	| { type: 'updateNode'; nodeId: string; updates: Partial<INode> }
 	| { type: 'setConnections'; connections: IConnections }
