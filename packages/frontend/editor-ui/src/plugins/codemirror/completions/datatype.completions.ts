@@ -57,7 +57,7 @@ import {
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
-import { TargetNodeParameterContext } from '@/Interface';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 /**
  * Resolution-based completions offered according to datatype.
