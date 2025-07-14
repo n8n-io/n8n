@@ -137,11 +137,11 @@ export class AiWorkflowBuilderService {
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmComplexTask, 'LLM not setup');
-			assert(typeof this.llmComplexTask.bindTools === 'function', 'LLM does not support tools');
+			assert(this.llmSimpleTask, 'LLM not setup');
+			assert(typeof this.llmSimpleTask.bindTools === 'function', 'LLM does not support tools');
 
 			const prompt = await mainAgentPrompt.invoke(state);
-			const response = await this.llmComplexTask.bindTools(tools).invoke(prompt);
+			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
 		};

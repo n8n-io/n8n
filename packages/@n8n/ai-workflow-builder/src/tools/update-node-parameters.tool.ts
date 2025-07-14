@@ -21,6 +21,7 @@ import {
 	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
+import { filterNodeParameters } from '@/utils/parameter-filter.utils';
 
 /**
  * Schema for update node parameters input
@@ -107,8 +108,15 @@ export function createUpdateNodeParametersTool(
 					// Format inputs for the chain
 					const formattedChanges = formatChangesForPrompt(changes);
 
+					const fileteredNodeProperties = filterNodeParameters(node, nodeType, {
+						maxDepth: 20,
+					});
 					// Get the node's properties definition as JSON
-					const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+					const nodePropertiesJson = JSON.stringify(
+						fileteredNodeProperties.parameters || [],
+						null,
+						2,
+					);
 
 					// Call the parameter updater chain with dynamic prompt building
 					const parametersChain = createParameterUpdaterChain(llm, {
