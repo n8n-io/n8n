@@ -51,9 +51,9 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	height: 0,
 	width: 0,
 	minHeight: 0,
-	maxHeight: undefined,
+	maxHeight: Number.POSITIVE_INFINITY,
 	minWidth: 0,
-	maxWidth: undefined,
+	maxWidth: Number.POSITIVE_INFINITY,
 	scale: 1,
 	gridSize: 20,
 	outset: false,
@@ -68,9 +68,6 @@ const emit = defineEmits<{
 	resize: [value: ResizeData];
 	resizeend: [];
 }>();
-
-const maxWidth = computed(() => props.maxWidth ?? props.width);
-const maxHeight = computed(() => props.maxHeight ?? props.height);
 
 const enabledDirections = computed((): Direction[] => {
 	const availableDirections = Object.keys(directionsCursorMaps) as Direction[];
@@ -124,18 +121,8 @@ const mouseMove = (event: MouseEvent) => {
 
 	state.vHeight.value = state.vHeight.value + deltaHeight;
 	state.vWidth.value = state.vWidth.value + deltaWidth;
-	const height = getSize(
-		props.minHeight,
-		state.vHeight.value,
-		props.gridSize,
-		maxHeight.value ?? state.vHeight.value,
-	);
-	const width = getSize(
-		props.minWidth,
-		state.vWidth.value,
-		props.gridSize,
-		maxWidth.value ?? state.vWidth.value,
-	);
+	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize, props.maxHeight);
+	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize, props.maxWidth);
 
 	const dX = left && width !== props.width ? -1 * (width - props.width) : 0;
 	const dY = top && height !== props.height ? -1 * (height - props.height) : 0;
