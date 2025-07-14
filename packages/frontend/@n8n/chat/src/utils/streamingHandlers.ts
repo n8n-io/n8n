@@ -2,10 +2,11 @@ import { nextTick } from 'vue';
 import type { Ref } from 'vue';
 
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText, ChatMessageRich, RichContent } from '@n8n/chat/types';
+import type { StructuredChunk } from '@n8n/chat/types/streaming';
 
 import type { StreamingMessageManager } from './streaming';
-import { createBotMessage, updateMessageInArray } from './streaming';
+import { createBotMessage, createRichBotMessage, updateMessageInArray } from './streaming';
 
 export function handleStreamingChunk(
 	chunk: string,
@@ -14,8 +15,15 @@ export function handleStreamingChunk(
 	receivedMessage: Ref<ChatMessageText | null>,
 	messages: Ref<ChatMessage[]>,
 	runIndex?: number,
+	chunkData?: StructuredChunk,
 ): void {
 	try {
+		// Handle rich content chunks
+		if (chunkData?.type === 'rich-item' && chunkData.richContent) {
+			handleRichContentChunk(chunkData, nodeId, streamingManager, messages, runIndex);
+			return;
+		}
+
 		// Skip empty chunks to avoid showing empty responses
 		if (!chunk.trim()) {
 			return;
@@ -57,6 +65,47 @@ export function handleStreamingChunk(
 	} catch (error) {
 		console.error('Error handling stream chunk:', error);
 		// Continue gracefully without breaking the stream
+	}
+}
+
+function handleRichContentChunk(
+	chunkData: StructuredChunk,
+	nodeId: string | undefined,
+	streamingManager: StreamingMessageManager,
+	messages: Ref<ChatMessage[]>,
+	runIndex?: number,
+): void {
+	try {
+		if (!chunkData.richContent) return;
+
+		if (!nodeId) {
+			// Simple single-node rich content streaming
+			const richMessage: ChatMessageRich = createRichBotMessage(chunkData.richContent);
+			messages.value.push(richMessage);
+		} else {
+			// Multi-run rich content streaming
+			let runMessage = streamingManager.getRichMessage(nodeId, runIndex);
+			if (!runMessage) {
+				runMessage = streamingManager.addRichRunToActive(nodeId, chunkData.richContent, runIndex);
+				messages.value.push(runMessage);
+			} else {
+				// Update existing rich message
+				const updatedMessage = streamingManager.updateRichRun(
+					nodeId,
+					chunkData.richContent,
+					runIndex,
+				);
+				if (updatedMessage) {
+					updateMessageInArray(messages.value, updatedMessage.id, updatedMessage);
+				}
+			}
+		}
+
+		void nextTick(() => {
+			chatEventBus.emit('scrollToBottom');
+		});
+	} catch (error) {
+		console.error('Error handling rich content chunk:', error);
 	}
 }
 

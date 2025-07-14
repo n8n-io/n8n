@@ -1,0 +1,72 @@
+{
+  "name": "Sample Rich Content Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "chat-trigger-sample",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "contentType": "weather",
+        "sanitize": "basic"
+      },
+      "id": "rich-generator-sample",
+      "name": "Rich Content Generator",
+      "type": "richContentGenerator",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process rich content output\nreturn $input.first();"
+      },
+      "id": "code-sample",
+      "name": "Process Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Rich Content Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rich Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Process Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["rich-content", "sample"],
+  "meta": {
+    "description": "Sample workflow to demonstrate rich content generation"
+  }
+} 

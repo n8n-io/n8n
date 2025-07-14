@@ -1,0 +1,72 @@
+{
+  "name": "Rich Content Chat Test",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "chat-trigger-1",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "contentType": "weather",
+        "sanitize": "basic"
+      },
+      "id": "rich-content-1",
+      "name": "Rich Content Generator",
+      "type": "richContentGenerator",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Example: Generate rich content directly in Code node\nconst userMessage = $input.first().json.chatInput || 'Hello';\n\nif (userMessage.toLowerCase().includes('weather')) {\n  return {\n    json: {\n      type: 'rich',\n      content: {\n        html: `\n          <div class=\"weather-card\">\n            <h2>🌤️ Weather Update</h2>\n            <div class=\"temperature\">22°C</div>\n            <div class=\"description\">Sunny with light clouds</div>\n            <div class=\"details\">\n              <span>Humidity: 65%</span>\n              <span>Wind: 12 mph</span>\n            </div>\n          </div>\n        `,\n        css: `\n          .weather-card {\n            background: linear-gradient(135deg, #74b9ff, #0984e3);\n            color: white;\n            padding: 25px;\n            border-radius: 15px;\n            text-align: center;\n            box-shadow: 0 8px 25px rgba(0,0,0,0.15);\n            max-width: 300px;\n            margin: 0 auto;\n          }\n          .temperature {\n            font-size: 3em;\n            font-weight: bold;\n            margin: 15px 0;\n          }\n          .description {\n            font-size: 1.2em;\n            margin-bottom: 20px;\n          }\n          .details {\n            display: flex;\n            justify-content: space-between;\n            font-size: 0.9em;\n            opacity: 0.9;\n          }\n        `,\n        sanitize: 'basic'\n      }\n    }\n  };\n} else if (userMessage.toLowerCase().includes('dashboard')) {\n  return {\n    json: {\n      type: 'rich',\n      content: {\n        html: `\n          <div class=\"dashboard\">\n            <h3>📊 Analytics Dashboard</h3>\n            <div class=\"metrics-grid\" id=\"metricsGrid\">\n              <div class=\"metric-card\">\n                <span class=\"metric-value\">$125,430</span>\n                <div class=\"metric-label\">Revenue</div>\n              </div>\n              <div class=\"metric-card\">\n                <span class=\"metric-value\">1,247</span>\n                <div class=\"metric-label\">Orders</div>\n              </div>\n              <div class=\"metric-card\">\n                <span class=\"metric-value\">892</span>\n                <div class=\"metric-label\">Customers</div>\n              </div>\n            </div>\n            <div class=\"actions\">\n              <button class=\"action-btn\" id=\"refreshBtn\">🔄 Refresh</button>\n              <button class=\"action-btn\" id=\"exportBtn\">📊 Export</button>\n            </div>\n          </div>\n        `,\n        css: `\n          .dashboard {\n            background: #fff;\n            border: 1px solid #e1e8ed;\n            border-radius: 12px;\n            padding: 24px;\n            box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n          }\n          .metrics-grid {\n            display: grid;\n            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));\n            gap: 16px;\n            margin: 20px 0;\n          }\n          .metric-card {\n            background: #f8f9fa;\n            padding: 20px;\n            border-radius: 8px;\n            text-align: center;\n            transition: transform 0.2s;\n          }\n          .metric-card:hover {\n            transform: translateY(-2px);\n          }\n          .metric-value {\n            font-size: 2em;\n            font-weight: bold;\n            color: #28a745;\n            display: block;\n          }\n          .metric-label {\n            color: #6c757d;\n            font-size: 0.9em;\n            margin-top: 8px;\n          }\n          .actions {\n            display: flex;\n            gap: 12px;\n            margin-top: 20px;\n          }\n          .action-btn {\n            background: #007acc;\n            color: white;\n            border: none;\n            padding: 12px 24px;\n            border-radius: 6px;\n            cursor: pointer;\n            transition: background 0.2s;\n          }\n          .action-btn:hover {\n            background: #005a9e;\n          }\n        `,\n        script: `\n          // Add button handlers\n          container.querySelector('#refreshBtn').addEventListener('click', () => {\n            console.log('Dashboard refresh requested');\n            window.parent.postMessage({\n              type: 'chat-action',\n              action: 'refresh-dashboard'\n            }, '*');\n          });\n          \n          container.querySelector('#exportBtn').addEventListener('click', () => {\n            console.log('Export requested');\n            window.parent.postMessage({\n              type: 'chat-action',\n              action: 'export-data'\n            }, '*');\n          });\n        `,\n        sanitize: 'basic'\n      }\n    }\n  };\n} else if (userMessage.toLowerCase().includes('chart')) {\n  return {\n    json: {\n      type: 'rich',\n      content: {\n        html: `\n          <div class=\"chart-container\">\n            <h3>📈 Data Visualization</h3>\n            <canvas id=\"dataChart\" width=\"400\" height=\"200\"></canvas>\n          </div>\n        `,\n        css: `\n          .chart-container {\n            background: white;\n            padding: 24px;\n            border-radius: 12px;\n            box-shadow: 0 4px 15px rgba(0,0,0,0.1);\n            text-align: center;\n          }\n          #dataChart {\n            border: 1px solid #e1e8ed;\n            border-radius: 8px;\n          }\n        `,\n        script: `\n          const canvas = container.querySelector('#dataChart');\n          const ctx = canvas.getContext('2d');\n          \n          // Sample chart data\n          const chartData = [10, 25, 15, 30, 22, 35, 28];\n          const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];\n          \n          const width = canvas.width;\n          const height = canvas.height;\n          const padding = 50;\n          \n          // Clear canvas\n          ctx.clearRect(0, 0, width, height);\n          \n          // Draw axes\n          ctx.strokeStyle = '#e1e8ed';\n          ctx.lineWidth = 1;\n          ctx.beginPath();\n          ctx.moveTo(padding, height - padding);\n          ctx.lineTo(width - padding, height - padding);\n          ctx.moveTo(padding, height - padding);\n          ctx.lineTo(padding, padding);\n          ctx.stroke();\n          \n          // Draw data\n          const maxValue = Math.max(...chartData);\n          const stepX = (width - 2 * padding) / (chartData.length - 1);\n          const stepY = (height - 2 * padding) / maxValue;\n          \n          ctx.strokeStyle = '#007acc';\n          ctx.lineWidth = 3;\n          ctx.beginPath();\n          \n          chartData.forEach((value, index) => {\n            const x = padding + index * stepX;\n            const y = height - padding - (value * stepY);\n            \n            if (index === 0) {\n              ctx.moveTo(x, y);\n            } else {\n              ctx.lineTo(x, y);\n            }\n            \n            // Draw point\n            ctx.fillStyle = '#007acc';\n            ctx.beginPath();\n            ctx.arc(x, y, 6, 0, 2 * Math.PI);\n            ctx.fill();\n          });\n          \n          ctx.stroke();\n          console.log('Chart rendered successfully');\n        `,\n        sanitize: 'basic'\n      }\n    }\n  };\n} else {\n  // Default rich response\n  return {\n    json: {\n      type: 'rich',\n      content: {\n        html: `\n          <div class=\"welcome-card\">\n            <h2>✨ Rich Content Demo</h2>\n            <p>Try these commands to see rich content:</p>\n            <ul>\n              <li><strong>\"weather\"</strong> - See a weather card</li>\n              <li><strong>\"dashboard\"</strong> - View analytics dashboard</li>\n              <li><strong>\"chart\"</strong> - Display data visualization</li>\n            </ul>\n            <div class=\"demo-note\">\n              This demonstrates the enhanced n8n chat window that can now display HTML, CSS, and interactive JavaScript content!\n            </div>\n          </div>\n        `,\n        css: `\n          .welcome-card {\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n            color: white;\n            padding: 30px;\n            border-radius: 15px;\n            text-align: center;\n            max-width: 400px;\n            margin: 0 auto;\n          }\n          .welcome-card h2 {\n            margin-top: 0;\n          }\n          .welcome-card ul {\n            text-align: left;\n            display: inline-block;\n          }\n          .demo-note {\n            background: rgba(255,255,255,0.1);\n            padding: 15px;\n            border-radius: 8px;\n            margin-top: 20px;\n            font-style: italic;\n          }\n        `,\n        sanitize: 'basic'\n      }\n    }\n  };\n}"
+      },
+      "id": "code-1",
+      "name": "Rich Content Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 200]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Rich Content Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rich Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Rich Content Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["rich-content", "chat", "demo"],
+  "meta": {
+    "description": "Demonstrates rich content functionality in n8n chat window"
+  }
+} 
