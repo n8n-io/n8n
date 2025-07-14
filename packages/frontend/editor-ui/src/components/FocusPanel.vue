@@ -14,6 +14,7 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	type CodeExecutionMode,
@@ -36,6 +37,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	focus: [];
+	saveKeyboardShortcut: [event: KeyboardEvent];
 }>();
 
 // ESLint: false positive
@@ -48,6 +50,7 @@ const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
+const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
@@ -254,8 +257,38 @@ function focusWithDelay() {
 	}, 50);
 }
 
+function handleKeydown(event: KeyboardEvent) {
+	if (event.key === 's' && deviceSupport.isCtrlKeyPressed(event)) {
+		event.stopPropagation();
+		event.preventDefault();
+		if (isReadOnly.value) return;
+
+		emit('saveKeyboardShortcut', event);
+	}
+}
+
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', handleKeydown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', handleKeydown, true);
+};
+
 watch([() => focusPanelStore.lastFocusTimestamp, () => expressionModeEnabled.value], () =>
 	focusWithDelay(),
+);
+
+watch(
+	() => focusPanelStore.focusPanelActive,
+	(newValue) => {
+		if (newValue) {
+			registerKeyboardListener();
+		} else {
+			unregisterKeyboardListener();
+		}
+	},
+	{ immediate: true },
 );
 </script>
 
