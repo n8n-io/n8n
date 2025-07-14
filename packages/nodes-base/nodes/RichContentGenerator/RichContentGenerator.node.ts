@@ -215,35 +215,59 @@ function generateChart(item: INodeExecutionData) {
 			
 			function initChart() {
 				try {
-					// Find the container - works in both chat and logs contexts
-					let currentContainer = null;
+					retryCount++;
 					
-					// Try different container contexts
+					// In rich content context, look for canvas in parent containers
+					let canvas = null;
+					
+					// Try to find the rich message container (parent of script container)
+					let richContainer = null;
 					if (typeof container !== 'undefined' && container) {
-						currentContainer = container;
-					} else if (document.currentScript && document.currentScript.parentElement) {
-						currentContainer = document.currentScript.parentElement;
-					} else {
-						// Fallback to document
-						currentContainer = document;
+						// Find the parent rich message container
+						richContainer = container.closest('.rich-message-container') || 
+									   container.parentElement?.closest('.rich-message-container') ||
+									   container.parentElement;
 					}
 					
-					console.log('[Rich Content] [Chart] Using container:', currentContainer);
-					console.log('[Rich Content] [Chart] Looking for canvas with ID:', chartId);
+					// Search in rich container first
+					if (richContainer) {
+						canvas = richContainer.querySelector('#' + chartId);
+						console.log('[Rich Content] [Chart] Searched in rich container:', richContainer);
+					}
 					
-					const canvas = currentContainer.querySelector('#' + chartId);
+					// Fallback to document-wide search
 					if (!canvas) {
-						retryCount++;
-						if (retryCount < maxRetries) {
-							const delay = Math.min(100 * retryCount, 2000); // Exponential backoff up to 2s
-							console.warn('[Rich Content] [Chart] Canvas not found, retry', retryCount, 'in', delay, 'ms');
-							setTimeout(initChart, delay);
-							return;
-						} else {
-							console.error('[Rich Content] [Chart] Canvas not found after', maxRetries, 'retries');
-							return;
+						const searchContexts = [
+							document,
+							...(document.querySelectorAll('.rich-message-container') || []),
+							...(document.querySelectorAll('.rich-html-content') || []),
+							...(document.querySelectorAll('.chart-container') || [])
+						];
+						
+						for (const context of searchContexts) {
+							const contextCanvas = context.querySelector('#' + chartId);
+							if (contextCanvas) {
+								canvas = contextCanvas;
+								console.log('[Rich Content] [Chart] Found canvas in context:', context);
+								break;
+							}
 						}
 					}
+					
+					if (!canvas && retryCount < maxRetries) {
+						const delay = Math.min(100 * retryCount, 2000); // Exponential backoff up to 2s
+						console.warn('[Rich Content] [Chart] Canvas not found, retry', retryCount, 'in', delay, 'ms');
+						setTimeout(initChart, delay);
+						return;
+					}
+					
+					if (!canvas) {
+						console.error('[Rich Content] [Chart] Canvas not found after', maxRetries, 'retries');
+						console.log('[Rich Content] [Chart] Available canvases:', document.querySelectorAll('canvas'));
+						return;
+					}
+					
+					console.log('[Rich Content] [Chart] Canvas found:', canvas);
 				
 				const ctx = canvas.getContext('2d');
 				if (!ctx) {
