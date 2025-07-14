@@ -41,7 +41,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
+		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.0000001;
 	}
 
 	function focusNode(nodeId: string) {
@@ -74,7 +74,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		void vueFlow.setCenter(
 			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
 			nodeToFocus.position[1] + 80,
-			{ duration: 200, zoom: maxCanvasZoom.value },
+			{ duration: 200, zoom: maxCanvasZoom.value, interpolate: 'linear' },
 		);
 	}
 
