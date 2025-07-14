@@ -7,7 +7,7 @@ import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import NodeTitle from '@/components/NodeTitle.vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement, watchOnce } from '@vueuse/core';
+import { useActiveElement, usePrevious, watchOnce } from '@vueuse/core';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
@@ -66,20 +66,18 @@ const inputPanelContainerRef = useTemplateRef('inputPanelContainer');
 const activeElement = useActiveElement();
 
 const shouldShowInputPanel = computed(() => {
-	if (ndvStore.isDraggableDragging) {
+	if (ndvStore.isDraggableDragging && previousShouldShowInputPanel.value) {
+		// Keep showing panel while dragging
 		return true;
 	}
 
-	if (!activeElement.value) {
-		return false;
-	}
-
-	if (inputPanelContainerRef.value?.contains(activeElement.value)) {
+	if (activeElement.value && inputPanelContainerRef.value?.contains(activeElement.value)) {
 		// User is interacting with input panel
 		return true;
 	}
 
 	if (
+		activeElement.value &&
 		containerRef.value?.contains(activeElement.value) &&
 		activeElement.value.closest('[data-test-id=inline-expression-editor-input]')
 	) {
@@ -91,6 +89,7 @@ const shouldShowInputPanel = computed(() => {
 
 	return false;
 });
+const previousShouldShowInputPanel = usePrevious(shouldShowInputPanel, false);
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
