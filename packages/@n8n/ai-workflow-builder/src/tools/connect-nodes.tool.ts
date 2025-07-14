@@ -101,10 +101,10 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				// Determine connection type
 				reportProgress(reporter, 'Inferring connection type...');
 
-				console.log('\n=== Connect Nodes Tool ===');
-				console.log(
-					`Attempting to connect: ${matchedSourceNode.name} -> ${matchedTargetNode.name}`,
-				);
+				// console.log('\n=== Connect Nodes Tool ===');
+				// console.log(
+				// 	`Attempting to connect: ${matchedSourceNode.name} -> ${matchedTargetNode.name}`,
+				// );
 
 				const inferResult = inferConnectionType(
 					matchedSourceNode,
@@ -145,7 +145,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 
 				// If swap is required from inference, swap the nodes
 				if (inferredSwap) {
-					console.log('Swapping nodes based on inference result');
+					// console.log('Swapping nodes based on inference result');
 					const temp = matchedSourceNode;
 					matchedSourceNode = matchedTargetNode;
 					matchedTargetNode = temp;
@@ -155,9 +155,9 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 					reporter,
 					`Inferred connection type: ${connectionType}${inferredSwap ? ' (swapped nodes)' : ''}`,
 				);
-				console.log(
-					`Final connection: ${matchedSourceNode.name} -> ${matchedTargetNode.name} (${connectionType})\n`,
-				);
+				// console.log(
+				// 	`Final connection: ${matchedSourceNode.name} -> ${matchedTargetNode.name} (${connectionType})\n`,
+				// );
 
 				// Report progress
 				reportProgress(
