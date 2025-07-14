@@ -39,7 +39,7 @@ export class TelegramTrigger implements INodeType {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: 'webhook',
+				path: '',
 			},
 		],
 		properties: [
