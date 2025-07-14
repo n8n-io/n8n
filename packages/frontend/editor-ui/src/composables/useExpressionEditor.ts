@@ -39,6 +39,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
+import { TARGET_NODE_PARAMETER_FACET } from '@/plugins/codemirror/completions/constants';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -200,6 +201,7 @@ export const useExpressionEditor = ({
 		const state = EditorState.create({
 			doc: toValue(editorValue),
 			extensions: [
+				TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
