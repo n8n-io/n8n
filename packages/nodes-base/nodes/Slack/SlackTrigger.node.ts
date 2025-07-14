@@ -343,7 +343,7 @@ export class SlackTrigger implements INodeType {
 		}
 
 		if (eventType !== 'team_join') {
-			let eventChannel = req.body.event.channel ?? req.body.event.item?.channel ?? req.body.event.file?.channel_id;
+			eventChannel = req.body.event.channel ?? req.body.event.item?.channel ?? req.body.event.file?.channel_id;
 
 			// Check for single channel
 			if (!watchWorkspace) {
