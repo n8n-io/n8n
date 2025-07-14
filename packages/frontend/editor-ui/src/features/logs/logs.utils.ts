@@ -583,9 +583,29 @@ function extractResponseContent(
 		return undefined;
 	}
 
-	// Check for rich content structure first
+	// Check for rich content structure first - enhanced detection
 	if (responseData.type === 'rich' && responseData.content) {
 		const richContent = responseData.content as RichContent;
+
+		// Validate rich content structure
+		if (richContent.html || richContent.components || richContent.data) {
+			return {
+				content: {
+					html: richContent.html || '',
+					css: richContent.css || '',
+					script: richContent.script || '',
+					data: richContent.data || {},
+					components: richContent.components || [],
+					sanitize: richContent.sanitize || 'basic',
+				},
+				type: 'rich',
+			};
+		}
+	}
+
+	// NEW: Check for richContent property directly in response data
+	if (responseData.richContent && typeof responseData.richContent === 'object') {
+		const richContent = responseData.richContent as RichContent;
 
 		// Validate rich content structure
 		if (richContent.html || richContent.components || richContent.data) {
