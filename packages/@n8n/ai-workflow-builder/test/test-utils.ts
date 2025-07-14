@@ -169,6 +169,85 @@ export const nodeTypes = {
 			},
 		],
 	}),
+	mergeNode: createNodeType({
+		displayName: 'Merge',
+		name: 'n8n-nodes-base.merge',
+		group: ['transform'],
+		inputs: ['main', 'main'],
+		outputs: ['main'],
+		inputNames: ['Input 1', 'Input 2'],
+		properties: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{ name: 'Append', value: 'append' },
+					{ name: 'Merge By Index', value: 'mergeByIndex' },
+					{ name: 'Merge By Key', value: 'mergeByKey' },
+				],
+				default: 'append',
+			},
+		],
+	}),
+	vectorStoreNode: createNodeType({
+		displayName: 'Vector Store',
+		name: '@n8n/n8n-nodes-langchain.vectorStore',
+		subtitle: '={{$parameter["mode"] === "retrieve" ? "Retrieve" : "Insert"}}',
+		group: ['transform'],
+		inputs: `={{ ((parameter) => { 
+			function getInputs(parameters) {
+				const mode = parameters?.mode;
+				const inputs = [];
+				if (mode === 'retrieve-as-tool') {
+					inputs.push({
+						displayName: 'Embedding',
+						type: 'ai_embedding',
+						required: true
+					});
+				} else {
+					inputs.push({
+						displayName: '',
+						type: 'main'
+					});
+					inputs.push({
+						displayName: 'Embedding',
+						type: 'ai_embedding',
+						required: true
+					});
+				}
+				return inputs;
+			}; 
+			return getInputs(parameter) 
+		})($parameter) }}`,
+		outputs: `={{ ((parameter) => { 
+			function getOutputs(parameters) {
+				const mode = parameters?.mode;
+				if (mode === 'retrieve-as-tool') {
+					return ['ai_tool'];
+				} else if (mode === 'retrieve') {
+					return ['ai_document'];
+				} else {
+					return ['main'];
+				}
+			}; 
+			return getOutputs(parameter) 
+		})($parameter) }}`,
+		properties: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{ name: 'Insert', value: 'insert' },
+					{ name: 'Retrieve', value: 'retrieve' },
+					{ name: 'Retrieve (As Tool)', value: 'retrieve-as-tool' },
+				],
+				default: 'insert',
+			},
+			// Many more properties would be here in reality
+		],
+	}),
 };
 
 // Helper to create connections
@@ -449,6 +528,63 @@ export const buildUpdateNodeInput = (nodeId: string, changes: string[]) => ({
 	nodeId,
 	changes,
 });
+
+// Build node details input
+export const buildNodeDetailsInput = (overrides: {
+	nodeName: string;
+	withParameters?: boolean;
+	withConnections?: boolean;
+}) => ({
+	nodeName: overrides.nodeName,
+	withParameters: overrides.withParameters ?? false,
+	withConnections: overrides.withConnections ?? true,
+});
+
+// Expect node details in response
+export const expectNodeDetails = (
+	content: ParsedToolContent,
+	expectedDetails: Partial<{
+		name: string;
+		displayName: string;
+		description: string;
+		subtitle?: string;
+	}>,
+): void => {
+	const message = content.update.messages[0]?.kwargs.content;
+	expect(message).toBeDefined();
+
+	// Check for expected XML-like tags in formatted output
+	if (expectedDetails.name) {
+		expect(message).toContain(`<name>${expectedDetails.name}</name>`);
+	}
+	if (expectedDetails.displayName) {
+		expect(message).toContain(`<display_name>${expectedDetails.displayName}</display_name>`);
+	}
+	if (expectedDetails.description) {
+		expect(message).toContain(`<description>${expectedDetails.description}</description>`);
+	}
+	if (expectedDetails.subtitle) {
+		expect(message).toContain(`<subtitle>${expectedDetails.subtitle}</subtitle>`);
+	}
+};
+
+// Helper to validate XML-like structure in output
+export const expectXMLTag = (
+	content: string,
+	tagName: string,
+	expectedValue?: string | RegExp,
+): void => {
+	const tagRegex = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`);
+	const match = content.match(tagRegex);
+	expect(match).toBeDefined();
+	if (expectedValue) {
+		if (typeof expectedValue === 'string') {
+			expect(match?.[1]?.trim()).toBe(expectedValue);
+		} else {
+			expect(match?.[1]).toMatch(expectedValue);
+		}
+	}
+};
 
 // Common reasoning strings
 export const REASONING = {
