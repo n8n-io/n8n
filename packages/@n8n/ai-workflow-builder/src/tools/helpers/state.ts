@@ -118,34 +118,3 @@ export function addConnectionToWorkflow(
 		],
 	};
 }
-
-/**
- * Get all node IDs from the workflow
- */
-export function getNodeIds(workflow: SimpleWorkflow): string[] {
-	return workflow.nodes.map((n) => n.id);
-}
-
-/**
- * Get all node names from the workflow
- */
-export function getNodeNames(workflow: SimpleWorkflow): string[] {
-	return workflow.nodes.map((n) => n.name);
-}
-
-/**
- * Check if workflow is empty
- */
-export function isWorkflowEmpty(workflow: SimpleWorkflow): boolean {
-	return workflow.nodes.length === 0;
-}
-
-/**
- * Create an empty workflow
- */
-export function createEmptyWorkflow(): SimpleWorkflow {
-	return {
-		nodes: [],
-		connections: {},
-	};
-}
