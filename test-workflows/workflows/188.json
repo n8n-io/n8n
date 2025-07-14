@@ -1,0 +1,86 @@
+{
+  "createdAt": "2021-04-29T08:16:23.227Z",
+  "updatedAt": "2021-04-29T08:16:23.227Z",
+  "id": "188",
+  "name": "Uplead:Company:enrich:Person:enrich",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "1a29e4a7-f246-40dc-b79c-b786d4c806b1"
+    },
+    {
+      "parameters": {
+        "company": "amazon"
+      },
+      "name": "Uplead",
+      "type": "n8n-nodes-base.uplead",
+      "typeVersion": 1,
+      "position": [
+        550,
+        200
+      ],
+      "credentials": {
+        "upleadApi": {
+          "id": "151",
+          "name": "Uplead API creds"
+        }
+      },
+      "id": "879b9140-4c58-4d4d-86ab-a483fd617922"
+    },
+    {
+      "parameters": {
+        "resource": "person",
+        "firstname": "Werner ",
+        "lastname": "Vogels",
+        "domain": "amazon.com"
+      },
+      "name": "Uplead1",
+      "type": "n8n-nodes-base.uplead",
+      "typeVersion": 1,
+      "position": [
+        550,
+        350
+      ],
+      "credentials": {
+        "upleadApi": {
+          "id": "151",
+          "name": "Uplead API creds"
+        }
+      },
+      "id": "e97bccd6-c107-4099-9141-040cebe56ed8"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Uplead",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Uplead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

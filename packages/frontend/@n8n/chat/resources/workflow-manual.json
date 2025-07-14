@@ -1,0 +1,214 @@
+{
+	"name": "Hosted n8n AI Chat Manual",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "e6043748-44fc-4019-9301-5690fe26c614",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [860, 540],
+			"credentials": {
+				"openAiApi": {
+					"id": "cIIkOhl7tUX1KsL6",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"sessionKey": "={{ $json.sessionId }}"
+			},
+			"id": "0a68a59a-8ab6-4fa5-a1ea-b7f99a93109b",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1,
+			"position": [640, 540]
+		},
+		{
+			"parameters": {
+				"text": "={{ $json.chatInput }}",
+				"options": {}
+			},
+			"id": "3d4e0fbf-d761-4569-b02e-f5c1eeb830c8",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.1,
+			"position": [840, 300]
+		},
+		{
+			"parameters": {
+				"dataType": "string",
+				"value1": "={{ $json.action }}",
+				"rules": {
+					"rules": [
+						{
+							"value2": "loadPreviousSession",
+							"outputKey": "loadPreviousSession"
+						},
+						{
+							"value2": "sendMessage",
+							"outputKey": "sendMessage"
+						}
+					]
+				}
+			},
+			"id": "84213c7b-abc7-4f40-9567-cd3484a4ae6b",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 2,
+			"position": [300, 280]
+		},
+		{
+			"parameters": {
+				"simplifyOutput": false
+			},
+			"id": "3be7f076-98ed-472a-80b6-bf8d9538ac87",
+			"name": "Chat Messages Retriever",
+			"type": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
+			"typeVersion": 1,
+			"position": [620, 140]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "3417c644-8a91-4524-974a-45b4a46d0e2e",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1,
+			"position": [1240, 140]
+		},
+		{
+			"parameters": {
+				"public": true,
+				"authentication": "n8nUserAuth",
+				"options": {
+					"loadPreviousSession": "manually",
+					"responseMode": "responseNode"
+				}
+			},
+			"id": "1b30c239-a819-45b4-b0ae-bdd5b92a5424",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1,
+			"position": [80, 280],
+			"webhookId": "ed3dea26-7d68-42b3-9032-98fe967d441d"
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"options": {}
+			},
+			"id": "79672cf0-686b-41eb-90ae-fd31b6da837d",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [1000, 140]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					},
+					{
+						"node": "Chat Messages Retriever",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Chat Messages Retriever",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Messages Retriever": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "425c0efe-3aa0-4e0e-8c06-abe12234b1fd",
+	"id": "1569HF92Y02EUtsU",
+	"meta": {
+		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
+	},
+	"tags": []
+}

@@ -1,0 +1,110 @@
+{
+  "name": "open_node_creator_for_connection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "25ff0c17-7064-4e14-aec6-45c71d63201b",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        740,
+        520
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "49f376ca-845b-4737-aac0-073d0e4fa95c",
+      "name": "Token Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d1db5111-4b01-4620-8ccb-a16ea576c363",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryXata",
+      "typeVersion": 1.2,
+      "position": [
+        940,
+        540
+      ],
+      "credentials": {
+        "xataApi": {
+          "id": "q1ckaYlHTWCYDtF0",
+          "name": "Xata Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b08b6d3a-bef8-42ac-9cef-ec9d4e5402b1",
+      "name": "Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ee557938-9cf1-4b78-afef-c783c52fd307",
+      "name": "Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "814f2e9c-cc7b-4f3c-89b4-d6eb82bc24df",
+      "name": "Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "e8569b0b-a580-4249-9c5e-f1feed5c644e",
+      "name": "Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        540
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8e90604c-f7e9-489d-8e43-1cc699b7db04",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "id": "L3tgfoW660UOSuX6",
+  "tags": []
+}

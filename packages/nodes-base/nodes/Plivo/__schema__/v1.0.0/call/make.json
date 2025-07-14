@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "api_id": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        },
+        "request_uuid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

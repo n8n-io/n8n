@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "closed": {
+            "type": "boolean"
+        },
+        "datasource": {
+            "type": "object",
+            "properties": {
+                "filter": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "softLimit": {
+            "type": "null"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "null"
+        }
+    },
+    "version": 4
+}

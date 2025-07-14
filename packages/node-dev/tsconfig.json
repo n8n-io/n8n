@@ -1,0 +1,14 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
+	"compilerOptions": {
+		"outDir": "dist",
+		"preserveSymlinks": true,
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["commands/**/*.ts", "src/**/*.ts"]
+}

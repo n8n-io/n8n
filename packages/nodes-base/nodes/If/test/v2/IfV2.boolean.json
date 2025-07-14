@@ -1,0 +1,174 @@
+{
+  "name": "Filter test: boolean",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9e2c2dc5-bd37-460b-a5a4-943860dcc03e",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3184fda2-b1d0-400a-a882-5844bbe99ae3",
+      "name": "false",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    email: \"shane@yahoo.com\",\n    admin: false\n  },\n  {\n    email: \"sharon@yahoo.com\",\n     admin: true\n  },\n  {\n    email: \"sarah@gmail.com\",\n     admin: 'false'\n  },\n  {\n    email: \"tom@gmail.com\",\n     admin: '0'\n  },\n  {\n    email: \"jane@gmail.com\",\n     admin: 1\n  }\n]"
+      },
+      "id": "85de5f5c-0a4c-4da1-805b-9e056089bcd5",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8577ab3b-b9f8-4c4d-a3a1-abb6a9269473",
+      "name": "true",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "307e4ea0-3a82-4722-aca6-68d882115e8b",
+              "leftValue": "={{ $json.admin }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -280,
+        160
+      ],
+      "id": "d5d17556-45e6-44a1-8580-a08395ca38c4",
+      "name": "loose"
+    }
+  ],
+  "pinData": {
+    "true": [
+      {
+        "json": {
+          "email": "sharon@yahoo.com",
+          "admin": true
+        }
+      },
+      {
+        "json": {
+          "email": "jane@gmail.com",
+          "admin": 1
+        }
+      }
+    ],
+    "false": [
+      {
+        "json": {
+          "email": "shane@yahoo.com",
+          "admin": false
+        }
+      },
+      {
+        "json": {
+          "email": "sarah@gmail.com",
+          "admin": "false"
+        }
+      },
+      {
+        "json": {
+          "email": "tom@gmail.com",
+          "admin": "0"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "loose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loose": {
+      "main": [
+        [
+          {
+            "node": "true",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "false",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "35631b37-dc5e-4155-a54f-41b38584f38e",
+  "meta": {
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "id": "JQsdJ4gnZtuDb7Oo",
+  "tags": []
+}

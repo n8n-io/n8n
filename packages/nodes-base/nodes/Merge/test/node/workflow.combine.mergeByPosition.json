@@ -1,0 +1,219 @@
+{
+	"name": "merge tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9f880c6f-b5e0-4453-b1d7-550beb1febe8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [840, 360]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, data: 'a', input: 1},\n  {id: 2, data: 'b', input: 1},\n];"
+			},
+			"id": "263d9c7f-32d4-4112-b271-73d09b73809a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1040, 200]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, data: 'c', input: 2},\n  {id: 2, data: 'd', input: 2},\n  {id: 3, data: 'e', input: 2},\n];"
+			},
+			"id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1060, 520]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "addSuffix"
+						}
+					}
+				}
+			},
+			"id": "7120cd6f-29f3-4f5b-aa25-babebd6335d3",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 200]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "preferInput1"
+						}
+					}
+				}
+			},
+			"id": "b40fdf2e-7527-4954-84fe-464a762f8957",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 380]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "preferInput2"
+						}
+					},
+					"includeUnpaired": true
+				}
+			},
+			"id": "daca2305-691a-45c2-9010-34a9ef5a783f",
+			"name": "Merge2",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 540]
+		}
+	],
+	"pinData": {
+		"Merge": [
+			{
+				"json": {
+					"id_1": 1,
+					"data_1": "a",
+					"input_1": 1,
+					"id_2": 1,
+					"data_2": "c",
+					"input_2": 2
+				}
+			},
+			{
+				"json": {
+					"id_1": 2,
+					"data_1": "b",
+					"input_1": 1,
+					"id_2": 2,
+					"data_2": "d",
+					"input_2": 2
+				}
+			}
+		],
+		"Merge1": [
+			{
+				"json": {
+					"id": 1,
+					"data": "a",
+					"input": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "b",
+					"input": 1
+				}
+			}
+		],
+		"Merge2": [
+			{
+				"json": {
+					"id": 1,
+					"data": "c",
+					"input": 2
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "d",
+					"input": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": "e",
+					"input": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c61ce62f-d995-46bb-900a-8b3edf95a858",
+	"id": "107",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

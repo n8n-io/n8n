@@ -1,0 +1,128 @@
+/**
+ * Resizer
+ */
+
+.vue-flow__resize-control.line {
+	border-color: transparent;
+	z-index: 1;
+
+	&.top {
+		height: var(--spacing-s);
+		border-top-width: var(--spacing-s);
+	}
+
+	&.right {
+		width: var(--spacing-s);
+		border-right-width: var(--spacing-s);
+	}
+
+	&.bottom {
+		height: var(--spacing-s);
+		border-bottom-width: var(--spacing-s);
+	}
+
+	&.left {
+		width: var(--spacing-s);
+		border-left-width: var(--spacing-s);
+	}
+}
+
+.vue-flow__resize-control.handle {
+	background-color: transparent;
+	width: var(--spacing-s);
+	height: var(--spacing-s);
+	border: 0;
+	border-radius: 0;
+	z-index: 1;
+}
+
+/**
+ * Minimap
+ */
+
+.vue-flow__minimap {
+	height: 120px;
+	overflow: hidden;
+	margin-bottom: calc(48px + 2 * var(--spacing-xs));
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+	background: var(--color-background-light);
+
+	.minimap-node-default {
+		fill: var(--color-foreground-dark);
+	}
+
+	.minimap-node-n8n-nodes-base-stickyNote {
+		fill: var(--color-foreground-dark);
+		opacity: 0.2;
+	}
+
+	@include mixins.breakpoint('xs-only') {
+		display: none;
+	}
+}
+
+/**
+ * Nodes
+ */
+
+.vue-flow__node {
+	&,
+	&.draggable {
+		cursor: pointer;
+	}
+
+	&.dragging {
+		cursor: grabbing;
+	}
+
+	&:has(.sticky--active) {
+		z-index: 1 !important;
+	}
+
+	// Bump z-index for unconnected nodes
+	&:has(.canvas-handle-plus-wrapper):hover {
+		z-index: 2 !important;
+	}
+}
+
+.vue-flow__nodes:has(.bring-to-front) {
+	z-index: 2 !important;
+}
+
+/**
+ * Selection
+ */
+
+.vue-flow__nodesselection-rect {
+	box-sizing: content-box;
+	margin-top: calc(-1 * var(--spacing-2xs));
+	margin-left: calc(-1 * var(--spacing-2xs));
+	padding: var(--spacing-2xs);
+}
+
+/**
+ * Edges
+ */
+
+.vue-flow__edges:has(.bring-to-front),
+.vue-flow__edge-label.selected {
+	z-index: 1 !important;
+}
+
+/**
+ * Controls
+ */
+
+.vue-flow__controls {
+	margin: var(--spacing-s);
+
+	@include mixins.breakpoint('xs-only') {
+		max-width: calc(100% - 3 * var(--spacing-s) - var(--spacing-2xs));
+		overflow: auto;
+		margin-left: 0;
+		margin-right: 0;
+		padding-left: var(--spacing-s);
+		padding-right: var(--spacing-s);
+	}
+}

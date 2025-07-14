@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.filter",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+			}
+		],
+		"generic": []
+	},
+	"alias": ["Router", "Filter", "Condition", "Logic", "Boolean", "Branch"],
+	"subcategories": {
+		"Core Nodes": ["Flow", "Data Transformation"]
+	}
+}

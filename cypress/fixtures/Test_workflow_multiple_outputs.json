@@ -1,0 +1,223 @@
+{
+  "name": "Multiple outputs",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "64b27674-3da6-46ce-9008-e173182efa48",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        16,
+        -32
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.code }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Item1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "a659050f-0867-471d-8914-d499b6ad7b31",
+                    "leftValue": "={{ $json.code }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Item2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "109fc001-53af-48f1-b79c-5e9afc8b94bd",
+                    "leftValue": "={{ $json.code }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Item3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        192,
+        -32
+      ],
+      "id": "3863cc7a-8f45-46fc-a60c-36aad5b12877",
+      "name": "Switch",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f71bac89-8852-41b2-98dd-cb689f011dcb",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "position": [
+        480,
+        -192
+      ],
+      "id": "85940094-4656-4cdf-a871-1b3b46421de3",
+      "name": "Only Item 1",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "position": [
+        480,
+        -32
+      ],
+      "id": "a7f4e2b5-8cc9-4881-aa06-38601988740e",
+      "name": "Only Item 2",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "position": [
+        480,
+        128
+      ],
+      "id": "7e44ad56-415a-4991-a70e-fea86c430031",
+      "name": "Only Item 3",
+      "typeVersion": 3.4
+    }
+  ],
+  "pinData": {
+    "When clicking ‘Execute workflow’": [
+      {
+        "json": {
+          "name": "First item",
+          "onlyOnItem1": true,
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "onlyOnItem2": true,
+          "code": 2
+        }
+      },
+      {
+        "json": {
+          "name": "Third item",
+          "onlyOnItem3": true,
+          "code": 3
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Only Item 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Only Item 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Only Item 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1e2a7b45-7730-42d6-989e-f3fa80de303e",
+  "meta": {
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "id": "V2ld4YU11fsHgr1z",
+  "tags": []
+}

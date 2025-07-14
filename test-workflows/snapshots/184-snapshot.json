@@ -1,0 +1,1341 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1705409098591,
+            "executionTime": 1,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce7": [
+          {
+            "startTime": 1705409098592,
+            "executionTime": 421,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "5000900000ts7wRAAQ",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce": [
+          {
+            "startTime": 1705409099013,
+            "executionTime": 286,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0010900002NKs26AAD",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce8": [
+          {
+            "startTime": 1705409099300,
+            "executionTime": 160,
+            "source": [
+              {
+                "previousNode": "Salesforce7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "5000900000ts7wRAAQ",
+                      "IsDeleted": false,
+                      "MasterRecordId": {
+                        "object": true
+                      },
+                      "CaseNumber": "00001926",
+                      "ContactId": {
+                        "object": true
+                      },
+                      "AccountId": {
+                        "object": true
+                      },
+                      "AssetId": {
+                        "object": true
+                      },
+                      "SourceId": {
+                        "object": true
+                      },
+                      "ParentId": {
+                        "object": true
+                      },
+                      "SuppliedName": {
+                        "object": true
+                      },
+                      "SuppliedEmail": {
+                        "object": true
+                      },
+                      "SuppliedPhone": {
+                        "object": true
+                      },
+                      "SuppliedCompany": {
+                        "object": true
+                      },
+                      "Type": "Other",
+                      "Status": "New",
+                      "Reason": "Installation",
+                      "Origin": {
+                        "object": true
+                      },
+                      "Subject": "Subject1705409098603",
+                      "Priority": "Medium",
+                      "Description": {
+                        "object": true
+                      },
+                      "IsClosed": false,
+                      "ClosedDate": {
+                        "object": true
+                      },
+                      "IsEscalated": false,
+                      "OwnerId": "00509000005ntkGAAQ",
+                      "CreatedDate": "2024-01-16T12:44:58.000+0000",
+                      "CreatedById": "00509000005ntkGAAQ",
+                      "LastModifiedDate": "2024-01-16T12:44:58.000+0000",
+                      "LastModifiedById": "00509000005ntkGAAQ",
+                      "SystemModstamp": "2024-01-16T12:44:58.000+0000",
+                      "ContactPhone": {
+                        "object": true
+                      },
+                      "ContactMobile": {
+                        "object": true
+                      },
+                      "ContactEmail": {
+                        "object": true
+                      },
+                      "ContactFax": {
+                        "object": true
+                      },
+                      "Comments": {
+                        "object": true
+                      },
+                      "LastViewedDate": "2024-01-16T12:44:58.000+0000",
+                      "LastReferencedDate": "2024-01-16T12:44:58.000+0000",
+                      "EngineeringReqNumber__c": {
+                        "object": true
+                      },
+                      "SLAViolation__c": {
+                        "object": true
+                      },
+                      "Product__c": {
+                        "object": true
+                      },
+                      "PotentialLiability__c": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second": [
+          {
+            "startTime": 1705409099461,
+            "executionTime": 503,
+            "source": [
+              {
+                "previousNode": "Salesforce"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "0010900002NKs26AAD",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set": [
+          {
+            "startTime": 1705409099965,
+            "executionTime": 4,
+            "source": [
+              {
+                "previousNode": "Salesforce8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "5000900000ts7wRAAQ",
+                      "IsDeleted": false,
+                      "MasterRecordId": {
+                        "object": true
+                      },
+                      "CaseNumber": "00001926",
+                      "ContactId": {
+                        "object": true
+                      },
+                      "AccountId": {
+                        "object": true
+                      },
+                      "AssetId": {
+                        "object": true
+                      },
+                      "SourceId": {
+                        "object": true
+                      },
+                      "ParentId": {
+                        "object": true
+                      },
+                      "SuppliedName": {
+                        "object": true
+                      },
+                      "SuppliedEmail": {
+                        "object": true
+                      },
+                      "SuppliedPhone": {
+                        "object": true
+                      },
+                      "SuppliedCompany": {
+                        "object": true
+                      },
+                      "Type": "Other",
+                      "Status": "New",
+                      "Reason": "Installation",
+                      "Origin": {
+                        "object": true
+                      },
+                      "Subject": "Subject1705409098603",
+                      "Priority": "Medium",
+                      "Description": {
+                        "object": true
+                      },
+                      "IsClosed": false,
+                      "ClosedDate": {
+                        "object": true
+                      },
+                      "IsEscalated": false,
+                      "OwnerId": "00509000005ntkGAAQ",
+                      "CreatedDate": "2024-01-16T12:44:58.000+0000",
+                      "CreatedById": "00509000005ntkGAAQ",
+                      "LastModifiedDate": "2024-01-16T12:44:58.000+0000",
+                      "LastModifiedById": "00509000005ntkGAAQ",
+                      "SystemModstamp": "2024-01-16T12:44:58.000+0000",
+                      "ContactPhone": {
+                        "object": true
+                      },
+                      "ContactMobile": {
+                        "object": true
+                      },
+                      "ContactEmail": {
+                        "object": true
+                      },
+                      "ContactFax": {
+                        "object": true
+                      },
+                      "Comments": {
+                        "object": true
+                      },
+                      "LastViewedDate": "2024-01-16T12:44:58.000+0000",
+                      "LastReferencedDate": "2024-01-16T12:44:58.000+0000",
+                      "EngineeringReqNumber__c": {
+                        "object": true
+                      },
+                      "SLAViolation__c": {
+                        "object": true
+                      },
+                      "Product__c": {
+                        "object": true
+                      },
+                      "PotentialLiability__c": {
+                        "object": true
+                      },
+                      "data": "Attachment example"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce1": [
+          {
+            "startTime": 1705409099969,
+            "executionTime": 225,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "0010900002NKs26AAD",
+                      "IsDeleted": false,
+                      "MasterRecordId": {
+                        "object": true
+                      },
+                      "Name": "Account1705409099016",
+                      "Type": {
+                        "object": true
+                      },
+                      "ParentId": {
+                        "object": true
+                      },
+                      "BillingStreet": {
+                        "object": true
+                      },
+                      "BillingCity": {
+                        "object": true
+                      },
+                      "BillingState": {
+                        "object": true
+                      },
+                      "BillingPostalCode": {
+                        "object": true
+                      },
+                      "BillingCountry": {
+                        "object": true
+                      },
+                      "BillingLatitude": {
+                        "object": true
+                      },
+                      "BillingLongitude": {
+                        "object": true
+                      },
+                      "BillingGeocodeAccuracy": {
+                        "object": true
+                      },
+                      "BillingAddress": {
+                        "object": true
+                      },
+                      "ShippingStreet": {
+                        "object": true
+                      },
+                      "ShippingCity": {
+                        "object": true
+                      },
+                      "ShippingState": {
+                        "object": true
+                      },
+                      "ShippingPostalCode": {
+                        "object": true
+                      },
+                      "ShippingCountry": {
+                        "object": true
+                      },
+                      "ShippingLatitude": {
+                        "object": true
+                      },
+                      "ShippingLongitude": {
+                        "object": true
+                      },
+                      "ShippingGeocodeAccuracy": {
+                        "object": true
+                      },
+                      "ShippingAddress": {
+                        "object": true
+                      },
+                      "Phone": {
+                        "object": true
+                      },
+                      "Fax": {
+                        "object": true
+                      },
+                      "AccountNumber": {
+                        "object": true
+                      },
+                      "Website": {
+                        "object": true
+                      },
+                      "PhotoUrl": "/services/images/photo/0010900002NKs26AAD",
+                      "Sic": {
+                        "object": true
+                      },
+                      "Industry": {
+                        "object": true
+                      },
+                      "AnnualRevenue": {
+                        "object": true
+                      },
+                      "NumberOfEmployees": {
+                        "object": true
+                      },
+                      "Ownership": {
+                        "object": true
+                      },
+                      "TickerSymbol": {
+                        "object": true
+                      },
+                      "Description": {
+                        "object": true
+                      },
+                      "Rating": {
+                        "object": true
+                      },
+                      "Site": {
+                        "object": true
+                      },
+                      "OwnerId": "00509000005ntkGAAQ",
+                      "CreatedDate": "2024-01-16T12:44:59.000+0000",
+                      "CreatedById": "00509000005ntkGAAQ",
+                      "LastModifiedDate": "2024-01-16T12:44:59.000+0000",
+                      "LastModifiedById": "00509000005ntkGAAQ",
+                      "SystemModstamp": "2024-01-16T12:44:59.000+0000",
+                      "LastActivityDate": {
+                        "object": true
+                      },
+                      "LastViewedDate": "2024-01-16T12:44:59.000+0000",
+                      "LastReferencedDate": "2024-01-16T12:44:59.000+0000",
+                      "Jigsaw": {
+                        "object": true
+                      },
+                      "JigsawCompanyId": {
+                        "object": true
+                      },
+                      "CleanStatus": "Pending",
+                      "AccountSource": {
+                        "object": true
+                      },
+                      "DunsNumber": {
+                        "object": true
+                      },
+                      "Tradestyle": {
+                        "object": true
+                      },
+                      "NaicsCode": {
+                        "object": true
+                      },
+                      "NaicsDesc": {
+                        "object": true
+                      },
+                      "YearStarted": {
+                        "object": true
+                      },
+                      "SicDesc": {
+                        "object": true
+                      },
+                      "DandbCompanyId": {
+                        "object": true
+                      },
+                      "OperatingHoursId": {
+                        "object": true
+                      },
+                      "CustomerPriority__c": {
+                        "object": true
+                      },
+                      "SLA__c": {
+                        "object": true
+                      },
+                      "Active__c": {
+                        "object": true
+                      },
+                      "NumberofLocations__c": {
+                        "object": true
+                      },
+                      "UpsellOpportunity__c": {
+                        "object": true
+                      },
+                      "SLASerialNumber__c": {
+                        "object": true
+                      },
+                      "SLAExpirationDate__c": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Move Binary Data": [
+          {
+            "startTime": 1705409100194,
+            "executionTime": 1,
+            "source": [
+              {
+                "previousNode": "Set"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "application/json",
+                        "fileType": "json",
+                        "fileExtension": "json",
+                        "data": "eyJhdHRyaWJ1dGVzIjp7InR5cGUiOiJDYXNlIiwidXJsIjoiL3NlcnZpY2VzL2RhdGEvdjU5LjAvc29iamVjdHMvQ2FzZS81MDAwOTAwMDAwdHM3d1JBQVEifSwiSWQiOiI1MDAwOTAwMDAwdHM3d1JBQVEiLCJJc0RlbGV0ZWQiOmZhbHNlLCJNYXN0ZXJSZWNvcmRJZCI6bnVsbCwiQ2FzZU51bWJlciI6IjAwMDAxOTI2IiwiQ29udGFjdElkIjpudWxsLCJBY2NvdW50SWQiOm51bGwsIkFzc2V0SWQiOm51bGwsIlNvdXJjZUlkIjpudWxsLCJQYXJlbnRJZCI6bnVsbCwiU3VwcGxpZWROYW1lIjpudWxsLCJTdXBwbGllZEVtYWlsIjpudWxsLCJTdXBwbGllZFBob25lIjpudWxsLCJTdXBwbGllZENvbXBhbnkiOm51bGwsIlR5cGUiOiJPdGhlciIsIlN0YXR1cyI6Ik5ldyIsIlJlYXNvbiI6Ikluc3RhbGxhdGlvbiIsIk9yaWdpbiI6bnVsbCwiU3ViamVjdCI6IlN1YmplY3QxNzA1NDA5MDk4NjAzIiwiUHJpb3JpdHkiOiJNZWRpdW0iLCJEZXNjcmlwdGlvbiI6bnVsbCwiSXNDbG9zZWQiOmZhbHNlLCJDbG9zZWREYXRlIjpudWxsLCJJc0VzY2FsYXRlZCI6ZmFsc2UsIk93bmVySWQiOiIwMDUwOTAwMDAwNW50a0dBQVEiLCJDcmVhdGVkRGF0ZSI6IjIwMjQtMDEtMTZUMTI6NDQ6NTguMDAwKzAwMDAiLCJDcmVhdGVkQnlJZCI6IjAwNTA5MDAwMDA1bnRrR0FBUSIsIkxhc3RNb2RpZmllZERhdGUiOiIyMDI0LTAxLTE2VDEyOjQ0OjU4LjAwMCswMDAwIiwiTGFzdE1vZGlmaWVkQnlJZCI6IjAwNTA5MDAwMDA1bnRrR0FBUSIsIlN5c3RlbU1vZHN0YW1wIjoiMjAyNC0wMS0xNlQxMjo0NDo1OC4wMDArMDAwMCIsIkNvbnRhY3RQaG9uZSI6bnVsbCwiQ29udGFjdE1vYmlsZSI6bnVsbCwiQ29udGFjdEVtYWlsIjpudWxsLCJDb250YWN0RmF4IjpudWxsLCJDb21tZW50cyI6bnVsbCwiTGFzdFZpZXdlZERhdGUiOiIyMDI0LTAxLTE2VDEyOjQ0OjU4LjAwMCswMDAwIiwiTGFzdFJlZmVyZW5jZWREYXRlIjoiMjAyNC0wMS0xNlQxMjo0NDo1OC4wMDArMDAwMCIsIkVuZ2luZWVyaW5nUmVxTnVtYmVyX19jIjpudWxsLCJTTEFWaW9sYXRpb25fX2MiOm51bGwsIlByb2R1Y3RfX2MiOm51bGwsIlBvdGVudGlhbExpYWJpbGl0eV9fYyI6bnVsbCwiZGF0YSI6IkF0dGFjaG1lbnQgZXhhbXBsZSJ9",
+                        "fileSize": "1.12 kB"
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce2": [
+          {
+            "startTime": 1705409100195,
+            "executionTime": 186,
+            "source": [
+              {
+                "previousNode": "Salesforce1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "002090000011nDgAAI",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second7": [
+          {
+            "startTime": 1705409100381,
+            "executionTime": 504,
+            "source": [
+              {
+                "previousNode": "Move Binary Data"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "application/json",
+                        "fileType": "json",
+                        "fileExtension": "json",
+                        "data": "eyJhdHRyaWJ1dGVzIjp7InR5cGUiOiJDYXNlIiwidXJsIjoiL3NlcnZpY2VzL2RhdGEvdjU5LjAvc29iamVjdHMvQ2FzZS81MDAwOTAwMDAwdHM3d1JBQVEifSwiSWQiOiI1MDAwOTAwMDAwdHM3d1JBQVEiLCJJc0RlbGV0ZWQiOmZhbHNlLCJNYXN0ZXJSZWNvcmRJZCI6bnVsbCwiQ2FzZU51bWJlciI6IjAwMDAxOTI2IiwiQ29udGFjdElkIjpudWxsLCJBY2NvdW50SWQiOm51bGwsIkFzc2V0SWQiOm51bGwsIlNvdXJjZUlkIjpudWxsLCJQYXJlbnRJZCI6bnVsbCwiU3VwcGxpZWROYW1lIjpudWxsLCJTdXBwbGllZEVtYWlsIjpudWxsLCJTdXBwbGllZFBob25lIjpudWxsLCJTdXBwbGllZENvbXBhbnkiOm51bGwsIlR5cGUiOiJPdGhlciIsIlN0YXR1cyI6Ik5ldyIsIlJlYXNvbiI6Ikluc3RhbGxhdGlvbiIsIk9yaWdpbiI6bnVsbCwiU3ViamVjdCI6IlN1YmplY3QxNzA1NDA5MDk4NjAzIiwiUHJpb3JpdHkiOiJNZWRpdW0iLCJEZXNjcmlwdGlvbiI6bnVsbCwiSXNDbG9zZWQiOmZhbHNlLCJDbG9zZWREYXRlIjpudWxsLCJJc0VzY2FsYXRlZCI6ZmFsc2UsIk93bmVySWQiOiIwMDUwOTAwMDAwNW50a0dBQVEiLCJDcmVhdGVkRGF0ZSI6IjIwMjQtMDEtMTZUMTI6NDQ6NTguMDAwKzAwMDAiLCJDcmVhdGVkQnlJZCI6IjAwNTA5MDAwMDA1bnRrR0FBUSIsIkxhc3RNb2RpZmllZERhdGUiOiIyMDI0LTAxLTE2VDEyOjQ0OjU4LjAwMCswMDAwIiwiTGFzdE1vZGlmaWVkQnlJZCI6IjAwNTA5MDAwMDA1bnRrR0FBUSIsIlN5c3RlbU1vZHN0YW1wIjoiMjAyNC0wMS0xNlQxMjo0NDo1OC4wMDArMDAwMCIsIkNvbnRhY3RQaG9uZSI6bnVsbCwiQ29udGFjdE1vYmlsZSI6bnVsbCwiQ29udGFjdEVtYWlsIjpudWxsLCJDb250YWN0RmF4IjpudWxsLCJDb21tZW50cyI6bnVsbCwiTGFzdFZpZXdlZERhdGUiOiIyMDI0LTAxLTE2VDEyOjQ0OjU4LjAwMCswMDAwIiwiTGFzdFJlZmVyZW5jZWREYXRlIjoiMjAyNC0wMS0xNlQxMjo0NDo1OC4wMDArMDAwMCIsIkVuZ2luZWVyaW5nUmVxTnVtYmVyX19jIjpudWxsLCJTTEFWaW9sYXRpb25fX2MiOm51bGwsIlByb2R1Y3RfX2MiOm51bGwsIlBvdGVudGlhbExpYWJpbGl0eV9fYyI6bnVsbCwiZGF0YSI6IkF0dGFjaG1lbnQgZXhhbXBsZSJ9",
+                        "fileSize": "1.12 kB"
+                      }
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second1": [
+          {
+            "startTime": 1705409100886,
+            "executionTime": 506,
+            "source": [
+              {
+                "previousNode": "Salesforce2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "002090000011nDgAAI",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce14": [
+          {
+            "startTime": 1705409101392,
+            "executionTime": 296,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "00P0900000MuBd0EAF",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce3": [
+          {
+            "startTime": 1705409101689,
+            "executionTime": 163,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "0010900002NKrwVAAT",
+                      "Name": "Account1705408303842",
+                      "Type": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce15": [
+          {
+            "startTime": 1705409101852,
+            "executionTime": 166,
+            "source": [
+              {
+                "previousNode": "Salesforce14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "00P0900000MuBd0EAF",
+                      "IsDeleted": false,
+                      "ParentId": "5000900000ts7wRAAQ",
+                      "Name": "Attachment1705409101394",
+                      "IsPrivate": false,
+                      "ContentType": "application/json",
+                      "BodyLength": 1116,
+                      "Body": "/services/data/v59.0/sobjects/Attachment/00P0900000MuBd0EAF/Body",
+                      "OwnerId": "00509000005ntkGAAQ",
+                      "CreatedDate": "2024-01-16T12:45:01.000+0000",
+                      "CreatedById": "00509000005ntkGAAQ",
+                      "LastModifiedDate": "2024-01-16T12:45:01.000+0000",
+                      "LastModifiedById": "00509000005ntkGAAQ",
+                      "SystemModstamp": "2024-01-16T12:45:01.000+0000",
+                      "Description": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce4": [
+          {
+            "startTime": 1705409102019,
+            "executionTime": 166,
+            "source": [
+              {
+                "previousNode": "Salesforce3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectDescribe": {
+                        "object": true
+                      },
+                      "recentItems": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second6": [
+          {
+            "startTime": 1705409102185,
+            "executionTime": 506,
+            "source": [
+              {
+                "previousNode": "Salesforce15"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "00P0900000MuBd0EAF",
+                      "IsDeleted": false,
+                      "ParentId": "5000900000ts7wRAAQ",
+                      "Name": "Attachment1705409101394",
+                      "IsPrivate": false,
+                      "ContentType": "application/json",
+                      "BodyLength": 1116,
+                      "Body": "/services/data/v59.0/sobjects/Attachment/00P0900000MuBd0EAF/Body",
+                      "OwnerId": "00509000005ntkGAAQ",
+                      "CreatedDate": "2024-01-16T12:45:01.000+0000",
+                      "CreatedById": "00509000005ntkGAAQ",
+                      "LastModifiedDate": "2024-01-16T12:45:01.000+0000",
+                      "LastModifiedById": "00509000005ntkGAAQ",
+                      "SystemModstamp": "2024-01-16T12:45:01.000+0000",
+                      "Description": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second2": [
+          {
+            "startTime": 1705409102692,
+            "executionTime": 507,
+            "source": [
+              {
+                "previousNode": "Salesforce4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectDescribe": {
+                        "object": true
+                      },
+                      "recentItems": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce16": [
+          {
+            "startTime": 1705409103200,
+            "executionTime": 140,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "00P0900000MuBd0EAF",
+                      "Name": "Attachment1705409101394"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce5": [
+          {
+            "startTime": 1705409103341,
+            "executionTime": 305,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce17": [
+          {
+            "startTime": 1705409103646,
+            "executionTime": 164,
+            "source": [
+              {
+                "previousNode": "Salesforce16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectDescribe": {
+                        "object": true
+                      },
+                      "recentItems": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce6": [
+          {
+            "startTime": 1705409103811,
+            "executionTime": 444,
+            "source": [
+              {
+                "previousNode": "Salesforce5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second5": [
+          {
+            "startTime": 1705409104256,
+            "executionTime": 507,
+            "source": [
+              {
+                "previousNode": "Salesforce17"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectDescribe": {
+                        "object": true
+                      },
+                      "recentItems": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce18": [
+          {
+            "startTime": 1705409104763,
+            "executionTime": 187,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce19": [
+          {
+            "startTime": 1705409104951,
+            "executionTime": 213,
+            "source": [
+              {
+                "previousNode": "Salesforce18"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce9": [
+          {
+            "startTime": 1705409105164,
+            "executionTime": 243,
+            "source": [
+              {
+                "previousNode": "Salesforce19"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "00a09000004JUeBAAW",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second4": [
+          {
+            "startTime": 1705409105408,
+            "executionTime": 507,
+            "source": [
+              {
+                "previousNode": "Salesforce9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "00a09000004JUeBAAW",
+                      "success": true,
+                      "errors": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce10": [
+          {
+            "startTime": 1705409105916,
+            "executionTime": 147,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "objectDescribe": {
+                        "object": true
+                      },
+                      "recentItems": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce11": [
+          {
+            "startTime": 1705409106064,
+            "executionTime": 149,
+            "source": [
+              {
+                "previousNode": "Salesforce10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "5000900000ts7wRAAQ",
+                      "AccountId": {
+                        "object": true
+                      },
+                      "ContactId": {
+                        "object": true
+                      },
+                      "Priority": "Medium",
+                      "Status": "New",
+                      "Subject": "Subject1705409098603",
+                      "Type": "Other"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second3": [
+          {
+            "startTime": 1705409106213,
+            "executionTime": 505,
+            "source": [
+              {
+                "previousNode": "Salesforce11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "attributes": {
+                        "object": true
+                      },
+                      "Id": "5000900000ts7wRAAQ",
+                      "AccountId": {
+                        "object": true
+                      },
+                      "ContactId": {
+                        "object": true
+                      },
+                      "Priority": "Medium",
+                      "Status": "New",
+                      "Subject": "Subject1705409098603",
+                      "Type": "Other"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce12": [
+          {
+            "startTime": 1705409106718,
+            "executionTime": 240,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Salesforce13": [
+          {
+            "startTime": 1705409106958,
+            "executionTime": 397,
+            "source": [
+              {
+                "previousNode": "Salesforce12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "errors": [
+                        "json array"
+                      ],
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Salesforce13"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-01-16T12:44:58.575Z",
+  "stoppedAt": "2024-01-16T12:45:07.356Z",
+  "status": "running",
+  "finished": true
+}

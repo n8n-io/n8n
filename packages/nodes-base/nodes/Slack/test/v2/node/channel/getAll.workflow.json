@@ -1,0 +1,181 @@
+{
+	"name": "slack new tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {
+					"excludeArchived": true,
+					"types": ["public_channel", "private_channel", "im", "mpim"]
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1040, 360],
+			"webhookId": "04c5e584-45f4-48d0-bcd2-0ecacecb0f53",
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "C0362BX17TM",
+					"name": "general",
+					"is_channel": true,
+					"is_group": false,
+					"is_im": false,
+					"is_mpim": false,
+					"is_private": false,
+					"created": 1646724991,
+					"is_archived": false,
+					"is_general": true,
+					"unlinked": 0,
+					"name_normalized": "general",
+					"is_shared": false,
+					"is_org_shared": false,
+					"is_pending_ext_shared": false,
+					"pending_shared": [],
+					"context_team_id": "T0364MSFHV2",
+					"updated": 1734075560630,
+					"parent_conversation": null,
+					"creator": "U0362BXQYJW",
+					"is_ext_shared": false,
+					"shared_team_ids": ["T0364MSFHV2"],
+					"pending_connected_team_ids": [],
+					"is_member": true,
+					"topic": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					},
+					"purpose": {
+						"value": "This is the one channel that will always include everyone. It’s a great spot for announcements and team-wide conversations.",
+						"creator": "U0362BXQYJW",
+						"last_set": 1646724991
+					},
+					"properties": {
+						"use_case": "welcome"
+					},
+					"previous_names": [],
+					"num_members": 1
+				}
+			},
+			{
+				"json": {
+					"id": "C0362BXRZQA",
+					"name": "random",
+					"is_channel": true,
+					"is_group": false,
+					"is_im": false,
+					"is_mpim": false,
+					"is_private": false,
+					"created": 1646724991,
+					"is_archived": false,
+					"is_general": false,
+					"unlinked": 0,
+					"name_normalized": "random",
+					"is_shared": false,
+					"is_org_shared": false,
+					"is_pending_ext_shared": false,
+					"pending_shared": [],
+					"context_team_id": "T0364MSFHV2",
+					"updated": 1725415586388,
+					"parent_conversation": null,
+					"creator": "U0362BXQYJW",
+					"is_ext_shared": false,
+					"shared_team_ids": ["T0364MSFHV2"],
+					"pending_connected_team_ids": [],
+					"is_member": true,
+					"topic": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					},
+					"purpose": {
+						"value": "This channel is for... well, everything else. It’s a place for team jokes, spur-of-the-moment ideas, and funny GIFs. Go wild!",
+						"creator": "U0362BXQYJW",
+						"last_set": 1646724991
+					},
+					"properties": {
+						"tabs": [
+							{
+								"id": "files",
+								"label": "",
+								"type": "files"
+							}
+						],
+						"tabz": [
+							{
+								"type": "files"
+							}
+						],
+						"use_case": "random"
+					},
+					"previous_names": [],
+					"num_members": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f74e9c2c-83f4-4ef8-b436-704e1a27a9ef",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "qJdEfiBgYLdfYOTs",
+	"tags": []
+}

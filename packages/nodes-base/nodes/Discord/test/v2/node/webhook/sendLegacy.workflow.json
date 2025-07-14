@@ -1,0 +1,141 @@
+{
+  "name": "discord overhaul tests copy",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8fb04834-2c97-4f21-9300-0f38b0e82f08",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "TEST Message",
+        "options": {
+          "flags": [
+            "SUPPRESS_NOTIFICATIONS"
+          ],
+          "tts": true,
+          "username": "TEST_USER",
+          "wait": true
+        },
+        "embeds": {
+          "values": [
+            {
+              "description": "some description",
+              "author": "Michael",
+              "color": "#A6C91B",
+              "timestamp": "2023-10-17T21:00:00.000Z"
+            }
+          ]
+        }
+      },
+      "id": "61f96217-f6b3-4989-be70-77b723e8e169",
+      "name": "Bot test",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        560
+      ],
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "86",
+          "name": "Discord account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "c9c936f7-7dee-40d2-bcf6-255cc9d6d5e8",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        560
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "id": "1168768986385747999",
+          "type": 0,
+          "content": "TEST Message",
+          "channel_id": "1074646335082479626",
+          "author": {
+            "id": "1153265494955135077",
+            "username": "TEST_USER",
+            "avatar": null,
+            "discriminator": "0000",
+            "public_flags": 0,
+            "flags": 0,
+            "bot": true,
+            "global_name": null
+          },
+          "attachments": [],
+          "embeds": [
+            {
+              "type": "rich",
+              "description": "some description",
+              "color": 10930459,
+              "timestamp": "2023-10-17T21:00:00+00:00",
+              "author": {
+                "name": "Michael"
+              }
+            }
+          ],
+          "mentions": [],
+          "mention_roles": [],
+          "pinned": false,
+          "mention_everyone": false,
+          "tts": true,
+          "timestamp": "2023-10-31T04:30:41.032000+00:00",
+          "edited_timestamp": null,
+          "flags": 4096,
+          "components": [],
+          "webhook_id": "1153265494955135077"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Bot test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bot test": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "a4deab55-3791-4e57-b879-d804cd839348",
+  "id": "Hpl0rsKs6xAbHVO4",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

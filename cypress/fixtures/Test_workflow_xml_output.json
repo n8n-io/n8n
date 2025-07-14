@@ -1,0 +1,53 @@
+{
+    "meta": {
+      "instanceId": "2d1cf27f75b18bb9e146336f791c37884f4fc7ddb97c2def27c0444d106778bf"
+    },
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "8108d313-8b03-4aa4-963d-cd1c0fe8f85c",
+        "name": "When clicking ‘Execute workflow’",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          420,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "fields": {
+            "values": [
+              {
+                "name": "body",
+                "stringValue": "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "45888152-7c5f-4d88-9039-660c594da084",
+        "name": "Edit Fields",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.2,
+        "position": [
+          640,
+          220
+        ]
+      }
+    ],
+    "connections": {
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {}
+  }

@@ -1,0 +1,59 @@
+{
+	"name": "iCalendar test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "987fdc91-f1a7-4882-9975-3d41e183b7f3",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [780, 400]
+		},
+		{
+			"parameters": {
+				"title": "new event",
+				"start": "2023-02-27T22:00:00.000Z",
+				"end": "2023-02-27T22:00:00.000Z",
+				"allDay": true,
+				"additionalFields": {
+					"attendeesUi": {
+						"attendeeValues": [
+							{
+								"name": "Person",
+								"email": "person1@email.com"
+							}
+						]
+					},
+					"calName": "default"
+				}
+			},
+			"id": "afe2a25a-d7a3-41f5-a9be-7a2ea3bb260d",
+			"name": "iCalendar",
+			"type": "n8n-nodes-base.iCal",
+			"typeVersion": 1,
+			"position": [1080, 400]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "iCalendar",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "6c0ed4a8-3c83-44e1-957c-bbe7ef57ebd3",
+	"id": "116",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

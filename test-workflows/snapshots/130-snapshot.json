@@ -1,0 +1,815 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1676891410333,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan": [
+          {
+            "startTime": 1676891410334,
+            "executionTime": 226,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "QDPRfemxRr6XDXZbE",
+                      "defaultSwimlaneId": "7EEQmusaGFfc4beR2"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan1": [
+          {
+            "startTime": 1676891410560,
+            "executionTime": 93,
+            "source": [
+              {
+                "previousNode": "Wekan"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "QDPRfemxRr6XDXZbE",
+                      "title": "Board1676891410370",
+                      "members": [
+                        "json array"
+                      ],
+                      "permission": "private",
+                      "color": "belize",
+                      "slug": "board1676891410370",
+                      "archived": false,
+                      "createdAt": "2023-02-20T11:10:10.525Z",
+                      "modifiedAt": "2023-02-20T11:10:10.525Z",
+                      "stars": 0,
+                      "labels": [
+                        "json array"
+                      ],
+                      "subtasksDefaultBoardId": {
+                        "object": true
+                      },
+                      "subtasksDefaultListId": {
+                        "object": true
+                      },
+                      "dateSettingsDefaultBoardId": {
+                        "object": true
+                      },
+                      "dateSettingsDefaultListId": {
+                        "object": true
+                      },
+                      "allowsSubtasks": true,
+                      "allowsAttachments": true,
+                      "allowsChecklists": true,
+                      "allowsComments": true,
+                      "allowsDescriptionTitle": true,
+                      "allowsDescriptionText": true,
+                      "allowsActivities": true,
+                      "allowsLabels": true,
+                      "allowsAssignee": true,
+                      "allowsMembers": true,
+                      "allowsRequestedBy": true,
+                      "allowsAssignedBy": true,
+                      "allowsReceivedDate": true,
+                      "allowsStartDate": true,
+                      "allowsEndDate": true,
+                      "allowsDueDate": true,
+                      "presentParentTask": "no-parent",
+                      "isOvertime": false,
+                      "type": "board",
+                      "sort": 4
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan2": [
+          {
+            "startTime": 1676891410653,
+            "executionTime": 87,
+            "source": [
+              {
+                "previousNode": "Wekan1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "P2rsgwsk7pdqeLvgs",
+                      "title": "Templates"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan4": [
+          {
+            "startTime": 1676891410741,
+            "executionTime": 129,
+            "source": [
+              {
+                "previousNode": "Wekan2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "hmHTXSeYTdC2huq4i"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan5": [
+          {
+            "startTime": 1676891410871,
+            "executionTime": 88,
+            "source": [
+              {
+                "previousNode": "Wekan4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "hmHTXSeYTdC2huq4i",
+                      "title": "List1676891410743",
+                      "boardId": "QDPRfemxRr6XDXZbE",
+                      "sort": 0,
+                      "starred": false,
+                      "archived": false,
+                      "swimlaneId": "",
+                      "createdAt": "2023-02-20T11:10:10.871Z",
+                      "updatedAt": "2023-02-20T11:10:10.871Z",
+                      "modifiedAt": "2023-02-20T11:10:10.871Z",
+                      "wipLimit": {
+                        "object": true
+                      },
+                      "type": "list"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan6": [
+          {
+            "startTime": 1676891410959,
+            "executionTime": 75,
+            "source": [
+              {
+                "previousNode": "Wekan5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "hmHTXSeYTdC2huq4i",
+                      "title": "List1676891410743"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan8": [
+          {
+            "startTime": 1676891411034,
+            "executionTime": 106,
+            "source": [
+              {
+                "previousNode": "Wekan6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan9": [
+          {
+            "startTime": 1676891411140,
+            "executionTime": 88,
+            "source": [
+              {
+                "previousNode": "Wekan8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan10": [
+          {
+            "startTime": 1676891411228,
+            "executionTime": 82,
+            "source": [
+              {
+                "previousNode": "Wekan9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq",
+                      "title": "UpdatedCard1676891411141",
+                      "boardId": "QDPRfemxRr6XDXZbE",
+                      "listId": "hmHTXSeYTdC2huq4i",
+                      "userId": "E27bvzwJ5A26xfAPG",
+                      "swimlaneId": "CJ44cd7gPRf8qT3Xb",
+                      "sort": 0,
+                      "archived": false,
+                      "parentId": "",
+                      "coverId": "",
+                      "createdAt": "2023-02-20T11:10:11.153Z",
+                      "modifiedAt": "2023-02-20T11:10:11.243Z",
+                      "customFields": [
+                        "json array"
+                      ],
+                      "dateLastActivity": "2023-02-20T11:10:11.243Z",
+                      "description": "",
+                      "requestedBy": "",
+                      "assignedBy": "",
+                      "labelIds": [
+                        "json array"
+                      ],
+                      "members": [
+                        "json array"
+                      ],
+                      "assignees": [
+                        "json array"
+                      ],
+                      "spentTime": 0,
+                      "isOvertime": false,
+                      "subtaskSort": -1,
+                      "type": "cardType-card",
+                      "linkedId": "",
+                      "vote": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan11": [
+          {
+            "startTime": 1676891411310,
+            "executionTime": 97,
+            "source": [
+              {
+                "previousNode": "Wekan10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq",
+                      "title": "UpdatedCard1676891411141",
+                      "description": "",
+                      "assignees": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan13": [
+          {
+            "startTime": 1676891411407,
+            "executionTime": 79,
+            "source": [
+              {
+                "previousNode": "Wekan11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "jYfDm5RWaj9H5cCYx"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan17": [
+          {
+            "startTime": 1676891411486,
+            "executionTime": 180,
+            "source": [
+              {
+                "previousNode": "Wekan11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "Kjz6WRTqtowBCsSJm"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan14": [
+          {
+            "startTime": 1676891411666,
+            "executionTime": 95,
+            "source": [
+              {
+                "previousNode": "Wekan13"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "jYfDm5RWaj9H5cCYx",
+                      "userId": "E27bvzwJ5A26xfAPG",
+                      "text": "CardComment1676891411409",
+                      "cardId": "3eghZWSaCNrXDF5Fq",
+                      "boardId": "QDPRfemxRr6XDXZbE",
+                      "createdAt": "2023-02-20T11:10:11.510Z",
+                      "modifiedAt": "2023-02-20T11:10:11.510Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan18": [
+          {
+            "startTime": 1676891411762,
+            "executionTime": 104,
+            "source": [
+              {
+                "previousNode": "Wekan17"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "Kjz6WRTqtowBCsSJm",
+                      "title": "Checklist1676891411489",
+                      "cardId": "3eghZWSaCNrXDF5Fq",
+                      "sort": 0,
+                      "createdAt": "2023-02-20T11:10:11.607Z",
+                      "modifiedAt": "2023-02-20T11:10:11.606Z",
+                      "items": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan15": [
+          {
+            "startTime": 1676891411867,
+            "executionTime": 76,
+            "source": [
+              {
+                "previousNode": "Wekan14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "jYfDm5RWaj9H5cCYx",
+                      "comment": "CardComment1676891411409",
+                      "authorId": "E27bvzwJ5A26xfAPG"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan19": [
+          {
+            "startTime": 1676891411944,
+            "executionTime": 82,
+            "source": [
+              {
+                "previousNode": "Wekan18"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "Kjz6WRTqtowBCsSJm",
+                      "title": "Checklist1676891411489"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan16": [
+          {
+            "startTime": 1676891412026,
+            "executionTime": 122,
+            "source": [
+              {
+                "previousNode": "Wekan15"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan21": [
+          {
+            "startTime": 1676891412149,
+            "executionTime": 91,
+            "source": [
+              {
+                "previousNode": "Wekan19"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "ud2FR3gp7ki3dGx5X",
+                      "cardId": "3eghZWSaCNrXDF5Fq",
+                      "checklistId": "Kjz6WRTqtowBCsSJm",
+                      "title": "ChecklistItem1676891411489",
+                      "sort": 0,
+                      "isFinished": false,
+                      "createdAt": "2023-02-20T11:10:11.641Z",
+                      "modifiedAt": "2023-02-20T11:10:11.641Z"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan22": [
+          {
+            "startTime": 1676891412240,
+            "executionTime": 79,
+            "source": [
+              {
+                "previousNode": "Wekan21"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "ud2FR3gp7ki3dGx5X"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan23": [
+          {
+            "startTime": 1676891412319,
+            "executionTime": 87,
+            "source": [
+              {
+                "previousNode": "Wekan22"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "ud2FR3gp7ki3dGx5X"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan20": [
+          {
+            "startTime": 1676891412406,
+            "executionTime": 156,
+            "source": [
+              {
+                "previousNode": "Wekan23"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "Kjz6WRTqtowBCsSJm"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Merge": [
+          {
+            "startTime": 1676891412562,
+            "executionTime": 2,
+            "source": [
+              {
+                "previousNode": "Wekan20"
+              },
+              {
+                "previousNode": "Wekan16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {}
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan12": [
+          {
+            "startTime": 1676891412565,
+            "executionTime": 112,
+            "source": [
+              {
+                "previousNode": "Merge"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "3eghZWSaCNrXDF5Fq"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan7": [
+          {
+            "startTime": 1676891412678,
+            "executionTime": 108,
+            "source": [
+              {
+                "previousNode": "Wekan12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "hmHTXSeYTdC2huq4i"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Wekan3": [
+          {
+            "startTime": 1676891412786,
+            "executionTime": 137,
+            "source": [
+              {
+                "previousNode": "Wekan7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_id": "QDPRfemxRr6XDXZbE"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Wekan3"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-02-20T11:10:10.328Z",
+  "stoppedAt": "2023-02-20T11:10:12.923Z",
+  "status": "running",
+  "finished": true
+}

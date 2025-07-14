@@ -1,0 +1,105 @@
+{
+  "createdAt": "2021-02-15T11:38:21.443Z",
+  "updatedAt": "2021-05-20T15:25:59.639Z",
+  "id": "5",
+  "name": "Hackernews:All:getAll:Article:get:User:get",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "481a7e7f-5ea7-402b-8316-f72c37b850bb"
+    },
+    {
+      "parameters": {
+        "resource": "all",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Hacker News",
+      "type": "n8n-nodes-base.hackerNews",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "id": "3c48cdd6-1b9f-41cc-9ffd-861839a17846"
+    },
+    {
+      "parameters": {
+        "articleId": "={{$json[\"objectID\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Hacker News1",
+      "type": "n8n-nodes-base.hackerNews",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "id": "3cd97e86-f978-498a-9519-117a930529ad"
+    },
+    {
+      "parameters": {
+        "resource": "user",
+        "username": "={{$json[\"author\"]}}"
+      },
+      "name": "Hacker News2",
+      "type": "n8n-nodes-base.hackerNews",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "id": "4f1db844-dea5-4ee0-bf62-ae05a7467fe7"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Hacker News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News": {
+      "main": [
+        [
+          {
+            "node": "Hacker News1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News1": {
+      "main": [
+        [
+          {
+            "node": "Hacker News2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -1,0 +1,156 @@
+{
+	"meta": {
+		"instanceId": "abc"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "bcb6abdf-d34b-4ea7-a8ed-58155b708c43",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				20,
+				260
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\nitem.json.message_count = Math.min(item.json.messages.length, 3);\n}\n\nreturn $input.all();"
+			},
+			"id": "59c3889c-3671-4f49-b258-6131df8587d8",
+			"name": "Set thread properties1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				500,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"resource": "thread",
+				"operation": "get",
+				"threadId": "={{ $json.id }}",
+				"options": {}
+			},
+			"id": "e102b72e-1e47-4004-a6b9-38cef75f44a1",
+			"name": "Get thread details1",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2,
+			"position": [
+				300,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"mode": "expression",
+				"output": "={{ $('Set thread properties1').item.json.message_count }}"
+			},
+			"id": "f3e42f07-df82-42ba-8e99-97cda707a9d9",
+			"name": "Switch1",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [
+				1220,
+				540
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": true,
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "c7fe521e-8c02-44bf-8a14-482b39749508",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				720,
+				520
+			]
+		},
+		{
+			"parameters": {},
+			"id": "3b9f6a05-7f19-46c5-95d1-5dec732f00ae",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				960,
+				400
+			]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get thread details1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set thread properties1": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get thread details1": {
+			"main": [
+				[
+					{
+						"node": "Set thread properties1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Switch1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing": {
+			"main": [
+				[
+					{
+						"node": "Switch1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

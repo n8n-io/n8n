@@ -1,0 +1,97 @@
+{
+	"name": "HTTP Request Node: Continue using error output not working",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6e15f2de-79fe-41f3-b76e-53ebfa2e4437",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 580]
+		},
+		{
+			"parameters": {},
+			"id": "af1bb989-3c6d-4323-8e88-649e45d64c00",
+			"name": "Success path",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {},
+			"id": "43c4ee19-6a9d-4b1d-aefa-2c24abe45189",
+			"name": "Error path",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 700]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://webhook.site/e18fe8f9-ec77-4574-a40d-8ae054191e1e",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "{\n  \"q\": \"abc\",\n}",
+				"options": {}
+			},
+			"id": "31641920-7f43-473f-ad96-b121122802bb",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [180, 580],
+			"alwaysOutputData": false,
+			"onError": "continueErrorOutput"
+		}
+	],
+	"pinData": {
+		"Error path": [
+			{
+				"json": {
+					"error": "JSON parameter needs to be valid JSON"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Success path",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error path",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f445a6e9-818f-4b70-8b4f-e2a68fc5d6e4",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "f3rDILaMkFqisP3P",
+	"tags": []
+}

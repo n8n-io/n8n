@@ -1,0 +1,12 @@
+{
+	"extends": ["@n8n/typescript-config/tsconfig.common.json"],
+	"compilerOptions": {
+		"rootDir": ".",
+		"baseUrl": "src",
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

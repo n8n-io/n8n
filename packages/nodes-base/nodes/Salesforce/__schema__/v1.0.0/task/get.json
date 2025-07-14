@@ -1,0 +1,83 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CallDisposition": {
+            "type": "null"
+        },
+        "CallObject": {
+            "type": "null"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsArchived": {
+            "type": "boolean"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsHighPriority": {
+            "type": "boolean"
+        },
+        "IsRecurrence": {
+            "type": "boolean"
+        },
+        "IsReminderSet": {
+            "type": "boolean"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Priority": {
+            "type": "string"
+        },
+        "RecurrenceDayOfMonth": {
+            "type": "null"
+        },
+        "RecurrenceInstance": {
+            "type": "null"
+        },
+        "RecurrenceMonthOfYear": {
+            "type": "null"
+        },
+        "RecurrenceRegeneratedType": {
+            "type": "null"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        },
+        "TaskSubtype": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,118 @@
+{
+  "name": "Multiple trigger node rerun",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "06ce84a5-0ed0-45bb-ac2e-aa8c35cd67c7",
+      "name": "Start Manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "* * * * *"
+            }
+          ]
+        }
+      },
+      "id": "b23a2576-2940-4faf-8a8f-79fdb128087a",
+      "name": "Start on Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  \"message\": $input.first().json.message + ' from code node'\n}"
+      },
+      "id": "1742daae-ad58-47cf-b777-3c95670af1ea",
+      "name": "Process The Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8ce419c-b8c8-415c-81e1-7e260884f2a7",
+              "name": "message",
+              "value": "Hello",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        -60
+      ],
+      "id": "e56681c5-2111-4065-bb28-2358f86058c6",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Manually": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start on Schedule": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Process The Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "411bb599-f9b1-4db0-b289-6603403ebd82",
+  "meta": {
+    "instanceId": "60c7f4290f8c974ffff64c8edee1558609a63570231cabdd7fb7ab83d151d879"
+  },
+  "id": "Q5svYbZJ8WEAedTH",
+  "tags": []
+}

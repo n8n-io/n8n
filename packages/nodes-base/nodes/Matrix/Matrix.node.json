@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.matrix",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/matrix/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.matrix/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How to host virtual coffee breaks with n8n",
+				"icon": "☕️",
+				"url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/"
+			}
+		]
+	}
+}

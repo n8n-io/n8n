@@ -1,0 +1,232 @@
+{
+	"name": "My workflow 11",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "ac4d8085-b10f-4579-b08d-ecf13ae71fee",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [400, 520]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {id: 1, data: null, data2: [], bar: 'bar', spam: []};"
+			},
+			"id": "c3c13247-1b60-4713-855e-bbddec8d02d0",
+			"name": "Code2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [660, 460]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {id: 1, data: [], data2: null ,foo: 'foo'};"
+			},
+			"id": "d8a8f3de-86cc-4a46-ac6b-db67c3442280",
+			"name": "Code3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [660, 600]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "includeBoth",
+				"fuzzyCompare": true,
+				"options": {}
+			},
+			"id": "b4ca1dc3-c10a-48c0-aae8-f9b3a70efdd6",
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2,
+			"position": [880, 540]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "includeBoth",
+				"fuzzyCompare": true,
+				"options": {}
+			},
+			"id": "6a15ebf3-3909-4533-ac31-aaad9ee46d88",
+			"name": "Compare Datasets1",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [880, 700]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "dfaffaee-16e9-4e27-beb1-896370744c97",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1100, 600]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "65afc865-9046-437d-bca8-840af9996860",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1100, 760]
+		}
+	],
+	"pinData": {
+		"Set": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1,
+						"data": null,
+						"data2": []
+					},
+					"different": {
+						"bar": {
+							"inputA": "bar",
+							"inputB": null
+						},
+						"spam": {
+							"inputA": [],
+							"inputB": null
+						},
+						"foo": {
+							"inputA": null,
+							"inputB": "foo"
+						}
+					}
+				}
+			}
+		],
+		"Set1": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1,
+						"data": null,
+						"data2": [],
+						"spam": []
+					},
+					"different": {
+						"bar": {
+							"inputA": "bar",
+							"inputB": null
+						},
+						"foo": {
+							"inputA": null,
+							"inputB": "foo"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code2": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Compare Datasets1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code3": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Compare Datasets1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Compare Datasets": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets1": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c80189a1-761e-4c6e-a871-7b34c4a044bc",
+	"id": "154",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

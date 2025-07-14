@@ -1,0 +1,12 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": false,
+		"declaration": false,
+		"lib": ["esnext", "dom"],
+		"types": ["cypress", "node", "cypress-real-events"]
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+	"references": [{ "path": "../packages/workflow/tsconfig.build.esm.json" }]
+}

@@ -1,0 +1,99 @@
+<html>
+	<head>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+		<style>
+			html {
+				font-size: 16px;
+			}
+			body {
+				font-family: "Open Sans", sans-serif;
+				padding: 1rem;
+				margin: 0;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				box-sizing: border-box;
+			}
+
+			.center-container {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex: 1;
+			}
+
+			.row {
+				display: flex;
+				flex-direction: row;
+				gap: 20px;
+				justify-content: center;
+				text-align: center;
+			}
+
+			.icon {
+				width: 1.4rem;
+				fill: #2AA568;
+			}
+
+			img.logo {
+				width: 8rem;
+			}
+
+			div.logo {
+				display: flex;
+				justify-content: center;
+			}
+
+			h1 {
+				font-size: 1.75rem;
+				font-weight: 400;
+				color: #525456;
+				margin-block-end: 0;
+			}
+
+			p {
+				font-size: 0.875rem;
+				font-weight: 400;
+				color: #909298;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="logo">
+			<img src="/static/n8n-logo.png" class="logo" />
+		</div>
+		<div class="center-container">
+			<div>
+				<div class="row">
+					<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 512 512"
+							class="icon"
+					>
+							<!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+							<path
+									d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"
+							/>
+					</svg>
+				</div>
+				<div class="row">
+					<h1>Connection successful</h1>
+				</div>
+				<div class="row">
+					<p>This window will close automatically in 5 seconds.</p>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			(function messageParent() {
+				const broadcastChannel = new BroadcastChannel('oauth-callback');
+				broadcastChannel.postMessage('success');
+			})();
+			(function autoclose(){
+				setTimeout(function() { window.close(); }, 5000);
+			})();
+		</script>
+	</body>
+</html>

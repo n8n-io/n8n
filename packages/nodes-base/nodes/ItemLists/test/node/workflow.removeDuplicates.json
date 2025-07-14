@@ -1,0 +1,177 @@
+{
+	"name": "itemLists test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c36aef04-b8ee-4f50-938b-ec64c4f78c97",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [860, 340]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {entry: 1, data: 'a', char: 'a'},\n  {entry: 1, data: 'b', char: 'a'},\n  {entry: 1, data: 'a', char: 'a'},\n  {entry: 4, data: 'd', char: 'a'},\n  {entry: 5, data: 'e', char: 'a'},\n];"
+			},
+			"id": "79f44614-aaf8-421a-9cad-2d92445a5dd5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1120, 340]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "allFieldsExcept",
+				"fieldsToExclude": {
+					"fields": [
+						{
+							"fieldName": "data"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c1f69c55-caba-4d44-b209-445f4bef3756",
+			"name": "Item Lists remove duplicates exclude",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1320, 340]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "selectedFields",
+				"fieldsToCompare": {
+					"fields": [
+						{
+							"fieldName": "char"
+						}
+					]
+				},
+				"options": {
+					"removeOtherFields": true
+				}
+			},
+			"id": "7b9f0a7c-25f0-4d1f-b30f-666ddcaf5d98",
+			"name": "Item Lists remove duplicates selected",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1340, 560]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates"
+			},
+			"id": "9762644f-34cb-48ca-b8a3-e0aa0ca05d4a",
+			"name": "Item Lists remove duplicates",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1320, 120]
+		}
+	],
+	"pinData": {
+		"Item Lists remove duplicates selected": [
+			{
+				"json": {
+					"char": "a"
+				}
+			}
+		],
+		"Item Lists remove duplicates exclude": [
+			{
+				"json": {
+					"entry": 1,
+					"data": "a",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 4,
+					"data": "d",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 5,
+					"data": "e",
+					"char": "a"
+				}
+			}
+		],
+		"Item Lists remove duplicates": [
+			{
+				"json": {
+					"entry": 1,
+					"data": "a",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 1,
+					"data": "b",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 4,
+					"data": "d",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 5,
+					"data": "e",
+					"char": "a"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists remove duplicates",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists remove duplicates exclude",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists remove duplicates selected",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9b7b1482-ceaa-4878-8091-d6fbfbe58a79",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

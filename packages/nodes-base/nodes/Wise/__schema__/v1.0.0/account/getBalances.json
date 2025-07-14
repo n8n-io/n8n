@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "balances": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "object",
+                        "properties": {
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "balanceType": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "reservedAmount": {
+                        "type": "object",
+                        "properties": {
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "creationTime": {
+            "type": "string"
+        },
+        "eligible": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "modificationTime": {
+            "type": "string"
+        },
+        "profileId": {
+            "type": "integer"
+        },
+        "recipientId": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

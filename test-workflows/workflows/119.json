@@ -1,0 +1,199 @@
+{
+  "createdAt": "2021-03-10T15:10:43.540Z",
+  "updatedAt": "2021-03-10T15:13:14.859Z",
+  "id": "119",
+  "name": "CrateDB:insert update executeQuery",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "e0aab098-04f4-42ce-b128-c1707e6ab085"
+    },
+    {
+      "parameters": {
+        "table": "testtable",
+        "columns": "id,name"
+      },
+      "name": "CrateDB",
+      "type": "n8n-nodes-base.crateDb",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "crateDb": {
+          "id": "86",
+          "name": "CrateDB creds"
+        }
+      },
+      "id": "51925b66-eddd-4a2c-bd53-3c93d8c4d3d9"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "=Name{{Date.now()}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "id",
+              "value": "={{Math.round(Math.random()*100000)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "id": "ca7b9956-a037-4efa-9bfa-769067d489b8"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "testtable",
+        "columns": "id,name"
+      },
+      "name": "CrateDB1",
+      "type": "n8n-nodes-base.crateDb",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "crateDb": {
+          "id": "86",
+          "name": "CrateDB creds"
+        }
+      },
+      "id": "7f727eb3-00c1-464d-aa3b-503138386420"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "=UpdatedName{{Date.now()}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "id",
+              "value": "={{$node[\"Set\"].json[\"id\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "id": "d8d1fb13-1756-4cff-b6f6-adbe388851f6"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=DELETE FROM \"doc\".\"testtable\" WHERE id={{$node[\"Set1\"].json[\"id\"]}};"
+      },
+      "name": "CrateDB2",
+      "type": "n8n-nodes-base.crateDb",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "crateDb": {
+          "id": "86",
+          "name": "CrateDB creds"
+        }
+      },
+      "id": "41bbb36e-d1b4-419a-a587-4fb9a0a4d349"
+    }
+  ],
+  "connections": {
+    "CrateDB": {
+      "main": [
+        [
+          {
+            "node": "Set1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "CrateDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set1": {
+      "main": [
+        [
+          {
+            "node": "CrateDB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CrateDB1": {
+      "main": [
+        [
+          {
+            "node": "CrateDB2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

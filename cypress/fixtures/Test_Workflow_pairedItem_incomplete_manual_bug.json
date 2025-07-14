@@ -1,0 +1,160 @@
+{
+	"name": "Test Workflow pairedItem incomplete manual bug",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f26332f3-c61a-4843-94bd-64a73ad161ff",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        860,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bd522794-d056-48b8-9204-26f7d68288d9",
+              "name": "test",
+              "value": "a",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fae0c907-e2bf-4ecf-82be-f9caa209f925",
+      "name": "Init Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1080,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "8db21b4b-1675-4e63-b092-7fcc45a86547",
+              "leftValue": "={{ $json.test }}",
+              "rightValue": "b",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7990edd-2c0f-42e6-b3ce-74c7df02b6a4",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        340
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "850d48f5-0689-4cab-b30c-30e179577c82",
+      "name": "NoOp1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bd522794-d056-48b8-9204-26f7d68288d9",
+              "name": "test2",
+              "value": "={{ $('Init Data').item.json.test }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "91d93c3a-a557-465e-812b-266d6277b279",
+      "name": "Test Expression",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1540,
+        440
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Init Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "NoOp1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Test Expression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "765a6d9b-d667-4a59-9bd7-b0bc2627b008",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+  },
+  "id": "qnGQYw8TD58xs214",
+  "tags": []
+}

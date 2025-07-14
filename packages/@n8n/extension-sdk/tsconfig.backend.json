@@ -1,0 +1,7 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.backend.tsbuildinfo"
+	},
+	"include": ["src/backend/**/*.ts"]
+}

@@ -1,0 +1,104 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "billable": {
+            "type": "boolean"
+        },
+        "clientId": {
+            "type": "string"
+        },
+        "clientName": {
+            "type": "string"
+        },
+        "color": {
+            "type": "string"
+        },
+        "costRate": {
+            "type": "null"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "estimate": {
+            "type": "object",
+            "properties": {
+                "estimate": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "hourlyRate": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "costRate": {
+                        "type": "null"
+                    },
+                    "membershipStatus": {
+                        "type": "string"
+                    },
+                    "membershipType": {
+                        "type": "string"
+                    },
+                    "targetId": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "template": {
+            "type": "boolean"
+        },
+        "timeEstimate": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "estimate": {
+                    "type": "string"
+                },
+                "includeNonBillable": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

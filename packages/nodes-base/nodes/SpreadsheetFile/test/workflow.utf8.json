@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "instanceId": "78577815012af39cf16dad7a787b0898c42fb7514b8a7f99b2136862c2af502c"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2130ab19-2efb-4217-b234-f8607d4122cc",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "readAsString": true
+        }
+      },
+      "id": "68e03042-aa27-43db-bfec-3c4fe07ce9f6",
+      "name": "Parse UTF8 v1",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        760,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "options": {
+          "readAsString": true
+        }
+      },
+      "id": "6a8b7ee9-5d14-4b67-b7cc-afee6bcc1fa6",
+      "name": "Parse UTF8 v2",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        760,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "utf8.csv"
+      },
+      "id": "623ea890-8882-4273-973e-834652d823b5",
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [
+        480,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Parse UTF8 v1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Parse UTF8 v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

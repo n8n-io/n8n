@@ -1,0 +1,221 @@
+{
+	"name": "If node unit tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "711fa21c-4ac2-4eed-9c35-a79edf18e8af",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				140,
+				1560
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { dayOne: '2023-01-01T00:00:00.000-05:00', dayTwo: '2023-01-02T00:00:00.000-05:00' },\n  { dayOne: '2023-01-02T00:00:00.000-05:00', dayTwo: '2023-01-01T00:00:00.000-05:00' },\n];"
+			},
+			"id": "c5d906bc-909a-45d9-a990-9ea6279cc807",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				340,
+				1560
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"dateTime": [
+						{
+							"value1": "={{ $json.dayOne }}",
+							"value2": "={{ $json.dayTwo }}"
+						}
+					]
+				}
+			},
+			"id": "10431f40-d47d-4bd9-8dd6-d4dbb35d626b",
+			"name": "IF Occured After",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				560,
+				1440
+			]
+		},
+		{
+			"parameters": {},
+			"id": "2727a2f7-2bda-469b-a548-8df82de433e2",
+			"name": "On False Occured After",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				980,
+				1460
+			]
+		},
+		{
+			"parameters": {},
+			"id": "40baaffe-9769-4b15-b09f-3553e37f90a5",
+			"name": "On True Occured After",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				760,
+				1420
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"dateTime": [
+						{
+							"value1": "={{ $json.dayOne }}",
+							"operation": "before",
+							"value2": "={{ $json.dayTwo }}"
+						}
+					]
+				}
+			},
+			"id": "29ff421d-d7c5-4cc6-8830-73c0abf1c13f",
+			"name": "IF Occured Before",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				560,
+				1680
+			]
+		},
+		{
+			"parameters": {},
+			"id": "3347b52a-e513-4900-ab9a-bbcc7a6ec063",
+			"name": "On True Occured Before",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				760,
+				1660
+			]
+		},
+		{
+			"parameters": {},
+			"id": "d8401e15-f6e5-4347-b885-54798494cb1b",
+			"name": "On False Occured Before",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				980,
+				1700
+			]
+		}
+	],
+	"pinData": {
+		"On True Occured After": [
+			{
+				"json": {
+					"dayOne": "2023-01-02T00:00:00.000-05:00",
+					"dayTwo": "2023-01-01T00:00:00.000-05:00"
+				}
+			}
+		],
+		"On False Occured After": [
+			{
+				"json": {
+					"dayOne": "2023-01-01T00:00:00.000-05:00",
+					"dayTwo": "2023-01-02T00:00:00.000-05:00"
+				}
+			}
+		],
+		"On True Occured Before": [
+			{
+				"json": {
+					"dayOne": "2023-01-01T00:00:00.000-05:00",
+					"dayTwo": "2023-01-02T00:00:00.000-05:00"
+				}
+			}
+		],
+		"On False Occured Before": [
+			{
+				"json": {
+					"dayOne": "2023-01-02T00:00:00.000-05:00",
+					"dayTwo": "2023-01-01T00:00:00.000-05:00"
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF Occured After",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Occured Before",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Occured After": {
+			"main": [
+				[
+					{
+						"node": "On True Occured After",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Occured After",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Occured Before": {
+			"main": [
+				[
+					{
+						"node": "On True Occured Before",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Occured Before",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "78121a47-2013-4f79-b0bd-b4d607dc82bf",
+	"id": "181",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

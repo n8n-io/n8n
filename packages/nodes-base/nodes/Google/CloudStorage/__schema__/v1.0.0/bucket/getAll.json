@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "properties": {
+        "etag": {
+            "type": "string"
+        },
+        "generation": {
+            "type": "string"
+        },
+        "hierarchicalNamespace": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "iamConfiguration": {
+            "type": "object",
+            "properties": {
+                "bucketPolicyOnly": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "publicAccessPrevention": {
+                    "type": "string"
+                },
+                "uniformBucketLevelAccess": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "locationType": {
+            "type": "string"
+        },
+        "metageneration": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "projectNumber": {
+            "type": "string"
+        },
+        "rpo": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "softDeletePolicy": {
+            "type": "object",
+            "properties": {
+                "effectiveTime": {
+                    "type": "string"
+                },
+                "retentionDurationSeconds": {
+                    "type": "string"
+                }
+            }
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,439 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1676891395112,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Storyblok": [
+          {
+            "startTime": 1676891395113,
+            "executionTime": 311,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "name": "TestEntry",
+                      "parent_id": 0,
+                      "created_at": "2021-02-25T10:06:43.421Z",
+                      "deleted_at": {
+                        "object": true
+                      },
+                      "group_id": "569ce22f-d30b-4d92-a549-de49fdf4d1aa",
+                      "sort_by_date": {
+                        "object": true
+                      },
+                      "updated_at": "2023-02-20T11:06:39.624Z",
+                      "published_at": "2023-02-20T11:06:39.462Z",
+                      "id": 39088436,
+                      "uuid": "f52c4a20-cc6a-4994-bec1-9d3ea0e4fa9e",
+                      "is_folder": false,
+                      "published": false,
+                      "slug": "testentry",
+                      "path": {
+                        "object": true
+                      },
+                      "full_slug": "testentry",
+                      "position": 20,
+                      "unpublished_changes": false,
+                      "is_startpage": false,
+                      "pinned": false,
+                      "publish_at": {
+                        "object": true
+                      },
+                      "expire_at": {
+                        "object": true
+                      },
+                      "first_published_at": "2021-02-25T10:07:50.000Z",
+                      "release_ids": [
+                        "json array"
+                      ],
+                      "stage": {
+                        "object": true
+                      },
+                      "alternates": [
+                        "json array"
+                      ],
+                      "default_root": "",
+                      "disble_fe_editor": true,
+                      "last_author": {
+                        "object": true
+                      },
+                      "content_summary": {
+                        "object": true
+                      },
+                      "content_type": "Blank",
+                      "tag_list": [
+                        "json array"
+                      ],
+                      "can_not_view": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Storyblok1": [
+          {
+            "startTime": 1676891395424,
+            "executionTime": 112,
+            "source": [
+              {
+                "previousNode": "Storyblok"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "name": "TestEntry",
+                      "parent_id": 0,
+                      "group_id": "569ce22f-d30b-4d92-a549-de49fdf4d1aa",
+                      "alternates": [
+                        "json array"
+                      ],
+                      "created_at": "2021-02-25T10:06:43.421Z",
+                      "deleted_at": {
+                        "object": true
+                      },
+                      "sort_by_date": {
+                        "object": true
+                      },
+                      "tag_list": [
+                        "json array"
+                      ],
+                      "updated_at": "2023-02-20T11:06:39.624Z",
+                      "published_at": "2023-02-20T11:06:39.462Z",
+                      "id": 39088436,
+                      "uuid": "f52c4a20-cc6a-4994-bec1-9d3ea0e4fa9e",
+                      "is_folder": false,
+                      "content": {
+                        "object": true
+                      },
+                      "published": false,
+                      "slug": "testentry",
+                      "path": {
+                        "object": true
+                      },
+                      "full_slug": "testentry",
+                      "default_root": "",
+                      "disble_fe_editor": true,
+                      "parent": {
+                        "object": true
+                      },
+                      "is_startpage": false,
+                      "unpublished_changes": false,
+                      "meta_data": {
+                        "object": true
+                      },
+                      "imported_at": {
+                        "object": true
+                      },
+                      "preview_token": {
+                        "object": true
+                      },
+                      "pinned": false,
+                      "breadcrumbs": [
+                        "json array"
+                      ],
+                      "publish_at": {
+                        "object": true
+                      },
+                      "expire_at": {
+                        "object": true
+                      },
+                      "first_published_at": "2021-02-25T10:07:50.000Z",
+                      "last_author": {
+                        "object": true
+                      },
+                      "user_ids": [
+                        "json array"
+                      ],
+                      "space_role_ids": [
+                        "json array"
+                      ],
+                      "translated_slugs": [
+                        "json array"
+                      ],
+                      "localized_paths": [
+                        "json array"
+                      ],
+                      "position": 20,
+                      "translated_stories": [
+                        "json array"
+                      ],
+                      "can_not_view": false,
+                      "is_scheduled": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Storyblok2": [
+          {
+            "startTime": 1676891395536,
+            "executionTime": 260,
+            "source": [
+              {
+                "previousNode": "Storyblok1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "name": "TestEntry",
+                      "parent_id": 0,
+                      "group_id": "569ce22f-d30b-4d92-a549-de49fdf4d1aa",
+                      "alternates": [
+                        "json array"
+                      ],
+                      "created_at": "2021-02-25T10:06:43.421Z",
+                      "deleted_at": {
+                        "object": true
+                      },
+                      "sort_by_date": {
+                        "object": true
+                      },
+                      "tag_list": [
+                        "json array"
+                      ],
+                      "updated_at": "2023-02-20T11:09:55.693Z",
+                      "published_at": "2023-02-20T11:09:55.664Z",
+                      "id": 39088436,
+                      "uuid": "f52c4a20-cc6a-4994-bec1-9d3ea0e4fa9e",
+                      "is_folder": false,
+                      "content": {
+                        "object": true
+                      },
+                      "published": true,
+                      "slug": "testentry",
+                      "path": {
+                        "object": true
+                      },
+                      "full_slug": "testentry",
+                      "default_root": "",
+                      "disble_fe_editor": true,
+                      "parent": {
+                        "object": true
+                      },
+                      "is_startpage": false,
+                      "unpublished_changes": false,
+                      "meta_data": {
+                        "object": true
+                      },
+                      "imported_at": {
+                        "object": true
+                      },
+                      "preview_token": {
+                        "object": true
+                      },
+                      "pinned": false,
+                      "breadcrumbs": [
+                        "json array"
+                      ],
+                      "publish_at": {
+                        "object": true
+                      },
+                      "expire_at": {
+                        "object": true
+                      },
+                      "first_published_at": "2021-02-25T10:07:50.000Z",
+                      "last_author": {
+                        "object": true
+                      },
+                      "user_ids": [
+                        "json array"
+                      ],
+                      "space_role_ids": [
+                        "json array"
+                      ],
+                      "translated_slugs": [
+                        "json array"
+                      ],
+                      "localized_paths": [
+                        "json array"
+                      ],
+                      "position": 20,
+                      "translated_stories": [
+                        "json array"
+                      ],
+                      "can_not_view": {
+                        "object": true
+                      },
+                      "is_scheduled": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Storyblok3": [
+          {
+            "startTime": 1676891395796,
+            "executionTime": 182,
+            "source": [
+              {
+                "previousNode": "Storyblok2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "name": "TestEntry",
+                      "parent_id": 0,
+                      "group_id": "569ce22f-d30b-4d92-a549-de49fdf4d1aa",
+                      "alternates": [
+                        "json array"
+                      ],
+                      "created_at": "2021-02-25T10:06:43.421Z",
+                      "deleted_at": {
+                        "object": true
+                      },
+                      "sort_by_date": {
+                        "object": true
+                      },
+                      "tag_list": [
+                        "json array"
+                      ],
+                      "updated_at": "2023-02-20T11:09:55.945Z",
+                      "published_at": "2023-02-20T11:09:55.664Z",
+                      "id": 39088436,
+                      "uuid": "f52c4a20-cc6a-4994-bec1-9d3ea0e4fa9e",
+                      "is_folder": false,
+                      "content": {
+                        "object": true
+                      },
+                      "published": false,
+                      "slug": "testentry",
+                      "path": {
+                        "object": true
+                      },
+                      "full_slug": "testentry",
+                      "default_root": "",
+                      "disble_fe_editor": true,
+                      "parent": {
+                        "object": true
+                      },
+                      "is_startpage": false,
+                      "unpublished_changes": false,
+                      "meta_data": {
+                        "object": true
+                      },
+                      "imported_at": {
+                        "object": true
+                      },
+                      "preview_token": {
+                        "object": true
+                      },
+                      "pinned": false,
+                      "breadcrumbs": [
+                        "json array"
+                      ],
+                      "publish_at": {
+                        "object": true
+                      },
+                      "expire_at": {
+                        "object": true
+                      },
+                      "first_published_at": "2021-02-25T10:07:50.000Z",
+                      "last_author": {
+                        "object": true
+                      },
+                      "user_ids": [
+                        "json array"
+                      ],
+                      "space_role_ids": [
+                        "json array"
+                      ],
+                      "translated_slugs": [
+                        "json array"
+                      ],
+                      "localized_paths": [
+                        "json array"
+                      ],
+                      "position": 20,
+                      "translated_stories": [
+                        "json array"
+                      ],
+                      "can_not_view": {
+                        "object": true
+                      },
+                      "is_scheduled": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Storyblok3"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-02-20T11:09:55.111Z",
+  "stoppedAt": "2023-02-20T11:09:55.978Z",
+  "status": "running",
+  "finished": true
+}

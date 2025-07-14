@@ -1,0 +1,113 @@
+{
+    "type": "object",
+    "properties": {
+        "account_sid": {
+            "type": "string"
+        },
+        "annotation": {
+            "type": "null"
+        },
+        "answered_by": {
+            "type": "null"
+        },
+        "api_version": {
+            "type": "string"
+        },
+        "caller_name": {
+            "type": "null"
+        },
+        "date_created": {
+            "type": "null"
+        },
+        "date_updated": {
+            "type": "null"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "null"
+        },
+        "end_time": {
+            "type": "null"
+        },
+        "forwarded_from": {
+            "type": "null"
+        },
+        "from": {
+            "type": "string"
+        },
+        "from_formatted": {
+            "type": "string"
+        },
+        "group_sid": {
+            "type": "null"
+        },
+        "parent_call_sid": {
+            "type": "null"
+        },
+        "price": {
+            "type": "null"
+        },
+        "price_unit": {
+            "type": "string"
+        },
+        "queue_time": {
+            "type": "string"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subresource_uris": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "string"
+                },
+                "notifications": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "string"
+                },
+                "recordings": {
+                    "type": "string"
+                },
+                "siprec": {
+                    "type": "string"
+                },
+                "streams": {
+                    "type": "string"
+                },
+                "transcriptions": {
+                    "type": "string"
+                },
+                "user_defined_message_subscriptions": {
+                    "type": "string"
+                },
+                "user_defined_messages": {
+                    "type": "string"
+                }
+            }
+        },
+        "to": {
+            "type": "string"
+        },
+        "to_formatted": {
+            "type": "string"
+        },
+        "trunk_sid": {
+            "type": "null"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

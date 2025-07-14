@@ -1,0 +1,142 @@
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use 'common/popup';
+
+@include mixins.b(overlay) {
+	width: 100%;
+	height: 100%;
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	background-color: hsla(247deg, 14%, 30%, 0.75);
+}
+
+@include mixins.b(overlay-dialog) {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+@include mixins.b(overlay-message-box) {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+@include mixins.b(dialog) {
+	position: relative;
+	margin: 0 auto 50px;
+	background: var.$dialog-background-color;
+	border-radius: var(--border-radius-small);
+	box-shadow: var.$dialog-box-shadow;
+	box-sizing: border-box;
+	width: var(#{utils.getCssVarName('dialog-width')}, 50%);
+
+	@include mixins.when(fullscreen) {
+		width: 100%;
+		margin-top: 0;
+		margin-bottom: 0;
+		height: 100%;
+		overflow: auto;
+	}
+
+	@include mixins.e(wrapper) {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		overflow: auto;
+		margin: 0;
+	}
+
+	@include mixins.e(header) {
+		padding: var.$dialog-padding-primary;
+	}
+
+	@include mixins.e(headerbtn) {
+		position: absolute;
+		top: var.$dialog-close-top;
+		right: var.$dialog-padding-primary;
+		padding: 0;
+		background: transparent;
+		border: none;
+		outline: none;
+		cursor: pointer;
+		font-size: var.$message-close-size;
+
+		.el-dialog__close {
+			color: var(--color-info);
+		}
+
+		&:focus,
+		&:hover {
+			.el-dialog__close {
+				color: var(--color-primary);
+			}
+		}
+	}
+
+	@include mixins.e(title) {
+		line-height: var(--font-line-height-compact);
+		font-size: var(--font-size-xl);
+		color: var(--color-text-dark);
+		font-weight: var(--font-weight-regular);
+	}
+
+	@include mixins.e(body) {
+		padding: var.$dialog-padding-primary;
+		padding-top: 0;
+		color: var(--color-text-base);
+	}
+
+	@include mixins.e(footer) {
+		padding: var.$dialog-padding-primary;
+		padding-top: 10px;
+		text-align: right;
+		box-sizing: border-box;
+
+		.button + .button {
+			margin-left: var(--spacing-2xs);
+		}
+	}
+}
+
+.dialog-fade-enter-active {
+	animation: dialog-fade-in 0.3s;
+}
+
+.dialog-fade-leave-active {
+	animation: dialog-fade-out 0.3s;
+}
+
+@keyframes dialog-fade-in {
+	0% {
+		transform: translate3d(0, -20px, 0);
+		opacity: 0;
+	}
+	100% {
+		transform: translate3d(0, 0, 0);
+		opacity: 1;
+	}
+}
+
+@keyframes dialog-fade-out {
+	0% {
+		transform: translate3d(0, 0, 0);
+		opacity: 1;
+	}
+	100% {
+		transform: translate3d(0, -20px, 0);
+		opacity: 0;
+	}
+}

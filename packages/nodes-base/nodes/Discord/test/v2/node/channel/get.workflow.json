@@ -1,0 +1,113 @@
+{
+  "name": "discord overhaul copy",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fe1dd916-f466-40c7-9dfa-dfec59219a86",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "get",
+        "guildId": {
+          "__rl": true,
+          "value": "1168516062791340136",
+          "mode": "list",
+          "cachedResultName": "TEST server",
+          "cachedResultUrl": "https://discord.com/channels/1168516062791340136"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1168516240332034067",
+          "mode": "list",
+          "cachedResultName": "first",
+          "cachedResultUrl": "https://discord.com/channels/1168516062791340136/1168516240332034067"
+        }
+      },
+      "id": "09cccc50-10d2-49a1-9b9a-9ba1a11a3657",
+      "name": "OAuth test",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        780
+      ],
+      "credentials": {
+        "discordOAuth2Api": {
+          "id": "79",
+          "name": "Discord account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "7f367512-810f-4d5d-9020-0f01a47039f7",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        780
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "id": "1168516240332034067",
+          "type": 0,
+          "last_message_id": null,
+          "flags": 0,
+          "guild_id": "1168516062791340136",
+          "name": "first",
+          "parent_id": "1168516063340789831",
+          "rate_limit_per_user": 0,
+          "topic": null,
+          "position": 1,
+          "permission_overwrites": [],
+          "nsfw": false
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "OAuth test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OAuth test": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "0089557d-57da-45ea-abd1-c7b57691e10a",
+  "id": "m3OrE6gaFHxa5InI",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

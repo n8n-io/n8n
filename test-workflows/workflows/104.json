@@ -1,0 +1,80 @@
+{
+  "createdAt": "2021-03-04T13:14:37.236Z",
+  "updatedAt": "2021-06-15T14:39:01.449Z",
+  "id": "104",
+  "name": "ReadPDF",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "084e6fae-bd3c-4887-98a4-5ef671a9202c"
+    },
+    {
+      "parameters": {},
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readPDF",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Parse PDF",
+      "id": "c9c1692b-3979-4334-94f3-a6ba1aeb1705"
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/04-valid.pdf"
+      },
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "alwaysOutputData": false,
+      "notesInFlow": true,
+      "notes": "Read static pdf file from node_modules",
+      "id": "f725a50d-5941-4370-9925-474306645ed5"
+    }
+  ],
+  "connections": {
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

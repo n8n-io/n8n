@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "account_sid": {
+            "type": "string"
+        },
+        "api_version": {
+            "type": "string"
+        },
+        "body": {
+            "type": "string"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_sent": {
+            "type": "null"
+        },
+        "date_updated": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "error_code": {
+            "type": "null"
+        },
+        "error_message": {
+            "type": "null"
+        },
+        "num_media": {
+            "type": "string"
+        },
+        "num_segments": {
+            "type": "string"
+        },
+        "price": {
+            "type": "null"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subresource_uris": {
+            "type": "object",
+            "properties": {
+                "media": {
+                    "type": "string"
+                }
+            }
+        },
+        "to": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

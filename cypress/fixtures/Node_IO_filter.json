@@ -1,0 +1,653 @@
+{
+  "name": "Node IO filter",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "46770685-44d1-4aad-9107-1d790cf26b50",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        840,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "480e3832-2ce4-4118-9f7b-a8aed6017174",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1080,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.profile.name }}",
+              "operation": "contains",
+              "value2": "an"
+            }
+          ]
+        }
+      },
+      "id": "4773d460-6ed9-49e1-a688-7e480f0fbacf",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d17dffe6-e29c-4c1a-8b4c-9e374dcd70ea",
+      "name": "True",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1560,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "893d6e79-feb4-4752-a6f8-e2e5f5163787",
+      "name": "False",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1560,
+        240
+      ]
+    }
+  ],
+  "pinData": {
+    "When clicking ‘Execute workflow’": [
+      {
+        "json": {
+          "id": "654cfa05fa51480dcb543b1a",
+          "email": "reese_hahn@kidgrease.coach",
+          "username": "reese94",
+          "profile": {
+            "name": "Reese Hahn",
+            "company": "Kidgrease",
+            "dob": "1994-06-18",
+            "address": "3 Richmond Street, Norfolk, Delaware",
+            "location": {
+              "lat": 22.507436,
+              "long": -50.812775
+            },
+            "about": "Cupidatat voluptate reprehenderit commodo mollit tempor sint id. Id exercitation id eiusmod dolore non non anim voluptate anim eu consectetur."
+          },
+          "apiKey": "a18592bf-1147-4b61-a70f-2ab90b60bb6e",
+          "roles": [
+            "guest"
+          ],
+          "createdAt": "2010-10-04T09:57:59.240Z",
+          "updatedAt": "2010-10-05T09:57:59.240Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa055bea471bc4853158",
+          "email": "jeanne_boyd@hatology.gratis",
+          "username": "jeanne91",
+          "profile": {
+            "name": "Jeanne Boyd",
+            "company": "Hatology",
+            "dob": "1991-02-21",
+            "address": "81 Kingsway Place, Blairstown, Vermont",
+            "location": {
+              "lat": -57.665234,
+              "long": -41.301893
+            },
+            "about": "Proident pariatur non consequat cupidatat Lorem nisi est consequat dolor id eiusmod id. Amet culpa ex Lorem nostrud labore laboris culpa mollit dolor culpa ut."
+          },
+          "apiKey": "8a6056a6-0197-4920-858d-cb26f8c8a1e2",
+          "roles": [
+            "owner",
+            "admin"
+          ],
+          "createdAt": "2011-11-06T09:05:41.945Z",
+          "updatedAt": "2011-11-07T09:05:41.945Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05b012921c060dc5a5",
+          "email": "roslyn_underwood@portico.melbourne",
+          "username": "roslyn88",
+          "profile": {
+            "name": "Roslyn Underwood",
+            "company": "Portico",
+            "dob": "1988-04-30",
+            "address": "24 Schenck Street, Drytown, New Jersey",
+            "location": {
+              "lat": 11.797141,
+              "long": 10.751804
+            },
+            "about": "Duis excepteur minim consequat exercitation. Laboris occaecat cupidatat aliqua consequat occaecat."
+          },
+          "apiKey": "72d629f3-d613-4fd0-bbfe-3f67c8ad7af2",
+          "roles": [
+            "member",
+            "owner"
+          ],
+          "createdAt": "2012-11-17T22:09:10.911Z",
+          "updatedAt": "2012-11-18T22:09:10.911Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05df7b35968507efe6",
+          "email": "combs_hardy@acrodance.domains",
+          "username": "combs91",
+          "profile": {
+            "name": "Combs Hardy",
+            "company": "Acrodance",
+            "dob": "1991-04-30",
+            "address": "58 Pineapple Street, Falconaire, New Mexico",
+            "location": {
+              "lat": -62.922443,
+              "long": -159.493799
+            },
+            "about": "Magna qui minim velit magna est eiusmod aliquip elit aliquip excepteur. Laborum labore do ut et ut in incididunt do elit nostrud."
+          },
+          "apiKey": "d9807b9e-aee9-486d-9826-4e6c166bfbe4",
+          "roles": [
+            "owner",
+            "member"
+          ],
+          "createdAt": "2014-04-13T13:02:09.319Z",
+          "updatedAt": "2014-04-14T13:02:09.319Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05f2d4a0508a7c59c4",
+          "email": "terrell_peters@vantage.international",
+          "username": "terrell94",
+          "profile": {
+            "name": "Terrell Peters",
+            "company": "Vantage",
+            "dob": "1994-01-31",
+            "address": "10 Lafayette Walk, Vincent, Virginia",
+            "location": {
+              "lat": -62.267913,
+              "long": 29.682121
+            },
+            "about": "Eiusmod fugiat nulla ea tempor incididunt nulla nulla consectetur officia incididunt proident sint. Sunt duis non excepteur non."
+          },
+          "apiKey": "20b96df1-d882-4dea-a505-84d7ff296a6e",
+          "roles": [
+            "admin",
+            "guest"
+          ],
+          "createdAt": "2010-12-09T08:24:56.517Z",
+          "updatedAt": "2010-12-10T08:24:56.517Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa0599fbabf3a05c7b14",
+          "email": "shari_winters@powernet.supply",
+          "username": "shari93",
+          "profile": {
+            "name": "Shari Winters",
+            "company": "Powernet",
+            "dob": "1993-03-10",
+            "address": "89 Aviation Road, Leyner, Indiana",
+            "location": {
+              "lat": 40.404704,
+              "long": -141.216235
+            },
+            "about": "Occaecat sit laboris elit laboris do anim culpa dolore exercitation enim. Non veniam sint exercitation irure."
+          },
+          "apiKey": "2b869ce9-3431-4edb-944d-9d9336b1eb4a",
+          "roles": [
+            "guest",
+            "admin"
+          ],
+          "createdAt": "2014-10-15T15:56:55.873Z",
+          "updatedAt": "2014-10-16T15:56:55.873Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa050df18b4798ec95be",
+          "email": "rena_beasley@bitrex.ma",
+          "username": "rena90",
+          "profile": {
+            "name": "Rena Beasley",
+            "company": "Bitrex",
+            "dob": "1990-01-09",
+            "address": "78 Forbell Street, Homeland, Maine",
+            "location": {
+              "lat": 46.047548,
+              "long": 4.128049
+            },
+            "about": "Lorem aliqua veniam duis ut cillum ad sunt mollit incididunt elit. Ipsum incididunt et magna incididunt quis duis amet duis occaecat laborum nulla et commodo nisi."
+          },
+          "apiKey": "17e350f8-1020-4344-bbd7-ceb62cd44edb",
+          "roles": [
+            "member",
+            "owner"
+          ],
+          "createdAt": "2010-04-22T13:35:24.838Z",
+          "updatedAt": "2010-04-23T13:35:24.838Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa0595243d2b7b1ea22a",
+          "email": "sally_gentry@eventex.maif",
+          "username": "sally93",
+          "profile": {
+            "name": "Sally Gentry",
+            "company": "Eventex",
+            "dob": "1993-04-03",
+            "address": "54 Plaza Street, Greenbackville, North Carolina",
+            "location": {
+              "lat": -20.529121,
+              "long": 73.533118
+            },
+            "about": "Laborum sit exercitation sint laborum. Fugiat sit ipsum ullamco sint do dolore in sunt incididunt adipisicing magna ullamco aute."
+          },
+          "apiKey": "746b6ab3-c63f-44df-bb99-9de48f8e43c4",
+          "roles": [
+            "owner",
+            "guest"
+          ],
+          "createdAt": "2011-09-18T13:18:49.655Z",
+          "updatedAt": "2011-09-19T13:18:49.655Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05cdea66c87bb01439",
+          "email": "battle_duran@jasper.property",
+          "username": "battle88",
+          "profile": {
+            "name": "Battle Duran",
+            "company": "Jasper",
+            "dob": "1988-11-04",
+            "address": "34 Amherst Street, Corriganville, Nevada",
+            "location": {
+              "lat": 74.391489,
+              "long": -98.421464
+            },
+            "about": "Nostrud occaecat laborum aliquip sint est minim id aliquip adipisicing dolor. Aute velit amet officia anim sint anim aliquip."
+          },
+          "apiKey": "b22a3ddd-d540-4df0-9ce5-e837bc6a6a10",
+          "roles": [
+            "member"
+          ],
+          "createdAt": "2012-08-31T19:14:37.463Z",
+          "updatedAt": "2012-09-01T19:14:37.463Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05e9c13e25d41d4135",
+          "email": "petty_moore@neurocell.shriram",
+          "username": "petty91",
+          "profile": {
+            "name": "Petty Moore",
+            "company": "Neurocell",
+            "dob": "1991-03-10",
+            "address": "78 Interborough Parkway, Grill, Texas",
+            "location": {
+              "lat": -79.817761,
+              "long": -36.728201
+            },
+            "about": "Dolor occaecat anim est Lorem culpa fugiat id aliqua sint. Sit nisi do exercitation do voluptate exercitation in."
+          },
+          "apiKey": "4b341cfb-a83c-4f2a-9f4d-11cd747b8783",
+          "roles": [
+            "admin"
+          ],
+          "createdAt": "2012-01-02T21:28:22.431Z",
+          "updatedAt": "2012-01-03T21:28:22.431Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa052890c7b4d510d3d4",
+          "email": "matilda_kelley@senmei.in",
+          "username": "matilda93",
+          "profile": {
+            "name": "Matilda Kelley",
+            "company": "Senmei",
+            "dob": "1993-02-04",
+            "address": "29 Stuart Street, Henrietta, New York",
+            "location": {
+              "lat": 40.788206,
+              "long": -135.821558
+            },
+            "about": "Dolor veniam ex ullamco deserunt reprehenderit nostrud sunt culpa cupidatat qui labore deserunt. In ad anim laboris amet labore duis consequat nostrud eiusmod."
+          },
+          "apiKey": "dcf40383-a00a-43ef-8bd0-4af7e70413bd",
+          "roles": [
+            "owner",
+            "guest"
+          ],
+          "createdAt": "2014-03-28T22:07:39.636Z",
+          "updatedAt": "2014-03-29T22:07:39.636Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05af129db469473bf1",
+          "email": "savannah_hardin@exoblue.kn",
+          "username": "savannah89",
+          "profile": {
+            "name": "Savannah Hardin",
+            "company": "Exoblue",
+            "dob": "1989-07-01",
+            "address": "44 Navy Walk, Fresno, Kentucky",
+            "location": {
+              "lat": 75.679679,
+              "long": -58.534947
+            },
+            "about": "Id eiusmod eu elit consequat quis anim veniam officia anim ipsum. Sunt ex sit ipsum id est eu."
+          },
+          "apiKey": "98d6abb7-e4aa-4b3b-8958-ff3c4d672f1d",
+          "roles": [
+            "guest",
+            "member"
+          ],
+          "createdAt": "2011-04-15T00:55:02.325Z",
+          "updatedAt": "2011-04-16T00:55:02.325Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa055dfa731b01573a67",
+          "email": "abbott_gallegos@katakana.dad",
+          "username": "abbott91",
+          "profile": {
+            "name": "Abbott Gallegos",
+            "company": "Katakana",
+            "dob": "1991-03-04",
+            "address": "85 Indiana Place, Forestburg, Michigan",
+            "location": {
+              "lat": -5.417414,
+              "long": -4.557904
+            },
+            "about": "Adipisicing amet ullamco aliquip velit nostrud qui non pariatur Lorem. Culpa ut deserunt esse quis magna."
+          },
+          "apiKey": "3cf92c24-6193-4cc9-85fc-78e4ad9d6e13",
+          "roles": [
+            "guest",
+            "owner"
+          ],
+          "createdAt": "2011-06-01T16:38:39.316Z",
+          "updatedAt": "2011-06-02T16:38:39.316Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05386de2e6d75c1694",
+          "email": "short_brennan@hyplex.tc",
+          "username": "short92",
+          "profile": {
+            "name": "Short Brennan",
+            "company": "Hyplex",
+            "dob": "1992-04-19",
+            "address": "21 Irving Place, Hinsdale, Northern Mariana Islands",
+            "location": {
+              "lat": 57.340225,
+              "long": -7.021582
+            },
+            "about": "Mollit dolor dolore deserunt anim minim adipisicing eiusmod velit tempor id veniam cupidatat. Magna veniam consequat incididunt ut quis culpa excepteur tempor eiusmod consectetur excepteur."
+          },
+          "apiKey": "07bf533d-4a31-4e78-9d6e-d46160479069",
+          "roles": [
+            "admin",
+            "member"
+          ],
+          "createdAt": "2014-03-10T19:25:02.217Z",
+          "updatedAt": "2014-03-11T19:25:02.217Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05fd2a878d43bb45cd",
+          "email": "bowers_cooke@iplax.ci",
+          "username": "bowers92",
+          "profile": {
+            "name": "Bowers Cooke",
+            "company": "Iplax",
+            "dob": "1992-07-05",
+            "address": "83 Greenpoint Avenue, Marion, Georgia",
+            "location": {
+              "lat": 64.261022,
+              "long": -58.493714
+            },
+            "about": "Deserunt ipsum fugiat tempor sunt eu ea laboris ad magna ex laborum laboris. Ullamco nostrud qui exercitation aute consectetur irure."
+          },
+          "apiKey": "a3ecc58b-f292-4de1-b6e5-014345a76a7a",
+          "roles": [
+            "member",
+            "owner"
+          ],
+          "createdAt": "2010-06-20T16:34:56.467Z",
+          "updatedAt": "2010-06-21T16:34:56.467Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05a6de547367990f9c",
+          "email": "tara_rutledge@escenta.lc",
+          "username": "tara90",
+          "profile": {
+            "name": "Tara Rutledge",
+            "company": "Escenta",
+            "dob": "1990-08-11",
+            "address": "25 Butler Place, Frierson, Missouri",
+            "location": {
+              "lat": -32.176783,
+              "long": 67.345415
+            },
+            "about": "Aute sunt laborum anim ex non pariatur nisi minim tempor adipisicing. Excepteur irure non amet eiusmod et excepteur."
+          },
+          "apiKey": "22da9647-a7b7-4815-91bb-d5101fc90e55",
+          "roles": [
+            "member"
+          ],
+          "createdAt": "2013-09-06T21:41:53.287Z",
+          "updatedAt": "2013-09-07T21:41:53.287Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa053778601ad57f22cd",
+          "email": "elva_chapman@bytrex.gg",
+          "username": "elva90",
+          "profile": {
+            "name": "Elva Chapman",
+            "company": "Bytrex",
+            "dob": "1990-05-31",
+            "address": "4 Royce Place, Advance, New Hampshire",
+            "location": {
+              "lat": -28.393464,
+              "long": -28.622091
+            },
+            "about": "Est sit deserunt Lorem amet voluptate elit reprehenderit occaecat est eiusmod eu reprehenderit laborum. Pariatur magna occaecat et excepteur est excepteur consectetur ad nulla."
+          },
+          "apiKey": "4d242fa4-ac69-42f1-8f12-ec19d9c6d632",
+          "roles": [
+            "owner",
+            "admin"
+          ],
+          "createdAt": "2011-04-05T04:04:31.524Z",
+          "updatedAt": "2011-04-06T04:04:31.524Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa054c6abbc57efcb100",
+          "email": "pitts_meyer@unisure.tui",
+          "username": "pitts93",
+          "profile": {
+            "name": "Pitts Meyer",
+            "company": "Unisure",
+            "dob": "1993-06-12",
+            "address": "47 Columbus Place, Cade, Alaska",
+            "location": {
+              "lat": 56.723675,
+              "long": 158.093389
+            },
+            "about": "Non ea pariatur excepteur nostrud elit quis qui. Dolore aute velit ipsum officia ea pariatur incididunt non elit tempor duis consequat."
+          },
+          "apiKey": "82a88344-d289-447c-81b5-1ae10cd1994b",
+          "roles": [
+            "guest",
+            "admin"
+          ],
+          "createdAt": "2014-05-15T06:38:59.269Z",
+          "updatedAt": "2014-05-16T06:38:59.269Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa0527e7ce14e421d9cd",
+          "email": "delia_figueroa@overplex.um",
+          "username": "delia89",
+          "profile": {
+            "name": "Delia Figueroa",
+            "company": "Overplex",
+            "dob": "1989-04-22",
+            "address": "12 Nova Court, Taft, Ohio",
+            "location": {
+              "lat": -32.990583,
+              "long": -4.598863
+            },
+            "about": "Cupidatat fugiat veniam eu proident excepteur deserunt ad esse fugiat deserunt. Non velit cillum velit veniam ex minim eiusmod tempor excepteur voluptate adipisicing nostrud."
+          },
+          "apiKey": "b3a7747b-24a0-4039-8a21-56e83441a660",
+          "roles": [
+            "admin",
+            "guest"
+          ],
+          "createdAt": "2014-09-20T03:40:10.190Z",
+          "updatedAt": "2014-09-21T03:40:10.190Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa05cf60000cbca6dca4",
+          "email": "kristina_fulton@portaline.engineer",
+          "username": "kristina88",
+          "profile": {
+            "name": "Kristina Fulton",
+            "company": "Portaline",
+            "dob": "1988-07-25",
+            "address": "50 Laurel Avenue, Greenwich, Palau",
+            "location": {
+              "lat": 44.118984,
+              "long": 41.518949
+            },
+            "about": "Id incididunt officia exercitation ipsum id cillum consectetur. Veniam enim voluptate ut proident ex."
+          },
+          "apiKey": "c106dbf0-bfc0-461d-b1d7-1840fe8e1cbc",
+          "roles": [
+            "admin",
+            "member"
+          ],
+          "createdAt": "2010-04-10T08:06:27.028Z",
+          "updatedAt": "2010-04-11T08:06:27.028Z"
+        }
+      },
+      {
+        "json": {
+          "id": "654cfa0501fe5691d620f570",
+          "email": "gould_noel@gonkle.gmx",
+          "username": "gould91",
+          "profile": {
+            "name": "Gould Noel",
+            "company": "Gonkle",
+            "dob": "1991-10-08",
+            "address": "33 Crooke Avenue, Idamay, Oklahoma",
+            "location": {
+              "lat": -11.398731,
+              "long": 34.706948
+            },
+            "about": "Veniam esse tempor aute quis mollit consequat Lorem. Nostrud ea dolore laboris Lorem elit est do nisi Lorem minim reprehenderit culpa."
+          },
+          "apiKey": "1089783d-32ae-4102-8ac5-1e7f6cebe3c1",
+          "roles": [
+            "guest",
+            "admin"
+          ],
+          "createdAt": "2011-12-30T20:24:19.620Z",
+          "updatedAt": "2011-12-31T20:24:19.620Z"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "True",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "False",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9812dda2-cc1b-4458-97d8-21ccb18c90d1",
+  "id": "WNq486x7DpV1MPRH",
+  "meta": {
+    "instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
+  },
+  "tags": []
+}

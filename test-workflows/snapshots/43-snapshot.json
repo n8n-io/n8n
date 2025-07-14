@@ -1,0 +1,265 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1678116858417,
+            "executionTime": 2,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Contacts": [
+          {
+            "startTime": 1678116858448,
+            "executionTime": 1054,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "resourceName": "people/c4926459161634783331",
+                      "etag": "%EigBAgMEBQYHCAkKCwwNDg8QERITFBUWFxkfISIjJCUmJy40NTc9Pj9AGgQBAgUHIgxLNHlqR3dpUnBYST0=",
+                      "metadata": {
+                        "object": true
+                      },
+                      "names": [
+                        "json array"
+                      ],
+                      "photos": [
+                        "json array"
+                      ],
+                      "organizations": [
+                        "json array"
+                      ],
+                      "memberships": [
+                        "json array"
+                      ],
+                      "contactId": "c4926459161634783331"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 3 seconds": [
+          {
+            "startTime": 1678116859502,
+            "executionTime": 3025,
+            "source": [
+              {
+                "previousNode": "Google Contacts"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "resourceName": "people/c4926459161634783331",
+                      "etag": "%EigBAgMEBQYHCAkKCwwNDg8QERITFBUWFxkfISIjJCUmJy40NTc9Pj9AGgQBAgUHIgxLNHlqR3dpUnBYST0=",
+                      "metadata": {
+                        "object": true
+                      },
+                      "names": [
+                        "json array"
+                      ],
+                      "photos": [
+                        "json array"
+                      ],
+                      "organizations": [
+                        "json array"
+                      ],
+                      "memberships": [
+                        "json array"
+                      ],
+                      "contactId": "c4926459161634783331"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Contacts1": [
+          {
+            "startTime": 1678116862527,
+            "executionTime": 782,
+            "source": [
+              {
+                "previousNode": "Sleep 3 seconds"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "resourceName": "people/c4926459161634783331",
+                      "etag": "%EgUBAi43PRoEAQIFByIMbUdBM3NCWUx0UFE9",
+                      "names": [
+                        "json array"
+                      ],
+                      "contactId": "c4926459161634783331"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Contacts2": [
+          {
+            "startTime": 1678116863309,
+            "executionTime": 191,
+            "source": [
+              {
+                "previousNode": "Google Contacts1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "resourceName": "people/c2992217910493048592",
+                      "etag": "%Eh4BAgMFBgcICQoLDA0ODxATFBUWGSEiJS41Nz0+P0AaBAECBQciDHZTVjkvK2I5YWZBPQ==",
+                      "names": {
+                        "object": true
+                      },
+                      "photos": [
+                        "json array"
+                      ],
+                      "organizations": [
+                        "json array"
+                      ],
+                      "memberships": [
+                        "json array"
+                      ],
+                      "contactId": "c2992217910493048592"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Contacts3": [
+          {
+            "startTime": 1678116863501,
+            "executionTime": 161,
+            "source": [
+              {
+                "previousNode": "Google Contacts2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "resourceName": "people/c4926459161634783331",
+                      "etag": "%Eh4BAgMFBgcICQoLDA0ODxATFBUWGSEiJS41Nz0+P0AaBAECBQciDG1HQTNzQllMdFBRPQ==",
+                      "names": {
+                        "object": true
+                      },
+                      "photos": [
+                        "json array"
+                      ],
+                      "organizations": [
+                        "json array"
+                      ],
+                      "memberships": [
+                        "json array"
+                      ],
+                      "contactId": "c4926459161634783331"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Contacts4": [
+          {
+            "startTime": 1678116863662,
+            "executionTime": 334,
+            "source": [
+              {
+                "previousNode": "Google Contacts3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Google Contacts4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-03-06T15:34:18.413Z",
+  "stoppedAt": "2023-03-06T15:34:23.997Z",
+  "status": "running",
+  "finished": true
+}

@@ -1,0 +1,155 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "40bf604f-19f9-43e7-8bbb-74c36925f154",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "bom.csv"
+      },
+      "id": "623ea890-8882-4273-973e-834652d823b5",
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "options": {
+          "enableBOM": true
+        }
+      },
+      "id": "c8cca5fb-e119-4ca1-a597-4f051a7f64ea",
+      "name": "Exclude BOM",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        120,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "options": {
+          "enableBOM": false
+        }
+      },
+      "id": "56ec11dc-966b-4d06-b8c0-61475b30333d",
+      "name": "Include BOM",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        120,
+        1180
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "X",
+              "stringValue": "={{ $json.a }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "id": "6f6bccf2-d674-4774-9df9-6f6fd893bace",
+      "name": "Edit with BOM excluded",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "X",
+              "stringValue": "={{ $json.a }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "id": "27ca5cde-19cb-4bf2-9ab4-7f7e77ad01bd",
+      "name": "Edit with BOM included",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        1180
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exclude BOM": {
+      "main": [
+        [
+          {
+            "node": "Edit with BOM excluded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Include BOM": {
+      "main": [
+        [
+          {
+            "node": "Edit with BOM included",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Exclude BOM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Include BOM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

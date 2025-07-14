@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "businessPhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "emailAddresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.rssFeedRead",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Why business process automation with n8n can change your daily life",
+				"icon": "🧬",
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "Why I chose n8n over Zapier in 2020",
+				"icon": "😍",
+				"url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/"
+			}
+		]
+	}
+}

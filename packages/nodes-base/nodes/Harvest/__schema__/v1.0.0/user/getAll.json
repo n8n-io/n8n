@@ -1,0 +1,69 @@
+{
+    "type": "object",
+    "properties": {
+        "access_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "avatar_url": {
+            "type": "string"
+        },
+        "calendar_integration_enabled": {
+            "type": "boolean"
+        },
+        "can_create_projects": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "has_access_to_all_future_projects": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_active": {
+            "type": "boolean"
+        },
+        "is_contractor": {
+            "type": "boolean"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "permissions_claims": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "telephone": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "weekly_capacity": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

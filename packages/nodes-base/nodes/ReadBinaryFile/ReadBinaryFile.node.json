@@ -1,0 +1,34 @@
+{
+	"node": "n8n-nodes-base.readBinaryFile",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Build your own virtual assistant with n8n: A step by step guide",
+				"icon": "👦",
+				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+			},
+			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
+			},
+			{
+				"label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation",
+				"icon": "🧰",
+				"url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/"
+			}
+		]
+	},
+	"alias": ["Text", "Open", "Import"],
+	"subcategories": {
+		"Core Nodes": ["Files"]
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"noUncheckedIndexedAccess": false,
+		"types": ["vite/client", "vitest/globals"]
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+	"exclude": ["node_modules"]
+}

@@ -1,0 +1,157 @@
+{
+  "createdAt": "2024-03-04T20:32:40.367Z",
+  "updatedAt": "2024-03-13T13:41:09.000Z",
+  "id": "243",
+  "name": "Agent:ReAct",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "35b58a63-6835-4724-807f-47e24215f4c2",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        840,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "9dd9723f-2e8f-463b-b88e-20ba4298f538",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        1040
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "Zak03cqeLUOsgkFI",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=messages"
+    },
+    {
+      "parameters": {},
+      "id": "223ed022-94bd-4b31-bf12-5c79d9b635a9",
+      "name": "Calculator2",
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2807ad9-7402-47a8-baf8-3ba8feea2494",
+              "name": "calculator_called",
+              "value": "={{ $json.intermediateSteps.filter(a => a.action.tool === 'calculator').length >= 1 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "29ca8b14-ce95-4497-85eb-687db33ecd06",
+              "name": "has_correct_output",
+              "value": "={{ $json.output.includes('100052') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "473e1db4-8d90-49e3-99ae-444d7c5d8cf0",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1380,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "reActAgent",
+        "promptType": "define",
+        "text": "What is the result of 30 + (10002200 / 100)? Only respond with a number.",
+        "options": {
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "3fa65db7-000e-427f-aab9-14af134d0d78",
+      "name": "AI Agent2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        900
+      ]
+    }
+  ],
+  "connections": {
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "aeb32e87-d821-4885-ab26-58321ad2d0a4",
+  "triggerCount": 0,
+  "tags": []
+}

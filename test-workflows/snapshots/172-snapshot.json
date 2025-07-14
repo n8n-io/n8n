@@ -1,0 +1,187 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994721,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "PayPal": [
+          {
+            "startTime": 1747343994721,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 636,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "batch_header": {
+                        "object": true
+                      },
+                      "links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "PayPal1": [
+          {
+            "startTime": 1747343995357,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "PayPal"
+              }
+            ],
+            "hints": [],
+            "executionTime": 534,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "payout_item_id": "HHW94VDFSQWZQ",
+                      "transaction_status": "PENDING",
+                      "payout_batch_id": "WNCGA2S4EGV54",
+                      "payout_item": {
+                        "object": true
+                      },
+                      "links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "PayPal2": [
+          {
+            "startTime": 1747343995891,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "PayPal1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1068,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "payout_item_id": "HHW94VDFSQWZQ",
+                      "transaction_status": "PENDING",
+                      "payout_batch_id": "WNCGA2S4EGV54",
+                      "sender_batch_id": "1747343994721",
+                      "payout_item": {
+                        "object": true
+                      },
+                      "links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "PayPal3": [
+          {
+            "startTime": 1747343996959,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "PayPal2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "payout_item_id": "HHW94VDFSQWZQ",
+                      "transaction_status": "PENDING",
+                      "payout_batch_id": "WNCGA2S4EGV54",
+                      "sender_batch_id": "1747343994721",
+                      "payout_item": {
+                        "object": true
+                      },
+                      "links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "PayPal3"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.721Z",
+  "stoppedAt": "2025-05-15T21:19:56.959Z",
+  "status": "running",
+  "finished": true
+}

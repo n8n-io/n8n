@@ -1,0 +1,8 @@
+{
+	"data": {
+			"sessionId": "f9130bd7-c078-4862-a38a-369b27b0ff20-e96eb9f7-d581-4684-b6a9-fd3dfe9fe1fb-emTezIGat7bQsDdtIlbti",
+			"parameters": {
+					"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			}
+	}
+}

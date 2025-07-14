@@ -1,0 +1,84 @@
+{
+	"meta": {
+		"instanceId": "060d2be233778dc6349e0f3fa8d972652e8dff467638325ffc56812c6b66ef1a"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "656d6d8d-1af6-4af7-ab53-7c4e495ee51c",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-300, 1880]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict"
+					},
+					"conditions": [
+						{
+							"id": "1fff886f-3d13-4fbf-b0fb-7e2f845937c0",
+							"leftValue": "={{ false }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"id": "204feab7-f5e9-458f-8fdb-4b762b184147",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2,
+			"position": [40, 1880]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": []
+				},
+				"options": {}
+			},
+			"id": "ab122060-f8da-475e-b6c6-d9e486289e1f",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [360, 2080]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

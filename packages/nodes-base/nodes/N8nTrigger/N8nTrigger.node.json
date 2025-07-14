@@ -1,0 +1,16 @@
+{
+	"node": "n8n-nodes-base.n8nTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8ntrigger/"
+			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": ["Flow", "Other Trigger Nodes", "Helpers"]
+	}
+}

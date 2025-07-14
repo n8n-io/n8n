@@ -1,0 +1,360 @@
+{
+	"name": "summarize test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-160, 340],
+			"id": "0cc16e22-72e3-4f2c-a920-b1613fd4bcaf",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 1,\n    \"params.interval\": \"1 day\",\n    params: {\n      interval: \"1 day\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"spam\",\n    char: \"b\",\n    value: 2,\n    params: {\n      interval: \"1 hour\",\n    },\n  },\n  {\n    category: \"green\",\n    text: \"bar\",\n    char: \"c\",\n    value: 3,\n  },\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 4,\n  },\n  {\n    category: \"red\",\n    text: \"bar\",\n    char: \"a\",\n    value: 5,\n    params: {\n      interval: \"1 minute\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 6,\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 7,\n     params: {\n      interval: \"1 second\",\n    },\n  },\n];\n"
+			},
+			"id": "5a71d6f2-96fb-4616-94b7-5644c71e3bfb",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [60, 340]
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "char"
+						},
+						{
+							"field": "char"
+						},
+						{
+							"aggregation": "countUnique",
+							"field": "char"
+						},
+						{
+							"aggregation": "concatenate",
+							"field": "char",
+							"separateBy": ", "
+						}
+					]
+				},
+				"fieldsToSplitBy": "category, text",
+				"options": {}
+			},
+			"id": "281b21e0-5737-4150-bce8-8331a3f83366",
+			"name": "Summarize1",
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1,
+			"position": [280, -60]
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "char"
+						},
+						{
+							"field": "char"
+						},
+						{
+							"aggregation": "countUnique",
+							"field": "char"
+						},
+						{
+							"aggregation": "concatenate",
+							"field": "char",
+							"separateBy": ", "
+						}
+					]
+				},
+				"fieldsToSplitBy": "category, text",
+				"options": {
+					"outputFormat": "singleItem"
+				}
+			},
+			"id": "04bf538c-24d4-46d8-9c43-76ebc4fe7368",
+			"name": "Summarize2",
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1,
+			"position": [280, 140]
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "average",
+							"field": "value"
+						},
+						{
+							"aggregation": "max",
+							"field": "value"
+						},
+						{
+							"aggregation": "min",
+							"field": "value"
+						},
+						{
+							"aggregation": "max",
+							"field": "value"
+						},
+						{
+							"aggregation": "sum",
+							"field": "value"
+						},
+						{
+							"aggregation": "append",
+							"field": "value"
+						}
+					]
+				},
+				"fieldsToSplitBy": "category",
+				"options": {}
+			},
+			"id": "e6f750f2-15c1-4de9-80a1-a255649d6e99",
+			"name": "Summarize3",
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1,
+			"position": [280, 340]
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "params.interval"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [280, 540],
+			"id": "bfe0521a-c060-454f-99bb-b682aab44f63",
+			"name": "Dot notation"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "params.interval"
+						}
+					]
+				},
+				"options": {
+					"disableDotNotation": true
+				}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [280, 740],
+			"id": "b2c05f23-449f-49aa-80a3-4e1cd9156aa1",
+			"name": "Dot notation (disabled)"
+		}
+	],
+	"pinData": {
+		"Summarize1": [
+			{
+				"json": {
+					"category": "red",
+					"text": "foo",
+					"appended_char": ["a", "a"],
+					"count_char": 2,
+					"unique_count_char": 1,
+					"concatenated_char": "a, a"
+				}
+			},
+			{
+				"json": {
+					"category": "red",
+					"text": "bar",
+					"appended_char": ["a"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "a"
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"text": "spam",
+					"appended_char": ["b"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "b"
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"text": "foo",
+					"appended_char": ["a", "a"],
+					"count_char": 2,
+					"unique_count_char": 1,
+					"concatenated_char": "a, a"
+				}
+			},
+			{
+				"json": {
+					"category": "green",
+					"text": "bar",
+					"appended_char": ["c"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "c"
+				}
+			}
+		],
+		"Summarize2": [
+			{
+				"json": {
+					"red": {
+						"foo": {
+							"appended_char": ["a", "a"],
+							"count_char": 2,
+							"unique_count_char": 1,
+							"concatenated_char": "a, a"
+						},
+						"bar": {
+							"appended_char": ["a"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "a"
+						}
+					},
+					"blue": {
+						"spam": {
+							"appended_char": ["b"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "b"
+						},
+						"foo": {
+							"appended_char": ["a", "a"],
+							"count_char": 2,
+							"unique_count_char": 1,
+							"concatenated_char": "a, a"
+						}
+					},
+					"green": {
+						"bar": {
+							"appended_char": ["c"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "c"
+						}
+					}
+				}
+			}
+		],
+		"Summarize3": [
+			{
+				"json": {
+					"category": "red",
+					"average_value": 3.3333333333333335,
+					"max_value": 5,
+					"min_value": 1,
+					"sum_value": 10,
+					"appended_value": [1, 4, 5]
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"average_value": 5,
+					"max_value": 7,
+					"min_value": 2,
+					"sum_value": 15,
+					"appended_value": [2, 6, 7]
+				}
+			},
+			{
+				"json": {
+					"category": "green",
+					"average_value": 3,
+					"max_value": 3,
+					"min_value": 3,
+					"sum_value": 3,
+					"appended_value": [3]
+				}
+			}
+		],
+		"Dot notation": [
+			{
+				"json": {
+					"appended_params_interval": ["1 day", "1 hour", "1 minute", "1 second"]
+				}
+			}
+		],
+		"Dot notation (disabled)": [
+			{
+				"json": {
+					"appended_params_interval": ["1 day"]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Summarize1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Summarize2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Summarize3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dot notation",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dot notation (disabled)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "60e793d6-8c99-4bd2-aeb8-8ff350fc3101",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "0HNQZNduHDmRCBBW",
+	"tags": []
+}

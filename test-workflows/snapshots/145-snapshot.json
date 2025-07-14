@@ -1,0 +1,105 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1706635217888,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Peekalink1": [
+          {
+            "startTime": 1706635217888,
+            "executionTime": 1099,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "url": "https://example.com/",
+                      "domain": "example.com",
+                      "lastUpdated": "2024-01-28T02:10:25.125799Z",
+                      "nextUpdate": "2024-02-04T02:10:25.123122Z",
+                      "contentType": "html",
+                      "mimeType": "text/html",
+                      "size": 648,
+                      "redirected": false,
+                      "title": "Example Domain",
+                      "description": "This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.",
+                      "name": "EXAMPLE.COM",
+                      "trackersDetected": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Peekalink": [
+          {
+            "startTime": 1706635218987,
+            "executionTime": 285,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "isAvailable": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Peekalink"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-01-30T17:20:17.888Z",
+  "stoppedAt": "2024-01-30T17:20:19.272Z",
+  "status": "running",
+  "finished": true
+}

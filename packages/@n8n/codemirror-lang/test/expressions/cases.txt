@@ -1,0 +1,311 @@
+# Resolvable
+
+{{ 1 + 1 }}
+
+==>
+
+Program(Resolvable)
+
+# Empty Resolvable
+
+{{}}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable of only whitespace
+
+{{ }}
+
+==>
+
+Program(Resolvable)
+
+# No content
+
+
+
+==>
+
+Program
+
+# Plaintext
+
+text
+
+==>
+
+Program(Plaintext)
+
+# Plaintext of single-brace-wrapped text
+
+{text}
+
+==>
+
+Program(Plaintext)
+
+# Plaintext then Resolvable
+
+text {{ 1 + 1 }}
+
+==>
+
+Program(Plaintext, Resolvable)
+
+# Resolvable then Plaintext
+
+{{ 1 + 1 }} Plaintext
+
+==>
+
+Program(Resolvable, Plaintext)
+
+# Plaintext then Resolvable then Plaintext
+
+text {{ 1 + 1 }} text
+
+==>
+
+Program(Plaintext, Resolvable, Plaintext)
+
+# Resolvable then Plaintext then Resolvable
+
+{{ 1 + 1 }} text {{ 1 + 1 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Plaintext then Resolvable then Plaintext then Resolvable
+
+text {{ 1 + 1 }} text {{ 1 + 1 }}
+
+==>
+
+Program(Plaintext, Resolvable, Plaintext, Resolvable)
+
+# Resolvable then Plaintext then Resolvable then Plaintext
+
+{{ 1 + 1 }} text {{ 1 + 1 }} text
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable,Plaintext)
+
+# Resolvable containing all resolvable chars
+
+{{ he ()[]{<>~`!@#$%^&*-_+=|\;:'",./?\{ llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing single left brace
+
+{{ he { llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing double left brace
+
+{{ he {{ llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing triple left brace
+
+{{ he {{{ llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing single right brace
+
+{{ he } llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing escaped double right brace
+
+{{ he \}} llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing escaped triple right brace
+
+{{ he \}}} llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing single-brace-wrapped text with escaping
+
+{{ he { abc } llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing double-brace-wrapped text with escaping
+
+{{ he {{ abc \}} llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing triple-brace-wrapped text with escaping
+
+{{ he {{{ abc \}}} llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing single-bracket-wrapped text
+
+{{ he [ abc ] llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing double-bracket-wrapped text
+
+{{ he [[ abc ]] llo }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing triple-bracket-wrapped text
+
+{{ he [[[ abc ]]] llo }}
+
+==>
+
+Program(Resolvable)
+
+# Plaintext of one opening brace
+
+{
+
+==>
+
+Program(Plaintext)
+
+# Plaintext of one opening brace and two closing braces
+
+{ }}
+
+==>
+
+Program(Plaintext)
+
+# Plaintext then Resolvable with non-ASCII chars then Plaintext
+
+a {{ 'áßи' }} a
+
+==>
+
+Program(Plaintext, Resolvable, Plaintext)
+
+# Resolvable with currency symbol
+
+{{ '€' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with cyrillic char
+
+{{ 'л' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with Pictographs char
+
+{{ '🎉' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with Emoticons char
+
+{{ '😎' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with general punctuation char
+
+{{ '†' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with superscript char
+
+{{ '⁷' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with CJK char
+
+{{ '漢' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with new emoji range
+
+{{ '🟢' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with new emoji range end of range
+
+{{ '🫸' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with start of Dingbat range - U+2700
+
+{{ '✀' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with end of Dingbat range - U+27BF
+
+{{ '➿' }}
+
+==>
+
+Program(Resolvable)

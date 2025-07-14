@@ -1,0 +1,168 @@
+name: 'Release: Publish'
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'release/*'
+
+jobs:
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+    outputs:
+      release: ${{ steps.set-release.outputs.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Set release version in env
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+
+      - name: Build
+        run: pnpm build
+
+      - name: Cache build artifacts
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-release:build
+
+      - name: Dry-run publishing
+        run: pnpm publish -r --no-git-checks --dry-run
+
+      - name: Pre publishing changes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/trim-fe-packageJson.js
+          node .github/scripts/ensure-provenance-fields.mjs
+          cp README.md packages/cli/README.md
+          sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
+
+      - name: Publish to NPM
+        run: pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+
+      - name: Cleanup rc tag
+        run: npm dist-tag rm n8n rc
+        continue-on-error: true
+
+      - id: set-release
+        run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
+
+  publish-to-docker-hub:
+    name: Publish to DockerHub
+    needs: [publish-to-npm]
+    uses: ./.github/workflows/docker-build-push.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_type: stable
+    secrets: inherit
+
+  create-github-release:
+    name: Create a GitHub Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Create a Release on GitHub
+        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1
+        with:
+          commit: ${{github.event.pull_request.base.ref}}
+          tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+          prerelease: true
+          makeLatest: false
+          body: ${{github.event.pull_request.body}}
+
+  create-sentry-release:
+    name: Create a Sentry Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-release:build
+
+      - name: Create a frontend release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/frontend/editor-ui/dist
+
+      - name: Create a backend release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
+
+      - name: Create a task runner release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
+
+  trigger-release-note:
+    name: Trigger a release note
+    needs: [publish-to-npm, create-github-release]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a release note
+        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
+
+  # merge-back-into-master:
+  #   name: Merge back into master
+  #   needs: [publish-to-npm, create-github-release]
+  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+  # v4.1.1
+  #         fetch-depth: 0
+  #     - run: |
+  #         git checkout --track origin/master
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
+  #         git push origin master
+  #         git push origin :${{github.event.pull_request.base.ref}}
