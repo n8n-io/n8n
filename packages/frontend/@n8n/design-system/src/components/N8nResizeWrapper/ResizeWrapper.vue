@@ -14,13 +14,21 @@ function closestNumber(value: number, divisor: number): number {
 	return n2;
 }
 
-function getSize(min: number, virtual: number, gridSize: number): number {
-	const target = closestNumber(virtual, gridSize);
-	if (target >= min && virtual > 0) {
-		return target;
+function getSize(min: number, virtual: number, gridSize: number, max: number): number {
+	if (virtual <= 0) {
+		return min;
 	}
 
-	return min;
+	const target = closestNumber(virtual, gridSize);
+
+	if (target <= min) {
+		return min;
+	}
+	if (target >= max) {
+		return max;
+	}
+
+	return target;
 }
 
 interface ResizeProps {
@@ -28,7 +36,9 @@ interface ResizeProps {
 	height?: number;
 	width?: number;
 	minHeight?: number;
+	maxHeight?: number;
 	minWidth?: number;
+	maxWidth?: number;
 	scale?: number;
 	gridSize?: number;
 	supportedDirections?: Direction[];
@@ -41,7 +51,9 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	height: 0,
 	width: 0,
 	minHeight: 0,
+	maxHeight: undefined,
 	minWidth: 0,
+	maxWidth: undefined,
 	scale: 1,
 	gridSize: 20,
 	outset: false,
@@ -56,6 +68,9 @@ const emit = defineEmits<{
 	resize: [value: ResizeData];
 	resizeend: [];
 }>();
+
+const maxWidth = computed(() => props.maxWidth ?? props.width);
+const maxHeight = computed(() => props.maxHeight ?? props.height);
 
 const enabledDirections = computed((): Direction[] => {
 	const availableDirections = Object.keys(directionsCursorMaps) as Direction[];
@@ -109,8 +124,18 @@ const mouseMove = (event: MouseEvent) => {
 
 	state.vHeight.value = state.vHeight.value + deltaHeight;
 	state.vWidth.value = state.vWidth.value + deltaWidth;
-	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize);
-	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize);
+	const height = getSize(
+		props.minHeight,
+		state.vHeight.value,
+		props.gridSize,
+		maxHeight.value ?? state.vHeight.value,
+	);
+	const width = getSize(
+		props.minWidth,
+		state.vWidth.value,
+		props.gridSize,
+		maxWidth.value ?? state.vWidth.value,
+	);
 
 	const dX = left && width !== props.width ? -1 * (width - props.width) : 0;
 	const dY = top && height !== props.height ? -1 * (height - props.height) : 0;
