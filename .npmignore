@@ -1,3 +1,4 @@
+# adding file.
 dist/test
 dist/**/*.{js.map}
 
