@@ -754,11 +754,12 @@ onBeforeUnmount(() => {
 							@activate="onWorkflowActivate"
 						/>
 						<InputPanel
-							v-else-if="!isTriggerNode && inputNodeName"
+							v-else-if="!isTriggerNode"
 							:workflow="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
+							:active-node-name="activeNode.name"
 							:current-node-name="inputNodeName"
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"

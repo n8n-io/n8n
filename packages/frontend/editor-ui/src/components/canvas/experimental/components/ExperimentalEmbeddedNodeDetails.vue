@@ -89,6 +89,50 @@ const shouldShowInputPanel = computed(() => {
 
 	return false;
 });
+const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
+	if (!node.value) {
+		return undefined;
+	}
+
+	const runIndex = 0; // not changeable for now
+	const execution = workflowsStore.workflowExecutionData;
+	const nodeName = node.value.name;
+
+	function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
+		const taskData = (execution?.data?.resultData.runData[nodeName] ?? [])[runIndex];
+		const source = taskData?.source[0];
+
+		if (source) {
+			return {
+				name: source.previousNode,
+				branchIndex: source.previousNodeOutput ?? 0,
+				runIndex: source.previousNodeRun ?? 0,
+			};
+		}
+
+		const inputs = workflow.value.getParentNodesByDepth(nodeName, 1);
+
+		if (inputs.length > 0) {
+			return {
+				name: inputs[0].name,
+				branchIndex: inputs[0].indicies[0] ?? 0,
+				runIndex: 0,
+			};
+		}
+
+		return undefined;
+	}
+
+	return {
+		localResolve: true,
+		envVars: useEnvironmentsStore().variablesAsObject,
+		workflow: workflow.value,
+		execution,
+		nodeName,
+		additionalKeys: {},
+		inputNode: findInputNode(),
+	};
+});
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
@@ -101,53 +145,7 @@ function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
 }
 
-provide(
-	ExpressionLocalResolveContextSymbol,
-	computed<ExpressionLocalResolveContext | undefined>(() => {
-		if (!node.value) {
-			return undefined;
-		}
-
-		const runIndex = 0; // not changeable for now
-		const execution = workflowsStore.workflowExecutionData;
-		const nodeName = node.value.name;
-
-		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
-			const taskData = (execution?.data?.resultData.runData[nodeName] ?? [])[runIndex];
-			const source = taskData?.source[0];
-
-			if (source) {
-				return {
-					name: source.previousNode,
-					branchIndex: source.previousNodeOutput ?? 0,
-					runIndex: source.previousNodeRun ?? 0,
-				};
-			}
-
-			const inputs = workflow.value.getParentNodesByDepth(nodeName, 1);
-
-			if (inputs.length > 0) {
-				return {
-					name: inputs[0].name,
-					branchIndex: inputs[0].indicies[0] ?? 0,
-					runIndex: 0,
-				};
-			}
-
-			return undefined;
-		}
-
-		return {
-			localResolve: true,
-			envVars: useEnvironmentsStore().variablesAsObject,
-			workflow: workflow.value,
-			execution,
-			nodeName,
-			additionalKeys: {},
-			inputNode: findInputNode(),
-		};
-	}),
-);
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
@@ -210,7 +208,8 @@ watchOnce(isVisible, (visible) => {
 						push-ref=""
 						display-mode="schema"
 						disable-display-mode-selection
-						:current-node-name="node.name"
+						:active-node-name="node.name"
+						:current-node-name="expressionResolveCtx?.inputNode?.name"
 						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 						:focused-mappable-input="ndvStore.focusedMappableInput"
 					>

@@ -36,7 +36,8 @@ export type Props = {
 	runIndex: number;
 	workflow: Workflow;
 	pushRef: string;
-	currentNodeName: string;
+	activeNodeName: string;
+	currentNodeName?: string;
 	canLinkRuns?: boolean;
 	linkedRuns?: boolean;
 	readOnly?: boolean;
@@ -50,6 +51,7 @@ export type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), {
+	currentNodeName: '',
 	canLinkRuns: false,
 	readOnly: false,
 	isProductionExecutionPreview: false,
@@ -95,7 +97,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const posthogStore = usePostHog();
 
-const activeNode = computed(() => workflowsStore.getNodeByName(props.currentNodeName));
+const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
