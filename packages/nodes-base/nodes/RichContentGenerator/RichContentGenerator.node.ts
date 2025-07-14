@@ -506,30 +506,66 @@ function generateForm(item: INodeExecutionData) {
 			}
 		`,
 		script: `
+			let retryCount = 0;
+			const maxRetries = 50; // Prevent infinite loops
+			
 			function initForm() {
-				// Find the container - works in both chat and logs contexts
-				let currentContainer = null;
+				retryCount++;
 				
-				// Try different container contexts
+				// In rich content context, look for form in parent containers
+				let form = null;
+				let statusDiv = null;
+				
+				// Try to find the rich message container (parent of script container)
+				let richContainer = null;
 				if (typeof container !== 'undefined' && container) {
-					currentContainer = container;
-				} else if (document.currentScript && document.currentScript.parentElement) {
-					currentContainer = document.currentScript.parentElement;
-				} else {
-					// Fallback to document
-					currentContainer = document;
+					// Find the parent rich message container
+					richContainer = container.closest('.rich-message-container') || 
+								   container.parentElement?.closest('.rich-message-container') ||
+								   container.parentElement;
 				}
 				
-				console.log('[Rich Content] Using form container:', currentContainer);
+				// Search in rich container first
+				if (richContainer) {
+					form = richContainer.querySelector('#userFeedback');
+					statusDiv = richContainer.querySelector('#formStatus');
+					console.log('[Rich Content] Searched in rich container:', richContainer);
+				}
 				
-				const form = currentContainer.querySelector('#userFeedback');
-				const statusDiv = currentContainer.querySelector('#formStatus');
-				
+				// Fallback to document-wide search
 				if (!form) {
-					console.warn('[Rich Content] Form not found, retrying...');
-					setTimeout(initForm, 100);
+					const searchContexts = [
+						document,
+						...(document.querySelectorAll('.rich-message-container') || []),
+						...(document.querySelectorAll('.rich-html-content') || []),
+						...(document.querySelectorAll('.form-container') || [])
+					];
+					
+					for (const context of searchContexts) {
+						const contextForm = context.querySelector('#userFeedback');
+						const contextStatus = context.querySelector('#formStatus');
+						if (contextForm) {
+							form = contextForm;
+							statusDiv = contextStatus;
+							console.log('[Rich Content] Found form in context:', context);
+							break;
+						}
+					}
+				}
+				
+				if (!form && retryCount < maxRetries) {
+					console.warn(\`[Rich Content] Form not found, retry \${retryCount}/\${maxRetries}...\`);
+					setTimeout(initForm, 200);
 					return;
 				}
+				
+				if (!form) {
+					console.error('[Rich Content] Form not found after maximum retries. Available forms:', 
+						document.querySelectorAll('form'));
+					return;
+				}
+				
+				console.log('[Rich Content] Form found:', form);
 				
 				form.addEventListener('submit', function(e) {
 					e.preventDefault(); // Prevent page refresh
@@ -562,14 +598,144 @@ function generateForm(item: INodeExecutionData) {
 							statusDiv.innerHTML = '✅ Thank you for your submission!<br><small>Data logged to console</small>';
 						}
 						
-						// Send data to parent (chat interface) if available
+											// Send data to chat interface
+					if (typeof window !== 'undefined') {
+						// Format form data as a readable message
+						const formMessage = \`📝 Form Submission: \${feedback.formTitle}\\n\` + 
+							Object.entries(submitData)
+								.map(([key, value]) => \`• \${key.charAt(0).toUpperCase() + key.slice(1)}: \${value}\`)
+								.join('\\n');
+						
+						// Try multiple approaches to find and interact with chat
+						let chatSent = false;
+						
+						// Approach 1: Look for n8n chat elements in parent window (for iframe contexts)
+						const parentDoc = window.parent ? window.parent.document : document;
+						if (parentDoc !== document) {
+							const parentChatTextarea = parentDoc.querySelector('.chat-input textarea, [data-test-id="chat-input"]');
+							const parentSendButton = parentDoc.querySelector('.chat-input .chat-input-send-button');
+							
+							if (parentChatTextarea && parentSendButton) {
+								// Set value and trigger Vue reactivity
+								parentChatTextarea.value = formMessage;
+								parentChatTextarea.focus();
+								
+								// Trigger multiple events to ensure Vue picks up the change
+								['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+									const event = new Event(eventType, { bubbles: true });
+									parentChatTextarea.dispatchEvent(event);
+								});
+								
+								// Also try setting the value after a brief delay
+								setTimeout(() => {
+									parentChatTextarea.value = formMessage;
+									parentChatTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+									
+									// Click send button
+									if (!parentSendButton.disabled) {
+										parentSendButton.click();
+										console.log('[Rich Content] Form data sent to parent chat:', formMessage);
+										chatSent = true;
+									}
+								}, 200);
+								chatSent = true;
+							}
+						}
+						
+						// Approach 2: Local n8n chat search
+						if (!chatSent) {
+							const chatTextarea = document.querySelector('.chat-input textarea, [data-test-id="chat-input"]');
+							const sendButton = document.querySelector('.chat-input .chat-input-send-button');
+							
+							if (chatTextarea && sendButton) {
+								// Set value and trigger Vue reactivity
+								chatTextarea.value = formMessage;
+								chatTextarea.focus();
+								
+								// Trigger multiple events to ensure Vue picks up the change
+								['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+									const event = new Event(eventType, { bubbles: true });
+									chatTextarea.dispatchEvent(event);
+								});
+								
+								// Also try setting the value after a brief delay
+								setTimeout(() => {
+									chatTextarea.value = formMessage;
+									chatTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+									
+									// Click send button
+									if (!sendButton.disabled) {
+										sendButton.click();
+										console.log('[Rich Content] Form data sent to local chat:', formMessage);
+										chatSent = true;
+									}
+								}, 200);
+								chatSent = true;
+							}
+						}
+						
+						// Approach 3: Try to find any textarea and button as fallback
+						if (!chatSent) {
+							const fallbackTextarea = document.querySelector('textarea[placeholder*="Type"], textarea[placeholder*="Message"], textarea[placeholder*="question"]');
+							const fallbackButton = document.querySelector('button[type="submit"]:not([disabled]), .send-button, .chat-send');
+							
+							if (fallbackTextarea && fallbackButton) {
+								fallbackTextarea.value = formMessage;
+								fallbackTextarea.focus();
+								
+								['input', 'change', 'keyup'].forEach(eventType => {
+									fallbackTextarea.dispatchEvent(new Event(eventType, { bubbles: true }));
+								});
+								
+								setTimeout(() => {
+									fallbackButton.click();
+									console.log('[Rich Content] Form data sent via fallback method:', formMessage);
+									chatSent = true;
+								}, 200);
+							}
+						}
+						
+						// Approach 4: Try to use n8n chat event bus (if available)
+						if (!chatSent && typeof window !== 'undefined') {
+							try {
+								// Try to access Vue app instance or event bus
+								const vueApps = document.querySelectorAll('[data-v-app]');
+								if (vueApps.length > 0) {
+									console.log('[Rich Content] Found Vue app, trying to send via event system');
+									// Try to trigger the input value setting and send via Vue
+									const chatEvent = new CustomEvent('n8n-chat-send-message', {
+										detail: { message: formMessage }
+									});
+									window.dispatchEvent(chatEvent);
+									document.dispatchEvent(chatEvent);
+									chatSent = true;
+								}
+							} catch (error) {
+								console.log('[Rich Content] Vue/event bus approach failed:', error);
+							}
+						}
+						
+						if (!chatSent) {
+							console.log('[Rich Content] Chat interface not found after all attempts. Available textareas:', 
+								document.querySelectorAll('textarea'), 
+								'Available buttons:', 
+								document.querySelectorAll('button'));
+							console.log('[Rich Content] Will use postMessage as final fallback:', feedback);
+						}
+						
+						// Also try postMessage for iframe contexts
 						if (window.parent && window.parent !== window) {
 							window.parent.postMessage({
-								type: 'chat-action',
+								type: 'form-submit',
 								action: '${submitAction}',
-								data: feedback
+								data: feedback,
+								formattedMessage: \`📝 Form Submission: \${feedback.formTitle}\\n\` + 
+									Object.entries(submitData)
+										.map(([key, value]) => \`• \${key.charAt(0).toUpperCase() + key.slice(1)}: \${value}\`)
+										.join('\\n')
 							}, '*');
 						}
+					}
 						
 						// Hide form after successful submission
 						setTimeout(() => {
