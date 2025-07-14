@@ -2,12 +2,9 @@ import { ToolMessage } from '@langchain/core/messages';
 import type { ToolRunnableConfig } from '@langchain/core/tools';
 import { Command } from '@langchain/langgraph';
 
-import type { ToolError } from './progress';
+import type { ToolError } from '../../types/tools';
+import type { StateUpdater } from '../../types/utils';
 import type { WorkflowState } from '../../workflow-state';
-
-export type StateUpdater<TState = typeof WorkflowState.State> =
-	| Partial<TState>
-	| ((state: TState) => Partial<TState>);
 
 /**
  * Create a success response with optional state updates

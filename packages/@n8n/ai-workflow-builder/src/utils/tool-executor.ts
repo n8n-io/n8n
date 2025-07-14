@@ -1,9 +1,10 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
-import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
-import type { WorkflowState, WorkflowOperation } from '../workflow-state';
+import type { ToolExecutorOptions } from '../types/config';
+import type { WorkflowOperation } from '../types/workflow';
+import type { WorkflowState } from '../workflow-state';
 
 /**
  * PARALLEL TOOL EXECUTION
@@ -17,11 +18,6 @@ import type { WorkflowState, WorkflowOperation } from '../workflow-state';
  * 2. Collects their operations and messages
  * 3. Returns a single update with all operations to be processed
  */
-
-export interface ToolExecutorOptions {
-	state: typeof WorkflowState.State;
-	toolMap: Map<string, DynamicStructuredTool>;
-}
 
 /**
  * Execute multiple tools in parallel and collect their state updates

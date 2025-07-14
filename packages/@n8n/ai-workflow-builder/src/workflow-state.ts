@@ -1,19 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
-import type { IRunExecutionData, INode, IConnections } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from './types';
-
-/**
- * Workflow operation types that can be applied to the workflow state
- */
-export type WorkflowOperation =
-	| { type: 'clear' }
-	| { type: 'removeNodes'; nodeIds: string[] }
-	| { type: 'addNodes'; nodes: INode[] }
-	| { type: 'updateNode'; nodeId: string; updates: Partial<INode> }
-	| { type: 'setConnections'; connections: IConnections }
-	| { type: 'mergeConnections'; connections: IConnections };
+import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 
 /**
  * Reducer for collecting workflow operations from parallel tool executions.
@@ -68,8 +57,3 @@ export const WorkflowState = Annotation.Root({
 		reducer: (x, y) => (y === undefined ? undefined : (y ?? x ?? undefined)),
 	}),
 });
-
-/**
- * Type for partial state updates
- */
-export type WorkflowStatePartialUpdate = Partial<typeof WorkflowState.State>;

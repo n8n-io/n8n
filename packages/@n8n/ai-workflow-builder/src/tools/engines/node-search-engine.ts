@@ -1,17 +1,7 @@
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-/**
- * Node search result with scoring
- */
-export interface NodeSearchResult {
-	name: string;
-	displayName: string;
-	description: string;
-	score: number;
-	inputs: INodeTypeDescription['inputs'];
-	outputs: INodeTypeDescription['outputs'];
-}
+import type { NodeSearchResult } from '../../types/nodes';
 
 /**
  * Scoring weights for different match types

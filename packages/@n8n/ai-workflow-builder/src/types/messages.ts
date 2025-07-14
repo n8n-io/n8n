@@ -1,13 +1,15 @@
-import type { IWorkflowBase } from 'n8n-workflow';
-
-export type SimpleWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections'>;
-
+/**
+ * Quick reply option for chat messages
+ */
 export interface QuickReplyOption {
 	text: string;
 	type: string;
 	isFeedback?: boolean;
 }
 
+/**
+ * Assistant chat message
+ */
 export interface AssistantChatMessage {
 	role: 'assistant';
 	type: 'message';
@@ -16,6 +18,9 @@ export interface AssistantChatMessage {
 	codeSnippet?: string;
 }
 
+/**
+ * Assistant summary message
+ */
 export interface AssistantSummaryMessage {
 	role: 'assistant';
 	type: 'summary';
@@ -23,12 +28,18 @@ export interface AssistantSummaryMessage {
 	content: string;
 }
 
+/**
+ * End session event message
+ */
 export interface EndSessionMessage {
 	role: 'assistant';
 	type: 'event';
 	eventName: 'end-session';
 }
 
+/**
+ * Agent suggestion message
+ */
 export interface AgentChatMessage {
 	role: 'assistant';
 	type: 'agent-suggestion';
@@ -36,6 +47,9 @@ export interface AgentChatMessage {
 	text: string;
 }
 
+/**
+ * Prompt validation message
+ */
 export interface PromptValidationMessage {
 	role: 'assistant';
 	type: 'prompt-validation';
@@ -43,6 +57,9 @@ export interface PromptValidationMessage {
 	id: string;
 }
 
+/**
+ * Union type for all possible message responses
+ */
 export type MessageResponse =
 	| ((
 			| AssistantChatMessage

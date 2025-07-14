@@ -1,42 +1,12 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 
-/**
- * Chunk types emitted by the stream processor
- */
-export interface AgentMessageChunk {
-	role: 'assistant';
-	type: 'message';
-	text: string;
-}
+import type {
+	AgentMessageChunk,
+	ToolProgressChunk,
+	WorkflowUpdateChunk,
+	StreamOutput,
+} from '../types/streaming';
 
-export interface ToolProgressChunk {
-	type: 'tool';
-	toolName: string;
-	status: string;
-	[key: string]: unknown;
-}
-
-export interface WorkflowUpdateChunk {
-	role: 'assistant';
-	type: 'workflow-updated';
-	codeSnippet: string;
-}
-
-export interface ExecutionRequestChunk {
-	role: 'assistant';
-	type: 'execution-requested';
-	reason: string;
-}
-
-export type StreamChunk =
-	| AgentMessageChunk
-	| ToolProgressChunk
-	| WorkflowUpdateChunk
-	| ExecutionRequestChunk;
-
-export interface StreamOutput {
-	messages: StreamChunk[];
-}
 /**
  * Tools which should trigger canvas updates
  */
@@ -46,16 +16,6 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'update_node_parameters',
 	'remove_node',
 ];
-
-/**
- * Configuration for stream processing
- */
-export interface StreamProcessorConfig {
-	/** Thread configuration for retrieving state */
-	threadConfig: { configurable: { thread_id: string } };
-	/** List of tool names that trigger workflow updates */
-	workflowUpdateTools?: Array<(typeof DEFAULT_WORKFLOW_UPDATE_TOOLS)[number]>;
-}
 
 /**
  * Process a single chunk from the LangGraph stream

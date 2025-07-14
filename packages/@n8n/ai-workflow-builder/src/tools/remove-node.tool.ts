@@ -6,6 +6,7 @@ import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state';
 import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
+import type { RemoveNodeOutput } from '../types/tools';
 
 /**
  * Schema for the remove node tool
@@ -13,17 +14,6 @@ import { validateNodeExists, createNodeNotFoundError } from './helpers/validatio
 const removeNodeSchema = z.object({
 	nodeId: z.string().describe('The ID of the node to remove from the workflow'),
 });
-
-/**
- * Output type for the remove node tool
- */
-interface RemoveNodeOutput {
-	removedNodeId: string;
-	removedNodeName: string;
-	removedNodeType: string;
-	connectionsRemoved: number;
-	message: string;
-}
 
 /**
  * Count connections that will be removed for a node
@@ -82,7 +72,7 @@ function buildResponseMessage(
  */
 export function createRemoveNodeTool() {
 	return tool(
-		async (input, config) => {
+		(input, config) => {
 			const reporter = createProgressReporter(config, 'remove_node');
 
 			try {

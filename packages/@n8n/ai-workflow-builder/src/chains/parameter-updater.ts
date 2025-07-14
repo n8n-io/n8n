@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ParameterUpdaterOptions } from '../types/config';
 import { ParameterUpdatePromptBuilder } from './prompts/prompt-builder';
 
 const humanTemplate = `
@@ -33,12 +33,6 @@ The node accepts these properties (JSON array of property definitions):
 
 Based on the requested changes and the node's property definitions, return the complete updated parameters object.
 `;
-
-export interface ParameterUpdaterOptions {
-	nodeType: string;
-	nodeDefinition: INodeTypeDescription;
-	requestedChanges: string[];
-}
 
 export const parametersSchema = z
 	.object({

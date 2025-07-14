@@ -1,7 +1,7 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import type { ToolError } from './progress';
-import type { SimpleWorkflow } from '../../types';
+import type { ToolError } from '../../types/tools';
+import type { SimpleWorkflow } from '../../types/workflow';
 
 /**
  * Validate that a node exists in the workflow

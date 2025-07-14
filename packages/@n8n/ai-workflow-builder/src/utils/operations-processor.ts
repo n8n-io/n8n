@@ -1,7 +1,7 @@
 import type { INode, IConnections } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../types';
-import type { WorkflowOperation, WorkflowState } from '../workflow-state';
+import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import type { WorkflowState } from '../workflow-state';
 
 /**
  * Apply a list of operations to a workflow

@@ -17,20 +17,10 @@ import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
 import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
 import {
 	DEFAULT_PROMPT_CONFIG,
-	type NodePromptConfig,
-	type PromptGenerationOptions,
 	getNodeTypeCategory,
 	mentionsResourceKeywords,
 } from './prompt-config';
-
-export interface PromptBuilderContext {
-	nodeType: string;
-	nodeDefinition: INodeTypeDescription;
-	requestedChanges: string[];
-	hasResourceLocatorParams?: boolean;
-	options?: PromptGenerationOptions;
-	config?: NodePromptConfig;
-}
+import type { PromptBuilderContext } from '../../types/config';
 
 export class ParameterUpdatePromptBuilder {
 	/**

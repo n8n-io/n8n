@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
-import { type NodeDetails, extractNodeDetails } from './types/node.types';
+import { extractNodeDetails } from './types/node.types';
+import type { NodeDetails } from '../types/nodes';
+import type { NodeDetailsOutput } from '../types/tools';
 
 /**
  * Schema for node details tool input
@@ -23,15 +25,6 @@ const nodeDetailsSchema = z.object({
 		.default(true)
 		.describe('Whether to include node supported connections in the output'),
 });
-
-/**
- * Output type for the node details tool
- */
-interface NodeDetailsOutput {
-	details: NodeDetails;
-	found: boolean;
-	message: string;
-}
 
 /**
  * Format node inputs

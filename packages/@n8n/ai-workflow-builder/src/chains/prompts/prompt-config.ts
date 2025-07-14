@@ -1,27 +1,4 @@
-/**
- * Configuration for mapping node types to required prompt sections
- */
-export interface NodePromptConfig {
-	/** Node type patterns that require specific guides */
-	nodeTypePatterns: {
-		set: string[];
-		if: string[];
-		httpRequest: string[];
-		tool: string[];
-	};
-
-	/** Keywords that trigger inclusion of specific guides */
-	parameterKeywords: {
-		resourceLocator: string[];
-		textExpressions: string[];
-	};
-
-	/** Maximum number of examples to include */
-	maxExamples: number;
-
-	/** Token budget for dynamic sections */
-	targetTokenBudget: number;
-}
+import type { NodePromptConfig } from '../../types/config';
 
 export const DEFAULT_PROMPT_CONFIG: NodePromptConfig = {
 	nodeTypePatterns: {
@@ -50,33 +27,6 @@ export const DEFAULT_PROMPT_CONFIG: NodePromptConfig = {
 	maxExamples: 3,
 	targetTokenBudget: 3000,
 };
-
-/**
- * Advanced configuration for fine-tuning prompt generation
- */
-export interface PromptGenerationOptions {
-	/** Include examples in the prompt */
-	includeExamples?: boolean;
-
-	/** Override the maximum number of examples */
-	maxExamples?: number;
-
-	/** Force inclusion of specific guides */
-	forceInclude?: {
-		setNode?: boolean;
-		ifNode?: boolean;
-		httpRequest?: boolean;
-		toolNodes?: boolean;
-		resourceLocator?: boolean;
-		textFields?: boolean;
-	};
-
-	/** Custom token budget */
-	tokenBudget?: number;
-
-	/** Enable verbose logging */
-	verbose?: boolean;
-}
 
 /**
  * Get node type category for a given node type

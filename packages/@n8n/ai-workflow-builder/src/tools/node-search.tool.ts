@@ -2,9 +2,11 @@ import { tool } from '@langchain/core/tools';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { NodeSearchEngine, type NodeSearchResult } from './engines/node-search-engine';
+import { NodeSearchEngine } from './engines/node-search-engine';
 import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import type { NodeSearchResult } from '../types/nodes';
+import type { NodeSearchOutput } from '../types/tools';
 
 /**
  * Search query schema - simplified for better LLM compatibility
@@ -33,27 +35,15 @@ const nodeSearchSchema = z.object({
  */
 type SearchQuery = z.infer<typeof searchQuerySchema>;
 
-/**
- * Output type for the search tool
- */
-interface NodeSearchOutput {
-	results: Array<{
-		query: string;
-		results: NodeSearchResult[];
-	}>;
-	totalResults: number;
-	message: string;
-}
-
 const SEARCH_LIMIT = 15;
 
 /**
  * Process a single search query
  */
-async function processQuery(
+function processQuery(
 	query: SearchQuery,
 	searchEngine: NodeSearchEngine,
-): Promise<{ searchResults: NodeSearchResult[]; searchIdentifier: string }> {
+): { searchResults: NodeSearchResult[]; searchIdentifier: string } {
 	if (query.queryType === 'name') {
 		// Name-based search
 		const searchTerm = query.query;
@@ -122,7 +112,7 @@ function buildResponseMessage(
  */
 export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
-		async (input: unknown, config) => {
+		(input: unknown, config) => {
 			const reporter = createProgressReporter(config, 'search_nodes');
 
 			try {
@@ -144,7 +134,7 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 
 				// Process each query
 				for (const searchQuery of queries) {
-					const { searchResults, searchIdentifier } = await processQuery(searchQuery, searchEngine);
+					const { searchResults, searchIdentifier } = processQuery(searchQuery, searchEngine);
 
 					// Report progress
 					batchReporter.next(searchIdentifier);

@@ -15,7 +15,7 @@ import { createNodeSearchTool } from './tools/node-search.tool';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
-import { SimpleWorkflow } from './types';
+import { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';

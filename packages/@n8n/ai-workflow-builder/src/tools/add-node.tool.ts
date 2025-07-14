@@ -5,19 +5,12 @@ import { z } from 'zod';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
-import type { ToolError } from './helpers/progress';
 import { createProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
-
-/**
- * Output type for the add node tool
- */
-interface AddNodeOutput {
-	addedNode: AddedNode;
-	message: string;
-}
+import type { AddedNode } from '../types/nodes';
+import type { AddNodeOutput, ToolError } from '../types/tools';
 
 /**
  * Schema for node creation input
@@ -39,23 +32,6 @@ export const nodeCreationSchema = z.object({
 			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
 		),
 });
-
-/**
- * Schema for single node creation - using the nodeCreationSchema directly
- */
-export const addNodeSchema = nodeCreationSchema;
-
-/**
- * Result of adding a node
- */
-export interface AddedNode {
-	id: string;
-	name: string;
-	type: string;
-	displayName?: string;
-	parameters?: INodeParameters;
-	position: [number, number];
-}
 
 /**
  * Create a new node with proper positioning and naming
@@ -107,7 +83,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 
 			try {
 				// Validate input using Zod schema
-				const validatedInput = addNodeSchema.parse(input);
+				const validatedInput = nodeCreationSchema.parse(input);
 				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
 					validatedInput;
 
@@ -210,7 +186,7 @@ CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
 - Regular nodes (HTTP Request, Set, Code, etc.): {}
 
 Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
-			schema: addNodeSchema,
+			schema: nodeCreationSchema,
 		},
 	);
 }

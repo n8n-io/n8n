@@ -1,17 +1,6 @@
-import { type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 
-/**
- * Detailed information about a node type
- */
-export interface NodeDetails {
-	name: string;
-	displayName: string;
-	description: string;
-	properties: INodeProperties[];
-	subtitle?: string;
-	inputs: INodeTypeDescription['inputs'];
-	outputs: INodeTypeDescription['outputs'];
-}
+import type { NodeDetails } from '../../types/nodes';
 
 /**
  * Helper to extract node details from a node type description

@@ -1,42 +1,12 @@
 import type { ToolRunnableConfig } from '@langchain/core/tools';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
-import type { ZodIssue } from 'zod';
 
-export type ProgressUpdateType = 'input' | 'output' | 'progress' | 'error';
-
-export interface ProgressUpdate<T = Record<string, unknown>> {
-	type: ProgressUpdateType;
-	data: T;
-	timestamp?: string;
-}
-
-export interface ToolProgressMessage<TToolName extends string = string> {
-	type: 'tool';
-	toolName: TToolName;
-	toolCallId?: string;
-	status: 'running' | 'completed' | 'error';
-	updates: ProgressUpdate[];
-}
-
-export interface ToolError {
-	message: string;
-	code?: string;
-	details?: ZodIssue[] | Record<string, unknown>;
-}
-
-export interface ProgressReporter {
-	start: <T>(input: T) => void;
-	progress: (message: string, data?: Record<string, unknown>) => void;
-	complete: <T>(output: T) => void;
-	error: (error: ToolError) => void;
-	createBatchReporter: (scope: string) => BatchReporter;
-}
-
-export interface BatchReporter {
-	init: (total: number) => void;
-	next: (itemDescription: string) => void;
-	complete: () => void;
-}
+import type {
+	ToolProgressMessage,
+	ToolError,
+	ProgressReporter,
+	BatchReporter,
+} from '../../types/tools';
 
 /**
  * Create a progress reporter for a tool execution

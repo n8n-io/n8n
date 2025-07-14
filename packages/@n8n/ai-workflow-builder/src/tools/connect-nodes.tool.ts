@@ -2,8 +2,7 @@ import { tool } from '@langchain/core/tools';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { SimpleWorkflow } from '@/types';
-
+import type { SimpleWorkflow } from '../types/workflow';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateWorkflowConnections } from './helpers/state';
@@ -13,27 +12,7 @@ import {
 	formatConnectionMessage,
 	inferConnectionType,
 } from './utils/connection.utils';
-
-/**
- * Output type for the connect nodes tool
- */
-interface ConnectNodesOutput extends ConnectionResult {
-	found: {
-		sourceNode: boolean;
-		targetNode: boolean;
-	};
-}
-
-/**
- * Result of creating a connection
- */
-export interface ConnectionResult {
-	sourceNode: string;
-	targetNode: string;
-	connectionType: string;
-	swapped: boolean;
-	message: string;
-}
+import type { ConnectNodesOutput } from '../types/tools';
 
 /**
  * Schema for node connection

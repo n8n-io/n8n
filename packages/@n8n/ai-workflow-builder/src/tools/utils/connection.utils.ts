@@ -7,8 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type {
+	ConnectionValidationResult,
+	InferConnectionTypeResult,
+} from '../../types/connections';
 import { isSubNode } from '../../utils/node-helpers';
-
 /**
  * Extract connection types from an expression string
  * Looks for patterns like type: "ai_embedding", type: 'main', etc.
@@ -58,30 +61,6 @@ function extractConnectionTypesFromExpression(expression: string): NodeConnectio
 	}
 
 	return Array.from(types) as NodeConnectionType[];
-}
-
-/**
- * Result of connection validation
- */
-export interface ConnectionValidationResult {
-	valid: boolean;
-	error?: string;
-	shouldSwap?: boolean;
-	swappedSource?: INode;
-	swappedTarget?: INode;
-}
-
-/**
- * Connection operation result
- */
-export interface ConnectionOperationResult {
-	success: boolean;
-	sourceNode: string;
-	targetNode: string;
-	connectionType: string;
-	swapped: boolean;
-	message: string;
-	error?: string;
 }
 
 /**
@@ -463,16 +442,6 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 		}
 		return input.type;
 	});
-}
-
-/**
- * Result of inferring connection type
- */
-export interface InferConnectionTypeResult {
-	connectionType?: NodeConnectionType;
-	possibleTypes?: NodeConnectionType[];
-	requiresSwap?: boolean;
-	error?: string;
 }
 
 /**

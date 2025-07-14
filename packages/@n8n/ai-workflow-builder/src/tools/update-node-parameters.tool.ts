@@ -21,6 +21,7 @@ import {
 	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
+import type { UpdateNodeParametersOutput } from '../types/tools';
 
 /**
  * Schema for update node parameters input
@@ -34,18 +35,6 @@ const updateNodeParametersSchema = z.object({
 			'Array of natural language changes to apply to the node parameters (e.g., "Set the URL to call the weather API", "Add an API key header")',
 		),
 });
-
-/**
- * Output type for the update node parameters tool
- */
-interface UpdateNodeParametersOutput {
-	nodeId: string;
-	nodeName: string;
-	nodeType: string;
-	updatedParameters: INodeParameters;
-	appliedChanges: string[];
-	message: string;
-}
 
 /**
  * Build a success message for the parameter update

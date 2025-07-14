@@ -1,7 +1,7 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../types';
+import type { SimpleWorkflow } from '../../types/workflow';
 import type { WorkflowState } from '../../workflow-state';
 
 /**
