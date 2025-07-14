@@ -24,7 +24,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CUSTOM_API_CALL_KEY, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { omitKey } from '@/utils/objectUtils';
 import {
 	getMainAuthField,
@@ -322,7 +322,7 @@ export function useNodeSettingsParameters() {
 							value,
 							nodeParams,
 						) as NodeParameterValue;
-					} catch (e) {
+					} catch {
 						// If expression is invalid ignore
 						nodeParams[key] = '';
 					}
@@ -352,10 +352,6 @@ export function useNodeSettingsParameters() {
 		return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
 	}
 
-	function shouldSkipParamValidation(value: string | number | boolean | null) {
-		return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
-	}
-
 	return {
 		nodeValues,
 		setValue,
@@ -363,6 +359,5 @@ export function useNodeSettingsParameters() {
 		updateParameterByPath,
 		updateNodeParameter,
 		handleFocus,
-		shouldSkipParamValidation,
 	};
 }

@@ -70,7 +70,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			}),
 	);
 
-	const _setOptions = ({
+	function _setOptions({
 		parameters,
 		isActive,
 		wid = workflowsStore.workflowId,
@@ -80,7 +80,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		parameters?: FocusedNodeParameter[];
 		wid?: string;
 		removeEmpty?: boolean;
-	}) => {
+	}) {
 		const focusPanelDataCurrent = focusPanelData.value;
 
 		if (removeEmpty && PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelDataCurrent) {
@@ -94,10 +94,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 				parameters: parameters ?? _focusedNodeParameters.value,
 			},
 		});
-	};
+	}
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
-	const onNewWorkflowSave = (wid: string) => {
+	function onNewWorkflowSave(wid: string) {
 		if (!currentFocusPanelData.value || !(PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelData.value)) {
 			return;
 		}
@@ -109,29 +109,29 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			isActive: latestWorkflowData.isActive,
 			removeEmpty: true,
 		});
-	};
+	}
 
-	const openWithFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
+	function openWithFocusedNodeParameter(nodeParameter: FocusedNodeParameter) {
 		const parameters = [nodeParameter];
 		// TODO: uncomment when tabs are implemented
 		// ...focusedNodeParameters.value.filter((p) => p.parameterPath !== nodeParameter.parameterPath),
 
 		_setOptions({ parameters, isActive: true });
-	};
+	}
 
-	const closeFocusPanel = () => {
+	function closeFocusPanel() {
 		_setOptions({ isActive: false });
-	};
+	}
 
-	const toggleFocusPanel = () => {
+	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
-	};
+	}
 
-	const isRichParameter = (
+	function isRichParameter(
 		p: RichFocusedNodeParameter | FocusedNodeParameter,
-	): p is RichFocusedNodeParameter => {
+	): p is RichFocusedNodeParameter {
 		return 'value' in p && 'node' in p;
-	};
+	}
 
 	return {
 		focusPanelActive,
