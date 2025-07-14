@@ -16,7 +16,12 @@ import {
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { type ChatMessage } from '@n8n/chat/types';
+import {
+	type ChatMessage,
+	type ChatMessageRich,
+	type ChatMessageText,
+	type RichContent,
+} from '@n8n/chat/types';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import { v4 as uuid } from 'uuid';
@@ -510,7 +515,7 @@ function extractChatInput(
 
 	const inputKey = getInputKey(chatTrigger);
 	const runData = (resultData.runData[chatTrigger.name] ?? [])[0];
-	const message = runData?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.json?.[inputKey];
+	const message = runData?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.[inputKey];
 
 	if (runData === undefined || typeof message !== 'string') {
 		return undefined;
@@ -536,46 +541,97 @@ export function extractBotResponse(
 
 	const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
-	let responseMessage: string;
+	let responseMessage: string | RichContent;
+	let messageType: 'text' | 'rich' = 'text';
 
 	if (get(nodeResponseData, 'error')) {
 		responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 	} else {
 		const responseData = get(nodeResponseData, 'data.main[0][0].json');
-		const text = extractResponseText(responseData) ?? emptyText;
+		const extractedResponse = extractResponseContent(responseData, emptyText);
 
-		if (!text) {
+		if (!extractedResponse) {
 			return undefined;
 		}
 
-		responseMessage = text;
+		responseMessage = extractedResponse.content;
+		messageType = extractedResponse.type;
 	}
 
-	return {
-		text: responseMessage,
-		sender: 'bot',
-		id: executionId ?? uuid(),
-	};
+	// Return appropriate message type
+	if (messageType === 'rich' && typeof responseMessage === 'object') {
+		return {
+			type: 'rich',
+			content: responseMessage as RichContent,
+			sender: 'bot',
+			id: executionId ?? uuid(),
+		} as ChatMessageRich;
+	} else {
+		return {
+			text: responseMessage as string,
+			sender: 'bot',
+			id: executionId ?? uuid(),
+		} as ChatMessageText;
+	}
 }
 
-/** Extracts response message from workflow output */
-function extractResponseText(responseData?: IDataObject): string | undefined {
+/** Enhanced function to extract both text and rich content from workflow output */
+function extractResponseContent(
+	responseData?: IDataObject,
+): { content: string | RichContent; type: 'text' | 'rich' } | undefined {
 	if (!responseData || isEmpty(responseData)) {
 		return undefined;
 	}
 
-	// Paths where the response message might be located
-	const paths = ['output', 'text', 'response.text'];
+	// Check for rich content structure first
+	if (responseData.type === 'rich' && responseData.content) {
+		const richContent = responseData.content as RichContent;
+
+		// Validate rich content structure
+		if (richContent.html || richContent.components || richContent.data) {
+			return {
+				content: {
+					html: richContent.html || '',
+					css: richContent.css || '',
+					script: richContent.script || '',
+					data: richContent.data || {},
+					components: richContent.components || [],
+					sanitize: richContent.sanitize || 'basic',
+				},
+				type: 'rich',
+			};
+		}
+	}
+
+	// Fallback to traditional text extraction
+	const paths = ['output', 'text', 'response.text', 'message', 'content'];
 	const matchedPath = paths.find((path) => get(responseData, path));
 
-	if (!matchedPath) return JSON.stringify(responseData, null, 2);
+	if (!matchedPath) {
+		return {
+			content: JSON.stringify(responseData, null, 2),
+			type: 'text',
+		};
+	}
 
 	const matchedOutput = get(responseData, matchedPath);
 	if (typeof matchedOutput === 'object') {
-		return '```json\n' + JSON.stringify(matchedOutput, null, 2) + '\n```';
+		return {
+			content: '```json\n' + JSON.stringify(matchedOutput, null, 2) + '\n```',
+			type: 'text',
+		};
 	}
 
-	return matchedOutput?.toString() ?? '';
+	return {
+		content: matchedOutput?.toString() ?? '',
+		type: 'text',
+	};
+}
+
+/** Legacy function for backward compatibility */
+function extractResponseText(responseData?: IDataObject): string | undefined {
+	const result = extractResponseContent(responseData);
+	return result?.type === 'text' ? (result.content as string) : undefined;
 }
 
 export function restoreChatHistory(

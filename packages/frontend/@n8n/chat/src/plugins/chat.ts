@@ -5,7 +5,7 @@ import { computed, nextTick, ref } from 'vue';
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions, ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatOptions, ChatMessageText, StructuredChunk } from '@n8n/chat/types';
 import { StreamingMessageManager, createBotMessage } from '@n8n/chat/utils/streaming';
 import {
 	handleStreamingChunk,
@@ -50,7 +50,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			try {
 				if (options?.enableStreaming) {
 					const handlers: api.StreamingEventHandlers = {
-						onChunk: (chunk: string, nodeId?: string, runIndex?: number) => {
+						onChunk: (
+							chunk: string,
+							nodeId?: string,
+							runIndex?: number,
+							chunkData?: StructuredChunk,
+						) => {
 							handleStreamingChunk(
 								chunk,
 								nodeId,
@@ -58,6 +63,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 								receivedMessage,
 								messages,
 								runIndex,
+								chunkData,
 							);
 						},
 						onBeginMessage: (nodeId: string, runIndex?: number) => {

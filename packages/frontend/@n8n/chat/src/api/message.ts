@@ -105,7 +105,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 
 export interface StreamingEventHandlers {
 	onBeginMessage: (nodeId: string, runIndex?: number) => void;
-	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void;
+	onChunk: (chunk: string, nodeId?: string, runIndex?: number, chunkData?: StructuredChunk) => void;
 	onEndMessage: (nodeId: string, runIndex?: number) => void;
 }
 
@@ -147,13 +147,17 @@ export async function sendMessageStreaming(
 					handlers.onBeginMessage(nodeId, runIndex);
 					break;
 				case 'item':
-					handlers.onChunk(value.content ?? '', nodeId, runIndex);
+					handlers.onChunk(value.content ?? '', nodeId, runIndex, value);
+					break;
+				case 'rich-item':
+					// For rich content chunks, pass the full chunk data
+					handlers.onChunk('', nodeId, runIndex, value);
 					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
-					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
+					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex, value);
 					handlers.onEndMessage(nodeId, runIndex);
 					break;
 			}

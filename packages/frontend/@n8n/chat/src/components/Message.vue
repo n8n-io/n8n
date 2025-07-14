@@ -15,6 +15,7 @@ import { useOptions } from '@n8n/chat/composables';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import ChatFile from './ChatFile.vue';
+import RichMessageRenderer from './RichMessageRenderer.vue';
 
 const props = defineProps<{
 	message: ChatMessage;
@@ -111,6 +112,9 @@ onMounted(async () => {
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
+			</template>
+			<template v-else-if="message.type === 'rich'">
+				<RichMessageRenderer :content="message.content" :is-user="message.sender === 'user'" />
 			</template>
 			<VueMarkdown
 				v-else
