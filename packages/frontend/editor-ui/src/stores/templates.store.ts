@@ -19,6 +19,7 @@ import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 import { computed, ref } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { getTemplatePathByRole } from '@/utils/experiments';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -165,6 +166,15 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
 	});
 
+	const userRole = computed(
+		() =>
+			cloudPlanStore.currentUserCloudInfo?.role ??
+			(userStore.currentUser?.personalizationAnswers &&
+			'role' in userStore.currentUser.personalizationAnswers
+				? userStore.currentUser.personalizationAnswers.role
+				: undefined),
+	);
+
 	const websiteTemplateRepositoryParameters = computed(() => {
 		const defaultParameters: Record<string, string> = {
 			...TEMPLATES_URLS.UTM_QUERY,
@@ -172,15 +182,8 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			utm_n8n_version: rootStore.versionCli,
 			utm_awc: String(workflowsStore.activeWorkflows.length),
 		};
-		const userRole: string | null | undefined =
-			cloudPlanStore.currentUserCloudInfo?.role ??
-			(userStore.currentUser?.personalizationAnswers &&
-			'role' in userStore.currentUser.personalizationAnswers
-				? userStore.currentUser.personalizationAnswers.role
-				: undefined);
-
-		if (userRole) {
-			defaultParameters.utm_user_role = userRole;
+		if (userRole.value) {
+			defaultParameters.utm_user_role = userRole.value;
 		}
 		return new URLSearchParams({
 			...defaultParameters,
@@ -189,7 +192,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 
 	const websiteTemplateRepositoryURL = computed(
 		() =>
-			`${TEMPLATES_URLS.BASE_WEBSITE_URL}?${websiteTemplateRepositoryParameters.value.toString()}`,
+			`${TEMPLATES_URLS.BASE_WEBSITE_URL}${getTemplatePathByRole(userRole.value)}?${websiteTemplateRepositoryParameters.value.toString()}`,
 	);
 
 	const constructTemplateRepositoryURL = (params: URLSearchParams): string => {

@@ -8,7 +8,6 @@ import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
-	INode,
 	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -75,16 +74,16 @@ export function isToolsInstance(model: unknown): model is Tool {
 }
 
 export function getPromptInputByType(options: {
-	ctx: IExecuteFunctions;
+	ctx: IExecuteFunctions | ISupplyDataFunctions;
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
 }) {
 	const { ctx, i, promptTypeKey, inputKey } = options;
-	const prompt = ctx.getNodeParameter(promptTypeKey, i) as string;
+	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
 	let input;
-	if (prompt === 'auto') {
+	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
@@ -186,7 +185,7 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions | IWebhookFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
@@ -249,14 +248,6 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	}
 
 	return output;
-}
-
-/**
- * Converts a node name to a valid tool name by replacing special characters with underscores
- * and collapsing consecutive underscores into a single one.
- */
-export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
 }
 
 /**

@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -16,7 +18,7 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
@@ -34,6 +36,8 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const router = useRouter();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
@@ -41,9 +45,13 @@ const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
+
+const workflowId = computed(() => workflowsStore.workflowId);
+const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -206,7 +214,7 @@ function getErrorMessage(): string {
 
 	if (isSubNodeError.value) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
-			interpolate: { node: props.error.node.name },
+			interpolate: { node: props.error.node?.name ?? '' },
 		});
 	} else if (
 		isNonEmptyString(props.error.message) &&
@@ -384,7 +392,32 @@ function nodeIsHidden() {
 }
 
 const onOpenErrorNodeDetailClick = () => {
-	ndvStore.activeNodeName = props.error.node.name;
+	if (!props.error.node) {
+		return;
+	}
+
+	if (
+		'workflowId' in props.error &&
+		workflowId.value &&
+		typeof props.error.workflowId === 'string' &&
+		workflowId.value !== props.error.workflowId &&
+		'executionId' in props.error &&
+		executionId.value &&
+		typeof props.error.executionId === 'string' &&
+		executionId.value !== props.error.executionId
+	) {
+		const link = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: props.error.workflowId,
+				executionId: props.error.executionId,
+				nodeId: props.error.node.id,
+			},
+		});
+		window.open(link.href, '_blank');
+	} else {
+		ndvStore.activeNodeName = props.error.node.name;
+	}
 };
 
 async function onAskAssistantClick() {

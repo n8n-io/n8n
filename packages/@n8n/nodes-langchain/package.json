@@ -14,7 +14,7 @@
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
     "lintfix": "eslint nodes credentials utils --fix",
-    "watch": "tsup --watch --tsconfig tsconfig.build.json --onSuccess \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-generate-metadata\"",
+    "watch": "tsup --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "jest",
     "test:dev": "jest --watch"
   },
@@ -48,8 +48,10 @@
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
+      "dist/nodes/agents/Agent/AgentTool.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
       "dist/nodes/chains/ChainLLM/ChainLlm.node.js",
@@ -74,6 +76,7 @@
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
+      "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
@@ -153,7 +156,8 @@
     "@types/temp": "^0.9.1",
     "fast-glob": "catalog:",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:"
+    "tsup": "catalog:",
+    "jest-mock-extended": "^3.0.4"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",

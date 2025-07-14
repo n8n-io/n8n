@@ -223,6 +223,12 @@ export abstract class ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
 
+	abstract updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
@@ -908,6 +914,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
+		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
 			itemIndex: number,
@@ -919,7 +926,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
-		sendChunk(type: ChunkType, content?: IDataObject | string): void;
+		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
 
 		// TODO: Make this one then only available in the new config one
@@ -2335,6 +2342,7 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	startedAt?: Date;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2390,6 +2398,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
+	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
 	currentNodeExecutionIndex: number;
@@ -2935,6 +2944,8 @@ export interface StructuredChunk {
 	metadata: {
 		nodeId: string;
 		nodeName: string;
+		runIndex: number;
+		itemIndex: number;
 		timestamp: number;
 	};
 }

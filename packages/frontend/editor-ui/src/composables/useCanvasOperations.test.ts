@@ -28,6 +28,9 @@ import {
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -42,11 +45,11 @@ import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
-import { nextTick } from 'vue';
-import { useProjectsStore } from '@/stores/projects.store';
+import { nextTick, ref } from 'vue';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
+import * as nodeHelpers from '@/composables/useNodeHelpers';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2814,6 +2817,91 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('resetWorkspace', () => {
+		it('should reset the workspace', () => {
+			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const executionsStore = mockedStore(useExecutionsStore);
+
+			const credentialsUpdatedRef = ref(true);
+			const credentialsSpy = vi.spyOn(credentialsUpdatedRef, 'value', 'set');
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+				return {
+					...nodeHelpersOriginal,
+					credentialsUpdated: credentialsUpdatedRef,
+				};
+			});
+
+			nodeCreatorStore.setNodeCreatorState = vi.fn();
+			nodeCreatorStore.setShowScrim = vi.fn();
+			workflowsStore.removeTestWebhook = vi.fn();
+			workflowsStore.resetWorkflow = vi.fn();
+			workflowsStore.resetState = vi.fn();
+			workflowsStore.setActiveExecutionId = vi.fn();
+			uiStore.resetLastInteractedWith = vi.fn();
+			executionsStore.activeExecution = null;
+
+			workflowsStore.executionWaitingForWebhook = true;
+			workflowsStore.workflowId = 'workflow-id';
+			workflowsStore.currentWorkflowExecutions = [
+				{
+					id: '1',
+					status: 'success',
+					mode: 'retry',
+					workflowId: 'workflow-id',
+					createdAt: new Date(),
+					startedAt: new Date(),
+				},
+				{
+					id: '2',
+					status: 'running',
+					mode: 'error',
+					workflowId: 'workflow-id',
+					createdAt: new Date(),
+					startedAt: new Date(),
+				},
+			];
+
+			const { resetWorkspace } = useCanvasOperations();
+
+			resetWorkspace();
+
+			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
+				createNodeActive: false,
+			});
+			expect(nodeCreatorStore.setShowScrim).toHaveBeenCalledWith(false);
+			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
+			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
+			expect(workflowsStore.resetState).toHaveBeenCalled();
+			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
+			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(executionsStore.activeExecution).toBeNull();
+			expect(credentialsSpy).toHaveBeenCalledWith(false);
+			expect(credentialsUpdatedRef.value).toBe(false);
+		});
+
+		it('should not call removeTestWebhook if executionWaitingForWebhook is false', () => {
+			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			nodeCreatorStore.setNodeCreatorState = vi.fn();
+			nodeCreatorStore.setShowScrim = vi.fn();
+			workflowsStore.removeTestWebhook = vi.fn();
+
+			workflowsStore.executionWaitingForWebhook = false;
+
+			const { resetWorkspace } = useCanvasOperations();
+
+			resetWorkspace();
+
+			expect(workflowsStore.removeTestWebhook).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('filterConnectionsByNodes', () => {
 		it('should return filtered connections when all nodes are included', () => {
 			const connections: INodeConnections = {
@@ -2998,6 +3086,61 @@ describe('useCanvasOperations', () => {
 				title: 'Problem in node ‘Last Node‘',
 				type: 'error',
 			});
+		});
+		it('should set active node when nodeId is provided and node exists', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const ndvStore = mockedStore(useNDVStore);
+			const { openExecution } = useCanvasOperations();
+
+			const executionId = '123';
+			const nodeId = 'node-123';
+			const mockNode = { id: nodeId, name: 'Test Node', type: 'test' } as INodeUi;
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+			workflowsStore.getNodeById.mockReturnValue(mockNode);
+
+			await openExecution(executionId, nodeId);
+
+			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
+			expect(ndvStore.activeNodeName).toBe(mockNode.name);
+		});
+
+		it('should show error when nodeId is provided but node does not exist', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations();
+			const toast = useToast();
+
+			const executionId = '123';
+			const nodeId = 'non-existent-node';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			await openExecution(executionId, nodeId);
+
+			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
+			expect(toast.showError).toHaveBeenCalledWith(
+				new Error(`Node with id "${nodeId}" could not be found!`),
+				'Problem opening node in execution',
+			);
 		});
 	});
 

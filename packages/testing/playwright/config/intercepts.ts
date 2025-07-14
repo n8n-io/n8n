@@ -1,4 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies */
+/* eslint-disable import-x/no-extraneous-dependencies */
 import type { FrontendSettings } from '@n8n/api-types';
 import type { BrowserContext, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
