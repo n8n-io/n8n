@@ -263,6 +263,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:width="panelWidth"
 			:supported-directions="['left']"
 			:min-width="300"
+			:max-width="900"
+			:grid-size="8"
 			:style="{ width: `${panelWidth}px` }"
 			@resize="onResizeThrottle"
 		>
