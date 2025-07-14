@@ -22,12 +22,12 @@ export const nodeConnectionSchema = z.object({
 	sourceNodeId: z
 		.string()
 		.describe(
-			'The ID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
 		),
 	targetNodeId: z
 		.string()
 		.describe(
-			'The ID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+			'The UUID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -45,7 +45,7 @@ export const nodeConnectionSchema = z.object({
 export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
 	return tool(
 		// eslint-disable-next-line complexity
-		async (input, config) => {
+		(input, config) => {
 			const reporter = createProgressReporter(config, 'connect_nodes');
 
 			try {
@@ -279,9 +279,7 @@ CONNECTION EXAMPLES:
 - Simple Memory → Basic LLM Chain (detects ai_memory)
 - Embeddings OpenAI → Vector Store (detects ai_embedding)
 - Document Loader → Embeddings OpenAI (detects ai_document)
-- HTTP Request → Set (detects main)
-
-Note: The tool automatically swaps nodes if needed to ensure correct connection direction.`,
+- HTTP Request → Set (detects main)`,
 			schema: nodeConnectionSchema,
 		},
 	);

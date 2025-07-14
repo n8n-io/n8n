@@ -105,11 +105,5 @@ export async function executeToolsInParallel(
 		finalUpdate.workflowOperations = allOperations;
 	}
 
-	// Log only if there are operations
-	if (allOperations.length > 0) {
-		console.log(
-			`Tool executor: ${allOperations.length} operations from ${aiMessage.tool_calls.length} tools`,
-		);
-	}
 	return finalUpdate;
 }

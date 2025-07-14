@@ -42,7 +42,6 @@ export class AiController {
 		res: FlushableResponse,
 		@Body payload: AiBuilderChatRequestDto,
 	) {
-		console.log('🚀 ~ AiController ~ payload:', payload);
 		try {
 			const workflowId = payload.payload.workflowContext?.currentWorkflow?.id;
 
@@ -175,7 +174,6 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			console.log('🚀 ~ AiController ~ payload:', payload);
 			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
 		} catch (e) {

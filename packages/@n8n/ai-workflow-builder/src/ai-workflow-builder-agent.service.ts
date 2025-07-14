@@ -247,30 +247,7 @@ export class AiWorkflowBuilderService {
 
 		let stream;
 
-		if (existingCheckpoint?.checkpoint) {
-			// Subsequent message - update the state with current workflow
-			const stateUpdate: Partial<typeof WorkflowState.State> = {
-				workflowOperations: [], // Clear any pending operations from previous message
-				executionData: payload.executionData, // Update with latest execution data
-				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
-			};
-
-			if (payload.currentWorkflowJSON) {
-				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
-			}
-
-			// The workflow JSON is now replaced directly without special operations
-
-			// Stream with just the new message
-			stream = await agent.stream(
-				{ messages: [new HumanMessage({ content: payload.question })], ...stateUpdate },
-				{
-					...threadConfig,
-					streamMode: ['updates', 'custom'],
-					recursionLimit: 80,
-				},
-			);
-		} else {
+		if (!existingCheckpoint?.checkpoint) {
 			// First message - use initial state
 			const initialState: typeof WorkflowState.State = {
 				messages: [new HumanMessage({ content: payload.question })],
@@ -288,6 +265,27 @@ export class AiWorkflowBuilderService {
 				streamMode: ['updates', 'custom'],
 				recursionLimit: 30,
 			});
+		} else {
+			// Subsequent message - update the state with current workflow
+			const stateUpdate: Partial<typeof WorkflowState.State> = {
+				workflowOperations: [], // Clear any pending operations from previous message
+				executionData: payload.executionData, // Update with latest execution data
+				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
+			};
+
+			if (payload.currentWorkflowJSON) {
+				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
+			}
+
+			// Stream with just the new message
+			stream = await agent.stream(
+				{ messages: [new HumanMessage({ content: payload.question })], ...stateUpdate },
+				{
+					...threadConfig,
+					streamMode: ['updates', 'custom'],
+					recursionLimit: 80,
+				},
+			);
 		}
 
 		// Use the stream processor utility to handle chunk processing

@@ -79,8 +79,8 @@ export class ParameterUpdatePromptBuilder {
 		// Log if verbose
 		if (options.verbose) {
 			const tokenEstimate = this.estimateTokens(finalPrompt);
-			console.log(`[PromptBuilder] Generated prompt with ~${tokenEstimate} tokens`);
-			console.log(`[PromptBuilder] Included sections: ${this.getIncludedSections(context)}`);
+			// console.log(`[PromptBuilder] Generated prompt with ~${tokenEstimate} tokens`);
+			// console.log(`[PromptBuilder] Included sections: ${this.getIncludedSections(context)}`);
 		}
 
 		return finalPrompt;

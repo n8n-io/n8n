@@ -272,9 +272,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function loadSessions() {
 		try {
 			const workflowId = workflowsStore.workflowId;
-			console.log('🚀 ~ loadSessions ~ workflowId:', workflowId);
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
-			console.log('🚀 ~ loadSessions ~ response:', response);
 
 			// Load the most recent session if available
 			if (response.sessions && response.sessions.length > 0) {

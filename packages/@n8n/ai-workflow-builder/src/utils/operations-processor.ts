@@ -151,14 +151,6 @@ export function processOperations(state: typeof WorkflowState.State) {
 		return {};
 	}
 
-	// Log only when there are operations
-	if (workflowOperations.length > 0) {
-		console.log(
-			`Processing ${workflowOperations.length} operations:`,
-			workflowOperations.map((op) => op.type).join(', '),
-		);
-	}
-
 	// Apply all operations to get the new workflow
 	const newWorkflow = applyOperations(workflowJSON, workflowOperations);
 
