@@ -71,7 +71,7 @@ const dragAndDropEnabled = computed(() => {
 	return !props.isReadOnly;
 });
 
-const { highlightLine, readEditorValue, editor } = useCodeEditor({
+const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	id: props.id,
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
@@ -208,13 +208,6 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
 }
-
-const focus = () => {
-	const view = editor.value;
-	if (view && typeof view.focus === 'function') {
-		view.focus();
-	}
-};
 
 defineExpose({
 	focus,

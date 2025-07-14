@@ -69,7 +69,11 @@ const extensions = computed(() => [
 	mappingDropCursor(),
 ]);
 
-const { editor: editorRef, readEditorValue } = useExpressionEditor({
+const {
+	editor: editorRef,
+	readEditorValue,
+	focus,
+} = useExpressionEditor({
 	editorRef: cssEditor,
 	editorValue,
 	extensions,
@@ -83,13 +87,6 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editorRef.value), event, value);
 }
-
-const focus = () => {
-	const view = editorRef.value;
-	if (view && typeof view.focus === 'function') {
-		view.focus();
-	}
-};
 
 defineExpose({
 	focus,
