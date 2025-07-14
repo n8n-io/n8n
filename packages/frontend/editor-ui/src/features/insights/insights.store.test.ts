@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { useInsightsStore } from './insights.store';
-import * as insightsApi from './insights.api';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import * as insightsApi from '@/features/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -13,7 +13,7 @@ import type { FrontendModuleSettings } from '@n8n/api-types';
 vi.mock('vue-router', () => ({
 	useRoute: () => reactive({}),
 }));
-vi.mock('./insights.api');
+vi.mock('@/features/insights/insights.api');
 
 const mockFilter = { dateRange: 'week' as const };
 const mockData = [
@@ -42,8 +42,6 @@ describe('useInsightsStore', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		rootStore = mockedStore(useRootStore);
 		usersStore = mockedStore(useUsersStore);
-
-		settingsStore.moduleSettings = { insights: {} } as FrontendModuleSettings;
 
 		rootStore.restApiContext = {
 			baseUrl: 'http://localhost',
