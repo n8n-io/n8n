@@ -1,4 +1,5 @@
 import { tool } from '@langchain/core/tools';
+import type { Logger } from '@n8n/backend-common';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -41,7 +42,7 @@ export const nodeConnectionSchema = z.object({
 /**
  * Factory function to create the connect nodes tool
  */
-export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
+export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
 	return tool(
 		// eslint-disable-next-line complexity
 		async (input, config) => {
@@ -101,10 +102,10 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 				// Determine connection type
 				reportProgress(reporter, 'Inferring connection type...');
 
-				// console.log('\n=== Connect Nodes Tool ===');
-				// console.log(
-				// 	`Attempting to connect: ${matchedSourceNode.name} -> ${matchedTargetNode.name}`,
-				// );
+				logger?.debug('\n=== Connect Nodes Tool ===');
+				logger?.debug(
+					`Attempting to connect: ${matchedSourceNode.name} -> ${matchedTargetNode.name}`,
+				);
 
 				const inferResult = inferConnectionType(
 					matchedSourceNode,
@@ -145,7 +146,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 
 				// If swap is required from inference, swap the nodes
 				if (inferredSwap) {
-					// console.log('Swapping nodes based on inference result');
+					logger?.debug('Swapping nodes based on inference result');
 					const temp = matchedSourceNode;
 					matchedSourceNode = matchedTargetNode;
 					matchedTargetNode = temp;
@@ -155,9 +156,9 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[]) {
 					reporter,
 					`Inferred connection type: ${connectionType}${inferredSwap ? ' (swapped nodes)' : ''}`,
 				);
-				// console.log(
-				// 	`Final connection: ${matchedSourceNode.name} -> ${matchedTargetNode.name} (${connectionType})\n`,
-				// );
+				logger?.debug(
+					`Final connection: ${matchedSourceNode.name} -> ${matchedTargetNode.name} (${connectionType})\n`,
+				);
 
 				// Report progress
 				reportProgress(

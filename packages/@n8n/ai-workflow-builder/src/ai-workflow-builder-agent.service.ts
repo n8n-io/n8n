@@ -1,6 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, INodeTypes, jsonParse } from 'n8n-workflow';
@@ -34,6 +35,7 @@ export class AiWorkflowBuilderService {
 	constructor(
 		private readonly nodeTypes: INodeTypes,
 		private readonly client?: AiAssistantClient,
+		private readonly logger?: Logger,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
@@ -128,9 +130,9 @@ export class AiWorkflowBuilderService {
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes),
-			createRemoveNodeTool(),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!),
+			createConnectNodesTool(this.parsedNodeTypes, this.logger),
+			createRemoveNodeTool(this.logger),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask!, this.logger),
 		];
 
 		// Create a map for quick tool lookup

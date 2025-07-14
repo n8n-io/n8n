@@ -40,6 +40,7 @@
     "@langchain/langgraph": "0.2.74",
     "@langchain/openai": "catalog:",
     "@n8n/config": "workspace:*",
+    "@n8n/backend-common": "workspace:^",
     "@n8n/di": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",

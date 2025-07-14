@@ -1,7 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 
-import { createConnectNodesTool } from '../connect-nodes.tool';
 import {
 	createNode,
 	createWorkflow,
@@ -19,6 +18,7 @@ import {
 	type ParsedToolContent,
 	createNodeType,
 } from '../../../test/test-utils';
+import { createConnectNodesTool } from '../connect-nodes.tool';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({

@@ -1,6 +1,5 @@
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import { createNodeSearchTool } from '../node-search.tool';
 import {
 	nodeTypes,
 	parseToolResult,
@@ -13,6 +12,7 @@ import {
 	type ParsedToolContent,
 	createNodeType,
 } from '../../../test/test-utils';
+import { createNodeSearchTool } from '../node-search.tool';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({

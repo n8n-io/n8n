@@ -20,6 +20,7 @@ import {
 	type ParsedToolContent,
 } from '../../../test/test-utils';
 import { createUpdateNodeParametersTool } from '../update-node-parameters.tool';
+import { Logger } from '@n8n/backend-common';
 
 // Mock LangGraph dependencies
 jest.mock('@langchain/langgraph', () => ({
@@ -592,6 +593,8 @@ describe('UpdateNodeParametersTool', () => {
 					nodeDefinition: expect.any(Object),
 					requestedChanges: ['Update URL'],
 				}),
+
+				undefined, // Logger
 			);
 		});
 

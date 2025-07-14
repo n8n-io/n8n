@@ -37,7 +37,6 @@ function extractConnectionTypesFromExpression(expression: string): NodeConnectio
 	for (const pattern of arrayMainPatterns) {
 		if (pattern.test(expression)) {
 			types.add(NodeConnectionTypes.Main);
-			console.log('[Expression Parser] Found "main" in array pattern');
 			break;
 		}
 	}
@@ -53,11 +52,6 @@ function extractConnectionTypesFromExpression(expression: string): NodeConnectio
 				types.add(normalizedType);
 			}
 		}
-	}
-
-	// Log what we found
-	if (types.size > 0) {
-		console.log(`[Expression Parser] Found connection types: [${Array.from(types).join(', ')}]`);
 	}
 
 	return Array.from(types) as NodeConnectionType[];
@@ -378,13 +372,13 @@ export function formatConnectionMessage(
 function getNodeOutputTypes(nodeType: INodeTypeDescription): NodeConnectionType[] {
 	// Handle expression-based outputs
 	if (typeof nodeType.outputs === 'string') {
-		console.log(`[getNodeOutputTypes] Expression-based outputs for ${nodeType.name}`);
+		// console.log(`[getNodeOutputTypes] Expression-based outputs for ${nodeType.name}`);
 		const extracted = extractConnectionTypesFromExpression(nodeType.outputs);
 		if (extracted.length > 0) {
 			return extracted;
 		}
 		// If no types found in expression, return empty array
-		console.log('[getNodeOutputTypes] No types found in expression');
+		// console.log('[getNodeOutputTypes] No types found in expression');
 		return [];
 	}
 
@@ -408,7 +402,7 @@ function getNodeOutputTypes(nodeType: INodeTypeDescription): NodeConnectionType[
 function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeConnectionType[] {
 	// Handle expression-based inputs
 	if (typeof nodeType.inputs === 'string') {
-		console.log(`[getNodeInputTypes] Expression-based inputs for ${nodeType.name}`);
+		// console.log(`[getNodeInputTypes] Expression-based inputs for ${nodeType.name}`);
 
 		// Special handling for Vector Store in retrieve-as-tool mode
 		// When in this mode, it only accepts AI inputs (no main input)
@@ -417,7 +411,7 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 			nodeType.name.includes('vectorStore') &&
 			node.parameters?.mode === 'retrieve-as-tool'
 		) {
-			console.log('[getNodeInputTypes] Vector Store in retrieve-as-tool mode - only AI inputs');
+			// console.log('[getNodeInputTypes] Vector Store in retrieve-as-tool mode - only AI inputs');
 			// Extract only AI connection types from the expression
 			const extracted = extractConnectionTypesFromExpression(nodeType.inputs);
 			return extracted.filter((type) => type.startsWith('ai_'));
@@ -428,7 +422,7 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 			return extracted;
 		}
 		// If no types found in expression, return empty array
-		console.log('[getNodeInputTypes] No types found in expression');
+		// console.log('[getNodeInputTypes] No types found in expression');
 		return [];
 	}
 

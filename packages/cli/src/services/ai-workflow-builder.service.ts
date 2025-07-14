@@ -1,4 +1,5 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -20,6 +21,7 @@ export class WorkflowBuilderService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
+		private readonly logger: Logger,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -40,7 +42,7 @@ export class WorkflowBuilderService {
 				});
 			}
 
-			this.service = new AiWorkflowBuilderService(this.nodeTypes, client);
+			this.service = new AiWorkflowBuilderService(this.nodeTypes, client, this.logger);
 		}
 		return this.service;
 	}

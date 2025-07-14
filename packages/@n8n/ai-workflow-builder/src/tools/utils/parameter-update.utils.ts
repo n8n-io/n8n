@@ -155,7 +155,6 @@ export function fixExpressionPrefixes<T>(value: T): T {
 			updatedValue = value.replace('{{ $json }}', '{{ $json.toJsonString() }}');
 		}
 		if (updatedValue.includes('{{') && !updatedValue.startsWith('=')) {
-			console.log('Fixing expression prefix:', updatedValue);
 			return ('=' + updatedValue) as T;
 		}
 	}

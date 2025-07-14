@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
+import { Logger, OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ParameterUpdaterOptions } from '../types/config';
@@ -53,6 +53,7 @@ export const parametersSchema = z
 export const createParameterUpdaterChain = (
 	llm: BaseChatModel,
 	options: ParameterUpdaterOptions,
+	logger?: Logger,
 ) => {
 	if (!llm.bindTools) {
 		throw new OperationalError("LLM doesn't support binding tools");
@@ -70,7 +71,7 @@ export const createParameterUpdaterChain = (
 
 	// Log token estimate for monitoring
 	const tokenEstimate = ParameterUpdatePromptBuilder.estimateTokens(systemPromptContent);
-	console.log(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
+	logger?.debug(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
 
 	const systemPrompt = new SystemMessage(systemPromptContent);
 
