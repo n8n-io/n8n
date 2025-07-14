@@ -25,7 +25,6 @@ export function getCurrentWorkflowFromTaskInput(): SimpleWorkflow {
 
 /**
  * Create a state update for workflow connections
- * Note: This now uses mergeConnections to support parallel execution
  */
 export function updateWorkflowConnections(
 	connections: SimpleWorkflow['connections'],
@@ -45,7 +44,6 @@ export function addNodeToWorkflow(node: INode): Partial<typeof WorkflowState.Sta
 
 /**
  * Add multiple nodes to the workflow state
- * Returns operations for the new architecture
  */
 export function addNodesToWorkflow(nodes: INode[]): Partial<typeof WorkflowState.State> {
 	// Return an operation to add nodes
@@ -56,7 +54,6 @@ export function addNodesToWorkflow(nodes: INode[]): Partial<typeof WorkflowState
 
 /**
  * Remove a node from the workflow state
- * Returns operations for the new architecture
  */
 export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowState.State> {
 	// Return an operation to remove nodes
@@ -67,7 +64,6 @@ export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowS
 
 /**
  * Remove multiple nodes from the workflow state
- * Returns operations for the new architecture
  */
 export function removeNodesFromWorkflow(nodeIds: string[]): Partial<typeof WorkflowState.State> {
 	// Return an operation to remove nodes
@@ -78,7 +74,6 @@ export function removeNodesFromWorkflow(nodeIds: string[]): Partial<typeof Workf
 
 /**
  * Update a node in the workflow state
- * Returns operations for the new architecture
  */
 export function updateNodeInWorkflow(
 	state: typeof WorkflowState.State,
@@ -104,7 +99,6 @@ export function addConnectionToWorkflow(
 	_targetNodeId: string,
 	connection: IConnection,
 ): Partial<typeof WorkflowState.State> {
-	// Use mergeConnections operation to add the new connection
 	return {
 		workflowOperations: [
 			{

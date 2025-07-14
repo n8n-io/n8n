@@ -26,11 +26,7 @@ export function createSuccessResponse<TState = typeof WorkflowState.State>(
 	const update = { messages };
 
 	if (stateUpdates) {
-		if (typeof stateUpdates === 'function') {
-			Object.assign(update, stateUpdates);
-		} else {
-			Object.assign(update, stateUpdates);
-		}
+		Object.assign(update, stateUpdates);
 	}
 
 	return new Command({ update });

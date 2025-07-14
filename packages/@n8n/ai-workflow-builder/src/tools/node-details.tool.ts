@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
-import { extractNodeDetails } from './types/node.types';
 import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput } from '../types/tools';
 
@@ -105,6 +104,21 @@ function formatNodeDetails(
 	parts.push('</node_details>');
 
 	return parts.join('\n');
+}
+
+/**
+ * Helper to extract node details from a node type description
+ */
+function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
+	return {
+		name: nodeType.name,
+		displayName: nodeType.displayName,
+		description: nodeType.description,
+		properties: nodeType.properties,
+		subtitle: nodeType.subtitle,
+		inputs: nodeType.inputs,
+		outputs: nodeType.outputs,
+	};
 }
 
 /**
