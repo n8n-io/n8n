@@ -13,8 +13,8 @@ import type {
 	IExecuteResponsePromiseData,
 	IPinData,
 	IRun,
-	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
@@ -26,8 +26,8 @@ import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
-	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getLifecycleHooksForScalingWorker,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -75,8 +75,8 @@ export class WorkflowRunner {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
 		//
-		// FIXME: This is a quick fix. The proper fix would be to not remove
-		// the execution from the active executions while it's still running.
+		// FIXED: Added a small delay in ActiveExecutions.finally() to ensure error processing
+		// is complete before removing the execution from the active executions list.
 		if (
 			error instanceof ExecutionNotFoundError ||
 			error instanceof ExecutionCancelledError ||

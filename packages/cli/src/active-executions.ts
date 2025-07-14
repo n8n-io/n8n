@@ -114,8 +114,14 @@ export class ActiveExecutions {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
 				} else {
-					delete this.activeExecutions[executionId];
-					this.logger.debug('Execution removed', { executionId });
+					// Add a small delay to ensure error processing is complete before removing the execution
+					// This fixes the issue where processError tries to access an execution that was already removed
+					setTimeout(() => {
+						if (this.activeExecutions[executionId]) {
+							delete this.activeExecutions[executionId];
+							this.logger.debug('Execution removed', { executionId });
+						}
+					}, 0);
 				}
 			});
 

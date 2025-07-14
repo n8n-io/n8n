@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"module": "commonjs",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"composite": true
 	},
 	"include": [
 		"credentials/**/*.ts",
