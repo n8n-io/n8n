@@ -2586,6 +2586,25 @@ describe('Workflow', () => {
 
 			expect(workflow.getStartNode()).toBeUndefined();
 		});
+
+		test('returns the single node when only one non-disabled node exists', () => {
+			const singleNode = {
+				name: 'SingleNode',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-single',
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			const workflow = new Workflow({
+				nodes: [singleNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(singleNode);
+		});
 	});
 
 	describe('getNode', () => {

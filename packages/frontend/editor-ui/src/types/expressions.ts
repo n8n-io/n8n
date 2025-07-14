@@ -43,7 +43,7 @@ export interface ExpressionLocalResolveContext {
 	execution: IExecutionResponse | null;
 	nodeName: string;
 	/**
-	 * Allowed to be undefined (for trigger node)
+	 * Allowed to be undefined (e.g., trigger node, partial execution)
 	 */
 	inputNode?: {
 		name: string;

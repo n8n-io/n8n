@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
 import { useNDVStore } from '@/stores/ndv.store';
+import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
+import { onBeforeUnmount, ref, computed, provide, useTemplateRef } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
@@ -11,8 +13,6 @@ import { useActiveElement, usePrevious, watchOnce } from '@vueuse/core';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
-import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -88,6 +88,10 @@ const shouldShowInputPanel = computed(() => {
 	}
 
 	return false;
+});
+
+watchOnce(isVisible, (visible) => {
+	isOnceVisible.value = isOnceVisible.value || visible;
 });
 const previousShouldShowInputPanel = usePrevious(shouldShowInputPanel, false);
 

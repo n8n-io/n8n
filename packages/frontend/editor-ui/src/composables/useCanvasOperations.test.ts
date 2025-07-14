@@ -29,7 +29,6 @@ import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { waitFor } from '@testing-library/vue';
@@ -46,10 +45,11 @@ import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
+import * as nodeHelpers from '@/composables/useNodeHelpers';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2823,9 +2823,16 @@ describe('useCanvasOperations', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
 			const executionsStore = mockedStore(useExecutionsStore);
-			const focusPanelStore = mockedStore(useFocusPanelStore);
 
-			const nodeHelpers = { credentialsUpdated: { value: true } };
+			const credentialsUpdatedRef = ref(true);
+			const credentialsSpy = vi.spyOn(credentialsUpdatedRef, 'value', 'set');
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+				return {
+					...nodeHelpersOriginal,
+					credentialsUpdated: credentialsUpdatedRef,
+				};
+			});
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
 			nodeCreatorStore.setShowScrim = vi.fn();
@@ -2834,7 +2841,6 @@ describe('useCanvasOperations', () => {
 			workflowsStore.resetState = vi.fn();
 			workflowsStore.setActiveExecutionId = vi.fn();
 			uiStore.resetLastInteractedWith = vi.fn();
-			focusPanelStore.reset = vi.fn();
 			executionsStore.activeExecution = null;
 
 			workflowsStore.executionWaitingForWebhook = true;
@@ -2857,7 +2863,6 @@ describe('useCanvasOperations', () => {
 					startedAt: new Date(),
 				},
 			];
-			nodeHelpers.credentialsUpdated.value = true;
 
 			const { resetWorkspace } = useCanvasOperations();
 
@@ -2872,10 +2877,11 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.resetState).toHaveBeenCalled();
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
 			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
-			expect(focusPanelStore.reset).toHaveBeenCalled();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 			expect(executionsStore.activeExecution).toBeNull();
+			expect(credentialsSpy).toHaveBeenCalledWith(false);
+			expect(credentialsUpdatedRef.value).toBe(false);
 		});
 
 		it('should not call removeTestWebhook if executionWaitingForWebhook is false', () => {
