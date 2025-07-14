@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput } from '@n8n/design-system';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -244,6 +244,18 @@ function optionSelected(command: string) {
 }
 
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+
+// Wait for editor to mount before focusing
+function focusWithDelay() {
+	setTimeout(() => {
+		void setFocus();
+	}, 50);
+}
+
+watch(
+	() => focusPanelStore.lastFocusTimestamp,
+	() => focusWithDelay(),
+);
 </script>
 
 <template>
@@ -310,6 +322,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
 							:id="resolvedParameter.parameterPath"
+							ref="inputField"
 							:mode="codeEditorMode"
 							:model-value="resolvedParameter.value"
 							:default-value="resolvedParameter.parameter.default"
@@ -321,6 +334,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<HtmlEditor
 							v-else-if="editorType === 'htmlEditor'"
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -330,6 +344,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<CssEditor
 							v-else-if="editorType === 'cssEditor'"
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -337,6 +352,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor'"
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:dialect="getTypeOption('sqlDialect')"
 							:is-read-only="isReadOnly"
@@ -345,6 +361,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<JsEditor
 							v-else-if="editorType === 'jsEditor'"
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -353,6 +370,7 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 							@update:model-value="valueChangedDebounced" />
 						<JsonEditor
 							v-else-if="resolvedParameter.parameter.type === 'json'"
+							ref="inputField"
 							:model-value="resolvedParameter.value"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"

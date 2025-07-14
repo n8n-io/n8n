@@ -83,6 +83,17 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editorRef.value), event, value);
 }
+
+const focus = () => {
+	const view = editorRef.value;
+	if (view && typeof view.focus === 'function') {
+		view.focus();
+	}
+};
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>

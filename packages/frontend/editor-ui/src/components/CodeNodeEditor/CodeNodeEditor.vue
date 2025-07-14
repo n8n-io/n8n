@@ -208,6 +208,17 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
 }
+
+const focus = () => {
+	const view = editor.value;
+	if (view && typeof view.focus === 'function') {
+		view.focus();
+	}
+};
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>
