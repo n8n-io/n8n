@@ -8,6 +8,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "jest-mock-extended": "^3.0.4",
     "madge": "^8.0.0"
   }
 }

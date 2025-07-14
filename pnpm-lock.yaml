@@ -412,6 +412,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      jest-mock-extended:
+        specifier: ^3.0.4
+        version: 3.0.4(jest@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)))(typescript@5.8.3)
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.8.3)
