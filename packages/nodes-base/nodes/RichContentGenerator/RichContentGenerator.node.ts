@@ -5,7 +5,6 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 // Helper functions for generating rich content
 function generateWeatherCard(item: INodeExecutionData) {
@@ -406,7 +405,7 @@ function generateForm(item: INodeExecutionData) {
 					if (field.type === 'select') {
 						const options = Array.isArray(field.options)
 							? field.options
-									.map((opt) => `<option value="${opt.value}">${opt.label}</option>`)
+									.map((opt: any) => `<option value="${opt.value}">${opt.label}</option>`)
 									.join('')
 							: '';
 						return `
@@ -616,8 +615,8 @@ export class RichContentGenerator implements INodeType {
 		defaults: {
 			name: 'Rich Content Generator',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: ['main'],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Content Type',
