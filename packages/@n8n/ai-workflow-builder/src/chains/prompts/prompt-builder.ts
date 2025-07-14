@@ -76,13 +76,6 @@ export class ParameterUpdatePromptBuilder {
 
 		const finalPrompt = sections.join('\n');
 
-		// Log if verbose
-		if (options.verbose) {
-			const tokenEstimate = this.estimateTokens(finalPrompt);
-			// console.log(`[PromptBuilder] Generated prompt with ~${tokenEstimate} tokens`);
-			// console.log(`[PromptBuilder] Included sections: ${this.getIncludedSections(context)}`);
-		}
-
 		return finalPrompt;
 	}
 
@@ -193,23 +186,5 @@ export class ParameterUpdatePromptBuilder {
 	static estimateTokens(prompt: string): number {
 		// Rough estimate: 1 token ≈ 4 characters
 		return Math.ceil(prompt.length / 4);
-	}
-
-	/**
-	 * Get list of included sections for logging
-	 */
-	private static getIncludedSections(context: PromptBuilderContext): string {
-		const sections: string[] = ['core', 'expressions'];
-
-		if (this.isSetNode(context.nodeType)) sections.push('set-node');
-		if (this.isIfNode(context.nodeType)) sections.push('if-node');
-		if (this.isHttpRequestNode(context.nodeType)) sections.push('http-request');
-		if (this.isToolNode(context.nodeType)) sections.push('tool-nodes');
-		if (context.hasResourceLocatorParams || this.needsResourceLocatorGuide(context)) {
-			sections.push('resource-locator');
-		}
-		if (this.hasTextFields(context.nodeDefinition)) sections.push('text-fields');
-
-		return sections.join(', ');
 	}
 }

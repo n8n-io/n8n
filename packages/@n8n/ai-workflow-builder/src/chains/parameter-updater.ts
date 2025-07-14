@@ -1,7 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { Logger, OperationalError } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ParameterUpdaterOptions } from '../types/config';

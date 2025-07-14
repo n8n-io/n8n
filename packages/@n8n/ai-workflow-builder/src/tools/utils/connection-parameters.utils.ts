@@ -81,7 +81,7 @@ export function isConnectionParameter(parameterName: string): boolean {
  * @param warnings - Array of warning messages
  * @param nodeType - The type of node being created
  */
-export function logConnectionParameterWarnings(warnings: string[], nodeType: string): void {
+export function logConnectionParameterWarnings(warnings: string[], _nodeType: string): void {
 	if (warnings.length > 0) {
 		// console.log(`[Connection Parameters] Warnings for node type ${nodeType}:`);
 		warnings.forEach((warning) => console.log(`  - ${warning}`));
