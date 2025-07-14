@@ -122,6 +122,11 @@ export function createUpdateNodeParametersTool(
 						throw new Error('Invalid parameters returned from LLM');
 					}
 
+					// Ensure parameters property exists and is valid
+					if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
+						throw new Error('Invalid parameters structure returned from LLM');
+					}
+
 					// Fix expression prefixes in the new parameters
 					const fixedParameters = fixExpressionPrefixes(newParameters.parameters);
 
