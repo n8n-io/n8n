@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import {
-	ApplicationError,
-	type ISupplyDataFunctions,
-	type IWorkflowDataProxyData,
+    ApplicationError,
+    type ISupplyDataFunctions,
+    type IWorkflowDataProxyData,
 } from 'n8n-workflow';
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
@@ -134,6 +134,32 @@ describe('OutputParserItemList', () => {
 			await expect(
 				(response as N8nItemListOutputParser).parse('item1\nitem2\nitem3'),
 			).rejects.toThrow('Wrong number of items returned');
+		});
+
+		it('should return all items when numberOfItems is set to -1 (unlimited)', async () => {
+			thisArg.getNodeParameter.mockImplementation((parameterName) => {
+				if (parameterName === 'options') {
+					return { numberOfItems: -1 };
+				}
+				throw new ApplicationError('Not implemented');
+			});
+
+			const { response } = await outputParser.supplyData.call(thisArg, 0);
+			const result = await (response as N8nItemListOutputParser).parse(
+				'item1\nitem2\nitem3\nitem4\nitem5\nitem6\nitem7\nitem8\nitem9\nitem10',
+			);
+			expect(result).toEqual([
+				'item1',
+				'item2',
+				'item3',
+				'item4',
+				'item5',
+				'item6',
+				'item7',
+				'item8',
+				'item9',
+				'item10',
+			]);
 		});
 	});
 });

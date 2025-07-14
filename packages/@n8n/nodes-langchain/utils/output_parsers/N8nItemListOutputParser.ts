@@ -36,7 +36,8 @@ export class N8nItemListOutputParser extends BaseOutputParser<string[]> {
 			);
 		}
 
-		return response.slice(0, this.numberOfItems);
+		// Return all items if numberOfItems is undefined (when -1 is passed), otherwise slice to the limit
+		return this.numberOfItems ? response.slice(0, this.numberOfItems) : response;
 	}
 
 	getFormatInstructions(): string {
