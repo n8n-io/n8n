@@ -24,12 +24,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Pull Docker image
+      - name: Pull Docker image with retry
         run: |
-          docker pull ${{ inputs.image_ref }}
+          for i in {1..4}; do
+            docker pull "${{ inputs.image_ref }}" && break
+            [ $i -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
+          done
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.30.0
         with:
           image-ref: ${{ inputs.image_ref }}
           format: 'json'
