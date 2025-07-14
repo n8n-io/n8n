@@ -607,7 +607,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 				:path="getPath(parameter.name)"
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				:is-read-only="isReadOnly"
-				:is-allow-empty-values="parameter.typeOptions?.resourceMapper?.allowEmptyValues"
+				:allow-empty-strings="parameter.typeOptions?.resourceMapper?.allowEmptyValues"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
