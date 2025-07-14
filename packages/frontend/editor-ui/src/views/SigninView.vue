@@ -5,16 +5,16 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 
-import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
+import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, MFA_FORM, VIEWS } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
@@ -102,16 +102,77 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
 
-	// Allow local redirects
-	if (redirect.startsWith('/')) {
+	// Security: Allow empty redirects (default to homepage)
+	if (!redirect || redirect.trim() === '') {
 		return true;
 	}
 
+	// Security: Allow local redirects (relative paths)
+	if (redirect.startsWith('/')) {
+		// Security: Additional validation for local paths
+		// Block paths that might be used for attacks
+		const dangerousLocalPaths = [
+			'//',
+			'javascript:',
+			'data:',
+			'vbscript:',
+			'file:',
+			'about:',
+			'chrome:',
+			'moz-extension:',
+		];
+
+		for (const dangerousPath of dangerousLocalPaths) {
+			if (redirect.toLowerCase().includes(dangerousPath)) {
+				console.warn('Potentially dangerous redirect path detected:', redirect);
+				return false;
+			}
+		}
+
+		// Security: Validate path format
+		try {
+			// Use URL constructor to validate the path
+			new URL(redirect, window.location.origin);
+			return true;
+		} catch {
+			console.warn('Invalid redirect path format:', redirect);
+			return false;
+		}
+	}
+
 	try {
-		// Only allow origin domain redirects
+		// Security: Only allow origin domain redirects
 		const url = new URL(redirect);
-		return url.origin === window.location.origin;
-	} catch {
+
+		// Security: Additional checks for the URL
+		if (url.origin !== window.location.origin) {
+			console.warn('Cross-origin redirect blocked:', redirect);
+			return false;
+		}
+
+		// Security: Block dangerous protocols
+		const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:', 'chrome:'];
+		if (dangerousProtocols.some((protocol) => url.href.toLowerCase().startsWith(protocol))) {
+			console.warn('Dangerous protocol in redirect URL:', redirect);
+			return false;
+		}
+
+		// Security: Block URLs with suspicious patterns
+		const suspiciousPatterns = [
+			/\/\/[^\/]*\.(local|test|dev|localhost)/i, // Local domains
+			/\/\/[^\/]*\.(evil|malicious|phish)/i, // Obviously malicious domains
+		];
+
+		for (const pattern of suspiciousPatterns) {
+			if (pattern.test(url.href)) {
+				console.warn('Suspicious redirect URL pattern detected:', redirect);
+				return false;
+			}
+		}
+
+		return true;
+	} catch (error) {
+		console.warn('Invalid redirect URL format:', redirect, error);
 		return false;
 	}
 };
@@ -119,7 +180,18 @@ const isRedirectSafe = () => {
 const getRedirectQueryParameter = () => {
 	let redirect = '';
 	if (typeof route.query?.redirect === 'string') {
-		redirect = decodeURIComponent(route.query?.redirect);
+		// Security: Decode URL and trim whitespace
+		redirect = decodeURIComponent(route.query?.redirect).trim();
+
+		// Security: Additional sanitization
+		// Remove any null bytes or control characters
+		redirect = redirect.replace(/[\x00-\x1F\x7F]/g, '');
+
+		// Security: Limit redirect URL length to prevent DoS
+		if (redirect.length > 2048) {
+			console.warn('Redirect URL too long, truncating:', redirect);
+			redirect = redirect.substring(0, 2048);
+		}
 	}
 	return redirect;
 };
