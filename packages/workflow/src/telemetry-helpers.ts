@@ -257,7 +257,7 @@ export function generateNodesGraph(
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
 
 			if (node.typeVersion >= 2.1) {
-				const options = node.parameters?.options as IDataObject;
+				const options = node.parameters?.options;
 				if (options?.['enableStreaming'] === false) {
 					nodeItem.is_streaming = false;
 				} else {
@@ -375,11 +375,16 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
-			nodeItem.response_mode = (node.parameters?.responseMode as string) ?? 'onReceived';
+			const responseMode = node.parameters?.responseMode;
+			nodeItem.response_mode = typeof responseMode === 'string' ? responseMode : 'onReceived';
 		} else if (node.type === CHAT_TRIGGER_NODE_TYPE) {
 			// Capture streaming response mode parameter
-			const options = node.parameters?.options as IDataObject;
-			if (options && typeof options.responseMode === 'string') {
+			const options = node.parameters?.options;
+			if (
+				typeof options === 'object' &&
+				'responseMode' in options &&
+				typeof options.responseMode === 'string'
+			) {
 				nodeItem.response_mode = options.responseMode;
 			}
 			// Capture public chat setting
