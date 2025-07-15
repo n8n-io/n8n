@@ -710,6 +710,35 @@ export async function executeWebhook(
 
 							data = returnData.data!.main[0]![0].json;
 
+							if (data && typeof data === 'object' && data.type === 'rich' && data.content) {
+								// Rich content detected - return it directly for the chat interface
+								// Structure the response to match SendMessageResponse interface
+								// Ensure we only return the clean structure without duplicate fields
+								const content = data.content as any;
+								const richResponse = {
+									type: 'rich' as const,
+									content: {
+										html: content.html || '',
+										css: content.css || '',
+										script: content.script || content.js || '',
+										sanitize: content.sanitize || 'basic',
+										...(content.components && { components: content.components }),
+										...(content.data && { data: content.data }),
+									},
+								};
+
+								if (!didSendResponse) {
+									// Return rich content directly - this matches SendMessageResponse interface
+									responseCallback(null, {
+										data: richResponse, // Rich content structure
+										responseCode,
+									});
+									didSendResponse = true;
+								}
+								return richResponse;
+							} else {
+							}
+
 							const responsePropertyName = workflow.expression.getSimpleParameterValue(
 								workflowStartNode,
 								webhookData.webhookDescription.responsePropertyName,

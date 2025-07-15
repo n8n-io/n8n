@@ -5,8 +5,18 @@ import { computed, nextTick, ref } from 'vue';
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions, ChatMessageText, StructuredChunk } from '@n8n/chat/types';
-import { StreamingMessageManager, createBotMessage } from '@n8n/chat/utils/streaming';
+import type {
+	ChatMessage,
+	ChatOptions,
+	ChatMessageText,
+	ChatMessageRich,
+	StructuredChunk,
+} from '@n8n/chat/types';
+import {
+	StreamingMessageManager,
+	createBotMessage,
+	createRichBotMessage,
+} from '@n8n/chat/utils/streaming';
 import {
 	handleStreamingChunk,
 	handleNodeStart,
@@ -82,8 +92,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						handlers,
 					);
 				} else {
-					receivedMessage.value = createBotMessage();
-
 					const sendMessageResponse = await api.sendMessage(
 						text,
 						files,
@@ -91,18 +99,27 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						options,
 					);
 
-					let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+					// Check if response has data property (webhook response wrapper)
+					const actualResponse = sendMessageResponse.data || sendMessageResponse;
 
-					if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
-						try {
-							textMessage = JSON.stringify(sendMessageResponse, null, 2);
-						} catch (e) {
-							// Failed to stringify the object so fallback to empty string
+					// Check if this is a rich content response
+					if (actualResponse && actualResponse.type === 'rich' && actualResponse.content) {
+						const richMessage = createRichBotMessage(actualResponse.content);
+						messages.value.push(richMessage);
+					} else {
+						// Handle regular text response
+						let textContent = '';
+						if (Array.isArray(actualResponse)) {
+							textContent = actualResponse.map((item) => item.text || '').join('\n\n');
+						} else if (typeof actualResponse.content === 'string') {
+							textContent = actualResponse.content;
+						} else {
+							textContent = actualResponse.text || actualResponse.output || String(actualResponse);
 						}
-					}
 
-					receivedMessage.value.text = textMessage;
-					messages.value.push(receivedMessage.value);
+						const botMessage = createBotMessage(textContent);
+						messages.value.push(botMessage);
+					}
 				}
 			} catch (error) {
 				if (!receivedMessage.value) {
