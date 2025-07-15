@@ -11,6 +11,7 @@ import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve, join } from 'path';
+import { existsSync } from 'fs';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -64,18 +65,8 @@ import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 import { MfaService } from './mfa/mfa.service';
 
-// Add path to chat bundle directory
-const CHAT_BUNDLE_DIST_DIR = join(
-	__dirname,
-	'..',
-	'..',
-	'..',
-	'packages',
-	'frontend',
-	'@n8n',
-	'chat',
-	'dist',
-);
+// Add path to embedded chat bundle directory
+const CHAT_BUNDLE_DIST_DIR = join(__dirname, 'chat');
 
 @Service()
 export class Server extends AbstractServer {
@@ -314,15 +305,6 @@ export class Server extends AbstractServer {
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
 
-		// Serve chat bundle files directly
-		this.app.get('/chat/style.css', (req, res) => {
-			res.sendFile(join(CHAT_BUNDLE_DIST_DIR, 'style.css'));
-		});
-
-		this.app.get('/chat/chat.bundle.es.js', (req, res) => {
-			res.sendFile(join(CHAT_BUNDLE_DIST_DIR, 'chat.bundle.es.js'));
-		});
-
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			this.app.post(
@@ -477,8 +459,22 @@ export class Server extends AbstractServer {
 				}
 			};
 
-			// Serve chat bundle files first (before generic routes)
-			this.app.use('/chat', express.static(CHAT_BUNDLE_DIST_DIR, cacheOptions));
+			// Serve chat bundle files (single static middleware approach)
+			if (existsSync(CHAT_BUNDLE_DIST_DIR)) {
+				this.app.use('/chat', express.static(CHAT_BUNDLE_DIST_DIR, cacheOptions));
+				console.log('✅ Chat assets served from:', CHAT_BUNDLE_DIST_DIR);
+			} else {
+				console.warn('⚠️ Chat assets not found at:', CHAT_BUNDLE_DIST_DIR);
+				console.warn('   Chat interface will fallback to CDN');
+				// Provide helpful 404 responses for missing chat assets
+				this.app.use('/chat', (req, res) => {
+					res.status(404).json({
+						error: 'Chat assets not found',
+						message: 'Run build process to generate chat bundles',
+						path: req.path,
+					});
+				});
+			}
 
 			this.app.use(
 				'/',
