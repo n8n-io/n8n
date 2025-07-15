@@ -42,6 +42,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 	const newTaskData = (jsCode: string) => {
 		const taskSettings = {
 			code: jsCode,
+			language: 'javascript',
 			nodeMode: 'runOnceForAllItems',
 			workflowMode: 'manual',
 			continueOnFail: false,
@@ -157,7 +158,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 
 		return await taskRequester.startTask<INodeExecutionData[], Error>(
 			additionalData,
-			'javascript',
+			'code',
 			taskSettings,
 			executeFunctions,
 			inputConnections,
