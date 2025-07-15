@@ -133,6 +133,6 @@ jobs:
           currents upload \
             --project-id=I0yzoc \
             --key=${{ secrets.CURRENTS_RECORD_KEY }} \
-            --ci-build-id=n8nio/n8n-${{ github.run_id }}-${{ github.run_attempt }} \
+            --ci-build-id=n8n-io/n8n-${{ github.run_id }}-${{ github.run_attempt }} \
             --report-dir=.currents \
             --tag=cypress
