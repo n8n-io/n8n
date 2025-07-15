@@ -3,6 +3,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import type { UserAction, WorkflowResource } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
@@ -15,6 +16,7 @@ const documentTitle = useDocumentTitle();
 const { copy, copied, isSupported } = useClipboard();
 
 const workflowsStore = useWorkflowsStore();
+const rootStore = useRootStore();
 
 const isMCPEnabled = ref(true);
 const workflowsLoading = ref(false);
@@ -73,7 +75,7 @@ const connectionString = ref(`
         "-y",
         "supergateway",
         "--streamableHttp",
-        "${window.location.protocol}://${window.location.host}/rest/mcp-control/mcp",
+        "${rootStore.urlBaseEditor}rest/mcp-control/mcp",
         "--header",
         "x-n8n-api-key:<YOUR_N8N_API_KEY>",
       ]
