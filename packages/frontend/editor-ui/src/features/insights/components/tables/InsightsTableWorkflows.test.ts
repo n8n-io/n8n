@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -10,7 +10,6 @@ import type { InsightsByWorkflow } from '@n8n/api-types';
 
 const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 
-// Mock telemetry
 const mockTelemetry = {
 	track: vi.fn(),
 };
@@ -18,7 +17,6 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 
-// Mock N8nDataTableServer like in SettingsUsersTable.test.ts
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
@@ -37,6 +35,20 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			},
 			template: `
 				<div data-test-id="insights-table">
+					<div class="table-header">
+						<div v-for="header in headers" :key="header.key">
+							<button
+								v-if="!header.disableSort"
+								:data-test-id="'sort-' + header.key"
+								@click="$emit('update:sortBy', [{ id: header.key, desc: false }])"
+							>
+								{{ header.title }}
+							</button>
+							<span v-else :data-test-id="'header-' + header.key">
+								{{ header.title }}
+							</span>
+						</div>
+					</div>
 					<div v-for="item in items" :key="item.workflowId"
 							 :data-test-id="'workflow-row-' + item.workflowId">
 						<div v-for="header in headers" :key="header.key">
@@ -47,6 +59,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 							</slot>
 						</div>
 					</div>
+					<slot name="cover" />
 				</div>`,
 		}),
 	};
@@ -93,6 +106,7 @@ describe('InsightsTableWorkflows', () => {
 			props: {
 				data: mockInsightsData,
 				loading: false,
+				isDashboardEnabled: true, // Default to true for basic tests
 			},
 			global: {
 				stubs: {
@@ -112,7 +126,7 @@ describe('InsightsTableWorkflows', () => {
 		it('should display the correct heading', () => {
 			renderComponent();
 
-			expect(screen.getByRole('heading', { name: 'Workflow insights' })).toBeInTheDocument();
+			expect(screen.getByRole('heading', { name: 'Breakdown by workflow' })).toBeInTheDocument();
 		});
 
 		it('should render workflow data in table rows', () => {
@@ -148,15 +162,13 @@ describe('InsightsTableWorkflows', () => {
 				],
 			};
 
-			renderComponent = createComponentRenderer(InsightsTableWorkflows, {
-				pinia: createTestingPinia(),
+			renderComponent({
 				props: {
 					data: largeNumberData,
 					loading: false,
+					isDashboardEnabled: true,
 				},
 			});
-
-			renderComponent();
 
 			const row = screen.getByTestId('workflow-row-workflow-1');
 			expect(within(row).getByText('1,000,000')).toBeInTheDocument();
@@ -320,6 +332,114 @@ describe('InsightsTableWorkflows', () => {
 			renderComponent();
 
 			expect(screen.getByTestId('insights-table')).toBeInTheDocument();
+		});
+	});
+
+	describe('paywall functionality', () => {
+		it('should not display paywall when dashboard is enabled', () => {
+			renderComponent = createComponentRenderer(InsightsTableWorkflows, {
+				pinia: createTestingPinia(),
+				props: {
+					data: mockInsightsData,
+					loading: false,
+					isDashboardEnabled: true,
+				},
+			});
+
+			renderComponent();
+
+			expect(
+				screen.queryByRole('heading', { name: 'Upgrade to access more detailed insights' }),
+			).not.toBeInTheDocument();
+		});
+
+		it('should display paywall when dashboard is not enabled', async () => {
+			renderComponent({
+				props: {
+					data: mockInsightsData,
+					loading: false,
+					isDashboardEnabled: false,
+				},
+			});
+
+			await waitFor(() => {
+				expect(
+					screen.getByRole('heading', {
+						level: 4,
+						name: 'Upgrade to access more detailed insights',
+					}),
+				).toBeInTheDocument();
+			});
+		});
+
+		it('should use sample data when dashboard is not enabled', () => {
+			renderComponent({
+				props: {
+					data: mockInsightsData,
+					loading: false,
+					isDashboardEnabled: false,
+				},
+			});
+
+			// Should render sample workflows instead of actual data
+			expect(screen.getByTestId('workflow-row-sample-workflow-1')).toBeInTheDocument();
+			expect(screen.getByTestId('workflow-row-sample-workflow-2')).toBeInTheDocument();
+			// Should not render the original test data
+			expect(screen.queryByTestId('workflow-row-workflow-1')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-row-workflow-2')).not.toBeInTheDocument();
+		});
+
+		it('should disable sorting when dashboard is not enabled', () => {
+			renderComponent({
+				props: {
+					data: mockInsightsData,
+					loading: false,
+					isDashboardEnabled: false,
+				},
+			});
+
+			// When sorting is disabled, columns should not have clickable sort buttons
+			expect(screen.queryByTestId('sort-workflowName')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('sort-total')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('sort-failed')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('sort-failureRate')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('sort-timeSaved')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('sort-averageRunTime')).not.toBeInTheDocument();
+
+			// Headers should be present as non-clickable elements
+			expect(screen.getByTestId('header-workflowName')).toBeInTheDocument();
+			expect(screen.getByTestId('header-total')).toBeInTheDocument();
+			expect(screen.getByTestId('header-failed')).toBeInTheDocument();
+			expect(screen.getByTestId('header-failureRate')).toBeInTheDocument();
+			expect(screen.getByTestId('header-timeSaved')).toBeInTheDocument();
+			expect(screen.getByTestId('header-averageRunTime')).toBeInTheDocument();
+			// projectName is always disabled
+			expect(screen.getByTestId('header-projectName')).toBeInTheDocument();
+		});
+
+		it('should enable sorting when dashboard is enabled', () => {
+			renderComponent();
+
+			// When sorting is enabled, most columns should have clickable sort buttons
+			expect(screen.getByTestId('sort-workflowName')).toBeInTheDocument();
+			expect(screen.getByTestId('sort-total')).toBeInTheDocument();
+			expect(screen.getByTestId('sort-failed')).toBeInTheDocument();
+			expect(screen.getByTestId('sort-failureRate')).toBeInTheDocument();
+			expect(screen.getByTestId('sort-timeSaved')).toBeInTheDocument();
+			expect(screen.getByTestId('sort-averageRunTime')).toBeInTheDocument();
+
+			// projectName is always disabled (non-clickable)
+			expect(screen.getByTestId('header-projectName')).toBeInTheDocument();
+			expect(screen.queryByTestId('sort-projectName')).not.toBeInTheDocument();
+		});
+
+		it('should trigger sort when clicking on sortable column header', async () => {
+			const { emitted } = renderComponent();
+
+			const sortButton = screen.getByTestId('sort-workflowName');
+			await userEvent.click(sortButton);
+
+			expect(emitted()['update:sortBy']).toEqual([[[{ id: 'workflowName', desc: false }]]]);
 		});
 	});
 });
