@@ -119,6 +119,10 @@ export class ModuleRegistry {
 		if (!moduleEntry) throw new MissingModuleError(moduleName);
 
 		await Container.get(moduleEntry.class).shutdown?.();
+
+		const index = this.activeModules.indexOf(moduleName);
+		if (index > -1) this.activeModules.splice(index, 1);
+
 		this.logger.debug(`Shut down module "${moduleName}"`);
 	}
 
