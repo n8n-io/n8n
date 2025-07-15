@@ -79,7 +79,7 @@ describe('JsTaskRunner', () => {
 		runner?: CodeTaskRunner;
 	}) => {
 		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
-		return await runner.executeCodeTask(task, new AbortController().signal);
+		return await runner.executeTask(task, new AbortController().signal);
 	};
 
 	afterEach(() => {
@@ -1240,6 +1240,7 @@ describe('JsTaskRunner', () => {
 			const taskId = '1';
 			const task = newTaskState(taskId);
 			const taskSettings: CodeExecSettings = {
+				language: 'javaScript',
 				code: 'unknown; return []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
@@ -1487,6 +1488,7 @@ describe('JsTaskRunner', () => {
 			const taskId = '1';
 			const task = newTaskState(taskId);
 			const taskSettings: CodeExecSettings = {
+				language: 'javaScript',
 				code: 'function my_function() {\n  null.map();\n}\nmy_function();\nreturn []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
