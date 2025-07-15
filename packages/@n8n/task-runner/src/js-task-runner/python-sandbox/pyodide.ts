@@ -4,7 +4,10 @@ import type { PyodideInterface } from 'pyodide';
 
 let pyodideInstance: PyodideInterface | undefined;
 
-export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInterface> {
+export async function LoadPyodide(
+	packageCacheDir: string,
+	mode: 'secure' | 'insecure',
+): Promise<PyodideInterface> {
 	if (pyodideInstance === undefined) {
 		const { loadPyodide } = await import('pyodide');
 		const { XMLHttpRequest } = await import('xmlhttprequest-ssl');
@@ -26,6 +29,14 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 			'loadPyodide({ indexURL, packageCacheDir, jsglobals })',
 			context,
 		)) as PyodideInterface;
+
+		if (mode === 'insecure') {
+			await pyodideInstance.runPythonAsync(` 
+from _pyodide_core import jsproxy_typedict
+from js import Object
+`);
+			return pyodideInstance;
+		}
 
 		await pyodideInstance.runPythonAsync(`
 import os

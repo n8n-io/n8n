@@ -67,6 +67,7 @@ export class PythonSandbox extends CodeSandbox {
 		context: SandboxContext,
 		private pythonCode: string,
 		helpers: IExecuteFunctions['helpers'],
+		private readonly mode: 'secure' | 'insecure',
 	) {
 		super(
 			{
@@ -99,7 +100,7 @@ export class PythonSandbox extends CodeSandbox {
 
 	private async runCodeInPython<T>() {
 		const packageCacheDir = await this.helpers.getStoragePath();
-		const pyodide = await LoadPyodide(packageCacheDir);
+		const pyodide = await LoadPyodide(packageCacheDir, this.mode);
 
 		let executionResult;
 		try {
@@ -120,7 +121,7 @@ export class PythonSandbox extends CodeSandbox {
 			globalsDict.set('_helpers_js', this.helpers);
 			await pyodide.runPythonAsync(PYTHON_HELPERS_CODE, { globals: globalsDict });
 
-			freezePrototypes();
+			if (this.mode === 'secure') freezePrototypes();
 
 			const runCode = `
 async def __main():

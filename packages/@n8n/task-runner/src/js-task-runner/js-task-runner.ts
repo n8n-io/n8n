@@ -600,7 +600,7 @@ export class CodeTaskRunner extends TaskRunner {
 		const helpers = this.pythonHelpers(taskId);
 		const context = this.pythonContext(data, data.itemIndex, helpers);
 
-		const sandbox = new PythonSandbox(context, settings.code, helpers);
+		const sandbox = new PythonSandbox(context, settings.code, helpers, this.mode);
 
 		sandbox.on('output', (...args: unknown[]) => {
 			void this.makeRpcCall(taskId, 'logNodeOutput', args);
@@ -635,7 +635,7 @@ export class CodeTaskRunner extends TaskRunner {
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const context = this.pythonContext(data, index, helpers);
-			const sandbox = new PythonSandbox(context, settings.code, helpers);
+			const sandbox = new PythonSandbox(context, settings.code, helpers, this.mode);
 
 			sandbox.on('output', (...args: unknown[]) => {
 				void this.makeRpcCall(taskId, 'logNodeOutput', args);
