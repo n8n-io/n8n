@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	INodeTypeDescription,
 	INodePropertyOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	updateDynamicConnections,
@@ -13,8 +14,9 @@ import {
 	nameIsParameter,
 	formatAsExpression,
 	parseFromExpression,
+	shouldSkipParamValidation,
 } from './nodeSettingsUtils';
-import { SWITCH_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 describe('updateDynamicConnections', () => {
@@ -394,5 +396,160 @@ describe('parseFromExpression', () => {
 
 	it('returns null for other types if value is undefined', () => {
 		expect(parseFromExpression({}, undefined, 'json', null, [])).toBeNull();
+	});
+});
+
+describe('shouldSkipParamValidation', () => {
+	describe('CUSTOM_API_CALL_KEY detection', () => {
+		it('should skip validation when value is CUSTOM_API_CALL_KEY', () => {
+			const parameter: INodeProperties = {
+				name: 'testParam',
+				displayName: 'Test Parameter',
+				type: 'string',
+				default: '',
+			};
+
+			const result = shouldSkipParamValidation(parameter, CUSTOM_API_CALL_KEY);
+			expect(result).toBe(true);
+		});
+
+		it('should skip validation when value is a string containing CUSTOM_API_CALL_KEY', () => {
+			const parameter: INodeProperties = {
+				name: 'testParam',
+				displayName: 'Test Parameter',
+				type: 'string',
+				default: '',
+			};
+
+			const valueWithKey = `some prefix ${CUSTOM_API_CALL_KEY} some suffix`;
+			const result = shouldSkipParamValidation(parameter, valueWithKey);
+			expect(result).toBe(true);
+		});
+
+		it('should not skip validation when value is a string not containing CUSTOM_API_CALL_KEY', () => {
+			const parameter: INodeProperties = {
+				name: 'testParam',
+				displayName: 'Test Parameter',
+				type: 'string',
+				default: '',
+			};
+
+			const result = shouldSkipParamValidation(parameter, 'regular string value');
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('options parameter type with allowArbitraryValues', () => {
+		it('should skip validation for options parameter with allowArbitraryValues=true', () => {
+			const parameter: INodeProperties = {
+				name: 'optionsParam',
+				displayName: 'Options Parameter',
+				type: 'options',
+				options: [
+					{ name: 'Option 1', value: 'option1' },
+					{ name: 'Option 2', value: 'option2' },
+				],
+				allowArbitraryValues: true,
+				default: '',
+			};
+
+			const result = shouldSkipParamValidation(parameter, 'arbitrary_value');
+			expect(result).toBe(true);
+		});
+
+		it('should not skip validation for options parameter with allowArbitraryValues=false', () => {
+			const parameter: INodeProperties = {
+				name: 'optionsParam',
+				displayName: 'Options Parameter',
+				type: 'options',
+				options: [
+					{ name: 'Option 1', value: 'option1' },
+					{ name: 'Option 2', value: 'option2' },
+				],
+				allowArbitraryValues: false,
+				default: '',
+			};
+
+			const result = shouldSkipParamValidation(parameter, 'arbitrary_value');
+			expect(result).toBe(false);
+		});
+
+		it('should not skip validation for options parameter with allowArbitraryValues=undefined', () => {
+			const parameter: INodeProperties = {
+				name: 'optionsParam',
+				displayName: 'Options Parameter',
+				type: 'options',
+				options: [
+					{ name: 'Option 1', value: 'option1' },
+					{ name: 'Option 2', value: 'option2' },
+				],
+				default: '',
+			};
+
+			const result = shouldSkipParamValidation(parameter, 'arbitrary_value');
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('multiOptions parameter type with allowArbitraryValues', () => {
+		it('should skip validation for multiOptions parameter with allowArbitraryValues=true', () => {
+			const parameter: INodeProperties = {
+				name: 'multiOptionsParam',
+				displayName: 'Multi Options Parameter',
+				type: 'multiOptions',
+				options: [
+					{ name: 'Option 1', value: 'option1' },
+					{ name: 'Option 2', value: 'option2' },
+				],
+				allowArbitraryValues: true,
+				default: [],
+			};
+
+			const result = shouldSkipParamValidation(parameter, ['arbitrary_value']);
+			expect(result).toBe(true);
+		});
+
+		it('should not skip validation for multiOptions parameter with allowArbitraryValues=false', () => {
+			const parameter: INodeProperties = {
+				name: 'multiOptionsParam',
+				displayName: 'Multi Options Parameter',
+				type: 'multiOptions',
+				options: [
+					{ name: 'Option 1', value: 'option1' },
+					{ name: 'Option 2', value: 'option2' },
+				],
+				allowArbitraryValues: false,
+				default: [],
+			};
+
+			const result = shouldSkipParamValidation(parameter, ['arbitrary_value']);
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('non-options parameter types', () => {
+		const nonOptionsParameterTypes = [
+			'string',
+			'number',
+			'boolean',
+			'json',
+			'dateTime',
+			'color',
+		] as Array<INodeProperties['type']>;
+
+		nonOptionsParameterTypes.forEach((type) => {
+			it(`should not skip validation for ${type} parameter type regardless of allowArbitraryValues`, () => {
+				const parameter: INodeProperties = {
+					name: 'testParam',
+					displayName: 'Test Parameter',
+					type,
+					allowArbitraryValues: true,
+					default: '',
+				};
+
+				const result = shouldSkipParamValidation(parameter, 'test_value');
+				expect(result).toBe(false);
+			});
+		});
 	});
 });

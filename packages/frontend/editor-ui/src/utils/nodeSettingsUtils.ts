@@ -359,6 +359,13 @@ export function parseFromExpression(
 	return null;
 }
 
-export function shouldSkipParamValidation(value: string | number | boolean | null) {
-	return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+export function shouldSkipParamValidation(
+	parameter: INodeProperties,
+	value: NodeParameterValueType,
+) {
+	return (
+		(typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY)) ||
+		(['options', 'multiOptions'].includes(parameter.type) &&
+			Boolean(parameter.allowArbitraryValues))
+	);
 }

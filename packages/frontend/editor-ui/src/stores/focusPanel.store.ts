@@ -14,6 +14,8 @@ import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/cons
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 
+const DEFAULT_PANEL_WIDTH = 528;
+
 type FocusedNodeParameter = {
 	nodeId: string;
 	parameter: INodeProperties;
@@ -28,6 +30,7 @@ export type RichFocusedNodeParameter = FocusedNodeParameter & {
 type FocusPanelData = {
 	isActive: boolean;
 	parameters: FocusedNodeParameter[];
+	width?: number;
 };
 
 type FocusPanelDataByWid = Record<string, FocusPanelData>;
@@ -56,6 +59,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const lastFocusTimestamp = ref(0);
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
+	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
 	// An unenriched parameter indicates a missing nodeId
@@ -77,11 +81,13 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		parameters,
 		isActive,
 		wid = workflowsStore.workflowId,
+		width = undefined,
 		removeEmpty = false,
 	}: {
 		isActive?: boolean;
 		parameters?: FocusedNodeParameter[];
 		wid?: string;
+		width?: number;
 		removeEmpty?: boolean;
 	}) {
 		const focusPanelDataCurrent = focusPanelData.value;
@@ -95,6 +101,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			[wid]: {
 				isActive: isActive ?? focusPanelActive.value,
 				parameters: parameters ?? _focusedNodeParameters.value,
+				width,
 			},
 		});
 
@@ -134,6 +141,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
 
+	function updateWidth(width: number) {
+		_setOptions({ width });
+	}
+
 	function isRichParameter(
 		p: RichFocusedNodeParameter | FocusedNodeParameter,
 	): p is RichFocusedNodeParameter {
@@ -159,5 +170,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
+		updateWidth,
+		focusPanelWidth,
 	};
 });

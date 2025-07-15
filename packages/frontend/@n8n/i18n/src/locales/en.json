@@ -3251,6 +3251,7 @@
 	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
 	"insights.banner.title.averageRunTime": "Run time (avg.)",
 	"insights.dashboard.table.projectName": "Project name",
+	"insights.dashboard.table.title": "Breakdown by workflow",
 	"insights.dashboard.table.estimate": "Estimate",
 	"insights.dashboard.title": "Insights",
 	"insights.dashboard.paywall.cta": "Upgrade",
