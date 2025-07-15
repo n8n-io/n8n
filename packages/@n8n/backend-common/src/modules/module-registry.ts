@@ -114,9 +114,12 @@ export class ModuleRegistry {
 	}
 
 	async shutdownModule(moduleName: ModuleName) {
-		const moduleEntry = this.moduleMetadata.getEntries().find(([name]) => name === moduleName)?.[1];
+		const moduleEntry = this.moduleMetadata.get(moduleName);
 
-		if (!moduleEntry) throw new MissingModuleError(moduleName);
+		if (!moduleEntry) {
+			this.logger.debug('Skipping shutdown for unregistered module', { moduleName });
+			return;
+		}
 
 		await Container.get(moduleEntry.class).shutdown?.();
 
