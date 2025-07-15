@@ -144,15 +144,11 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	}
 
 	function hideFocusPanel(hide: boolean = true) {
-		if (focusPanelHidden.value !== hide) {
-			focusPanelHidden.value = hide;
-		}
-
-		if (focusPanelActive.value === !hide) {
+		if (focusPanelHidden.value === hide) {
 			return;
 		}
 
-		_setOptions({ isActive: !hide });
+		focusPanelHidden.value = hide;
 	}
 
 	function toggleFocusPanel() {

@@ -973,7 +973,7 @@ function onUpdateNodeOutputs(id: string) {
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
-	if (isFocusPanelFeatureEnabled.value) {
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
 		focusPanelStore.hideFocusPanel();
 	}
 
@@ -1205,7 +1205,7 @@ function onOpenSelectiveNodeCreator(
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
-	if (isFocusPanelFeatureEnabled.value) {
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
 		focusPanelStore.hideFocusPanel(options.createNodeActive);
 	}
 
@@ -1233,10 +1233,10 @@ function onToggleFocusPanel() {
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
-	}
 
-	if (isFocusPanelFeatureEnabled.value) {
-		focusPanelStore.hideFocusPanel(false);
+		if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+			focusPanelStore.hideFocusPanel(false);
+		}
 	}
 }
 
