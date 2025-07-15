@@ -119,7 +119,7 @@ function goToUpgradeApiKeyScopes() {
 			<i18n-t keypath="settings.api.scopes.upgrade">
 				<template #link>
 					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
-						{{ i18n.baseText('settings.api.scopes.upgrade.link') }}
+						{{ i18n.baseText('generic.upgrade') }}
 					</n8n-link>
 				</template>
 			</i18n-t>

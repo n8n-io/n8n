@@ -377,14 +377,17 @@ async function onUpdateMfaEnforced(value: boolean) {
 						size="small"
 						@click="goToUpgradeAdvancedPermissions"
 					>
-						{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
+						{{ i18n.baseText('generic.upgrade') }}
 					</N8nLink>
 				</template>
 			</i18n-t>
 		</N8nNotice>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">{{ i18n.baseText('settings.personal.mfa.enforce.title') }}</N8nText>
+				<N8nText :bold="true"
+					>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
+					<N8nBadge class="ml-4xs">{{ i18n.baseText('generic.upgrade') }}</N8nBadge></N8nText
+				>
 				<N8nText size="small" color="text-light">{{
 					i18n.baseText('settings.personal.mfa.enforce.message')
 				}}</N8nText>
@@ -399,12 +402,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					/>
 					<template #fallback>
 						<N8nTooltip>
-							<el-switch
-								:model-value="settingsStore.isMFAEnforced"
-								size="large"
-								:disabled="true"
-								@update:model-value="onUpdateMfaEnforced"
-							/>
+							<el-switch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
 							<template #content>
 								<i18n-t :keypath="tooltipKey" tag="span">
 									<template #action>
