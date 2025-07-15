@@ -11,10 +11,11 @@ node_env         = "production"
 db_type     = "postgres"
 db_name     = "n8n"
 db_user     = "n8n"
-db_password = "CHANGE_ME_SECURE_PASSWORD_PRD"
 
-# N8N Configuration
-n8n_encryption_key = "CHANGE_ME_32_CHARACTER_ENCRYPTION_KEY_PRD"
+# Secret Manager Configuration
+db_password_secret_name        = "n8n-prd-db-password"
+n8n_encryption_key_secret_name = "n8n-prd-encryption-key"
+manage_secret_versions         = false
 
 # Resource Limits (production sized)
 cpu_limit      = "4"

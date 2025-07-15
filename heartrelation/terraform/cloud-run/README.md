@@ -63,20 +63,59 @@ terraform apply -var-file="environments/prd/terraform.tfvars"
 - PostgreSQL: db-n1-standard-2, 100GB, Regional
 - 削除保護: 有効
 
-## 設定ファイルの更新
+## Secret Manager設定
 
-各環境の設定ファイルを編集してください：
+機密情報は事前にSecret Managerに作成してください。Terraformはこれらの既存シークレットを参照します。
 
-- **Staging**: `environments/stg/terraform.tfvars`
-- **Production**: `environments/prd/terraform.tfvars`
+### Staging環境のシークレット作成
 
-### 必須変更項目
 ```bash
-# データベースパスワード（32文字以上推奨）
-db_password = "your-secure-password"
+# 認証設定
+gcloud config set project n8n-stg-466014
 
-# n8n暗号化キー（32文字必須）
-n8n_encryption_key = "your-32-character-encryption-key"
+# データベースパスワードの作成（32文字以上推奨）
+gcloud secrets create n8n-stg-db-password --data-file=-
+# 入力を求められるので、安全なパスワードを入力してください
+
+# N8N暗号化キーの作成（32文字必須）
+gcloud secrets create n8n-stg-encryption-key --data-file=-
+# 入力を求められるので、32文字のランダムキーを入力してください
+```
+
+### Production環境のシークレット作成
+
+```bash
+# 認証設定
+gcloud config set project n8n-prd-466015
+
+# データベースパスワードの作成（32文字以上推奨）
+gcloud secrets create n8n-prd-db-password --data-file=-
+# 入力を求められるので、安全なパスワードを入力してください
+
+# N8N暗号化キーの作成（32文字必須）
+gcloud secrets create n8n-prd-encryption-key --data-file=-
+# 入力を求められるので、32文字のランダムキーを入力してください
+```
+
+### シークレット生成例
+
+```bash
+# 32文字のランダムキー生成
+openssl rand -base64 32
+
+# より安全なパスワード生成
+openssl rand -base64 48
+```
+
+### IAM権限の設定
+
+Terraformを実行するユーザーに必要な権限：
+
+```bash
+# Secret Manager用の権限
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/secretmanager.admin"
 ```
 
 ## インフラストラクチャ構成

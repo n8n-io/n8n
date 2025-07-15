@@ -11,10 +11,11 @@ node_env         = "staging"
 db_type     = "postgres"
 db_name     = "n8n"
 db_user     = "n8n"
-db_password = "CHANGE_ME_SECURE_PASSWORD_STG"
 
-# N8N Configuration
-n8n_encryption_key = "CHANGE_ME_32_CHARACTER_ENCRYPTION_KEY_STG"
+# Secret Manager Configuration
+db_password_secret_name        = "n8n-stg-db-password"
+n8n_encryption_key_secret_name = "n8n-stg-encryption-key"
+manage_secret_versions         = false
 
 # Resource Limits (smaller for staging)
 cpu_limit      = "1"

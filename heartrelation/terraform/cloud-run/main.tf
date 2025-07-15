@@ -38,7 +38,7 @@ module "postgres" {
   authorized_networks = var.postgres_authorized_networks
   database_name       = var.db_name
   database_user       = var.db_user
-  database_password   = var.db_password
+  database_password   = data.google_secret_manager_secret_version.db_password.secret_data
 
   depends_on = [google_project_service.sql_admin_api]
 }

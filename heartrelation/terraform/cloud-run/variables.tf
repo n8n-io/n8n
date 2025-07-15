@@ -47,16 +47,20 @@ variable "db_user" {
   default     = "n8n"
 }
 
-variable "db_password" {
-  description = "Database password"
+variable "db_password_secret_name" {
+  description = "Name of the Secret Manager secret containing the database password"
   type        = string
-  sensitive   = true
 }
 
-variable "n8n_encryption_key" {
-  description = "N8N encryption key for credentials"
+variable "n8n_encryption_key_secret_name" {
+  description = "Name of the Secret Manager secret containing the N8N encryption key"
   type        = string
-  sensitive   = true
+}
+
+variable "manage_secret_versions" {
+  description = "Whether to manage secret versions in Terraform (set to false if secrets are managed externally)"
+  type        = bool
+  default     = false
 }
 
 variable "cpu_limit" {
