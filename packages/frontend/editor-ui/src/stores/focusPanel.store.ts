@@ -1,6 +1,6 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import get from 'lodash/get';
 
 import {
@@ -12,6 +12,7 @@ import {
 import { useWorkflowsStore } from './workflows.store';
 import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
+import { watchOnce } from '@vueuse/core';
 
 const DEFAULT_PANEL_WIDTH = 528;
 
@@ -54,6 +55,8 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		(): FocusPanelData =>
 			focusPanelData.value[workflowsStore.workflowId] ?? DEFAULT_FOCUS_PANEL_DATA,
 	);
+
+	const lastFocusTimestamp = ref(0);
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
@@ -101,6 +104,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 				width,
 			},
 		});
+
+		if (isActive) {
+			lastFocusTimestamp.value = Date.now();
+		}
 	}
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
@@ -144,9 +151,20 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
+	// Ensure lastFocusTimestamp is set on initial load if panel is already active (e.g. after reload)
+	watchOnce(
+		() => currentFocusPanelData.value,
+		(value) => {
+			if (value.isActive && value.parameters.length > 0) {
+				lastFocusTimestamp.value = Date.now();
+			}
+		},
+	);
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
+		lastFocusTimestamp,
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		closeFocusPanel,
