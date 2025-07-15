@@ -10,7 +10,8 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 } from '@/types';
-import type { InjectionKey, Ref } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
+import type { ExpressionLocalResolveContext } from './types/expressions';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -494,6 +495,7 @@ export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
 export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
+export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -747,6 +749,12 @@ export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
+	name: '034_extra_template_links',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const FOCUS_PANEL_EXPERIMENT = {
 	name: 'focus_panel',
 	control: 'control',
@@ -756,8 +764,8 @@ export const FOCUS_PANEL_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
+	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 ];
-export const WORKFLOW_EVALUATION_EXPERIMENT = '032_evaluation_mvp';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
@@ -889,7 +897,7 @@ export const MOUSE_EVENT_BUTTONS = {
  */
 export const TEMPLATES_URLS = {
 	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
-	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
+	BASE_WEBSITE_URL: 'https://n8n.io/workflows/',
 	UTM_QUERY: {
 		utm_source: 'n8n_app',
 		utm_medium: 'template_library',
@@ -921,6 +929,9 @@ export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeI
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
 export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
+export const ExpressionLocalResolveContextSymbol = Symbol(
+	'ExpressionLocalResolveContext',
+) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
 
 /** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';

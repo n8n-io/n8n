@@ -41,6 +41,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/users')
 export class UsersController {
@@ -106,10 +107,12 @@ export class UsersController {
 
 		const [users, count] = response;
 
+		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
+
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
 				const user = await this.userService.toPublic(u, {
-					withInviteUrl: true,
+					withInviteUrl,
 					inviterId: req.user.id,
 				});
 				return {

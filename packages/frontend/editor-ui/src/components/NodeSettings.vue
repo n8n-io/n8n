@@ -435,6 +435,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
@@ -443,6 +444,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.executeOnce.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
@@ -451,6 +453,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.retryOnFail.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
@@ -468,6 +471,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.maxTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
@@ -485,6 +489,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.onError.displayName'),
@@ -514,6 +519,7 @@ const populateSettings = () => {
 					default: 'stopWorkflow',
 					description: i18n.baseText('nodeSettings.onError.description'),
 					noDataExpression: true,
+					isNodeSetting: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -530,6 +536,7 @@ const populateSettings = () => {
 				default: '',
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notes.description'),
+				isNodeSetting: true,
 			},
 			{
 				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
@@ -538,6 +545,7 @@ const populateSettings = () => {
 				default: false,
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notesInFlow.description'),
+				isNodeSetting: true,
 			},
 		] as INodeProperties[]),
 	);

@@ -900,13 +900,16 @@ export class Workflow {
 		// Check if there are any trigger or poll nodes and then return the first one
 		let node: INode;
 		let nodeType: INodeType;
-		for (const nodeName of nodeNames) {
-			node = this.nodes[nodeName];
 
-			if (nodeNames.length === 1 && !node.disabled) {
+		if (nodeNames.length === 1) {
+			node = this.nodes[nodeNames[0]];
+			if (node && !node.disabled) {
 				return node;
 			}
+		}
 
+		for (const nodeName of nodeNames) {
+			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			// TODO: Identify later differently

@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type {
+	IconFile,
 	ICredentialType,
 	INodeType,
 	INodeTypeDescription,
@@ -131,6 +132,20 @@ describe('DirectoryLoader', () => {
 			expect(mockCredential1.iconUrl).toBe('icons/n8n-nodes-testing/dist/credential1.svg');
 			expect(mockNode1.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node1/node1.svg');
 			expect(mockNode2.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node2/node2.svg');
+		});
+
+		it('should throw error if node has icon not contained within the package directory', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockNode2.description.icon = {
+				light: 'file:../../../../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			await expect(loader.loadAll()).rejects.toThrow(
+				'Icon path "../../../../evil" is not contained within',
+			);
 		});
 
 		it('should throw error when package.json is missing', async () => {
@@ -671,6 +686,23 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should error if icon path is not contained within the package directory', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			const nodeWithIcon = createNode('nodeWithIcon');
+			nodeWithIcon.description.icon = {
+				light: 'file:../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+
+			expect(() => loader.loadNodeFromFile(filePath)).toThrow(
+				'Icon path "../evil" is not contained within',
+			);
 		});
 
 		it('should skip node if not in includeNodes', () => {

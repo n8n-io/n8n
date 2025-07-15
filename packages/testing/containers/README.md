@@ -24,10 +24,10 @@ When started, you'll see:
 ### Development with Container Reuse
 ```bash
 # Enable container reuse (faster restarts)
-pnpm run dev              # SQLite
-pnpm run dev:postgres     # PostgreSQL
-pnpm run dev:queue        # Queue mode
-pnpm run dev:multi-main   # Multiple main instances
+pnpm run stack              # SQLite
+pnpm run stack:postgres     # PostgreSQL
+pnpm run stack:queue        # Queue mode
+pnpm run stack:multi-main   # Multiple main instances
 ```
 
 ### Queue Mode with Scaling
@@ -133,7 +133,7 @@ await stack.stop();
 ### Multi-Main with Load Balancer
 ```
                     ┌──────────────┐
-                ────│    nginx     │ ← Entry point
+                ────│              │ ← Entry point
                /    │ Load Balancer│
 ┌─────────────┐     └──────────────┘
 │ n8n-main-1  │────┐
