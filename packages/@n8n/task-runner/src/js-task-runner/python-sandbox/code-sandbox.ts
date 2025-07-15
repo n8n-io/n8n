@@ -16,6 +16,8 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 
 export abstract class CodeSandbox extends EventEmitter {
 	constructor(
+		// @ts-expect-error `_textKeys` is unused but kept for similarity with original.
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		private _textKeys: SandboxTextKeys,
 		protected helpers: IExecuteFunctions['helpers'],
 	) {
