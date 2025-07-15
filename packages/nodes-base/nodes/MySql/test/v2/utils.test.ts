@@ -36,6 +36,60 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		expect(preparedQuery.values[0]).toEqual(15);
 		expect(preparedQuery.values[1]).toEqual('Name');
 	});
+
+	it('should not replace dollar amounts inside quoted strings', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('This is for testing $60')",
+			[],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('This is for testing $60')",
+		);
+		expect(preparedQuery.values.length).toEqual(0);
+	});
+
+	it('should handle mixed parameters and dollar amounts in quotes', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO $1:name(content, price) VALUES('Product costs $60', $2)",
+			['products', 59.99],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO `products`(content, price) VALUES('Product costs $60', ?)",
+		);
+		expect(preparedQuery.values.length).toEqual(1);
+		expect(preparedQuery.values[0]).toEqual(59.99);
+	});
+
+	it('should handle parameters in double quotes', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			'INSERT INTO test_table(content) VALUES("Price is $100 and $200")',
+			[],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			'INSERT INTO test_table(content) VALUES("Price is $100 and $200")',
+		);
+		expect(preparedQuery.values.length).toEqual(0);
+	});
+
+	it('should process parameters in correct order despite reverse processing', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			'SELECT * FROM table WHERE col1 = $1 AND col2 = $2 AND col3 = $3 AND col4 = $4 AND col5 = $5',
+			['value1', 'value2', 'value3', 'value4', 'value5'],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			'SELECT * FROM table WHERE col1 = ? AND col2 = ? AND col3 = ? AND col4 = ? AND col5 = ?',
+		);
+		expect(preparedQuery.values.length).toEqual(5);
+		expect(preparedQuery.values[0]).toEqual('value1');
+		expect(preparedQuery.values[1]).toEqual('value2');
+		expect(preparedQuery.values[2]).toEqual('value3');
+		expect(preparedQuery.values[3]).toEqual('value4');
+		expect(preparedQuery.values[4]).toEqual('value5');
+	});
 });
 
 describe('Test MySql V2, wrapData', () => {
