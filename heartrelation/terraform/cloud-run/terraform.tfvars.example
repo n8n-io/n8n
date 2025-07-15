@@ -6,7 +6,7 @@ region     = "asia-northeast1"
 
 # Cloud Run Service Configuration
 service_name     = "n8n"
-container_image  = "gcr.io/your-project-id/n8n:latest"
+container_image  = "asia-northeast1-docker.pkg.dev/your-project-id/n8n-images/n8n:latest"
 node_env         = "production"
 
 # Database Configuration
@@ -31,3 +31,7 @@ min_instances = "1"
 
 # Access Control
 allow_unauthenticated = false
+
+# Artifact Registry Configuration
+artifact_registry_location   = "asia-northeast1"
+artifact_registry_repository = "n8n-images"
