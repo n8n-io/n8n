@@ -184,10 +184,11 @@ function onOpenFileDialog() {
 function adjustTextAreaHeight() {
 	const textarea = chatTextArea.value;
 	if (!textarea) return;
-	// Set to content minimum to get the right scrollHeight
-	textarea.style.height = 'var(--chat--textarea--height)';
-	// Get the new height, with a small buffer for padding
-	const newHeight = Math.min(textarea.scrollHeight, 480); // 30rem
+	// Reset to auto to get accurate scrollHeight measurement
+	textarea.style.height = 'auto';
+	// Get the new height, with a minimum of 2.5rem (40px) and max of 30rem (480px)
+	const minHeight = 40; // 2.5rem in pixels
+	const newHeight = Math.max(Math.min(textarea.scrollHeight, 480), minHeight);
 	textarea.style.height = `${newHeight}px`;
 }
 </script>
