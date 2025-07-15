@@ -651,10 +651,12 @@ export class CodeTaskRunner extends TaskRunner {
 					continue;
 				}
 
+				const validatedResult = validateRunForEachItemOutput(result, index);
+
 				returnData.push({
-					json: result.json,
+					json: validatedResult.json,
 					pairedItem: { item: index },
-					...(result.binary && { binary: result.binary }),
+					...(validatedResult.binary && { binary: validatedResult.binary }),
 				});
 			} catch (e) {
 				const error = this.toExecutionErrorIfNeeded(e);
