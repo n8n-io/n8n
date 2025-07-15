@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -184,6 +184,7 @@ function valueChanged(value: string) {
 	}
 
 	nodeSettingsParameters.updateNodeParameter(
+		toRef(resolvedParameter.value.node.parameters),
 		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
 		value,
 		resolvedParameter.value.node,
