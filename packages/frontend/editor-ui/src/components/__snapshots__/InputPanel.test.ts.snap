@@ -22,9 +22,11 @@ exports[`InputPanel > should render 1`] = `
           class="titleSection"
         >
           <span
-            class="title"
+            class="n8n-text text-light size-medium bold title title"
           >
+            
             Input
+            
           </span>
           <div
             class="n8n-radio-buttons radioGroup"
