@@ -108,6 +108,7 @@ function onClickAdd() {
 }
 
 .label {
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 	position: absolute;
 	background: var(--color-canvas-label-background);
 	z-index: 1;

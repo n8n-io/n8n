@@ -38,6 +38,7 @@ const classes = computed(() => ({
 	background: var(--color-canvas-label-background);
 	z-index: 0;
 	white-space: nowrap;
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 }
 
 .required .label::after {

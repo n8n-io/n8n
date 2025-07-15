@@ -143,6 +143,7 @@ function onClick(event: MouseEvent) {
 <style lang="scss" module>
 .wrapper {
 	position: relative;
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 
 	&.secondary {
 		.line {

@@ -185,6 +185,7 @@ function onFocusNode() {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 }
 
 .canvasNodeToolbarItems {

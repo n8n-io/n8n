@@ -79,6 +79,7 @@ function onClickAdd() {
 	z-index: 1;
 	text-align: center;
 	white-space: nowrap;
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 }
 
 .required .label::after {

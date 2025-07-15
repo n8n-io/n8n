@@ -66,6 +66,7 @@ function onDelete() {
 	gap: var(--spacing-2xs);
 	pointer-events: all;
 	padding: var(--spacing-2xs);
+	zoom: var(--canvas-zoom-compensation-factor, 1);
 }
 </style>
 
