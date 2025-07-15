@@ -1,5 +1,6 @@
 import _pick from 'lodash-es/pick';
 import _isEqual from 'lodash-es/isEqual';
+import type { CanvasConnection } from '@/types';
 
 export const enum NodeDiffStatus {
 	Eq = 'equal',
@@ -67,4 +68,15 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 	});
 
 	return diff;
+}
+
+export function mapConnections(connections: CanvasConnection[]) {
+	return connections.reduce(
+		(acc, connection) => {
+			acc.set.add(connection.id);
+			acc.map.set(connection.id, connection);
+			return acc;
+		},
+		{ set: new Set<string>(), map: new Map<string, CanvasConnection>() },
+	);
 }

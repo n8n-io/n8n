@@ -8,7 +8,11 @@ import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync';
-import { compareWorkflowsNodes, NodeDiffStatus } from '@/features/workflow-diff/useWorkflowDiff';
+import {
+	compareWorkflowsNodes,
+	mapConnections,
+	NodeDiffStatus,
+} from '@/features/workflow-diff/useWorkflowDiff';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -136,17 +140,6 @@ const diff = computed(() => {
 	);
 });
 
-function mapConnections(connections: CanvasConnection[]) {
-	return connections.reduce(
-		(acc, connection) => {
-			acc.set.add(connection.id);
-			acc.map.set(connection.id, connection);
-			return acc;
-		},
-		{ set: new Set<string>(), map: new Map<string, CanvasConnection>() },
-	);
-}
-
 type Connection = {
 	id: string;
 	source: INodeUi;
@@ -155,48 +148,44 @@ type Connection = {
 	targetType: INodeTypeDescription | null;
 };
 
-const connectionsDiff = computed(() => {
-	// if (!(topWorkFlow.value.state.value && bottomWorkFlow.value.state.value))
-	// 	return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+function formatConnectionDiff(
+	id: string,
+	status: NodeDiffStatus,
+	collection: Map<string, CanvasConnection>,
+	accumulator: Map<string, { status: NodeDiffStatus; connection: Connection }>,
+) {
+	const connection = collection.get(id);
+	if (!connection) return;
 
+	const sourceNode = diff.value.get(connection.source)?.node as INodeUi;
+	const targetNode = diff.value.get(connection.target)?.node as INodeUi;
+
+	accumulator.set(id, {
+		status,
+		connection: {
+			id,
+			source: sourceNode,
+			target: targetNode,
+			sourceType: nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion),
+			targetType: nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion),
+		},
+	});
+}
+
+const connectionsDiff = computed(() => {
 	const source = mapConnections(topWorkFlow.value.state.value?.connections ?? []);
 	const target = mapConnections(bottomWorkFlow.value.state.value?.connections ?? []);
-
-	console.log(source, target);
 
 	const added = target.set.difference(source.set);
 	const removed = source.set.difference(target.set);
 
-	console.log(added, removed);
+	const acc = new Map<string, { status: NodeDiffStatus; connection: Connection }>();
 
-	const test = new Map<string, { status: NodeDiffStatus; connection: Connection }>();
-
-	function formatDiff(
-		id: string,
-		status: NodeDiffStatus,
-		collection: Map<string, CanvasConnection>,
-	) {
-		const connection = collection.get(id);
-		if (!connection) return;
-
-		const sourceNode = diff.value.get(connection.source)?.node as INodeUi;
-		const targetNode = diff.value.get(connection.target)?.node as INodeUi;
-
-		test.set(id, {
-			status,
-			connection: {
-				id,
-				source: sourceNode,
-				target: targetNode,
-				sourceType: nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion),
-				targetType: nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion),
-			},
-		});
-	}
-
-	added.values().forEach((id) => formatDiff(id, NodeDiffStatus.Added, target.map));
-	removed.values().forEach((id) => formatDiff(id, NodeDiffStatus.Deleted, source.map));
-	return test;
+	added.values().forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Added, target.map, acc));
+	removed
+		.values()
+		.forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Deleted, source.map, acc));
+	return acc;
 });
 
 function getNodeStatusClass(id: string) {
@@ -328,6 +317,7 @@ const tabs = computed(() => [
 				<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
 					<template v-if="topWorkFlow.state.value">
 						<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
+							<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
 							{{ topWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
 						</N8nText>
 						<template v-if="topWorkFlow.state.value.workflow">
@@ -376,6 +366,7 @@ const tabs = computed(() => [
 				<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
 					<template v-if="bottomWorkFlow.state.value">
 						<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
+							<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
 							{{ bottomWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
 						</N8nText>
 						<template v-if="bottomWorkFlow.state.value.workflow">
@@ -504,6 +495,8 @@ const tabs = computed(() => [
 .deleted {
 	--canvas-node--background: transparent;
 	--canvas-node--border-color: var(--color-node-icon-red);
+	--color-sticky-background: rgba(74, 44, 46, 0.2);
+	--color-sticky-border: var(--color-node-icon-red);
 	position: relative;
 	&::after {
 		content: '';
@@ -553,6 +546,8 @@ const tabs = computed(() => [
 .added {
 	--canvas-node--border-color: var(--color-node-icon-green);
 	--canvas-node--background: transparent;
+	--color-sticky-background: rgba(14, 171, 84, 0.2);
+	--color-sticky-border: var(--color-node-icon-green);
 	position: relative;
 	&::after {
 		content: '';
@@ -599,6 +594,9 @@ const tabs = computed(() => [
 	position: relative;
 	pointer-events: none;
 	cursor: default;
+	--color-sticky-background: rgba(126, 129, 134, 0.2);
+	--color-sticky-border: var(--color-node-icon-orange);
+
 	--color-node-icon-blue: var(--color-foreground-xdark);
 	--color-node-icon-gray: var(--color-foreground-xdark);
 	--color-node-icon-black: var(--color-foreground-xdark);
@@ -623,6 +621,8 @@ const tabs = computed(() => [
 .modified {
 	--canvas-node--border-color: var(--color-node-icon-orange);
 	--canvas-node--background: transparent;
+	--color-sticky-background: rgba(255, 150, 90, 0.2);
+	--color-sticky-border: var(--color-node-icon-orange);
 	position: relative;
 	&::before {
 		content: 'M';
