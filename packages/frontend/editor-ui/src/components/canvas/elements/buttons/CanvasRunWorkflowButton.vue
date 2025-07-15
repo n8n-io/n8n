@@ -26,12 +26,20 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
+const chatNodeExists = computed(() => props.triggerNodes.some((node) => isChatNode(node)));
+
 const selectableTriggerNodes = computed(() =>
 	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
 );
+
 const label = computed(() => {
 	if (!props.executing) {
-		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
+		return (
+			i18n.baseText('nodeView.runButtonText.executeWorkflow') +
+			'from' +
+			' ' +
+			props.selectedTriggerNodeName
+		);
 	}
 
 	if (props.waitingForWebhook) {
@@ -69,43 +77,44 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 	return props.getNodeType(node.type, node.typeVersion);
 }
+
+const activeTriggerNode = computed(() =>
+	props.triggerNodes.find((node) => node.name === props.selectedTriggerNodeName),
+);
 </script>
 
 <template>
-	<div :class="[$style.component, isSplitButton ? $style.split : '']">
+	<div
+		:class="[
+			$style.component,
+			isSplitButton ? $style.split : '',
+			chatNodeExists ? $style.chatNodeExists : '',
+		]"
+	>
 		<KeyboardShortcutTooltip
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
 			:disabled="executing"
 		>
 			<N8nButton
-				:class="$style.button"
 				:loading="executing"
 				:disabled="disabled"
-				size="large"
-				icon="flask-conical"
+				size="xmini"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
 				@click="emit('execute')"
 			>
-				<span :class="$style.buttonContent">
-					{{ label }}
-					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
-						<I18nT keypath="nodeView.runButtonText.from">
-							<template #nodeName>
-								<N8nText bold size="mini">
-									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
-								</N8nText>
-							</template>
-						</I18nT>
-					</N8nText>
-				</span>
+				<NodeIcon
+					v-if="!executing"
+					:class="$style.menuIcon"
+					:size="16"
+					:node-type="getNodeTypeByName(activeTriggerNode!.name)"
+				/>
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 		<template v-if="isSplitButton">
-			<div role="presentation" :class="$style.divider" />
 			<N8nActionDropdown
 				:class="$style.menu"
 				:items="actions"
@@ -115,10 +124,10 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						type="primary"
-						icon-size="large"
+						type="tertiary"
+						size="xmini"
 						:disabled="disabled"
-						:class="$style.chevron"
+						text
 						aria-label="Select trigger node"
 						icon="chevron-down"
 					/>
@@ -147,15 +156,9 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	align-items: stretch;
 }
 
-.button {
-	.split & {
-		height: var(--spacing-2xl);
-
-		padding-inline-start: var(--spacing-xs);
-		padding-block: 0;
-		border-top-right-radius: 0;
-		border-bottom-right-radius: 0;
-	}
+.chatNodeExists {
+	padding-right: 2px;
+	border-right: 1px solid var(--color-foreground-base);
 }
 
 .divider {
@@ -181,6 +184,12 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .menuItem.disabled .menuIcon {
 	opacity: 0.2;
+}
+
+.menuIcon {
+	& > div {
+		color: var(--color-button-primary-font) !important;
+	}
 }
 
 .buttonContent {

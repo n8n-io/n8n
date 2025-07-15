@@ -7,8 +7,8 @@ defineProps<Props>();
 </script>
 <template>
 	<N8nButton
-		:label="label"
-		size="large"
+		size="medium"
+		text
 		icon="message-circle"
 		:type="type"
 		data-test-id="workflow-chat-button"

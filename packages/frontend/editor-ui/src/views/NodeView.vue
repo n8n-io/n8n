@@ -2186,7 +2186,11 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-s);
+	background-color: var(--color-background-xlight);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	padding: 1px 0 1px 4px;
+	bottom: 8px;
 	width: auto;
 
 	@include mixins.breakpoint('sm-only') {
@@ -2199,7 +2203,6 @@ onBeforeUnmount(() => {
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		margin-left: 0.625rem;
 
 		&:first-child {
 			margin: 0;
