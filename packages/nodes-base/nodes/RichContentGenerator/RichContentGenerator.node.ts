@@ -10,7 +10,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 // Helper functions for generating rich content
 function generateWeatherCard(item: INodeExecutionData) {
 	const data = item.json;
-	
+
 	// Extract weather data from input or use defaults
 	const temperature = data.temperature || data.temp || '22°C';
 	const description = data.description || data.weather || 'Sunny with light clouds';
@@ -18,7 +18,7 @@ function generateWeatherCard(item: INodeExecutionData) {
 	const wind = data.wind || data.windSpeed || '12 mph';
 	const location = data.location || data.city || '';
 	const icon = data.icon || '🌤️';
-	
+
 	return {
 		html: `
 			<div class="weather-card">
@@ -63,13 +63,13 @@ function generateWeatherCard(item: INodeExecutionData) {
 
 function generateDashboard(item: INodeExecutionData) {
 	const data = item.json;
-	
+
 	// Extract dashboard data from input or use defaults
 	const revenue = data.revenue || data.sales || '$125,430';
 	const orders = data.orders || data.orderCount || '1,247';
 	const customers = data.customers || data.customerCount || '892';
 	const title = data.title || data.dashboardTitle || 'Analytics Dashboard';
-	
+
 	return {
 		html: `
 			<div class="dashboard">
@@ -169,15 +169,16 @@ function generateDashboard(item: INodeExecutionData) {
 
 function generateChart(item: INodeExecutionData) {
 	const data = item.json;
-	
+
 	// Extract chart data from input or use defaults
 	const chartData = data.chartData || data.values || [10, 25, 15, 30, 22, 35, 28];
-	const labels = data.labels || data.categories || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+	const labels = data.labels ||
+		data.categories || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	const title = data.title || data.chartTitle || 'Data Visualization';
-	
+
 	// Generate unique ID for this chart instance
 	const chartId = 'dataChart_' + Math.random().toString(36).substr(2, 9);
-	
+
 	return {
 		html: `
 			<div class="chart-container">
@@ -371,7 +372,7 @@ function generateChart(item: INodeExecutionData) {
 
 function generateForm(item: INodeExecutionData) {
 	const data = item.json;
-	
+
 	// Extract form configuration from input or use defaults
 	const title = data.title || data.formTitle || 'Feedback Form';
 	const submitAction = data.submitAction || 'submit-feedback';
@@ -386,25 +387,29 @@ function generateForm(item: INodeExecutionData) {
 				{ value: '4', label: '⭐⭐⭐⭐ Good' },
 				{ value: '3', label: '⭐⭐⭐ Average' },
 				{ value: '2', label: '⭐⭐ Poor' },
-				{ value: '1', label: '⭐ Very Poor' }
-			]
+				{ value: '1', label: '⭐ Very Poor' },
+			],
 		},
 		{
 			name: 'comments',
 			type: 'textarea',
 			label: 'Comments',
 			placeholder: 'Your feedback...',
-			rows: 4
-		}
+			rows: 4,
+		},
 	];
-	
+
 	// Generate form HTML dynamically
-	const fieldsHtml = Array.isArray(fields) ? fields.map(field => {
-		if (field.type === 'select') {
-			const options = Array.isArray(field.options) ? field.options.map(opt => 
-				`<option value="${opt.value}">${opt.label}</option>`
-			).join('') : '';
-			return `
+	const fieldsHtml = Array.isArray(fields)
+		? fields
+				.map((field) => {
+					if (field.type === 'select') {
+						const options = Array.isArray(field.options)
+							? field.options
+									.map((opt) => `<option value="${opt.value}">${opt.label}</option>`)
+									.join('')
+							: '';
+						return `
 				<div class="form-group">
 					<label for="${field.name}">${field.label}:</label>
 					<select name="${field.name}" id="${field.name}" ${field.required ? 'required' : ''}>
@@ -413,8 +418,8 @@ function generateForm(item: INodeExecutionData) {
 					</select>
 				</div>
 			`;
-		} else if (field.type === 'textarea') {
-			return `
+					} else if (field.type === 'textarea') {
+						return `
 				<div class="form-group">
 					<label for="${field.name}">${field.label}:</label>
 					<textarea name="${field.name}" id="${field.name}" 
@@ -423,10 +428,12 @@ function generateForm(item: INodeExecutionData) {
 						${field.required ? 'required' : ''}></textarea>
 				</div>
 			`;
-		}
-		return '';
-	}).join('') : '';
-	
+					}
+					return '';
+				})
+				.join('')
+		: '';
+
 	return {
 		html: `
 			<div class="form-container">
@@ -604,7 +611,8 @@ export class RichContentGenerator implements INodeType {
 		icon: 'file:richContentGenerator.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Generates rich content for chat workflows with HTML, CSS, and interactive components',
+		description:
+			'Generates rich content for chat workflows with HTML, CSS, and interactive components',
 		defaults: {
 			name: 'Rich Content Generator',
 		},
@@ -662,7 +670,8 @@ export class RichContentGenerator implements INodeType {
 						contentType: ['custom'],
 					},
 				},
-				default: '<div class="custom-content"><h2>Custom Content</h2><p>Your content here</p></div>',
+				default:
+					'<div class="custom-content"><h2>Custom Content</h2><p>Your content here</p></div>',
 				description: 'Custom HTML content (can use {{variable}} syntax for dynamic values)',
 			},
 			{
@@ -742,7 +751,7 @@ if (content) {
 			const contentType = this.getNodeParameter('contentType', i) as string;
 			const sanitize = this.getNodeParameter('sanitize', i) as 'none' | 'basic' | 'strict';
 			const templateVariables = this.getNodeParameter('templateVariables', i) as string;
-			
+
 			// Merge template variables with input data
 			let mergedData = { ...items[i].json };
 			try {
@@ -753,7 +762,7 @@ if (content) {
 			} catch (error) {
 				console.warn('Invalid template variables JSON:', error);
 			}
-			
+
 			// Create modified item with merged data
 			const modifiedItem = { ...items[i], json: mergedData };
 
@@ -776,18 +785,18 @@ if (content) {
 					let customHtml = this.getNodeParameter('customHtml', i) as string;
 					let customCss = this.getNodeParameter('customCss', i) as string;
 					let customScript = this.getNodeParameter('customScript', i) as string;
-					
+
 					// Simple template replacement for custom content
 					const replaceTemplates = (content: string) => {
 						return content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
 							return mergedData[key] !== undefined ? String(mergedData[key]) : match;
 						});
 					};
-					
+
 					customHtml = replaceTemplates(customHtml);
 					customCss = replaceTemplates(customCss);
 					customScript = replaceTemplates(customScript);
-					
+
 					richContent = {
 						html: customHtml,
 						css: customCss,
@@ -813,4 +822,4 @@ if (content) {
 
 		return [returnData];
 	}
-} 
+}

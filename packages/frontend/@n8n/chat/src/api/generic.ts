@@ -24,7 +24,47 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		headers,
 	});
 
-	return (await response.json()) as T;
+	console.log('API Response Status:', response.status, response.statusText);
+	console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		console.error('API Error Response:', errorText);
+		throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+	}
+
+	const contentType = response.headers.get('content-type') || '';
+	console.log('API Response Content-Type:', contentType);
+
+	try {
+		if (contentType.includes('application/json')) {
+			const jsonData = await response.json();
+			console.log('API JSON Response:', jsonData);
+			return jsonData as T;
+		} else {
+			// Handle text/plain or other content types
+			const textData = await response.text();
+			console.log('API Text Response:', textData);
+
+			// Try to parse as JSON first (in case content-type is wrong)
+			try {
+				const parsedData = JSON.parse(textData);
+				console.log('API Parsed JSON from text:', parsedData);
+				return parsedData as T;
+			} catch {
+				// Return as string if not valid JSON
+				console.log('API Returning as string:', textData);
+				return textData as unknown as T;
+			}
+		}
+	} catch (parseError) {
+		console.error('API Response Parsing Error:', parseError);
+		const fallbackText = await response.text();
+		console.log('API Fallback text:', fallbackText);
+		throw new Error(
+			`Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+		);
+	}
 }
 
 export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {
