@@ -514,6 +514,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -525,7 +526,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
@@ -676,6 +676,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -687,7 +688,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
