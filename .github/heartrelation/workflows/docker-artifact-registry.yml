@@ -1,0 +1,128 @@
+name: Build and Push to Google Artifact Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag'
+        required: false
+        default: 'latest'
+        type: string
+      gcp_project_id:
+        description: 'GCP Project ID'
+        required: true
+        type: string
+      artifact_registry_location:
+        description: 'Artifact Registry Location'
+        required: false
+        default: 'asia-northeast1'
+        type: string
+      artifact_registry_repository:
+        description: 'Artifact Registry Repository'
+        required: false
+        default: 'n8n-images'
+        type: string
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=8192'
+  REGISTRY: ${{ inputs.artifact_registry_location }}-docker.pkg.dev
+  IMAGE_NAME: ${{ inputs.gcp_project_id }}/${{ inputs.artifact_registry_repository }}/n8n
+
+jobs:
+  build-and-push:
+    name: Build and Push to Artifact Registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build n8n for Docker
+        run: pnpm build:n8n
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as a credential helper
+        run: gcloud auth configure-docker ${{ env.REGISTRY }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine Docker tags
+        id: determine-tags
+        run: |
+          TAG="${{ inputs.tag }}"
+          FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          
+          # Create tags
+          TAGS="${FULL_IMAGE_NAME}:${TAG}"
+          
+          # Add SHA tag for traceability
+          if [[ "$TAG" != "${{ github.sha }}" ]]; then
+            TAGS="${TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          fi
+          
+          # Add latest tag if tag is not 'latest' and not a version tag
+          if [[ "$TAG" != "latest" && ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            TAGS="${TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          fi
+          
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "Generated tags: ${TAGS}"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=22
+            N8N_VERSION=${{ inputs.tag }}
+            N8N_RELEASE_TYPE=prod
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          push: true
+          tags: ${{ steps.determine-tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image details
+        run: |
+          echo "✅ Docker image pushed successfully!"
+          echo "🏷️  Primary tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}"
+          echo "📦 SHA tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "🌏 Region: ${{ inputs.artifact_registry_location }}"
+          echo "📁 Repository: ${{ inputs.artifact_registry_repository }}"
+          echo ""
+          echo "To use this image in your Terraform configuration:"
+          echo "container_image = \"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}\""
+
+      - name: Verify image in registry
+        run: |
+          echo "Verifying image in Artifact Registry..."
+          gcloud artifacts docker images list ${{ env.REGISTRY }}/${{ inputs.gcp_project_id }}/${{ inputs.artifact_registry_repository }}/n8n --include-tags --limit=5
