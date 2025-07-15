@@ -1,8 +1,12 @@
 <template>
-	<div class="rich-message-container" :class="{ 'user-message': isUser, 'bot-message': !isUser }">
-		<!-- Custom CSS injection -->
-		<component :is="'style'" v-if="content.css" type="text/css" scoped>
-			{{ sanitizedCSS }}
+	<div
+		:id="componentId"
+		class="rich-message-container"
+		:class="{ 'user-message': isUser, 'bot-message': !isUser }"
+	>
+		<!-- Scoped CSS injection -->
+		<component :is="'style'" v-if="content.css" type="text/css">
+			{{ scopedCSS }}
 		</component>
 
 		<!-- HTML Content -->
@@ -47,6 +51,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const scriptContainer = ref<HTMLElement>();
 
+// Generate unique component ID for CSS scoping
+const componentId = computed(() => `rich-message-${Math.random().toString(36).substr(2, 9)}`);
+
 // Sanitization based on content settings
 const sanitizedHTML = computed(() => {
 	if (!props.content.html) return '';
@@ -68,7 +75,7 @@ const sanitizedHTML = computed(() => {
 	}
 });
 
-const sanitizedCSS = computed(() => {
+const scopedCSS = computed(() => {
 	if (!props.content.css) return '';
 
 	// Basic CSS sanitization - remove dangerous properties
@@ -79,8 +86,34 @@ const sanitizedCSS = computed(() => {
 		css = css.replace(new RegExp(prop, 'gi'), '');
 	});
 
-	return css;
+	// Scope CSS to this component instance
+	return scopeCSSToComponent(css, componentId.value);
 });
+
+// Function to scope CSS rules to a specific component
+const scopeCSSToComponent = (css: string, id: string): string => {
+	if (!css) return '';
+
+	// Add the component ID as a prefix to all CSS selectors
+	return css.replace(/([^{}]+){/g, (match, selector) => {
+		// Clean up the selector
+		const cleanSelector = selector.trim();
+
+		// Skip @rules like @media, @keyframes, etc.
+		if (cleanSelector.startsWith('@')) {
+			return match;
+		}
+
+		// Split multiple selectors separated by commas
+		const selectors = cleanSelector.split(',').map((s: string) => {
+			const trimmed = s.trim();
+			// Prefix each selector with the component ID
+			return `#${id} ${trimmed}`;
+		});
+
+		return `${selectors.join(', ')}{`;
+	});
+};
 
 // Component type mapping
 const getComponentType = (type: RichComponent['type']) => {
@@ -126,10 +159,13 @@ onMounted(async () => {
 			},
 			data: props.content.data,
 			container: scriptContainer.value,
-			// Restricted DOM access
+			// Restricted DOM access scoped to this component
 			document: {
 				createElement: document.createElement.bind(document),
-				getElementById: (id: string) => scriptContainer.value?.querySelector(`#${id}`),
+				getElementById: (id: string) =>
+					document.getElementById(componentId.value)?.querySelector(`#${id}`),
+				querySelector: (selector: string) =>
+					document.getElementById(componentId.value)?.querySelector(selector),
 			},
 		};
 
