@@ -260,6 +260,7 @@ export function generateNodesGraph(
 				const options = node.parameters?.options;
 				if (
 					typeof options === 'object' &&
+					options &&
 					'enableStreaming' in options &&
 					options.enableStreaming === false
 				) {
@@ -386,6 +387,7 @@ export function generateNodesGraph(
 			const options = node.parameters?.options;
 			if (
 				typeof options === 'object' &&
+				options &&
 				'responseMode' in options &&
 				typeof options.responseMode === 'string'
 			) {
