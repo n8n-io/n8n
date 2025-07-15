@@ -168,7 +168,7 @@ export class CodeTaskRunner extends TaskRunner {
 			.forEach(Object.freeze);
 	}
 
-	async executeCodeTask(
+	async executeTask(
 		taskParams: TaskParams<CodeExecSettings>,
 		abortSignal: AbortSignal,
 	): Promise<TaskResultData> {
