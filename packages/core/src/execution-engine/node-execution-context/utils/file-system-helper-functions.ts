@@ -1,3 +1,4 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -107,6 +108,9 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 
 	async getStoragePath() {
+		// For now, Pyodide in a task runner uses ephemeral storage in the sidecar container.
+		if (Container.get(TaskRunnersConfig).mode === 'external') return '/tmp/pyodide-packages';
+
 		return await Promise.resolve(
 			join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`),
 		);
