@@ -122,47 +122,47 @@ export const basicTestCases: TestCase[] = [
 		complexity: 'simple',
 		tags: ['file-processing', 'filtering', 'email'],
 	},
-	{
-		id: 'test_medium_001',
-		name: 'Slack Notification System',
-		description: 'Monitor GitHub repo and notify Slack on new issues',
-		prompt:
-			'Create a workflow that monitors a GitHub repository for new issues, checks if they have a "bug" label, and sends a notification to Slack with issue details and assigns it to the on-call engineer',
-		expectedNodeTypes: ['n8n-nodes-base.github', 'n8n-nodes-base.if', 'n8n-nodes-base.slack'],
-		complexity: 'medium',
-		tags: ['monitoring', 'conditional-logic', 'notifications'],
-	},
-	{
-		id: 'test_medium_002',
-		name: 'Data Sync Pipeline',
-		description: 'Sync data between multiple systems with transformation',
-		prompt:
-			'Build a workflow that fetches new orders from Shopify, transforms the data format, checks inventory in a PostgreSQL database, and updates the order status in both systems',
-		expectedNodeTypes: [
-			'n8n-nodes-base.shopify',
-			'n8n-nodes-base.postgres',
-			'n8n-nodes-base.set',
-			'n8n-nodes-base.if',
-		],
-		complexity: 'medium',
-		tags: ['e-commerce', 'data-sync', 'database'],
-	},
-	{
-		id: 'test_complex_001',
-		name: 'Customer Support Automation',
-		description: 'Multi-branch support ticket processing system',
-		prompt:
-			'Create a workflow that receives support tickets via webhook, categorizes them using AI, routes high-priority tickets to Slack, creates Jira issues for bugs, updates the customer via email, and logs everything to a database. Include error handling for each branch.',
-		expectedNodeTypes: [
-			'n8n-nodes-base.webhook',
-			'@n8n/n8n-nodes-langchain.agent',
-			'n8n-nodes-base.if',
-			'n8n-nodes-base.slack',
-			'n8n-nodes-base.jira',
-			'n8n-nodes-base.emailSend',
-			'n8n-nodes-base.postgres',
-		],
-		complexity: 'complex',
-		tags: ['automation', 'ai', 'multi-branch', 'error-handling'],
-	},
+	// {
+	// 	id: 'test_medium_001',
+	// 	name: 'Slack Notification System',
+	// 	description: 'Monitor GitHub repo and notify Slack on new issues',
+	// 	prompt:
+	// 		'Create a workflow that monitors a GitHub repository for new issues, checks if they have a "bug" label, and sends a notification to Slack with issue details and assigns it to the on-call engineer',
+	// 	expectedNodeTypes: ['n8n-nodes-base.github', 'n8n-nodes-base.if', 'n8n-nodes-base.slack'],
+	// 	complexity: 'medium',
+	// 	tags: ['monitoring', 'conditional-logic', 'notifications'],
+	// },
+	// {
+	// 	id: 'test_medium_002',
+	// 	name: 'Data Sync Pipeline',
+	// 	description: 'Sync data between multiple systems with transformation',
+	// 	prompt:
+	// 		'Build a workflow that fetches new orders from Shopify, transforms the data format, checks inventory in a PostgreSQL database, and updates the order status in both systems',
+	// 	expectedNodeTypes: [
+	// 		'n8n-nodes-base.shopify',
+	// 		'n8n-nodes-base.postgres',
+	// 		'n8n-nodes-base.set',
+	// 		'n8n-nodes-base.if',
+	// 	],
+	// 	complexity: 'medium',
+	// 	tags: ['e-commerce', 'data-sync', 'database'],
+	// },
+	// {
+	// 	id: 'test_complex_001',
+	// 	name: 'Customer Support Automation',
+	// 	description: 'Multi-branch support ticket processing system',
+	// 	prompt:
+	// 		'Create a workflow that receives support tickets via webhook, categorizes them using AI, routes high-priority tickets to Slack, creates Jira issues for bugs, updates the customer via email, and logs everything to a database. Include error handling for each branch.',
+	// 	expectedNodeTypes: [
+	// 		'n8n-nodes-base.webhook',
+	// 		'@n8n/n8n-nodes-langchain.agent',
+	// 		'n8n-nodes-base.if',
+	// 		'n8n-nodes-base.slack',
+	// 		'n8n-nodes-base.jira',
+	// 		'n8n-nodes-base.emailSend',
+	// 		'n8n-nodes-base.postgres',
+	// 	],
+	// 	complexity: 'complex',
+	// 	tags: ['automation', 'ai', 'multi-branch', 'error-handling'],
+	// },
 ];

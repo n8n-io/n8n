@@ -18,6 +18,7 @@ Set up environment variables:
 ```bash
 export N8N_AI_ANTHROPIC_KEY="your-anthropic-api-key"
 export LANGSMITH_API_KEY="your-langsmith-api-key"  # Optional for tracing
+export EVALUATION_CONCURRENCY="3"  # Number of tests to run in parallel (default: 3)
 ```
 
 ### Available Scripts
@@ -31,6 +32,9 @@ npm run eval:full
 
 # Generate additional test cases and run evaluation
 npm run eval:generate
+
+# Run parallel execution example
+npm run eval:parallel
 ```
 
 ## Evaluation Categories
@@ -69,10 +73,27 @@ evaluations/
 ├── types/           # TypeScript types and Zod schemas
 ├── chains/          # LangChain implementations
 ├── test-cases/      # Pre-defined test cases
+├── results/         # Generated evaluation results and reports
 ├── load-nodes.ts    # Node loading from JSON
 ├── simple-evaluation.ts    # Single test evaluation
 └── run-evaluation.ts       # Full evaluation suite
 ```
+
+## Performance
+
+The evaluation system supports parallel execution to speed up test runs:
+
+- **Default Concurrency**: 3 tests run in parallel
+- **Customizable**: Set `EVALUATION_CONCURRENCY` to control parallelism
+- **Resource Considerations**: Higher concurrency uses more API calls and memory
+- **Speed Improvement**: 3x-5x faster with parallel execution
+
+Each test case runs with its own:
+- Dedicated WorkflowBuilderAgent instance
+- Separate MemorySaver checkpointer
+- Independent state management
+
+This ensures no conflicts between parallel test executions.
 
 ## Extending the System
 

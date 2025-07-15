@@ -49,6 +49,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "langsmith": "^0.3.45",
     "n8n-workflow": "workspace:*",
+    "p-limit": "^3.1.0",
     "zod": "catalog:"
   },
   "devDependencies": {

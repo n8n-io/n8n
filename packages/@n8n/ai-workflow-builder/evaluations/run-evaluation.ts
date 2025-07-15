@@ -1,8 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { Client } from 'langsmith';
+import pLimit from 'p-limit';
 import { join } from 'path';
 
 import type { WorkflowState } from '@/workflow-state.js';
@@ -35,9 +36,11 @@ async function runTestCase(
 	agent: WorkflowBuilderAgent,
 	llm: BaseChatModel,
 	testCase: TestCase,
+	index: number,
+	totalTests: number,
 	userId: string = 'test-user',
 ): Promise<TestResult> {
-	console.log(`\n[${testCase.id}] Running test: ${testCase.name}`);
+	console.log(`\n[${index + 1}/${totalTests}] Running test: ${testCase.name} (${testCase.id})`);
 	console.log(`  Prompt: "${testCase.prompt}"`);
 
 	try {
@@ -58,7 +61,9 @@ async function runTestCase(
 			}
 		}
 		const generationTime = Date.now() - startTime;
-		console.log(` Done (${messageCount} messages in ${generationTime}ms)`);
+		console.log(
+			`\n[${index + 1}/${totalTests}] Generation complete for ${testCase.name} (${messageCount} messages in ${generationTime}ms)`,
+		);
 
 		// Get generated workflow
 		const state = await agent.getState(testCase.id, userId);
@@ -73,6 +78,7 @@ async function runTestCase(
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
+		console.log(`[${index + 1}/${totalTests}] Evaluation complete for ${testCase.name}`);
 		console.log(`  Score: ${(evaluationResult.overallScore * 100).toFixed(1)}%`);
 		console.log(
 			`  Nodes: ${generatedWorkflow.nodes.length} (${generatedWorkflow.nodes.map((n) => n.type).join(', ')})`,
@@ -85,7 +91,7 @@ async function runTestCase(
 			generationTime,
 		};
 	} catch (error) {
-		console.error(`  Error: ${error}`);
+		console.error(`[${index + 1}/${totalTests}] Error in ${testCase.name}: ${error}`);
 		return {
 			testCase,
 			generatedWorkflow: { nodes: [], connections: {} },
@@ -227,7 +233,6 @@ async function runFullEvaluation() {
 		// Setup
 		const parsedNodeTypes = loadNodesFromFile();
 		const llm = await setupLLM();
-		const checkpointer = new MemorySaver();
 
 		const tracingClient = new Client({
 			apiKey: process.env.LANGSMITH_API_KEY,
@@ -235,14 +240,6 @@ async function runFullEvaluation() {
 		const tracer = new LangChainTracer({
 			client: tracingClient,
 			projectName: 'workflow-builder-evaluation',
-		});
-
-		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes,
-			llmSimpleTask: llm,
-			llmComplexTask: llm,
-			checkpointer,
-			tracer,
 		});
 
 		// Determine test cases to run
@@ -255,26 +252,56 @@ async function runFullEvaluation() {
 			testCases = [...testCases, ...generatedCases];
 		}
 
-		console.log(`Running ${testCases.length} test cases...\n`);
+		// Get concurrency from environment
+		const concurrency = parseInt(process.env.EVALUATION_CONCURRENCY ?? '3', 10);
+		console.log(`Running ${testCases.length} test cases with concurrency=${concurrency}...\n`);
 
-		// Run all test cases
-		const results: TestResult[] = [];
-		for (const testCase of testCases) {
-			const result = await runTestCase(agent, llm, testCase);
-			results.push(result);
-		}
+		// Create concurrency limiter
+		const limit = pLimit(concurrency);
+
+		// Track progress
+		let completed = 0;
+		const startTime = Date.now();
+
+		// Run all test cases in parallel with concurrency limit
+		const promises = testCases.map(
+			async (testCase, index) =>
+				await limit(async () => {
+					// Create a dedicated agent for this test to avoid state conflicts
+					const testAgent = new WorkflowBuilderAgent({
+						parsedNodeTypes,
+						llmSimpleTask: llm,
+						llmComplexTask: llm,
+						checkpointer: new MemorySaver(), // Each test gets its own checkpointer
+						tracer,
+					});
+
+					const result = await runTestCase(testAgent, llm, testCase, index, testCases.length);
+					completed++;
+					console.log(
+						`\n=== Progress: ${completed}/${testCases.length} completed (${((completed / testCases.length) * 100).toFixed(1)}%) ===\n`,
+					);
+					return result;
+				}),
+		);
+
+		const results = await Promise.all(promises);
+		const totalTime = Date.now() - startTime;
+		console.log(`\n=== All tests completed in ${(totalTime / 1000).toFixed(1)}s ===`);
+
+		// Ensure results directory exists
+		const resultsDir = join(__dirname, 'results');
+		mkdirSync(resultsDir, { recursive: true });
 
 		// Generate and save report
 		const report = generateReport(results);
-		const reportPath = join(__dirname, `results/evaluation-report-${new Date().toISOString()}.md`);
+		const timestamp = new Date().toISOString().replace(/:/g, '-');
+		const reportPath = join(resultsDir, `evaluation-report-${timestamp}.md`);
 		writeFileSync(reportPath, report);
 		console.log(`\nReport saved to: ${reportPath}`);
 
 		// Save detailed results as JSON
-		const resultsPath = join(
-			__dirname,
-			`results/evaluation-results-${new Date().toISOString()}.json`,
-		);
+		const resultsPath = join(resultsDir, `evaluation-results-${timestamp}.json`);
 		writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 		console.log(`Detailed results saved to: ${resultsPath}`);
 
