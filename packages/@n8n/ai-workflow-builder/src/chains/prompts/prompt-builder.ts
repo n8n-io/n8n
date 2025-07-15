@@ -167,12 +167,7 @@ export class ParameterUpdatePromptBuilder {
 
 		const checkProperties = (properties: INodeProperties[]): boolean => {
 			for (const prop of properties) {
-				if (prop.type === 'resourceLocator') return true;
-				if (prop.type === 'fixedCollection' && prop.typeOptions?.multipleValues === false) {
-					if (prop.options && Array.isArray(prop.options)) {
-						if (checkProperties(prop.options as INodeProperties[])) return true;
-					}
-				}
+				if (prop.type === 'resourceLocator' || prop.type === 'fixedCollection') return true;
 			}
 			return false;
 		};
