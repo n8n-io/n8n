@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.104.0
+
+### What changed?
+
+Before, the `N8N_RUNNERS_ENABLED` flag routes JavaScript code executions to the task runner. Now, this flag routes both JavaScript and Python code executions to the task runner. This offloads work from the main process and makes it more secure, at the cost of increased resource usage in the runner. The flag `N8N_RUNNERS_INSECURE_MODE` applies to both JavaScript and Python code executions in the runner.
+
+### When is action necessary?
+
+If you find that the task runner does not support a Python library that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`, at your own risk.
+
 ## 1.102.0
 
 ### What changed?
