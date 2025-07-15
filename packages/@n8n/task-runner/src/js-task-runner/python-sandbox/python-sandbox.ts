@@ -52,10 +52,6 @@ class Helpers:
     async def request(self, uri_or_object, options=None):
         result = await self._js_helpers.request(uri_or_object, options)
         return result.to_py()
-    
-    async def getStoragePath(self):
-        result = await self._js_helpers.getStoragePath()
-        return result
 
 helpers = Helpers()
 `;
