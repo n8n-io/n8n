@@ -10,7 +10,7 @@ import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -63,6 +63,19 @@ import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 import { MfaService } from './mfa/mfa.service';
+
+// Add path to chat bundle directory
+const CHAT_BUNDLE_DIST_DIR = join(
+	__dirname,
+	'..',
+	'..',
+	'..',
+	'packages',
+	'frontend',
+	'@n8n',
+	'chat',
+	'dist',
+);
 
 @Service()
 export class Server extends AbstractServer {
@@ -301,6 +314,15 @@ export class Server extends AbstractServer {
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
 
+		// Serve chat bundle files directly
+		this.app.get('/chat/style.css', (req, res) => {
+			res.sendFile(join(CHAT_BUNDLE_DIST_DIR, 'style.css'));
+		});
+
+		this.app.get('/chat/chat.bundle.es.js', (req, res) => {
+			res.sendFile(join(CHAT_BUNDLE_DIST_DIR, 'chat.bundle.es.js'));
+		});
+
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			this.app.post(
@@ -454,6 +476,9 @@ export class Server extends AbstractServer {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				}
 			};
+
+			// Serve chat bundle files first (before generic routes)
+			this.app.use('/chat', express.static(CHAT_BUNDLE_DIST_DIR, cacheOptions));
 
 			this.app.use(
 				'/',

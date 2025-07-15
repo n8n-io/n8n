@@ -2,7 +2,7 @@ import { nextTick } from 'vue';
 import type { Ref } from 'vue';
 
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatMessageText, ChatMessageRich, RichContent } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText, ChatMessageRich } from '@n8n/chat/types';
 import type { StructuredChunk } from '@n8n/chat/types/streaming';
 
 import type { StreamingMessageManager } from './streaming';
