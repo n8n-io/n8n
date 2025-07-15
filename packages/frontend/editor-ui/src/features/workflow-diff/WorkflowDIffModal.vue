@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import Edge from '@/components/canvas/elements/edges/CanvasEdge.vue';
 import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
+import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
-import { useProvideViewportSync } from '@/composables/useViewportSync';
-import { compareWorkflowsNodes, NodeDiffStatus } from '@/composables/useWorkflowDiff';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
+import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
+import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync';
+import { compareWorkflowsNodes, NodeDiffStatus } from '@/features/workflow-diff/useWorkflowDiff';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -18,8 +20,6 @@ import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import Modal from './Modal.vue';
-import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
@@ -254,7 +254,12 @@ const tabs = computed(() => [
 		<template #header="{ closeDialog }">
 			<div style="display: flex; align-items: center; justify-content: space-between">
 				<div style="display: flex; align-items: center">
-					<button type="button" @click="closeDialog">close</button>
+					<N8nIconButton
+						icon="arrow-left"
+						type="secondary"
+						class="mr-xs"
+						@click="closeDialog"
+					></N8nIconButton>
 					<n8n-heading tag="h1" size="xlarge">
 						{{
 							topWorkFlow.state.value?.workflow?.name || bottomWorkFlow.state.value?.workflow?.name

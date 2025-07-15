@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { useInjectViewportSync } from '@/composables/useViewportSync';
+import { useInjectViewportSync } from '@/features/workflow-diff/useViewportSync';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import type { MaybeRefOrGetter } from 'vue';
 import { watch } from 'vue';
 const props = defineProps<{
 	id: string;
-	nodes: MaybeRefOrGetter<CanvasNode[]>;
-	connections: MaybeRefOrGetter<CanvasConnection[]>;
+	nodes: CanvasNode[];
+	connections: CanvasConnection[];
 }>();
 const {
 	setViewport,

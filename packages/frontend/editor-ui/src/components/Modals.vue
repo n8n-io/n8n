@@ -76,10 +76,10 @@ import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManage
 import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
-import WorkflowDIffModal from '@/components/WorkflowDIffModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
+import WorkflowDIffModal from '@/features/workflow-diff/WorkflowDIffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 </script>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NodeDiffStatus } from '@/composables/useWorkflowDiff';
+import { NodeDiffStatus } from '@/features/workflow-diff/useWorkflowDiff';
 import { computed } from 'vue';
 const props = defineProps<{
 	type: NodeDiffStatus;
