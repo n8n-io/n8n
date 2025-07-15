@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	INodeTypeDescription,
 	INodePropertyOptions,
+	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 import {
@@ -14,10 +15,12 @@ import {
 	nameIsParameter,
 	formatAsExpression,
 	parseFromExpression,
+	setValue,
 	shouldSkipParamValidation,
 } from './nodeSettingsUtils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
+import { type Ref, ref } from 'vue';
 
 describe('updateDynamicConnections', () => {
 	afterAll(() => {
@@ -551,5 +554,49 @@ describe('shouldSkipParamValidation', () => {
 				expect(result).toBe(false);
 			});
 		});
+	});
+});
+
+describe('setValue', () => {
+	let nodeValues: Ref<INodeParameters>;
+	beforeEach(() => {
+		nodeValues = ref({
+			color: '#ff0000',
+			alwaysOutputData: false,
+			executeOnce: false,
+			notesInFlow: false,
+			onError: 'stopWorkflow',
+			retryOnFail: false,
+			maxTries: 3,
+			waitBetweenTries: 1000,
+			notes: '',
+			parameters: {},
+		});
+	});
+
+	it('mutates nodeValues as expected', () => {
+		setValue(nodeValues, 'color', '#ffffff');
+
+		expect(nodeValues.value.color).toBe('#ffffff');
+		expect(nodeValues.value.parameters).toEqual({});
+
+		setValue(nodeValues, 'parameters.key', 3);
+
+		expect(nodeValues.value.parameters).toEqual({ key: 3 });
+
+		nodeValues.value = { parameters: { some: { nested: {} } } };
+		setValue(nodeValues, 'parameters.some.nested.key', true);
+
+		expect(nodeValues.value.parameters).toEqual({
+			some: { nested: { key: true } },
+		});
+
+		setValue(nodeValues, 'parameters', null);
+
+		expect(nodeValues.value.parameters).toBe(undefined);
+
+		setValue(nodeValues, 'newProperty', 'newValue');
+
+		expect(nodeValues.value.newProperty).toBe('newValue');
 	});
 });
