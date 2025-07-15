@@ -2,13 +2,13 @@
 import sanitizeHtml, { defaults, type IOptions as SanitizeOptions } from 'sanitize-html';
 
 const sanitizeOptions: SanitizeOptions = {
-	allowVulnerableTags: ['style'],
+	allowVulnerableTags: false, // ✅ SECURITY FIX: Remove vulnerable tags
 	enforceHtmlBoundary: false,
 	disallowedTagsMode: 'discard',
-	allowedTags: [...defaults.allowedTags, 'style', 'img', 'title'],
+	allowedTags: [...defaults.allowedTags, 'img', 'title'], // ✅ Remove 'style' tag
 	allowedAttributes: {
 		...defaults.allowedAttributes,
-		'*': ['class', 'style'],
+		'*': ['class', 'style'], // Keep inline styles for safe styling
 	},
 	transformTags: {
 		head: '',
