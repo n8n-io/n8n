@@ -95,11 +95,7 @@ export const createHtmlSandboxTransformStream = () => {
 
 		flush(done: TransformCallback) {
 			try {
-				if (isFirstChunk) {
-					// To handle empty input
-					this.push(prefix);
-				}
-				this.push(suffix);
+				this.push(isFirstChunk ? Buffer.concat([prefix, suffix]) : suffix);
 				done();
 			} catch (error) {
 				done(error as Error);
