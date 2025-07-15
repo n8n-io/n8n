@@ -32,6 +32,15 @@ export async function saveExecutionProgress(
 			return;
 		}
 
+		if (fullExecutionData.status === 'canceled') {
+			// If the execution was canceled, we do not save any progress
+			logger.debug(`Execution ${executionId} was canceled, skipping save progress`, {
+				executionId,
+				nodeName,
+			});
+			return;
+		}
+
 		if (fullExecutionData.finished) {
 			// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
 			// that was left behind. We skip saving because the other call should have saved everything
