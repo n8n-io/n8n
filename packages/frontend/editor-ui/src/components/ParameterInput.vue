@@ -417,17 +417,19 @@ const getIssues = computed<string[]>(() => {
 		['options', 'multiOptions'].includes(props.parameter.type) &&
 		!remoteParameterOptionsLoading.value &&
 		remoteParameterOptionsLoadingIssues.value === null &&
-		parameterOptions.value
+		parameterOptions.value &&
+		(!isModelValueExpression.value || props.expressionEvaluated !== null)
 	) {
-		// Check if the value resolves to a valid option
-		// Currently it only displays an error in the node itself in
+		// Check if the value resolves to a valid option.
+		// For expressions do not validate if there is no evaluated value.
+		// Currently, it only displays an error in the node itself in
 		// case the value is not valid. The workflow can still be executed
 		// and the error is not displayed on the node in the workflow
 		const validOptions = parameterOptions.value.map((options) => options.value);
 
 		let checkValues: string[] = [];
 
-		if (!shouldSkipParamValidation(displayValue.value)) {
+		if (!shouldSkipParamValidation(props.parameter, displayValue.value)) {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
