@@ -37,7 +37,6 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
-import { Errors } from '@oclif/core';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -283,7 +282,7 @@ export abstract class BaseCommand<F = never> {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
 		}
-		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
+		const exitCode = error ? 1 : 0;
 		process.exit(exitCode);
 	}
 
