@@ -357,6 +357,7 @@ watch(
 							v-if="editorType === 'codeNodeEditor'"
 							:id="resolvedParameter.parameterPath"
 							ref="inputField"
+							:class="$style.heightFull"
 							:mode="codeEditorMode"
 							:model-value="resolvedParameter.value"
 							:default-value="resolvedParameter.parameter.default"
@@ -521,5 +522,9 @@ watch(
 			}
 		}
 	}
+}
+
+.heightFull {
+	height: 100%;
 }
 </style>
