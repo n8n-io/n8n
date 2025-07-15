@@ -30,7 +30,13 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 ```
 
 Access the editor at http://localhost:5678
+## ☁️ One-Click Deploy to the Cloud
 
+| Platform | Deploy |
+|----------|--------|
+| **Render**  | [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/maruf009sultan/n8n) |
+| **Heroku**  | [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/maruf009sultan/n8n) |
+| **Railway** | [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/7IisQg?referralCode=fbROj8) |
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
