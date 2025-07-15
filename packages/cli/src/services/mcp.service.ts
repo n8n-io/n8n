@@ -40,25 +40,6 @@ export class McpService {
 				inputSchema: { workflowId: z.string().describe('The ID of the workflow to retrieve') },
 			},
 			async ({ workflowId }) => {
-				/*
-				TODO: Check these cases:
-					- [X] Non-active workflows
-					- [X] Archived workflows
-					- [X] Not available in MCP workflows
-					- [X] Different HTTP methods
-					- [X] Request payloads
-					- [X] Webhooks with auth
-						- [X] Basic auth
-						- [X] Header auth
-						- [X] JWT
-					- [X] With respond to webhook
-					- [X] Respond immediately
-					- [X] Respond when last node is executed
-					- [X] Multiple webhooks
-					- [X] Disabled webhooks
-					- [X] Other triggers
-					- [ ] Sub-workflows
-				*/
 				const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -79,8 +60,6 @@ export class McpService {
 					// TODO: Fix complexity
 					// eslint-disable-next-line complexity
 					const webhookPromises = webhooks.map(async (node, index) => {
-						console.log('== WEBHOOK ==>', node);
-
 						// TODO: Refactor
 						// Extract credentials information so we can prove key names that are required
 						let credentialsInfo: string | null = null;
@@ -178,8 +157,6 @@ export class McpService {
 				workflow.nodes.forEach((node) => {
 					node.credentials = undefined;
 				});
-
-				console.log(triggerNotice);
 
 				return {
 					content: [

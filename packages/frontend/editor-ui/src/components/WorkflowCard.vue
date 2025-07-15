@@ -439,34 +439,40 @@ const tags = computed(
 			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small">
-				<span v-show="data"
-					>{{ locale.baseText('workflows.item.updated') }}
-					<TimeAgo :date="String(data.updatedAt)" /> |
-				</span>
-				<span v-show="data" class="mr-2xs"
-					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-					<span v-if="data.settings?.availableInMCP">|</span>
-				</span>
-				<span v-show="data.settings?.availableInMCP" :class="$style['description-cell']">
-					<!-- <n8n-icon icon="check" color="success"></n8n-icon> -->
-					<n8n-text size="small">{{ locale.baseText('workflows.item.availableInMCP') }}</n8n-text>
-				</span>
-				<span
-					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
-					v-show="data"
-					:class="$style.cardTags"
+			<span v-show="data"
+				>{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" /> |
+			</span>
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+				<span v-if="data.settings?.availableInMCP">|</span>
+			</span>
+			<span
+				v-show="data.settings?.availableInMCP"
+				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+			>
+				<n8n-tooltip
+					placement="right"
+					:content="locale.baseText('workflows.item.availableInMCP')"
+					data-test-id="workflow-card-mcp-tooltip"
 				>
-					<n8n-tags
-						:tags="tags"
-						:truncate-at="3"
-						truncate
-						data-test-id="workflow-card-tags"
-						@click:tag="onClickTag"
-						@expand="onExpandTags"
-					/>
-				</span>
-			</n8n-text>
+					<n8n-icon icon="mcp" size="medium"></n8n-icon>
+				</n8n-tooltip>
+			</span>
+			<span
+				v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
+				v-show="data"
+				:class="$style.cardTags"
+			>
+				<n8n-tags
+					:tags="tags"
+					:truncate-at="3"
+					truncate
+					data-test-id="workflow-card-tags"
+					@click:tag="onClickTag"
+					@expand="onExpandTags"
+				/>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -561,6 +567,9 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+	gap: var(--spacing-2xs);
 }
 
 .cardTags {
@@ -595,6 +604,15 @@ const tags = computed(
 	background-color: var(--color-background-light);
 	border-color: var(--color-foreground-light);
 	color: var(--color-text-base);
+}
+
+.description-cell--mcp {
+	display: inline-flex;
+	align-items: center;
+
+	&:hover {
+		color: var(--color-text-base);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

@@ -123,7 +123,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 	menuItems.push({
 		id: 'settings-mcp',
-		icon: 'robot',
+		icon: 'mcp',
 		label: i18n.baseText('settings.mcp.sidebar.item'),
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.MCP_SETTINGS),

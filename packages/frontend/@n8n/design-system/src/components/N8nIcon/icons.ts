@@ -2,6 +2,7 @@ import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Json from './custom/json.svg';
+import Mcp from './custom/mcp.svg';
 import PopOut from './custom/pop-out.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
@@ -208,6 +209,7 @@ export const deprecatedIconSet = {
 	toolbox: Toolbox,
 	spinner: Spinner,
 	xmark: IconLucideX,
+	mcp: Mcp,
 
 	// fontAwesomeIcons
 	'caret-up': IconLucideChevronUp,
