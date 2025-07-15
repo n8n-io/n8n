@@ -561,14 +561,8 @@ export class CodeTaskRunner extends TaskRunner {
 
 			// freeze prototypes at context level - we cannot do so at runner level because
 			// the runner handles also Python tasks and Pyodide needs to be able to mutate prototypes
-			`(() => {
-				Object.getOwnPropertyNames(globalThis)
-					.map((name) => globalThis[name])
-					.filter((value) => typeof value === 'function')
-					.forEach((fn) => Object.freeze(fn.prototype));
-
-				__freeze_targets__.forEach((constructor) => Object.freeze(constructor.prototype));
-			  })()`,
+			// (must be a single line to avoid line number mismatches in stack trace)
+			'(() => { Object.getOwnPropertyNames(globalThis).map((name) => globalThis[name]).filter((value) => typeof value === "function").forEach((fn) => Object.freeze(fn.prototype)); __freeze_targets__.forEach((constructor) => Object.freeze(constructor.prototype)); })()',
 
 			// prevent prototype manipulation
 			'Object.getPrototypeOf = () => ({})',
