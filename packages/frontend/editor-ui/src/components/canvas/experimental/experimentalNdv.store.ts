@@ -41,7 +41,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.0000001;
+		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
 	}
 
 	function focusNode(nodeId: string) {
