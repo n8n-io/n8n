@@ -51,9 +51,9 @@ export class McpService {
 						- [X] Basic auth
 						- [X] Header auth
 						- [X] JWT
-					- [ ] With respond to webhook
-					- [ ] Respond immediately
-					- [ ] Respond when last node is executed
+					- [X] With respond to webhook
+					- [X] Respond immediately
+					- [X] Respond when last node is executed
 					- [X] Multiple webhooks
 					- [X] Disabled webhooks
 					- [X] Other triggers
@@ -79,6 +79,8 @@ export class McpService {
 					// TODO: Fix complexity
 					// eslint-disable-next-line complexity
 					const webhookPromises = webhooks.map(async (node, index) => {
+						console.log('== WEBHOOK ==>', node);
+
 						// TODO: Refactor
 						// Extract credentials information so we can prove key names that are required
 						let credentialsInfo: string | null = null;
@@ -92,7 +94,7 @@ export class McpService {
 								// For header auth, get credential by id to get the expected header name
 								const id = node.credentials?.httpHeaderAuth?.id;
 								if (id) {
-									// TODO: Fix these type castings
+									// TODO: Fix these type castings (check correct type for credentials)
 									const creds = await this.credentialsService.getOne(user, id, true);
 									if (creds && 'data' in creds && (creds as any).data?.name) {
 										credentialsInfo = `\n\t - This webhook requires a header with name "${(creds as any).data.name}" and a value that should be provided by the user.`;
@@ -115,12 +117,44 @@ export class McpService {
 								}
 							}
 						}
+
+						const responseMode = node.parameters.responseMode as string | undefined;
+						let responseModeInfo =
+							'Webhook is configured to respond immediately with the message "Workflow got started."';
+						if (responseMode === 'responseNode') {
+							responseModeInfo =
+								'Webhook is configured to respond using "Respond to Webhook" node.';
+						} else if (responseMode === 'lastNode') {
+							// [undefined = firstEntryJSOn], allEntries, firstEntryBinary, noData
+							const responseData = node.parameters.responseData as string | undefined;
+							responseModeInfo =
+								'Webhook is configured to respond when the last node is executed. ';
+							switch (responseData) {
+								case 'allEntries':
+									responseModeInfo +=
+										'Returns all the entries of the last node. Always returns an array.';
+									break;
+								case 'firstEntryBinary':
+									responseModeInfo +=
+										'Returns the binary data of the first entry of the last node. Always returns a binary file.';
+									break;
+								case 'noData':
+									responseModeInfo += 'Returns without a body.';
+									break;
+								default:
+									responseModeInfo +=
+										'Returns the JSON data of the first entry of the last node. Always returns a JSON object.';
+									break;
+							}
+						}
+
 						return `
 								<trigger ${index + 1}>
 								\t - Node name: ${node.name}
 								\t - Base URL: ${this.urlService.baseUrl}
 								\t - PATH: ${workflow.active ? '/webhook/' : '/webhook-test/'}${node.parameters.path as string}
 								\t - HTTP Method: ${(node.parameters.httpMethod as string) ?? 'GET'}
+								\t - Response Mode: ${responseModeInfo}
 								${
 									credentialsInfo
 										? `\t - Credentials: ${credentialsInfo}`
@@ -144,6 +178,8 @@ export class McpService {
 				workflow.nodes.forEach((node) => {
 					node.credentials = undefined;
 				});
+
+				console.log(triggerNotice);
 
 				return {
 					content: [
