@@ -46,7 +46,7 @@ export class I18nClass {
 	}
 
 	get locale() {
-		return i18nInstance.global.locale;
+		return i18nInstance.global.locale.value;
 	}
 
 	// ----------------------------------
