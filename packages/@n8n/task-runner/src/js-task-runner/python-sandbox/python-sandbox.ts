@@ -62,15 +62,7 @@ export class PythonSandbox extends CodeSandbox {
 		helpers: IExecuteFunctions['helpers'],
 		private readonly mode: 'secure' | 'insecure',
 	) {
-		super(
-			{
-				object: {
-					singular: 'dictionary',
-					plural: 'dictionaries',
-				},
-			},
-			helpers,
-		);
+		super(helpers);
 		// Since python doesn't allow variable names starting with `$`,
 		// rename them to all to start with `_` instead
 		this.context = Object.keys(context).reduce((acc, key) => {
