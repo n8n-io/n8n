@@ -94,7 +94,7 @@ export class PythonSandbox extends CodeSandbox {
 		return await this.runCodeInPython<INodeExecutionData[]>();
 	}
 
-	async runCodeEachItem(itemIndex: number) {
+	async runCodeEachItem(_itemIndex: number /* ignored as in Code node */) {
 		return await this.runCodeInPython<INodeExecutionData>();
 	}
 
