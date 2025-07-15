@@ -15,7 +15,7 @@ export const newTaskParamsWithSettings = (
 ): TaskParams<CodeExecSettings> => ({
 	taskId: '1',
 	settings: {
-		language: 'javaScript',
+		language: 'javascript',
 		workflowMode: 'manual',
 		continueOnFail: false,
 		...settings,
@@ -59,7 +59,7 @@ export const newDataRequestResponse = (
 		name: 'JsCode',
 		parameters: {
 			mode: 'runOnceForEachItem',
-			language: 'javaScript',
+			language: 'javascript',
 			jsCode: 'return item',
 		},
 		type: 'n8n-nodes-base.code',

@@ -2,14 +2,14 @@
 
 import isObject from 'lodash/isObject';
 import set from 'lodash/set';
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Interval, Duration } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
 import {
 	WorkflowDataProxy,
 	Workflow,
 	ObservableObject,
-	Expression,
 	jsonStringify,
+	Expression,
 } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
@@ -62,7 +62,7 @@ export interface RpcCallObject {
 
 export interface CodeExecSettings {
 	code: string;
-	language: 'javaScript' | 'python';
+	language: 'javascript' | 'python';
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -150,24 +150,6 @@ export class CodeTaskRunner extends TaskRunner {
 		}
 	}
 
-	private freezePrototypes() {
-		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
-		if (process.env.NODE_ENV !== 'test') {
-			Object.getOwnPropertyNames(globalThis)
-				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				.map((name) => globalThis[name])
-				.filter((value) => typeof value === 'function')
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.forEach((fn) => Object.freeze(fn.prototype));
-		}
-
-		// Freeze internal classes
-		[Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration]
-			.map((constructor) => constructor.prototype)
-			.forEach(Object.freeze);
-	}
-
 	async executeTask(
 		taskParams: TaskParams<CodeExecSettings>,
 		abortSignal: AbortSignal,
@@ -176,10 +158,6 @@ export class CodeTaskRunner extends TaskRunner {
 		a.ok(settings, 'Code not sent to runner');
 
 		this.validateTaskSettings(settings);
-
-		if (settings.language === 'javaScript' && this.mode === 'secure' && !this.arePrototypesFrozen) {
-			this.freezePrototypes();
-		}
 
 		let neededBuiltIns: BuiltInsParserState;
 
@@ -574,6 +552,7 @@ export class CodeTaskRunner extends TaskRunner {
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
+			__freeze_targets__: [Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration],
 		});
 	}
 
@@ -581,6 +560,17 @@ export class CodeTaskRunner extends TaskRunner {
 		return [
 			// shim for `global` compatibility
 			'globalThis.global = globalThis',
+
+			// freeze prototypes at context level - we cannot do so at runner level because
+			// the runner handles also Python tasks and Pyodide needs to be able to mutate prototypes
+			`(() => {
+				Object.getOwnPropertyNames(globalThis)
+					.map((name) => globalThis[name])
+					.filter((value) => typeof value === 'function')
+					.forEach((fn) => Object.freeze(fn.prototype));
+
+				__freeze_targets__.forEach((constructor) => Object.freeze(constructor.prototype));
+			  })()`,
 
 			// prevent prototype manipulation
 			'Object.getPrototypeOf = () => ({})',
