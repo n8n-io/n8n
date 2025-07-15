@@ -30,8 +30,9 @@ describe('JsTaskRunnerSandbox', () => {
 			const calls = executeFunctions.startJob.mock.calls;
 			expect(calls).toEqual([
 				[
-					'javascript',
+					'code',
 					{
+						language: 'javascript',
 						code,
 						nodeMode,
 						workflowMode,
@@ -41,8 +42,9 @@ describe('JsTaskRunnerSandbox', () => {
 					0,
 				],
 				[
-					'javascript',
+					'code',
 					{
+						language: 'javascript',
 						code,
 						nodeMode,
 						workflowMode,
@@ -52,8 +54,9 @@ describe('JsTaskRunnerSandbox', () => {
 					0,
 				],
 				[
-					'javascript',
+					'code',
 					{
+						language: 'javascript',
 						code,
 						nodeMode,
 						workflowMode,
