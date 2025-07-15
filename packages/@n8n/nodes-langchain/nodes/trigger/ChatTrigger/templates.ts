@@ -49,6 +49,7 @@ export function createPage({
 	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
 		allowedTags: ['style'],
 		allowedAttributes: false,
+		allowVulnerableTags: ['style'],
 	});
 
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
