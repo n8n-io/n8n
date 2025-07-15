@@ -1,14 +1,14 @@
 import { Container, Service } from '@n8n/di';
 
 import { OnShutdown } from '../on-shutdown';
-import { ShutdownRegistryMetadata } from '../shutdown-registry-metadata';
+import { ShutdownMetadata } from '../shutdown-metadata';
 
 describe('OnShutdown', () => {
-	let shutdownRegistryMetadata: ShutdownRegistryMetadata;
+	let shutdownRegistryMetadata: ShutdownMetadata;
 
 	beforeEach(() => {
-		shutdownRegistryMetadata = new ShutdownRegistryMetadata();
-		Container.set(ShutdownRegistryMetadata, shutdownRegistryMetadata);
+		shutdownRegistryMetadata = new ShutdownMetadata();
+		Container.set(ShutdownMetadata, shutdownRegistryMetadata);
 		jest.spyOn(shutdownRegistryMetadata, 'register');
 	});
 

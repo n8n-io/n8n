@@ -113,6 +113,15 @@ export class ModuleRegistry {
 		}
 	}
 
+	async shutdownModule(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.getEntries().find(([name]) => name === moduleName)?.[1];
+
+		if (!moduleEntry) throw new MissingModuleError(moduleName);
+
+		await Container.get(moduleEntry.class).shutdown?.();
+		this.logger.debug(`Shut down module "${moduleName}"`);
+	}
+
 	isActive(moduleName: ModuleName) {
 		return this.activeModules.includes(moduleName);
 	}
