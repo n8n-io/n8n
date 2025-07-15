@@ -74,7 +74,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		void vueFlow.setCenter(
 			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
 			nodeToFocus.position[1] + 80,
-			{ duration: 200, zoom: maxCanvasZoom.value, interpolate: 'linear' },
+			{ duration: 200, zoom: maxCanvasZoom.value },
 		);
 	}
 
