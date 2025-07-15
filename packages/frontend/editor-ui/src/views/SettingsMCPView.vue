@@ -23,16 +23,22 @@ const availableWorkflows = ref<WorkflowResource[]>([]);
 
 const tableHeaders = ref<Array<TableHeader<WorkflowResource>>>([
 	{
-		title: 'Id',
-		key: 'id',
-		width: 150,
-		value: (row) => row.id,
-	},
-	{
 		title: 'Name',
 		key: 'name',
 		width: 300,
 		value: (row) => row.name,
+	},
+	{
+		title: 'Parent Folder',
+		key: 'parentFolder',
+		width: 200,
+		value: (row) => row.parentFolder?.name || '-',
+	},
+	{
+		title: 'Home Project',
+		key: 'homeProject',
+		width: 200,
+		value: (row) => row.homeProject?.name || '-',
 	},
 	{
 		title: 'Active',
@@ -109,9 +115,15 @@ const onWorkflowAction = async (action: string, workflow: WorkflowResource) => {
 	});
 };
 
-onMounted(() => {
+const onAddWorkflow = () => {
+	toast.showMessage({
+		title: '🚧 Coming soon',
+	});
+};
+
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp.heading'));
-	fetchAvailableWorkflows();
+	await fetchAvailableWorkflows();
 });
 </script>
 <template>
@@ -177,10 +189,11 @@ onMounted(() => {
 				/>
 			</div>
 			<div v-else class="mt-s mb-xl">
-				<div class="mb-s">
+				<div :class="[$style.header, 'mb-s']">
 					<n8n-heading size="medium" :bold="true">
 						{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
 					</n8n-heading>
+					<n8n-button @click="onAddWorkflow">{{ i18n.baseText('workflows.add') }}</n8n-button>
 				</div>
 				<N8nDataTableServer
 					:headers="tableHeaders"
@@ -206,6 +219,11 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-l);
+
+	// TODO: Find a better way to disable pagination
+	:global(.table-pagination) {
+		display: none;
+	}
 }
 
 .headingContainer {
@@ -236,6 +254,12 @@ onMounted(() => {
 	justify-content: flex-end;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .connectionStringLabel {
