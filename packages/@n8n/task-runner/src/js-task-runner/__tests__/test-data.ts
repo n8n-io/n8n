@@ -2,7 +2,7 @@ import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-work
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { CodeExecSettings } from '@/js-task-runner/js-task-runner';
+import type { CodeExecSettings } from '@/js-task-runner/code-task-runner';
 import type { DataRequestResponse } from '@/runner-types';
 import type { TaskParams } from '@/task-runner';
 import { TaskState } from '@/task-state';

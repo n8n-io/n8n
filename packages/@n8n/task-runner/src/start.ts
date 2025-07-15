@@ -3,7 +3,7 @@ import { ensureError, setGlobalState } from 'n8n-workflow';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
-import { CodeTaskRunner } from './js-task-runner/js-task-runner';
+import { CodeTaskRunner } from './js-task-runner/code-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
 
 let healthCheckServer: HealthCheckServer | undefined;

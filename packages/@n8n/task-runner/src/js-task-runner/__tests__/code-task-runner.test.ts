@@ -11,11 +11,11 @@ import { builtinModules } from 'node:module';
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
+import type { CodeExecSettings } from '@/js-task-runner/code-task-runner';
+import { CodeTaskRunner } from '@/js-task-runner/code-task-runner';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import type { CodeExecSettings } from '@/js-task-runner/js-task-runner';
-import { CodeTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
 	UNSUPPORTED_HELPER_FUNCTIONS,
 	type DataRequestResponse,
