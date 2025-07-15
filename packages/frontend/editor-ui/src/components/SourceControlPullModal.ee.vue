@@ -171,13 +171,12 @@ function openDiffModal(id: string) {
 								<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
 									{{ getStatusText(item.status) }}
 								</N8nBadge>
-								<button
+								<N8nIconButton
 									v-if="item.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-									type="button"
+									icon="git-branch"
+									type="secondary"
 									@click="openDiffModal(item.id)"
-								>
-									diff
-								</button>
+								/>
 							</div>
 						</DynamicScrollerItem>
 					</template>
