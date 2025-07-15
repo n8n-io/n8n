@@ -681,7 +681,10 @@ export class CodeTaskRunner extends TaskRunner {
 		const workflow = new Workflow({ ...data.workflow, nodeTypes: this.nodeTypes });
 
 		return {
-			// @ts-expect-error @TODO: $getNodeParameter doesn't work on master
+			// @ts-expect-error `$getNodeParameter` is not a `helper` and is of very limited use
+			// (allows to query for code, language, mode) and is currently broken on master for
+			// the JS runner, and has no autocompletion, so we skip it in the Python runner.
+			// In future we may decide not to support `$getNodeParameter` at all.
 			$getNodeParameter: undefined,
 			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
 			helpers,
