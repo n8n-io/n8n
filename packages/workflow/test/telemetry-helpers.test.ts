@@ -424,6 +424,79 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test.only('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: false })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
 	test('should return node graph with agent tool node and prompt text when cloud telemetry is enabled', () => {
 		const optionalPrompts = {
 			humanMessage: 'Human message',
