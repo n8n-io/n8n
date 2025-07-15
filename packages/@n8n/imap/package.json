@@ -1,6 +1,6 @@
 {
   "name": "@n8n/imap",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -34,6 +34,6 @@
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
     "@types/uuencode": "^0.0.3",
-     "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:"
   }
 }
