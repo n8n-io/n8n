@@ -147,7 +147,13 @@ export class WorkflowBuilderAgent {
 
 		return workflow;
 	}
-
+	async getState(workflowId: string, userId?: string) {
+		const workflow = this.createWorkflow();
+		const agent = workflow.compile({ checkpointer: this.checkpointer });
+		return await agent.getState({
+			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
+		});
+	}
 	async *chat(payload: ChatPayload, userId?: string) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 
