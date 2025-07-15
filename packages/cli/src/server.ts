@@ -278,7 +278,7 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
-			this.app.get('/config.js', (_req, res) => {
+			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
 				const frontendSentryConfig = JSON.stringify({
 					dsn: this.globalConfig.sentry.frontendDsn,
 					environment: process.env.ENVIRONMENT || 'development',
