@@ -258,7 +258,11 @@ export function generateNodesGraph(
 
 			if (node.typeVersion >= 2.1) {
 				const options = node.parameters?.options;
-				if (options?.['enableStreaming'] === false) {
+				if (
+					typeof options === 'object' &&
+					'enableStreaming' in options &&
+					options.enableStreaming === false
+				) {
 					nodeItem.is_streaming = false;
 				} else {
 					nodeItem.is_streaming = true;
