@@ -424,7 +424,7 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
-	test.only('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
+	test('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
 		const optionalPrompts = {
 			humanMessage: 'Human message',
 			systemMessage: 'System message',
