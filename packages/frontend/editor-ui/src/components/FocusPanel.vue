@@ -62,6 +62,7 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
+const focusPanelHidden = computed(() => focusPanelStore.focusPanelHidden);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
@@ -302,7 +303,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
+	<div v-if="focusPanelActive" v-show="!focusPanelHidden" :class="$style.wrapper" @keydown.stop>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
