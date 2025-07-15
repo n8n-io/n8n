@@ -595,7 +595,7 @@ export class CodeTaskRunner extends TaskRunner {
 		taskId: string,
 		settings: CodeExecSettings,
 		data: JsTaskData,
-		abortSignal: AbortSignal,
+		_abortSignal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const helpers = this.pythonHelpers(taskId);
 		const context = this.pythonContext(data, data.itemIndex, helpers);
@@ -607,7 +607,6 @@ export class CodeTaskRunner extends TaskRunner {
 		});
 
 		try {
-			// @TODO: Abort signal handling
 			return await sandbox.runCodeAllItems();
 		} catch (e) {
 			const error = this.toExecutionErrorIfNeeded(e);
@@ -622,7 +621,7 @@ export class CodeTaskRunner extends TaskRunner {
 		taskId: string,
 		settings: CodeExecSettings,
 		data: JsTaskData,
-		abortSignal: AbortSignal,
+		_abortSignal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
@@ -643,7 +642,6 @@ export class CodeTaskRunner extends TaskRunner {
 			});
 
 			try {
-				// @TODO: Abort signal handling
 				const result = await sandbox.runCodeEachItem(index);
 
 				// Filter out null values
