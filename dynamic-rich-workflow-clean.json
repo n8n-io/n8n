@@ -1,0 +1,96 @@
+{
+  "name": "Dynamic Rich Content Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "lastNode",
+          "title": "Rich Content Demo",
+          "subtitle": "Try different commands to see rich content",
+          "inputPlaceholder": "Type 'weather', 'sales', 'chart', or 'form'...",
+          "showWelcomeScreen": true
+        }
+      },
+      "id": "chat-trigger-dynamic",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse user input and prepare data for rich content generation\nconst userMessage = $input.first().json.chatInput || '';\nconst lowerMessage = userMessage.toLowerCase();\n\n// Determine content type and prepare dynamic data\nlet contentType = 'custom';\nlet dynamicData = {};\n\nif (lowerMessage.includes('weather')) {\n  contentType = 'weather';\n  dynamicData = {\n    temperature: '24°C',\n    description: 'Partly cloudy with light breeze',\n    humidity: '68%',\n    wind: '15 mph NE',\n    location: 'New York',\n    icon: '⛅'\n  };\n} else if (lowerMessage.includes('sales') || lowerMessage.includes('dashboard')) {\n  contentType = 'dashboard';\n  dynamicData = {\n    title: 'Sales Dashboard',\n    revenue: '$89,342',\n    orders: '2,156',\n    customers: '1,438'\n  };\n} else if (lowerMessage.includes('chart') || lowerMessage.includes('graph')) {\n  contentType = 'chart';\n  dynamicData = {\n    title: 'Weekly Performance',\n    chartData: [45, 62, 38, 71, 55, 83, 67],\n    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']\n  };\n} else if (lowerMessage.includes('form') || lowerMessage.includes('feedback')) {\n  contentType = 'form';\n  dynamicData = {\n    title: 'Customer Feedback',\n    submitAction: 'submit-customer-feedback',\n    fields: [\n      {\n        name: 'satisfaction',\n        type: 'select',\n        label: 'Satisfaction Level',\n        required: true,\n        options: [\n          { value: '5', label: '😍 Excellent' },\n          { value: '4', label: '😊 Good' },\n          { value: '3', label: '😐 Average' },\n          { value: '2', label: '😞 Poor' },\n          { value: '1', label: '😡 Terrible' }\n        ]\n      },\n      {\n        name: 'comments',\n        type: 'textarea',\n        label: 'Additional Comments',\n        placeholder: 'Tell us more about your experience...',\n        rows: 5\n      }\n    ]\n  };\n} else {\n  // Default help content\n  dynamicData = {\n    userMessage: userMessage,\n    timestamp: new Date().toISOString()\n  };\n}\n\nreturn {\n  json: {\n    contentType,\n    userMessage,\n    ...dynamicData\n  }\n};"
+      },
+      "id": "data-processor",
+      "name": "Process User Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "contentType": "={{ $json.contentType }}",
+        "templateVariables": "={{ JSON.stringify($json) }}"
+      },
+      "id": "rich-generator-dynamic",
+      "name": "Rich Content Generator",
+      "type": "richContentGenerator",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Post-process the rich content to add interactive callbacks\nconst richContent = $input.first().json;\n\n// Add callback handling for interactive elements\nif (richContent.type === 'rich' && richContent.content) {\n  // Enhance script with callback handling\n  if (richContent.content.script) {\n    richContent.content.script += `\n      \n      // Enhanced callback system\n      window.addEventListener('message', (event) => {\n        if (event.data.type === 'chat-action') {\n          console.log('Chat action received:', event.data);\n          \n          // Handle different actions\n          switch (event.data.action) {\n            case 'refresh-dashboard':\n              // Simulate dashboard refresh\n              const metrics = container.querySelectorAll('.metric-value');\n              metrics.forEach(metric => {\n                const current = parseInt(metric.textContent.replace(/[^0-9]/g, ''));\n                const newValue = current + Math.floor(Math.random() * 100);\n                metric.textContent = metric.textContent.replace(/[0-9,]+/, newValue.toLocaleString());\n              });\n              break;\n              \n            case 'export-data':\n              // Simulate data export\n              const data = {\n                timestamp: new Date().toISOString(),\n                metrics: Array.from(container.querySelectorAll('.metric-card')).map(card => ({\n                  label: card.querySelector('.metric-label').textContent,\n                  value: card.querySelector('.metric-value').textContent\n                }))\n              };\n              console.log('Exported data:', data);\n              alert('Data exported to console!');\n              break;\n              \n            case 'submit-customer-feedback':\n              // Handle form submission\n              console.log('Customer feedback submitted:', event.data.data);\n              // In a real implementation, this would trigger another workflow\n              break;\n          }\n        }\n      });\n    `;\n  }\n}\n\nreturn { json: richContent };"
+      },
+      "id": "callback-enhancer",
+      "name": "Add Interactive Callbacks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Process User Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process User Input": {
+      "main": [
+        [
+          {
+            "node": "Rich Content Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rich Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Add Interactive Callbacks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "staticData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "A dynamic workflow that generates rich content based on user input. Try typing 'weather', 'sales', 'chart', or 'form' to see different interactive content types.",
+    "tags": ["chat", "rich-content", "interactive", "demo"]
+  }
+} 
