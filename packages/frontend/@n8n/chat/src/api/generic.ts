@@ -54,7 +54,6 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		}
 	} catch (parseError) {
 		console.error('API Response Parsing Error:', parseError);
-		const fallbackText = await response.text();
 
 		throw new Error(
 			`Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,

@@ -44,7 +44,7 @@ export class StreamingMessageManager {
 				isComplete: false,
 				message,
 			});
-			this.runOrder.push(runKey);
+			if (!this.runOrder.includes(runKey)) this.runOrder.push(runKey);
 			return message;
 		}
 		return this.nodeRuns.get(runKey)!.message;
@@ -59,7 +59,7 @@ export class StreamingMessageManager {
 				isComplete: false,
 				message,
 			});
-			this.runOrder.push(runKey);
+			if (!this.runOrder.includes(runKey)) this.runOrder.push(runKey);
 			return message;
 		}
 		return this.richNodeRuns.get(runKey)!.message;
