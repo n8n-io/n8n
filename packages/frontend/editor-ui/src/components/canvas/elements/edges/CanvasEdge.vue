@@ -142,6 +142,7 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		v-bind="$attrs"
 	>
 		<BaseEdge
 			v-for="(segment, index) in segments"

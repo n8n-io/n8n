@@ -909,16 +909,18 @@ provide(CanvasKey, {
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
-			<Edge
-				v-bind="edgeProps"
-				:marker-end="`url(#${arrowHeadMarkerId})`"
-				:read-only="readOnly"
-				:hovered="edgesHoveredById[edgeProps.id]"
-				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
-				@add="onClickConnectionAdd"
-				@delete="onDeleteConnection"
-				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
-			/>
+			<slot name="edge" v-bind="{ edgeProps }">
+				<Edge
+					v-bind="edgeProps"
+					:marker-end="`url(#${arrowHeadMarkerId})`"
+					:read-only="readOnly"
+					:hovered="edgesHoveredById[edgeProps.id]"
+					:bring-to-front="edgesBringToFrontById[edgeProps.id]"
+					@add="onClickConnectionAdd"
+					@delete="onDeleteConnection"
+					@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
+				/>
+			</slot>
 		</template>
 
 		<template #connection-line="connectionLineProps">
