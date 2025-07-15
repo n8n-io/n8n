@@ -44,6 +44,8 @@ async function stopTest() {
 	try {
 		cancellingTestRun.value = true;
 		await evaluationStore.cancelTestRun(runningTestRun.value.workflowId, runningTestRun.value.id);
+		// we don't reset cancellingTestRun flag here, because we want the button to stay disabled
+		// until the "running" testRun is updated and cancelled in the list of test runs
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStopTestRun'));
 		cancellingTestRun.value = false;

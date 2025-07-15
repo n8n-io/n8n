@@ -118,7 +118,7 @@ describe('EvaluationsView', () => {
 			await waitFor(() => expect(getByTestId('stop-test-button')).toBeInTheDocument());
 		});
 
-		it.only('should call cancelTestRun when stop button is clicked', async () => {
+		it('should call cancelTestRun when stop button is clicked', async () => {
 			const evaluationStore = mockedStore(useEvaluationStore);
 			evaluationStore.cancelTestRun.mockResolvedValue({ success: true });
 
