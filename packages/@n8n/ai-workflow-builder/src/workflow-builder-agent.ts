@@ -19,6 +19,7 @@ import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -26,6 +27,7 @@ export interface WorkflowBuilderAgentConfig {
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
 	checkpointer?: MemorySaver;
+	tracer?: LangChainTracer;
 }
 
 export interface ChatPayload {
@@ -41,6 +43,7 @@ export class WorkflowBuilderAgent {
 	private llmSimpleTask: BaseChatModel;
 	private llmComplexTask: BaseChatModel;
 	private logger?: Logger;
+	private tracer?: LangChainTracer;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -48,6 +51,7 @@ export class WorkflowBuilderAgent {
 		this.llmComplexTask = config.llmComplexTask;
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer ?? new MemorySaver();
+		this.tracer = config.tracer;
 	}
 
 	private createWorkflow() {
@@ -183,6 +187,7 @@ export class WorkflowBuilderAgent {
 				...threadConfig,
 				streamMode: ['updates', 'custom'],
 				recursionLimit: 30,
+				callbacks: this.tracer ? [this.tracer] : undefined,
 			});
 		} else {
 			// Subsequent message - update the state with current workflow
@@ -203,6 +208,7 @@ export class WorkflowBuilderAgent {
 					...threadConfig,
 					streamMode: ['updates', 'custom'],
 					recursionLimit: 80,
+					callbacks: this.tracer ? [this.tracer] : undefined,
 				},
 			);
 		}

@@ -1,8 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { Client } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 
@@ -16,6 +18,8 @@ export class AiWorkflowBuilderService {
 	private llmSimpleTask: BaseChatModel | undefined;
 
 	private llmComplexTask: BaseChatModel | undefined;
+
+	private tracingClient: Client | undefined;
 
 	private checkpointer = new MemorySaver();
 
@@ -53,6 +57,18 @@ export class AiWorkflowBuilderService {
 				apiKey: '-',
 				headers: {
 					Authorization: authHeaders.apiKey,
+				},
+			});
+
+			this.tracingClient = new Client({
+				apiKey: '-',
+				apiUrl: baseUrl + '/langsmith',
+				autoBatchTracing: false,
+				traceBatchConcurrency: 1,
+				fetchOptions: {
+					headers: {
+						Authorization: authHeaders.apiKey,
+					},
 				},
 			});
 			return;
@@ -118,9 +134,12 @@ export class AiWorkflowBuilderService {
 		this.agent ??= new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			llmSimpleTask: this.llmSimpleTask!,
-			llmComplexTask: this.llmComplexTask!,
+			llmComplexTask: this.llmSimpleTask!,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
+			tracer: this.tracingClient
+				? new LangChainTracer({ client: this.tracingClient, projectName: 'n8n-workflow-builder' })
+				: undefined,
 		});
 
 		return this.agent;
