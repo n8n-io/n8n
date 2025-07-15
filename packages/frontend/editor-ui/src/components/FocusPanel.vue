@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput } from '@n8n/design-system';
+import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, nextTick, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -26,7 +26,8 @@ import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useThrottleFn } from '@vueuse/core';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -58,6 +59,7 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
+const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
 	if (!resolvedParameter.value) return false;
@@ -244,153 +246,177 @@ function optionSelected(command: string) {
 }
 
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+
+function onResize(event: ResizeData) {
+	focusPanelStore.updateWidth(event.width);
+}
+
+const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.container" @keydown.stop>
-		<div :class="$style.header">
-			<N8nText size="small" :bold="true">
-				{{ locale.baseText('nodeView.focusPanel.title') }}
-			</N8nText>
-			<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
-				<n8n-icon icon="arrow-right" color="text-base" />
-			</div>
-		</div>
-		<div v-if="resolvedParameter" :class="$style.content">
-			<div :class="$style.tabHeader">
-				<div :class="$style.tabHeaderText">
-					<N8nText color="text-dark" size="small">
-						{{ resolvedParameter.parameter.displayName }}
+	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
+		<N8nResizeWrapper
+			:width="focusPanelWidth"
+			:supported-directions="['left']"
+			:min-width="300"
+			:max-width="1000"
+			:grid-size="8"
+			:style="{ width: `${focusPanelWidth}px` }"
+			@resize="onResizeThrottle"
+		>
+			<div :class="$style.container">
+				<div :class="$style.header">
+					<N8nText size="small" :bold="true">
+						{{ locale.baseText('nodeView.focusPanel.title') }}
 					</N8nText>
-					<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
+					<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
+						<n8n-icon icon="arrow-right" color="text-base" />
+					</div>
 				</div>
-				<NodeExecuteButton
-					data-test-id="node-execute-button"
-					:node-name="resolvedParameter.node.name"
-					:tooltip="`Execute ${resolvedParameter.node.name}`"
-					:disabled="!isExecutable"
-					size="small"
-					icon="play"
-					:square="true"
-					:hide-label="true"
-					telemetry-source="focus"
-				></NodeExecuteButton>
-			</div>
-			<div :class="$style.parameterDetailsWrapper">
-				<div :class="$style.parameterOptionsWrapper">
-					<div></div>
-					<ParameterOptions
-						v-if="isDisplayed"
-						:parameter="resolvedParameter.parameter"
-						:value="resolvedParameter.value"
-						:is-read-only="isReadOnly"
-						@update:model-value="optionSelected"
-					/>
-				</div>
-				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
-					<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
-						<div :class="$style.emptyText">
-							<N8nText color="text-base">
-								{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+				<div v-if="resolvedParameter" :class="$style.content">
+					<div :class="$style.tabHeader">
+						<div :class="$style.tabHeaderText">
+							<N8nText color="text-dark" size="small">
+								{{ resolvedParameter.parameter.displayName }}
 							</N8nText>
+							<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
+						</div>
+						<NodeExecuteButton
+							data-test-id="node-execute-button"
+							:node-name="resolvedParameter.node.name"
+							:tooltip="`Execute ${resolvedParameter.node.name}`"
+							:disabled="!isExecutable"
+							size="small"
+							icon="play"
+							:square="true"
+							:hide-label="true"
+							telemetry-source="focus"
+						></NodeExecuteButton>
+					</div>
+					<div :class="$style.parameterDetailsWrapper">
+						<div :class="$style.parameterOptionsWrapper">
+							<div></div>
+							<ParameterOptions
+								v-if="isDisplayed"
+								:parameter="resolvedParameter.parameter"
+								:value="resolvedParameter.value"
+								:is-read-only="isReadOnly"
+								@update:model-value="optionSelected"
+							/>
+						</div>
+						<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
+							<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
+								<div :class="$style.emptyText">
+									<N8nText color="text-base">
+										{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+									</N8nText>
+								</div>
+							</div>
+							<ExpressionEditorModalInput
+								v-else-if="expressionModeEnabled"
+								ref="inputField"
+								:model-value="resolvedParameter.value"
+								:class="$style.editor"
+								:is-read-only="isReadOnly"
+								:path="resolvedParameter.parameterPath"
+								data-test-id="expression-modal-input"
+								:target-node-parameter-context="targetNodeParameterContext"
+								@change="valueChangedDebounced($event.value)"
+							/>
+							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
+								<CodeNodeEditor
+									v-if="editorType === 'codeNodeEditor'"
+									:id="resolvedParameter.parameterPath"
+									:mode="codeEditorMode"
+									:model-value="resolvedParameter.value"
+									:default-value="resolvedParameter.parameter.default"
+									:language="editorLanguage"
+									:is-read-only="isReadOnly"
+									:target-node-parameter-context="targetNodeParameterContext"
+									fill-parent
+									:disable-ask-ai="true"
+									@update:model-value="valueChangedDebounced" />
+								<HtmlEditor
+									v-else-if="editorType === 'htmlEditor'"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									:disable-expression-coloring="!isHtmlNode"
+									:disable-expression-completions="!isHtmlNode"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<CssEditor
+									v-else-if="editorType === 'cssEditor'"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<SqlEditor
+									v-else-if="editorType === 'sqlEditor'"
+									:model-value="resolvedParameter.value"
+									:dialect="getTypeOption('sqlDialect')"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<JsEditor
+									v-else-if="editorType === 'jsEditor'"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									:posthog-capture="shouldCaptureForPosthog"
+									fill-parent
+									@update:model-value="valueChangedDebounced" />
+								<JsonEditor
+									v-else-if="resolvedParameter.parameter.type === 'json'"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									fill-parent
+									@update:model-value="valueChangedDebounced" />
+								<N8nInput
+									v-else
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:class="$style.editor"
+									:readonly="isReadOnly"
+									type="textarea"
+									resize="none"
+									@update:model-value="valueChangedDebounced"
+								></N8nInput
+							></template>
 						</div>
 					</div>
-					<ExpressionEditorModalInput
-						v-else-if="expressionModeEnabled"
-						ref="inputField"
-						:model-value="resolvedParameter.value"
-						:class="$style.editor"
-						:is-read-only="isReadOnly"
-						:path="resolvedParameter.parameterPath"
-						data-test-id="expression-modal-input"
-						:target-node-parameter-context="targetNodeParameterContext"
-						@change="valueChangedDebounced($event.value)"
-					/>
-					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
-						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor'"
-							:id="resolvedParameter.parameterPath"
-							:mode="codeEditorMode"
-							:model-value="resolvedParameter.value"
-							:default-value="resolvedParameter.parameter.default"
-							:language="editorLanguage"
-							:is-read-only="isReadOnly"
-							:target-node-parameter-context="targetNodeParameterContext"
-							fill-parent
-							:disable-ask-ai="true"
-							@update:model-value="valueChangedDebounced" />
-						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:disable-expression-coloring="!isHtmlNode"
-							:disable-expression-completions="!isHtmlNode"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<CssEditor
-							v-else-if="editorType === 'cssEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<SqlEditor
-							v-else-if="editorType === 'sqlEditor'"
-							:model-value="resolvedParameter.value"
-							:dialect="getTypeOption('sqlDialect')"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<JsEditor
-							v-else-if="editorType === 'jsEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:posthog-capture="shouldCaptureForPosthog"
-							fill-parent
-							@update:model-value="valueChangedDebounced" />
-						<JsonEditor
-							v-else-if="resolvedParameter.parameter.type === 'json'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							fill-parent
-							@update:model-value="valueChangedDebounced" />
-						<N8nInput
-							v-else
-							ref="inputField"
-							:model-value="resolvedParameter.value"
-							:class="$style.editor"
-							:readonly="isReadOnly"
-							type="textarea"
-							resize="none"
-							@update:model-value="valueChangedDebounced"
-						></N8nInput
-					></template>
+				</div>
+				<div v-else :class="[$style.content, $style.emptyContent]">
+					<div :class="$style.emptyText">
+						<N8nText color="text-base">
+							{{ locale.baseText('nodeView.focusPanel.noParameters') }}
+						</N8nText>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div v-else :class="[$style.content, $style.emptyContent]">
-			<div :class="$style.emptyText">
-				<N8nText color="text-base">
-					{{ locale.baseText('nodeView.focusPanel.noParameters') }}
-				</N8nText>
-			</div>
-		</div>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
+.wrapper {
 	display: flex;
-	flex-direction: column;
-	width: 528px;
+	flex-direction: row nowrap;
 	border-left: 1px solid var(--color-foreground-base);
 	background: var(--color-foreground-light);
 	overflow-y: hidden;
+	height: 100%;
+}
+
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
 }
 
 .closeButton:hover {
