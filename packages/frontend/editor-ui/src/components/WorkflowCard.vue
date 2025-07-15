@@ -179,7 +179,7 @@ const actions = computed(() => {
 		}
 	}
 
-	if (workflowPermissions.value.update && !props.readOnly) {
+	if (workflowPermissions.value.update && !props.readOnly && !props.data.isArchived) {
 		if (props.data.settings?.availableInMCP) {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
