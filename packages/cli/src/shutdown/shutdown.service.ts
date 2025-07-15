@@ -26,7 +26,7 @@ export class ShutdownService {
 		private readonly shutdownMetadata: ShutdownMetadata,
 	) {}
 
-	/** Registers given listener to be notified when the application is shutting down. For testing only. */
+	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
 		this.shutdownMetadata.register(priority, handler);
 	}
