@@ -127,3 +127,4 @@ Create a workflow that outputs:
 - **No sanitization**: Allows everything including scripts (use with caution)
 
 Choose the appropriate sanitization level based on your security requirements. 
+
