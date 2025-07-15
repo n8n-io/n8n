@@ -63,7 +63,22 @@ export function isFilePathBlocked(filePath: string): boolean {
 		// Check if the file path is restricted - always block access to these paths
 		// regardless of allowed paths
 		for (const path of restrictedPaths) {
-			if (path && resolvedFilePath.startsWith(path)) {
+			if (!path) continue;
+
+			const restrictedPath = resolve(path);
+
+			// Check if it's the exact same path
+			if (resolvedFilePath === restrictedPath) {
+				return true;
+			}
+
+			// Check if it's a file/directory inside the restricted path by ensuring
+			// the next character after the restricted path is a separator
+			const isSubPath =
+				resolvedFilePath.startsWith(restrictedPath + '/') ||
+				resolvedFilePath.startsWith(restrictedPath + '\\');
+
+			if (isSubPath) {
 				return true;
 			}
 		}
@@ -72,7 +87,21 @@ export function isFilePathBlocked(filePath: string): boolean {
 	// If allowed paths are defined, only permit access to those paths
 	if (allowedPaths.length) {
 		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
+			if (!path) continue;
+
+			const allowedPath = resolve(path);
+
+			// Check if it's the exact same path
+			if (resolvedFilePath === allowedPath) {
+				return false;
+			}
+
+			// Check if it's a file/directory inside the allowed path
+			const isSubPath =
+				resolvedFilePath.startsWith(allowedPath + '/') ||
+				resolvedFilePath.startsWith(allowedPath + '\\');
+
+			if (isSubPath) {
 				return false;
 			}
 		}

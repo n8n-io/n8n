@@ -139,6 +139,16 @@ describe('isFilePathBlocked', () => {
 		const restrictedPath = join(userHome, 'somefile.txt');
 		expect(isFilePathBlocked(restrictedPath)).toBe(false);
 	});
+
+	it('should not block similar paths', () => {
+		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
+		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
+
+		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
+		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+		const restrictedPath = join(userHome, '.n8n_x');
+		expect(isFilePathBlocked(restrictedPath)).toBe(false);
+	});
 });
 
 describe('getFileSystemHelperFunctions', () => {
