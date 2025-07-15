@@ -125,6 +125,7 @@ import IconLucideMessageCircle from '~icons/lucide/message-circle';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
+import IconLucideMinus from '~icons/lucide/minus';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
@@ -520,6 +521,7 @@ export const updatedIconSet = {
 	'message-circle': IconLucideMessageCircle,
 	'messages-square': IconLucideMessagesSquare,
 	milestone: IconLucideMilestone,
+	minus: IconLucideMinus,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'package-open': IconLucidePackageOpen,

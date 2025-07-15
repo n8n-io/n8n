@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import TidyUpIcon from '@/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
@@ -52,66 +51,70 @@ function onTidyUp() {
 }
 </script>
 <template>
-	<Controls :show-zoom="false" :show-fit-view="false">
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.zoomToFit')"
-			:shortcut="{ keys: ['1'] }"
-		>
-			<N8nIconButton
-				type="tertiary"
-				size="large"
-				icon="maximize"
-				data-test-id="zoom-to-fit"
-				@click="onZoomToFit"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
-			<N8nIconButton
-				type="tertiary"
-				size="large"
-				icon="zoom-in"
-				data-test-id="zoom-in-button"
-				@click="onZoomIn"
-			/>
-		</KeyboardShortcutTooltip>
+	<Controls :class="$style.viewControls" :show-zoom="false" :show-fit-view="false">
 		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
 			<N8nIconButton
 				type="tertiary"
-				size="large"
-				icon="zoom-out"
+				size="medium"
+				icon="minus"
+				text
 				data-test-id="zoom-out-button"
 				@click="onZoomOut"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			v-if="isResetZoomVisible"
-			:label="i18n.baseText('nodeView.resetZoom')"
-			:shortcut="{ keys: ['0'] }"
+			:label="i18n.baseText('nodeView.zoomToFit')"
+			:shortcut="{ keys: ['1'] }"
 		>
-			<N8nIconButton
-				type="tertiary"
-				size="large"
-				icon="undo-2"
-				data-test-id="reset-zoom-button"
-				@click="onResetZoom"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			v-if="!readOnly"
-			:label="i18n.baseText('nodeView.tidyUp')"
-			:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
-		>
-			<N8nButton
-				square
-				type="tertiary"
-				size="large"
-				data-test-id="tidy-up-button"
-				:class="$style.iconButton"
-				@click="onTidyUp"
-			>
-				<TidyUpIcon />
+			<N8nButton type="tertiary" size="mini" text @click="onZoomToFit">
+				{{ Math.round(props.zoom * 100) }}%
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
+			<N8nIconButton
+				type="tertiary"
+				size="medium"
+				icon="plus"
+				text
+				data-test-id="zoom-in-button"
+				@click="onZoomIn"
+			/>
+		</KeyboardShortcutTooltip>
+	</Controls>
+</template>
+
+<style module lang="scss">
+.viewControls {
+	display: flex;
+	gap: var(--spacing-xs);
+}
+
+.iconButton {
+	padding-left: 0;
+	padding-right: 0;
+
+	svg {
+		width: 16px;
+		height: 16px;
+	}
+}
+</style>
+
+<style lang="scss">
+.vue-flow__controls {
+	display: flex;
+	gap: var(--spacing-xs);
+	box-shadow: none;
+	background-color: var(--color-background-xlight);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	margin: 12px;
+	padding: 0;
+}
+</style>
+
+<!--
+	<div>
 		<N8nTooltip
 			v-if="experimentalNdvStore.isActive(props.zoom)"
 			placement="top"
@@ -136,25 +139,4 @@ function onTidyUp() {
 				@click="experimentalNdvStore.collapseAllNodes"
 			/>
 		</N8nTooltip>
-	</Controls>
-</template>
-
-<style module lang="scss">
-.iconButton {
-	padding-left: 0;
-	padding-right: 0;
-
-	svg {
-		width: 16px;
-		height: 16px;
-	}
-}
-</style>
-
-<style lang="scss">
-.vue-flow__controls {
-	display: flex;
-	gap: var(--spacing-xs);
-	box-shadow: none;
-}
-</style>
+	</div> -->
