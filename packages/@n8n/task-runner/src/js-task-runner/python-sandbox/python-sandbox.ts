@@ -17,7 +17,6 @@ type PyodideError = Error & { type: string };
 
 const envAccessBlocked = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true';
 
-// @TODO: Generate this programatically from EXPOSED_RPC_METHODS?
 const PYTHON_HELPERS_CODE = `
 import js
 
@@ -26,32 +25,30 @@ class Helpers:
         self._js_helpers = _helpers_js
     
     async def httpRequest(self, options):
-        result = await self._js_helpers.httpRequest(options)
-        return result.to_py()
+        return await self._js_helpers.httpRequest(options)
     
     async def getBinaryDataBuffer(self, item_index, property_name):
         result = await self._js_helpers.getBinaryDataBuffer(item_index, property_name)
-        return bytes(result.to_py())
+        return bytes(result.to_py()) # JS buffer to Python bytes
     
     async def prepareBinaryData(self, buffer, file_name=None, mime_type=None):
         result = await self._js_helpers.prepareBinaryData(buffer, file_name, mime_type)
-        return result.to_py()
+        return result.to_py() # JS object to Python dict
     
     async def setBinaryDataBuffer(self, metadata, buffer):
         result = await self._js_helpers.setBinaryDataBuffer(metadata, buffer)
-        return result.to_py()
+        return result.to_py() # JS object to Python dict
     
     async def binaryToString(self, buffer, encoding='utf8'):
         result = await self._js_helpers.binaryToString(buffer, encoding)
-        return result
+        return result # JS string (no conversion needed)
     
     async def assertBinaryData(self, item_index, property_name):
         result = await self._js_helpers.assertBinaryData(item_index, property_name)
-        return result.to_py()
+        return result.to_py() # JS object to Python dict
     
     async def request(self, uri_or_object, options=None):
-        result = await self._js_helpers.request(uri_or_object, options)
-        return result.to_py()
+        return await self._js_helpers.request(uri_or_object, options)
 
 helpers = Helpers()
 `;

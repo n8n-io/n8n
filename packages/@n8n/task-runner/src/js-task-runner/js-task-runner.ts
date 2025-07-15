@@ -694,7 +694,6 @@ export class CodeTaskRunner extends TaskRunner {
 
 	private pythonHelpers(taskId: string) {
 		return {
-			// @TODO: Generate these programatically from EXPOSED_RPC_METHODS?
 			assertBinaryData: async (...args: unknown[]) =>
 				await this.makeRpcCall(taskId, 'helpers.assertBinaryData', args),
 			getBinaryDataBuffer: async (...args: unknown[]) =>
