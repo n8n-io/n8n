@@ -180,6 +180,7 @@ export async function connectMcpClient({
 				requestInit: { headers },
 			});
 			await client.connect(transport);
+			return createResultOk(client);
 		} catch (error) {
 			return createResultError({ type: 'connection', error });
 		}

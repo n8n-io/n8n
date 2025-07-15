@@ -31,7 +31,7 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -76,6 +76,20 @@ export class McpClientTool implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
+				displayName: 'SSE Endpoint',
+				name: 'sseEndpoint',
+				type: 'string',
+				description: 'SSE Endpoint of your MCP server',
+				placeholder: 'e.g. https://my-mcp-server.ai/sse',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
 				displayName: 'Endpoint',
 				name: 'endpointUrl',
 				type: 'string',
@@ -83,6 +97,11 @@ export class McpClientTool implements INodeType {
 				placeholder: 'e.g. https://my-mcp-server.ai/mcp',
 				default: '',
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Server Transport',
@@ -100,6 +119,11 @@ export class McpClientTool implements INodeType {
 				],
 				default: 'sse',
 				description: 'The transport used by your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Authentication',
@@ -204,12 +228,18 @@ export class McpClientTool implements INodeType {
 			'authentication',
 			itemIndex,
 		) as McpAuthenticationOption;
-		const serverTransport = this.getNodeParameter(
-			'serverTransport',
-			itemIndex,
-		) as McpServerTransport;
-		const endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
 		const node = this.getNode();
+
+		let serverTransport: McpServerTransport;
+		let endpointUrl: string;
+		if (node.typeVersion == 1) {
+			serverTransport = 'sse';
+			endpointUrl = this.getNodeParameter('sseEndpoint', itemIndex) as string;
+		} else {
+			serverTransport = this.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
+			endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
+		}
+
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
 			serverTransport,
