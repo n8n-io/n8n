@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
 // Violation schema

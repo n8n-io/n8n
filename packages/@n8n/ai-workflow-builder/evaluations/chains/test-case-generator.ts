@@ -122,16 +122,16 @@ export const basicTestCases: TestCase[] = [
 		complexity: 'simple',
 		tags: ['file-processing', 'filtering', 'email'],
 	},
-	// {
-	// 	id: 'test_medium_001',
-	// 	name: 'Slack Notification System',
-	// 	description: 'Monitor GitHub repo and notify Slack on new issues',
-	// 	prompt:
-	// 		'Create a workflow that monitors a GitHub repository for new issues, checks if they have a "bug" label, and sends a notification to Slack with issue details and assigns it to the on-call engineer',
-	// 	expectedNodeTypes: ['n8n-nodes-base.github', 'n8n-nodes-base.if', 'n8n-nodes-base.slack'],
-	// 	complexity: 'medium',
-	// 	tags: ['monitoring', 'conditional-logic', 'notifications'],
-	// },
+	{
+		id: 'test_medium_001',
+		name: 'Slack Notification System',
+		description: 'Monitor GitHub repo and notify Slack on new issues',
+		prompt:
+			'Create a workflow that monitors a GitHub repository for new issues, checks if they have a "bug" label, and sends a notification to Slack with issue details and assigns it to the on-call engineer',
+		expectedNodeTypes: ['n8n-nodes-base.github', 'n8n-nodes-base.if', 'n8n-nodes-base.slack'],
+		complexity: 'medium',
+		tags: ['monitoring', 'conditional-logic', 'notifications'],
+	},
 	// {
 	// 	id: 'test_medium_002',
 	// 	name: 'Data Sync Pipeline',

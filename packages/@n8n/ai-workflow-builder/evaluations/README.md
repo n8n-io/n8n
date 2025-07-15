@@ -8,6 +8,7 @@ The evaluation system consists of:
 - **Workflow Generator**: Uses the AI agent to generate workflows from text prompts
 - **LLM Evaluator**: Uses Claude Sonnet 4 to evaluate generated workflows across multiple dimensions
 - **Test Case System**: Pre-defined and dynamically generated test cases
+- **Parallel Execution**: Support for concurrent test execution to improve performance
 - **Reporting**: Detailed scoring and violation reporting
 
 ## Running Evaluations
@@ -24,17 +25,11 @@ export EVALUATION_CONCURRENCY="3"  # Number of tests to run in parallel (default
 ### Available Scripts
 
 ```bash
-# Run simple evaluation with one test case
+# Run evaluation suite with all basic test cases
 npm run eval
-
-# Run full evaluation suite with all basic test cases
-npm run eval:full
 
 # Generate additional test cases and run evaluation
 npm run eval:generate
-
-# Run parallel execution example
-npm run eval:parallel
 ```
 
 ## Evaluation Categories
@@ -70,13 +65,14 @@ Evaluations produce:
 
 ```
 evaluations/
-├── types/           # TypeScript types and Zod schemas
-├── chains/          # LangChain implementations
-├── test-cases/      # Pre-defined test cases
-├── results/         # Generated evaluation results and reports
-├── load-nodes.ts    # Node loading from JSON
-├── simple-evaluation.ts    # Single test evaluation
-└── run-evaluation.ts       # Full evaluation suite
+├── types/              # TypeScript types and Zod schemas
+├── chains/             # LangChain implementations
+├── test-cases/         # Pre-defined test cases
+├── results/            # Generated evaluation results and reports
+├── utils/              # Common utilities and helpers
+│   └── evaluation-helpers.ts  # Shared functions for evaluations
+├── load-nodes.ts       # Node loading from JSON
+└── run-evaluation.ts   # Main evaluation runner with parallel support
 ```
 
 ## Performance
@@ -94,6 +90,26 @@ Each test case runs with its own:
 - Independent state management
 
 This ensures no conflicts between parallel test executions.
+
+## Code Organization
+
+The evaluation system has been refactored for better maintainability:
+
+### Common Utilities (`utils/evaluation-helpers.ts`)
+- `setupLLM()` - Configures the language model
+- `createTracer()` - Sets up LangSmith tracing
+- `createAgent()` - Creates workflow builder agents
+- `formatPercentage()` - Consistent percentage formatting
+- `groupViolationsBySeverity()` - Organizes violations for display
+- Various display helpers for clean output
+
+### Main Evaluation Runner (`run-evaluation.ts`)
+- `runFullEvaluation()` - Main entry point for evaluation suite
+- `runTestCase()` - Executes individual test cases
+- `generateReport()` - Creates markdown evaluation reports
+- `calculateCategoryAverages()` - Computes average scores
+- `countViolationsByType()` - Aggregates violation statistics
+- `saveResults()` - Persists results to disk
 
 ## Extending the System
 

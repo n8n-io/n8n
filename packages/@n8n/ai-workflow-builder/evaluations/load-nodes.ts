@@ -20,7 +20,7 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	const nodesByName = new Map<string, NodeWithVersion[]>();
 
 	for (const node of allNodes) {
-		const existing = nodesByName.get(node.name) || [];
+		const existing = nodesByName.get(node.name) ?? [];
 		existing.push(node);
 		nodesByName.set(node.name, existing);
 	}
@@ -34,16 +34,14 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	for (const [nodeName, versions] of nodesByName.entries()) {
 		if (versions.length > 1) {
 			multiVersionCount++;
-			console.log(`\nNode ${nodeName} has ${versions.length} versions:`);
-
 			// Find the node with the default version
 			let selectedNode: NodeWithVersion | undefined;
 
 			for (const node of versions) {
-				const versionInfo = Array.isArray(node.version)
-					? `[${node.version.join(', ')}]`
-					: node.version;
-				console.log(`  - Version: ${versionInfo}, Default: ${node.defaultVersion}`);
+				// const versionInfo = Array.isArray(node.version)
+				// 	? `[${node.version.join(', ')}]`
+				// 	: node.version;
+				// console.log(`  - Version: ${versionInfo}, Default: ${node.defaultVersion}`);
 
 				// Select the node that matches the default version
 				if (node.defaultVersion !== undefined) {
@@ -60,12 +58,12 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 
 			// If we found a matching node, use it; otherwise use the first one
 			if (selectedNode) {
-				console.log(
-					`  Selected version: ${Array.isArray(selectedNode.version) ? selectedNode.version.join(', ') : selectedNode.version}`,
-				);
+				// console.log(
+				// 	`  Selected version: ${Array.isArray(selectedNode.version) ? selectedNode.version.join(', ') : selectedNode.version}`,
+				// );
 				latestNodes.push(selectedNode);
 			} else {
-				console.log('  Warning: No node matches defaultVersion, using first node');
+				// console.log('  Warning: No node matches defaultVersion, using first node');
 				latestNodes.push(versions[0]);
 			}
 		} else {

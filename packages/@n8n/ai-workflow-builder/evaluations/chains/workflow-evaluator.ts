@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { OperationalError } from 'n8n-workflow';
+import type { z } from 'zod';
 
 import { evaluationResultSchema, type EvaluationInput } from '../types/evaluation';
-import { z } from 'zod';
 
 const systemPrompt = `You are an expert n8n workflow evaluator. Your task is to evaluate a generated n8n workflow against a user's requirements and compare it to a reference workflow. Score the workflow across multiple categories and identify specific violations.
 

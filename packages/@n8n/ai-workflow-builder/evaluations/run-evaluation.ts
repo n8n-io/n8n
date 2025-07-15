@@ -1,19 +1,24 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { MemorySaver } from '@langchain/langgraph';
+import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { writeFileSync, mkdirSync } from 'fs';
-import { Client } from 'langsmith';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import { join } from 'path';
 
 import type { WorkflowState } from '@/workflow-state.js';
 
 import { loadNodesFromFile } from './load-nodes.js';
-import { anthropicClaudeSonnet4 } from '../src/llm-config.js';
-import { WorkflowBuilderAgent, type ChatPayload } from '../src/workflow-builder-agent.js';
+import type { ChatPayload } from '../src/workflow-builder-agent.js';
 import { basicTestCases, generateTestCases } from './chains/test-case-generator.js';
 import { evaluateWorkflow } from './chains/workflow-evaluator.js';
 import type { EvaluationInput, TestCase, EvaluationResult } from './types/evaluation.js';
+import {
+	setupLLM,
+	createTracer,
+	createAgent,
+	formatPercentage,
+	logProgress,
+} from './utils/evaluation-helpers.js';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
 interface TestResult {
@@ -24,16 +29,36 @@ interface TestResult {
 	error?: string;
 }
 
-async function setupLLM(): Promise<BaseChatModel> {
-	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY;
-	if (!apiKey) {
-		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
-	}
-	return await anthropicClaudeSonnet4({ apiKey });
+interface TestEnvironment {
+	parsedNodeTypes: INodeTypeDescription[];
+	llm: BaseChatModel;
+	tracer?: LangChainTracer;
 }
 
+/**
+ * Sets up the test environment with LLM, nodes, and tracing
+ * @returns Test environment configuration
+ */
+async function setupTestEnvironment(): Promise<TestEnvironment> {
+	const parsedNodeTypes = loadNodesFromFile();
+	const llm = await setupLLM();
+	const tracer = createTracer('workflow-builder-evaluation');
+
+	return { parsedNodeTypes, llm, tracer };
+}
+
+/**
+ * Runs a single test case by generating a workflow and evaluating it
+ * @param agent - The workflow builder agent to use
+ * @param llm - Language model for evaluation
+ * @param testCase - Test case to execute
+ * @param index - Current test index (0-based)
+ * @param totalTests - Total number of tests being run
+ * @param userId - User ID for the session
+ * @returns Test result with generated workflow and evaluation
+ */
 async function runTestCase(
-	agent: WorkflowBuilderAgent,
+	agent: ReturnType<typeof createAgent>,
 	llm: BaseChatModel,
 	testCase: TestCase,
 	index: number,
@@ -47,8 +72,9 @@ async function runTestCase(
 		const chatPayload: ChatPayload = {
 			question: testCase.prompt,
 			workflowId: testCase.id,
-			// @ts-ignore
-			executionData: {},
+			executionData: {
+				runData: {},
+			},
 		};
 
 		// Generate workflow
@@ -56,9 +82,7 @@ async function runTestCase(
 		let messageCount = 0;
 		for await (const _output of agent.chat(chatPayload, userId)) {
 			messageCount++;
-			if (messageCount % 10 === 0) {
-				process.stdout.write('.');
-			}
+			logProgress(messageCount);
 		}
 		const generationTime = Date.now() - startTime;
 		console.log(
@@ -79,7 +103,7 @@ async function runTestCase(
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
 		console.log(`[${index + 1}/${totalTests}] Evaluation complete for ${testCase.name}`);
-		console.log(`  Score: ${(evaluationResult.overallScore * 100).toFixed(1)}%`);
+		console.log(`  Score: ${formatPercentage(evaluationResult.overallScore)}`);
 		console.log(
 			`  Nodes: ${generatedWorkflow.nodes.length} (${generatedWorkflow.nodes.map((n) => n.type).join(', ')})`,
 		);
@@ -91,6 +115,7 @@ async function runTestCase(
 			generationTime,
 		};
 	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 		console.error(`[${index + 1}/${totalTests}] Error in ${testCase.name}: ${error}`);
 		return {
 			testCase,
@@ -103,7 +128,7 @@ async function runTestCase(
 				nodeConfiguration: { score: 0, violations: [] },
 				structuralSimilarity: { score: 0, violations: [], applicable: false },
 				summary: 'Evaluation failed due to error',
-				criticalIssues: [`Error: ${error}`],
+				criticalIssues: [`Error: ${String(error)}`],
 			} as EvaluationResult,
 			generationTime: 0,
 			error: String(error),
@@ -111,13 +136,15 @@ async function runTestCase(
 	}
 }
 
-function generateReport(results: TestResult[]): string {
-	const totalTests = results.length;
+/**
+ * Calculates average scores for each evaluation category
+ * @param results - Array of test results
+ * @returns Object with average scores per category
+ */
+function calculateCategoryAverages(
+	results: TestResult[],
+): Record<'functionality' | 'connections' | 'expressions' | 'nodeConfiguration', number> {
 	const successfulTests = results.filter((r) => !r.error).length;
-	const averageScore =
-		results.filter((r) => !r.error).reduce((sum, r) => sum + r.evaluationResult.overallScore, 0) /
-			successfulTests || 0;
-
 	const categoryAverages = {
 		functionality: 0,
 		connections: 0,
@@ -138,7 +165,19 @@ function generateReport(results: TestResult[]): string {
 		categoryAverages[key as keyof typeof categoryAverages] /= successfulTests || 1;
 	});
 
-	// Count violations by type
+	return categoryAverages;
+}
+
+/**
+ * Counts violations by severity type across all test results
+ * @param results - Array of test results
+ * @returns Object with counts for each violation type
+ */
+function countViolationsByType(results: TestResult[]): {
+	critical: number;
+	major: number;
+	minor: number;
+} {
 	let criticalCount = 0;
 	let majorCount = 0;
 	let minorCount = 0;
@@ -155,24 +194,42 @@ function generateReport(results: TestResult[]): string {
 		minorCount += allViolations.filter((v) => v.type === 'minor').length;
 	});
 
+	return { critical: criticalCount, major: majorCount, minor: minorCount };
+}
+
+/**
+ * Generates a markdown report from evaluation results
+ * @param results - Array of test results
+ * @returns Formatted markdown report string
+ */
+function generateReport(results: TestResult[]): string {
+	const totalTests = results.length;
+	const successfulTests = results.filter((r) => !r.error).length;
+	const averageScore =
+		results.filter((r) => !r.error).reduce((sum, r) => sum + r.evaluationResult.overallScore, 0) /
+			successfulTests || 0;
+
+	const categoryAverages = calculateCategoryAverages(results);
+	const violationCounts = countViolationsByType(results);
+
 	let report = `# AI Workflow Builder Evaluation Report
 
 ## Summary
 - Total Tests: ${totalTests}
 - Successful: ${successfulTests}
 - Failed: ${totalTests - successfulTests}
-- Average Score: ${(averageScore * 100).toFixed(1)}%
+- Average Score: ${formatPercentage(averageScore)}
 
 ## Category Averages
-- Functionality: ${(categoryAverages.functionality * 100).toFixed(1)}%
-- Connections: ${(categoryAverages.connections * 100).toFixed(1)}%
-- Expressions: ${(categoryAverages.expressions * 100).toFixed(1)}%
-- Node Configuration: ${(categoryAverages.nodeConfiguration * 100).toFixed(1)}%
+- Functionality: ${formatPercentage(categoryAverages.functionality)}
+- Connections: ${formatPercentage(categoryAverages.connections)}
+- Expressions: ${formatPercentage(categoryAverages.expressions)}
+- Node Configuration: ${formatPercentage(categoryAverages.nodeConfiguration)}
 
 ## Violations Summary
-- Critical: ${criticalCount}
-- Major: ${majorCount}
-- Minor: ${minorCount}
+- Critical: ${violationCounts.critical}
+- Major: ${violationCounts.major}
+- Minor: ${violationCounts.minor}
 
 ## Detailed Results
 
@@ -180,7 +237,7 @@ function generateReport(results: TestResult[]): string {
 
 	results.forEach((result) => {
 		report += `### ${result.testCase.name} (${result.testCase.id})
-- **Score**: ${(result.evaluationResult.overallScore * 100).toFixed(1)}%
+- **Score**: ${formatPercentage(result.evaluationResult.overallScore)}
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
 - **Summary**: ${result.evaluationResult.summary}
@@ -226,21 +283,39 @@ function generateReport(results: TestResult[]): string {
 	return report;
 }
 
-async function runFullEvaluation() {
+/**
+ * Saves evaluation results to disk
+ * @param results - Array of test results
+ * @param report - Generated markdown report
+ * @returns Paths to saved files
+ */
+function saveResults(
+	results: TestResult[],
+	report: string,
+): { reportPath: string; resultsPath: string } {
+	const resultsDir = join(__dirname, 'results');
+	mkdirSync(resultsDir, { recursive: true });
+
+	const timestamp = new Date().toISOString().replace(/:/g, '-');
+	const reportPath = join(resultsDir, `evaluation-report-${timestamp}.md`);
+	const resultsPath = join(resultsDir, `evaluation-results-${timestamp}.json`);
+
+	writeFileSync(reportPath, report);
+	writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+
+	return { reportPath, resultsPath };
+}
+
+/**
+ * Main evaluation runner that executes all test cases in parallel
+ * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
+ */
+async function runFullEvaluation(): Promise<void> {
 	console.log('=== AI Workflow Builder Full Evaluation ===\n');
 
 	try {
-		// Setup
-		const parsedNodeTypes = loadNodesFromFile();
-		const llm = await setupLLM();
-
-		const tracingClient = new Client({
-			apiKey: process.env.LANGSMITH_API_KEY,
-		});
-		const tracer = new LangChainTracer({
-			client: tracingClient,
-			projectName: 'workflow-builder-evaluation',
-		});
+		// Setup test environment
+		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
 
 		// Determine test cases to run
 		let testCases: TestCase[] = basicTestCases;
@@ -268,18 +343,12 @@ async function runFullEvaluation() {
 			async (testCase, index) =>
 				await limit(async () => {
 					// Create a dedicated agent for this test to avoid state conflicts
-					const testAgent = new WorkflowBuilderAgent({
-						parsedNodeTypes,
-						llmSimpleTask: llm,
-						llmComplexTask: llm,
-						checkpointer: new MemorySaver(), // Each test gets its own checkpointer
-						tracer,
-					});
+					const testAgent = createAgent(parsedNodeTypes, llm, tracer);
 
 					const result = await runTestCase(testAgent, llm, testCase, index, testCases.length);
 					completed++;
 					console.log(
-						`\n=== Progress: ${completed}/${testCases.length} completed (${((completed / testCases.length) * 100).toFixed(1)}%) ===\n`,
+						`\n=== Progress: ${completed}/${testCases.length} completed (${formatPercentage(completed / testCases.length)}) ===\n`,
 					);
 					return result;
 				}),
@@ -289,20 +358,11 @@ async function runFullEvaluation() {
 		const totalTime = Date.now() - startTime;
 		console.log(`\n=== All tests completed in ${(totalTime / 1000).toFixed(1)}s ===`);
 
-		// Ensure results directory exists
-		const resultsDir = join(__dirname, 'results');
-		mkdirSync(resultsDir, { recursive: true });
-
-		// Generate and save report
+		// Generate and save results
 		const report = generateReport(results);
-		const timestamp = new Date().toISOString().replace(/:/g, '-');
-		const reportPath = join(resultsDir, `evaluation-report-${timestamp}.md`);
-		writeFileSync(reportPath, report);
-		console.log(`\nReport saved to: ${reportPath}`);
+		const { reportPath, resultsPath } = saveResults(results, report);
 
-		// Save detailed results as JSON
-		const resultsPath = join(resultsDir, `evaluation-results-${timestamp}.json`);
-		writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+		console.log(`\nReport saved to: ${reportPath}`);
 		console.log(`Detailed results saved to: ${resultsPath}`);
 
 		// Print summary
