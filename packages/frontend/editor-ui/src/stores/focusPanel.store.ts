@@ -102,7 +102,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			[wid]: {
 				isActive: isActive ?? focusPanelActive.value,
 				parameters: parameters ?? _focusedNodeParameters.value,
-				width,
+				width: width ?? focusPanelWidth.value,
 			},
 		});
 
