@@ -31,7 +31,7 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	const latestNodes: INodeTypeDescription[] = [];
 	let multiVersionCount = 0;
 
-	for (const [nodeName, versions] of nodesByName.entries()) {
+	for (const [_nodeName, versions] of nodesByName.entries()) {
 		if (versions.length > 1) {
 			multiVersionCount++;
 			// Find the node with the default version

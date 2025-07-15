@@ -1,9 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import * as cliProgress from 'cli-progress';
+import Table from 'cli-table3';
 import { writeFileSync, mkdirSync } from 'fs';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import { join } from 'path';
+import pc from 'picocolors';
 
 import type { WorkflowState } from '@/workflow-state.js';
 
@@ -11,13 +14,17 @@ import { loadNodesFromFile } from './load-nodes.js';
 import type { ChatPayload } from '../src/workflow-builder-agent.js';
 import { basicTestCases, generateTestCases } from './chains/test-case-generator.js';
 import { evaluateWorkflow } from './chains/workflow-evaluator.js';
-import type { EvaluationInput, TestCase, EvaluationResult } from './types/evaluation.js';
+import type { EvaluationInput, TestCase, EvaluationResult, Violation } from './types/evaluation.js';
 import {
 	setupLLM,
 	createTracer,
 	createAgent,
 	formatPercentage,
-	logProgress,
+	formatColoredScore,
+	formatHeader,
+	formatStatusBadge,
+	formatTestName,
+	formatViolationType,
 } from './utils/evaluation-helpers.js';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
@@ -61,13 +68,11 @@ async function runTestCase(
 	agent: ReturnType<typeof createAgent>,
 	llm: BaseChatModel,
 	testCase: TestCase,
-	index: number,
-	totalTests: number,
+	_index: number,
+	_totalTests: number,
 	userId: string = 'test-user',
 ): Promise<TestResult> {
-	console.log(`\n[${index + 1}/${totalTests}] Running test: ${testCase.name} (${testCase.id})`);
-	console.log(`  Prompt: "${testCase.prompt}"`);
-
+	// Skip detailed logging in parallel mode - it will be shown in the progress bar
 	try {
 		const chatPayload: ChatPayload = {
 			question: testCase.prompt,
@@ -82,12 +87,8 @@ async function runTestCase(
 		let messageCount = 0;
 		for await (const _output of agent.chat(chatPayload, userId)) {
 			messageCount++;
-			logProgress(messageCount);
 		}
 		const generationTime = Date.now() - startTime;
-		console.log(
-			`\n[${index + 1}/${totalTests}] Generation complete for ${testCase.name} (${messageCount} messages in ${generationTime}ms)`,
-		);
 
 		// Get generated workflow
 		const state = await agent.getState(testCase.id, userId);
@@ -102,12 +103,6 @@ async function runTestCase(
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
-		console.log(`[${index + 1}/${totalTests}] Evaluation complete for ${testCase.name}`);
-		console.log(`  Score: ${formatPercentage(evaluationResult.overallScore)}`);
-		console.log(
-			`  Nodes: ${generatedWorkflow.nodes.length} (${generatedWorkflow.nodes.map((n) => n.type).join(', ')})`,
-		);
-
 		return {
 			testCase,
 			generatedWorkflow,
@@ -115,8 +110,6 @@ async function runTestCase(
 			generationTime,
 		};
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-		console.error(`[${index + 1}/${totalTests}] Error in ${testCase.name}: ${error}`);
 		return {
 			testCase,
 			generatedWorkflow: { nodes: [], connections: {} },
@@ -311,7 +304,8 @@ function saveResults(
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
 async function runFullEvaluation(): Promise<void> {
-	console.log('=== AI Workflow Builder Full Evaluation ===\n');
+	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
+	console.log();
 
 	try {
 		// Setup test environment
@@ -322,14 +316,26 @@ async function runFullEvaluation(): Promise<void> {
 
 		// Optionally generate additional test cases
 		if (process.env.GENERATE_TEST_CASES === 'true') {
-			console.log('Generating additional test cases...');
+			console.log(pc.blue('➔ Generating additional test cases...'));
 			const generatedCases = await generateTestCases(llm, 2);
 			testCases = [...testCases, ...generatedCases];
 		}
 
 		// Get concurrency from environment
 		const concurrency = parseInt(process.env.EVALUATION_CONCURRENCY ?? '3', 10);
-		console.log(`Running ${testCases.length} test cases with concurrency=${concurrency}...\n`);
+		console.log(pc.dim(`Running ${testCases.length} test cases with concurrency=${concurrency}`));
+		console.log();
+
+		// Create progress bar
+		const progressBar = new cliProgress.SingleBar(
+			{
+				format: '{bar} {percentage}% | ETA: {eta}s | {value}/{total} | {testName}',
+				barCompleteChar: '█',
+				barIncompleteChar: '░',
+				hideCursor: true,
+			},
+			cliProgress.Presets.shades_classic,
+		);
 
 		// Create concurrency limiter
 		const limit = pLimit(concurrency);
@@ -337,26 +343,67 @@ async function runFullEvaluation(): Promise<void> {
 		// Track progress
 		let completed = 0;
 		const startTime = Date.now();
+		const testResults: { [key: string]: 'pending' | 'pass' | 'fail' } = {};
+
+		// Initialize all tests as pending
+		testCases.forEach((tc) => {
+			testResults[tc.id] = 'pending';
+		});
+
+		progressBar.start(testCases.length, 0, {
+			testName: 'Starting...',
+		});
 
 		// Run all test cases in parallel with concurrency limit
 		const promises = testCases.map(
 			async (testCase, index) =>
 				await limit(async () => {
+					progressBar.update(completed, {
+						testName: `Running: ${testCase.name}`,
+					});
+
 					// Create a dedicated agent for this test to avoid state conflicts
 					const testAgent = createAgent(parsedNodeTypes, llm, tracer);
-
 					const result = await runTestCase(testAgent, llm, testCase, index, testCases.length);
+
+					testResults[testCase.id] = result.error ? 'fail' : 'pass';
 					completed++;
-					console.log(
-						`\n=== Progress: ${completed}/${testCases.length} completed (${formatPercentage(completed / testCases.length)}) ===\n`,
-					);
+					progressBar.update(completed, {
+						testName: completed === testCases.length ? 'Complete!' : 'Waiting...',
+					});
 					return result;
 				}),
 		);
 
 		const results = await Promise.all(promises);
 		const totalTime = Date.now() - startTime;
-		console.log(`\n=== All tests completed in ${(totalTime / 1000).toFixed(1)}s ===`);
+		progressBar.stop();
+
+		console.log();
+		console.log(formatHeader('Test Results', 70));
+		console.log();
+
+		// Display test results summary
+		for (const testCase of testCases) {
+			const result = results.find((r) => r.testCase.id === testCase.id);
+			if (result) {
+				const status = result.error ? 'fail' : 'pass';
+				const badge = formatStatusBadge(status);
+				const score = result.error
+					? 'N/A'
+					: formatColoredScore(result.evaluationResult.overallScore);
+				console.log(`  ${badge} ${formatTestName(testCase.name, testCase.id)}`);
+				console.log(
+					`     Score: ${score} | Nodes: ${result.generatedWorkflow.nodes.length} | Time: ${result.generationTime}ms`,
+				);
+				if (result.error) {
+					console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
+				}
+			}
+		}
+
+		console.log();
+		console.log(pc.green(`✓ All tests completed in ${(totalTime / 1000).toFixed(1)}s`));
 
 		// Generate and save results
 		const report = generateReport(results);
@@ -365,11 +412,125 @@ async function runFullEvaluation(): Promise<void> {
 		console.log(`\nReport saved to: ${reportPath}`);
 		console.log(`Detailed results saved to: ${resultsPath}`);
 
-		// Print summary
-		console.log('\n=== Evaluation Summary ===');
-		console.log(report.split('## Detailed Results')[0]);
+		// Print summary table
+		const summaryTable = new Table({
+			head: ['Metric', 'Value'],
+			style: { head: ['cyan'] },
+		});
+
+		const successfulTests = results.filter((r) => !r.error).length;
+		const failedTests = results.length - successfulTests;
+		const averageScore =
+			results.filter((r) => !r.error).reduce((sum, r) => sum + r.evaluationResult.overallScore, 0) /
+				successfulTests || 0;
+
+		const categoryAverages = calculateCategoryAverages(results);
+		const violationCounts = countViolationsByType(results);
+
+		summaryTable.push(
+			['Total Tests', results.length.toString()],
+			['Successful', pc.green(successfulTests.toString())],
+			['Failed', failedTests > 0 ? pc.red(failedTests.toString()) : '0'],
+			['Average Score', formatColoredScore(averageScore)],
+			[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+			['Functionality', formatColoredScore(categoryAverages.functionality)],
+			['Connections', formatColoredScore(categoryAverages.connections)],
+			['Expressions', formatColoredScore(categoryAverages.expressions)],
+			['Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+			[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+			[
+				'Critical Issues',
+				violationCounts.critical > 0 ? pc.red(violationCounts.critical.toString()) : '0',
+			],
+			[
+				'Major Issues',
+				violationCounts.major > 0 ? pc.yellow(violationCounts.major.toString()) : '0',
+			],
+			['Minor Issues', pc.dim(violationCounts.minor.toString())],
+		);
+
+		console.log();
+		console.log(formatHeader('Summary', 70));
+		console.log(summaryTable.toString());
+
+		// Display all violations if any exist
+		if (violationCounts.critical > 0 || violationCounts.major > 0 || violationCounts.minor > 0) {
+			console.log();
+			console.log(formatHeader('Violations Detail', 70));
+
+			// Collect all violations with test context
+			const allViolations: Array<{
+				violation: Violation & { category: string };
+				testName: string;
+			}> = [];
+
+			results.forEach((result) => {
+				if (!result.error) {
+					const testViolations = [
+						...result.evaluationResult.functionality.violations.map((v) => ({
+							violation: { ...v, category: 'Functionality' },
+							testName: result.testCase.name,
+						})),
+						...result.evaluationResult.connections.violations.map((v) => ({
+							violation: { ...v, category: 'Connections' },
+							testName: result.testCase.name,
+						})),
+						...result.evaluationResult.expressions.violations.map((v) => ({
+							violation: { ...v, category: 'Expressions' },
+							testName: result.testCase.name,
+						})),
+						...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
+							violation: { ...v, category: 'Node Config' },
+							testName: result.testCase.name,
+						})),
+					];
+					allViolations.push(...testViolations);
+				}
+			});
+
+			// Group violations by severity
+			const criticalViolations = allViolations.filter((v) => v.violation.type === 'critical');
+			const majorViolations = allViolations.filter((v) => v.violation.type === 'major');
+			const minorViolations = allViolations.filter((v) => v.violation.type === 'minor');
+
+			// Display critical violations
+			if (criticalViolations.length > 0) {
+				console.log();
+				console.log(pc.red('Critical Violations:'));
+				criticalViolations.forEach(({ violation, testName }) => {
+					console.log(
+						`  ${formatViolationType('critical')} [${violation.category}] ${violation.description}`,
+					);
+					console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
+				});
+			}
+
+			// Display major violations
+			if (majorViolations.length > 0) {
+				console.log();
+				console.log(pc.yellow('Major Violations:'));
+				majorViolations.forEach(({ violation, testName }) => {
+					console.log(
+						`  ${formatViolationType('major')} [${violation.category}] ${violation.description}`,
+					);
+					console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
+				});
+			}
+
+			// Display minor violations
+			if (minorViolations.length > 0) {
+				console.log();
+				console.log(pc.gray('Minor Violations:'));
+				minorViolations.forEach(({ violation, testName }) => {
+					console.log(
+						`  ${formatViolationType('minor')} [${violation.category}] ${violation.description}`,
+					);
+					console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
+				});
+			}
+		}
 	} catch (error) {
-		console.error('Evaluation failed:', error);
+		console.error(pc.red('✗ Evaluation failed:'), error);
 		process.exit(1);
 	}
 }

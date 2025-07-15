@@ -3,6 +3,7 @@ import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import { Client } from 'langsmith';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import pc from 'picocolors';
 
 import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
@@ -90,7 +91,10 @@ export function displayViolationSection(
 
 	console.log(`\n${title}:`);
 	violations.forEach((v) => {
-		console.log(`  - [${v.category}] ${v.description} (-${v.pointsDeducted} points)`);
+		const typeFormatted = formatViolationType(v.type);
+		console.log(
+			`  ${typeFormatted} [${v.category}] ${v.description} ${pc.dim(`(-${v.pointsDeducted} pts)`)}`,
+		);
 	});
 }
 
@@ -126,4 +130,74 @@ export function formatElapsedTime(startTime: number): string {
 		return `${elapsed}ms`;
 	}
 	return `${(elapsed / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Formats a score with appropriate color based on value
+ * @param score - Score between 0 and 1
+ * @param asPercentage - Whether to format as percentage
+ * @returns Color-formatted score string
+ */
+export function formatColoredScore(score: number, asPercentage = true): string {
+	const value = asPercentage ? formatPercentage(score) : score.toFixed(2);
+	if (score >= 0.8) return pc.green(value);
+	if (score >= 0.5) return pc.yellow(value);
+	return pc.red(value);
+}
+
+/**
+ * Creates a formatted section header
+ * @param title - Header title
+ * @param width - Total width of the header line
+ * @returns Formatted header string
+ */
+export function formatHeader(title: string, width = 60): string {
+	const padding = Math.max(0, width - title.length - 4);
+	const leftPad = Math.floor(padding / 2);
+	const rightPad = padding - leftPad;
+	return pc.blue('═'.repeat(leftPad) + ` ${title} ` + '═'.repeat(rightPad));
+}
+
+/**
+ * Formats a status badge with appropriate icon and color
+ * @param status - Status type
+ * @returns Formatted status badge
+ */
+export function formatStatusBadge(status: 'pass' | 'fail' | 'running' | 'pending'): string {
+	switch (status) {
+		case 'pass':
+			return pc.green('✓ PASS');
+		case 'fail':
+			return pc.red('✗ FAIL');
+		case 'running':
+			return pc.blue('⚡ RUNNING');
+		case 'pending':
+			return pc.gray('○ PENDING');
+	}
+}
+
+/**
+ * Formats violation type with appropriate color
+ * @param type - Violation type
+ * @returns Color-formatted violation type
+ */
+export function formatViolationType(type: 'critical' | 'major' | 'minor'): string {
+	switch (type) {
+		case 'critical':
+			return pc.red('[CRITICAL]');
+		case 'major':
+			return pc.yellow('[MAJOR]');
+		case 'minor':
+			return pc.gray('[MINOR]');
+	}
+}
+
+/**
+ * Formats a test name with dimmed ID
+ * @param name - Test name
+ * @param id - Test ID
+ * @returns Formatted test name
+ */
+export function formatTestName(name: string, id: string): string {
+	return `${name} ${pc.dim(`(${id})`)}`;
 }
