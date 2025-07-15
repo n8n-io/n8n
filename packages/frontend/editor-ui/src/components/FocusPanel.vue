@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -14,6 +14,7 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	type CodeExecutionMode,
@@ -37,6 +38,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	focus: [];
+	saveKeyboardShortcut: [event: KeyboardEvent];
 }>();
 
 // ESLint: false positive
@@ -49,6 +51,7 @@ const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
+const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
@@ -206,11 +209,13 @@ function optionSelected(command: string) {
 	if (!resolvedParameter.value) return;
 
 	switch (command) {
-		case 'resetValue':
-			return (
-				typeof resolvedParameter.value.parameter.default === 'string' &&
-				valueChanged(resolvedParameter.value.parameter.default)
-			);
+		case 'resetValue': {
+			if (typeof resolvedParameter.value.parameter.default === 'string') {
+				valueChanged(resolvedParameter.value.parameter.default);
+			}
+			void setFocus();
+			break;
+		}
 
 		case 'addExpression': {
 			const newValue = formatAsExpression(
@@ -241,11 +246,52 @@ function optionSelected(command: string) {
 
 		case 'formatHtml':
 			htmlEditorEventBus.emit('format-html');
-			return;
+			break;
 	}
 }
 
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+
+// Wait for editor to mount before focusing
+function focusWithDelay() {
+	setTimeout(() => {
+		void setFocus();
+	}, 50);
+}
+
+function handleKeydown(event: KeyboardEvent) {
+	if (event.key === 's' && deviceSupport.isCtrlKeyPressed(event)) {
+		event.stopPropagation();
+		event.preventDefault();
+		if (isReadOnly.value) return;
+
+		emit('saveKeyboardShortcut', event);
+	}
+}
+
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', handleKeydown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', handleKeydown, true);
+};
+
+watch([() => focusPanelStore.lastFocusTimestamp, () => expressionModeEnabled.value], () =>
+	focusWithDelay(),
+);
+
+watch(
+	() => focusPanelStore.focusPanelActive,
+	(newValue) => {
+		if (newValue) {
+			registerKeyboardListener();
+		} else {
+			unregisterKeyboardListener();
+		}
+	},
+	{ immediate: true },
+);
 
 function onResize(event: ResizeData) {
 	focusPanelStore.updateWidth(event.width);
@@ -328,6 +374,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								<CodeNodeEditor
 									v-if="editorType === 'codeNodeEditor'"
 									:id="resolvedParameter.parameterPath"
+									ref="inputField"
+									:class="$style.heightFull"
 									:mode="codeEditorMode"
 									:model-value="resolvedParameter.value"
 									:default-value="resolvedParameter.parameter.default"
@@ -339,6 +387,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									@update:model-value="valueChangedDebounced" />
 								<HtmlEditor
 									v-else-if="editorType === 'htmlEditor'"
+									ref="inputField"
 									:model-value="resolvedParameter.value"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
@@ -348,6 +397,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									@update:model-value="valueChangedDebounced" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
+									ref="inputField"
 									:model-value="resolvedParameter.value"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
@@ -355,6 +405,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									@update:model-value="valueChangedDebounced" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
+									ref="inputField"
 									:model-value="resolvedParameter.value"
 									:dialect="getTypeOption('sqlDialect')"
 									:is-read-only="isReadOnly"
@@ -363,6 +414,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									@update:model-value="valueChangedDebounced" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"
+									ref="inputField"
 									:model-value="resolvedParameter.value"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
@@ -371,6 +423,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									@update:model-value="valueChangedDebounced" />
 								<JsonEditor
 									v-else-if="resolvedParameter.parameter.type === 'json'"
+									ref="inputField"
 									:model-value="resolvedParameter.value"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
@@ -495,5 +548,9 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			}
 		}
 	}
+}
+
+.heightFull {
+	height: 100%;
 }
 </style>
