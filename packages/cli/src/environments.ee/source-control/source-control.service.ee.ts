@@ -26,6 +26,7 @@ import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
@@ -42,6 +43,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
@@ -65,6 +67,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private sourceControlScopedService: SourceControlScopedService,
 		private tagRepository: TagRepository,
 		private folderRepository: FolderRepository,
 		private readonly eventService: EventService,
@@ -1049,9 +1052,33 @@ export class SourceControlService {
 		await this.gitService.setGitUserDetails(name, email);
 	}
 
-	async getFileContent(filePath: string): Promise<string> {
+	async getFileContent({
+		user,
+		type,
+		id,
+		commit = 'HEAD',
+	}: {
+		user: User;
+		type: SourceControlledFile['type'];
+		id?: string;
+		commit?: string;
+	}): Promise<string> {
 		await this.sanityCheck();
-		const fileContent = await this.gitService.getFileContent(filePath);
-		return fileContent;
+		const context = new SourceControlContext(user);
+		switch (type) {
+			case 'workflow': {
+				const authorizedWorkflows =
+					await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context);
+				if (authorizedWorkflows && !authorizedWorkflows.find((wf) => wf.id === id)) {
+					throw new ForbiddenError(`You are not allowed to access workflow with id ${id}`);
+				}
+				return await this.gitService.getFileContent(
+					`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${id}.json`,
+					commit,
+				);
+			}
+			default:
+				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
 	}
 }

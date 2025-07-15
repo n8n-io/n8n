@@ -1,4 +1,4 @@
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import {
 	type AuthenticatedRequest,
 	type CredentialsEntity,
@@ -21,6 +21,7 @@ export class SourceControlScopedService {
 	constructor(
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialRepository: CredentialsRepository,
 	) {}
 
 	async ensureIsAllowedToPush(req: AuthenticatedRequest) {
@@ -76,6 +77,21 @@ export class SourceControlScopedService {
 				id: true,
 			},
 			where: this.getWorkflowsInAdminProjectsFromContextFilter(context),
+		});
+	}
+
+	async getCredentialsInAdminProjectsFromContext(
+		context: SourceControlContext,
+	): Promise<CredentialsEntity[] | undefined> {
+		if (context.hasAccessToAllProjects()) {
+			return;
+		}
+
+		return await this.credentialRepository.find({
+			select: {
+				id: true,
+			},
+			where: this.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 	}
 

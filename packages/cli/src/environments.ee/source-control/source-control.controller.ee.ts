@@ -6,6 +6,7 @@ import express from 'express';
 import type { PullResult } from 'simple-git';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
@@ -253,15 +254,18 @@ export class SourceControlController {
 		}
 	}
 
-	@Get('/get-workflow/:workflowId', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	async getFileContent(req: AuthenticatedRequest & { params: { workflowId: string } }) {
+	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async getFileContent(
+		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
+	) {
 		try {
-			const workflowId = req.params.workflowId;
-			const content = await this.sourceControlService.getFileContent(
-				`workflows/${workflowId}.json`,
-			);
+			const { type, id } = req.params;
+			const content = await this.sourceControlService.getFileContent({ user: req.user, type, id });
 			return { content };
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
