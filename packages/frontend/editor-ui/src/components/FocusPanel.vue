@@ -29,8 +29,6 @@ import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
 
-const DEFAULT_PANEL_WIDTH = 528;
-
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -53,8 +51,6 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const { debounce } = useDebounce();
 
-const panelWidth = ref(DEFAULT_PANEL_WIDTH);
-
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
 	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
@@ -63,6 +59,7 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
+const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
 	if (!resolvedParameter.value) return false;
@@ -251,7 +248,7 @@ function optionSelected(command: string) {
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 
 function onResize(event: ResizeData) {
-	panelWidth.value = event.width;
+	focusPanelStore.updateWidth(event.width);
 }
 
 const onResizeThrottle = useThrottleFn(onResize, 10);
@@ -260,12 +257,12 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <template>
 	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
 		<N8nResizeWrapper
-			:width="panelWidth"
+			:width="focusPanelWidth"
 			:supported-directions="['left']"
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${panelWidth}px` }"
+			:style="{ width: `${focusPanelWidth}px` }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
