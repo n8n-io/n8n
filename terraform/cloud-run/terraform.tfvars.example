@@ -1,0 +1,33 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# GCP Project Configuration
+project_id = "your-gcp-project-id"
+region     = "asia-northeast1"
+
+# Cloud Run Service Configuration
+service_name     = "n8n"
+container_image  = "gcr.io/your-project-id/n8n:latest"
+node_env         = "production"
+
+# Database Configuration
+db_type     = "postgres"
+db_host     = "your-db-host"
+db_port     = "5432"
+db_name     = "n8n"
+db_user     = "n8n"
+db_password = "your-secure-password"
+
+# N8N Configuration
+n8n_encryption_key = "your-encryption-key-32-characters"
+
+# Resource Limits
+cpu_limit      = "2"
+memory_limit   = "2Gi"
+timeout_seconds = 3600
+
+# Scaling Configuration
+max_instances = "10"
+min_instances = "1"
+
+# Access Control
+allow_unauthenticated = false
