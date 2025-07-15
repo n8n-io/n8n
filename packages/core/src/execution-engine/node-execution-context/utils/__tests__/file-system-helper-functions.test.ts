@@ -4,6 +4,8 @@ import { createReadStream } from 'node:fs';
 import { access as fsAccess } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { getFileSystemHelperFunctions, isFilePathBlocked } from '../file-system-helper-functions';
+
 import {
 	BINARY_DATA_STORAGE_PATH,
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
@@ -14,8 +16,6 @@ import {
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-
-import { getFileSystemHelperFunctions, isFilePathBlocked } from '../file-system-helper-functions';
 
 jest.mock('node:fs');
 jest.mock('node:fs/promises');
@@ -135,9 +135,9 @@ describe('getFileSystemHelperFunctions', () => {
 	});
 
 	describe('getStoragePath', () => {
-		it('returns correct path', () => {
+		it('returns correct path', async () => {
 			const expectedPath = join(instanceSettings.n8nFolder, `storage/${node.type}`);
-			expect(helperFunctions.getStoragePath()).toBe(expectedPath);
+			expect(await helperFunctions.getStoragePath()).toBe(expectedPath);
 		});
 	});
 
