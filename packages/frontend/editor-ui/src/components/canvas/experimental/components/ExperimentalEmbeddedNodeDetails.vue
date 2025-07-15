@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import { useNDVStore } from '@/stores/ndv.store';
-import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { onBeforeUnmount, ref, computed, provide, useTemplateRef } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import NodeTitle from '@/components/NodeTitle.vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
-import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement, usePrevious, watchOnce } from '@vueuse/core';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { useVueFlow } from '@vue-flow/core';
+import { useActiveElement, watchOnce } from '@vueuse/core';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
+import { useExperimentalNdvStore } from '../experimentalNdv.store';
+import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -61,34 +61,12 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
+const shouldShowInputPanel = ref(false);
+
 const containerRef = useTemplateRef('container');
 const inputPanelContainerRef = useTemplateRef('inputPanelContainer');
 const activeElement = useActiveElement();
 
-const shouldShowInputPanel = computed(() => {
-	if (ndvStore.isDraggableDragging && previousShouldShowInputPanel.value) {
-		// Keep showing panel while dragging
-		return true;
-	}
-
-	if (activeElement.value && inputPanelContainerRef.value?.contains(activeElement.value)) {
-		// User is interacting with input panel
-		return true;
-	}
-
-	if (
-		activeElement.value &&
-		containerRef.value?.contains(activeElement.value) &&
-		activeElement.value.closest('[data-test-id=inline-expression-editor-input]')
-	) {
-		// User is interacting with a parameter in expression mode
-		// TODO: find a way to implement this reliably
-
-		return true;
-	}
-
-	return false;
-});
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) {
 		return undefined;
@@ -134,11 +112,6 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-watchOnce(isVisible, (visible) => {
-	isOnceVisible.value = isOnceVisible.value || visible;
-});
-const previousShouldShowInputPanel = usePrevious(shouldShowInputPanel, false);
-
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 function handleToggleExpand() {
@@ -149,6 +122,19 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
+});
+
+watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
+	if (active && containerRef.value?.contains(active)) {
+		// TODO: find a way to implement this without depending on test ID
+		shouldShowInputPanel.value =
+			!!active.closest('[data-test-id=inline-expression-editor-input]') ||
+			!!inputPanelContainerRef.value?.contains(active);
+	}
+
+	if (selected.every((sel) => sel.id !== node.value?.id)) {
+		shouldShowInputPanel.value = false;
+	}
 });
 </script>
 
@@ -164,6 +150,7 @@ watchOnce(isVisible, (visible) => {
 		<template v-if="isOnceVisible">
 			<ExperimentalCanvasNodeSettings
 				v-if="isExpanded"
+				tabindex="-1"
 				:node-id="nodeId"
 				:class="$style.settingsView"
 				:no-wheel="

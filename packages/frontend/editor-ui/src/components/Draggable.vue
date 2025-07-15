@@ -62,6 +62,12 @@ const onDragStart = (event: MouseEvent) => {
 
 	window.addEventListener('mousemove', onDrag);
 	window.addEventListener('mouseup', onDragEnd);
+
+	// blur so that any focused inputs update value
+	const activeElement = document.activeElement as HTMLElement;
+	if (activeElement) {
+		activeElement.blur();
+	}
 };
 
 const onDrag = (event: MouseEvent) => {
@@ -79,12 +85,6 @@ const onDrag = (event: MouseEvent) => {
 
 		emit('dragstart', draggingElement.value, data);
 		document.body.style.cursor = 'grabbing';
-	}
-
-	// blur so that any focused inputs update value
-	const activeElement = document.activeElement as HTMLElement;
-	if (activeElement) {
-		activeElement.blur();
 	}
 
 	animationFrameId.value = window.requestAnimationFrame(() => {
