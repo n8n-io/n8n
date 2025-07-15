@@ -14,6 +14,10 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 
 describe('useNodeSettingsParameters', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
 	describe('handleFocus', () => {
 		let ndvStore: MockedStore<typeof useNDVStore>;
 		let focusPanelStore: MockedStore<typeof useFocusPanelStore>;
