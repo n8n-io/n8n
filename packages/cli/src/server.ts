@@ -278,19 +278,21 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
-			// Return Sentry config as a static file
-			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
-				res.type('js');
-				res.write('window.sentry=');
-				res.write(
-					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontendDsn,
-						environment: process.env.ENVIRONMENT || 'development',
-						serverName: process.env.DEPLOYMENT_NAME,
-						release: `n8n@${N8N_VERSION}`,
-					}),
-				);
-				res.end();
+			this.app.get('/config.js', (_req, res) => {
+				const frontendSentryConfig = JSON.stringify({
+					dsn: this.globalConfig.sentry.frontendDsn,
+					environment: process.env.ENVIRONMENT || 'development',
+					serverName: process.env.DEPLOYMENT_NAME,
+					release: `n8n@${N8N_VERSION}`,
+				});
+				const frontendConfig = [
+					`window.BASE_PATH = '${this.globalConfig.path}';`,
+					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
+					`window.sentry = ${frontendSentryConfig};`,
+				].join('\n');
+
+				res.type('application/javascript');
+				res.send(frontendConfig);
 			});
 		}
 
@@ -423,7 +425,6 @@ export class Server extends AbstractServer {
 				'healthz',
 				'metrics',
 				'e2e',
-				'config.js',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
 				isApiEnabled() ? '' : publicApiEndpoint,

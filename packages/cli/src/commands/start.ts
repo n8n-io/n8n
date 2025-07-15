@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import { writeFile, mkdir } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import { jsonParse, randomString, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -19,6 +18,7 @@ import { BaseCommand } from './base-command';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -164,19 +164,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		};
 
-		const generateConfigFile = async () => {
-			const configPath = path.join(staticCacheDir, 'config.js');
-
-			const configContent = [
-				`window.BASE_PATH = '${n8nPath}';`,
-				`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
-			].join('\n');
-
-			await writeFile(configPath, configContent, 'utf-8');
-		};
-
 		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
-		await Promise.all([generateConfigFile(), compileFile('index.html'), ...files.map(compileFile)]);
+		await Promise.all([compileFile('index.html'), ...files.map(compileFile)]);
 	}
 
 	async init() {
