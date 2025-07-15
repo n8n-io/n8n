@@ -351,7 +351,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 	<div :class="$style.container">
 		<N8nHeading tag="h1" size="2xlarge" class="mb-xl">
 			{{ i18n.baseText('settings.users') }}
-			<N8nText :class="$style.userCount" color="text-light" v-if="!showUMSetupWarning"
+			<N8nText v-if="!showUMSetupWarning" :class="$style.userCount" color="text-light"
 				>{{ usersStore.usersList.state.count }} {{ i18n.baseText('settings.users') }}</N8nText
 			>
 		</N8nHeading>
