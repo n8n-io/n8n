@@ -72,7 +72,12 @@ const chartData = computed<ChartData<'line'>>(() => {
 </script>
 
 <template>
-	<Line :data="chartData" :options="chartOptions" :plugins="[Filler]" />
+	<Line
+		data-test-id="insights-chart-time-saved"
+		:data="chartData"
+		:options="chartOptions"
+		:plugins="[Filler]"
+	/>
 </template>
 
 <style lang="scss" module></style>

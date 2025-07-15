@@ -146,6 +146,7 @@ type Props = {
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
+	disableDisplayModeSelection?: boolean;
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
@@ -168,6 +169,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hidePagination: false,
 	calloutMessage: undefined,
 	disableRunIndexSelection: false,
+	disableDisplayModeSelection: false,
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
@@ -1447,6 +1449,7 @@ defineExpose({ enterEditMode });
 				/>
 
 				<RunDataDisplayModeSelect
+					v-if="!disableDisplayModeSelection"
 					v-show="
 						hasPreviewSchema ||
 						(hasNodeRun &&
