@@ -8,10 +8,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { get } from 'lodash';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
+	IBinaryKeyData,
 	IBinaryData,
 	IDataObject,
 	IDeferredPromise,
@@ -32,6 +34,7 @@ import type {
 	WebhookResponseData,
 } from 'n8n-workflow';
 import {
+	BINARY_ENCODING,
 	createDeferredPromise,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -699,13 +702,13 @@ export async function executeWebhook(
 						if (responseData === 'firstEntryJson') {
 							// Return the JSON data of the first entry
 
-							if (returnData.data!.main[0]![0] === undefined) {
+							if (lastNodeTaskData.data!.main[0]![0] === undefined) {
 								responseCallback(new OperationalError('No item to return got found'), {});
 								didSendResponse = true;
 								return undefined;
 							}
 
-							const rawData = returnData.data!.main[0]![0].json as any;
+							const rawData = lastNodeTaskData.data!.main[0]![0].json as any;
 							data = rawData;
 
 							if (
@@ -812,10 +815,19 @@ export async function executeWebhook(
 									noWebhookResponse: true,
 								});
 								didSendResponse = true;
+								return runData;
 							}
+
+							// Default case for firstEntryJson - return processed data
+							responseCallback(null, {
+								data,
+								responseCode,
+							});
+							didSendResponse = true;
+							return runData;
 						} else if (responseData === 'firstEntryBinary') {
 							// Return the binary data of the first entry
-							data = returnData.data!.main[0]![0];
+							data = lastNodeTaskData.data!.main[0]![0];
 
 							if (data === undefined) {
 								responseCallback(new OperationalError('No item was found to return'), {});
@@ -875,42 +887,46 @@ export async function executeWebhook(
 								});
 								process.nextTick(() => res.end());
 							}
+							return runData;
 						} else if (responseData === 'noData') {
 							// Return without data
 							data = undefined;
 						} else {
 							// Return the JSON data of all the entries
 							data = [];
-							for (const entry of returnData.data!.main[0]!) {
+							for (const entry of lastNodeTaskData.data!.main[0]!) {
 								data.push(entry.json);
 							}
 						}
 
+						const result = await extractWebhookLastNodeResponse(
+							context,
+							responseData as WebhookResponseData,
+							lastNodeTaskData,
+						);
+						if (!result.ok) {
+							responseCallback(result.error, {});
+							didSendResponse = true;
+							return runData;
+						}
 
-					const result = await extractWebhookLastNodeResponse(
-						context,
-						responseData as WebhookResponseData,
-						lastNodeTaskData,
-					);
-					if (!result.ok) {
-						responseCallback(result.error, {});
+						const response = result.result;
+						// Apply potential content-type override
+						if (response.contentType) {
+							responseHeaders.set('content-type', response.contentType);
+						}
+
+						responseCallback(
+							null,
+							response.type === 'static'
+								? createStaticResponse(response.body, responseCode, responseHeaders)
+								: createStreamResponse(response.stream, responseCode, responseHeaders),
+						);
 						didSendResponse = true;
 						return runData;
 					}
 
-					const response = result.result;
-					// Apply potential content-type override
-					if (response.contentType) {
-						responseHeaders.set('content-type', response.contentType);
-					}
-
-					responseCallback(
-						null,
-						response.type === 'static'
-							? createStaticResponse(response.body, responseCode, responseHeaders)
-							: createStreamResponse(response.stream, responseCode, responseHeaders),
-					);
-					didSendResponse = true;
+					// Fallback return for any unhandled cases
 					return runData;
 				})
 				.catch((e) => {
@@ -938,7 +954,7 @@ export async function executeWebhook(
 					});
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
-		return;
+		return undefined;
 	}
 }
 
