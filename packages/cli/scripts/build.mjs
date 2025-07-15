@@ -16,6 +16,8 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+copyChatAssets();
+copyOpenApiYml();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -81,4 +83,34 @@ function generateTimezoneData() {
 		return acc;
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
+}
+
+function copyChatAssets() {
+	const chatAssetsSource = path.resolve(ROOT_DIR, '..', 'frontend', '@n8n', 'chat', 'dist');
+	const chatAssetsDestination = path.resolve(ROOT_DIR, 'dist', 'chat');
+
+	if (existsSync(chatAssetsSource)) {
+		console.log('Copying chat assets from', chatAssetsSource, 'to', chatAssetsDestination);
+		shell.mkdir('-p', chatAssetsDestination);
+		shell.cp('-r', path.join(chatAssetsSource, '*'), chatAssetsDestination);
+		console.log('✅ Chat assets copied successfully');
+	} else {
+		console.warn('⚠️ Chat assets not found at', chatAssetsSource);
+		console.warn('   Run "pnpm --filter @n8n/chat build" first');
+	}
+}
+
+function copyOpenApiYml() {
+	const openApiSource = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1', 'openapi.yml');
+	const openApiDestination = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1', 'openapi.yml');
+
+	if (existsSync(openApiSource)) {
+		console.log('Copying openapi.yml from', openApiSource, 'to', openApiDestination);
+		shell.mkdir('-p', path.dirname(openApiDestination));
+		shell.cp(openApiSource, openApiDestination);
+		console.log('✅ OpenAPI specification copied successfully');
+	} else {
+		console.warn('⚠️ openapi.yml not found at:', openApiSource);
+		console.warn('   API documentation may not be available');
+	}
 }
