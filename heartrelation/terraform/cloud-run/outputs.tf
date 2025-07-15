@@ -55,3 +55,39 @@ output "container_image_url" {
   description = "Full container image URL for the Artifact Registry"
   value       = "${module.artifact_registry.repository_url}/n8n:latest"
 }
+
+# PostgreSQL outputs
+output "postgres_instance_name" {
+  description = "Name of the Cloud SQL instance"
+  value       = module.postgres.instance_name
+}
+
+output "postgres_connection_name" {
+  description = "Connection name of the Cloud SQL instance"
+  value       = module.postgres.instance_connection_name
+}
+
+output "postgres_ip_address" {
+  description = "IP address of the Cloud SQL instance"
+  value       = module.postgres.instance_ip_address
+}
+
+output "postgres_database_name" {
+  description = "Name of the PostgreSQL database"
+  value       = module.postgres.database_name
+}
+
+output "postgres_database_user" {
+  description = "PostgreSQL database user name"
+  value       = module.postgres.database_user
+}
+
+output "postgres_host" {
+  description = "PostgreSQL host (IP address)"
+  value       = module.postgres.database_host
+}
+
+output "postgres_port" {
+  description = "PostgreSQL port"
+  value       = module.postgres.database_port
+}

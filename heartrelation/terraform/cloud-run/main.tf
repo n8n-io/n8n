@@ -22,6 +22,27 @@ module "artifact_registry" {
   depends_on = [google_project_service.artifact_registry_api]
 }
 
+# PostgreSQL module
+module "postgres" {
+  source = "./modules/postgres"
+
+  instance_name       = var.postgres_instance_name
+  database_version    = var.postgres_database_version
+  region              = var.region
+  tier                = var.postgres_tier
+  availability_type   = var.postgres_availability_type
+  disk_size           = var.postgres_disk_size
+  disk_type           = var.postgres_disk_type
+  deletion_protection = var.postgres_deletion_protection
+  backup_enabled      = var.postgres_backup_enabled
+  authorized_networks = var.postgres_authorized_networks
+  database_name       = var.db_name
+  database_user       = var.db_user
+  database_password   = var.db_password
+
+  depends_on = [google_project_service.sql_admin_api]
+}
+
 # Cloud Run module
 module "cloud_run" {
   source = "./modules/cloud-run"
@@ -32,10 +53,10 @@ module "cloud_run" {
   container_image            = var.container_image
   node_env                   = var.node_env
   db_type                    = var.db_type
-  db_host                    = var.db_host
-  db_port                    = var.db_port
-  db_name                    = var.db_name
-  db_user                    = var.db_user
+  db_host                    = module.postgres.database_host
+  db_port                    = module.postgres.database_port
+  db_name                    = module.postgres.database_name
+  db_user                    = module.postgres.database_user
   db_password_secret_name    = google_secret_manager_secret.db_password.secret_id
   encryption_key_secret_name = google_secret_manager_secret.encryption_key.secret_id
   cpu_limit                  = var.cpu_limit
