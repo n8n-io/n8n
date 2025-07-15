@@ -3,6 +3,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -254,6 +255,20 @@ export function generateNodesGraph(
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
+
+			if (node.typeVersion >= 2.1) {
+				const options = node.parameters?.options;
+				if (
+					typeof options === 'object' &&
+					options &&
+					'enableStreaming' in options &&
+					options.enableStreaming === false
+				) {
+					nodeItem.is_streaming = false;
+				} else {
+					nodeItem.is_streaming = true;
+				}
+			}
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
 
@@ -365,6 +380,24 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+			const responseMode = node.parameters?.responseMode;
+			nodeItem.response_mode = typeof responseMode === 'string' ? responseMode : 'onReceived';
+		} else if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+			// Capture streaming response mode parameter
+			const options = node.parameters?.options;
+			if (
+				typeof options === 'object' &&
+				options &&
+				'responseMode' in options &&
+				typeof options.responseMode === 'string'
+			) {
+				nodeItem.response_mode = options.responseMode;
+			}
+			// Capture public chat setting
+			const isPublic = node.parameters?.public;
+			if (typeof isPublic === 'boolean') {
+				nodeItem.public_chat = isPublic;
+			}
 		} else if (
 			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
 			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
