@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="30" cy="30" r="28" fill="#6366F1" stroke="#4338CA" stroke-width="2"/>
+  <rect x="12" y="15" width="36" height="24" rx="3" fill="#FFFFFF" fill-opacity="0.9"/>
+  <rect x="14" y="17" width="32" height="20" rx="2" fill="#F8FAFC"/>
+  <path d="M16 32 L22 26 L28 29 L34 23 L40 25" stroke="#6366F1" stroke-width="2" fill="none"/>
+  <circle cx="22" cy="26" r="2" fill="#6366F1"/>
+  <circle cx="28" cy="29" r="2" fill="#6366F1"/>
+  <circle cx="34" cy="23" r="2" fill="#6366F1"/>
+  <rect x="16" y="18" width="12" height="2" rx="1" fill="#CBD5E1"/>
+  <rect x="16" y="21" width="8" height="2" rx="1" fill="#E2E8F0"/>
+  <rect x="32" y="32" width="12" height="6" rx="2" fill="#10B981" fill-opacity="0.8"/>
+  <circle cx="35" cy="35" r="1" fill="#FFFFFF"/>
+  <circle cx="41" cy="35" r="1" fill="#FFFFFF"/>
+  <path d="M45 12 L46 14 L48 13 L46 15 L45 12 Z" fill="#FBBF24"/>
+  <path d="M50 20 L51 22 L53 21 L51 23 L50 20 Z" fill="#FBBF24"/>
+  <path d="M8 22 L9 24 L11 23 L9 25 L8 22 Z" fill="#FBBF24"/>
+  <rect x="35" y="18" width="8" height="1.5" rx="0.75" fill="#6366F1" fill-opacity="0.6"/>
+  <rect x="35" y="20.5" width="6" height="1.5" rx="0.75" fill="#6366F1" fill-opacity="0.4"/>
+</svg>  

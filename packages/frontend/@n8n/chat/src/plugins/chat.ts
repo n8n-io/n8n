@@ -99,8 +99,11 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						options,
 					);
 
+					console.log('Raw sendMessage response:', sendMessageResponse);
+
 					// Check if response has data property (webhook response wrapper)
 					const actualResponse = sendMessageResponse.data || sendMessageResponse;
+					console.log('Processed response:', actualResponse);
 
 					// Check if this is a rich content response
 					if (actualResponse && actualResponse.type === 'rich' && actualResponse.content) {
@@ -109,27 +112,76 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 					} else {
 						// Handle regular text response
 						let textContent = '';
-						if (Array.isArray(actualResponse)) {
-							textContent = actualResponse.map((item) => item.text || '').join('\n\n');
-						} else if (typeof actualResponse.content === 'string') {
-							textContent = actualResponse.content;
-						} else {
-							textContent = actualResponse.text || actualResponse.output || String(actualResponse);
+
+						try {
+							if (Array.isArray(actualResponse)) {
+								textContent = actualResponse
+									.map(
+										(item) =>
+											(item as any).text ||
+											(item as any).output ||
+											(item as any).message ||
+											String(item),
+									)
+									.join('\n\n');
+							} else if (typeof actualResponse === 'string') {
+								// Handle direct string responses
+								textContent = actualResponse;
+							} else if (actualResponse && typeof actualResponse === 'object') {
+								// Try various text properties
+								const response = actualResponse as any;
+								textContent =
+									response.text ||
+									response.output ||
+									response.message ||
+									response.content ||
+									(typeof response.content === 'string' ? response.content : '') ||
+									JSON.stringify(actualResponse);
+							} else {
+								textContent = String(actualResponse || 'Empty response');
+							}
+
+							// Ensure we have some content
+							if (!textContent || textContent.trim() === '') {
+								textContent = 'Empty response received';
+							}
+						} catch (parseError) {
+							console.error('Error processing response content:', parseError);
+							textContent = 'Error: Unable to process response';
 						}
 
-						const botMessage = createBotMessage(textContent);
+						const botMessage = createBotMessage();
+						botMessage.text = textContent;
 						messages.value.push(botMessage);
 					}
 				}
 			} catch (error) {
+				console.error('Chat error:', error);
+
+				let errorMessage = 'Error: Failed to receive response';
+
+				// Extract more specific error information
+				if (error instanceof Error) {
+					if (error.message.includes('fetch')) {
+						errorMessage = 'Error: Unable to connect to server';
+					} else if (error.message.includes('JSON')) {
+						errorMessage = 'Error: Invalid response format';
+					} else if (error.message.includes('Network')) {
+						errorMessage = 'Error: Network connection failed';
+					} else if (error.message) {
+						errorMessage = `Error: ${error.message}`;
+					}
+				} else if (typeof error === 'string') {
+					errorMessage = `Error: ${error}`;
+				}
+
 				if (!receivedMessage.value) {
 					receivedMessage.value = createBotMessage();
 					messages.value.push(receivedMessage.value);
 				}
 				if (receivedMessage.value && 'text' in receivedMessage.value) {
-					receivedMessage.value.text = 'Error: Failed to receive response';
+					receivedMessage.value.text = errorMessage;
 				}
-				// TODO: Implement proper error logging/reporting
 			} finally {
 				waitingForResponse.value = false;
 			}

@@ -708,13 +708,19 @@ export async function executeWebhook(
 								return undefined;
 							}
 
-							data = returnData.data!.main[0]![0].json;
+							const rawData = returnData.data!.main[0]![0].json as any;
+							data = rawData;
 
-							if (data && typeof data === 'object' && data.type === 'rich' && data.content) {
+							if (
+								data &&
+								typeof data === 'object' &&
+								(data as any).type === 'rich' &&
+								(data as any).content
+							) {
 								// Rich content detected - return it directly for the chat interface
 								// Structure the response to match SendMessageResponse interface
 								// Ensure we only return the clean structure without duplicate fields
-								const content = data.content as any;
+								const content = (data as any).content;
 								const richResponse = {
 									type: 'rich' as const,
 									content: {
@@ -736,7 +742,36 @@ export async function executeWebhook(
 									didSendResponse = true;
 								}
 								return richResponse;
-							} else {
+							}
+
+							// Handle case where the entire response is a simple string
+							if (typeof rawData === 'string' && rawData.trim() !== '') {
+								if (!didSendResponse) {
+									responseCallback(null, {
+										data: rawData as unknown as IDataObject, // Return the string directly
+										responseCode,
+									});
+									didSendResponse = true;
+								}
+								return rawData;
+							}
+
+							// Handle objects with common text properties (message, text, output, etc.)
+							if (data && typeof data === 'object' && !Array.isArray(data)) {
+								const textKeys = ['message', 'text', 'output', 'content', 'response'];
+								for (const key of textKeys) {
+									const textValue = (data as any)[key];
+									if (typeof textValue === 'string' && textValue.trim() !== '') {
+										if (!didSendResponse) {
+											responseCallback(null, {
+												data: textValue as unknown as IDataObject, // Return the extracted string
+												responseCode,
+											});
+											didSendResponse = true;
+										}
+										return textValue;
+									}
+								}
 							}
 
 							const responsePropertyName = workflow.expression.getSimpleParameterValue(
