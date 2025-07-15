@@ -97,8 +97,6 @@ export class NodeSearchEngine {
 			<node_description>${result.description}</node_description>
 			<node_inputs>${typeof result.inputs === 'object' ? JSON.stringify(result.inputs) : result.inputs}</node_inputs>
 			<node_outputs>${typeof result.outputs === 'object' ? JSON.stringify(result.outputs) : result.outputs}</node_outputs>
-			<node_display_name>${result.displayName}</node_display_name>
-			<node_score>${result.score}</node_score>
 		</node>`;
 	}
 

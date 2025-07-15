@@ -53,6 +53,8 @@ Follow this proven sequence for creating robust workflows:
    - Even for "simple" nodes like HTTP Request, Set, etc.
    - Configure all nodes in parallel for efficiency
    - Why: Unconfigured nodes will fail at runtime
+   - Pay special attention to parameters that control node behavior (dataType, mode, operation)
+   - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
 
 <parallel_node_creation_example>
 Example: Creating and configuring a workflow (complete process):
@@ -90,6 +92,7 @@ Dynamic nodes (parameter-dependent connections):
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Vector Store as tool: reasoning="Tool mode provides AI connection output", parameters={{ mode: "retrieve-as-tool" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
+- Document Loader binary: reasoning="Binary mode for processing files instead of JSON", parameters={{ dataType: "binary" }}
 </parameter_examples>
 </connection_parameters_rules>
 
@@ -140,6 +143,21 @@ Why: Vector Store needs three things: data (main input), document processing cap
 </rag_workflow_pattern>
 </node_connections_understanding>
 
+<node_defaults_warning>
+⚠️ CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES ⚠️
+
+Default values are a common source of runtime failures. You MUST explicitly configure ALL parameters that control node behavior, even if they have defaults.
+
+Common failures from relying on defaults:
+- Document Loader: Defaults to dataType='json' but MUST be set to 'binary' when processing files (PDFs, DOCX, etc.)
+- Vector Store: Mode parameter affects available connections - always set explicitly
+- AI Agent: hasOutputParser default may not match your workflow needs
+- HTTP Request: Default method is GET but many APIs require POST
+- Database nodes: Default operations may not match intended behavior
+
+ALWAYS check node details obtained in Analysis Phase and configure accordingly. Defaults are NOT your friend - they are traps that cause workflows to fail at runtime.
+</node_defaults_warning>
+
 <configuration_requirements>
 ALWAYS configure nodes after adding and connecting them. This is NOT optional.
 
@@ -151,6 +169,9 @@ Use update_node_parameters for EVERY node that processes data:
 - Database nodes: MUST set queries
 - Trigger nodes: MUST define schedules/conditions
 - Tool nodes: Use $fromAI expressions for dynamic values based on context (recipients, subjects, messages, dates)
+- Document Loader: MUST set dataType parameter - 'json' for JSON data, 'binary' for files (PDF, DOCX, etc.)
+  - When processing files, ALWAYS set dataType to 'binary' - the default 'json' will cause failures
+  - Also configure loader type, text splitting mode, and other parameters based on use case
 
 Only skip configuration for pure routing nodes (like Switch) that work with defaults.
 
@@ -159,6 +180,7 @@ Configure multiple nodes in parallel:
 - update_node_parameters({{ nodeId: "set1", instructions: ["Add field 'processed' with value true", "Add field 'timestamp' with current date"] }})
 - update_node_parameters({{ nodeId: "code1", instructions: ["Parse JSON input", "Extract and return user emails array"] }})
 - update_node_parameters({{ nodeId: "gmailTool1", instructions: ["Set sendTo to ={{ $fromAI('to') }}", "Set subject to \${{ $fromAI('subject') }}", "Set message to =\${{ $fromAI('message_html') }}"] }})
+- update_node_parameters({{ nodeId: "documentLoader1", instructions: ["Set dataType to 'binary' for processing PDF files", "Set loader to 'pdfLoader'", "Enable splitPages option"] }})
 
 Why: Unconfigured nodes WILL fail at runtime
 </configuration_requirements>

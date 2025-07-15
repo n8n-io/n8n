@@ -91,6 +91,7 @@ export class AiWorkflowBuilderService {
 		const ignoredTypes = [
 			'@n8n/n8n-nodes-langchain.toolVectorStore',
 			'@n8n/n8n-nodes-langchain.documentGithubLoader',
+			'@n8n/n8n-nodes-langchain.code',
 		];
 		const nodeTypesKeys = Object.keys(this.nodeTypes.getKnownTypes());
 

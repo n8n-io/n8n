@@ -35,7 +35,7 @@ const nodeSearchSchema = z.object({
  */
 type SearchQuery = z.infer<typeof searchQuerySchema>;
 
-const SEARCH_LIMIT = 3;
+const SEARCH_LIMIT = 5;
 
 /**
  * Process a single search query

@@ -36,7 +36,7 @@ export const gpt41 = async (config: LLMProviderConfig) => {
 	return new ChatOpenAI({
 		model: 'gpt-4.1-2025-04-14',
 		apiKey: config.apiKey,
-		temperature: 1,
+		temperature: 0.3,
 		maxTokens: -1,
 		configuration: {
 			baseURL: config.baseUrl,
@@ -54,6 +54,22 @@ export const anthropicClaudeSonnet4 = async (config: LLMProviderConfig) => {
 		maxTokens: 16000,
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
+			defaultHeaders: config.headers,
+		},
+	});
+};
+
+export const kimiK2 = async (config: LLMProviderConfig) => {
+	const { ChatAnthropic } = await import('@langchain/anthropic');
+	return new ChatAnthropic({
+		model: 'kimi-k2-0711-preview',
+		apiKey: config.apiKey,
+		temperature: 0.6,
+		topP: 1,
+		maxTokens: -1,
+		anthropicApiUrl: 'https://api.moonshot.ai/anthropic',
+		clientOptions: {
+			baseURL: 'https://api.moonshot.ai/anthropic',
 			defaultHeaders: config.headers,
 		},
 	});
