@@ -1126,7 +1126,7 @@ function handleWheelEvent(event: WheelEvent) {
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
 				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
 			}
 		}
 	}
