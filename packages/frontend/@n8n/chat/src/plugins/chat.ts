@@ -129,7 +129,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				if (receivedMessage.value && 'text' in receivedMessage.value) {
 					receivedMessage.value.text = 'Error: Failed to receive response';
 				}
-				console.error('Chat API error:', error);
+				// TODO: Implement proper error logging/reporting
 			} finally {
 				waitingForResponse.value = false;
 			}
