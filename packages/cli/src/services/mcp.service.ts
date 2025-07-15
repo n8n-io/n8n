@@ -52,7 +52,7 @@ export class McpService {
 					- [ ] Respond when last node is executed
 					- [X] Multiple webhooks
 					- [X] Disabled webhooks
-					- [ ] Other triggers
+					- [X] Other triggers
 				*/
 				const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
@@ -61,13 +61,20 @@ export class McpService {
 					throw new OperationalError('Workflow not found');
 				}
 
-				workflow.pinData = undefined; // Remove pinData to avoid sending sensitive information
+				// Remove sensitive information
+				// TODO: Check what else should be removed
+				workflow.pinData = undefined;
+				workflow.nodes.forEach((node) => {
+					node.credentials = undefined;
+				});
 
 				const webhooks = workflow.nodes.filter(
 					(node) => node.type === 'n8n-nodes-base.webhook' && node.disabled !== true,
 				);
 
-				let triggerNotice = 'This workflow does not have a trigger node.';
+				// TODO: Refactor
+				let triggerNotice =
+					'This workflow does not have a trigger node that can be executed via MCP.';
 				if (webhooks.length > 0) {
 					triggerNotice = 'This workflow is triggered by the following webhook(s):\n\n';
 					triggerNotice += webhooks
@@ -84,7 +91,7 @@ export class McpService {
 						.join('\n\n');
 					triggerNotice += `${
 						workflow.active
-							? '- Workflow is active and accessible.'
+							? '- Workflow is active and accessible. n8n Webhooks nodes do not have information about required request payloads, if that cannot be determined from the workflow itself, ask the user to provide it.'
 							: '- Workflow is not active, it can only be triggered after clicking "Listen for test	 event" button in the n8n editor.'
 					}`;
 				}
@@ -151,11 +158,21 @@ export class McpService {
 							type: node.type,
 						})),
 						connections,
-						notice:
-							'To get more information about a workflow, use the `get_workflow_info` tool with the workflow ID.',
 					}));
 				return {
-					content: [{ type: 'text', text: JSON.stringify({ data, count: data.length }) }],
+					content: [
+						{
+							type: 'text',
+							text: JSON.stringify({
+								data: {
+									notice:
+										'Workflow data here is not complete. To get more information about a specific workflow, use the `get_workflow_info` tool with the workflow ID.',
+									results: data,
+								},
+								count: data.length,
+							}),
+						},
+					],
 				};
 			},
 		);
