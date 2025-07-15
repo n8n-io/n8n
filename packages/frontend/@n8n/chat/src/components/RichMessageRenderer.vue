@@ -120,7 +120,7 @@ onMounted(async () => {
 		// Create sandboxed execution context
 		const sandbox = {
 			console: {
-				log: (...args: any[]) => console.log('[Rich Content]', ...args),
+				log: (...args: any[]) => {}, // Disabled in production
 				error: (...args: any[]) => console.error('[Rich Content]', ...args),
 				warn: (...args: any[]) => console.warn('[Rich Content]', ...args),
 			},

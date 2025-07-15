@@ -99,11 +99,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						options,
 					);
 
-					console.log('Raw sendMessage response:', sendMessageResponse);
-
 					// Check if response has data property (webhook response wrapper)
 					const actualResponse = sendMessageResponse.data || sendMessageResponse;
-					console.log('Processed response:', actualResponse);
 
 					// Check if this is a rich content response
 					if (actualResponse && actualResponse.type === 'rich' && actualResponse.content) {

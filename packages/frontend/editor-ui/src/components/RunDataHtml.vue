@@ -2,7 +2,7 @@
 import sanitizeHtml, { defaults, type IOptions as SanitizeOptions } from 'sanitize-html';
 
 const sanitizeOptions: SanitizeOptions = {
-	allowVulnerableTags: false,
+	allowVulnerableTags: ['style'],
 	enforceHtmlBoundary: false,
 	disallowedTagsMode: 'discard',
 	allowedTags: [...defaults.allowedTags, 'style', 'img', 'title'],
