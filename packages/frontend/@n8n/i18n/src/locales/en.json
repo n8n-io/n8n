@@ -2611,6 +2611,8 @@
 	"workflows.item.readonly": "Read only",
 	"workflows.item.archived": "Archived",
 	"workflows.item.availableInMCP": "Available in MCP",
+	"workflows.item.enableMCPAccess": "Enable MCP access",
+	"workflows.item.disableMCPAccess": "Remove MCP access",
 	"workflows.search.placeholder": "Search",
 	"workflows.filters": "Filters",
 	"workflows.filters.tags": "Tags",

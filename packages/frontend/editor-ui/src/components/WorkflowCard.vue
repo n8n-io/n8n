@@ -39,6 +39,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
+	ENABLE_MCP_ACCESS: 'enableMCPAccess',
+	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 };
 
 const props = withDefaults(
@@ -177,6 +179,20 @@ const actions = computed(() => {
 		}
 	}
 
+	if (workflowPermissions.value.update && !props.readOnly) {
+		if (props.data.settings?.availableInMCP) {
+			items.push({
+				label: locale.baseText('workflows.item.disableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.enableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+			});
+		}
+	}
+
 	return items;
 });
 const formattedCreatedAtDate = computed(() => {
@@ -269,6 +285,16 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
+			toast.showMessage({
+				title: '🚧 Coming soon',
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
+			toast.showMessage({
+				title: '🚧 Coming soon',
 			});
 			break;
 	}
