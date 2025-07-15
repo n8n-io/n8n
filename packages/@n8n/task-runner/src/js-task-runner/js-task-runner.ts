@@ -103,8 +103,6 @@ export class CodeTaskRunner extends TaskRunner {
 
 	private readonly mode: 'secure' | 'insecure' = 'secure';
 
-	private arePrototypesFrozen = false;
-
 	constructor(config: MainConfig, name = 'Code Task Runner') {
 		super({
 			taskType: 'code',
@@ -626,7 +624,53 @@ export class CodeTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		abortSignal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
-		return await Promise.resolve([]); // @TODO
+		const inputItems = data.connectionInputData;
+		const returnData: INodeExecutionData[] = [];
+		const helpers = this.pythonHelpers(taskId);
+
+		// If a chunk was requested, only process the items in the chunk
+		const chunkStartIdx = settings.chunk ? settings.chunk.startIndex : 0;
+		const chunkEndIdx = settings.chunk
+			? settings.chunk.startIndex + settings.chunk.count
+			: inputItems.length;
+
+		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
+			const context = this.pythonContext(data, index, helpers);
+			const sandbox = new PythonSandbox(context, settings.code, helpers);
+
+			sandbox.on('output', (...args: unknown[]) => {
+				void this.makeRpcCall(taskId, 'logNodeOutput', args);
+			});
+
+			try {
+				// @TODO: Abort signal handling
+				const result = await sandbox.runCodeEachItem(index);
+
+				// Filter out null values
+				if (result === null || result === undefined) {
+					continue;
+				}
+
+				returnData.push({
+					json: result.json,
+					pairedItem: { item: index },
+					...(result.binary && { binary: result.binary }),
+				});
+			} catch (e) {
+				const error = this.toExecutionErrorIfNeeded(e);
+
+				if (!settings.continueOnFail) {
+					throw error;
+				}
+
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: { item: index },
+				});
+			}
+		}
+
+		return returnData;
 	}
 
 	private pythonContext(
