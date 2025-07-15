@@ -91,12 +91,10 @@ export class PythonSandbox extends CodeSandbox {
 
 	async runCodeAllItems() {
 		return await this.runCodeInPython<INodeExecutionData[]>();
-		// return this.validateRunCodeAllItems(executionResult); // covered by TaskRunner.validateRunForAllItemsOutput
 	}
 
 	async runCodeEachItem(itemIndex: number) {
 		return await this.runCodeInPython<INodeExecutionData>();
-		// return this.validateRunCodeEachItem(executionResult, itemIndex); // covered by TaskRunner.validateRunForEachItemOutput
 	}
 
 	private async runCodeInPython<T>() {
