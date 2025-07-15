@@ -1,6 +1,6 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import get from 'lodash/get';
 
 import {
@@ -12,6 +12,9 @@ import {
 import { useWorkflowsStore } from './workflows.store';
 import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
+import { watchOnce } from '@vueuse/core';
+
+const DEFAULT_PANEL_WIDTH = 528;
 
 type FocusedNodeParameter = {
 	nodeId: string;
@@ -27,6 +30,7 @@ export type RichFocusedNodeParameter = FocusedNodeParameter & {
 type FocusPanelData = {
 	isActive: boolean;
 	parameters: FocusedNodeParameter[];
+	width?: number;
 };
 
 type FocusPanelDataByWid = Record<string, FocusPanelData>;
@@ -52,7 +56,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			focusPanelData.value[workflowsStore.workflowId] ?? DEFAULT_FOCUS_PANEL_DATA,
 	);
 
+	const lastFocusTimestamp = ref(0);
+
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
+	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
 	// An unenriched parameter indicates a missing nodeId
@@ -70,17 +77,19 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			}),
 	);
 
-	const _setOptions = ({
+	function _setOptions({
 		parameters,
 		isActive,
 		wid = workflowsStore.workflowId,
+		width = undefined,
 		removeEmpty = false,
 	}: {
 		isActive?: boolean;
 		parameters?: FocusedNodeParameter[];
 		wid?: string;
+		width?: number;
 		removeEmpty?: boolean;
-	}) => {
+	}) {
 		const focusPanelDataCurrent = focusPanelData.value;
 
 		if (removeEmpty && PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelDataCurrent) {
@@ -92,12 +101,17 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			[wid]: {
 				isActive: isActive ?? focusPanelActive.value,
 				parameters: parameters ?? _focusedNodeParameters.value,
+				width,
 			},
 		});
-	};
+
+		if (isActive) {
+			lastFocusTimestamp.value = Date.now();
+		}
+	}
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
-	const onNewWorkflowSave = (wid: string) => {
+	function onNewWorkflowSave(wid: string) {
 		if (!currentFocusPanelData.value || !(PLACEHOLDER_EMPTY_WORKFLOW_ID in focusPanelData.value)) {
 			return;
 		}
@@ -109,29 +123,33 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			isActive: latestWorkflowData.isActive,
 			removeEmpty: true,
 		});
-	};
+	}
 
-	const openWithFocusedNodeParameter = (nodeParameter: FocusedNodeParameter) => {
+	function openWithFocusedNodeParameter(nodeParameter: FocusedNodeParameter) {
 		const parameters = [nodeParameter];
 		// TODO: uncomment when tabs are implemented
 		// ...focusedNodeParameters.value.filter((p) => p.parameterPath !== nodeParameter.parameterPath),
 
 		_setOptions({ parameters, isActive: true });
-	};
+	}
 
-	const closeFocusPanel = () => {
+	function closeFocusPanel() {
 		_setOptions({ isActive: false });
-	};
+	}
 
-	const toggleFocusPanel = () => {
+	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
-	};
+	}
 
-	const isRichParameter = (
+	function updateWidth(width: number) {
+		_setOptions({ width });
+	}
+
+	function isRichParameter(
 		p: RichFocusedNodeParameter | FocusedNodeParameter,
-	): p is RichFocusedNodeParameter => {
+	): p is RichFocusedNodeParameter {
 		return 'value' in p && 'node' in p;
-	};
+	}
 
 	const focusedNodeParametersInTelemetryFormat = computed(() =>
 		focusedNodeParameters.value.map((x) =>
@@ -139,14 +157,27 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		),
 	);
 
+	// Ensure lastFocusTimestamp is set on initial load if panel is already active (e.g. after reload)
+	watchOnce(
+		() => currentFocusPanelData.value,
+		(value) => {
+			if (value.isActive && value.parameters.length > 0) {
+				lastFocusTimestamp.value = Date.now();
+			}
+		},
+	);
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
 		focusedNodeParametersInTelemetryFormat,
+		lastFocusTimestamp,
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
+		updateWidth,
+		focusPanelWidth,
 	};
 });
