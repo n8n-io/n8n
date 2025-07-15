@@ -34,18 +34,7 @@ export function isFilePathBlocked(filePath: string): boolean {
 	const resolvedFilePath = resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
-	//if allowed paths are defined, allow access only to those paths
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
+	// First check if path is within n8n system files that should be protected
 	if (blockFileAccessToN8nFiles) {
 		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
 		const restrictedPaths = [n8nFolder, staticCacheDir];
@@ -71,15 +60,26 @@ export function isFilePathBlocked(filePath: string): boolean {
 			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
 		}
 
-		//check if the file path is restricted
+		// Check if the file path is restricted - always block access to these paths
+		// regardless of allowed paths
 		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
+			if (path && resolvedFilePath.startsWith(path)) {
 				return true;
 			}
 		}
 	}
 
-	//path is not restricted
+	// If allowed paths are defined, only permit access to those paths
+	if (allowedPaths.length) {
+		for (const path of allowedPaths) {
+			if (resolvedFilePath.startsWith(path)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// Path is not restricted
 	return false;
 }
 
