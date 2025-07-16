@@ -154,6 +154,7 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 
 	&.spinnerScrim {
 		background-color: rgba(255, 255, 255, 0.82);
+		border-radius: var(--border-radius-large);
 	}
 }
 

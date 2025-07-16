@@ -167,7 +167,9 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 			>
 				<template #actions>
 					<div :class="$style.actions">
-						<CanvasNodeStatusIcons size="small" spinner-scrim :class="$style.icon" />
+						<div :class="$style.icon">
+							<CanvasNodeStatusIcons size="small" spinner-scrim />
+						</div>
 						<N8nIconButton
 							icon="maximize-2"
 							type="secondary"
@@ -199,7 +201,9 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 					:is-node-disabled="node.disabled ?? false"
 				/>
 				<div :class="$style.actions">
-					<CanvasNodeStatusIcons size="small" :class="$style.icon" />
+					<div :class="$style.icon">
+						<CanvasNodeStatusIcons size="small" spinner-scrim />
+					</div>
 					<N8nIconButton
 						icon="maximize-2"
 						type="secondary"
@@ -252,7 +256,6 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
 	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
-	overflow: hidden;
 
 	--canvas-node--border-color: var(--border-color-base);
 
