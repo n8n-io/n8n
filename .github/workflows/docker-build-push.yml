@@ -292,7 +292,8 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false
+          provenance: true
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.tags }}
 

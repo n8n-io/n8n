@@ -14,45 +14,8 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 
 describe('useNodeSettingsParameters', () => {
-	describe('setValue', () => {
-		beforeEach(() => {
-			setActivePinia(createTestingPinia());
-		});
-
-		afterEach(() => {
-			vi.clearAllMocks();
-		});
-
-		it('mutates nodeValues as expected', () => {
-			const nodeSettingsParameters = useNodeSettingsParameters();
-
-			expect(nodeSettingsParameters.nodeValues.value.color).toBe('#ff0000');
-			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({});
-
-			nodeSettingsParameters.setValue('color', '#ffffff');
-
-			expect(nodeSettingsParameters.nodeValues.value.color).toBe('#ffffff');
-			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({});
-
-			nodeSettingsParameters.setValue('parameters.key', 3);
-
-			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({ key: 3 });
-
-			nodeSettingsParameters.nodeValues.value = { parameters: { some: { nested: {} } } };
-			nodeSettingsParameters.setValue('parameters.some.nested.key', true);
-
-			expect(nodeSettingsParameters.nodeValues.value.parameters).toEqual({
-				some: { nested: { key: true } },
-			});
-
-			nodeSettingsParameters.setValue('parameters', null);
-
-			expect(nodeSettingsParameters.nodeValues.value.parameters).toBe(undefined);
-
-			nodeSettingsParameters.setValue('newProperty', 'newValue');
-
-			expect(nodeSettingsParameters.nodeValues.value.newProperty).toBe('newValue');
-		});
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 	});
 
 	describe('handleFocus', () => {

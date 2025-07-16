@@ -53,7 +53,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 </script>
 
 <template>
-	<Bar :data="chartData" :options="chartOptions" />
+	<Bar data-test-id="insights-chart-failed" :data="chartData" :options="chartOptions" />
 </template>
 
 <style lang="scss" module></style>
