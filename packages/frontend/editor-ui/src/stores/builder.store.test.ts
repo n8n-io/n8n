@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
-import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
@@ -113,64 +112,236 @@ describe('AI Builder store', () => {
 		expect(builderStore.chatWindowOpen).toBe(false);
 	});
 
-	it('can add a simple assistant message', () => {
+	it('can process a simple assistant message through API', async () => {
 		const builderStore = useBuilderStore();
 
-		const message: ChatRequest.MessageResponse = {
-			type: 'message',
-			role: 'assistant',
-			text: 'Hello!',
-		};
-		builderStore.addAssistantMessages([message], '1');
-		expect(builderStore.chatMessages.length).toBe(1);
-		expect(builderStore.chatMessages[0]).toEqual({
-			id: '1',
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				messages: [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Hello!',
+					},
+				],
+				sessionId: 'test-session',
+			});
+			onDone();
+		});
+
+		builderStore.sendChatMessage({ text: 'Hi' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+		expect(builderStore.chatMessages[0].role).toBe('user');
+		expect(builderStore.chatMessages[1]).toMatchObject({
 			type: 'text',
 			role: 'assistant',
 			content: 'Hello!',
-			quickReplies: undefined,
-			read: true, // Builder messages are always read
-			codeSnippet: undefined,
-			showRating: false,
+			read: false,
 		});
 	});
 
-	it('can add a workflow-updated message', () => {
+	it('can process a workflow-updated message through API', async () => {
 		const builderStore = useBuilderStore();
 
-		const message: ChatRequest.MessageResponse = {
-			type: 'workflow-updated',
-			role: 'assistant',
-			codeSnippet: '{"nodes":[],"connections":[]}',
-		};
-		builderStore.addAssistantMessages([message], '1');
-		expect(builderStore.chatMessages.length).toBe(1);
-		expect(builderStore.chatMessages[0]).toEqual({
-			id: '1',
-			type: 'workflow-updated',
-			role: 'assistant',
-			codeSnippet: '{"nodes":[],"connections":[]}',
-			read: true,
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				messages: [
+					{
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: '{"nodes":[],"connections":[]}',
+					},
+				],
+				sessionId: 'test-session',
+			});
+			onDone();
 		});
+
+		builderStore.sendChatMessage({ text: 'Create workflow' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+		expect(builderStore.chatMessages[1]).toMatchObject({
+			type: 'workflow-updated',
+			role: 'assistant',
+			codeSnippet: '{"nodes":[],"connections":[]}',
+			read: false,
+		});
+
+		// Verify workflow messages are accessible via computed property
+		expect(builderStore.workflowMessages.length).toBe(1);
 	});
 
-	it('should reset builder chat session', () => {
+	it('should show processing results message when tools complete', async () => {
+		vi.useFakeTimers();
 		const builderStore = useBuilderStore();
 
-		const message: ChatRequest.MessageResponse = {
-			type: 'message',
-			role: 'assistant',
-			text: 'Hello!',
-			quickReplies: [
-				{ text: 'Yes', type: 'text' },
-				{ text: 'No', type: 'text' },
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let onMessageCallback: any;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let onDoneCallback: any;
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessageCallback = onMessage;
+			onDoneCallback = onDone;
+		});
+
+		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
+
+		// Initially shows "Thinking..." from prepareForStreaming
+		expect(builderStore.assistantThinkingMessage).toBe('Thinking...');
+
+		// First tool starts
+		onMessageCallback({
+			messages: [
+				{
+					type: 'tool',
+					role: 'assistant',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [{ type: 'input', data: {} }],
+				},
 			],
-		};
-		builderStore.addAssistantMessages([message], '1');
-		expect(builderStore.chatMessages.length).toBe(1);
+		});
+
+		// Should show "Running tools..."
+		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+
+		// Second tool starts (different toolCallId)
+		onMessageCallback({
+			messages: [
+				{
+					type: 'tool',
+					role: 'assistant',
+					toolName: 'connect_nodes',
+					toolCallId: 'call-2',
+					status: 'running',
+					updates: [{ type: 'input', data: {} }],
+				},
+			],
+		});
+
+		// Still showing "Running tools..." with multiple tools
+		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+
+		// First tool completes
+		onMessageCallback({
+			messages: [
+				{
+					type: 'tool',
+					role: 'assistant',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'completed',
+					updates: [{ type: 'output', data: { success: true } }],
+				},
+			],
+		});
+
+		// Still "Running tools..." because second tool is still running
+		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+
+		// Second tool completes
+		onMessageCallback({
+			messages: [
+				{
+					type: 'tool',
+					role: 'assistant',
+					toolName: 'connect_nodes',
+					toolCallId: 'call-2',
+					status: 'completed',
+					updates: [{ type: 'output', data: { success: true } }],
+				},
+			],
+		});
+
+		// Now should show "Processing results..." because all tools completed
+		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+
+		// Call onDone to stop streaming
+		onDoneCallback();
+
+		// Message should persist after streaming ends
+		expect(builderStore.streaming).toBe(false);
+		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+
+		vi.useRealTimers();
+	});
+
+	it('should keep processing message when workflow-updated arrives', async () => {
+		const builderStore = useBuilderStore();
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			// Tool completes
+			onMessage({
+				messages: [
+					{
+						type: 'tool',
+						role: 'assistant',
+						toolName: 'add_nodes',
+						toolCallId: 'call-1',
+						status: 'completed',
+						updates: [{ type: 'output', data: { success: true } }],
+					},
+				],
+			});
+
+			// Workflow update arrives
+			onMessage({
+				messages: [
+					{
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: '{"nodes": [], "connections": {}}',
+					},
+				],
+			});
+
+			// Call onDone to stop streaming
+			onDone();
+		});
+
+		builderStore.sendChatMessage({ text: 'Add a node' });
+
+		// Should show "Processing results..." when tool completes
+		await vi.waitFor(() =>
+			expect(builderStore.assistantThinkingMessage).toBe('Processing results...'),
+		);
+
+		// Should still show "Processing results..." after workflow-updated
+		await vi.waitFor(() => expect(builderStore.chatMessages).toHaveLength(3)); // user + tool + workflow
+		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+
+		// Verify streaming has ended
+		expect(builderStore.streaming).toBe(false);
+	});
+
+	it('should reset builder chat session', async () => {
+		const builderStore = useBuilderStore();
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			onMessage({
+				messages: [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Hello!',
+						quickReplies: [
+							{ text: 'Yes', type: 'text' },
+							{ text: 'No', type: 'text' },
+						],
+					},
+				],
+				sessionId: 'test-session',
+			});
+			onDone();
+		});
+
+		builderStore.sendChatMessage({ text: 'Hi' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		builderStore.resetBuilderChat();
 		expect(builderStore.chatMessages).toEqual([]);
+		expect(builderStore.assistantThinkingMessage).toBeUndefined();
 	});
 
 	it('should not show builder if disabled in settings', () => {
@@ -222,12 +393,13 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		expect(apiSpy).toHaveBeenCalled();
-		expect(builderStore.chatMessages.length).toBe(2); // user message + assistant response
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].role).toBe('assistant');
+		expect(builderStore.streaming).toBe(false);
 	});
 
 	it('should send a follow-up message in an existing session', async () => {
@@ -264,18 +436,15 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
-
-		// Should be 2 messages now (user question + assistant response)
-		expect(builderStore.chatMessages.length).toBe(2);
+		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		// Send a follow-up message
-		await builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
+		builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(4));
 
 		const thirdMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
 		const fourthMessage = builderStore.chatMessages[3] as ChatUI.TextMessage;
-		// Should be 4 messages now (2 initial + user follow-up + assistant response)
-		expect(builderStore.chatMessages.length).toBe(4);
 		expect(thirdMessage.role).toBe('user');
 		expect(thirdMessage.type).toBe('text');
 		expect(thirdMessage.content).toBe('Generate a workflow for me');
@@ -292,16 +461,17 @@ describe('AI Builder store', () => {
 			onError(new Error('An API error occurred'));
 		});
 
-		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
-
-		// Should have user message + error message
-		expect(builderStore.chatMessages.length).toBe(2);
+		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('error');
 
 		// Error message should have a retry function
 		const errorMessage = builderStore.chatMessages[1] as ChatUI.ErrorMessage;
 		expect(errorMessage.retry).toBeDefined();
+
+		// Verify streaming state was reset
+		expect(builderStore.streaming).toBe(false);
 
 		// Set up a successful response for the retry
 		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
@@ -319,10 +489,10 @@ describe('AI Builder store', () => {
 		});
 
 		// Retry the failed request
-		await errorMessage.retry?.();
-
-		// Should now have just the user message and success message (error removed)
-		expect(builderStore.chatMessages.length).toBe(2);
+		if (errorMessage.retry) {
+			void errorMessage.retry();
+			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+		}
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('text');
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(

@@ -259,6 +259,7 @@ function toggleExpanded() {
 	@supports selector(::-webkit-scrollbar) {
 		&::-webkit-scrollbar {
 			width: var(--spacing-2xs);
+			height: var(--spacing-2xs);
 		}
 		&::-webkit-scrollbar-thumb {
 			border-radius: var(--spacing-xs);

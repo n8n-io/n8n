@@ -95,6 +95,7 @@ export namespace ChatUI {
 	};
 
 	export type AssistantMessage = (
+		| TextMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage

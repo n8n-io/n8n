@@ -1,16 +1,15 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, watchEffect } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import pick from 'lodash/pick';
+import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import { nodeViewEventBus } from '@/event-bus';
 
 const emit = defineEmits<{
 	close: [];
@@ -21,30 +20,20 @@ const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
-const helpful = ref(false);
-const generationStartTime = ref(0);
-const processedWorkflowUpdates = ref(new Set<string>());
-const trackedTools = ref(new Set<string>());
 const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
+
+// Track processed workflow updates
+const processedWorkflowUpdates = ref(new Set<string>());
+const trackedTools = ref(new Set<string>());
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
-const generatedWorkflowJson = computed(() => {
-	const workflowMessage = builderStore.chatMessages.findLast(
-		(msg) => msg.type === 'workflow-updated',
-	);
-	if (workflowMessage && 'codeSnippet' in workflowMessage) {
-		return workflowMessage.codeSnippet;
-	}
-	return undefined;
-});
 const currentRoute = computed(() => route.name);
 
 async function onUserMessage(content: string) {
@@ -57,109 +46,50 @@ async function onUserMessage(content: string) {
 	builderStore.sendChatMessage({ text: content });
 }
 
-// function _fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): WorkflowDataUpdate {
-// 	const STICKY_WIDTH = 480;
-// 	const HEADERS_HEIGHT = 40;
-// 	const NEW_LINE_HEIGHT = 20;
-// 	const CHARACTER_WIDTH = 65;
-// 	const NODE_WIDTH = 100;
-// 	const stickyNodes = workflowData.nodes?.filter((node) => node.type === STICKY_NODE_TYPE);
-// 	const nonStickyNodes = workflowData.nodes?.filter((node) => node.type !== STICKY_NODE_TYPE);
+// Watch for workflow updates and apply them
+watchEffect(() => {
+	builderStore.workflowMessages
+		.filter((msg) => msg.id && !processedWorkflowUpdates.value.has(msg.id))
+		.forEach((msg) => {
+			if (msg.id && isWorkflowUpdatedMessage(msg)) {
+				processedWorkflowUpdates.value.add(msg.id);
 
-// 	const fixedStickies = stickyNodes?.map((node, index) => {
-// 		const content = node.parameters.content?.toString() ?? '';
-// 		const newLines = content.match(/\n/g) ?? [];
-// 		// Match any markdown heading from # to ###### at the start of a line
-// 		const headings = content.match(/^#{1,6} /gm) ?? [];
-// 		const headingHeight = headings.length * HEADERS_HEIGHT;
-// 		const newLinesHeight = newLines.length * NEW_LINE_HEIGHT;
-// 		const contentHeight = (content.length / CHARACTER_WIDTH) * NEW_LINE_HEIGHT;
-// 		const height = Math.ceil(headingHeight + newLinesHeight + contentHeight) + NEW_LINE_HEIGHT;
+				const currentWorkflowJson = builderStore.getWorkflowSnapshot();
+				const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
-// 		const firstNode = nonStickyNodes?.[0];
-// 		const xPos = (firstNode?.position[0] ?? 0) + index * (STICKY_WIDTH + NODE_WIDTH);
-// 		return {
-// 			...node,
-// 			parameters: {
-// 				...node.parameters,
-// 				height,
-// 				width: STICKY_WIDTH,
-// 			},
-// 			position: [xPos, -1 * (height + 50)] as [number, number],
-// 		};
-// 	});
+				if (result.success) {
+					// Import the updated workflow
+					nodeViewEventBus.emit('importWorkflowData', {
+						data: result.workflowData,
+						tidyUp: true,
+						nodesIdsToTidyUp: result.newNodeIds,
+						regenerateIds: false,
+					});
+					// Track tool usage for telemetry
+					const newToolMessages = builderStore.toolMessages.filter(
+						(toolMsg) =>
+							toolMsg.status !== 'running' &&
+							toolMsg.toolCallId &&
+							!trackedTools.value.has(toolMsg.toolCallId),
+					);
 
-// 	return {
-// 		...workflowData,
-// 		nodes: [...(nonStickyNodes ?? []), ...(fixedStickies ?? [])],
-// 	};
-// }
+					newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
 
-function onUpdateWorkflow(newWorkflowJson: string) {
-	console.log('Update workflow');
-	let workflowData: WorkflowDataUpdate;
-	try {
-		workflowData = JSON.parse(newWorkflowJson);
-	} catch (error) {
-		console.error('Error parsing workflow data', error);
-		return;
-	}
-
-	// Capture current node positions and IDs before removing nodes
-	const nodePositions = new Map<string, [number, number]>();
-	const existingNodeIds = new Set<string>();
-	workflowsStore.allNodes.forEach((node) => {
-		nodePositions.set(node.id, [...node.position]);
-		existingNodeIds.add(node.id);
-	});
-
-	const currentWorkflowJson = JSON.stringify(
-		pick(workflowsStore.workflow, ['nodes', 'connections']),
-	);
-	workflowsStore.removeAllConnections({ setStateDirty: false });
-	workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-
-	// Restore positions for nodes that still exist and identify new nodes
-	const nodesIdsToTidyUp: string[] = [];
-	if (workflowData.nodes) {
-		workflowData.nodes = workflowData.nodes.map((node) => {
-			const savedPosition = nodePositions.get(node.id);
-			if (savedPosition) {
-				return { ...node, position: savedPosition };
-			} else {
-				// This is a new node, add it to the tidy up list
-				nodesIdsToTidyUp.push(node.id);
+					telemetry.track('Workflow modified by builder', {
+						tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+						start_workflow_json: currentWorkflowJson,
+						end_workflow_json: msg.codeSnippet,
+						workflow_id: workflowsStore.workflowId,
+					});
+				}
 			}
-			return node;
 		});
-	}
-	// const currentMessage = builderStore.chatMessages;
-	const newToolMessages = builderStore.toolMessages.filter(
-		(msg) => msg.status !== 'running' && msg.toolCallId && !trackedTools.value.has(msg.toolCallId),
-	);
-
-	newToolMessages.forEach((msg) => trackedTools.value.add(msg.toolCallId ?? ''));
-
-	telemetry.track('Workflow modified by builder', {
-		tools_called: newToolMessages.map((msg) => msg.toolName),
-		start_workflow_json: currentWorkflowJson,
-		end_workflow_json: newWorkflowJson,
-		workflow_id: workflowsStore.workflowId,
-	});
-	nodeViewEventBus.emit('importWorkflowData', {
-		data: workflowData,
-		tidyUp: true,
-		nodesIdsToTidyUp,
-		regenerateIds: false,
-	});
-}
+});
 
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
-	workflowGenerated.value = false;
-	helpful.value = false;
-	generationStartTime.value = new Date().getTime();
-	processedWorkflowUpdates.value.clear(); // Clear tracked updates
+	processedWorkflowUpdates.value.clear();
+	trackedTools.value.clear();
 }
 
 function onThumbsUp() {
@@ -184,25 +114,7 @@ function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up'
 	});
 }
 
-watch(
-	() => builderStore.chatMessages,
-	(messages) => {
-		if (workflowGenerated.value) return;
-
-		const workflowUpdatedMessage = messages.findLast((msg) => msg.type === 'workflow-updated');
-		if (
-			workflowUpdatedMessage?.id &&
-			!processedWorkflowUpdates.value.has(workflowUpdatedMessage.id)
-		) {
-			console.log('Processing new workflow update:', workflowUpdatedMessage.id);
-			processedWorkflowUpdates.value.add(workflowUpdatedMessage.id);
-			// @ts-ignore
-			onUpdateWorkflow(workflowUpdatedMessage.codeSnippet);
-		}
-	},
-	{ deep: true },
-);
-
+// Reset on route change
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
@@ -240,21 +152,6 @@ watch(
 				<n8n-text :class="$style.topText">{{
 					i18n.baseText('aiAssistant.builder.placeholder')
 				}}</n8n-text>
-			</template>
-			<template v-if="workflowGenerated" #inputPlaceholder>
-				<div :class="$style.newWorkflowButtonWrapper">
-					<n8n-button
-						type="secondary"
-						size="small"
-						:class="$style.newWorkflowButton"
-						@click="onNewWorkflow"
-					>
-						{{ i18n.baseText('aiAssistant.builder.generateNew') }}
-					</n8n-button>
-					<n8n-text :class="$style.newWorkflowText">
-						{{ i18n.baseText('aiAssistant.builder.newWorkflowNotice') }}
-					</n8n-text>
-				</div>
 			</template>
 		</AskAssistantChat>
 	</div>

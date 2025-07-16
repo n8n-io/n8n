@@ -98,6 +98,12 @@ describe('AskAssistantBuild', () => {
 		builderStore.sendChatMessage = vi.fn();
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
+		builderStore.applyWorkflowUpdate = vi
+			.fn()
+			.mockReturnValue({ success: true, workflowData: {}, newNodeIds: [] });
+		builderStore.getWorkflowSnapshot = vi.fn().mockReturnValue('{}');
+		builderStore.workflowMessages = [];
+		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
 
 		workflowsStore.workflowId = 'abc123';
@@ -248,13 +254,13 @@ describe('AskAssistantBuild', () => {
 			});
 
 			it('should not show rating buttons when no workflow update occurred', async () => {
-				const { queryByTestId } = renderComponent();
+				const { queryAllByTestId } = renderComponent();
 
 				await flushPromises();
 
 				// Rating buttons should not be present
-				expect(queryByTestId('message-thumbs-up-button')).not.toBeInTheDocument();
-				expect(queryByTestId('message-thumbs-down-button')).not.toBeInTheDocument();
+				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
+				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
 		});
 
