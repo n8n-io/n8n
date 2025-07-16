@@ -59,6 +59,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const lastFocusTimestamp = ref(0);
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
+	const focusPanelHidden = ref(false);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
@@ -101,12 +102,17 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			[wid]: {
 				isActive: isActive ?? focusPanelActive.value,
 				parameters: parameters ?? _focusedNodeParameters.value,
-				width,
+				width: width ?? focusPanelWidth.value,
 			},
 		});
 
 		if (isActive) {
 			lastFocusTimestamp.value = Date.now();
+		}
+
+		// Unhide the focus panel if it was hidden
+		if (focusPanelHidden.value && focusPanelActive.value) {
+			focusPanelHidden.value = false;
 		}
 	}
 
@@ -137,6 +143,14 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: false });
 	}
 
+	function hideFocusPanel(hide: boolean = true) {
+		if (focusPanelHidden.value === hide) {
+			return;
+		}
+
+		focusPanelHidden.value = hide;
+	}
+
 	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
@@ -165,12 +179,14 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusPanelActive,
 		focusedNodeParameters,
 		lastFocusTimestamp,
+		focusPanelHidden,
+		focusPanelWidth,
 		openWithFocusedNodeParameter,
 		isRichParameter,
+		hideFocusPanel,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
 		updateWidth,
-		focusPanelWidth,
 	};
 });
