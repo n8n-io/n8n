@@ -445,8 +445,32 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 				<div v-else :class="[$style.content, $style.emptyContent]">
 					<div :class="$style.emptyText">
-						<N8nText color="text-base">
-							{{ locale.baseText('nodeView.focusPanel.noParameters') }}
+						<div :class="$style.focusParameterWrapper">
+							<div :class="$style.iconWrapper">
+								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+								<N8nIcon
+									:class="$style.pointerIcon"
+									icon="mouse-pointer"
+									color="text-dark"
+									size="large"
+								/>
+							</div>
+							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+							<N8nRadioButtons
+								size="small"
+								:model-value="'expression'"
+								:disabled="true"
+								:options="[
+									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+								]"
+							/>
+						</div>
+						<N8nText color="text-base" size="medium" :bold="true">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.title') }}
+						</N8nText>
+						<N8nText color="text-base" size="small">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.subtitle') }}
 						</N8nText>
 					</div>
 				</div>
@@ -487,7 +511,31 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		align-items: center;
 
 		.emptyText {
-			max-width: 300px;
+			margin: 0 var(--spacing-xl);
+			display: flex;
+			flex-direction: column;
+			gap: var(--spacing-2xs);
+
+			.focusParameterWrapper {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--spacing-2xs);
+				margin-bottom: var(--spacing-m);
+
+				.iconWrapper {
+					position: relative;
+					display: inline-block;
+				}
+
+				.pointerIcon {
+					position: absolute;
+					top: 100%;
+					left: 50%;
+					transform: translate(-20%, -30%);
+					pointer-events: none;
+				}
+			}
 		}
 	}
 
@@ -543,5 +591,11 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 .heightFull {
 	height: 100%;
+}
+
+.forceHover {
+	color: var(--color-button-secondary-hover-active-focus-font);
+	border-color: var(--color-button-secondary-hover-active-focus-border);
+	background-color: var(--color-button-secondary-hover-active-focus-background);
 }
 </style>
