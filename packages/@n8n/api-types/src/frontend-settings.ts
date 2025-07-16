@@ -202,7 +202,7 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
-	envFeatureFlags?: N8nEnvFeatFlags;
+	envFeatureFlags: N8nEnvFeatFlags;
 }
 
 export type FrontendModuleSettings = {

@@ -8,7 +8,7 @@ export const useEnvFeatureFlag = () => {
 		const key = `N8N_ENV_FEAT_${flag}` as const;
 
 		// Settings provided by the backend take precedence over build-time or runtime flags
-		const settingsProvidedEnvFeatFlag = settingsStore.settings?.envFeatureFlags?.[key];
+		const settingsProvidedEnvFeatFlag = settingsStore.settings?.envFeatureFlags[key];
 		if (settingsProvidedEnvFeatFlag !== undefined) {
 			return settingsProvidedEnvFeatFlag !== 'false' && !!settingsProvidedEnvFeatFlag;
 		}
