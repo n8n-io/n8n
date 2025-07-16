@@ -1,0 +1,13 @@
+name: Run Playwright Tests (Docker Build)
+# This workflow is used to run Playwright tests in a Docker container built from the current branch
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+    secrets: inherit
