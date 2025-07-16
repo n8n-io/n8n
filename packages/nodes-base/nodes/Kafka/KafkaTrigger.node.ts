@@ -291,7 +291,7 @@ export class KafkaTrigger implements INodeType {
 					if (useSchemaRegistry) {
 						try {
 							let registry: SchemaRegistry;
-							if (schemaRegistryUsername || schemaRegistryPassword) {
+							if (schemaRegistryUsername && schemaRegistryPassword) {
 								registry = new SchemaRegistry({
 									host: schemaRegistryUrl,
 									auth: {
