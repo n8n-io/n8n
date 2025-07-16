@@ -586,6 +586,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				font-size: var(--font-size-2xs);
 
 				:global(.cm-editor) {
+					background-color: var(--color-code-background);
 					width: 100%;
 				}
 			}
