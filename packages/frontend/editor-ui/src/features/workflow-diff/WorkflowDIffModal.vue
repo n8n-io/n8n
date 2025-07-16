@@ -6,6 +6,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
+import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync';
 import {
@@ -23,13 +24,13 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-useProvideViewportSync();
+const { selectedDetailId } = useProvideViewportSync();
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
@@ -125,13 +126,9 @@ useAsyncState(async () => {
 	return true;
 }, false);
 
-const topWorkFlow = computed(() => {
-	return props.data.direction === 'push' ? remote : local;
-});
+const topWorkFlow = computed(() => (props.data.direction === 'push' ? remote : local));
 
-const bottomWorkFlow = computed(() => {
-	return props.data.direction === 'push' ? local : remote;
-});
+const bottomWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const diff = computed(() => {
 	return compareWorkflowsNodes(
@@ -209,6 +206,24 @@ const nodeChanges = computed(() => {
 		}));
 });
 
+function nextNodeChange() {
+	const currentIndex = nodeChanges.value.findIndex(
+		(change) => change.node.id === selectedDetailId.value,
+	);
+
+	const nextIndex = (currentIndex + 1) % nodeChanges.value.length;
+	selectedDetailId.value = nodeChanges.value[nextIndex]?.node.id;
+}
+
+function previousNodeChange() {
+	const currentIndex = nodeChanges.value.findIndex(
+		(change) => change.node.id === selectedDetailId.value,
+	);
+
+	const previousIndex = (currentIndex - 1 + nodeChanges.value.length) % nodeChanges.value.length;
+	selectedDetailId.value = nodeChanges.value[previousIndex]?.node.id;
+}
+
 const activeTab = ref<'nodes' | 'connectors' | 'settings'>('nodes');
 const tabs = computed(() => [
 	{
@@ -228,6 +243,57 @@ const tabs = computed(() => [
 	// 	label: 'Settings',
 	// },
 ]);
+
+const detailsPanelData = computed(() => {
+	if (!selectedDetailId.value) return undefined;
+
+	const node = diff.value.get(selectedDetailId.value)?.node;
+	if (!node) return undefined;
+
+	const type = nodeTypesStore.getNodeType(node?.type, node?.typeVersion);
+
+	return {
+		node,
+		type,
+	};
+});
+
+const nodeDiffs = computed(() => {
+	if (!selectedDetailId.value) {
+		return {
+			oldString: '',
+			newString: '',
+		};
+	}
+	const sourceNode = topWorkFlow.value?.state.value?.workflow?.nodes.find(
+		(node) => node.id === selectedDetailId.value,
+	);
+	const targetNode = bottomWorkFlow.value?.state.value?.workflow?.nodes.find(
+		(node) => node.id === selectedDetailId.value,
+	);
+	return {
+		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
+		newString: JSON.stringify(targetNode, null, 2) ?? '',
+	};
+});
+
+watch(nodeChanges, (changes) => {
+	if (changes.length) {
+		selectedDetailId.value = changes[0].node.id;
+	} else {
+		selectedDetailId.value = undefined;
+	}
+});
+
+const outputFormat = ref<'side-by-side' | 'line-by-line'>('line-by-line');
+function toggleOutputFormat() {
+	outputFormat.value = outputFormat.value === 'line-by-line' ? 'side-by-side' : 'line-by-line';
+}
+
+const panelWidth = ref(350);
+function onResize({ width }: { width: number }) {
+	panelWidth.value = width;
+}
 </script>
 
 <template>
@@ -309,108 +375,165 @@ const tabs = computed(() => [
 							</ElDropdownMenu>
 						</template>
 					</ElDropdown>
+					<N8nIconButton
+						icon="chevron-left"
+						type="secondary"
+						@click="previousNodeChange"
+					></N8nIconButton>
+					<N8nIconButton
+						icon="chevron-right"
+						type="secondary"
+						@click="nextNodeChange"
+					></N8nIconButton>
 				</div>
 			</div>
 		</template>
 		<template #content>
-			<div style="display: flex; flex-direction: column; height: 100%">
-				<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
-					<template v-if="topWorkFlow.state.value">
-						<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-							<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
-							{{ topWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
-						</N8nText>
-						<template v-if="topWorkFlow.state.value.workflow">
-							<SyncedWorkflowCanvas
-								id="top"
-								:nodes="topWorkFlow.state.value.nodes"
-								:connections="topWorkFlow.state.value.connections"
-							>
-								<template #node="{ nodeProps }">
-									<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-										<template #toolbar />
-									</Node>
-								</template>
-								<template #edge="{ edgeProps }">
-									<Edge
-										v-bind="edgeProps"
-										read-only
-										:selected="false"
-										:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-									/>
-								</template>
-							</SyncedWorkflowCanvas>
+			<div style="display: flex; height: 100%">
+				<div style="display: flex; flex-direction: column; height: 100%; flex: 1">
+					<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
+						<template v-if="topWorkFlow.state.value">
+							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
+								<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
+								{{ topWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
+							</N8nText>
+							<template v-if="topWorkFlow.state.value.workflow">
+								<SyncedWorkflowCanvas
+									id="top"
+									:nodes="topWorkFlow.state.value.nodes"
+									:connections="topWorkFlow.state.value.connections"
+								>
+									<template #node="{ nodeProps }">
+										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+											<template #toolbar />
+										</Node>
+									</template>
+									<template #edge="{ edgeProps }">
+										<Edge
+											v-bind="edgeProps"
+											read-only
+											:selected="false"
+											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
+										/>
+									</template>
+								</SyncedWorkflowCanvas>
+							</template>
+							<template v-else>
+								<div
+									style="
+										height: 100%;
+										display: flex;
+										flex-direction: column;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<template v-if="bottomWorkFlow.state.value?.remote">
+										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
+									</template>
+									<template v-else>
+										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
+									</template>
+								</div>
+							</template>
 						</template>
-						<template v-else>
-							<div
-								style="
-									height: 100%;
-									display: flex;
-									flex-direction: column;
-									align-items: center;
-									justify-content: center;
-								"
-							>
-								<template v-if="bottomWorkFlow.state.value?.remote">
-									<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-									<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
-								</template>
-								<template v-else>
-									<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-									<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-								</template>
-							</div>
+					</div>
+					<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
+						<template v-if="bottomWorkFlow.state.value">
+							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
+								<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
+								{{ bottomWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
+							</N8nText>
+							<template v-if="bottomWorkFlow.state.value.workflow">
+								<SyncedWorkflowCanvas
+									id="bottom"
+									:nodes="bottomWorkFlow.state.value.nodes"
+									:connections="bottomWorkFlow.state.value.connections"
+									><template #node="{ nodeProps }">
+										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+											<template #toolbar />
+										</Node>
+									</template>
+									<template #edge="{ edgeProps }">
+										<Edge
+											v-bind="edgeProps"
+											read-only
+											:selected="false"
+											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
+										/>
+									</template>
+								</SyncedWorkflowCanvas>
+							</template>
+							<template v-else>
+								<div
+									style="
+										height: 100%;
+										display: flex;
+										flex-direction: column;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<template v-if="bottomWorkFlow.state.value?.remote">
+										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
+									</template>
+									<template v-else>
+										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
+									</template>
+								</div>
+							</template>
 						</template>
-					</template>
+					</div>
 				</div>
-				<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
-					<template v-if="bottomWorkFlow.state.value">
-						<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-							<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
-							{{ bottomWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
-						</N8nText>
-						<template v-if="bottomWorkFlow.state.value.workflow">
-							<SyncedWorkflowCanvas
-								id="bottom"
-								:nodes="bottomWorkFlow.state.value.nodes"
-								:connections="bottomWorkFlow.state.value.connections"
-								><template #node="{ nodeProps }">
-									<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-										<template #toolbar />
-									</Node>
-								</template>
-								<template #edge="{ edgeProps }">
-									<Edge
-										v-bind="edgeProps"
-										read-only
-										:selected="false"
-										:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-									/>
-								</template>
-							</SyncedWorkflowCanvas>
-						</template>
-						<template v-else>
-							<div
-								style="
-									height: 100%;
-									display: flex;
-									flex-direction: column;
-									align-items: center;
-									justify-content: center;
-								"
-							>
-								<template v-if="bottomWorkFlow.state.value?.remote">
-									<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-									<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-								</template>
-								<template v-else>
-									<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-									<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
-								</template>
-							</div>
-						</template>
-					</template>
-				</div>
+				<N8nResizeWrapper
+					v-if="detailsPanelData"
+					:width="panelWidth"
+					:min-width="260"
+					:supported-directions="['left']"
+					:grid-size="8"
+					:style="{
+						width: `${panelWidth}px`,
+						display: 'flex',
+						flexDirection: 'column',
+						height: '100%',
+						borderLeft: '1px solid var(--color-foreground-base)',
+						borderTop: '1px solid var(--color-foreground-base)',
+					}"
+					outset
+					@resize="onResize"
+				>
+					<div
+						style="
+							display: flex;
+							flex-direction: row;
+							align-items: center;
+							gap: 8px;
+							padding: 12px 10px;
+						"
+					>
+						<N8nIconButton
+							icon="file-diff"
+							type="secondary"
+							@click="toggleOutputFormat"
+						></N8nIconButton>
+						<NodeIcon :node-type="detailsPanelData.type" :size="16" />
+						<N8nHeading size="small" color="text-dark" bold>
+							{{ detailsPanelData.node.name }}
+						</N8nHeading>
+						<N8nIconButton
+							icon="x"
+							type="secondary"
+							class="ml-auto"
+							text
+							@click="selectedDetailId = undefined"
+						></N8nIconButton>
+					</div>
+					<NodeDiff v-bind="nodeDiffs" :output-format style="flex: 1" />
+				</N8nResizeWrapper>
 			</div>
 		</template>
 	</Modal>
