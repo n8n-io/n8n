@@ -1,35 +1,35 @@
+import type { INodeUi, IUpdateInformation } from '@/Interface';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import {
 	type IConnection,
 	type IConnections,
 	type IDataObject,
-	type NodeInputConnections,
-	type NodeParameterValueType,
-	type INodeTypeDescription,
 	type INode,
 	type INodeParameters,
-	type NodeParameterValue,
 	type INodeProperties,
-	type INodePropertyOptions,
 	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeTypeDescription,
+	type NodeInputConnections,
+	type NodeParameterValue,
+	type NodeParameterValueType,
 	type NodePropertyTypes,
-	isINodePropertyCollectionList,
-	isINodePropertiesList,
-	isINodePropertyOptionsList,
-	displayParameter,
-	isResourceLocatorValue,
 	deepCopy,
+	displayParameter,
+	isINodePropertiesList,
+	isINodePropertyCollectionList,
+	isINodePropertyOptionsList,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
-import type { INodeUi, IUpdateInformation } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
-import isEqual from 'lodash/isEqual';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
-import { isPresent } from './typesUtils';
 import type { Ref } from 'vue';
 import { omitKey } from './objectUtils';
+import { isPresent } from './typesUtils';
 
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
