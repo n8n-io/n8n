@@ -27,7 +27,7 @@ export class PyTaskRunner extends CodeTaskRunner {
 		abortSignal: AbortSignal,
 	): Promise<TaskResultData> {
 		const { taskId, settings } = taskParams;
-		a.ok(settings, 'JS Code not sent to runner');
+		a.ok(settings, 'PY Code not sent to runner');
 
 		this.validateTaskSettings(settings);
 
