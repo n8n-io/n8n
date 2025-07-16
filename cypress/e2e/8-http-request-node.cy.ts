@@ -1,5 +1,6 @@
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const nodeCreatorFeature = new NodeCreator();
@@ -27,9 +28,11 @@ describe('HTTP Request node', () => {
 		workflowPage.actions.openNode('HTTP Request');
 
 		// Enable body parameters
-		ndv.actions.setParameterValue('Send Body', true);
-		ndv.actions.setParameterValue('Body Content Type', 'JSON');
-		ndv.actions.setParameterValue('Specify Body', 'Using Fields Below');
+		cy.getByTestId('parameter-input-sendBody').click();
+		cy.getByTestId('parameter-input-contentType').click();
+		getVisibleSelect().find('.option-headline').contains('JSON').click();
+		cy.getByTestId('parameter-input-specifyBody').click();
+		getVisibleSelect().find('.option-headline').contains('Using Fields Below').click();
 
 		// Add multiple body parameters
 		cy.getByTestId('parameter-input-bodyParameters').click();
