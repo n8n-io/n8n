@@ -7,6 +7,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -17,6 +18,7 @@ import type {
 	AssignmentCollectionValue,
 	GenericValue,
 	IExecuteData,
+	INode,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -360,21 +362,27 @@ export class TestRunnerService {
 	/**
 	 * Get the evaluation set metrics nodes from a workflow.
 	 */
-	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+	static getEvaluationNodes(workflow: IWorkflowBase, operation: string, defaultOption = false) {
 		return workflow.nodes.filter(
-			(node) => node.type === EVALUATION_NODE_TYPE && node.parameters.operation === 'setMetrics',
+			(node) =>
+				node.type === EVALUATION_NODE_TYPE &&
+				(node.parameters.operation === operation ||
+					(defaultOption && node.parameters.operation === undefined)),
 		);
+	}
+
+	/**
+	 * Get the evaluation set metrics nodes from a workflow.
+	 */
+	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+		return this.getEvaluationNodes(workflow, 'setMetrics');
 	}
 
 	/**
 	 * Get the evaluation set outputs nodes from a workflow.
 	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
-		return workflow.nodes.filter(
-			(node) =>
-				node.type === EVALUATION_NODE_TYPE &&
-				(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
-		);
+		return this.getEvaluationNodes(workflow, 'setOutputs', true);
 	}
 
 	/**
@@ -392,13 +400,27 @@ export class TestRunnerService {
 			});
 		}
 
-		const triggerOutput = triggerOutputData?.data?.main?.[0];
+		const triggerOutput = triggerOutputData?.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
 		}
 
 		return triggerOutput;
+	}
+
+	private extractInputData(execution: IRun, workflow: IWorkflowBase): IDataObject {
+		const setInputNodes = TestRunnerService.getEvaluationNodes(workflow, 'setInputs');
+
+		return setInputNodes.reduce((accu: IDataObject, node: INode) => {
+			const runs = execution.data.resultData.runData[node.name];
+			const data = runs[runs.length - 1]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.json ?? {};
+
+			return {
+				...accu,
+				...data,
+			};
+		}, {} as IDataObject);
 	}
 
 	/**
@@ -594,6 +616,8 @@ export class TestRunnerService {
 							...addedPredefinedMetrics,
 						};
 
+						const inputs = this.extractInputData(testCaseExecution, workflow);
+
 						this.logger.debug(
 							'Test case metrics extracted (user-defined)',
 							addedUserDefinedMetrics,
@@ -609,6 +633,7 @@ export class TestRunnerService {
 							completedAt,
 							status: 'success',
 							metrics: combinedMetrics,
+							inputs,
 						});
 					}
 				} catch (e) {

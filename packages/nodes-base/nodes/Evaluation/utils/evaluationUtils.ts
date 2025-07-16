@@ -10,7 +10,7 @@ import { metricHandlers } from './metricHandlers';
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
 
-export async function setOutput(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
 	const parentNodes = this.getParentNodes(evaluationNode.name);
 
@@ -90,6 +90,42 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	return [this.getInputData()];
 }
 
+export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
+	const evaluationNode = this.getNode();
+	const parentNodes = this.getParentNodes(evaluationNode.name);
+
+	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
+	const evalTriggerOutput = evalTrigger
+		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
+		: undefined;
+
+	if (!evalTrigger || !evalTriggerOutput) {
+		this.addExecutionHints({
+			message: "No inputs were set since the execution didn't start from an evaluation trigger",
+			location: 'outputPane',
+		});
+		return [this.getInputData()];
+	}
+
+	const inputFields = this.getNodeParameter('inputs.values', 0, []) as Array<{
+		inputName: string;
+		inputValue: string;
+	}>;
+
+	if (inputFields.length === 0) {
+		throw new UserError('No inputs to set', {
+			description: 'Add inputs using the ‘Add Input’ button',
+		});
+	}
+
+	const json = inputFields.reduce((acc, { inputName, inputValue }) => {
+		acc[inputName] = inputValue;
+		return acc;
+	}, {} as IDataObject);
+
+	return [[{ json }]];
+}
+
 export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const metrics: INodeExecutionData[] = [];
@@ -139,7 +175,7 @@ export async function checkIfEvaluating(this: IExecuteFunctions): Promise<INodeE
 	}
 }
 
-export function setOutputs(parameters: INodeParameters) {
+export function getOutputConnectionTypes(parameters: INodeParameters) {
 	if (parameters.operation === 'checkIfEvaluating') {
 		return [
 			{ type: 'main', displayName: 'Evaluation' },
@@ -150,7 +186,7 @@ export function setOutputs(parameters: INodeParameters) {
 	return [{ type: 'main' }];
 }
 
-export function setInputs(parameters: INodeParameters) {
+export function getInputConnectionTypes(parameters: INodeParameters) {
 	if (
 		parameters.operation === 'setMetrics' &&
 		['correctness', 'helpfulness'].includes(parameters.metric as string)
