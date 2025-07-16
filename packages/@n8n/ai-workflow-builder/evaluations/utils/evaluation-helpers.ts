@@ -8,6 +8,7 @@ import pc from 'picocolors';
 import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import type { Violation } from '../types/evaluation.js';
+import type { TestResult } from '../types/test-result.js';
 
 /**
  * Sets up the LLM with proper configuration
@@ -200,4 +201,45 @@ export function formatViolationType(type: 'critical' | 'major' | 'minor'): strin
  */
 export function formatTestName(name: string, id: string): string {
 	return `${name} ${pc.dim(`(${id})`)}`;
+}
+
+/**
+ * Collects all violations from test results with their test context
+ * @param results - Array of test results
+ * @returns Array of violations with test name and category
+ */
+export function collectAllViolations(results: TestResult[]): Array<{
+	violation: Violation & { category: string };
+	testName: string;
+}> {
+	const allViolations: Array<{
+		violation: Violation & { category: string };
+		testName: string;
+	}> = [];
+
+	results.forEach((result) => {
+		if (!result.error) {
+			const testViolations = [
+				...result.evaluationResult.functionality.violations.map((v) => ({
+					violation: { ...v, category: 'Functionality' },
+					testName: result.testCase.name,
+				})),
+				...result.evaluationResult.connections.violations.map((v) => ({
+					violation: { ...v, category: 'Connections' },
+					testName: result.testCase.name,
+				})),
+				...result.evaluationResult.expressions.violations.map((v) => ({
+					violation: { ...v, category: 'Expressions' },
+					testName: result.testCase.name,
+				})),
+				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
+					violation: { ...v, category: 'Node Config' },
+					testName: result.testCase.name,
+				})),
+			];
+			allViolations.push(...testViolations);
+		}
+	});
+
+	return allViolations;
 }
