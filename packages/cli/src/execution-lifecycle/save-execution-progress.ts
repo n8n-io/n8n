@@ -32,15 +32,6 @@ export async function saveExecutionProgress(
 			return;
 		}
 
-		if (fullExecutionData.status === 'canceled') {
-			// If the execution was canceled, we do not save any progress
-			logger.debug(`Execution ${executionId} was canceled, skipping save progress`, {
-				executionId,
-				nodeName,
-			});
-			return;
-		}
-
 		if (fullExecutionData.finished) {
 			// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
 			// that was left behind. We skip saving because the other call should have saved everything
@@ -70,7 +61,11 @@ export async function saveExecutionProgress(
 		// Set last executed node so that it may resume on failure
 		fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
 
-		fullExecutionData.status = 'running';
+		// If the execution was canceled, we do not change the status
+		// to running, because it is already canceled.
+		if (fullExecutionData.status !== 'canceled') {
+			fullExecutionData.status = 'running';
+		}
 
 		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 	} catch (e) {
