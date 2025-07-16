@@ -1466,6 +1466,8 @@ export interface INodeProperties {
 	// allows to skip validation during execution or set custom validation/casting logic inside node
 	// inline error messages would still be shown in UI
 	ignoreValidationDuringExecution?: boolean;
+	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
+	allowArbitraryValues?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -2617,10 +2619,13 @@ export interface INodeGraphItem {
 	src_node_id?: string;
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
+	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
+	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];

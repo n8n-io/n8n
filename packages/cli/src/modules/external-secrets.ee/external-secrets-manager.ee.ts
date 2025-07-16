@@ -1,13 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
-import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	EXTERNAL_SECRETS_DB_KEY,
@@ -17,6 +13,10 @@ import {
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
+
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ExternalSecretsManager implements IExternalSecretsManager {
@@ -65,7 +65,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		this.logger.debug('External secrets manager initialized');
 	}
 
-	@OnShutdown()
 	shutdown() {
 		clearInterval(this.updateInterval);
 		Object.values(this.providers).forEach((p) => {
