@@ -1,4 +1,4 @@
-import { CredentialsRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import {
 	type AuthenticatedRequest,
 	type CredentialsEntity,
@@ -12,16 +12,15 @@ import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
 import { SourceControlContext } from './types/source-control-context';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class SourceControlScopedService {
 	constructor(
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly credentialRepository: CredentialsRepository,
 	) {}
 
 	async ensureIsAllowedToPush(req: AuthenticatedRequest) {
@@ -66,32 +65,23 @@ export class SourceControlScopedService {
 
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
+		id?: string,
 	): Promise<WorkflowEntity[] | undefined> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
 
+		const where = this.getWorkflowsInAdminProjectsFromContextFilter(context);
+		if (id) {
+			where.id = id;
+		}
+
 		return await this.workflowRepository.find({
 			select: {
 				id: true,
 			},
-			where: this.getWorkflowsInAdminProjectsFromContextFilter(context),
-		});
-	}
-
-	async getCredentialsInAdminProjectsFromContext(
-		context: SourceControlContext,
-	): Promise<CredentialsEntity[] | undefined> {
-		if (context.hasAccessToAllProjects()) {
-			return;
-		}
-
-		return await this.credentialRepository.find({
-			select: {
-				id: true,
-			},
-			where: this.getCredentialsInAdminProjectsFromContextFilter(context),
+			where,
 		});
 	}
 

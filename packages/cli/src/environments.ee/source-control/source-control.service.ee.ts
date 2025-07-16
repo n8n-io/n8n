@@ -1068,9 +1068,13 @@ export class SourceControlService {
 		const context = new SourceControlContext(user);
 		switch (type) {
 			case 'workflow': {
+				if (typeof id === 'undefined') {
+					throw new BadRequestError('Workflow ID is required to fetch workflow content');
+				}
+
 				const authorizedWorkflows =
-					await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context);
-				if (authorizedWorkflows && !authorizedWorkflows.find((wf) => wf.id === id)) {
+					await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context, id);
+				if (authorizedWorkflows && authorizedWorkflows.length === 0) {
 					throw new ForbiddenError(`You are not allowed to access workflow with id ${id}`);
 				}
 				const content = await this.gitService.getFileContent(

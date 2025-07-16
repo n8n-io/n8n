@@ -258,7 +258,7 @@ export class SourceControlController {
 	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getFileContent(
 		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
-	): Promise<{ content: IWorkflowToImport }> {
+	): Promise<{ content: IWorkflowToImport; type: SourceControlledFile['type'] }> {
 		try {
 			const { type, id } = req.params;
 			const content = await this.sourceControlService.getRemoteFileEntity({
@@ -266,7 +266,7 @@ export class SourceControlController {
 				type,
 				id,
 			});
-			return { content };
+			return { content, type };
 		} catch (error) {
 			if (error instanceof ForbiddenError) {
 				throw error;
