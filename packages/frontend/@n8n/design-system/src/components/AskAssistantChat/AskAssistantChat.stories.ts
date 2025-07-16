@@ -490,6 +490,121 @@ RateWorkflowMessage.args = {
 	]),
 };
 
+export const TextMessageWithRegularRating = Template.bind({});
+TextMessageWithRegularRating.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '127',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"I've generated a workflow that automatically processes your CSV files and sends email notifications. The workflow includes error handling and data validation steps.",
+			read: false,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const TextMessageWithMinimalRating = Template.bind({});
+TextMessageWithMinimalRating.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '128',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Here's a quick tip: You can use the Code node to transform data between different formats.",
+			read: false,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const MultipleMessagesWithRatings = Template.bind({});
+MultipleMessagesWithRatings.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '129',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me create a workflow for processing webhooks?',
+			read: true,
+		},
+		{
+			id: '130',
+			type: 'text',
+			role: 'assistant',
+			content: "I'll help you create a webhook processing workflow. Here are the steps:",
+			read: true,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+		{
+			id: '131',
+			type: 'workflow-step',
+			role: 'assistant',
+			steps: [
+				'Add a Webhook node to receive incoming data',
+				'Use a Switch node to route based on webhook type',
+				'Add data transformation with a Code node',
+				'Store results in your database',
+			],
+			read: true,
+		},
+		{
+			id: '132',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'This workflow will handle incoming webhooks efficiently and store the processed data.',
+			read: false,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const CodeDiffWithMinimalRating = Template.bind({});
+CodeDiffWithMinimalRating.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '133',
+			type: 'code-diff',
+			role: 'assistant',
+			description: 'Fix the error handling in your code',
+			codeDiff:
+				'@@ -1,3 +1,8 @@\\n const data = await fetchData();\\n-return data;\\n+\\n+if (!data || data.error) {\\n+  throw new Error(data?.error || "Failed to fetch data");\\n+}\\n+\\n+return data;',
+			suggestionId: 'fix_error_handling',
+			read: false,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+	]),
+};
+
 export const ToolMessageRunning = Template.bind({});
 ToolMessageRunning.args = {
 	user: {
@@ -684,6 +799,7 @@ MixedMessagesWithTools.args = {
 			role: 'assistant',
 			description: 'Add error handling to your HTTP node',
 			codeDiff:
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 				'@@ -1,3 +1,8 @@\n const response = await $http.request(options);\n-return response.data;\n+\n+if (response.status !== 200) {\n+  throw new Error(`HTTP request failed with status ${response.status}`);\n+}\n+\n+return response.data;',
 			suggestionId: 'fix_http_error',
 			read: false,

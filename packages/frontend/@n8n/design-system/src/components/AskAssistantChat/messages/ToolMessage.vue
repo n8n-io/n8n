@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+
 import BaseMessage from './BaseMessage.vue';
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
-import N8nSpinner from '../../N8nSpinner';
+import N8nTooltip from '../../N8nTooltip';
 
 interface Props {
 	message: ChatUI.ToolMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
+	showProgressLogs?: boolean;
 	user?: {
 		firstName: string;
 		lastName: string;
@@ -16,6 +19,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 
 const expanded = ref(false);
 
@@ -25,30 +29,6 @@ const toolDisplayName = computed(() => {
 		.split('_')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(' ');
-});
-
-const statusIcon = computed(() => {
-	switch (props.message.status) {
-		case 'running':
-			return null; // Will show spinner
-		case 'completed':
-			return 'circle-check';
-		case 'error':
-			return 'times-circle';
-		default:
-			return null;
-	}
-});
-
-const statusColor = computed(() => {
-	switch (props.message.status) {
-		case 'completed':
-			return 'success';
-		case 'error':
-			return 'danger';
-		default:
-			return 'text-dark';
-	}
 });
 
 const latestInput = computed(() => {
@@ -68,6 +48,30 @@ const latestError = computed(() => {
 
 const progressMessages = computed(() => {
 	return (props.message.updates ?? []).filter((u) => u.type === 'progress').map((u) => u.data);
+});
+
+const statusMessage = computed(() => {
+	switch (props.message.status) {
+		case 'running':
+			return t('assistantChat.builder.toolRunning');
+		case 'completed':
+			return t('assistantChat.builder.toolCompleted');
+		case 'error':
+			return t('assistantChat.builder.toolError');
+		default:
+			return '';
+	}
+});
+
+const statusColor = computed(() => {
+	switch (props.message.status) {
+		case 'completed':
+			return 'success';
+		case 'error':
+			return 'danger';
+		default:
+			return 'secondary';
+	}
 });
 
 function formatJSON(data: Record<string, unknown> | string): string {
@@ -97,18 +101,32 @@ function toggleExpanded() {
 					/>
 					<span :class="$style.toolName">{{ toolDisplayName }}</span>
 					<div :class="$style.status">
-						<N8nSpinner v-if="message.status === 'running'" size="xsmall" />
-						<N8nIcon v-else-if="statusIcon" :icon="statusIcon" :color="statusColor" size="small" />
-						<span :class="[$style.statusText, $style[`status-${message.status}`]]">
-							{{ message.status }}
-						</span>
+						<N8nTooltip placement="left" :disabled="message.status !== 'running'">
+							<template #content>
+								<span :class="$style.statusText">
+									{{ statusMessage }}
+								</span>
+							</template>
+							<N8nIcon
+								v-if="message.status === 'running'"
+								icon="spinner"
+								spin
+								:color="statusColor"
+							/>
+							<N8nIcon
+								v-else-if="message.status === 'error'"
+								icon="status-error"
+								:color="statusColor"
+							/>
+							<N8nIcon v-else icon="status-completed" :color="statusColor" />
+						</N8nTooltip>
 					</div>
 				</div>
 			</div>
 
 			<div v-if="expanded" :class="$style.content">
 				<!-- Progress messages -->
-				<div v-if="progressMessages.length > 0" :class="$style.section">
+				<div v-if="progressMessages.length > 0 && showProgressLogs" :class="$style.section">
 					<div :class="$style.sectionTitle">Progress</div>
 					<div
 						v-for="(progress, index) in progressMessages"
@@ -185,7 +203,7 @@ function toggleExpanded() {
 	text-transform: capitalize;
 
 	&.status-running {
-		color: var(--color-primary);
+		color: var(--execution-card-text-waiting);
 	}
 
 	&.status-completed {
@@ -193,7 +211,7 @@ function toggleExpanded() {
 	}
 
 	&.status-error {
-		color: var(--color-danger);
+		color: var(--color-text-danger);
 	}
 }
 

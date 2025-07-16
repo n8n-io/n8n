@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import BlockMessage from './messages/BlockMessage.vue';
-import CodeDiffMessage from './messages/CodeDiffMessage.vue';
-import ErrorMessage from './messages/ErrorMessage.vue';
-import EventMessage from './messages/EventMessage.vue';
-import TextMessage from './messages/TextMessage.vue';
-import ToolMessage from './messages/ToolMessage.vue';
-import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
-import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
-import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
-import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
-import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
+import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
@@ -111,16 +101,15 @@ function growInput() {
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
-function onThumbsUp() {
-	emit('thumbsUp');
-}
-
-function onThumbsDown() {
-	emit('thumbsDown');
-}
-
-function onSubmitFeedback(feedback: string) {
-	emit('submitFeedback', feedback);
+function onRateMessage(rating: 'up' | 'down', feedback?: string) {
+	if (rating === 'up') {
+		emit('thumbsUp');
+	} else {
+		emit('thumbsDown');
+	}
+	if (feedback) {
+		emit('submitFeedback', feedback);
+	}
 }
 </script>
 
@@ -148,36 +137,7 @@ function onSubmitFeedback(feedback: string) {
 							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 						"
 					>
-						<TextMessage
-							v-if="message.type === 'text'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === normalizedMessages.length - 1"
-						/>
-						<BlockMessage
-							v-else-if="message.type === 'block'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === normalizedMessages.length - 1"
-						/>
-						<ErrorMessage
-							v-else-if="message.type === 'error'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<EventMessage
-							v-else-if="message.type === 'event'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<CodeDiffMessage
-							v-else-if="message.type === 'code-diff'"
+						<MessageWrapper
 							:message="message"
 							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
@@ -185,45 +145,7 @@ function onSubmitFeedback(feedback: string) {
 							:is-last-message="i === normalizedMessages.length - 1"
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
-						/>
-						<ToolMessage
-							v-else-if="message.type === 'tool'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<WorkflowStepsMessage
-							v-else-if="message.type === 'workflow-step'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<WorkflowNodesMessage
-							v-else-if="message.type === 'workflow-node'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<ComposedNodesMessage
-							v-else-if="message.type === 'workflow-composed'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<WorkflowGeneratedMessage
-							v-else-if="message.type === 'workflow-generated'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-						/>
-						<RateWorkflowMessage
-							v-else-if="message.type === 'rate-workflow'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
-							:user="user"
-							@thumbs-up="onThumbsUp"
-							@thumbs-down="onThumbsDown"
-							@submit-feedback="onSubmitFeedback"
+							@rate="onRateMessage"
 						/>
 
 						<div

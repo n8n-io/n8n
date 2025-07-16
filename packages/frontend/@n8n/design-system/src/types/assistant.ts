@@ -160,6 +160,9 @@ export namespace ChatUI {
 	) & {
 		id?: string;
 		read?: boolean;
+		showRating?: boolean;
+		ratingStyle?: 'regular' | 'minimal';
+		showFeedback?: boolean;
 	};
 }
 
