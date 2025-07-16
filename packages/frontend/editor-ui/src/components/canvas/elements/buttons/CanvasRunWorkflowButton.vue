@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { isChatNode } from '@/utils/aiUtils';
+import { I18nT } from 'vue-i18n';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -93,7 +94,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				<span :class="$style.buttonContent">
 					{{ label }}
 					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
-						<I18nT keypath="nodeView.runButtonText.from">
+						<I18nT keypath="nodeView.runButtonText.from" scope="global">
 							<template #nodeName>
 								<N8nText bold size="mini">
 									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
@@ -127,7 +128,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
 						<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
 						<span>
-							<I18nT keypath="nodeView.runButtonText.from">
+							<I18nT keypath="nodeView.runButtonText.from" scope="global">
 								<template #nodeName>
 									<N8nText bold size="small">{{ item.label }}</N8nText>
 								</template>
