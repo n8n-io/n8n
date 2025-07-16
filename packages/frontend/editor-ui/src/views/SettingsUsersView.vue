@@ -508,4 +508,8 @@ async function onUpdateMfaEnforced(value: boolean) {
 	align-items: center;
 	flex-shrink: 0;
 }
+
+.container {
+	padding-bottom: 20px;
+}
 </style>

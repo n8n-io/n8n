@@ -500,6 +500,7 @@ describe('generateNodesGraph', () => {
 						type: 'n8n-nodes-base.webhook',
 						version: 1.1,
 						position: [520, 380],
+						response_mode: 'onReceived',
 					},
 				},
 				notes: {},
@@ -2385,6 +2386,133 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		expect(result).toEqual({
 			num_tools: 0,
 			model_name: 'gemini-1.5-pro',
+		});
+	});
+
+	it('should capture Agent node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						options: {
+							enableStreaming: false,
+						},
+					},
+					id: 'agent-id-streaming-disabled',
+					name: 'Agent with streaming disabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						agent: 'conversationalAgent',
+						options: {
+							enableStreaming: true,
+						},
+					},
+					id: 'agent-id-streaming-enabled',
+					name: 'Agent with streaming enabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [300, 100],
+				},
+				{
+					parameters: {
+						agent: 'openAiFunctionsAgent',
+					},
+					id: 'agent-id-default-streaming',
+					name: 'Agent with default streaming',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [500, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'agent-id-streaming-disabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [100, 100],
+			agent: 'toolsAgent',
+			is_streaming: false,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'agent-id-streaming-enabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [300, 100],
+			agent: 'conversationalAgent',
+			is_streaming: true,
+		});
+
+		expect(result.nodeGraph.nodes['2']).toEqual({
+			id: 'agent-id-default-streaming',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [500, 100],
+			agent: 'openAiFunctionsAgent',
+			is_streaming: true,
+		});
+	});
+
+	it('should capture Chat Trigger node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						public: true,
+						options: {
+							responseMode: 'streaming',
+						},
+					},
+					id: 'chat-trigger-id',
+					name: 'Chat Trigger',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						public: false,
+						options: {
+							responseMode: 'lastNode',
+						},
+					},
+					id: 'chat-trigger-id-2',
+					name: 'Chat Trigger 2',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [300, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'chat-trigger-id',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [100, 100],
+			response_mode: 'streaming',
+			public_chat: true,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'chat-trigger-id-2',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [300, 100],
+			response_mode: 'lastNode',
+			public_chat: false,
 		});
 	});
 });

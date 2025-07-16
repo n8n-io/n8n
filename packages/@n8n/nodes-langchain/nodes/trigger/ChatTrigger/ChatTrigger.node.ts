@@ -591,6 +591,7 @@ export class ChatTrigger extends Node {
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
+					enableStreaming,
 				});
 
 				res.status(200).send(page).end();
