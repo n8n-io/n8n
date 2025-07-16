@@ -134,8 +134,8 @@ export class AiWorkflowBuilderService {
 
 		this.agent ??= new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			llmSimpleTask: this.llmSimpleTask!,
-			llmComplexTask: this.llmSimpleTask!,
+			llmSimpleTask: this.llmComplexTask!,
+			llmComplexTask: this.llmComplexTask!,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
 			tracer: this.tracingClient
