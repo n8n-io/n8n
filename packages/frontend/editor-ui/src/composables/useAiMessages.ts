@@ -3,7 +3,6 @@ import {
 	isTextMessage,
 	isSummaryMessage,
 	isAgentSuggestionMessage,
-	isAgentThinkingMessage,
 	isCodeDiffMessage,
 	isWorkflowUpdatedMessage,
 	isRateWorkflowMessage,
@@ -66,78 +65,48 @@ export function useAiMessages() {
 	}
 
 	/**
-	 * Process a tool message
+	 * Create a tool message from request data
 	 */
-	function processToolMessage(
-		msg: ChatRequest.ToolMessage,
-		id: string,
-		messages: ChatUI.AssistantMessage[],
-	): {
-		updatedMessages: ChatUI.AssistantMessage[];
-		checkForProcessingMessage: boolean;
-	} {
-		const updatedMessages = [...messages];
-		let checkForProcessingMessage = false;
+	function createToolMessage(msg: ChatRequest.ToolMessage, id: string): ChatUI.AssistantMessage {
+		return {
+			id,
+			type: 'tool',
+			role: 'assistant',
+			toolName: msg.toolName,
+			toolCallId: msg.toolCallId,
+			status: msg.status,
+			updates: msg.updates,
+			read: true,
+		};
+	}
 
-		if (msg.status === 'running') {
-			// Check if this is a progress update for an existing running tool
-			const existingIndex = updatedMessages.findIndex(
-				(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
-			);
+	/**
+	 * Apply rating styles to messages immutably
+	 */
+	function applyRatingStyles(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+		// Check if there are any running tools
+		const hasRunningTools = messages.some((m) => m.type === 'tool' && m.status === 'running');
 
-			if (existingIndex > -1) {
-				// Update existing running tool message
-				const existingMessage = updatedMessages[existingIndex] as ChatUI.ToolMessage;
-				updatedMessages[existingIndex] = {
-					...existingMessage,
-					updates: [...existingMessage.updates, ...msg.updates],
-				} as ChatUI.AssistantMessage;
-			} else {
-				// Add new running tool message
-				updatedMessages.push({
-					id,
-					type: 'tool',
-					role: 'assistant',
-					toolName: msg.toolName,
-					toolCallId: msg.toolCallId,
-					status: msg.status,
-					updates: msg.updates,
-					read: true,
-				});
+		// Find the index of the last assistant text message
+		let lastAssistantTextIndex = -1;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].type === 'text' && messages[i].role === 'assistant') {
+				lastAssistantTextIndex = i;
+				break;
 			}
-		} else {
-			// Handle completed/error status
-			const existingIndex = updatedMessages.findIndex(
-				(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
-			);
-
-			if (existingIndex > -1) {
-				// Update existing running tool message
-				const existingMessage = updatedMessages[existingIndex] as ChatUI.ToolMessage;
-				updatedMessages[existingIndex] = {
-					...existingMessage,
-					status: msg.status,
-					updates: [...existingMessage.updates, ...msg.updates],
-				} as ChatUI.AssistantMessage;
-			} else {
-				// Add new completed/error tool message (shouldn't happen normally)
-				updatedMessages.push({
-					id,
-					type: 'tool',
-					role: 'assistant',
-					toolName: msg.toolName,
-					toolCallId: msg.toolCallId,
-					status: msg.status,
-					updates: msg.updates,
-					read: true,
-				});
-			}
-
-			// Check if we should show processing message
-			checkForProcessingMessage = msg.status === 'completed';
 		}
 
-		return { updatedMessages, checkForProcessingMessage };
+		// Map through messages and apply appropriate rating styles
+		return messages.map((message, index) => {
+			if (message.type === 'text' && message.role === 'assistant' && message.showRating) {
+				return {
+					...message,
+					// Only apply 'regular' style to the last message if all tools are completed
+					ratingStyle: index === lastAssistantTextIndex && !hasRunningTools ? 'regular' : 'minimal',
+				};
+			}
+			return message;
+		});
 	}
 
 	/**
@@ -152,79 +121,149 @@ export function useAiMessages() {
 		shouldClearThinking: boolean;
 		thinkingMessage?: string;
 	} {
-		let messages = [...currentMessages];
-		let shouldClearThinking = false;
-		let thinkingMessage: string | undefined;
-
 		// Clear thinking message when we get any response (text or tool)
-		const hasResponse = newMessages.some((msg) => isTextMessage(msg) || isToolMessage(msg));
-		if (hasResponse) {
-			shouldClearThinking = true;
-		}
+		const shouldClearThinking = newMessages.some((msg) => isTextMessage(msg) || isToolMessage(msg));
 
-		newMessages.forEach((msg) => {
-			if (isTextMessage(msg)) {
-				messages.push(processTextMessage(msg, id));
-			} else if (isSummaryMessage(msg)) {
-				// Handle summary message type from API (maps to SummaryBlock in UI)
-				messages.push({
-					id,
-					type: 'block',
-					role: msg.role ?? 'assistant',
-					title: msg.title,
-					content: msg.content,
-					read: true,
-				});
-			} else if (isAgentSuggestionMessage(msg)) {
-				// Handle agent suggestion message
-				messages.push({
-					id,
-					type: 'agent-suggestion',
-					role: msg.role ?? 'assistant',
-					title: msg.title,
-					content: msg.text,
-					suggestionId: msg.suggestionId || '',
-					read: true,
-				});
-			} else if (isAgentThinkingMessage(msg)) {
-				// Handle agent thinking step
-				// Handle intermediate-step messages (agent thinking)
-				// These are not part of the final message array in the current UI
-			} else if (isCodeDiffMessage(msg)) {
-				// Handle code diff message
-				messages.push({
-					id,
-					type: 'code-diff',
-					role: msg.role ?? 'assistant',
-					description: msg.description,
-					codeDiff: msg.codeDiff,
-					suggestionId: msg.suggestionId || '',
-					quickReplies: msg.quickReplies,
-					read: true,
-				});
-			} else if (isWorkflowUpdatedMessage(msg)) {
-				messages.push(processWorkflowUpdatedMessage(msg, id));
-			} else if (isRateWorkflowMessage(msg)) {
-				messages.push(processRateWorkflowMessage(msg, id));
-			} else if (isToolMessage(msg)) {
-				const { updatedMessages, checkForProcessingMessage } = processToolMessage(
-					msg,
-					id,
-					messages,
-				);
-				messages = updatedMessages;
+		// We'll determine if text messages should show ratings based on the presence of workflow-updated messages
+		// in the overall message history after processing
 
-				// Check if all tools are completed and show processing message
-				if (checkForProcessingMessage) {
-					const hasRunningTools = messages.some((m) => m.type === 'tool' && m.status === 'running');
-					if (!hasRunningTools) {
-						thinkingMessage = i18n.baseText('aiAssistant.thinkingSteps.processingResults');
+		// Process all new messages using reduce
+		const result = newMessages.reduce<{
+			messages: ChatUI.AssistantMessage[];
+			thinkingMessage?: string;
+		}>(
+			(acc, msg) => {
+				if (isTextMessage(msg)) {
+					return {
+						...acc,
+						messages: [...acc.messages, processTextMessage(msg, id)],
+					};
+				} else if (isSummaryMessage(msg)) {
+					return {
+						...acc,
+						messages: [
+							...acc.messages,
+							{
+								id,
+								type: 'block',
+								role: msg.role ?? 'assistant',
+								title: msg.title,
+								content: msg.content,
+								read: true,
+							},
+						],
+					};
+				} else if (isAgentSuggestionMessage(msg)) {
+					return {
+						...acc,
+						messages: [
+							...acc.messages,
+							{
+								id,
+								type: 'agent-suggestion',
+								role: msg.role ?? 'assistant',
+								title: msg.title,
+								content: msg.text,
+								suggestionId: msg.suggestionId ?? '',
+								read: true,
+							},
+						],
+					};
+				} else if (isCodeDiffMessage(msg)) {
+					return {
+						...acc,
+						messages: [
+							...acc.messages,
+							{
+								id,
+								type: 'code-diff',
+								role: msg.role ?? 'assistant',
+								description: msg.description,
+								codeDiff: msg.codeDiff,
+								suggestionId: msg.suggestionId ?? '',
+								quickReplies: msg.quickReplies,
+								read: true,
+							},
+						],
+					};
+				} else if (isWorkflowUpdatedMessage(msg)) {
+					return {
+						...acc,
+						messages: [...acc.messages, processWorkflowUpdatedMessage(msg, id)],
+					};
+				} else if (isToolMessage(msg)) {
+					const toolMessage = createToolMessage(msg, id);
+
+					// Check if we need to update an existing tool message
+					if (
+						msg.status !== 'running' ||
+						acc.messages.some(
+							(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+						)
+					) {
+						// Find and update existing tool message
+						const existingIndex = acc.messages.findIndex(
+							(m) => m.type === 'tool' && m.toolCallId === msg.toolCallId && m.status === 'running',
+						);
+
+						if (existingIndex > -1) {
+							const existingMessage = acc.messages[existingIndex] as ChatUI.ToolMessage;
+							const updatedMessages = [...acc.messages];
+							updatedMessages[existingIndex] = {
+								...existingMessage,
+								status: msg.status,
+								updates: [...existingMessage.updates, ...msg.updates],
+							};
+
+							// Check if we should show processing message
+							let thinkingMessage = acc.thinkingMessage;
+							if (msg.status === 'completed') {
+								const hasRunningTools = updatedMessages.some(
+									(m) => m.type === 'tool' && m.status === 'running',
+								);
+								if (!hasRunningTools) {
+									thinkingMessage = i18n.baseText('aiAssistant.thinkingSteps.processingResults');
+								}
+							}
+
+							return { messages: updatedMessages, thinkingMessage };
+						}
 					}
+
+					// Add new tool message
+					return {
+						...acc,
+						messages: [...acc.messages, toolMessage],
+					};
 				}
+
+				return acc;
+			},
+			{ messages: [...currentMessages], thinkingMessage: undefined },
+		);
+
+		// Check if there are any workflow-updated messages in the entire message history
+		const hasWorkflowUpdate = result.messages.some((msg) => msg.type === 'workflow-updated');
+
+		// Apply showRating to text messages only if workflow-updated messages exist
+		const messagesWithRating = result.messages.map((message) => {
+			if (message.type === 'text' && message.role === 'assistant') {
+				return {
+					...message,
+					showRating: hasWorkflowUpdate,
+				};
 			}
+			return message;
 		});
 
-		return { messages, shouldClearThinking, thinkingMessage };
+		// Apply rating styles
+		const finalMessages = applyRatingStyles(messagesWithRating);
+
+		return {
+			messages: finalMessages,
+			shouldClearThinking,
+			thinkingMessage: result.thinkingMessage,
+		};
 	}
 
 	/**
@@ -300,7 +339,7 @@ export function useAiMessages() {
 				role: 'assistant',
 				title: msg.title,
 				content: msg.text,
-				suggestionId: msg.suggestionId || '',
+				suggestionId: msg.suggestionId ?? '',
 				read: true,
 			};
 		} else if (isCodeDiffMessage(msg)) {
@@ -310,7 +349,7 @@ export function useAiMessages() {
 				role: 'assistant',
 				description: msg.description,
 				codeDiff: msg.codeDiff,
-				suggestionId: msg.suggestionId || '',
+				suggestionId: msg.suggestionId ?? '',
 				quickReplies: msg.quickReplies,
 				read: true,
 			};

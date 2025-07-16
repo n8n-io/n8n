@@ -135,6 +135,7 @@ describe('useAiMessages', () => {
 				content: 'Hello, how can I help?',
 				codeSnippet: 'console.log("hello");',
 				read: true,
+				showRating: false,
 				quickReplies: [{ type: 'test', text: 'Quick reply' }],
 			});
 			expect(result.shouldClearThinking).toBe(true);
@@ -260,29 +261,6 @@ describe('useAiMessages', () => {
 				type: 'workflow-updated',
 				role: 'assistant',
 				codeSnippet: 'updated workflow code',
-				read: true,
-			});
-		});
-
-		it('should process rate workflow messages correctly', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'rate-workflow',
-					role: 'assistant',
-					content: 'Please rate this workflow',
-				} as ChatRequest.RateWorkflowMessage,
-			];
-			const id = 'rate-id';
-
-			const result = processAssistantMessages(currentMessages, newMessages, id);
-
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				type: 'rate-workflow',
-				role: 'assistant',
-				content: 'Please rate this workflow',
 				read: true,
 			});
 		});
@@ -522,6 +500,256 @@ describe('useAiMessages', () => {
 
 			const toolResult = processAssistantMessages(currentMessages, toolMessage, 'id-2');
 			expect(toolResult.shouldClearThinking).toBe(true);
+		});
+
+		describe('showRating functionality', () => {
+			it('should add showRating: false to text messages when no workflow-updated messages exist', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Hello, I can help you',
+					} as ChatRequest.TextMessage,
+				];
+				const id = 'msg-1';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(1);
+				expect(result.messages[0]).toMatchObject({
+					type: 'text',
+					role: 'assistant',
+					content: 'Hello, I can help you',
+					showRating: false,
+				});
+			});
+
+			it('should add showRating: true to text messages when workflow-updated messages exist', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [
+					{
+						id: 'workflow-1',
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'workflow code',
+						read: true,
+					},
+				];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Your workflow has been updated',
+					} as ChatRequest.TextMessage,
+				];
+				const id = 'msg-2';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(2);
+				expect(result.messages[1]).toMatchObject({
+					type: 'text',
+					role: 'assistant',
+					content: 'Your workflow has been updated',
+					showRating: true,
+				});
+			});
+
+			it('should apply regular rating style to last assistant text message when no tools are running', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [
+					{
+						id: 'workflow-1',
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'workflow code',
+						read: true,
+					},
+				];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'First message',
+					} as ChatRequest.TextMessage,
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Second message',
+					} as ChatRequest.TextMessage,
+				];
+				const id = 'msg-3';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(3);
+				expect(result.messages[1]).toMatchObject({
+					type: 'text',
+					content: 'First message',
+					showRating: true,
+					ratingStyle: 'minimal',
+				});
+				expect(result.messages[2]).toMatchObject({
+					type: 'text',
+					content: 'Second message',
+					showRating: true,
+					ratingStyle: 'regular',
+				});
+			});
+
+			it('should apply minimal rating style to all messages when tools are running', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [
+					{
+						id: 'workflow-1',
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'workflow code',
+						read: true,
+					},
+					{
+						id: 'tool-1',
+						type: 'tool',
+						role: 'assistant',
+						toolName: 'Tool',
+						toolCallId: 'tool-1',
+						status: 'running',
+						updates: [],
+						read: true,
+					},
+				];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Message while tool is running',
+					} as ChatRequest.TextMessage,
+				];
+				const id = 'msg-4';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(3);
+				expect(result.messages[2]).toMatchObject({
+					type: 'text',
+					content: 'Message while tool is running',
+					showRating: true,
+					ratingStyle: 'minimal',
+				});
+			});
+
+			it('should handle mixed message types with workflow-updated present', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'updated workflow',
+					} as ChatUI.WorkflowUpdatedMessage,
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Workflow has been updated successfully',
+					} as ChatRequest.TextMessage,
+					{
+						type: 'summary',
+						role: 'assistant',
+						title: 'Summary',
+						content: 'Changes applied',
+					} as ChatRequest.SummaryMessage,
+				];
+				const id = 'msg-5';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(3);
+				// Only text messages should have showRating
+				expect(result.messages[0]).not.toHaveProperty('showRating'); // workflow-updated
+				expect(result.messages[1]).toMatchObject({
+					type: 'text',
+					showRating: true,
+					ratingStyle: 'regular',
+				});
+				expect(result.messages[2]).not.toHaveProperty('showRating'); // summary
+			});
+
+			it('should not add showRating to user messages', () => {
+				const currentMessages: ChatUI.AssistantMessage[] = [
+					{
+						id: 'workflow-1',
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'workflow code',
+						read: true,
+					},
+				];
+				const newMessages: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'user',
+						text: 'User message',
+					} as ChatRequest.TextMessage,
+				];
+				const id = 'msg-6';
+
+				const result = processAssistantMessages(currentMessages, newMessages, id);
+
+				expect(result.messages).toHaveLength(2);
+				expect(result.messages[1]).toMatchObject({
+					type: 'text',
+					role: 'user',
+					content: 'User message',
+				});
+				expect(result.messages[1]).not.toHaveProperty('showRating');
+			});
+
+			it('should preserve showRating through multiple message updates', () => {
+				// Start with workflow-updated
+				const initialMessages: ChatUI.AssistantMessage[] = [
+					{
+						id: 'workflow-1',
+						type: 'workflow-updated',
+						role: 'assistant',
+						codeSnippet: 'workflow code',
+						read: true,
+					},
+				];
+
+				// Add first text message
+				const firstUpdate: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'First text',
+					} as ChatRequest.TextMessage,
+				];
+
+				const result1 = processAssistantMessages(initialMessages, firstUpdate, 'msg-7');
+
+				// Add second text message
+				const secondUpdate: ChatRequest.MessageResponse[] = [
+					{
+						type: 'message',
+						role: 'assistant',
+						text: 'Second text',
+					} as ChatRequest.TextMessage,
+				];
+
+				const result2 = processAssistantMessages(result1.messages, secondUpdate, 'msg-8');
+
+				expect(result2.messages).toHaveLength(3);
+				// Both text messages should have showRating: true
+				expect(result2.messages[1]).toMatchObject({
+					type: 'text',
+					content: 'First text',
+					showRating: true,
+					ratingStyle: 'minimal',
+				});
+				expect(result2.messages[2]).toMatchObject({
+					type: 'text',
+					content: 'Second text',
+					showRating: true,
+					ratingStyle: 'regular',
+				});
+			});
 		});
 	});
 });

@@ -95,7 +95,6 @@ describe('AskAssistantBuild', () => {
 		builderStore.initBuilderChat = vi.fn();
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
-		builderStore.$onAction = vi.fn().mockReturnValue(vi.fn());
 		builderStore.workflowPrompt = workflowPrompt;
 	});
 
@@ -136,101 +135,172 @@ describe('AskAssistantBuild', () => {
 
 	describe('feedback handling', () => {
 		const workflowJson = '{"nodes": [], "connections": {}}';
-		beforeEach(() => {
-			builderStore.chatMessages = [
-				{
-					id: faker.string.uuid(),
-					role: 'assistant',
-					type: 'workflow-updated',
-					read: true,
-					codeSnippet: workflowJson,
-				},
-				{
-					id: faker.string.uuid(),
-					role: 'assistant',
-					type: 'text',
-					content: 'Wat',
-					read: true,
-					showRating: true,
-				},
-			];
-		});
 
-		it('should track feedback when user rates the workflow positively', async () => {
-			const { findByTestId } = renderComponent();
-
-			// Find thumbs up button in RateWorkflowMessage component
-			const thumbsUpButton = await findByTestId('message-thumbs-up-button');
-			thumbsUpButton.click();
-
-			await flushPromises();
-
-			expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
-				helpful: true,
-				prompt: 'Create a workflow',
-				workflow_json: workflowJson,
+		describe('when workflow-updated message exists', () => {
+			beforeEach(() => {
+				// Use $patch to ensure reactivity
+				builderStore.$patch({
+					chatMessages: [
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'workflow-updated',
+							read: true,
+							codeSnippet: workflowJson,
+						},
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'text',
+							content: 'Wat',
+							read: true,
+							showRating: true,
+							ratingStyle: 'regular',
+						},
+					],
+				});
 			});
-		});
 
-		it('should track feedback when user rates the workflow negatively', async () => {
-			const { findByTestId } = renderComponent();
+			it('should track feedback when user rates the workflow positively', async () => {
+				// Render component after setting up the store state
+				const { findByTestId } = renderComponent();
 
-			// Find thumbs down button in RateWorkflowMessage component
-			const thumbsDownButton = await findByTestId('message-thumbs-down-button');
-			thumbsDownButton.click();
+				await flushPromises();
 
-			await flushPromises();
+				// Find thumbs up button in RateWorkflowMessage component
+				const thumbsUpButton = await findByTestId('message-thumbs-up-button');
+				await fireEvent.click(thumbsUpButton);
 
-			expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
-				helpful: false,
-				prompt: 'Create a workflow',
-				workflow_json: workflowJson,
-			});
-		});
+				await flushPromises();
 
-		it('should track text feedback when submitted', async () => {
-			const { findByTestId } = renderComponent();
-
-			const feedbackText = 'This workflow is great but could be improved';
-
-			// Click thumbs down to show feedback form
-			const thumbsDownButton = await findByTestId('message-thumbs-down-button');
-			thumbsDownButton.click();
-
-			await flushPromises();
-
-			// Type feedback and submit
-			const feedbackInput = await findByTestId('message-feedback-input');
-			await fireEvent.update(feedbackInput, feedbackText);
-
-			const submitButton = await findByTestId('message-submit-feedback-button');
-			submitButton.click();
-
-			await flushPromises();
-
-			expect(trackMock).toHaveBeenCalledWith(
-				'User submitted workflow generation feedback',
-				expect.objectContaining({
-					feedback: feedbackText,
+				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
+					helpful: true,
 					prompt: 'Create a workflow',
 					workflow_json: workflowJson,
-				}),
-			);
+				});
+			});
+
+			it('should track feedback when user rates the workflow negatively', async () => {
+				const { findByTestId } = renderComponent();
+
+				await flushPromises();
+
+				// Find thumbs down button in RateWorkflowMessage component
+				const thumbsDownButton = await findByTestId('message-thumbs-down-button');
+				await fireEvent.click(thumbsDownButton);
+
+				await flushPromises();
+
+				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
+					helpful: false,
+					prompt: 'Create a workflow',
+					workflow_json: workflowJson,
+				});
+			});
+
+			it('should track text feedback when submitted', async () => {
+				const { findByTestId } = renderComponent();
+
+				const feedbackText = 'This workflow is great but could be improved';
+
+				// Click thumbs down to show feedback form
+				const thumbsDownButton = await findByTestId('message-thumbs-down-button');
+				thumbsDownButton.click();
+
+				await flushPromises();
+
+				// Type feedback and submit
+				const feedbackInput = await findByTestId('message-feedback-input');
+				await fireEvent.update(feedbackInput, feedbackText);
+
+				const submitButton = await findByTestId('message-submit-feedback-button');
+				submitButton.click();
+
+				await flushPromises();
+
+				expect(trackMock).toHaveBeenCalledWith(
+					'User submitted workflow generation feedback',
+					expect.objectContaining({
+						feedback: feedbackText,
+						prompt: 'Create a workflow',
+						workflow_json: workflowJson,
+					}),
+				);
+			});
 		});
-	});
 
-	describe('new workflow generation', () => {
-		it('should unsubscribe from store actions on unmount', async () => {
-			const unsubscribeMock = vi.fn();
-			builderStore.$onAction = vi.fn().mockReturnValue(unsubscribeMock);
+		describe('when no workflow-updated message exists', () => {
+			beforeEach(() => {
+				builderStore.$patch({
+					chatMessages: [
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'text',
+							content: 'This is just an informational message',
+							read: true,
+							showRating: false,
+						},
+					],
+				});
+			});
 
-			const { unmount } = renderComponent();
+			it('should not show rating buttons when no workflow update occurred', async () => {
+				const { queryByTestId } = renderComponent();
 
-			// Unmount component
-			unmount();
+				await flushPromises();
 
-			// Should unsubscribe when component is unmounted
-			expect(unsubscribeMock).toHaveBeenCalled();
+				// Rating buttons should not be present
+				expect(queryByTestId('message-thumbs-up-button')).not.toBeInTheDocument();
+				expect(queryByTestId('message-thumbs-down-button')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('when tools are still running', () => {
+			beforeEach(() => {
+				builderStore.$patch({
+					chatMessages: [
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'add_nodes',
+							status: 'running',
+							updates: [],
+							read: true,
+						},
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'workflow-updated',
+							read: true,
+							codeSnippet: workflowJson,
+						},
+						{
+							id: faker.string.uuid(),
+							role: 'assistant',
+							type: 'text',
+							content: 'Working on your workflow...',
+							read: true,
+							showRating: true,
+							ratingStyle: 'minimal',
+						},
+					],
+				});
+			});
+
+			it('should show minimal rating style when tools are still running', async () => {
+				const { findByTestId } = renderComponent();
+
+				await flushPromises();
+
+				// Check that rating buttons exist but in minimal style
+				const thumbsUpButton = await findByTestId('message-thumbs-up-button');
+				expect(thumbsUpButton).toBeInTheDocument();
+
+				// The minimal style should have icon-only buttons (no label)
+				expect(thumbsUpButton.textContent).toBe('');
+			});
 		});
 	});
 });

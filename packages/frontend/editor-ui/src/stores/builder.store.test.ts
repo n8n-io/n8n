@@ -130,6 +130,8 @@ describe('AI Builder store', () => {
 			content: 'Hello!',
 			quickReplies: undefined,
 			read: true, // Builder messages are always read
+			codeSnippet: undefined,
+			showRating: false,
 		});
 	});
 
@@ -148,25 +150,6 @@ describe('AI Builder store', () => {
 			type: 'workflow-updated',
 			role: 'assistant',
 			codeSnippet: '{"nodes":[],"connections":[]}',
-			read: true,
-		});
-	});
-
-	it('can add a rate-workflow message', () => {
-		const builderStore = useBuilderStore();
-
-		const message: ChatRequest.MessageResponse = {
-			type: 'rate-workflow',
-			role: 'assistant',
-			content: 'How was the workflow?',
-		};
-		builderStore.addAssistantMessages([message], '1');
-		expect(builderStore.chatMessages.length).toBe(1);
-		expect(builderStore.chatMessages[0]).toEqual({
-			id: '1',
-			type: 'rate-workflow',
-			role: 'assistant',
-			content: 'How was the workflow?',
 			read: true,
 		});
 	});
@@ -338,10 +321,10 @@ describe('AI Builder store', () => {
 		// Retry the failed request
 		await errorMessage.retry?.();
 
-		// Should now have just the user message and success message
-		expect(builderStore.chatMessages.length).toBe(4);
+		// Should now have just the user message and success message (error removed)
+		expect(builderStore.chatMessages.length).toBe(2);
 		expect(builderStore.chatMessages[0].role).toBe('user');
-		expect(builderStore.chatMessages[1].type).toBe('error');
+		expect(builderStore.chatMessages[1].type).toBe('text');
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
 			'I can help you build a workflow',
 		);

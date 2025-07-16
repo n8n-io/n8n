@@ -211,7 +211,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 			},
 		};
-		console.log('Payload: ', payload);
+		const retry = async () => {
+			// Remove the error message before retrying
+			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
+			await initBuilderChat(userMessage, 'chat');
+		};
+
 		chatWithBuilder(
 			rootStore.restApiContext,
 			{
@@ -219,7 +224,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, getRandomId()),
 			() => onDoneStreaming(),
-			(e) => handleServiceError(e, id, async () => await initBuilderChat(userMessage, 'chat')),
+			(e) => handleServiceError(e, id, retry),
 		);
 	}
 

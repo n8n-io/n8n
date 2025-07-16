@@ -32,10 +32,10 @@ function onRateButton(rating: 'up' | 'down') {
 	selectedRating.value = rating;
 	showRatingButtons.value = false;
 
+	emit('rate', rating);
 	if (props.showFeedback) {
 		showFeedbackArea.value = true;
 	} else {
-		emit('rate', rating);
 		showSuccess.value = true;
 	}
 }
