@@ -9,12 +9,14 @@ import N8nTooltip from '../N8nTooltip';
 interface TabsProps {
 	modelValue?: Value;
 	options?: Array<TabOptions<Value>>;
+	size?: 'small' | 'medium';
 	variant?: 'modern' | 'legacy';
 }
 
 withDefaults(defineProps<TabsProps>(), {
 	modelValue: undefined,
 	options: () => [],
+	size: 'medium',
 	variant: 'legacy',
 });
 
@@ -69,7 +71,14 @@ const scrollRight = () => scroll(50);
 </script>
 
 <template>
-	<div :class="['n8n-tabs', $style.container, variant === 'modern' ? $style.modern : '']">
+	<div
+		:class="[
+			'n8n-tabs',
+			$style.container,
+			size === 'small' ? $style.small : '',
+			variant === 'modern' ? $style.modern : '',
+		]"
+	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
 			<N8nIcon icon="chevron-left" size="small" />
 		</div>
@@ -181,6 +190,10 @@ const scrollRight = () => scroll(50);
 		padding-bottom: calc(var(--spacing-xs) + var(--active-tab-border-width));
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
+	}
+
+	.small & {
+		font-size: var(--font-size-2xs);
 	}
 }
 
