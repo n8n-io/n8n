@@ -174,7 +174,8 @@ export class ObjectStoreService {
 			// Add metadata with the expected prefix format
 			if (response.Metadata) {
 				Object.entries(response.Metadata).forEach(([key, value]) => {
-					headers[`x-amz-meta-${key.toLowerCase()}`] = key === 'filename' ? decodeURIComponent(value) : value;
+					headers[`x-amz-meta-${key.toLowerCase()}`] =
+						key === 'filename' ? decodeURIComponent(value) : value;
 				});
 			}
 
