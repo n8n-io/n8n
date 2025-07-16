@@ -13,12 +13,13 @@ FROM n8nio/base:${NODE_VERSION} AS system-deps
 # ==============================================================================
 FROM alpine:3.22.0 AS app-artifact-processor
 
-COPY ./compiled /app/
+#COPY ./compiled /app/
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher
 # ==============================================================================
 FROM alpine:3.22.0 AS launcher-downloader
+COPY docker/images/n8n/launcher-bin /launcher-bin
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION
 
@@ -51,7 +52,7 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+#COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
