@@ -61,8 +61,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'Hello! How can I help you today?',
+						content: [
+							{
+								type: 'text',
+								text: 'Hello! How can I help you today?',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
@@ -141,8 +145,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'Hello! How can I help you today?',
+						content: [
+							{
+								type: 'text',
+								text: 'Hello! How can I help you today?',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
@@ -219,8 +227,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'Hello! How can I help you today?',
+						content: [
+							{
+								type: 'text',
+								text: 'Hello! How can I help you today?',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
@@ -601,8 +613,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'This image shows a beautiful sunset over a mountain landscape.',
+						content: [
+							{
+								type: 'text',
+								text: 'This image shows a beautiful sunset over a mountain landscape.',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
@@ -681,8 +697,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'This image shows a beautiful sunset over a mountain landscape.',
+						content: [
+							{
+								type: 'text',
+								text: 'This image shows a beautiful sunset over a mountain landscape.',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
@@ -751,8 +771,12 @@ describe('Anthropic Node', () => {
 			expect(result).toEqual([
 				{
 					json: {
-						type: 'text',
-						text: 'This image shows a beautiful sunset over a mountain landscape.',
+						content: [
+							{
+								type: 'text',
+								text: 'This image shows a beautiful sunset over a mountain landscape.',
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				},
