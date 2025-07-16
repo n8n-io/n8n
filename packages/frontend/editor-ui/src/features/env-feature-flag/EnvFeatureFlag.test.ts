@@ -9,7 +9,7 @@ const renderComponent = createComponentRenderer(EnvFeatureFlag);
 
 describe('EnvFeatureFlag', () => {
 	let settingsStore: MockedStore<typeof useSettingsStore>;
-const originalEnv = { ...import.meta.env };
+	const originalEnv = { ...import.meta.env };
 
 	beforeEach(() => {
 		Object.keys(import.meta.env).forEach((key) => {
