@@ -12,7 +12,20 @@ type ViewportUpdate = {
 	viewport: Viewport;
 };
 
-const [useProvideViewportSync, useInject] = createInjectionState(() => {
+export type ViewportSyncReturn = {
+	onViewportChange: (
+		// eslint-disable-next-line id-denylist
+		callback: (update: { from: string; viewport: { x: number; y: number; zoom: number } }) => void,
+	) => void;
+	triggerViewportChange: (update: {
+		from: string;
+		viewport: { x: number; y: number; zoom: number };
+	}) => void;
+	selectedDetailId: { value: string | undefined };
+	syncIsEnabled: { value: boolean };
+};
+
+const [useProvideViewportSync, useInject] = createInjectionState<[], ViewportSyncReturn>(() => {
 	const onViewportChange = createEventHook<ViewportUpdate>();
 
 	const selectedDetailId = ref<string>();
