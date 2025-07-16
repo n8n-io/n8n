@@ -27,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
+import { I18nT } from 'vue-i18n';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -367,7 +368,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			/>
 		</div>
 		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
-			<i18n-t keypath="settings.users.advancedPermissions.warning">
+			<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 				<template #link>
 					<n8n-link
 						data-test-id="upgrade-permissions-link"
@@ -377,7 +378,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 						{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 					</n8n-link>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</n8n-notice>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
@@ -403,13 +404,13 @@ async function onUpdateMfaEnforced(value: boolean) {
 								@update:model-value="onUpdateMfaEnforced"
 							/>
 							<template #content>
-								<i18n-t :keypath="tooltipKey" tag="span">
+								<I18nT :keypath="tooltipKey" tag="span" scope="global">
 									<template #action>
 										<a @click="goToUpgrade">
 											{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
 										</a>
 									</template>
-								</i18n-t>
+								</I18nT>
 							</template>
 						</N8nTooltip>
 					</template>
