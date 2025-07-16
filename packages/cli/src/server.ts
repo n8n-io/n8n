@@ -1,3 +1,4 @@
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -14,7 +15,6 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -278,19 +278,21 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
-			// Return Sentry config as a static file
-			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
-				res.type('js');
-				res.write('window.sentry=');
-				res.write(
-					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontendDsn,
-						environment: process.env.ENVIRONMENT || 'development',
-						serverName: process.env.DEPLOYMENT_NAME,
-						release: `n8n@${N8N_VERSION}`,
-					}),
-				);
-				res.end();
+			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
+				const frontendSentryConfig = JSON.stringify({
+					dsn: this.globalConfig.sentry.frontendDsn,
+					environment: process.env.ENVIRONMENT || 'development',
+					serverName: process.env.DEPLOYMENT_NAME,
+					release: `n8n@${N8N_VERSION}`,
+				});
+				const frontendConfig = [
+					`window.BASE_PATH = '${this.globalConfig.path}';`,
+					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
+					`window.sentry = ${frontendSentryConfig};`,
+				].join('\n');
+
+				res.type('application/javascript');
+				res.send(frontendConfig);
 			});
 		}
 
