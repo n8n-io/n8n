@@ -1,5 +1,6 @@
 import { createInjectionState, createEventHook } from '@vueuse/core';
 import { ref } from 'vue';
+import type { Ref } from 'vue';
 
 type Viewport = {
 	x: number;
@@ -21,8 +22,8 @@ export type ViewportSyncReturn = {
 		from: string;
 		viewport: { x: number; y: number; zoom: number };
 	}) => void;
-	selectedDetailId: { value: string | undefined };
-	syncIsEnabled: { value: boolean };
+	selectedDetailId: Ref<string | undefined>;
+	syncIsEnabled: Ref<boolean>;
 };
 
 const [useProvideViewportSync, useInject] = createInjectionState<[], ViewportSyncReturn>(() => {
