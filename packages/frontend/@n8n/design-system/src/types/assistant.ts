@@ -43,23 +43,6 @@ export namespace ChatUI {
 		eventName: 'session-error';
 	}
 
-	export interface GeneratedNodesMessage {
-		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	export interface ComposedNodesMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-
 	export interface QuickReply {
 		type: string;
 		text: string;
@@ -82,33 +65,6 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
-	export interface WorkflowStepMessage {
-		role: 'assistant';
-		type: 'workflow-step';
-		steps: string[];
-	}
-
-	export interface WorkflowNodeMessage {
-		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	export interface WorkflowComposedMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-	export interface WorkflowGeneratedMessage {
-		role: 'assistant';
-		type: 'workflow-generated';
-		codeSnippet: string;
-	}
 	export interface WorkflowUpdatedMessage {
 		role: 'assistant';
 		type: 'workflow-updated';
@@ -150,10 +106,6 @@ export namespace ChatUI {
 		| SessionTimeoutMessage
 		| SessionErrorMessage
 		| AgentSuggestionMessage
-		| WorkflowStepMessage
-		| WorkflowNodeMessage
-		| WorkflowComposedMessage
-		| WorkflowGeneratedMessage
 		| RateWorkflowMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
@@ -221,30 +173,6 @@ export function isAgentSuggestionMessage(
 	quickReplies?: ChatUI.QuickReply[];
 } {
 	return msg.type === 'agent-suggestion';
-}
-
-export function isWorkflowStepMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.WorkflowStepMessage & { id?: string; read?: boolean } {
-	return msg.type === 'workflow-step';
-}
-
-export function isWorkflowNodeMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.WorkflowNodeMessage & { id?: string; read?: boolean } {
-	return msg.type === 'workflow-node';
-}
-
-export function isWorkflowComposedMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.WorkflowComposedMessage & { id?: string; read?: boolean } {
-	return msg.type === 'workflow-composed';
-}
-
-export function isWorkflowGeneratedMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.WorkflowGeneratedMessage & { id?: string; read?: boolean } {
-	return msg.type === 'workflow-generated';
 }
 
 export function isWorkflowUpdatedMessage(

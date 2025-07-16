@@ -399,6 +399,7 @@ RichTextMessage.args = {
 	]),
 };
 
+// Workflow steps are now represented as text messages
 export const WorkflowStepsChat = Template.bind({});
 WorkflowStepsChat.args = {
 	user: {
@@ -408,19 +409,19 @@ WorkflowStepsChat.args = {
 	messages: getMessages([
 		{
 			id: '123',
-			type: 'workflow-step',
+			type: 'text',
 			role: 'assistant',
-			steps: [
-				'Create a new HTTP Trigger node',
-				'Add a Transform node to process the data',
-				'Connect to your database using PostgreSQL node',
-				'Send confirmation email with SendGrid node',
-			],
+			content: `Here are the steps to create your workflow:
+1. Create a new HTTP Trigger node
+2. Add a Transform node to process the data
+3. Connect to your database using PostgreSQL node
+4. Send confirmation email with SendGrid node`,
 			read: false,
 		},
 	]),
 };
 
+// Workflow nodes are now represented as text messages
 export const WorkflowNodesChat = Template.bind({});
 WorkflowNodesChat.args = {
 	user: {
@@ -430,14 +431,16 @@ WorkflowNodesChat.args = {
 	messages: getMessages([
 		{
 			id: '124',
-			type: 'workflow-node',
+			type: 'text',
 			role: 'assistant',
-			nodes: ['HTTP Trigger', 'Transform', 'PostgreSQL', 'SendGrid'],
+			content:
+				"I'll use these nodes in your workflow: HTTP Trigger, Transform, PostgreSQL, and SendGrid.",
 			read: false,
 		},
 	]),
 };
 
+// Composed nodes are now handled via workflow-updated messages
 export const ComposedNodesChat = Template.bind({});
 ComposedNodesChat.args = {
 	user: {
@@ -447,27 +450,34 @@ ComposedNodesChat.args = {
 	messages: getMessages([
 		{
 			id: '125',
-			type: 'workflow-composed',
+			type: 'workflow-updated',
 			role: 'assistant',
-			nodes: [
+			codeSnippet: JSON.stringify(
 				{
-					name: 'HTTP Trigger',
-					type: 'n8n-nodes-base.httpTrigger',
-					parameters: {
-						path: '/webhook',
-						authentication: 'none',
-					},
-					position: [100, 100],
+					nodes: [
+						{
+							name: 'HTTP Trigger',
+							type: 'n8n-nodes-base.httpTrigger',
+							parameters: {
+								path: '/webhook',
+								authentication: 'none',
+							},
+							position: [100, 100],
+						},
+						{
+							name: 'Transform',
+							type: 'n8n-nodes-base.set',
+							parameters: {
+								values: { field: 'value' },
+							},
+							position: [300, 100],
+						},
+					],
+					connections: {},
 				},
-				{
-					name: 'Transform',
-					type: 'n8n-nodes-base.set',
-					parameters: {
-						values: { field: 'value' },
-					},
-					position: [300, 100],
-				},
-			],
+				null,
+				2,
+			),
 			read: false,
 		},
 	]),
@@ -558,14 +568,13 @@ MultipleMessagesWithRatings.args = {
 		},
 		{
 			id: '131',
-			type: 'workflow-step',
+			type: 'text',
 			role: 'assistant',
-			steps: [
-				'Add a Webhook node to receive incoming data',
-				'Use a Switch node to route based on webhook type',
-				'Add data transformation with a Code node',
-				'Store results in your database',
-			],
+			content: `Follow these steps:
+1. Add a Webhook node to receive incoming data
+2. Use a Switch node to route based on webhook type
+3. Add data transformation with a Code node
+4. Store results in your database`,
 			read: true,
 		},
 		{

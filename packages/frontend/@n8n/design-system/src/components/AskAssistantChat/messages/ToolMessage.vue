@@ -253,6 +253,20 @@ function toggleExpanded() {
 	margin: 0;
 	max-height: 300px;
 	overflow-y: auto;
+
+	@supports not (selector(::-webkit-scrollbar)) {
+		scrollbar-width: thin;
+	}
+	@supports selector(::-webkit-scrollbar) {
+		&::-webkit-scrollbar {
+			width: var(--spacing-2xs);
+		}
+		&::-webkit-scrollbar-thumb {
+			border-radius: var(--spacing-xs);
+			background: var(--color-foreground-dark);
+			border: var(--spacing-5xs) solid white;
+		}
+	}
 }
 
 .errorContent {

@@ -5,18 +5,12 @@ import {
 	isAgentSuggestionMessage,
 	isAgentThinkingMessage,
 	isCodeDiffMessage,
-	isWorkflowStepMessage,
-	isWorkflowNodeMessage,
-	isWorkflowComposedMessage,
-	isWorkflowGeneratedMessage,
 	isWorkflowUpdatedMessage,
 	isRateWorkflowMessage,
 	isToolMessage,
-	isPromptValidationMessage,
 } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { useI18n } from '@n8n/i18n';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Composable for handling AI chat messages with pure functions
@@ -40,78 +34,15 @@ export function useAiMessages() {
 	}
 
 	/**
-	 * Process a workflow step message
+	 * Process workflow updated messages
 	 */
-	function processWorkflowStepMessage(
-		msg: ChatRequest.WorkflowStepMessage,
+	function processWorkflowUpdatedMessage(
+		msg: ChatUI.WorkflowUpdatedMessage,
 		id: string,
 	): ChatUI.AssistantMessage {
 		return {
 			id,
-			type: 'workflow-step',
-			role: 'assistant',
-			steps: msg.steps,
-			read: true,
-		};
-	}
-
-	/**
-	 * Process a prompt validation error
-	 */
-	function processPromptValidationError(id: string): ChatUI.AssistantMessage {
-		return {
-			id,
-			role: 'assistant',
-			type: 'error',
-			content: i18n.baseText('aiAssistant.builder.invalidPrompt'),
-			read: true,
-		};
-	}
-
-	/**
-	 * Process a workflow node message
-	 */
-	function processWorkflowNodeMessage(
-		msg: ChatRequest.WorkflowNodeMessage,
-		id: string,
-		nodeGetter?: (nodeType: string) => INodeTypeDescription,
-	): ChatUI.AssistantMessage {
-		const mappedNodes = msg.nodes.map((node) => nodeGetter?.(node)?.displayName ?? node);
-		return {
-			id,
-			type: 'workflow-node',
-			role: 'assistant',
-			nodes: mappedNodes,
-			read: true,
-		};
-	}
-
-	/**
-	 * Process a workflow composed message
-	 */
-	function processWorkflowComposedMessage(
-		msg: ChatRequest.WorkflowComposedMessage,
-		id: string,
-	): ChatUI.AssistantMessage {
-		return {
-			id,
-			type: 'workflow-composed',
-			role: 'assistant',
-			nodes: msg.nodes,
-			read: true,
-		};
-	}
-
-	/**
-	 * Process workflow generated/updated messages
-	 */
-	function processWorkflowCodeMessage(
-		msg: ChatRequest.WorkflowGeneratedMessage | ChatRequest.WorkflowUpdatedMessage,
-		id: string,
-	): ChatUI.AssistantMessage {
-		return {
-			id,
-			type: msg.type,
+			type: 'workflow-updated',
 			role: 'assistant',
 			codeSnippet: msg.codeSnippet,
 			read: true,
@@ -216,7 +147,6 @@ export function useAiMessages() {
 		currentMessages: ChatUI.AssistantMessage[],
 		newMessages: ChatRequest.MessageResponse[],
 		id: string,
-		nodeGetter?: (nodeType: string) => INodeTypeDescription,
 	): {
 		messages: ChatUI.AssistantMessage[];
 		shouldClearThinking: boolean;
@@ -272,18 +202,8 @@ export function useAiMessages() {
 					quickReplies: msg.quickReplies,
 					read: true,
 				});
-			} else if (isWorkflowStepMessage(msg)) {
-				messages.push(processWorkflowStepMessage(msg, id));
-			} else if (isPromptValidationMessage(msg) && !msg.isWorkflowPrompt) {
-				messages.push(processPromptValidationError(id));
-			} else if (isWorkflowNodeMessage(msg)) {
-				messages.push(processWorkflowNodeMessage(msg, id, nodeGetter));
-			} else if (isWorkflowComposedMessage(msg)) {
-				messages.push(processWorkflowComposedMessage(msg, id));
-			} else if (isWorkflowGeneratedMessage(msg)) {
-				messages.push(processWorkflowCodeMessage(msg, id));
 			} else if (isWorkflowUpdatedMessage(msg)) {
-				messages.push(processWorkflowCodeMessage(msg, id));
+				messages.push(processWorkflowUpdatedMessage(msg, id));
 			} else if (isRateWorkflowMessage(msg)) {
 				messages.push(processRateWorkflowMessage(msg, id));
 			} else if (isToolMessage(msg)) {
@@ -361,7 +281,6 @@ export function useAiMessages() {
 	function mapAssistantMessageToUI(
 		msg: ChatRequest.MessageResponse,
 		id: string,
-		nodeGetter?: (nodeType: string) => INodeTypeDescription,
 	): ChatUI.AssistantMessage {
 		if (isTextMessage(msg)) {
 			return processTextMessage(msg, id);
@@ -395,18 +314,8 @@ export function useAiMessages() {
 				quickReplies: msg.quickReplies,
 				read: true,
 			};
-		} else if (isWorkflowStepMessage(msg)) {
-			return processWorkflowStepMessage(msg, id);
-		} else if (isPromptValidationMessage(msg) && !msg.isWorkflowPrompt) {
-			return processPromptValidationError(id);
-		} else if (isWorkflowNodeMessage(msg)) {
-			return processWorkflowNodeMessage(msg, id, nodeGetter);
-		} else if (isWorkflowComposedMessage(msg)) {
-			return processWorkflowComposedMessage(msg, id);
-		} else if (isWorkflowGeneratedMessage(msg)) {
-			return processWorkflowCodeMessage(msg, id);
 		} else if (isWorkflowUpdatedMessage(msg)) {
-			return processWorkflowCodeMessage(msg, id);
+			return processWorkflowUpdatedMessage(msg, id);
 		} else if (isRateWorkflowMessage(msg)) {
 			return processRateWorkflowMessage(msg, id);
 		} else if (isToolMessage(msg)) {

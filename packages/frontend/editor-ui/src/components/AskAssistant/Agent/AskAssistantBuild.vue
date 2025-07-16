@@ -36,9 +36,13 @@ const user = computed(() => ({
 
 const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
-const generatedWorkflowJson = computed(
-	() => builderStore.chatMessages.find((msg) => msg.type === 'workflow-generated')?.codeSnippet,
-);
+const generatedWorkflowJson = computed(() => {
+	const workflowMessage = builderStore.chatMessages.find((msg) => msg.type === 'workflow-updated');
+	if (workflowMessage && 'codeSnippet' in workflowMessage) {
+		return workflowMessage.codeSnippet;
+	}
+	return undefined;
+});
 const currentRoute = computed(() => route.name);
 
 async function onUserMessage(content: string) {

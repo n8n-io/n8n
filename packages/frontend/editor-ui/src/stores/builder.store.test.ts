@@ -133,30 +133,11 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	it('can add a workflow step message', () => {
+	it('can add a workflow-updated message', () => {
 		const builderStore = useBuilderStore();
 
 		const message: ChatRequest.MessageResponse = {
-			type: 'workflow-step',
-			role: 'assistant',
-			steps: ['Step 1', 'Step 2'],
-		};
-		builderStore.addAssistantMessages([message], '1');
-		expect(builderStore.chatMessages.length).toBe(1);
-		expect(builderStore.chatMessages[0]).toEqual({
-			id: '1',
-			type: 'workflow-step',
-			role: 'assistant',
-			steps: ['Step 1', 'Step 2'],
-			read: true,
-		});
-	});
-
-	it('can add a workflow-generated message', () => {
-		const builderStore = useBuilderStore();
-
-		const message: ChatRequest.MessageResponse = {
-			type: 'workflow-generated',
+			type: 'workflow-updated',
 			role: 'assistant',
 			codeSnippet: '{"nodes":[],"connections":[]}',
 		};
@@ -164,7 +145,7 @@ describe('AI Builder store', () => {
 		expect(builderStore.chatMessages.length).toBe(1);
 		expect(builderStore.chatMessages[0]).toEqual({
 			id: '1',
-			type: 'workflow-generated',
+			type: 'workflow-updated',
 			role: 'assistant',
 			codeSnippet: '{"nodes":[],"connections":[]}',
 			read: true,

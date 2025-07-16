@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -64,6 +64,7 @@ const normalizedMessages = computed(() => {
 const textInputValue = ref<string>('');
 
 const chatInput = ref<HTMLTextAreaElement | null>(null);
+const messagesRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
@@ -111,6 +112,34 @@ function onRateMessage(rating: 'up' | 'down', feedback?: string) {
 		emit('submitFeedback', feedback);
 	}
 }
+
+function scrollToBottom() {
+	if (messagesRef.value) {
+		messagesRef.value.scrollTo({
+			top: messagesRef.value.scrollHeight,
+			behavior: 'smooth',
+		});
+	}
+}
+watch(sendDisabled, () => {
+	console.log('sendDisabled changed', chatInput.value);
+	chatInput.value?.focus();
+});
+watch(
+	() => props.messages,
+	async (messages) => {
+		// Check if the last message is user and scroll to bottom of the chat
+		if (messages.length > 0) {
+			// Wait for DOM updates before scrolling
+			await nextTick();
+			// Check if messagesRef is available after nextTick
+			if (messagesRef.value) {
+				scrollToBottom();
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -128,7 +157,11 @@ function onRateMessage(rating: 'up' | 'down', feedback?: string) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
+			<div
+				v-if="normalizedMessages?.length || loadingMessage"
+				ref="messagesRef"
+				:class="$style.messages"
+			>
 				<div v-if="normalizedMessages?.length">
 					<data
 						v-for="(message, i) in normalizedMessages"
@@ -292,6 +325,20 @@ function onRateMessage(rating: 'up' | 'down', feedback?: string) {
 	height: 100%;
 	padding: var(--spacing-xs);
 	overflow-y: auto;
+
+	@supports not (selector(::-webkit-scrollbar)) {
+		scrollbar-width: thin;
+	}
+	@supports selector(::-webkit-scrollbar) {
+		&::-webkit-scrollbar {
+			width: var(--spacing-2xs);
+		}
+		&::-webkit-scrollbar-thumb {
+			border-radius: var(--spacing-xs);
+			background: var(--color-foreground-dark);
+			border: var(--spacing-5xs) solid white;
+		}
+	}
 
 	& + & {
 		padding-top: 0;

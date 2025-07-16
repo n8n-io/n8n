@@ -108,7 +108,7 @@ describe('AskAssistantBuild', () => {
 				{
 					id: faker.string.uuid(),
 					role: 'assistant',
-					type: 'workflow-generated',
+					type: 'workflow-updated',
 					read: true,
 					codeSnippet: workflowJson,
 				},

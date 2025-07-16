@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { useAiMessages } from './useAiMessages';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -109,20 +108,6 @@ describe('useAiMessages', () => {
 	});
 
 	describe('processAssistantMessages', () => {
-		const nodeGetter = vi.fn(
-			(nodeType: string): INodeTypeDescription => ({
-				displayName: `${nodeType} Node`,
-				name: nodeType,
-				group: ['transform'],
-				version: 1,
-				description: 'Test node',
-				defaults: {},
-				inputs: [],
-				outputs: [],
-				properties: [],
-			}),
-		);
-
 		beforeEach(() => {
 			vi.clearAllMocks();
 		});
@@ -140,7 +125,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'test-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -168,7 +153,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'summary-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -194,7 +179,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'agent-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -220,7 +205,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'thinking-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(0);
 			expect(result.shouldClearThinking).toBe(false);
@@ -241,7 +226,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'diff-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -256,134 +241,21 @@ describe('useAiMessages', () => {
 			});
 		});
 
-		it('should process workflow step messages correctly', () => {
+		it('should process workflow updated messages correctly', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'workflow-step',
-					role: 'assistant',
-					steps: ['Step 1', 'Step 2', 'Step 3'],
-				} as ChatRequest.WorkflowStepMessage,
-			];
-			const id = 'step-id';
-
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
-
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				type: 'workflow-step',
-				role: 'assistant',
-				steps: ['Step 1', 'Step 2', 'Step 3'],
-				read: true,
-			});
-		});
-
-		it('should process workflow node messages with node name mapping', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'workflow-node',
-					role: 'assistant',
-					nodes: ['httpRequest', 'code', 'ifNode'],
-				} as ChatRequest.WorkflowNodeMessage,
-			];
-			const id = 'node-id';
-
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
-
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				type: 'workflow-node',
-				role: 'assistant',
-				nodes: ['httpRequest Node', 'code Node', 'ifNode Node'],
-				read: true,
-			});
-			expect(nodeGetter).toHaveBeenCalledTimes(3);
-		});
-
-		it('should handle workflow node messages without node getter', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'workflow-node',
-					role: 'assistant',
-					nodes: ['httpRequest', 'code', 'ifNode'],
-				} as ChatRequest.WorkflowNodeMessage,
-			];
-			const id = 'node-id';
-
-			const result = processAssistantMessages(currentMessages, newMessages, id, undefined);
-
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				type: 'workflow-node',
-				role: 'assistant',
-				nodes: ['httpRequest', 'code', 'ifNode'],
-				read: true,
-			});
-		});
-
-		it('should process workflow composed messages correctly', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const nodes = [
-				{
-					name: 'HTTP Request',
-					type: 'n8n-nodes-base.httpRequest',
-					parameters: { method: 'GET' },
-					position: [100, 200] as [number, number],
-				},
-			];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'workflow-composed',
-					role: 'assistant',
-					nodes,
-				} as ChatRequest.WorkflowComposedMessage,
-			];
-			const id = 'composed-id';
-
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
-
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				type: 'workflow-composed',
-				role: 'assistant',
-				nodes,
-				read: true,
-			});
-		});
-
-		it('should process workflow generated/updated messages correctly', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'workflow-generated',
-					role: 'assistant',
-					codeSnippet: 'workflow code here',
-				} as ChatRequest.WorkflowGeneratedMessage,
 				{
 					type: 'workflow-updated',
 					role: 'assistant',
 					codeSnippet: 'updated workflow code',
-				} as ChatRequest.WorkflowUpdatedMessage,
+				} as ChatUI.WorkflowUpdatedMessage,
 			];
 			const id = 'workflow-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
-			expect(result.messages).toHaveLength(2);
+			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
-				id,
-				type: 'workflow-generated',
-				role: 'assistant',
-				codeSnippet: 'workflow code here',
-				read: true,
-			});
-			expect(result.messages[1]).toEqual({
 				id,
 				type: 'workflow-updated',
 				role: 'assistant',
@@ -403,7 +275,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'rate-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -415,44 +287,44 @@ describe('useAiMessages', () => {
 			});
 		});
 
-		it('should process prompt validation errors correctly', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'prompt-validation',
-					role: 'assistant',
-					isWorkflowPrompt: false,
-				} as ChatRequest.WorkflowPromptValidationMessage,
-			];
-			const id = 'validation-id';
+		// it('should process prompt validation errors correctly', () => {
+		// 	const currentMessages: ChatUI.AssistantMessage[] = [];
+		// 	const newMessages: ChatRequest.MessageResponse[] = [
+		// 		{
+		// 			type: 'prompt-validation',
+		// 			role: 'assistant',
+		// 			isWorkflowPrompt: false,
+		// 		} as ChatRequest.WorkflowPromptValidationMessage,
+		// 	];
+		// 	const id = 'validation-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+		// 	const result = processAssistantMessages(currentMessages, newMessages, id);
 
-			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0]).toEqual({
-				id,
-				role: 'assistant',
-				type: 'error',
-				content: 'aiAssistant.builder.invalidPrompt',
-				read: true,
-			});
-		});
+		// 	expect(result.messages).toHaveLength(1);
+		// 	expect(result.messages[0]).toEqual({
+		// 		id,
+		// 		role: 'assistant',
+		// 		type: 'error',
+		// 		content: 'aiAssistant.builder.invalidPrompt',
+		// 		read: true,
+		// 	});
+		// });
 
-		it('should skip prompt validation for workflow prompts', () => {
-			const currentMessages: ChatUI.AssistantMessage[] = [];
-			const newMessages: ChatRequest.MessageResponse[] = [
-				{
-					type: 'prompt-validation',
-					role: 'assistant',
-					isWorkflowPrompt: true,
-				} as ChatRequest.WorkflowPromptValidationMessage,
-			];
-			const id = 'validation-id';
+		// it('should skip prompt validation for workflow prompts', () => {
+		// 	const currentMessages: ChatUI.AssistantMessage[] = [];
+		// 	const newMessages: ChatRequest.MessageResponse[] = [
+		// 		{
+		// 			type: 'prompt-validation',
+		// 			role: 'assistant',
+		// 			isWorkflowPrompt: true,
+		// 		} as ChatUi.WorkflowPromptValidationMessage,
+		// 	];
+		// 	const id = 'validation-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+		// 	const result = processAssistantMessages(currentMessages, newMessages, id);
 
-			expect(result.messages).toHaveLength(0);
-		});
+		// 	expect(result.messages).toHaveLength(0);
+		// });
 
 		it('should handle tool messages with running status', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
@@ -468,7 +340,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'tool-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toEqual({
@@ -507,7 +379,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'tool-id-2';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0].type).toBe('tool');
@@ -546,7 +418,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'tool-id-2';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0].type).toBe('tool');
@@ -587,7 +459,7 @@ describe('useAiMessages', () => {
 			];
 			const id = 'tool-id-3';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.thinkingMessage).toBeUndefined();
 		});
@@ -601,10 +473,11 @@ describe('useAiMessages', () => {
 					text: 'First message',
 				} as ChatRequest.TextMessage,
 				{
-					type: 'workflow-step',
+					type: 'summary',
 					role: 'assistant',
-					steps: ['Step 1', 'Step 2'],
-				} as ChatRequest.WorkflowStepMessage,
+					title: 'Summary',
+					content: 'Summary content',
+				} as ChatRequest.SummaryMessage,
 				{
 					type: 'code-diff',
 					role: 'assistant',
@@ -615,11 +488,11 @@ describe('useAiMessages', () => {
 			];
 			const id = 'multi-id';
 
-			const result = processAssistantMessages(currentMessages, newMessages, id, nodeGetter);
+			const result = processAssistantMessages(currentMessages, newMessages, id);
 
 			expect(result.messages).toHaveLength(3);
 			expect(result.messages[0].type).toBe('text');
-			expect(result.messages[1].type).toBe('workflow-step');
+			expect(result.messages[1].type).toBe('block');
 			expect(result.messages[2].type).toBe('code-diff');
 			expect(result.shouldClearThinking).toBe(true);
 		});
@@ -644,10 +517,10 @@ describe('useAiMessages', () => {
 				} as ChatRequest.ToolMessage,
 			];
 
-			const textResult = processAssistantMessages(currentMessages, textMessage, 'id-1', nodeGetter);
+			const textResult = processAssistantMessages(currentMessages, textMessage, 'id-1');
 			expect(textResult.shouldClearThinking).toBe(true);
 
-			const toolResult = processAssistantMessages(currentMessages, toolMessage, 'id-2', nodeGetter);
+			const toolResult = processAssistantMessages(currentMessages, toolMessage, 'id-2');
 			expect(toolResult.shouldClearThinking).toBe(true);
 		});
 	});

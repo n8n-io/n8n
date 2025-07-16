@@ -9,10 +9,6 @@ import ErrorMessage from './ErrorMessage.vue';
 import EventMessage from './EventMessage.vue';
 import TextMessage from './TextMessage.vue';
 import ToolMessage from './ToolMessage.vue';
-import ComposedNodesMessage from './workflow/ComposedNodesMessage.vue';
-import WorkflowGeneratedMessage from './workflow/WorkflowGeneratedMessage.vue';
-import WorkflowNodesMessage from './workflow/WorkflowNodesMessage.vue';
-import WorkflowStepsMessage from './workflow/WorkflowStepsMessage.vue';
 import type { ChatUI } from '../../../types/assistant';
 
 interface Props {
@@ -48,14 +44,6 @@ const messageComponent = computed<Component | null>(() => {
 			return EventMessage;
 		case 'tool':
 			return ToolMessage;
-		case 'workflow-step':
-			return WorkflowStepsMessage;
-		case 'workflow-node':
-			return WorkflowNodesMessage;
-		case 'workflow-composed':
-			return ComposedNodesMessage;
-		case 'workflow-generated':
-			return WorkflowGeneratedMessage;
 		case 'agent-suggestion':
 		case 'workflow-updated':
 		case 'rate-workflow':
