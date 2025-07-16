@@ -2,7 +2,7 @@ import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-work
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
+import type { CodeExecSettings } from '@/code-task-runner';
 import type { DataRequestResponse } from '@/runner-types';
 import type { TaskParams } from '@/task-runner';
 import { TaskState } from '@/task-state';
@@ -11,8 +11,8 @@ import { TaskState } from '@/task-state';
  * Creates a new task with the given settings
  */
 export const newTaskParamsWithSettings = (
-	settings: Partial<JSExecSettings> & Pick<JSExecSettings, 'code' | 'nodeMode'>,
-): TaskParams<JSExecSettings> => ({
+	settings: Partial<CodeExecSettings> & Pick<CodeExecSettings, 'code' | 'nodeMode'>,
+): TaskParams<CodeExecSettings> => ({
 	taskId: '1',
 	settings: {
 		workflowMode: 'manual',

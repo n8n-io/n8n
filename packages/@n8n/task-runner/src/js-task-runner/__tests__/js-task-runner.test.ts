@@ -8,13 +8,13 @@ import {
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import type { CodeExecSettings } from '@/code-task-runner';
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
 	UNSUPPORTED_HELPER_FUNCTIONS,
@@ -74,7 +74,7 @@ describe('JsTaskRunner', () => {
 		taskData,
 		runner = defaultTaskRunner,
 	}: {
-		task: TaskParams<JSExecSettings>;
+		task: TaskParams<CodeExecSettings>;
 		taskData: DataRequestResponse;
 		runner?: JsTaskRunner;
 	}) => {
@@ -94,7 +94,7 @@ describe('JsTaskRunner', () => {
 	}: {
 		code: string;
 		inputItems: IDataObject[];
-		settings?: Partial<JSExecSettings>;
+		settings?: Partial<CodeExecSettings>;
 		runner?: JsTaskRunner;
 	}) => {
 		return await execTaskWithParams({
@@ -117,7 +117,7 @@ describe('JsTaskRunner', () => {
 	}: {
 		code: string;
 		inputItems: IDataObject[];
-		settings?: Partial<JSExecSettings>;
+		settings?: Partial<CodeExecSettings>;
 		runner?: JsTaskRunner;
 		chunk?: InputDataChunkDefinition;
 	}) => {
@@ -1239,7 +1239,7 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';
 			const task = newTaskState(taskId);
-			const taskSettings: JSExecSettings = {
+			const taskSettings: CodeExecSettings = {
 				code: 'unknown; return []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
@@ -1486,7 +1486,7 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';
 			const task = newTaskState(taskId);
-			const taskSettings: JSExecSettings = {
+			const taskSettings: CodeExecSettings = {
 				code: 'function my_function() {\n  null.map();\n}\nmy_function();\nreturn []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,

@@ -4,7 +4,7 @@ import { ensureError, setGlobalState } from 'n8n-workflow';
 import { MainConfig } from './config/main-config';
 import { createSignalHandler, setInstances } from './create-signal-handler';
 import type { HealthCheckServer } from './health-check-server';
-import { JsTaskRunner } from './js-task-runner/js-task-runner';
+import { PyTaskRunner } from './py-task-runner/py-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
 
 void (async function start() {
@@ -17,7 +17,7 @@ void (async function start() {
 	const sentry = Container.get(TaskRunnerSentry);
 	await sentry.initIfEnabled();
 
-	const runner = new JsTaskRunner(config);
+	const runner = new PyTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
 		// Use shorter timeout since we know we don't have any tasks running
 		void createSignalHandler('IDLE_TIMEOUT', 3)();
@@ -38,6 +38,6 @@ void (async function start() {
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));
 })().catch((e) => {
 	const error = ensureError(e);
-	console.error('JS task runner failed to start', { error });
+	console.error('PY task runner failed to start', { error });
 	process.exit(1);
 });
