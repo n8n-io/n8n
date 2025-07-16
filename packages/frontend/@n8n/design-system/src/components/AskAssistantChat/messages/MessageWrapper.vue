@@ -46,25 +46,10 @@ const messageComponent = computed<Component | null>(() => {
 			return ToolMessage;
 		case 'agent-suggestion':
 		case 'workflow-updated':
-		case 'rate-workflow':
 			return null;
 		default:
 			return null;
 	}
-});
-
-// For rate-workflow messages, transform them to text messages with rating enabled
-const processedMessage = computed(() => {
-	if (props.message.type === 'rate-workflow') {
-		return {
-			...props.message,
-			type: 'text' as const,
-			showRating: true,
-			ratingStyle: 'regular' as const,
-			showFeedback: true,
-		};
-	}
-	return props.message;
 });
 </script>
 
@@ -72,7 +57,7 @@ const processedMessage = computed(() => {
 	<component
 		:is="messageComponent"
 		v-if="messageComponent"
-		:message="processedMessage"
+		:message="message"
 		:is-first-of-role="isFirstOfRole"
 		:user="user"
 		:streaming="streaming"

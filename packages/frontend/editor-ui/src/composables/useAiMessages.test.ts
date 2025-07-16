@@ -121,7 +121,7 @@ describe('useAiMessages', () => {
 					text: 'Hello, how can I help?',
 					quickReplies: [{ type: 'test', text: 'Quick reply' }],
 					codeSnippet: 'console.log("hello");',
-				} as ChatRequest.TextMessage,
+				},
 			];
 			const id = 'test-id';
 
@@ -449,7 +449,7 @@ describe('useAiMessages', () => {
 					type: 'message',
 					role: 'assistant',
 					text: 'First message',
-				} as ChatRequest.TextMessage,
+				},
 				{
 					type: 'summary',
 					role: 'assistant',
@@ -482,7 +482,7 @@ describe('useAiMessages', () => {
 					type: 'message',
 					role: 'assistant',
 					text: 'Response',
-				} as ChatRequest.TextMessage,
+				},
 			];
 			const toolMessage: ChatRequest.MessageResponse[] = [
 				{
@@ -510,7 +510,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'Hello, I can help you',
-					} as ChatRequest.TextMessage,
+					},
 				];
 				const id = 'msg-1';
 
@@ -540,7 +540,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'Your workflow has been updated',
-					} as ChatRequest.TextMessage,
+					},
 				];
 				const id = 'msg-2';
 
@@ -570,12 +570,12 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'First message',
-					} as ChatRequest.TextMessage,
+					},
 					{
 						type: 'message',
 						role: 'assistant',
 						text: 'Second message',
-					} as ChatRequest.TextMessage,
+					},
 				];
 				const id = 'msg-3';
 
@@ -621,7 +621,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'Message while tool is running',
-					} as ChatRequest.TextMessage,
+					},
 				];
 				const id = 'msg-4';
 
@@ -648,7 +648,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'Workflow has been updated successfully',
-					} as ChatRequest.TextMessage,
+					},
 					{
 						type: 'summary',
 						role: 'assistant',
@@ -686,7 +686,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'user',
 						text: 'User message',
-					} as ChatRequest.TextMessage,
+					},
 				];
 				const id = 'msg-6';
 
@@ -719,7 +719,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'First text',
-					} as ChatRequest.TextMessage,
+					},
 				];
 
 				const result1 = processAssistantMessages(initialMessages, firstUpdate, 'msg-7');
@@ -730,7 +730,7 @@ describe('useAiMessages', () => {
 						type: 'message',
 						role: 'assistant',
 						text: 'Second text',
-					} as ChatRequest.TextMessage,
+					},
 				];
 
 				const result2 = processAssistantMessages(result1.messages, secondUpdate, 'msg-8');

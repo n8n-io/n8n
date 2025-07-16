@@ -70,11 +70,6 @@ export namespace ChatUI {
 		type: 'workflow-updated';
 		codeSnippet: string;
 	}
-	export interface RateWorkflowMessage {
-		role: 'assistant';
-		type: 'rate-workflow';
-		content: string;
-	}
 
 	export interface ToolMessage {
 		id?: string;
@@ -106,7 +101,6 @@ export namespace ChatUI {
 		| SessionTimeoutMessage
 		| SessionErrorMessage
 		| AgentSuggestionMessage
-		| RateWorkflowMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
 	) & {
@@ -179,12 +173,6 @@ export function isWorkflowUpdatedMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.WorkflowUpdatedMessage & { id?: string; read?: boolean } {
 	return msg.type === 'workflow-updated';
-}
-
-export function isRateWorkflowMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.RateWorkflowMessage & { id?: string; read?: boolean } {
-	return msg.type === 'rate-workflow';
 }
 
 export function isToolMessage(

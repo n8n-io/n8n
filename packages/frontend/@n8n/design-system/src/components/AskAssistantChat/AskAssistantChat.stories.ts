@@ -483,23 +483,6 @@ ComposedNodesChat.args = {
 	]),
 };
 
-export const RateWorkflowMessage = Template.bind({});
-RateWorkflowMessage.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
-		{
-			id: '126',
-			type: 'rate-workflow',
-			role: 'assistant',
-			content: 'Is this workflow helpful?',
-			read: false,
-		},
-	]),
-};
-
 export const TextMessageWithRegularRating = Template.bind({});
 TextMessageWithRegularRating.args = {
 	user: {

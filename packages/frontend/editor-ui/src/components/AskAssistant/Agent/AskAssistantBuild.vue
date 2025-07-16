@@ -6,9 +6,7 @@ import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/Ask
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { nodeViewEventBus } from '@/event-bus';
-import { v4 as uuid } from 'uuid';
 import { useI18n } from '@n8n/i18n';
-import { STICKY_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
@@ -56,76 +54,44 @@ async function onUserMessage(content: string) {
 	await builderStore.initBuilderChat(content, 'chat');
 }
 
-function fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): WorkflowDataUpdate {
-	const STICKY_WIDTH = 480;
-	const HEADERS_HEIGHT = 40;
-	const NEW_LINE_HEIGHT = 20;
-	const CHARACTER_WIDTH = 65;
-	const NODE_WIDTH = 100;
-	const stickyNodes = workflowData.nodes?.filter((node) => node.type === STICKY_NODE_TYPE);
-	const nonStickyNodes = workflowData.nodes?.filter((node) => node.type !== STICKY_NODE_TYPE);
+// function _fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): WorkflowDataUpdate {
+// 	const STICKY_WIDTH = 480;
+// 	const HEADERS_HEIGHT = 40;
+// 	const NEW_LINE_HEIGHT = 20;
+// 	const CHARACTER_WIDTH = 65;
+// 	const NODE_WIDTH = 100;
+// 	const stickyNodes = workflowData.nodes?.filter((node) => node.type === STICKY_NODE_TYPE);
+// 	const nonStickyNodes = workflowData.nodes?.filter((node) => node.type !== STICKY_NODE_TYPE);
 
-	const fixedStickies = stickyNodes?.map((node, index) => {
-		const content = node.parameters.content?.toString() ?? '';
-		const newLines = content.match(/\n/g) ?? [];
-		// Match any markdown heading from # to ###### at the start of a line
-		const headings = content.match(/^#{1,6} /gm) ?? [];
-		const headingHeight = headings.length * HEADERS_HEIGHT;
-		const newLinesHeight = newLines.length * NEW_LINE_HEIGHT;
-		const contentHeight = (content.length / CHARACTER_WIDTH) * NEW_LINE_HEIGHT;
-		const height = Math.ceil(headingHeight + newLinesHeight + contentHeight) + NEW_LINE_HEIGHT;
+// 	const fixedStickies = stickyNodes?.map((node, index) => {
+// 		const content = node.parameters.content?.toString() ?? '';
+// 		const newLines = content.match(/\n/g) ?? [];
+// 		// Match any markdown heading from # to ###### at the start of a line
+// 		const headings = content.match(/^#{1,6} /gm) ?? [];
+// 		const headingHeight = headings.length * HEADERS_HEIGHT;
+// 		const newLinesHeight = newLines.length * NEW_LINE_HEIGHT;
+// 		const contentHeight = (content.length / CHARACTER_WIDTH) * NEW_LINE_HEIGHT;
+// 		const height = Math.ceil(headingHeight + newLinesHeight + contentHeight) + NEW_LINE_HEIGHT;
 
-		const firstNode = nonStickyNodes?.[0];
-		const xPos = (firstNode?.position[0] ?? 0) + index * (STICKY_WIDTH + NODE_WIDTH);
-		return {
-			...node,
-			parameters: {
-				...node.parameters,
-				height,
-				width: STICKY_WIDTH,
-			},
-			position: [xPos, -1 * (height + 50)] as [number, number],
-		};
-	});
+// 		const firstNode = nonStickyNodes?.[0];
+// 		const xPos = (firstNode?.position[0] ?? 0) + index * (STICKY_WIDTH + NODE_WIDTH);
+// 		return {
+// 			...node,
+// 			parameters: {
+// 				...node.parameters,
+// 				height,
+// 				width: STICKY_WIDTH,
+// 			},
+// 			position: [xPos, -1 * (height + 50)] as [number, number],
+// 		};
+// 	});
 
-	return {
-		...workflowData,
-		nodes: [...(nonStickyNodes ?? []), ...(fixedStickies ?? [])],
-	};
-}
+// 	return {
+// 		...workflowData,
+// 		nodes: [...(nonStickyNodes ?? []), ...(fixedStickies ?? [])],
+// 	};
+// }
 
-function onInsertWorkflow(code: string) {
-	console.log('Insert new workflow');
-	let workflowData: WorkflowDataUpdate;
-	try {
-		workflowData = JSON.parse(code);
-	} catch (error) {
-		console.error('Error parsing workflow data', error);
-		return;
-	}
-
-	telemetry.track('Workflow generated from prompt', {
-		prompt: builderStore.workflowPrompt,
-		latency: new Date().getTime() - generationStartTime.value,
-		workflow_json: generatedWorkflowJson.value,
-	});
-
-	nodeViewEventBus.emit('importWorkflowData', {
-		data: fixWorkflowStickiesPosition(workflowData),
-		tidyUp: true,
-	});
-	workflowGenerated.value = true;
-	builderStore.addAssistantMessages(
-		[
-			{
-				type: 'rate-workflow',
-				content: i18n.baseText('aiAssistant.builder.feedbackPrompt'),
-				role: 'assistant',
-			},
-		],
-		uuid(),
-	);
-}
 function onUpdateWorkflow(code: string) {
 	console.log('Update workflow');
 	let workflowData: WorkflowDataUpdate;
@@ -179,7 +145,6 @@ function onNewWorkflow() {
 }
 
 function onThumbsUp() {
-	console.log('HELPFUL');
 	telemetry.track('User rated workflow generation', {
 		helpful: true,
 		prompt: builderStore.workflowPrompt,
@@ -188,7 +153,6 @@ function onThumbsUp() {
 }
 
 function onThumbsDown() {
-	console.log('NOT HELPFUL');
 	telemetry.track('User rated workflow generation', {
 		helpful: false,
 		prompt: builderStore.workflowPrompt,
@@ -197,7 +161,6 @@ function onThumbsDown() {
 }
 
 function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up' | 'down' }) {
-	console.log('🚀 ~ onSubmitFeedback ~ feedback:', feedback, rating);
 	telemetry.track('User submitted workflow generation feedback', {
 		helpful: rating === 'up',
 		feedback,
@@ -254,7 +217,6 @@ watch(
 			@thumbs-up="onThumbsUp"
 			@thumbs-down="onThumbsDown"
 			@submit-feedback="onSubmitFeedback"
-			@insert-workflow="onInsertWorkflow"
 		>
 			<template #header>
 				<slot name="header" />

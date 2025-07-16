@@ -138,7 +138,6 @@ export namespace ChatRequest {
 		  };
 
 	// Re-export types from design-system for backward compatibility
-	export type RateWorkflowMessage = ChatUI.RateWorkflowMessage;
 	export type ToolMessage = ChatUI.ToolMessage;
 
 	// API-specific types that extend UI types
@@ -156,7 +155,7 @@ export namespace ChatRequest {
 
 	// API-specific types that extend UI types
 	export interface TextMessage {
-		role: 'assistant';
+		role: 'assistant' | 'user';
 		type: 'message'; // API uses 'message' instead of 'text'
 		text: string;
 		step?: 'n8n_documentation' | 'n8n_forum';
@@ -189,7 +188,6 @@ export namespace ChatRequest {
 				| AgentSuggestionMessage
 				| AgentThinkingStep
 				| ChatUI.WorkflowUpdatedMessage
-				| ChatUI.RateWorkflowMessage
 				| ToolMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
@@ -269,12 +267,6 @@ export function isWorkflowUpdatedMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.WorkflowUpdatedMessage {
 	return 'type' in msg && msg.type === 'workflow-updated' && 'codeSnippet' in msg;
-}
-
-export function isRateWorkflowMessage(
-	msg: ChatRequest.MessageResponse,
-): msg is ChatUI.RateWorkflowMessage {
-	return 'type' in msg && msg.type === 'rate-workflow' && 'content' in msg;
 }
 
 export function isToolMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ToolMessage {
