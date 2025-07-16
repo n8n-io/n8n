@@ -1,7 +1,6 @@
 import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from '@/components/InputPanel.vue';
-import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -50,7 +49,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 
 	const pinia = createTestingPinia({
 		stubActions: false,
-		initialState: { [STORES.NDV]: { activeNodeName: props.currentNodeName ?? nodes[1].name } },
 	});
 	setActivePinia(pinia);
 
@@ -97,9 +95,12 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		props: {
 			pushRef: 'pushRef',
 			runIndex: 0,
-			currentNodeName: nodes[1].name,
+			currentNodeName: nodes[0].name,
+			activeNodeName: nodes[1].name,
 			workflow: workflowObject,
 			displayMode: 'schema',
+			focusedMappableInput: '',
+			isMappingOnboarded: false,
 		},
 		global: {
 			stubs: {
@@ -118,14 +119,14 @@ describe('InputPanel', () => {
 	});
 
 	it("opens mapping tab by default if the node hasn't run yet", async () => {
-		const { findByTestId } = render({ currentNodeName: 'Tool' });
+		const { findByTestId } = render({ activeNodeName: 'Tool' });
 
 		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
 		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
 	});
 
 	it('opens debugging tab by default if the node has already run', async () => {
-		const { findByTestId } = render({ currentNodeName: 'Tool' }, undefined, {
+		const { findByTestId } = render({ activeNodeName: 'Tool' }, undefined, {
 			Tool: [
 				{
 					startTime: 0,
