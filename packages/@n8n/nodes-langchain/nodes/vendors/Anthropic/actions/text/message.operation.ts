@@ -376,10 +376,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (simplify) {
-		return response.content.map((content) => ({
-			json: content,
-			pairedItem: { item: i },
-		}));
+		return [
+			{
+				json: {
+					content: response.content,
+				},
+				pairedItem: { item: i },
+			},
+		];
 	}
 
 	return [

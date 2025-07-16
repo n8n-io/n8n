@@ -80,10 +80,12 @@ export async function baseAnalyze(
 	})) as MessagesResponse;
 
 	if (simplify) {
-		return response.content.map((content) => ({
-			json: content,
-			pairedItem: { item: i },
-		}));
+		return [
+			{
+				json: { content: response.content },
+				pairedItem: { item: i },
+			},
+		];
 	}
 
 	return [
