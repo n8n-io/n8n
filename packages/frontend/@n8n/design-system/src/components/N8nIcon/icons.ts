@@ -78,6 +78,7 @@ import IconLucideEyeOff from '~icons/lucide/eye-off';
 import IconLucideFile from '~icons/lucide/file';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
 import IconLucideFileCode from '~icons/lucide/file-code';
+import IconLucideFileDiff from '~icons/lucide/file-diff';
 import IconLucideFileDown from '~icons/lucide/file-down';
 import IconLucideFileInput from '~icons/lucide/file-input';
 import IconLucideFileOutput from '~icons/lucide/file-output';
@@ -289,6 +290,7 @@ export const deprecatedIconSet = {
 	'file-alt': IconLucideFileText,
 	'file-archive': IconLucideFileArchive,
 	'file-code': IconLucideFileCode,
+	'file-diff': IconLucideFileDiff,
 	'file-download': IconLucideFileDown,
 	'file-export': IconLucideFileOutput,
 	'file-import': IconLucideFileInput,
