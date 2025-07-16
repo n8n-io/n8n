@@ -25,8 +25,6 @@ export function compareNodes<T extends { id: string }>(
 	const baseNode = _pick(base, propsToCompare);
 	const targetNode = _pick(target, propsToCompare);
 
-	console.log(baseNode, targetNode);
-
 	return _isEqual(baseNode, targetNode);
 }
 
@@ -40,14 +38,10 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 		return acc;
 	}, new Map());
 
-	console.log(baseNodes);
-
 	const targetNodes = target.reduce<Map<string, T>>((acc, node) => {
 		acc.set(node.id, node);
 		return acc;
 	}, new Map());
-
-	console.log(targetNodes);
 
 	const diff: WorkflowDiff<T> = new Map();
 
