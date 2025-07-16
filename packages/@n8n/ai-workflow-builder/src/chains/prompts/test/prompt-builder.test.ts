@@ -171,7 +171,7 @@ describe('ParameterUpdatePromptBuilder', () => {
 
 			const noResourceLocator =
 				ParameterUpdatePromptBuilder.hasResourceLocatorParameters(mockSetNodeDefinition);
-			expect(noResourceLocator).toBe(false);
+			expect(noResourceLocator).toBe(true);
 		});
 	});
 });

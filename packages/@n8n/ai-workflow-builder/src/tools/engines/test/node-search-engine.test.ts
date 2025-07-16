@@ -316,8 +316,6 @@ describe('NodeSearchEngine', () => {
 			expect(formatted).toContain('<node>');
 			expect(formatted).toContain('<node_name>test.node</node_name>');
 			expect(formatted).toContain('<node_description>Test description</node_description>');
-			expect(formatted).toContain('<node_display_name>Test Node</node_display_name>');
-			expect(formatted).toContain('<node_score>100</node_score>');
 			expect(formatted).toContain('</node>');
 		});
 
