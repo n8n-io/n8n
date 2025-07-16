@@ -314,14 +314,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div :class="$style.header">
-					<N8nText size="small" :bold="true">
-						{{ locale.baseText('nodeView.focusPanel.title') }}
-					</N8nText>
-					<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
-						<n8n-icon icon="arrow-right" color="text-base" />
-					</div>
-				</div>
 				<div v-if="resolvedParameter" :class="$style.content">
 					<div :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
@@ -330,17 +322,22 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							</N8nText>
 							<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 						</div>
-						<NodeExecuteButton
-							data-test-id="node-execute-button"
-							:node-name="resolvedParameter.node.name"
-							:tooltip="`Execute ${resolvedParameter.node.name}`"
-							:disabled="!isExecutable"
-							size="small"
-							icon="play"
-							:square="true"
-							:hide-label="true"
-							telemetry-source="focus"
-						></NodeExecuteButton>
+						<div :class="$style.buttonWrapper">
+							<NodeExecuteButton
+								data-test-id="node-execute-button"
+								:node-name="resolvedParameter.node.name"
+								:tooltip="`Execute ${resolvedParameter.node.name}`"
+								:disabled="!isExecutable"
+								size="small"
+								icon="play"
+								:square="true"
+								:hide-label="true"
+								telemetry-source="focus"
+							></NodeExecuteButton>
+							<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
+								<n8n-icon icon="x" color="text-base" size="xlarge" />
+							</div>
+						</div>
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
 						<div :class="$style.parameterOptionsWrapper">
@@ -463,7 +460,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex-direction: row nowrap;
 	border-left: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-light);
+	background: var(--color-background-xlight);
 	overflow-y: hidden;
 	height: 100%;
 }
@@ -476,14 +473,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 .closeButton:hover {
 	cursor: pointer;
-}
-
-.header {
-	display: flex;
-	padding: var(--spacing-2xs);
-	justify-content: space-between;
-	border-bottom: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-xlight);
 }
 
 .content {
@@ -517,8 +506,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 		.buttonWrapper {
 			display: flex;
-			padding: 6px 8px 6px 34px;
-			justify-content: flex-end;
+			gap: var(--spacing-2xs);
+			align-items: center;
 		}
 	}
 
