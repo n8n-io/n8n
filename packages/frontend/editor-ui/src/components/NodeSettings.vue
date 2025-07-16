@@ -52,6 +52,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { I18nT } from 'vue-i18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -878,9 +879,10 @@ function handleWheelEvent(event: WheelEvent) {
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n-t
+					<I18nT
 						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
+						scope="global"
 						@click="onMissingNodeTextClick"
 					>
 						<template #action>
@@ -890,7 +892,7 @@ function handleWheelEvent(event: WheelEvent) {
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -899,7 +901,7 @@ function handleWheelEvent(event: WheelEvent) {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -907,7 +909,7 @@ function handleWheelEvent(event: WheelEvent) {
 						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</div>
 		<div
 			v-if="node && nodeValid"
