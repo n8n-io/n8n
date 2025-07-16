@@ -9,7 +9,9 @@ describe('useViewportSync', () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		requestAnimationFrameSpy = vi.spyOn(global, 'requestAnimationFrame');
+		requestAnimationFrameSpy = vi.spyOn(global, 'requestAnimationFrame') as ReturnType<
+			typeof vi.spyOn
+		>;
 	});
 
 	afterEach(() => {
@@ -102,7 +104,7 @@ describe('useViewportSync', () => {
 
 			expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
 
-			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as FrameRequestCallback;
+			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as (time: number) => void;
 			frameCallback(0);
 
 			expect(mockListener).toHaveBeenCalledWith(update);
@@ -146,7 +148,7 @@ describe('useViewportSync', () => {
 
 			expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
 
-			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as FrameRequestCallback;
+			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as (time: number) => void;
 			frameCallback(0);
 
 			expect(mockListener).toHaveBeenCalledTimes(1);
@@ -170,7 +172,7 @@ describe('useViewportSync', () => {
 
 			triggerViewportChange(update1);
 
-			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as FrameRequestCallback;
+			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as (time: number) => void;
 			frameCallback(0);
 
 			expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
@@ -193,7 +195,7 @@ describe('useViewportSync', () => {
 
 			triggerViewportChange(update);
 
-			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as FrameRequestCallback;
+			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as (time: number) => void;
 
 			frameCallback(0);
 
@@ -221,7 +223,7 @@ describe('useViewportSync', () => {
 
 			triggerViewportChange(update);
 
-			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as FrameRequestCallback;
+			const frameCallback = requestAnimationFrameSpy.mock.calls[0][0] as (time: number) => void;
 			frameCallback(0);
 
 			expect(mockListener1).toHaveBeenCalledWith(update);
