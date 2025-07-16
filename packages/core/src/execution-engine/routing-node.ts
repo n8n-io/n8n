@@ -1072,7 +1072,7 @@ export class RoutingNode {
 		return returnData;
 	}
 
-	async prepareCredentials() {
+	private async prepareCredentials() {
 		const { context, nodeType, credentialsDecrypted } = this;
 		const { node } = context;
 
