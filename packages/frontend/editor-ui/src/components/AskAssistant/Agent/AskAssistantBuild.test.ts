@@ -11,6 +11,7 @@ import AskAssistantBuild from './AskAssistantBuild.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {
@@ -68,6 +69,7 @@ describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 	beforeAll(() => {
 		Element.prototype.scrollTo = vi.fn(() => {});
@@ -90,12 +92,15 @@ describe('AskAssistantBuild', () => {
 
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
 
 		// Mock action implementations
-		builderStore.initBuilderChat = vi.fn();
+		builderStore.sendChatMessage = vi.fn();
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
 		builderStore.workflowPrompt = workflowPrompt;
+
+		workflowsStore.workflowId = 'abc123';
 	});
 
 	describe('rendering', () => {
@@ -108,7 +113,7 @@ describe('AskAssistantBuild', () => {
 			renderComponent();
 
 			// Basic verification that no methods were called on mount
-			expect(builderStore.initBuilderChat).not.toHaveBeenCalled();
+			expect(builderStore.sendChatMessage).not.toHaveBeenCalled();
 			expect(builderStore.addAssistantMessages).not.toHaveBeenCalled();
 		});
 	});
@@ -129,7 +134,7 @@ describe('AskAssistantBuild', () => {
 
 			await flushPromises();
 
-			expect(builderStore.initBuilderChat).toHaveBeenCalledWith(testMessage, 'chat');
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({ text: testMessage });
 		});
 	});
 
@@ -175,8 +180,7 @@ describe('AskAssistantBuild', () => {
 
 				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
 					helpful: true,
-					prompt: 'Create a workflow',
-					workflow_json: workflowJson,
+					workflow_id: 'abc123',
 				});
 			});
 
@@ -193,8 +197,7 @@ describe('AskAssistantBuild', () => {
 
 				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
 					helpful: false,
-					prompt: 'Create a workflow',
-					workflow_json: workflowJson,
+					workflow_id: 'abc123',
 				});
 			});
 
@@ -222,8 +225,7 @@ describe('AskAssistantBuild', () => {
 					'User submitted workflow generation feedback',
 					expect.objectContaining({
 						feedback: feedbackText,
-						prompt: 'Create a workflow',
-						workflow_json: workflowJson,
+						workflow_id: 'abc123',
 					}),
 				);
 			});

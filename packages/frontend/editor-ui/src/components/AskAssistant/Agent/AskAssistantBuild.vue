@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import pick from 'lodash/pick';
 
 const emit = defineEmits<{
 	close: [];
@@ -23,6 +24,7 @@ const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
 const processedWorkflowUpdates = ref(new Set<string>());
+const trackedTools = ref(new Set<string>());
 const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
@@ -35,7 +37,9 @@ const user = computed(() => ({
 const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const generatedWorkflowJson = computed(() => {
-	const workflowMessage = builderStore.chatMessages.find((msg) => msg.type === 'workflow-updated');
+	const workflowMessage = builderStore.chatMessages.findLast(
+		(msg) => msg.type === 'workflow-updated',
+	);
 	if (workflowMessage && 'codeSnippet' in workflowMessage) {
 		return workflowMessage.codeSnippet;
 	}
@@ -50,8 +54,7 @@ async function onUserMessage(content: string) {
 	if (isNewWorkflow) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
-	// If there is no current session running, initialize the support chat session
-	await builderStore.initBuilderChat(content, 'chat');
+	builderStore.sendChatMessage({ text: content });
 }
 
 // function _fixWorkflowStickiesPosition(workflowData: WorkflowDataUpdate): WorkflowDataUpdate {
@@ -92,11 +95,11 @@ async function onUserMessage(content: string) {
 // 	};
 // }
 
-function onUpdateWorkflow(code: string) {
+function onUpdateWorkflow(newWorkflowJson: string) {
 	console.log('Update workflow');
 	let workflowData: WorkflowDataUpdate;
 	try {
-		workflowData = JSON.parse(code);
+		workflowData = JSON.parse(newWorkflowJson);
 	} catch (error) {
 		console.error('Error parsing workflow data', error);
 		return;
@@ -110,6 +113,9 @@ function onUpdateWorkflow(code: string) {
 		existingNodeIds.add(node.id);
 	});
 
+	const currentWorkflowJson = JSON.stringify(
+		pick(workflowsStore.workflow, ['nodes', 'connections']),
+	);
 	workflowsStore.removeAllConnections({ setStateDirty: false });
 	workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 
@@ -127,7 +133,19 @@ function onUpdateWorkflow(code: string) {
 			return node;
 		});
 	}
+	// const currentMessage = builderStore.chatMessages;
+	const newToolMessages = builderStore.toolMessages.filter(
+		(msg) => msg.status !== 'running' && msg.toolCallId && !trackedTools.value.has(msg.toolCallId),
+	);
 
+	newToolMessages.forEach((msg) => trackedTools.value.add(msg.toolCallId ?? ''));
+
+	telemetry.track('Workflow modified by builder', {
+		tools_called: newToolMessages.map((msg) => msg.toolName),
+		start_workflow_json: currentWorkflowJson,
+		end_workflow_json: newWorkflowJson,
+		workflow_id: workflowsStore.workflowId,
+	});
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: workflowData,
 		tidyUp: true,
@@ -147,16 +165,14 @@ function onNewWorkflow() {
 function onThumbsUp() {
 	telemetry.track('User rated workflow generation', {
 		helpful: true,
-		prompt: builderStore.workflowPrompt,
-		workflow_json: generatedWorkflowJson.value,
+		workflow_id: workflowsStore.workflowId,
 	});
 }
 
 function onThumbsDown() {
 	telemetry.track('User rated workflow generation', {
 		helpful: false,
-		prompt: builderStore.workflowPrompt,
-		workflow_json: generatedWorkflowJson.value,
+		workflow_id: workflowsStore.workflowId,
 	});
 }
 
@@ -164,8 +180,7 @@ function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up'
 	telemetry.track('User submitted workflow generation feedback', {
 		helpful: rating === 'up',
 		feedback,
-		prompt: builderStore.workflowPrompt,
-		workflow_json: generatedWorkflowJson.value,
+		workflow_id: workflowsStore.workflowId,
 	});
 }
 

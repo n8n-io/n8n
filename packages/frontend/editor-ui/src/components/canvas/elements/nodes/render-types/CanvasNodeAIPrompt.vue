@@ -21,7 +21,7 @@ const hasContent = computed(() => prompt.value.trim().length > 0);
 async function onSubmit() {
 	builderStore.openChat();
 	emit('delete', id.value);
-	await builderStore.initBuilderChat(prompt.value, 'canvas');
+	await builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 	isPromptVisible.value = false;
 }
 </script>

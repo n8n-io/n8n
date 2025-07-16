@@ -64,18 +64,6 @@ export namespace ChatRequest {
 		question: string;
 	}
 
-	export interface InitBuilderChat {
-		role: 'user';
-		type: 'init-builder-chat';
-		user: {
-			firstName: string;
-		};
-		context?: UserContext & WorkflowContext;
-		workflowContext?: WorkflowContext;
-		question: string;
-		executionData?: IRunExecutionData['resultData'];
-	}
-
 	export interface InitCredHelp {
 		role: 'user';
 		type: 'init-cred-help';
@@ -130,11 +118,11 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper | InitSupportChat | InitCredHelp | InitBuilderChat;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;
-				sessionId: string;
+				sessionId?: string;
 		  };
 
 	// Re-export types from design-system for backward compatibility

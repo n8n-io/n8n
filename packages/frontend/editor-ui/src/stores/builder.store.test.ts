@@ -222,7 +222,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 
 		expect(apiSpy).toHaveBeenCalled();
 		expect(builderStore.chatMessages.length).toBe(2); // user message + assistant response
@@ -264,13 +264,13 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 
 		// Should be 2 messages now (user question + assistant response)
 		expect(builderStore.chatMessages.length).toBe(2);
 
 		// Send a follow-up message
-		await builderStore.sendMessage({ text: 'Generate a workflow for me' });
+		await builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
 
 		const thirdMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
 		const fourthMessage = builderStore.chatMessages[3] as ChatUI.TextMessage;
@@ -292,7 +292,7 @@ describe('AI Builder store', () => {
 			onError(new Error('An API error occurred'));
 		});
 
-		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 
 		// Should have user message + error message
 		expect(builderStore.chatMessages.length).toBe(2);
