@@ -1,3 +1,4 @@
+import { IWorkflowToImport } from '@/interfaces';
 import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,7 +23,6 @@ import type { SourceControlPreferences } from './types/source-control-preference
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { IWorkflowBase } from 'n8n-workflow';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -258,7 +258,7 @@ export class SourceControlController {
 	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getFileContent(
 		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
-	): Promise<{ content: Omit<IWorkflowBase, 'createdAt' | 'updatedAt'> }> {
+	): Promise<{ content: IWorkflowToImport }> {
 		try {
 			const { type, id } = req.params;
 			const content = await this.sourceControlService.getRemoteFileEntity({
