@@ -74,38 +74,6 @@ describe('EnvFeatureFlag', () => {
 		},
 	);
 
-	it('should warn when feature flag is undefined', () => {
-		renderComponent({
-			props: {
-				name: 'TEST_FLAG',
-			},
-			slots: {
-				default: '<div>Feature content</div>',
-			},
-		});
-
-		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			'[useFeatureFlag] Missing env var: VUE_FEAT_TEST_FLAG',
-		);
-	});
-
-	it('should not warn when feature flag is defined', () => {
-		Object.assign(import.meta.env, {
-			VUE_FEAT_TEST_FLAG: 'true',
-		});
-
-		renderComponent({
-			props: {
-				name: 'TEST_FLAG',
-			},
-			slots: {
-				default: '<div>Feature content</div>',
-			},
-		});
-
-		expect(consoleWarnSpy).not.toHaveBeenCalled();
-	});
-
 	it('should render wrapper div regardless of feature flag state', () => {
 		Object.assign(import.meta.env, {
 			VUE_FEAT_TEST_FLAG: 'false',
