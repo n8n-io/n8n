@@ -4,13 +4,13 @@ import type { CodeTaskRunner } from './code-task-runner';
 import type { HealthCheckServer } from './health-check-server';
 import type { TaskRunnerSentry } from './task-runner-sentry';
 
-let healthCheckServer: HealthCheckServer | undefined;
 let runner: CodeTaskRunner | undefined;
-let isShuttingDown = false;
+let healthCheckServer: HealthCheckServer | undefined;
 let sentry: TaskRunnerSentry | undefined;
+let isShuttingDown = false;
 
 export function setInstances(
-	runnerInstance: CodeTaskRunner | undefined,
+	runnerInstance: CodeTaskRunner,
 	healthCheckServerInstance: HealthCheckServer | undefined,
 	sentryInstance: TaskRunnerSentry | undefined,
 ) {
