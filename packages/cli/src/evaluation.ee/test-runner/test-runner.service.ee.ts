@@ -409,12 +409,17 @@ export class TestRunnerService {
 		return triggerOutput;
 	}
 
-	private extractInputData(execution: IRun, workflow: IWorkflowBase): IDataObject {
-		const setInputNodes = TestRunnerService.getEvaluationNodes(workflow, 'setInputs');
+	private getEvaluationData(
+		execution: IRun,
+		workflow: IWorkflowBase,
+		operation: 'setInputs' | 'setOutputs',
+	): IDataObject {
+		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
 
-		return setInputNodes.reduce((accu: IDataObject, node: INode) => {
+		return evalNodes.reduce((accu: IDataObject, node: INode) => {
 			const runs = execution.data.resultData.runData[node.name];
-			const data = runs[runs.length - 1]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.json ?? {};
+			const data =
+				runs[runs.length - 1]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
 
 			return {
 				...accu,
@@ -616,7 +621,8 @@ export class TestRunnerService {
 							...addedPredefinedMetrics,
 						};
 
-						const inputs = this.extractInputData(testCaseExecution, workflow);
+						const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+						const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
 
 						this.logger.debug(
 							'Test case metrics extracted (user-defined)',
@@ -634,6 +640,7 @@ export class TestRunnerService {
 							status: 'success',
 							metrics: combinedMetrics,
 							inputs,
+							outputs,
 						});
 					}
 				} catch (e) {

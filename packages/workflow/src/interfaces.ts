@@ -1209,6 +1209,7 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	evaluationData?: IDataObject;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

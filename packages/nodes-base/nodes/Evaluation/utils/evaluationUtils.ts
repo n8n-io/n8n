@@ -87,7 +87,15 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		'RAW', // default value for Value Input Mode
 	);
 
-	return [this.getInputData()];
+	const isEvaluationMode = this.getMode() === 'evaluation';
+	return [
+		[
+			{
+				...this.getInputData()[0],
+				evaluationData: isEvaluationMode ? outputs : undefined,
+			},
+		],
+	];
 }
 
 export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
@@ -118,12 +126,20 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 		});
 	}
 
-	const json = inputFields.reduce((acc, { inputName, inputValue }) => {
+	const inputs = inputFields.reduce((acc, { inputName, inputValue }) => {
 		acc[inputName] = inputValue;
 		return acc;
 	}, {} as IDataObject);
 
-	return [[{ json }]];
+	const isEvaluationMode = this.getMode() === 'evaluation';
+	return [
+		[
+			{
+				...this.getInputData()[0],
+				evaluationData: isEvaluationMode ? inputs : undefined,
+			},
+		],
+	];
 }
 
 export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
