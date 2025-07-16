@@ -535,6 +535,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					transform: translate(-20%, -30%);
 					pointer-events: none;
 				}
+
+				:global([class*='_disabled_']) {
+					cursor: default !important;
+				}
 			}
 		}
 	}
