@@ -128,6 +128,14 @@ describe('Kafka Node', () => {
 		});
 	});
 
+	test('should get latest schema ID from SchemaRegistry', () => {
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledTimes(4);
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(1, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(2, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(3, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(4, 'test-event-name');
+	});
+
 	test('should encode messages with SchemaRegistry', () => {
 		expect(mockRegistryEncode).toHaveBeenCalledTimes(4);
 		expect(mockRegistryEncode).toHaveBeenNthCalledWith(1, 1, { foo: 'bar' });
