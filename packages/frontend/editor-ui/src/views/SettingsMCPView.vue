@@ -8,6 +8,9 @@ import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
+import { VIEWS } from '@/constants';
+import router from '@/router';
+import { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -27,25 +30,37 @@ const tableHeaders = ref<Array<TableHeader<WorkflowResource>>>([
 	{
 		title: 'Name',
 		key: 'name',
-		width: 300,
-		value: (row) => row.name,
+		width: 200,
+		disableSort: true,
+		value() {
+			return;
+		},
 	},
 	{
-		title: 'Parent Folder',
+		title: 'Folder',
 		key: 'parentFolder',
 		width: 200,
-		value: (row) => row.parentFolder?.name || '-',
+		disableSort: true,
+		value() {
+			return;
+		},
 	},
 	{
-		title: 'Home Project',
+		title: 'Project',
 		key: 'homeProject',
 		width: 200,
-		value: (row) => row.homeProject?.name || '-',
+		disableSort: true,
+		value() {
+			return;
+		},
 	},
 	{
 		title: 'Active',
 		key: 'active',
-		value: (row) => (row.active ? i18n.baseText('generic.yes') : i18n.baseText('generic.no')),
+		disableSort: true,
+		value() {
+			return;
+		},
 	},
 	{
 		title: '',
@@ -202,6 +217,50 @@ onMounted(async () => {
 					:items="availableWorkflows"
 					:items-length="availableWorkflows.length"
 				>
+					<template #[`item.name`]="{ item }">
+						<n8n-link
+							:new-window="true"
+							:to="
+								router.resolve({
+									name: VIEWS.WORKFLOW,
+									params: { name: item.id },
+								}).fullPath
+							"
+							:class="$style['name-link']"
+						>
+							{{ item.name }}
+							<n8n-icon
+								icon="external-link"
+								:class="$style['link-icon']"
+								color="text-light"
+							></n8n-icon>
+						</n8n-link>
+					</template>
+					<template #[`item.parentFolder`]="{ item }">
+						<span v-if="item.parentFolder" :class="$style['folder-cell']">
+							<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
+							{{ item.parentFolder.name }}
+						</span>
+						<span v-else>-</span>
+					</template>
+					<template #[`item.homeProject`]="{ item }">
+						<span v-if="item.homeProject" :class="$style['folder-cell']">
+							<ProjectIcon
+								v-if="item.homeProject?.icon"
+								:icon="item.homeProject?.icon as IconOrEmoji"
+								:border-less="true"
+							/>
+							{{ item.homeProject.name }}
+						</span>
+						<span v-else>-</span>
+					</template>
+					<template #[`item.active`]="{ item }">
+						<n8n-icon
+							:icon="item.active ? 'check' : 'x'"
+							:size="16"
+							:color="item.active ? 'success' : 'danger'"
+						/>
+					</template>
 					<template #[`item.actions`]="{ item }">
 						<N8nActionToggle
 							placement="bottom"
@@ -297,5 +356,27 @@ onMounted(async () => {
 	top: var(--spacing-l);
 	right: var(--spacing-l);
 	display: none;
+}
+
+.name-link :global(.n8n-text) {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+
+	.link-icon {
+		display: none;
+	}
+
+	&:hover {
+		.link-icon {
+			display: inline-flex;
+		}
+	}
+}
+
+.folder-cell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 }
 </style>

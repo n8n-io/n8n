@@ -577,7 +577,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			undefined,
+			{ isArchived: false },
 			Object.keys(options).length ? options : undefined,
 		);
 
@@ -598,7 +598,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					workflowsApi
 						.getWorkflowsAndFolders(
 							rootStore.restApiContext,
-							undefined,
+							{ isArchived: false },
 							Object.keys(pageOptions).length ? pageOptions : undefined,
 						)
 						.then((response) => response.data),
