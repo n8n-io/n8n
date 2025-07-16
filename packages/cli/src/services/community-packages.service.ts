@@ -28,7 +28,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
-import { verifyIntegrity } from '../utils/npm-utils';
+import { isVersionExists, verifyIntegrity } from '../utils/npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -399,6 +399,8 @@ export class CommunityPackagesService {
 		if (options.checksum) {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
+
+		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);

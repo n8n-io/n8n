@@ -3279,6 +3279,7 @@
 	"communityNodeInfo.downloads": "{downloads} Downloads",
 	"communityNodeInfo.publishedBy": "Published by {publisherName}",
 	"communityNodeInfo.contact.admin": "Please contact an administrator to install this community node:",
+	"communityNodeUpdateInfo.available": "A new node package version is available",
 	"insights.upgradeModal.button.dismiss": "Dismiss",
 	"insights.upgradeModal.button.upgrade": "Upgrade",
 	"insights.upgradeModal.content": "Viewing this time period requires an enterprise plan. Upgrade to Enterprise to unlock advanced features.",
