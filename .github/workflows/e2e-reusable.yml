@@ -40,81 +40,18 @@ on:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
         required: true
-    outputs:
-      tests_passed:
-        description: 'True if all E2E tests passed, otherwise false'
-        value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
+      CURRENTS_RECORD_KEY:
+        description: 'Currents record key.'
+        required: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
-  # single job that generates and outputs a common id
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      uuid: ${{ steps.uuid.outputs.value }}
-    steps:
-      - name: Generate unique ID 💎
-        id: uuid
-        # take the current commit + timestamp together
-        # the typical value would be something like
-        # "sha-5d3fe...35d3-time-1620841214"
-        run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
-
-      - name: Calculate Git Ref 🤔
-        id: calculate_ref
-        run: |
-          if [ -n "${{ inputs.pr_number }}" ]; then
-            echo "value=refs/pull/${{ inputs.pr_number }}/head" >> $GITHUB_OUTPUT
-          else
-            echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
-          fi
-  install:
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    needs: ['prepare']
-
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ steps.calculate_ref.outputs.value }}
-
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-          cache: 'pnpm'
-
-      - name: Cache build artifacts
-        id: cache-build-artifacts
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
-        with:
-          path: |
-            /home/runner/.cache/Cypress
-            /github/home/.pnpm-store
-            ./packages/**/dist
-          key: ${{ github.sha }}-ui
-
-      - name: Install dependencies
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Cypress build
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
-        with:
-          # Disable running of tests within install job
-          runTests: false
-          install: false
-          build: pnpm build
-
-      - name: Cypress install
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        working-directory: cypress
-        run: pnpm cypress:install
-
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    needs: ['prepare', 'install']
+    outputs:
+      dashboardUrl: ${{ steps.cypress.outputs.dashboardUrl }}
     strategy:
       fail-fast: false
       matrix:
@@ -123,31 +60,15 @@ jobs:
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ steps.calculate_ref.outputs.value }}
+      - name: Set up and build
+        uses: ./.github/actions/setup-nodejs-blacksmith
 
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-          cache: 'pnpm'
-
-      - name: Restore cached pnpm modules
-        id: cache-build-artifacts
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
-        with:
-          path: |
-            /home/runner/.cache/Cypress
-            /github/home/.pnpm-store
-            ./packages/**/dist
-          key: ${{ github.sha }}-ui
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install Cypress
+        working-directory: cypress
+        run: pnpm cypress:install
 
       - name: Cypress run
+        id: cypress
         uses: cypress-io/github-action@be1bab96b388bbd9ce3887e397d373c8557e15af # v6.9.2
         with:
           working-directory: cypress
@@ -159,7 +80,7 @@ jobs:
           parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
-          ci-build-id: ${{ needs.prepare.outputs.uuid }}
+          ci-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
           spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
@@ -169,21 +90,49 @@ jobs:
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
 
-  # Check if all tests passed and set the output variable
-  check_testing_matrix:
+      - name: Upload test results artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results-${{ matrix.containers }}
+          path: cypress/test-results-*.xml
+
+  upload-to-currents:
+    needs: testing
+    if: always()
     runs-on: ubuntu-latest
-    needs: [testing]
-    outputs:
-      all_tests_passed: ${{ steps.all_tests_passed.outputs.result }}
     steps:
-      - name: Check all tests passed
-        id: all_tests_passed
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download all test results
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: test-results
+
+      - name: Merge and upload to Currents
         run: |
-          success=true
-          for status in ${{ needs.testing.result }}; do
-            if [ $status != "success" ]; then
-              success=false
-              break
-            fi
-          done
-          echo "::set-output name=result::$success"
+          npm install -g @currents/cmd junit-report-merger
+          # Merge all XML files, so Currents can show a single view for Cypress
+          jrm combined-results.xml "test-results/**/test-results-*.xml"
+
+      - name: Upload merged XML as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: merged-junit-results
+          path: combined-results.xml
+
+      - name: Convert and upload to Currents
+        run: |
+          currents convert \
+            --input-format=junit \
+            --input-file=combined-results.xml \
+            --output-dir=.currents \
+            --framework=node \
+            --framework-version=cypress-14.4.0
+
+          currents upload \
+            --project-id=I0yzoc \
+            --key=${{ secrets.CURRENTS_RECORD_KEY }} \
+            --ci-build-id=n8n-io/n8n-${{ github.run_id }}-${{ github.run_attempt }} \
+            --report-dir=.currents \
+            --tag=cypress
