@@ -89,6 +89,7 @@ import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
 import IconLucideFunnel from '~icons/lucide/funnel';
+import IconLucideFullscreen from '~icons/lucide/fullscreen';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGift from '~icons/lucide/gift';
 import IconLucideGitBranch from '~icons/lucide/git-branch';
@@ -483,6 +484,7 @@ export const updatedIconSet = {
 	folder: IconLucideFolder,
 	'folder-open': IconLucideFolderOpen,
 	'folder-plus': IconLucideFolderPlus,
+	fullscreen: IconLucideFullscreen,
 	funnel: IconLucideFunnel,
 	gem: IconLucideGem,
 	gift: IconLucideGift,

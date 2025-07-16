@@ -11,6 +11,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { N8nIconButton } from '@n8n/design-system';
 
 interface Props {
 	parameter: INodeProperties;
@@ -176,6 +177,18 @@ const onViewSelected = (selected: string) => {
 			</n8n-text>
 		</div>
 		<div v-else :class="$style.controlsContainer">
+			<div>
+				<N8nTooltip v-if="hasFocusAction">
+					<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
+					<N8nIconButton
+						type="tertiary"
+						text
+						:class="$style.activator"
+						:icon="'fullscreen'"
+						@click="$emit('update:modelValue', 'focus')"
+					/>
+				</N8nTooltip>
+			</div>
 			<div
 				:class="{
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
