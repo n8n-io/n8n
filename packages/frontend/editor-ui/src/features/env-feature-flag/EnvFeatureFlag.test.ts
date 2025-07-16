@@ -1,30 +1,24 @@
-import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import EnvFeatureFlag from './EnvFeatureFlag.vue';
-import type { MockInstance } from 'vitest';
+import type { FrontendSettings } from '@n8n/api-types';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
+import { useSettingsStore } from '@/stores/settings.store';
 
+let pinia: ReturnType<typeof createTestingPinia>;
 const renderComponent = createComponentRenderer(EnvFeatureFlag, {
-	pinia: createTestingPinia(),
+	pinia,
 });
 
 describe('EnvFeatureFlag', () => {
-	const originalEnv = import.meta.env;
-	let consoleWarnSpy: MockInstance;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
-		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		// Reset env to clean state
-		const env = import.meta.env as Record<string, string | boolean | undefined>;
-		for (const key in env) {
-			if (key.startsWith('VUE_FEAT_')) {
-				delete env[key];
-			}
-		}
-	});
-
-	afterEach(() => {
-		consoleWarnSpy.mockRestore();
-		Object.assign(import.meta.env, originalEnv);
+		pinia = createTestingPinia();
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = {
+			envFeatureFlags: {},
+		} as FrontendSettings;
 	});
 
 	test.each([
@@ -35,27 +29,21 @@ describe('EnvFeatureFlag', () => {
 		['1', 'TEST_FLAG', true],
 		['on', 'TEST_FLAG', true],
 		[true, 'TEST_FLAG', true],
-		// Special case for numeric 0
-		// import.meta.env in Vite automatically converts all environment variables to strings
-		[0, 'TEST_FLAG', true],
 
 		// Falsy values that should not render content
 		['false', 'TEST_FLAG', false],
 		[false, 'TEST_FLAG', false],
 		['', 'TEST_FLAG', false],
 		[undefined, 'TEST_FLAG', false],
+		[0, 'TEST_FLAG', false],
 	])(
 		'should %s render slot content when feature flag value is %s',
 		(value, flagName, shouldRender) => {
-			const envKey = `VUE_FEAT_${flagName}`;
+			const envKey = `FEAT_${flagName}`;
 
-			if (value === undefined) {
-				Object.assign(import.meta.env, {});
-			} else {
-				Object.assign(import.meta.env, {
-					[envKey]: value,
-				});
-			}
+			settingsStore.settings.envFeatureFlags = {
+				[envKey]: value,
+			};
 
 			const { container } = renderComponent({
 				props: {
@@ -75,10 +63,6 @@ describe('EnvFeatureFlag', () => {
 	);
 
 	it('should render wrapper div regardless of feature flag state', () => {
-		Object.assign(import.meta.env, {
-			VUE_FEAT_TEST_FLAG: 'false',
-		});
-
 		const { container } = renderComponent({
 			props: {
 				name: 'TEST_FLAG',
@@ -88,14 +72,14 @@ describe('EnvFeatureFlag', () => {
 			},
 		});
 
-		expect(container.querySelector('div')).toBeTruthy();
+		expect(container.querySelectorAll('div')).toHaveLength(1);
 	});
 
 	it('should work with different flag names', () => {
-		Object.assign(import.meta.env, {
-			VUE_FEAT_WORKFLOW_DIFFS: 'true',
-			VUE_FEAT_ANOTHER_FEATURE: 'false',
-		});
+		settingsStore.settings.envFeatureFlags = {
+			FEAT_WORKFLOW_DIFFS: 'true',
+			FEAT_ANOTHER_FEATURE: 'false',
+		};
 
 		const { container: container1 } = renderComponent({
 			props: {
