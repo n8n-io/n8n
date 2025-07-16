@@ -1,3 +1,4 @@
+import { IWorkflowToImport } from '@/interfaces';
 import type {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -14,13 +15,9 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
@@ -51,6 +48,10 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class SourceControlService {
@@ -1052,7 +1053,7 @@ export class SourceControlService {
 		await this.gitService.setGitUserDetails(name, email);
 	}
 
-	async getFileContent({
+	async getRemoteFileEntity({
 		user,
 		type,
 		id,
@@ -1062,7 +1063,7 @@ export class SourceControlService {
 		type: SourceControlledFile['type'];
 		id?: string;
 		commit?: string;
-	}): Promise<string> {
+	}): Promise<IWorkflowToImport> {
 		await this.sanityCheck();
 		const context = new SourceControlContext(user);
 		switch (type) {
@@ -1072,10 +1073,11 @@ export class SourceControlService {
 				if (authorizedWorkflows && !authorizedWorkflows.find((wf) => wf.id === id)) {
 					throw new ForbiddenError(`You are not allowed to access workflow with id ${id}`);
 				}
-				return await this.gitService.getFileContent(
+				const content = await this.gitService.getFileContent(
 					`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${id}.json`,
 					commit,
 				);
+				return jsonParse<IWorkflowToImport>(content);
 			}
 			default:
 				throw new BadRequestError(`Unsupported file type: ${type}`);

@@ -383,35 +383,34 @@ describe('SourceControlService', () => {
 	});
 
 	describe('getFileContent', () => {
-		it.each([
-			{ type: 'workflow' as SourceControlledFile['type'], id: '1234', content: 'workflow content' },
-		])('should return file content for $type', async ({ type, id, content }) => {
-			jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
-			const user = mock<User>({ id: 'user-id', role: 'global:admin' });
+		it.each([{ type: 'workflow' as SourceControlledFile['type'], id: '1234', content: '{}' }])(
+			'should return file content for $type',
+			async ({ type, id, content }) => {
+				jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
+				const user = mock<User>({ id: 'user-id', role: 'global:admin' });
 
-			const result = await sourceControlService.getFileContent({ user, type, id });
+				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
 
-			expect(result).toBe(content);
-		});
+				expect(result).toEqual(JSON.parse(content));
+			},
+		);
 
 		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
 			'should throw an error if the file type is not handled',
 			async (type) => {
 				const user = mock<User>({ id: 'user-id', role: 'global:admin' });
 				await expect(
-					sourceControlService.getFileContent({ user, type, id: 'unknown' }),
+					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
 				).rejects.toThrow(`Unsupported file type: ${type}`);
 			},
 		);
 
 		it('should fail if the git service fails to get the file content', async () => {
-			jest
-				.spyOn(sourceControlService, 'getFileContent')
-				.mockRejectedValue(new Error('Git service error'));
+			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
 			const user = mock<User>({ id: 'user-id', role: 'global:admin' });
 
 			await expect(
-				sourceControlService.getFileContent({ user, type: 'workflow', id: '1234' }),
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
 			).rejects.toThrow('Git service error');
 		});
 
@@ -425,7 +424,7 @@ describe('SourceControlService', () => {
 				.mockResolvedValue([]);
 
 			await expect(
-				sourceControlService.getFileContent({ user, type: 'workflow', id: '1234' }),
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
 			).rejects.toThrow('You are not allowed to access workflow with id 1234');
 		});
 
@@ -434,14 +433,13 @@ describe('SourceControlService', () => {
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
-			jest.spyOn(gitService, 'getFileContent').mockResolvedValue('workflow content');
-			const result = await sourceControlService.getFileContent({
+			jest.spyOn(gitService, 'getFileContent').mockResolvedValue('{}');
+			const result = await sourceControlService.getRemoteFileEntity({
 				user,
 				type: 'workflow',
 				id: '1234',
 			});
-
-			expect(result).toBe('workflow content');
+			expect(result).toEqual({});
 		});
 	});
 });

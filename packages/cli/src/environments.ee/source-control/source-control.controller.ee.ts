@@ -5,10 +5,6 @@ import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decora
 import express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
 	sourceControlLicensedMiddleware,
@@ -22,6 +18,11 @@ import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowBase } from 'n8n-workflow';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -257,10 +258,14 @@ export class SourceControlController {
 	@Get('/remote-content/:type/:id', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getFileContent(
 		req: AuthenticatedRequest & { params: { type: SourceControlledFile['type']; id: string } },
-	) {
+	): Promise<{ content: Omit<IWorkflowBase, 'createdAt' | 'updatedAt'> }> {
 		try {
 			const { type, id } = req.params;
-			const content = await this.sourceControlService.getFileContent({ user: req.user, type, id });
+			const content = await this.sourceControlService.getRemoteFileEntity({
+				user: req.user,
+				type,
+				id,
+			});
 			return { content };
 		} catch (error) {
 			if (error instanceof ForbiddenError) {
