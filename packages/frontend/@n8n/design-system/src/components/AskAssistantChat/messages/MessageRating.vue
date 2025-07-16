@@ -172,6 +172,7 @@ function onCancelFeedback() {
 
 /* Minimal style specific */
 .minimal {
+	margin-top: 0;
 	.buttons {
 		gap: var(--spacing-3xs);
 	}

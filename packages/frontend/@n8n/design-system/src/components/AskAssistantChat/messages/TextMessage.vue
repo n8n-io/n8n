@@ -3,7 +3,6 @@ import { computed } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
-import { useMessageRating } from './useMessageRating';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
@@ -20,14 +19,13 @@ interface Props {
 	isLastMessage?: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const emit = defineEmits<{
 	rate: [rating: 'up' | 'down', feedback?: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
-const { ratingProps } = useMessageRating(props.message);
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
@@ -48,7 +46,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		:message="message"
 		:is-first-of-role="isFirstOfRole"
 		:user="user"
-		v-bind="ratingProps"
 		@rate="(rating, feedback) => emit('rate', rating, feedback)"
 	>
 		<div :class="$style.textMessage">

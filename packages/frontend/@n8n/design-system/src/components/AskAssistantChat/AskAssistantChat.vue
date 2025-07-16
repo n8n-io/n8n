@@ -36,7 +36,7 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	thumbsUp: [];
 	thumbsDown: [];
-	submitFeedback: [string];
+	submitFeedback: [{ feedback: string; rating: 'up' | 'down' }];
 }>();
 
 const onClose = () => emit('close');
@@ -109,20 +109,19 @@ function onRateMessage(rating: 'up' | 'down', feedback?: string) {
 		emit('thumbsDown');
 	}
 	if (feedback) {
-		emit('submitFeedback', feedback);
+		emit('submitFeedback', { feedback, rating });
 	}
 }
 
 function scrollToBottom() {
 	if (messagesRef.value) {
-		messagesRef.value.scrollTo({
+		messagesRef.value?.scrollTo({
 			top: messagesRef.value.scrollHeight,
 			behavior: 'smooth',
 		});
 	}
 }
 watch(sendDisabled, () => {
-	console.log('sendDisabled changed', chatInput.value);
 	chatInput.value?.focus();
 });
 watch(

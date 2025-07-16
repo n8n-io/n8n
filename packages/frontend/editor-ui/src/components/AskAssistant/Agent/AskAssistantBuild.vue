@@ -179,26 +179,27 @@ function onNewWorkflow() {
 }
 
 function onThumbsUp() {
-	helpful.value = true;
+	console.log('HELPFUL');
 	telemetry.track('User rated workflow generation', {
-		helpful: helpful.value,
+		helpful: true,
 		prompt: builderStore.workflowPrompt,
 		workflow_json: generatedWorkflowJson.value,
 	});
 }
 
 function onThumbsDown() {
-	helpful.value = false;
+	console.log('NOT HELPFUL');
 	telemetry.track('User rated workflow generation', {
-		helpful: helpful.value,
+		helpful: false,
 		prompt: builderStore.workflowPrompt,
 		workflow_json: generatedWorkflowJson.value,
 	});
 }
 
-function onSubmitFeedback(feedback: string) {
+function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up' | 'down' }) {
+	console.log('🚀 ~ onSubmitFeedback ~ feedback:', feedback, rating);
 	telemetry.track('User submitted workflow generation feedback', {
-		helpful: helpful.value,
+		helpful: rating === 'up',
 		feedback,
 		prompt: builderStore.workflowPrompt,
 		workflow_json: generatedWorkflowJson.value,

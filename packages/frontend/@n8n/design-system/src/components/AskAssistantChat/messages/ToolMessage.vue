@@ -22,7 +22,6 @@ const props = defineProps<Props>();
 const { t } = useI18n();
 
 const expanded = ref(false);
-
 const toolDisplayName = computed(() => {
 	// Convert tool names from snake_case to Title Case
 	return props.message.toolName

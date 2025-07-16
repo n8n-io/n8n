@@ -34,11 +34,44 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('vue-router', () => {
+	const params = {};
+	const push = vi.fn();
+	const replace = vi.fn();
+	const resolve = vi.fn().mockImplementation(() => ({ href: '' }));
+	return {
+		useRoute: () => ({
+			params,
+		}),
+		useRouter: () => ({
+			push,
+			replace,
+			resolve,
+		}),
+		RouterLink: vi.fn(),
+	};
+});
+
+vi.mock('@/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: vi.fn().mockReturnValue({
+		getCurrentWorkflow: vi.fn(),
+		saveCurrentWorkflow: vi.fn(),
+		getWorkflowDataToSave: vi.fn(),
+		setDocumentTitle: vi.fn(),
+		executeData: vi.fn(),
+		getNodeTypes: vi.fn().mockReturnValue([]),
+	}),
+}));
+
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
+
+	beforeAll(() => {
+		Element.prototype.scrollTo = vi.fn(() => {});
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -115,9 +148,10 @@ describe('AskAssistantBuild', () => {
 				{
 					id: faker.string.uuid(),
 					role: 'assistant',
-					type: 'rate-workflow',
+					type: 'text',
+					content: 'Wat',
 					read: true,
-					content: '',
+					showRating: true,
 				},
 			];
 		});

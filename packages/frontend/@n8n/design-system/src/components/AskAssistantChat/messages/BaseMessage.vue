@@ -14,16 +14,9 @@ interface Props {
 		firstName: string;
 		lastName: string;
 	};
-	showRating?: boolean;
-	ratingStyle?: 'regular' | 'minimal';
-	showFeedback?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-	showRating: false,
-	ratingStyle: 'regular',
-	showFeedback: true,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	rate: [rating: 'up' | 'down', feedback?: string];
@@ -55,9 +48,9 @@ function onRate(rating: 'up' | 'down', feedback?: string) {
 		</div>
 		<slot></slot>
 		<MessageRating
-			v-if="showRating && !isUserMessage"
-			:style="ratingStyle"
-			:show-feedback="showFeedback"
+			v-if="message.showRating && !isUserMessage"
+			:style="message.ratingStyle"
+			:show-feedback="message.showFeedback"
 			@rate="onRate"
 		/>
 	</div>
