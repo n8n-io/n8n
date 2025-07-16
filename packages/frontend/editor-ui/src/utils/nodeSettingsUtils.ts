@@ -304,9 +304,14 @@ export function updateParameterByPath(
 		const index = parameterPathArray[2];
 		const data = get(nodeParameters, path);
 
+		// Fix: Prevent crash when deleting array item by checking bounds and making a copy to avoid Vue reactivity issues
 		if (Array.isArray(data)) {
-			data.splice(parseInt(index, 10), 1);
-			set(nodeParameters as object, path, data);
+			const idx = parseInt(index, 10);
+			if (idx >= 0 && idx < data.length) {
+				const newData = data.slice(); // make a shallow copy for Vue reactivity
+				newData.splice(idx, 1);
+				set(nodeParameters as object, path, newData);
+			}
 		}
 	} else {
 		if (newValue === undefined) {
