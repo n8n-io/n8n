@@ -827,7 +827,7 @@ function handleWheelEvent(event: WheelEvent) {
 		}"
 		@keydown.stop
 	>
-		<div v-if="!isNDVV2" :class="$style.header">
+		<div v-if="!isNDVV2 || isEmbeddedInCanvas" class="header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -835,6 +835,7 @@ function handleWheelEvent(event: WheelEvent) {
 					:model-value="node.name"
 					:node-type="nodeType"
 					:read-only="isReadOnly"
+					:size="isEmbeddedInCanvas ? 'small' : 'medium'"
 					@update:model-value="nameChanged"
 				/>
 				<template v-if="isExecutable || slots.actions">
@@ -858,6 +859,7 @@ function handleWheelEvent(event: WheelEvent) {
 				:model-value="openPanel"
 				:node-type="nodeType"
 				:push-ref="pushRef"
+				:tabs-variant="isEmbeddedInCanvas ? 'modern' : 'legacy'"
 				@update:model-value="onTabSelect"
 			/>
 		</div>
@@ -1048,10 +1050,6 @@ function handleWheelEvent(event: WheelEvent) {
 </template>
 
 <style lang="scss" module>
-.header {
-	background-color: var(--color-background-base);
-}
-
 .warningIcon {
 	color: var(--color-text-lighter);
 	font-size: var(--font-size-2xl);
@@ -1080,6 +1078,16 @@ function handleWheelEvent(event: WheelEvent) {
 </style>
 
 <style lang="scss" scoped>
+.header {
+	.node-settings.embedded & {
+		border-bottom: var(--border-base);
+	}
+
+	.node-settings:not(.embedded) & {
+		background-color: var(--color-background-base);
+	}
+}
+
 .node-settings {
 	display: flex;
 	flex-direction: column;
@@ -1104,7 +1112,9 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	&.embedded .header-side-menu {
-		padding: var(--spacing-xs);
+		padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
+		border-bottom: var(--border-base);
+		margin-bottom: var(--spacing-xs);
 	}
 
 	.node-is-not-valid {

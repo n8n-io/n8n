@@ -9,12 +9,13 @@ type Props = {
 	modelValue: string;
 	nodeType?: INodeTypeDescription | null;
 	readOnly?: boolean;
+	size?: 'small' | 'medium';
 };
 
-withDefaults(defineProps<Props>(), {
-	modelValue: '',
+const { size } = withDefaults(defineProps<Props>(), {
 	nodeType: undefined,
 	readOnly: false,
+	size: 'medium',
 });
 
 const emit = defineEmits<{
@@ -32,7 +33,10 @@ const { width } = useElementSize(wrapperRef);
 </script>
 
 <template>
-	<span :class="$style.container" data-test-id="node-title-container">
+	<span
+		:class="[$style.container, size === 'small' ? $style.small : '']"
+		data-test-id="node-title-container"
+	>
 		<span :class="$style.iconWrapper">
 			<NodeIcon :node-type="nodeType" :size="18" :show-tooltip="true" tooltip-position="left" />
 		</span>
@@ -55,6 +59,10 @@ const { width } = useElementSize(wrapperRef);
 	margin-right: var(--spacing-s);
 	color: var(--color-text-dark);
 	width: 100%;
+
+	&.small {
+		font-size: var(--font-size-s);
+	}
 }
 
 .textWrapper {

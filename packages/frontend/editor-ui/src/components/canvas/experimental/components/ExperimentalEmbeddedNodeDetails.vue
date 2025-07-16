@@ -13,6 +13,7 @@ import { useActiveElement, watchOnce } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -118,6 +119,12 @@ function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
 }
 
+function handleOpenNdv() {
+	if (node.value) {
+		ndvStore.setActiveNodeName(node.value.name);
+	}
+}
+
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
@@ -159,26 +166,51 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 				:is-read-only="isReadOnly"
 			>
 				<template #actions>
-					<N8nIconButton
-						icon="minimize-2"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Toggle expand"
-						@click="handleToggleExpand"
-					/>
+					<div :class="$style.actions">
+						<CanvasNodeStatusIcons size="small" spinner-scrim :class="$style.icon" />
+						<N8nIconButton
+							icon="maximize-2"
+							type="secondary"
+							text
+							size="mini"
+							icon-size="small"
+							aria-label="Open..."
+							@click="handleOpenNdv"
+						/>
+						<N8nIconButton
+							icon="chevron-down"
+							type="secondary"
+							text
+							size="mini"
+							icon-size="medium"
+							aria-label="Toggle expand"
+							@click="handleToggleExpand"
+						/>
+					</div>
 				</template>
 			</ExperimentalCanvasNodeSettings>
-			<div v-else role="button " :class="$style.collapsedContent" @click="handleToggleExpand">
+			<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
 				<NodeTitle
 					v-if="node"
-					class="node-name"
+					:class="$style.collapsedNodeName"
 					:model-value="node.name"
 					:node-type="nodeType"
 					read-only
+					:is-node-disabled="node.disabled ?? false"
 				/>
-				<N8nIcon icon="maximize-2" size="large" />
+				<div :class="$style.actions">
+					<CanvasNodeStatusIcons size="small" :class="$style.icon" />
+					<N8nIconButton
+						icon="maximize-2"
+						type="secondary"
+						text
+						size="mini"
+						icon-size="small"
+						aria-label="Open..."
+						@click.stop="handleOpenNdv"
+					/>
+					<N8nIcon icon="chevron-up" size="medium" :class="$style.icon" />
+				</div>
 			</div>
 			<Transition name="input">
 				<div
@@ -220,6 +252,9 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
 	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
+	overflow: hidden;
+
+	--canvas-node--border-color: var(--border-color-base);
 
 	&.expanded {
 		cursor: default;
@@ -256,23 +291,38 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	height: 100%;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing-s);
+	gap: var(--spacing-4xs);
 	background-color: white;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs) var(--spacing-2xs);
 	background-color: var(--color-background-xlight);
 	color: var(--color-text-base);
 	cursor: pointer;
 
 	& > * {
-		zoom: calc(var(--zoom) * 1.25);
+		zoom: var(--zoom);
+		flex-grow: 0;
+		flex-shrink: 0;
 	}
+}
+
+.collapsedNodeName {
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 
 .settingsView {
 	& > * {
 		zoom: var(--zoom);
 	}
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+}
+
+.icon {
+	margin-inline: var(--spacing-2xs);
 }
 
 .inputPanelContainer {

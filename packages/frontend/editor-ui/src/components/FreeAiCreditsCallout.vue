@@ -85,38 +85,38 @@ const onClaimCreditsClicked = async () => {
 };
 </script>
 <template>
-	<div class="mt-xs">
-		<n8n-callout
-			v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
-			theme="secondary"
-			icon="circle-alert"
-		>
+	<n8n-callout
+		v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
+		theme="secondary"
+		icon="circle-alert"
+		class="mt-xs"
+	>
+		{{
+			i18n.baseText('freeAi.credits.callout.claim.title', {
+				interpolate: { credits: settingsStore.aiCreditsQuota },
+			})
+		}}
+		<template #trailingContent>
+			<n8n-button
+				type="tertiary"
+				size="small"
+				:label="i18n.baseText('freeAi.credits.callout.claim.button.label')"
+				:loading="claimingCredits"
+				@click="onClaimCreditsClicked"
+			/>
+		</template>
+	</n8n-callout>
+	<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="circle-check" class="mt-xs">
+		<n8n-text size="small">
 			{{
-				i18n.baseText('freeAi.credits.callout.claim.title', {
+				i18n.baseText('freeAi.credits.callout.success.title.part1', {
 					interpolate: { credits: settingsStore.aiCreditsQuota },
 				})
-			}}
-			<template #trailingContent>
-				<n8n-button
-					type="tertiary"
-					size="small"
-					:label="i18n.baseText('freeAi.credits.callout.claim.button.label')"
-					:loading="claimingCredits"
-					@click="onClaimCreditsClicked"
-				/>
-			</template>
-		</n8n-callout>
-		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="circle-check">
-			<n8n-text size="small">
-				{{
-					i18n.baseText('freeAi.credits.callout.success.title.part1', {
-						interpolate: { credits: settingsStore.aiCreditsQuota },
-					})
-				}}</n8n-text
-			>&nbsp;
-			<n8n-text size="small" :bold="true">
-				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
-			>
-		</n8n-callout>
-	</div>
+			}}</n8n-text
+		>&nbsp;
+		<n8n-text size="small" :bold="true">
+			{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
+		>
+	</n8n-callout>
+	<div v-else />
 </template>
