@@ -135,7 +135,7 @@ function onAskAssistantButtonClick() {
 			<n8n-icon-button
 				type="tertiary"
 				size="large"
-				icon="list"
+				icon="panel-right"
 				@click="focusPanelStore.toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
