@@ -70,7 +70,7 @@ onMounted(async () => {
 				<N8nLink theme="text" @click="openSettingsPage">
 					<N8nText size="small" color="primary" bold> Manage </N8nText>
 				</N8nLink>
-				<N8nText size="small" color="primary" bold>|</N8nText>
+				<N8nText size="small" style="color: var(--color-foreground-base)" bold>|</N8nText>
 			</template>
 			<N8nLink theme="text" @click="openIssuesPage">
 				<N8nText size="small" color="primary" bold> Report issue </N8nText>
