@@ -16,7 +16,7 @@ describe('EnvFeatureFlag', () => {
 		// Reset env to clean state
 		const env = import.meta.env as Record<string, string | boolean | undefined>;
 		for (const key in env) {
-			if (key.startsWith('FEAT_')) {
+			if (key.startsWith('VITE_FEAT_')) {
 				delete env[key];
 			}
 		}
@@ -47,7 +47,7 @@ describe('EnvFeatureFlag', () => {
 	])(
 		'should %s render slot content when feature flag value is %s',
 		(value, flagName, shouldRender) => {
-			const envKey = `FEAT_${flagName}`;
+			const envKey = `VITE_FEAT_${flagName}`;
 
 			if (value === undefined) {
 				Object.assign(import.meta.env, {});
@@ -84,12 +84,14 @@ describe('EnvFeatureFlag', () => {
 			},
 		});
 
-		expect(consoleWarnSpy).toHaveBeenCalledWith('[useFeatureFlag] Missing env var: FEAT_TEST_FLAG');
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			'[useFeatureFlag] Missing env var: VITE_FEAT_TEST_FLAG',
+		);
 	});
 
 	it('should not warn when feature flag is defined', () => {
 		Object.assign(import.meta.env, {
-			FEAT_TEST_FLAG: 'true',
+			VITE_FEAT_TEST_FLAG: 'true',
 		});
 
 		renderComponent({
@@ -106,7 +108,7 @@ describe('EnvFeatureFlag', () => {
 
 	it('should render wrapper div regardless of feature flag state', () => {
 		Object.assign(import.meta.env, {
-			FEAT_TEST_FLAG: 'false',
+			VITE_FEAT_TEST_FLAG: 'false',
 		});
 
 		const { container } = renderComponent({
@@ -123,8 +125,8 @@ describe('EnvFeatureFlag', () => {
 
 	it('should work with different flag names', () => {
 		Object.assign(import.meta.env, {
-			FEAT_WORKFLOW_DIFFS: 'true',
-			FEAT_ANOTHER_FEATURE: 'false',
+			VITE_FEAT_WORKFLOW_DIFFS: 'true',
+			VITE_FEAT_ANOTHER_FEATURE: 'false',
 		});
 
 		const { container: container1 } = renderComponent({
