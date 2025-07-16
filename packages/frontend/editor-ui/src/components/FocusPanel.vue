@@ -334,9 +334,13 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:hide-label="true"
 								telemetry-source="focus"
 							></NodeExecuteButton>
-							<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
-								<n8n-icon icon="x" color="text-base" size="xlarge" />
-							</div>
+							<N8nIcon
+								:class="$style.closeButton"
+								icon="x"
+								color="text-base"
+								size="xlarge"
+								@click="focusPanelStore.closeFocusPanel"
+							/>
 						</div>
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
@@ -495,10 +499,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	height: 100%;
 }
 
-.closeButton:hover {
-	cursor: pointer;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -592,6 +592,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			}
 		}
 	}
+}
+
+.closeButton {
+	cursor: pointer;
 }
 
 .heightFull {
