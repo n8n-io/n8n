@@ -121,6 +121,23 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
+const getChatResponseMode = (workflowStartNode: INode, method: string) => {
+	const parameters = workflowStartNode.parameters as {
+		public: boolean;
+		options?: { responseMode: string };
+	};
+
+	if (workflowStartNode.type !== CHAT_TRIGGER_NODE_TYPE) return undefined;
+
+	if (method === 'GET') return 'onReceived';
+
+	if (method === 'POST' && parameters.options?.responseMode === 'responseNodes') {
+		return 'hostedChat';
+	}
+
+	return undefined;
+};
+
 // eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
@@ -143,14 +160,8 @@ export function autoDetectResponseMode(
 		}
 	}
 
-	if (
-		workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
-		method === 'POST' &&
-		workflowStartNode.parameters.public &&
-		(workflowStartNode.parameters.options as { responseMode: string })?.responseMode !== 'streaming'
-	) {
-		return 'hostedChat';
-	}
+	const chatResponseMode = getChatResponseMode(workflowStartNode, method);
+	if (chatResponseMode) return chatResponseMode;
 
 	// If there are form nodes connected to a current form node we're dealing with a multipage form
 	// and we need to return the formPage response mode when a second page of the form gets submitted

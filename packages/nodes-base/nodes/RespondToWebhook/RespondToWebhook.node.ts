@@ -356,7 +356,9 @@ export class RespondToWebhook implements INodeType {
 
 		let response: IN8nHttpFullResponse;
 
-		const connectedNodes = this.getParentNodes(this.getNode().name);
+		const connectedNodes = this.getParentNodes(this.getNode().name, {
+			includeNodeParameters: true,
+		});
 
 		const options = this.getNodeParameter('options', 0, {});
 
@@ -521,7 +523,17 @@ export class RespondToWebhook implements INodeType {
 				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
 			);
 
-			if (chatTrigger && !chatTrigger.disabled) {
+			const parameters = chatTrigger?.parameters as {
+				options: { responseMode: string };
+			};
+
+			// if workflow is started from chat trigger and responseMode is set to "responseNodes"
+			// response to chat will be send by ChatService
+			if (
+				chatTrigger &&
+				!chatTrigger.disabled &&
+				parameters.options.responseMode === 'responseNodes'
+			) {
 				let message = '';
 
 				if (responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)) {

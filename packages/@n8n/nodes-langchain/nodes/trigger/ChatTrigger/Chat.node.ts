@@ -144,6 +144,13 @@ export class Chat implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName:
+					"Verify that the 'Chat Trigger' node's 'Response Mode' option is set to 'Respond Nodes'",
+				name: 'generalNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
@@ -224,12 +231,22 @@ export class Chat implements INodeType {
 			);
 		}
 
-		if (
-			(chatTrigger.parameters?.options as { responseMode: string })?.responseMode === 'streaming'
-		) {
+		const parameters = chatTrigger.parameters as {
+			mode?: 'hostedChat' | 'webhook';
+			options: { responseMode: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
+		};
+
+		if (parameters.mode === 'webhook') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Streaming mode is not supported, change it in chat trigger node to "Last Node" or "Respond to Webhook" node',
+				'"Embeded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
+			);
+		}
+
+		if (parameters.options.responseMode !== 'responseNodes') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'"Response Mode" in the chat trigger node must be set to "Respond Nodes"',
 			);
 		}
 

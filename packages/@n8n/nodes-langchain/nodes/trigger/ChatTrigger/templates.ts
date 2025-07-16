@@ -77,7 +77,8 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/n8n-chat-atekron@0.48.0/dist/chat.bundle.es.js';
+				// import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+				import { createChat } from 'http://localhost:6006/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';

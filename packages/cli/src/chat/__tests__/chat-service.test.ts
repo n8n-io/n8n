@@ -361,7 +361,6 @@ describe('ChatService', () => {
 				workflowData: { nodes: [{ type: 'n8n-core.respondToWebhook', name: 'node1' }] },
 				mode: 'manual',
 			} as any);
-			(chatService as any).isResponseNodeMode = jest.fn().mockReturnValue(true);
 
 			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
 				sessionKey,

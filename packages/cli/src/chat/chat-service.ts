@@ -12,13 +12,7 @@ import {
 	type ChatRequest,
 	Session,
 } from './chat-service.types';
-import {
-	getLastNodeExecuted,
-	getMessage,
-	isResponseNodeMode,
-	prepareMessageFromLastNode,
-	shouldResumeImmediately,
-} from './utils';
+import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
 import { ErrorReporter } from 'n8n-core';
 import { IExecutionResponse } from '@n8n/db';
 
@@ -157,20 +151,9 @@ export class ChatService {
 		}
 	}
 
-	private processSuccessExecution(execution: IExecutionResponse, session: Session) {
-		const shouldNotReturnLastNodeResponse =
-			!session.isPublic || (session.isPublic && isResponseNodeMode(execution));
-
-		if (shouldNotReturnLastNodeResponse) {
-			closeConnection(session.connection);
-			return;
-		}
-
-		const textMessage = prepareMessageFromLastNode(execution);
-
-		session.connection.send(textMessage, () => {
-			closeConnection(session.connection);
-		});
+	private processSuccessExecution(session: Session) {
+		closeConnection(session.connection);
+		return;
 	}
 
 	private waitForChatResponseOrContinue(execution: IExecutionResponse, session: Session) {
@@ -209,7 +192,7 @@ export class ChatService {
 				}
 
 				if (execution.status === 'success') {
-					this.processSuccessExecution(execution, session);
+					this.processSuccessExecution(session);
 					return;
 				}
 			} catch (e) {

@@ -62,6 +62,12 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			)?.allowedFilesMimeTypes?.toString() ?? '',
 	);
 
+	const respondNodesResponseMode = computed(
+		() =>
+			(chatTriggerNode.value?.parameters?.options as { responseMode?: string })?.responseMode ===
+			'responseNodes',
+	);
+
 	const { sendMessage, isLoading, setLoadingState } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
 		messages,
@@ -165,40 +171,43 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		const response = await runWorkflow(runWorkflowOptions);
 
 		if (response) {
-			const wsUrl = constructChatWebsocketUrl(
-				rootStore.urlBaseEditor,
-				response.executionId as string,
-				currentSessionId.value,
-				false,
-			);
+			if (respondNodesResponseMode.value) {
+				const wsUrl = constructChatWebsocketUrl(
+					rootStore.urlBaseEditor,
+					response.executionId as string,
+					currentSessionId.value,
+					false,
+				);
 
-			ws.value = new WebSocket(wsUrl);
-			ws.value.onmessage = (event) => {
-				if (event.data === 'n8n|heartbeat') {
-					ws.value?.send('n8n|heartbeat-ack');
-					return;
-				}
-				if (event.data === 'n8n|continue') {
-					setLoadingState(true);
-					return;
-				}
-				setLoadingState(false);
-				const newMessage: ChatMessage & { sessionId: string } = {
-					text: event.data,
-					sender: 'bot',
-					sessionId: currentSessionId.value,
-					id: uuid(),
+				ws.value = new WebSocket(wsUrl);
+				ws.value.onmessage = (event) => {
+					if (event.data === 'n8n|heartbeat') {
+						ws.value?.send('n8n|heartbeat-ack');
+						return;
+					}
+					if (event.data === 'n8n|continue') {
+						setLoadingState(true);
+						return;
+					}
+					setLoadingState(false);
+					const newMessage: ChatMessage & { sessionId: string } = {
+						text: event.data,
+						sender: 'bot',
+						sessionId: currentSessionId.value,
+						id: uuid(),
+					};
+					messages.value.push(newMessage);
+
+					if (logsStore.isOpen) {
+						chatEventBus.emit('focusInput');
+					}
 				};
-				messages.value.push(newMessage);
+				ws.value.onclose = () => {
+					setLoadingState(false);
+					ws.value = null;
+				};
+			}
 
-				if (logsStore.isOpen) {
-					chatEventBus.emit('focusInput');
-				}
-			};
-			ws.value.onclose = () => {
-				setLoadingState(false);
-				ws.value = null;
-			};
 			await createExecutionPromise();
 			workflowsStore.appendChatMessage(payload.message);
 			return response;
