@@ -5,7 +5,7 @@ import { HIGHEST_SHUTDOWN_PRIORITY, LOWEST_SHUTDOWN_PRIORITY } from './constants
 import type { ShutdownHandler } from './types';
 
 @Service()
-export class ShutdownRegistryMetadata {
+export class ShutdownMetadata {
 	private handlersByPriority: ShutdownHandler[][] = [];
 
 	register(priority: number, handler: ShutdownHandler) {

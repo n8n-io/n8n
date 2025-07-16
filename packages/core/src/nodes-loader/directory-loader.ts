@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { isContainedWithin, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -16,7 +16,7 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { ApplicationError, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -383,6 +383,13 @@ export abstract class DirectoryLoader {
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+
+		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+			throw new UnexpectedError(
+				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
+			);
+		}
+
 		return `icons/${this.packageName}/${iconPath}`;
 	}
 

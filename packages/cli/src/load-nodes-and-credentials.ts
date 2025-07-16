@@ -1,4 +1,4 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -31,7 +31,6 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { isContainedWithin } from '@/utils/path-util';
 
 @Service()
 export class LoadNodesAndCredentials {
