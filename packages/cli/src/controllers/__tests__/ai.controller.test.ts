@@ -126,8 +126,8 @@ describe('AiController', () => {
 
 		it('should handle build request successfully', async () => {
 			const mockChunks = [
-				{ messages: [{ role: 'assistant', type: 'message', text: 'Building...' }] },
-				{ messages: [{ role: 'assistant', type: 'workflow-updated', codeSnippet: '{}' }] },
+				{ messages: [{ role: 'assistant', type: 'message', text: 'Building...' } as const] },
+				{ messages: [{ role: 'assistant', type: 'workflow-updated', codeSnippet: '{}' } as const] },
 			];
 
 			// Create an async generator that yields chunks
@@ -169,7 +169,7 @@ describe('AiController', () => {
 
 			// Create an async generator that throws an error
 			async function* mockChatGeneratorWithError() {
-				yield { messages: [{ role: 'assistant', type: 'message', text: 'Starting...' }] };
+				yield { messages: [{ role: 'assistant', type: 'message', text: 'Starting...' } as const] };
 				throw mockError;
 			}
 
