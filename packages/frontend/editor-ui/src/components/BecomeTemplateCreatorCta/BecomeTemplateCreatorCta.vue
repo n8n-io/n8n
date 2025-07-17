@@ -72,7 +72,6 @@ const onClick = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-2xs);
 	height: var(--spacing-2xs);
 	border: none;
 	color: var(--color-text-light);
