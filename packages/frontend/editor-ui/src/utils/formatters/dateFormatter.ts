@@ -1,4 +1,5 @@
 import dateformat from 'dateformat';
+import { i18n } from '@n8n/i18n';
 
 export const convertToDisplayDateComponents = (
 	fullDate: Date | string | number,
@@ -35,15 +36,17 @@ export const formatTimeAgo = (fullDate: Date | string): string => {
 	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
 	if (diffInDays === 0) {
-		return 'Today';
+		return i18n.baseText('userActivity.today');
 	} else if (diffInDays === 1) {
-		return 'Yesterday';
+		return i18n.baseText('userActivity.yesterday');
 	} else if (diffInDays >= 2 && diffInDays <= 6) {
 		return dateformat(date, 'dddd');
 	} else if (diffInDays >= 7 && diffInDays <= 13) {
-		return `Last ${dateformat(date, 'dddd')}`;
+		return i18n.baseText('userActivity.lastTime', {
+			interpolate: { time: dateformat(date, 'dddd') },
+		});
 	} else if (diffInDays >= 14 && diffInDays <= 30) {
-		return `${diffInDays} days ago`;
+		return i18n.baseText('userActivity.daysAgo', { interpolate: { count: diffInDays.toString() } });
 	} else {
 		return dateformat(date, 'mmmm d, yyyy');
 	}
