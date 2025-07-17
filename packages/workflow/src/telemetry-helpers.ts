@@ -1,5 +1,6 @@
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
@@ -456,7 +457,7 @@ export function generateNodesGraph(
 					(((node.parameters?.messages as IDataObject) ?? {}).values as IDataObject[]) ?? [];
 			}
 
-			if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			if (node.type === AGENT_LANGCHAIN_NODE_TYPE || node.type === AGENT_TOOL_LANGCHAIN_NODE_TYPE) {
 				const prompts: IDataObject = {};
 
 				if (node.parameters?.text) {
