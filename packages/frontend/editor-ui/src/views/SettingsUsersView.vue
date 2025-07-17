@@ -392,7 +392,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true"
 					>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
-					<N8nBadge class="ml-4xs">{{ i18n.baseText('generic.upgrade') }}</N8nBadge></N8nText
+					<N8nBadge v-if="!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA]" class="ml-4xs">{{ i18n.baseText('generic.upgrade') }}</N8nBadge>
 				>
 				<N8nText size="small" color="text-light">{{
 					i18n.baseText('settings.personal.mfa.enforce.message')
