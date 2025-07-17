@@ -79,6 +79,30 @@ const containerRef = useTemplateRef('container');
 const inputPanelRef = useTemplateRef('inputPanel');
 const activeElement = useActiveElement();
 
+const subTitle = computed(() => {
+	if (node.value?.disabled) {
+		return `(${i18n.baseText('node.disabled')})`;
+	}
+
+	const displayName = nodeType.value?.displayName ?? '';
+
+	if (isExpanded.value) {
+		return displayName;
+	}
+
+	const selectedOperation = node.value?.parameters.operation;
+	const selectedOperationDisplayName =
+		selectedOperation &&
+		nodeType.value?.properties
+			.find((p) => p.name === 'operation')
+			?.options?.find((o) => 'value' in o && o.value === selectedOperation)?.name;
+
+	if (!selectedOperationDisplayName) {
+		return displayName;
+	}
+
+	return `${displayName}: ${selectedOperationDisplayName}`;
+});
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) {
 		return undefined;
@@ -170,7 +194,11 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 <template>
 	<div
 		ref="container"
-		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
+		:class="[
+			$style.component,
+			isExpanded ? $style.expanded : $style.collapsed,
+			node?.disabled ? $style.disabled : '',
+		]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
@@ -195,18 +223,10 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 							!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
 						"
 						:is-read-only="isReadOnly"
+						:sub-title="subTitle"
 					>
 						<template #actions>
 							<div :class="$style.actions">
-								<N8nText
-									v-if="node.disabled"
-									size="small"
-									bold
-									color="text-light"
-									:class="$style.disabledText"
-								>
-									({{ i18n.baseText('node.disabled') }})
-								</N8nText>
 								<div :class="$style.icon">
 									<CanvasNodeStatusIcons size="small" spinner-scrim />
 								</div>
@@ -262,6 +282,8 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 					:node-type="nodeType"
 					read-only
 					:is-node-disabled="node.disabled ?? false"
+					:sub-title="subTitle"
+					layout="stacked"
 				/>
 				<div :class="$style.actions">
 					<div :class="$style.icon">
@@ -303,7 +325,7 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	}
 	&.collapsed {
 		overflow: hidden;
-		height: var(--spacing-3xl);
+		height: var(--spacing-2xl);
 	}
 }
 
@@ -322,7 +344,7 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 
 	height: auto;
 	max-height: calc(min(calc(var(--canvas-node--height) * 2), 300px) - var(--border-width-base) * 2);
-	min-height: var(--spacing-3xl); // should be multiple of GRID_SIZE
+	min-height: var(--spacing-2xl); // should be multiple of GRID_SIZE
 }
 
 .collapsedContent {
@@ -336,6 +358,10 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	color: var(--color-text-base);
 	cursor: pointer;
 
+	.disabled & {
+		background-color: var(--color-foreground-light);
+	}
+
 	& > * {
 		zoom: var(--zoom);
 		flex-grow: 0;
@@ -344,8 +370,10 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 }
 
 .collapsedNodeName {
+	width: 0;
 	flex-grow: 1;
-	flex-shrink: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .settingsView {
@@ -361,10 +389,6 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	& > button {
 		color: var(--color-text-light);
 	}
-}
-
-.disabledText {
-	margin-right: var(--spacing-2xs);
 }
 
 .icon {

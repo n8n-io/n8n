@@ -163,7 +163,7 @@ function onActivate(event: MouseEvent) {
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 	</div>
 </template>
 

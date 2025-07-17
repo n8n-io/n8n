@@ -69,6 +69,7 @@ const props = withDefaults(
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		noWheel?: boolean;
+		subTitle?: string;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -79,6 +80,7 @@ const props = withDefaults(
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		noWheel: false,
+		subTitle: undefined,
 	},
 );
 
@@ -837,6 +839,8 @@ function handleWheelEvent(event: WheelEvent) {
 					:node-type="nodeType"
 					:read-only="isReadOnly"
 					:size="isEmbeddedInCanvas ? 'small' : 'medium'"
+					:sub-title="subTitle"
+					:fit-width="!isEmbeddedInCanvas"
 					@update:model-value="nameChanged"
 				/>
 				<template v-if="isExecutable || slots.actions">
@@ -1109,6 +1113,7 @@ function handleWheelEvent(event: WheelEvent) {
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
+			margin-right: var(--spacing-s);
 		}
 	}
 
@@ -1120,6 +1125,12 @@ function handleWheelEvent(event: WheelEvent) {
 
 	&.embedded.disabled .header-side-menu {
 		background-color: var(--color-foreground-light);
+	}
+
+	&.embedded .node-name {
+		width: 0;
+		flex-grow: 1;
+		overflow-x: hidden;
 	}
 
 	.node-is-not-valid {
