@@ -41,7 +41,7 @@ export class NodeSearchEngine {
 					results.push(this.createSearchResult(nodeType, score));
 				}
 			} catch (error) {
-				// console.error(`Error processing node type "${nodeType.name}":`, error);
+				// Ignore errors for now
 			}
 		}
 
@@ -78,7 +78,7 @@ export class NodeSearchEngine {
 					}
 				}
 			} catch (error) {
-				// console.error(`Error processing node type "${nodeType.name}":`, error);
+				// Ignore errors for now
 			}
 		}
 

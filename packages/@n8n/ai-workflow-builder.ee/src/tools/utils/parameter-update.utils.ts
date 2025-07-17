@@ -85,47 +85,6 @@ export function validateParameters(
 }
 
 /**
- * Format node definition for LLM consumption
- * Extracts relevant parameter information from node type
- */
-export function formatNodeDefinition(nodeType: INodeTypeDescription): string {
-	const lines: string[] = [
-		`Node Type: ${nodeType.name}`,
-		`Display Name: ${nodeType.displayName}`,
-		`Description: ${nodeType.description}`,
-		'',
-		'Parameters:',
-	];
-
-	if (nodeType.properties && nodeType.properties.length > 0) {
-		for (const prop of nodeType.properties) {
-			lines.push(`- ${prop.name}:`);
-			lines.push(`  Type: ${prop.type}`);
-			lines.push(`  Display Name: ${prop.displayName}`);
-			if (prop.description) {
-				lines.push(`  Description: ${prop.description}`);
-			}
-			if (prop.required) {
-				lines.push('  Required: true');
-			}
-			if (prop.default !== undefined) {
-				lines.push(`  Default: ${JSON.stringify(prop.default)}`);
-			}
-			if (prop.options && Array.isArray(prop.options)) {
-				lines.push(
-					`  Options: ${prop.options.map((opt) => (opt as { value?: string; name?: string }).value ?? (opt as { value?: string; name?: string }).name).join(', ')}`,
-				);
-			}
-			lines.push('');
-		}
-	} else {
-		lines.push('No parameters defined');
-	}
-
-	return lines.join('\n');
-}
-
-/**
  * Create a copy of node with updated parameters
  */
 export function updateNodeWithParameters(node: INode, newParameters: INodeParameters): INode {

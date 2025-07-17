@@ -27,7 +27,6 @@ export class ParameterUpdatePromptBuilder {
 	 * Builds a dynamic system prompt based on the context
 	 */
 	static buildSystemPrompt(context: PromptBuilderContext): string {
-		// const config = context.config || DEFAULT_PROMPT_CONFIG;
 		const options = context.options ?? {};
 		const sections: string[] = [];
 

@@ -58,19 +58,3 @@ export const anthropicClaudeSonnet4 = async (config: LLMProviderConfig) => {
 		},
 	});
 };
-
-export const kimiK2 = async (config: LLMProviderConfig) => {
-	const { ChatAnthropic } = await import('@langchain/anthropic');
-	return new ChatAnthropic({
-		model: 'kimi-k2-0711-preview',
-		apiKey: config.apiKey,
-		temperature: 0.6,
-		topP: 1,
-		maxTokens: -1,
-		anthropicApiUrl: 'https://api.moonshot.ai/anthropic',
-		clientOptions: {
-			baseURL: 'https://api.moonshot.ai/anthropic',
-			defaultHeaders: config.headers,
-		},
-	});
-};

@@ -15,10 +15,9 @@ import { jsonParse } from 'n8n-workflow';
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
-// Mock progress reporter with strong typing
 export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressReporter>();
 
-// Mock state helpers - using regular jest mocks for simplicity but with proper typing
+// Mock state helpers
 export const mockStateHelpers = () => ({
 	getNodes: jest.fn(() => [] as INode[]),
 	getConnections: jest.fn(() => ({}) as SimpleWorkflow['connections']),
@@ -29,7 +28,6 @@ export const mockStateHelpers = () => ({
 	removeConnection: jest.fn((_sourceId: string, _targetId: string, _type?: string) => undefined),
 });
 
-// Type for our mock state helpers
 export type MockStateHelpers = ReturnType<typeof mockStateHelpers>;
 
 // Simple node creation helper

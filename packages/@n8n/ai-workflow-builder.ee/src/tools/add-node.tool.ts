@@ -51,18 +51,8 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Validate and filter connection parameters if provided
-	let parameters = {};
-	if (connectionParameters) {
-		// const validation = validateConnectionParameters(connectionParameters);
-		// if (validation.warnings.length > 0) {
-		// 	logConnectionParameterWarnings(validation.warnings, nodeType.name);
-		// }
-		parameters = connectionParameters;
-	}
-
 	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, uniqueName, position, parameters);
+	return createNodeInstance(nodeType, uniqueName, position, connectionParameters);
 }
 
 /**

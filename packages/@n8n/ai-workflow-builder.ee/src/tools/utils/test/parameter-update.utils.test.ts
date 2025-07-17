@@ -5,7 +5,6 @@ import {
 	extractNodeParameters,
 	mergeParameters,
 	validateParameters,
-	formatNodeDefinition,
 	updateNodeWithParameters,
 	formatChangesForPrompt,
 	fixExpressionPrefixes,
@@ -357,67 +356,6 @@ describe('parameter-update.utils', () => {
 				valid: false,
 				missingRequired: ['field1', 'field2'],
 			});
-		});
-	});
-
-	describe('formatNodeDefinition', () => {
-		it('should format node definition for LLM', () => {
-			const formatted = formatNodeDefinition(mockNodeType);
-
-			expect(formatted).toContain('Node Type: n8n-nodes-base.httpRequest');
-			expect(formatted).toContain('Display Name: HTTP Request');
-			expect(formatted).toContain('Description: Makes HTTP requests');
-			expect(formatted).toContain('Parameters:');
-			expect(formatted).toContain('- url:');
-			expect(formatted).toContain('  Type: string');
-			expect(formatted).toContain('  Required: true');
-			expect(formatted).toContain('- method:');
-			expect(formatted).toContain('  Options: GET, POST, PUT, DELETE');
-		});
-
-		it('should handle node type without properties', () => {
-			const nodeTypeNoProps: INodeTypeDescription = {
-				...mockNodeType,
-				// @ts-expect-error Testing ivalid parameters
-				properties: undefined,
-			};
-
-			const formatted = formatNodeDefinition(nodeTypeNoProps);
-			expect(formatted).toContain('No parameters defined');
-		});
-
-		it('should handle empty properties array', () => {
-			const nodeTypeEmptyProps: INodeTypeDescription = {
-				...mockNodeType,
-				properties: [],
-			};
-
-			const formatted = formatNodeDefinition(nodeTypeEmptyProps);
-			expect(formatted).toContain('No parameters defined');
-		});
-
-		it('should include default values when present', () => {
-			const formatted = formatNodeDefinition(mockNodeType);
-			expect(formatted).toContain('Default: "GET"');
-			expect(formatted).toContain('Default: "none"');
-		});
-
-		it('should handle properties without description', () => {
-			const nodeTypeNoDesc: INodeTypeDescription = {
-				...mockNodeType,
-				properties: [
-					{
-						displayName: 'Test',
-						default: '',
-						name: 'test',
-						type: 'string',
-					},
-				],
-			};
-
-			const formatted = formatNodeDefinition(nodeTypeNoDesc);
-			expect(formatted).toContain('- test:');
-			expect(formatted).not.toContain('Description: undefined');
 		});
 	});
 

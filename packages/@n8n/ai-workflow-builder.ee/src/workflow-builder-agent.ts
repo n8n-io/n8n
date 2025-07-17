@@ -239,7 +239,7 @@ export class WorkflowBuilderAgent {
 	async getSessions(workflowId: string | undefined, userId?: string) {
 		// For now, we'll return the current session if we have a workflowId
 		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently in a production implementation
+		// track this differently if we want to list all sessions
 		const sessions = [];
 
 		if (workflowId) {
