@@ -177,6 +177,7 @@ export namespace ChatRequest {
 				| AgentThinkingStep
 				| ChatUI.WorkflowUpdatedMessage
 				| ToolMessage
+				| ChatUI.ErrorMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })

@@ -1,5 +1,4 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { isErrorMessage as isUIErrorMessage } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '@/types/assistant.types';
@@ -28,11 +27,13 @@ export function useBuilderMessages() {
 			// Remove any existing ratings
 			return messages.map((message) => {
 				if (message.type === 'text' && 'showRating' in message) {
+					// Pick all properties except showRating and ratingStyle
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
 						showRating?: boolean;
 						ratingStyle?: string;
 					};
-					return cleanMessage as ChatUI.TextMessage;
+					return cleanMessage;
 				}
 				return message;
 			});
@@ -80,6 +81,7 @@ export function useBuilderMessages() {
 			}
 			// Remove any existing rating from other messages
 			if (message.type === 'text' && 'showRating' in message) {
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
 					showRating?: boolean;
 					ratingStyle?: string;
@@ -141,7 +143,7 @@ export function useBuilderMessages() {
 					mutableMessages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
 				} else {
 					// Add new tool message
-					const toolMessage = {
+					const toolMessage: ChatUI.AssistantMessage = {
 						id: toolMessageId,
 						role: 'assistant',
 						type: 'tool',
@@ -150,7 +152,7 @@ export function useBuilderMessages() {
 						status: msg.status,
 						updates: msg.updates || [],
 						read: false,
-					} as ChatUI.AssistantMessage;
+					};
 					mutableMessages.push(toolMessage);
 				}
 			} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
@@ -162,7 +164,7 @@ export function useBuilderMessages() {
 					type: 'error',
 					content: msg.content,
 					read: false,
-				} as ChatUI.ErrorMessage);
+				});
 				shouldClearThinking = true;
 			}
 		});
@@ -185,7 +187,7 @@ export function useBuilderMessages() {
 		}
 
 		// Check if there's any text message after the last completed tool
-		// Note: workflow-updated messages shouldn't count as they're just state updates
+		// Note: workflow-updated messages shouldn't count as they're just canvas state updates
 		let hasTextAfterTools = false;
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < mutableMessages.length; i++) {
