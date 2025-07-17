@@ -60,7 +60,7 @@ export class DataStore implements INodeType {
 	methods = {
 		listSearch: {
 			async tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const baseUrl = this.getRestApiUrl();
+				const baseUrl = 'http://127.0.0.1:5678/rest'; // this.getRestApiUrl();
 				const response = (await this.helpers.httpRequest({
 					method: 'GET',
 					url: baseUrl + '/datastores',
@@ -81,7 +81,7 @@ export class DataStore implements INodeType {
 		resourceMapping: {
 			async getColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 				const id = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
-				const baseUrl = this.getRestApiUrl();
+				const baseUrl = 'http://127.0.0.1:5678/rest'; // this.getRestApiUrl();
 
 				const response = (await this.helpers.httpRequest({
 					method: 'GET',
@@ -112,7 +112,7 @@ export class DataStore implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
-		const baseUrl = this.getRestApiUrl();
+		const baseUrl = 'http://127.0.0.1:5678/rest'; // this.getRestApiUrl();
 
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
@@ -128,11 +128,15 @@ export class DataStore implements INodeType {
 
 						const response = (await this.helpers.httpRequest({
 							method: 'POST',
+							// baseURL: 'localhost:5678',
 							url: baseUrl + '/datastores',
 							body: {
 								name,
 								fields,
 							},
+							// headers: {
+							// 	'Content-Type': 'application/json',
+							// },
 						})) as IDataObject;
 
 						returnData.push({
