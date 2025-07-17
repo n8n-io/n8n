@@ -14,7 +14,7 @@ describe('ChatService', () => {
 	let chatService: ChatService;
 	let mockWs: ReturnType<typeof mock<WebSocket>>;
 
-	feforeAll(() => {
+	beforeAll(() => {
 		jest.useFakeTimers();
 	});
 
