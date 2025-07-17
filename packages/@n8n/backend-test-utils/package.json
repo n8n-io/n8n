@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-test-utils",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

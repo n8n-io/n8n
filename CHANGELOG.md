@@ -1,3 +1,12 @@
+## [1.102.4](https://github.com/n8n-io/n8n/compare/n8n@1.102.3...n8n@1.102.4) (2025-07-17)
+
+
+### Bug Fixes
+
+* Fix issue with restricted file access order ([#17329](https://github.com/n8n-io/n8n/issues/17329)) ([53100fa](https://github.com/n8n-io/n8n/commit/53100fa999080dbe2476e60dc206bf233e26f0a0))
+
+
+
 ## [1.102.3](https://github.com/n8n-io/n8n/compare/n8n@1.102.2...n8n@1.102.3) (2025-07-14)
 
 
