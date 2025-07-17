@@ -177,18 +177,15 @@ const onViewSelected = (selected: string) => {
 			</n8n-text>
 		</div>
 		<div v-else :class="$style.controlsContainer">
-			<div>
-				<N8nTooltip v-if="hasFocusAction">
-					<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
-					<N8nIconButton
-						type="tertiary"
-						text
-						:class="$style.activator"
-						:icon="'fullscreen'"
-						@click="$emit('update:modelValue', 'focus')"
-					/>
-				</N8nTooltip>
-			</div>
+			<N8nTooltip v-if="hasFocusAction">
+				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
+				<N8nIconButton
+					type="tertiary"
+					text
+					:icon="'fullscreen'"
+					@click="$emit('update:modelValue', 'focus')"
+				/>
+			</N8nTooltip>
 			<div
 				:class="{
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
