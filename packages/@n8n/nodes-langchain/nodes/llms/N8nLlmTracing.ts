@@ -9,11 +9,16 @@ import type {
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import { encodingForModel } from '@langchain/core/utils/tiktoken';
+import { OpenMeter, type Event } from '@openmeter/sdk';
 import { pick } from 'lodash';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
+
+const openmeter = new OpenMeter({ baseUrl: process.env.OPENMETER_URL });
+
+// const openmeter = new OpenMeter({ baseUrl: 'http://127.0.0.1:8888' });
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
@@ -146,6 +151,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			response: { generations: output.generations },
 		};
 
+		// 	const model =
+		// response.response?.generations?.[0]?.[0]?.generationInfo?.model_name ??
+		// (runDetails.options as any)?.model_name;
+
 		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
 		if (tokenUsage.completionTokens > 0) {
 			response.tokenUsage = tokenUsage;
@@ -172,12 +181,73 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			options: runDetails.options,
 			response,
 		});
+
+		try {
+			const subject =
+				(runDetails.options as any)?.user_id ??
+				(runDetails.options as any)?.metadata?.user_id ??
+				'default-user';
+
+			// const model = (runDetails.options as any)?.model_name ?? 'unknown';
+
+			const model =
+				output.generations?.[0]?.[0]?.generationInfo?.model_name ??
+				(runDetails.options as any)?.model_name ??
+				'unknown';
+
+			const inputEvent: Event = {
+				specversion: '1.0',
+				id: `${runId}-input`,
+				source: 'n8n',
+				type: 'prompt', //  eventType = "prompt"
+				subject,
+				time: new Date(),
+				data: {
+					tokens: tokenUsage.promptTokens,
+					model,
+					type: 'input',
+				},
+			};
+
+			const outputEvent: Event = {
+				specversion: '1.0',
+				id: `${runId}-output`,
+				source: 'n8n',
+				type: 'prompt',
+				subject,
+				time: new Date(),
+				data: {
+					tokens: tokenUsage.completionTokens,
+					model,
+					type: 'output',
+				},
+			};
+
+			const totalEvent: Event = {
+				specversion: '1.0',
+				id: `${runId}-total`,
+				source: 'n8n',
+				type: 'prompt',
+				subject,
+				time: new Date(),
+				data: {
+					tokens: tokenUsage.totalTokens,
+					model,
+					type: 'system',
+				},
+			};
+
+			await openmeter.events.ingest([inputEvent, outputEvent, totalEvent]);
+		} catch (err) {
+			console.error('[OpenMeter] Failed to send token usage events:', err);
+		}
 	}
 
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 
 		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+
 		const { index } = this.executionFunctions.addInputData(this.connectionType, [
 			[
 				{
