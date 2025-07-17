@@ -220,15 +220,12 @@ export class E2EController {
 		const { flags } = req.body;
 
 		// Validate that all flags start with N8N_ENV_FEAT_
-		for (const [key, value] of Object.entries(flags)) {
+		for (const key of Object.keys(flags)) {
 			if (!key.startsWith('N8N_ENV_FEAT_')) {
 				return {
 					success: false,
 					message: `Invalid flag key: ${key}. Must start with N8N_ENV_FEAT_`,
 				};
-			}
-			if (typeof value !== 'string') {
-				return { success: false, message: `Invalid flag value for ${key}. Must be a string` };
 			}
 		}
 
