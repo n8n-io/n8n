@@ -138,6 +138,7 @@ watch(
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
+			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 			@close="emit('close')"
 			@message="onUserMessage"

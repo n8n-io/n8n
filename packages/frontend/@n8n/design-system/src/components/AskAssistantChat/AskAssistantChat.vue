@@ -27,6 +27,7 @@ interface Props {
 	sessionId?: string;
 	title?: string;
 	placeholder?: string;
+	scrollOnNewMessage?: boolean;
 }
 
 const emit = defineEmits<{
@@ -50,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	messages: () => [],
 	loadingMessage: undefined,
 	sessionId: undefined,
+	scrollOnNewMessage: false,
 });
 
 // Ensure all messages have required id and read properties
@@ -128,7 +130,7 @@ watch(
 	() => props.messages,
 	async (messages) => {
 		// Check if the last message is user and scroll to bottom of the chat
-		if (messages.length > 0) {
+		if (props.scrollOnNewMessage && messages.length > 0) {
 			// Wait for DOM updates before scrolling
 			await nextTick();
 			// Check if messagesRef is available after nextTick
