@@ -83,6 +83,9 @@ export class AiWorkflowBuilderService {
 		// });
 		this.llmComplexTask = await anthropicClaudeSonnet4({
 			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+			headers: {
+				'anthropic-beta': 'prompt-caching-2024-07-31',
+			},
 		});
 	}
 

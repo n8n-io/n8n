@@ -8,33 +8,6 @@ import { z } from 'zod';
 import type { ParameterUpdaterOptions } from '../types/config';
 import { ParameterUpdatePromptBuilder } from './prompts/prompt-builder';
 
-const humanTemplate = `
-<current_workflow_json>
-{workflow_json}
-</current_workflow_json>
-
-<current_execution_data_schema>
-{execution_data_schema}
-</current_execution_data_schema>
-
-<selected_node>
-Name: {node_name}
-Type: {node_type}
-Current Parameters: {current_parameters}
-</selected_node>
-
-<node_properties_definition>
-The node accepts these properties (JSON array of property definitions):
-{node_definition}
-</node_properties_definition>
-
-<requested_changes>
-{changes}
-</requested_changes>
-
-Based on the requested changes and the node's property definitions, return the complete updated parameters object.
-`;
-
 export const parametersSchema = z
 	.object({
 		parameters: z
@@ -47,6 +20,34 @@ export const parametersSchema = z
 	.describe(
 		'The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { "parameters": { "method": "POST", "url": "https://api.example.com", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] } } }}',
 	);
+
+const nodeDefinitionPrompt = `
+The node accepts these properties:
+<node_properties_definition>
+{node_definition}
+</node_properties_definition>`;
+
+const workflowContextPrompt = `
+<current_workflow_json>
+{workflow_json}
+</current_workflow_json>
+
+<current_execution_data_schema>
+{execution_data_schema}
+</current_execution_data_schema>
+
+<selected_node>
+Name: {node_name}
+Type: {node_type}
+
+Current Parameters: {current_parameters}
+</selected_node>
+
+<requested_changes>
+{changes}
+</requested_changes>
+
+Based on the requested changes and the node's property definitions, return the complete updated parameters object.`;
 
 /**
  * Creates a parameter updater chain with dynamic prompt building
@@ -73,12 +74,35 @@ export const createParameterUpdaterChain = (
 	// Log token estimate for monitoring
 	const tokenEstimate = ParameterUpdatePromptBuilder.estimateTokens(systemPromptContent);
 	logger?.debug(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
-
-	const systemPrompt = new SystemMessage(systemPromptContent);
+	// Cache system prompt and node definition prompt
+	const systemPrompt = new SystemMessage({
+		content: [
+			{
+				type: 'text',
+				text: systemPromptContent,
+				cache_control: { type: 'ephemeral' },
+			},
+		],
+	});
+	const nodeDefinitionMessage = ChatPromptTemplate.fromMessages([
+		[
+			'human',
+			[
+				{
+					type: 'text',
+					text: nodeDefinitionPrompt,
+					cache_control: { type: 'ephemeral' },
+				},
+			],
+		],
+	]);
+	// Do not cache workflow context prompt as it is dynamic
+	const workflowContextMessage = HumanMessagePromptTemplate.fromTemplate(workflowContextPrompt);
 
 	const prompt = ChatPromptTemplate.fromMessages([
 		systemPrompt,
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
+		nodeDefinitionMessage,
+		workflowContextMessage,
 	]);
 	const llmWithStructuredOutput = llm.withStructuredOutput(parametersSchema);
 	const modelWithStructure = prompt.pipe(llmWithStructuredOutput);

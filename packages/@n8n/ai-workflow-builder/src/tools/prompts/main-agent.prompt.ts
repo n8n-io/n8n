@@ -337,18 +337,31 @@ TONE Guidelines:
 - Expand details only when asked
 - End with a brief note that the workflow can be adjusted if needed
 </response_patterns>
-
-<current_context>
-<current_workflow_json>
-{workflowJSON}
-</current_workflow_json>
-
-<execution_data>
-{executionData}
-</execution_data>
-</current_context>`;
+`;
 
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
-	['system', systemPrompt],
+	[
+		'system',
+		[
+			{
+				type: 'text',
+				text: systemPrompt,
+				cache_control: { type: 'ephemeral' },
+			},
+			{
+				type: 'text',
+				text: `
+<current_context>
+	<current_workflow_json>
+	{workflowJSON}
+	</current_workflow_json>
+
+	<execution_data>
+	{executionData}
+	</execution_data>
+</current_context>`,
+			},
+		],
+	],
 	['placeholder', '{messages}'],
 ]);
