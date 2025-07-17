@@ -14,7 +14,6 @@ export const useEvaluationStore = defineStore(
 	() => {
 		// State
 		const loadingTestRuns = ref(false);
-		const fetchedAll = ref(false);
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
@@ -170,7 +169,6 @@ export const useEvaluationStore = defineStore(
 
 		return {
 			// State
-			fetchedAll,
 			testRunsById,
 			testCaseExecutionsById,
 

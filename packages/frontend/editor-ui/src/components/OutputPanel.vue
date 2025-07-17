@@ -25,6 +25,7 @@ import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
+import { I18nT } from 'vue-i18n';
 
 // Types
 
@@ -412,13 +413,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<N8nIcon icon="arrow-right-from-line" size="xlarge" />
 					</template>
 					<template #description>
-						<i18n-t
+						<I18nT
 							tag="span"
 							:keypath="
 								isSubNodeType
 									? 'ndv.output.runNodeHintSubNode'
 									: 'ndv.output.noOutputData.v2.description'
 							"
+							scope="global"
 						>
 							<template #link>
 								<NodeExecuteButton
@@ -438,7 +440,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								/>
 								<br />
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 				</NDVEmptyState>
 			</template>

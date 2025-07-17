@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -17,6 +17,7 @@ import { useExternalHooks } from './useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
+	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
 } from '@/utils/nodeSettingsUtils';
@@ -25,7 +26,6 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { omitKey } from '@/utils/objectUtils';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
@@ -41,92 +41,8 @@ export function useNodeSettingsParameters() {
 	const canvasOperations = useCanvasOperations();
 	const externalHooks = useExternalHooks();
 
-	const nodeValues = ref<INodeParameters>({
-		color: '#ff0000',
-		alwaysOutputData: false,
-		executeOnce: false,
-		notesInFlow: false,
-		onError: 'stopWorkflow',
-		retryOnFail: false,
-		maxTries: 3,
-		waitBetweenTries: 1000,
-		notes: '',
-		parameters: {},
-	});
-
-	function setValue(name: string, value: NodeParameterValue) {
-		const nameParts = name.split('.');
-		let lastNamePart: string | undefined = nameParts.pop();
-
-		let isArray = false;
-		if (lastNamePart?.includes('[')) {
-			// It includes an index so we have to extract it
-			const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
-			if (lastNameParts) {
-				nameParts.push(lastNameParts[1]);
-				lastNamePart = lastNameParts[2];
-				isArray = true;
-			}
-		}
-
-		// Set the value so that everything updates correctly in the UI
-		if (nameParts.length === 0) {
-			// Data is on top level
-			if (value === null) {
-				// Property should be deleted
-				if (lastNamePart) {
-					nodeValues.value = omitKey(nodeValues.value, lastNamePart);
-				}
-			} else {
-				// Value should be set
-				nodeValues.value = {
-					...nodeValues.value,
-					[lastNamePart as string]: value,
-				};
-			}
-		} else {
-			// Data is on lower level
-			if (value === null) {
-				// Property should be deleted
-				let tempValue = get(nodeValues.value, nameParts.join('.')) as
-					| INodeParameters
-					| INodeParameters[];
-
-				if (lastNamePart && !Array.isArray(tempValue)) {
-					tempValue = omitKey(tempValue, lastNamePart);
-				}
-
-				if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
-					// If a value from an array got delete and no values are left
-					// delete also the parent
-					lastNamePart = nameParts.pop();
-					tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
-					if (lastNamePart) {
-						tempValue = omitKey(tempValue, lastNamePart);
-					}
-				}
-			} else {
-				// Value should be set
-				if (typeof value === 'object') {
-					set(
-						get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-						lastNamePart as string,
-						deepCopy(value),
-					);
-				} else {
-					set(
-						get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-						lastNamePart as string,
-						value,
-					);
-				}
-			}
-		}
-
-		nodeValues.value = { ...nodeValues.value };
-	}
-
 	function updateNodeParameter(
+		nodeValues: Ref<INodeParameters>,
 		parameterData: IUpdateInformation & { name: `parameters.${string}` },
 		newValue: NodeParameterValue,
 		node: INode,
@@ -195,7 +111,7 @@ export function useNodeSettingsParameters() {
 
 		for (const [key, value] of Object.entries(nodeParameters as object)) {
 			if (value !== null && value !== undefined) {
-				setValue(`parameters.${key}`, value as string);
+				setValue(nodeValues, `parameters.${key}`, value as string);
 			}
 		}
 
@@ -353,7 +269,6 @@ export function useNodeSettingsParameters() {
 	}
 
 	return {
-		nodeValues,
 		setValue,
 		shouldDisplayNodeParameter,
 		updateParameterByPath,

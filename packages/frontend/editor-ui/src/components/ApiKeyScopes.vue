@@ -5,6 +5,7 @@ import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 // Define props
 const props = defineProps({
@@ -116,13 +117,13 @@ function goToUpgradeApiKeyScopes() {
 			</ElSelect>
 		</N8nInputLabel>
 		<N8nNotice v-if="!enabled">
-			<i18n-t keypath="settings.api.scopes.upgrade">
+			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
 				<template #link>
 					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
 						{{ i18n.baseText('settings.api.scopes.upgrade.link') }}
 					</n8n-link>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</N8nNotice>
 	</div>
 </template>
