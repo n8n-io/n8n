@@ -70,19 +70,6 @@ describe('EnvFeatureFlag', () => {
 		},
 	);
 
-	it('should render wrapper div regardless of feature flag state', () => {
-		const { container } = renderComponent({
-			props: {
-				name: 'TEST_FLAG',
-			},
-			slots: {
-				default: '<div>Feature content</div>',
-			},
-		});
-
-		expect(container.querySelectorAll('div')).toHaveLength(1);
-	});
-
 	it('should work with different flag names', () => {
 		settingsStore.settings.envFeatureFlags = {
 			N8N_ENV_FEAT_WORKFLOW_DIFFS: 'true',

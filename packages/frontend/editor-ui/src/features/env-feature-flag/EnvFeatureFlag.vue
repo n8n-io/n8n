@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { computed } from 'vue';
+<script lang="ts">
+import { defineComponent, computed } from 'vue';
 import { useEnvFeatureFlag } from '@/features/env-feature-flag/useEnvFeatureFlag';
 
 /*
@@ -9,13 +9,19 @@ import { useEnvFeatureFlag } from '@/features/env-feature-flag/useEnvFeatureFlag
   Usage example: <EnvFeatureFlag name="FEATURE_NAME"> Feature content </EnvFeatureFlag>
  */
 
-const props = defineProps<{ name: Uppercase<string> }>();
-const envFeatureFlag = useEnvFeatureFlag();
-const isEnabled = computed(() => envFeatureFlag.check.value(props.name));
-</script>
+export default defineComponent({
+	name: 'EnvFeatureFlag',
+	props: {
+		name: {
+			type: String as () => Uppercase<string>,
+			required: true,
+		},
+	},
+	setup(props, { slots }) {
+		const envFeatureFlag = useEnvFeatureFlag();
+		const isEnabled = computed(() => envFeatureFlag.check.value(props.name));
 
-<template>
-	<div>
-		<slot v-if="isEnabled" />
-	</div>
-</template>
+		return () => (isEnabled.value && slots.default ? slots.default() : null);
+	},
+});
+</script>
