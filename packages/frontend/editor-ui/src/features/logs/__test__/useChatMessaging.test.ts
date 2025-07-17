@@ -102,13 +102,13 @@ describe('useChatMessaging', () => {
 		expect(messages.value).toHaveLength(2);
 	});
 
-	it('should startWorkflowWithMessage and not add final message if responseMode is responseNode and version is 1.2', async () => {
+	it('should startWorkflowWithMessage and not add final message if responseMode is responseNode and version is 1.3', async () => {
 		const messageText = 'Hola!';
 		chatTrigger.value = {
 			id: 'trigger-id',
 			name: 'Trigger',
-			typeVersion: 1.2,
-			parameters: { options: { responseMode: 'responseNode' } },
+			typeVersion: 1.3,
+			parameters: { options: { responseMode: 'responseNodes' } },
 		} as unknown as INodeUi;
 
 		(onRunChatWorkflow as jest.Mock).mockResolvedValue({
