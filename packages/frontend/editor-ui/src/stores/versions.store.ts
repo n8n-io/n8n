@@ -5,6 +5,7 @@ import {
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
+	SEVEN_DAYS_IN_MILLIS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { Version, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
@@ -15,6 +16,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
 import { useStorage } from '@/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -52,6 +54,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
 	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
@@ -169,9 +172,15 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	};
 
 	const shouldShowWhatsNewCallout = (): boolean => {
-		return !whatsNewArticles.value.every((item) =>
+		const createdAt = usersStore.currentUser.createdAt;
+		const isOlderThanSevenDays = createdAt
+			? Date.now() - new Date(createdAt).getTime() >= SEVEN_DAYS_IN_MILLIS
+			: true;
+		const allArticlesDismissed = whatsNewArticles.value.every((item) =>
 			lastDismissedWhatsNewCallout.value.includes(item.id),
 		);
+
+		return isOlderThanSevenDays && !allArticlesDismissed;
 	};
 
 	const fetchWhatsNew = async () => {
