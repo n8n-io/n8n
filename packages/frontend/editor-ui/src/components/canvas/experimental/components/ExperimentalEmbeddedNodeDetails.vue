@@ -15,6 +15,7 @@ import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 import { ElPopover } from 'element-plus';
+import { useI18n } from '@n8n/i18n';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -22,6 +23,7 @@ const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	isConfigurable: boolean;
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
@@ -196,6 +198,15 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 					>
 						<template #actions>
 							<div :class="$style.actions">
+								<N8nText
+									v-if="node.disabled"
+									size="small"
+									bold
+									color="text-light"
+									:class="$style.disabledText"
+								>
+									({{ i18n.baseText('node.disabled') }})
+								</N8nText>
 								<div :class="$style.icon">
 									<CanvasNodeStatusIcons size="small" spinner-scrim />
 								</div>
@@ -346,6 +357,14 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 .actions {
 	display: flex;
 	align-items: center;
+
+	& > button {
+		color: var(--color-text-light);
+	}
+}
+
+.disabledText {
+	margin-right: var(--spacing-2xs);
 }
 
 .icon {

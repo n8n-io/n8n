@@ -824,6 +824,7 @@ function handleWheelEvent(event: WheelEvent) {
 			'node-settings': true,
 			dragging: dragging,
 			embedded: props.isEmbeddedInCanvas,
+			disabled: props.activeNode?.disabled,
 		}"
 		@keydown.stop
 	>
@@ -1115,6 +1116,10 @@ function handleWheelEvent(event: WheelEvent) {
 		padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
 		border-bottom: var(--border-base);
 		margin-bottom: var(--spacing-xs);
+	}
+
+	&.embedded.disabled .header-side-menu {
+		background-color: var(--color-foreground-light);
 	}
 
 	.node-is-not-valid {

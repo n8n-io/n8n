@@ -48,8 +48,11 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 </script>
 
 <template>
+	<div v-if="isDisabled" :class="[...commonClasses, $style.disabled]">
+		<N8nIcon icon="power" :size="size" />
+	</div>
 	<div
-		v-if="hasIssues && !hideNodeIssues"
+		v-else-if="hasIssues && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
 	>
@@ -84,7 +87,7 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div
-		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
+		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
 		data-test-id="canvas-node-status-pinned"
 		:class="[...commonClasses, $style.pinnedData]"
 	>
@@ -150,9 +153,9 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 	left: 0;
 	top: 0;
 	padding: var(--canvas-node--status-icons-offset);
-	z-index: 10;
 
 	&.spinnerScrim {
+		z-index: 10;
 		background-color: rgba(255, 255, 255, 0.82);
 		border-radius: var(--border-radius-large);
 	}
@@ -169,5 +172,9 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 
 .warning {
 	color: var(--color-warning);
+}
+
+.disabled {
+	color: var(--color-foreground-xdark);
 }
 </style>
