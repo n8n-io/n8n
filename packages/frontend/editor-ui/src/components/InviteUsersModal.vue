@@ -18,6 +18,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	modalName: string;
@@ -304,13 +305,13 @@ function getEmail(email: string): string {
 	>
 		<template #content>
 			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
-				<i18n-t keypath="settings.users.advancedPermissions.warning">
+				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
 						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
 							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 						</n8n-link>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</n8n-notice>
 			<div v-if="showInviteUrls">
 				<n8n-users-list :users="invitedUsers">

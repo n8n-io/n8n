@@ -6,6 +6,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
@@ -39,6 +40,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -51,6 +54,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { I18nT } from 'vue-i18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -140,6 +144,8 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
 const currentWorkflow = computed(() =>
@@ -239,6 +245,7 @@ const showNoParametersNotice = computed(
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
+const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -770,7 +777,7 @@ watch(node, () => {
 	setNodeValues();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	populateHiddenIssuesSet();
 	populateSettings();
 	setNodeValues();
@@ -780,6 +787,10 @@ onMounted(() => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
+
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
+	}
 });
 
 onBeforeUnmount(() => {
@@ -876,9 +887,10 @@ function handleWheelEvent(event: WheelEvent) {
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n-t
+					<I18nT
 						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
+						scope="global"
 						@click="onMissingNodeTextClick"
 					>
 						<template #action>
@@ -888,7 +900,7 @@ function handleWheelEvent(event: WheelEvent) {
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -897,7 +909,7 @@ function handleWheelEvent(event: WheelEvent) {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -905,7 +917,7 @@ function handleWheelEvent(event: WheelEvent) {
 						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</div>
 		<div
 			v-if="node && nodeValid"
@@ -976,6 +988,10 @@ function handleWheelEvent(event: WheelEvent) {
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
+				<CommunityNodeUpdateInfo
+					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					data-test-id="update-available"
+				/>
 				<ParameterInputList
 					:parameters="parametersSetting"
 					:node-values="nodeValues"

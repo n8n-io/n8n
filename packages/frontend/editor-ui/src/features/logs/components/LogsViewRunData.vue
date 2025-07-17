@@ -118,7 +118,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template v-if="isMultipleInput" #callout-message>
-			<I18nT keypath="logs.details.body.multipleInputs">
+			<I18nT keypath="logs.details.body.multipleInputs" scope="global">
 				<template #button>
 					<N8nLink size="small" @click="handleClickOpenNdv">
 						{{ locale.baseText('logs.details.body.multipleInputs.openingTheNode') }}
