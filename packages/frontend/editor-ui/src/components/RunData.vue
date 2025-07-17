@@ -97,6 +97,7 @@ import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue'
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
 import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
+import { I18nT } from 'vue-i18n';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -146,6 +147,7 @@ type Props = {
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
+	disableDisplayModeSelection?: boolean;
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
@@ -168,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hidePagination: false,
 	calloutMessage: undefined,
 	disableRunIndexSelection: false,
+	disableDisplayModeSelection: false,
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
@@ -311,9 +314,7 @@ const subworkflowExecutionError = computed(() => {
 	} as NodeError;
 });
 
-const hasSubworkflowExecutionError = computed(() =>
-	Boolean(workflowsStore.subWorkflowExecutionError),
-);
+const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
@@ -1449,13 +1450,13 @@ defineExpose({ enterEditMode });
 				/>
 
 				<RunDataDisplayModeSelect
+					v-if="!disableDisplayModeSelection"
 					v-show="
 						hasPreviewSchema ||
 						(hasNodeRun &&
 							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
 							!editMode.enabled)
 					"
-					:class="$style.displayModeSelect"
 					:compact="props.compact"
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
@@ -1467,8 +1468,6 @@ defineExpose({ enterEditMode });
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
-
-				<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 
 				<N8nIconButton
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -1509,6 +1508,8 @@ defineExpose({ enterEditMode });
 					/>
 				</div>
 			</div>
+
+			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
@@ -1758,13 +1759,13 @@ defineExpose({ enterEditMode });
 				<div v-if="search">
 					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 					<N8nText>
-						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 							<template #link>
 								<a href="#" @click="onSearchClear">
 									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 								</a>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</N8nText>
 				</div>
 				<N8nText v-else>
@@ -1776,7 +1777,7 @@ defineExpose({ enterEditMode });
 				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
 				:class="$style.center"
 			>
-				<slot name="no-output-data">xxx</slot>
+				<slot name="no-output-data"></slot>
 			</div>
 
 			<div
@@ -1832,13 +1833,13 @@ defineExpose({ enterEditMode });
 			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
 				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 				<N8nText>
-					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click="onSearchClear">
 								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 							</a>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</N8nText>
 			</div>
 
@@ -1886,7 +1887,12 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi
+					render-type="rendered"
+					:compact="compact"
+					:content="parsedAiContent"
+					:search="search"
+				/>
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
@@ -2071,6 +2077,7 @@ defineExpose({ enterEditMode });
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
+		gap: var(--spacing-2xs);
 	}
 
 	> *:first-child {
@@ -2250,6 +2257,15 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+		visibility: hidden;
+
+		:global(.el-input__prefix) {
+			transition-duration: 0ms;
+		}
+	}
+
+	.compact:hover & {
+		visibility: visible;
 	}
 }
 
@@ -2329,18 +2345,6 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
-}
-
-.search,
-.displayModeSelect {
-	.compact:not(:hover) & {
-		opacity: 0;
-		display: none;
-	}
-
-	.compact:hover & {
-		opacity: 1;
-	}
 }
 
 .executingMessage {

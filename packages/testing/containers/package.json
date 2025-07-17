@@ -7,11 +7,15 @@
   "scripts": {
     "stack": "tsx ./n8n-start-stack.ts",
     "stack:help": "tsx ./n8n-start-stack.ts --help",
-    "dev": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
-    "dev:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
-    "dev:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
-    "dev:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",
-    "stack:clean:all": "docker rm -f $(docker ps -aq --filter 'name=n8n-*') 2>/dev/null || true && docker network prune -f"
+    "stack:sqlite": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
+    "stack:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
+    "stack:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
+    "stack:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",
+    "stack:clean:containers": "docker ps -aq --filter 'name=n8n-stack-*' | xargs -r docker rm -f 2>/dev/null",
+    "stack:clean:networks": "docker network ls --filter 'label=org.testcontainers=true' -q | xargs -r docker network rm 2>/dev/null",
+    "stack:clean:all": "pnpm run stack:clean:containers && pnpm run stack:clean:networks",
+    "lint": "eslint . --quiet",
+    "lintfix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +23,7 @@
   "devDependencies": {
     "@testcontainers/postgresql": "^11.0.3",
     "@testcontainers/redis": "^11.0.3",
+    "get-port": "^7.1.0",
     "testcontainers": "^11.0.3"
   }
 }

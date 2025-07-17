@@ -1,15 +1,15 @@
 import { Container, Service } from '@n8n/di';
 
 import { OnShutdown } from '../on-shutdown';
-import { ShutdownRegistryMetadata } from '../shutdown-registry-metadata';
+import { ShutdownMetadata } from '../shutdown-metadata';
 
 describe('OnShutdown', () => {
-	let shutdownRegistryMetadata: ShutdownRegistryMetadata;
+	let shutdownMetadata: ShutdownMetadata;
 
 	beforeEach(() => {
-		shutdownRegistryMetadata = new ShutdownRegistryMetadata();
-		Container.set(ShutdownRegistryMetadata, shutdownRegistryMetadata);
-		jest.spyOn(shutdownRegistryMetadata, 'register');
+		shutdownMetadata = new ShutdownMetadata();
+		Container.set(ShutdownMetadata, shutdownMetadata);
+		jest.spyOn(shutdownMetadata, 'register');
 	});
 
 	it('should register a methods that is decorated with OnShutdown', () => {
@@ -19,8 +19,8 @@ describe('OnShutdown', () => {
 			async onShutdown() {}
 		}
 
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(1);
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
+		expect(shutdownMetadata.register).toHaveBeenCalledTimes(1);
+		expect(shutdownMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'onShutdown',
 			serviceClass: TestClass,
 		});
@@ -36,12 +36,12 @@ describe('OnShutdown', () => {
 			async two() {}
 		}
 
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(2);
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
+		expect(shutdownMetadata.register).toHaveBeenCalledTimes(2);
+		expect(shutdownMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'one',
 			serviceClass: TestClass,
 		});
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
+		expect(shutdownMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'two',
 			serviceClass: TestClass,
 		});
@@ -56,9 +56,9 @@ describe('OnShutdown', () => {
 			}
 		}
 
-		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(1);
+		expect(shutdownMetadata.register).toHaveBeenCalledTimes(1);
 		// @ts-expect-error We are checking internal parts of the shutdown service
-		expect(shutdownRegistryMetadata.handlersByPriority[10].length).toEqual(1);
+		expect(shutdownMetadata.handlersByPriority[10].length).toEqual(1);
 	});
 
 	it('should throw an error if the decorated member is not a function', () => {

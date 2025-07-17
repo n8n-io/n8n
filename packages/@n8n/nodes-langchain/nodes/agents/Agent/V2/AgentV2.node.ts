@@ -1,103 +1,17 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
-	INodeInputConfiguration,
-	INodeInputFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeConnectionType,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
-import { toolsAgentProperties } from '../agents/ToolsAgent/V2/description';
+import { getInputs } from './utils';
+import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
-
-// Function used in the inputs expression to figure out which inputs to
-// display based on the agent type
-function getInputs(
-	hasOutputParser?: boolean,
-	needsFallback?: boolean,
-): Array<NodeConnectionType | INodeInputConfiguration> {
-	interface SpecialInput {
-		type: NodeConnectionType;
-		filter?: INodeInputFilter;
-		displayName: string;
-		required?: boolean;
-	}
-
-	const getInputData = (
-		inputs: SpecialInput[],
-	): Array<NodeConnectionType | INodeInputConfiguration> => {
-		return inputs.map(({ type, filter, displayName, required }) => {
-			const input: INodeInputConfiguration = {
-				type,
-				displayName,
-				required,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
-					? 1
-					: undefined,
-			};
-
-			if (filter) {
-				input.filter = filter;
-			}
-
-			return input;
-		});
-	};
-
-	let specialInputs: SpecialInput[] = [
-		{
-			type: 'ai_languageModel',
-			displayName: 'Chat Model',
-			required: true,
-			filter: {
-				excludedNodes: [
-					'@n8n/n8n-nodes-langchain.lmCohere',
-					'@n8n/n8n-nodes-langchain.lmOllama',
-					'n8n/n8n-nodes-langchain.lmOpenAi',
-					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
-				],
-			},
-		},
-		{
-			type: 'ai_languageModel',
-			displayName: 'Fallback Model',
-			required: true,
-			filter: {
-				excludedNodes: [
-					'@n8n/n8n-nodes-langchain.lmCohere',
-					'@n8n/n8n-nodes-langchain.lmOllama',
-					'n8n/n8n-nodes-langchain.lmOpenAi',
-					'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
-				],
-			},
-		},
-		{
-			displayName: 'Memory',
-			type: 'ai_memory',
-		},
-		{
-			displayName: 'Tool',
-			type: 'ai_tool',
-		},
-		{
-			displayName: 'Output Parser',
-			type: 'ai_outputParser',
-		},
-	];
-
-	if (hasOutputParser === false) {
-		specialInputs = specialInputs.filter((input) => input.type !== 'ai_outputParser');
-	}
-	if (needsFallback === false) {
-		specialInputs = specialInputs.filter((input) => input.displayName !== 'Fallback Model');
-	}
-	return ['main', ...getInputData(specialInputs)];
-}
 
 export class AgentV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -113,7 +27,7 @@ export class AgentV2 implements INodeType {
 			inputs: `={{
 				((hasOutputParser, needsFallback) => {
 					${getInputs.toString()};
-					return getInputs(hasOutputParser, needsFallback)
+					return getInputs(true, hasOutputParser, needsFallback);
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
@@ -184,7 +98,7 @@ export class AgentV2 implements INodeType {
 						},
 					},
 				},
-				...toolsAgentProperties,
+				...getToolsAgentProperties({ withStreaming: true }),
 			],
 			hints: [
 				{

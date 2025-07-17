@@ -16,6 +16,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { I18nT } from 'vue-i18n';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -65,6 +66,7 @@ const forceShowGrip = ref(false);
 const draggedColumn = ref(false);
 const draggingPath = ref<string | null>(null);
 const hoveringPath = ref<string | null>(null);
+const hoveringColumnIndex = ref<number>(-1);
 const activeRow = ref<number | null>(null);
 const columnLimit = ref(MAX_COLUMNS_LIMIT);
 const columnLimitExceeded = ref(false);
@@ -158,10 +160,14 @@ function showExecutionLink(index: number) {
 
 function onMouseEnterCell(e: MouseEvent) {
 	const target = e.target;
-	if (target && props.mappingEnabled) {
-		const col = (target as HTMLElement).dataset.col;
-		if (col && !isNaN(parseInt(col, 10))) {
-			activeColumn.value = parseInt(col, 10);
+	const col = (target as HTMLElement).dataset.col;
+	const parsedCol = col ? parseInt(col, 10) : Number.NaN;
+
+	if (!isNaN(parsedCol)) {
+		hoveringColumnIndex.value = parsedCol;
+
+		if (target && props.mappingEnabled) {
+			activeColumn.value = parsedCol;
 		}
 	}
 
@@ -178,6 +184,7 @@ function onMouseLeaveCell() {
 	activeColumn.value = -1;
 	activeRow.value = null;
 	emit('activeRowChanged', null);
+	hoveringColumnIndex.value = -1;
 }
 
 function onMouseEnterKey(path: Array<string | number>, colIndex: number) {
@@ -556,7 +563,10 @@ watch(
 					<th
 						v-for="(column, i) in tableData.columns || []"
 						:key="column"
-						:class="collapsingColumnIndex === i ? $style.isCollapsingColumn : ''"
+						:class="{
+							[$style.isCollapsingColumn]: collapsingColumnIndex === i,
+							[$style.isHoveredColumn]: hoveringColumnIndex === i,
+						}"
 					>
 						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
@@ -619,14 +629,18 @@ watch(
 						<N8nTooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<I18nT
+										tag="span"
+										keypath="dataMapping.tableView.tableColumnsExceeded.tooltip"
+										scope="global"
+									>
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
 												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
-									</i18n-t>
+									</I18nT>
 								</div>
 							</template>
 							<span>
@@ -999,12 +1013,13 @@ th.isCollapsingColumn + th {
 		flex-shrink: 0;
 	}
 
-	visibility: hidden;
+	opacity: 0;
 	margin-block: calc(-2 * var(--spacing-2xs));
 
 	.isCollapsingColumn &,
+	th.isHoveredColumn &,
 	th:hover & {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 </style>

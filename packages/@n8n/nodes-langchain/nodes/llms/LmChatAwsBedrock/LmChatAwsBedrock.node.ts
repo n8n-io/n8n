@@ -60,6 +60,7 @@ export class LmChatAwsBedrock implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
+				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				typeOptions: {

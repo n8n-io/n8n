@@ -973,6 +973,10 @@ function onUpdateNodeOutputs(id: string) {
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+		focusPanelStore.hideFocusPanel();
+	}
+
 	nodeCreatorStore.openNodeCreatorForConnectingNode({
 		connection: {
 			source,
@@ -1182,7 +1186,7 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 	await revertAddNode(node.name);
 }
 
-async function onSwitchActiveNode(nodeName: string) {
+function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
@@ -1190,7 +1194,7 @@ async function onSwitchActiveNode(nodeName: string) {
 	selectNodes([node.id]);
 }
 
-async function onOpenSelectiveNodeCreator(
+function onOpenSelectiveNodeCreator(
 	node: string,
 	connectionType: NodeConnectionType,
 	connectionIndex: number = 0,
@@ -1198,20 +1202,24 @@ async function onOpenSelectiveNodeCreator(
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, connectionIndex });
 }
 
-function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
+function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+	nodeCreatorStore.setNodeCreatorState(options);
+
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+		focusPanelStore.hideFocusPanel(options.createNodeActive);
+	}
+
+	if (!options.createNodeActive && !options.hasAddedNodes) {
+		uiStore.resetLastInteractedWith();
+	}
 }
 
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
 	onToggleNodeCreator({ createNodeActive: true, source });
 }
 
-function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
-	nodeCreatorStore.setNodeCreatorState(options);
-
-	if (!options.createNodeActive && !options.hasAddedNodes) {
-		uiStore.resetLastInteractedWith();
-	}
+function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
 function onToggleFocusPanel() {
@@ -1225,6 +1233,10 @@ function onToggleFocusPanel() {
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
+
+		if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+			focusPanelStore.hideFocusPanel(false);
+		}
 	}
 }
 
@@ -1318,13 +1330,13 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function onOpenExecution(executionId: string) {
+async function onOpenExecution(executionId: string, nodeId?: string) {
 	canvasStore.startLoading();
 
 	resetWorkspace();
 	await initializeData();
 
-	const data = await openExecution(executionId);
+	const data = await openExecution(executionId, nodeId);
 	if (!data) {
 		return;
 	}
@@ -1577,7 +1589,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				isProductionExecutionPreview.value =
 					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
-				await onOpenExecution(json.executionId);
+				await onOpenExecution(json.executionId, json.nodeId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
@@ -2153,7 +2165,11 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel v-if="isFocusPanelFeatureEnabled" :executable="!isCanvasReadOnly" />
+		<FocusPanel
+			v-if="isFocusPanelFeatureEnabled"
+			:is-canvas-read-only="isCanvasReadOnly"
+			@save-keyboard-shortcut="onSaveWorkflow"
+		/>
 	</div>
 </template>
 

@@ -223,6 +223,12 @@ export abstract class ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
 
+	abstract updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
@@ -908,6 +914,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
+		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
 			itemIndex: number,
@@ -919,7 +926,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
-		sendChunk(type: ChunkType, content?: IDataObject | string): void;
+		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
 
 		// TODO: Make this one then only available in the new config one
@@ -1459,6 +1466,8 @@ export interface INodeProperties {
 	// allows to skip validation during execution or set custom validation/casting logic inside node
 	// inline error messages would still be shown in UI
 	ignoreValidationDuringExecution?: boolean;
+	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
+	allowArbitraryValues?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -2335,6 +2344,7 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	startedAt?: Date;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2390,6 +2400,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
+	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
 	currentNodeExecutionIndex: number;
@@ -2608,10 +2619,13 @@ export interface INodeGraphItem {
 	src_node_id?: string;
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
+	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
+	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];
@@ -2935,6 +2949,8 @@ export interface StructuredChunk {
 	metadata: {
 		nodeId: string;
 		nodeName: string;
+		runIndex: number;
+		itemIndex: number;
 		timestamp: number;
 	};
 }
