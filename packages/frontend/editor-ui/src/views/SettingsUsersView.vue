@@ -54,6 +54,9 @@ const usersTableState = ref<TableOptions>({
 	],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
+const isEnforceMFAEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -392,8 +395,10 @@ async function onUpdateMfaEnforced(value: boolean) {
 			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true"
 					>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
-					<N8nBadge v-if="!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA]" class="ml-4xs">{{ i18n.baseText('generic.upgrade') }}</N8nBadge>
-				>
+					<N8nBadge v-if="!isEnforceMFAEnabled" class="ml-4xs">{{
+						i18n.baseText('generic.upgrade')
+					}}</N8nBadge>
+				</N8nText>
 				<N8nText size="small" color="text-light">{{
 					i18n.baseText('settings.personal.mfa.enforce.message')
 				}}</N8nText>
