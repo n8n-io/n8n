@@ -1,4 +1,5 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { isErrorMessage as isUIErrorMessage } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '@/types/assistant.types';
@@ -152,6 +153,17 @@ export function useBuilderMessages() {
 					} as ChatUI.AssistantMessage;
 					mutableMessages.push(toolMessage);
 				}
+			} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
+				// Handle error messages from the API
+				// API sends error messages with type: 'error' and content field
+				mutableMessages.push({
+					id: messageId,
+					role: 'assistant',
+					type: 'error',
+					content: msg.content,
+					read: false,
+				} as ChatUI.ErrorMessage);
+				shouldClearThinking = true;
 			}
 		});
 

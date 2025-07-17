@@ -381,9 +381,16 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(1);
+				const message = result.messages![0] as ToolMessage;
+				expect(message).toBeInstanceOf(ToolMessage);
+				expect(message.content).toBe(
 					'Invalid input for tool test_tool: Received tool input did not match expected schema',
 				);
+				expect(message.tool_call_id).toBe('call-1');
+				expect(message.additional_kwargs.error).toBe(true);
 			});
 
 			it('should wrap schema validation errors with "expected schema" message as ValidationError', async () => {
@@ -408,9 +415,16 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(1);
+				const message = result.messages![0] as ToolMessage;
+				expect(message).toBeInstanceOf(ToolMessage);
+				expect(message.content).toBe(
 					'Invalid input for tool update_params: Tool input validation failed: expected schema',
 				);
+				expect(message.tool_call_id).toBe('call-1');
+				expect(message.additional_kwargs.error).toBe(true);
 			});
 
 			it('should wrap other tool errors as ToolExecutionError', async () => {
@@ -433,9 +447,14 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
-					'Tool http_request failed: Connection timeout',
-				);
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(1);
+				const message = result.messages![0] as ToolMessage;
+				expect(message).toBeInstanceOf(ToolMessage);
+				expect(message.content).toBe('Tool http_request failed: Connection timeout');
+				expect(message.tool_call_id).toBe('call-1');
+				expect(message.additional_kwargs.error).toBe(true);
 			});
 
 			it('should handle non-Error objects thrown by tools', async () => {
@@ -458,9 +477,14 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
-					'Tool test_tool failed: Unknown error occurred',
-				);
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(1);
+				const message = result.messages![0] as ToolMessage;
+				expect(message).toBeInstanceOf(ToolMessage);
+				expect(message.content).toBe('Tool test_tool failed: Unknown error occurred');
+				expect(message.tool_call_id).toBe('call-1');
+				expect(message.additional_kwargs.error).toBe(true);
 			});
 
 			it('should handle multiple tools with mixed success and failure', async () => {
@@ -501,10 +525,25 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				// Since Promise.all fails fast, the whole operation should fail
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
-					'Invalid input for tool failure_tool:',
+				// Both tools run in parallel, one succeeds and one returns error message
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(2);
+
+				// First message should be the success
+				const successMsg = result.messages![0] as ToolMessage;
+				expect(successMsg).toBeInstanceOf(ToolMessage);
+				expect(successMsg.content).toBe('Success');
+				expect(successMsg.tool_call_id).toBe('call-1');
+
+				// Second message should be the error
+				const errorMsg = result.messages![1] as ToolMessage;
+				expect(errorMsg).toBeInstanceOf(ToolMessage);
+				expect(errorMsg.content).toBe(
+					'Invalid input for tool failure_tool: Received tool input did not match expected schema',
 				);
+				expect(errorMsg.tool_call_id).toBe('call-2');
+				expect(errorMsg.additional_kwargs.error).toBe(true);
 			});
 		});
 

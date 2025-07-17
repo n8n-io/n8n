@@ -1,12 +1,12 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { isAIMessage } from '@langchain/core/messages';
+import { isAIMessage, ToolMessage } from '@langchain/core/messages';
+import { ToolInputParsingException } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
-import { ToolExecutionError, ValidationError, WorkflowStateError } from '../errors';
+import { ToolExecutionError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
-import { ToolInputParsingException } from '@langchain/core/tools';
 
 /**
  * PARALLEL TOOL EXECUTION
@@ -70,23 +70,27 @@ export async function executeToolsInParallel(
 
 				return result;
 			} catch (error) {
-				// Handle tool invocation errors, including schema validation errors
+				// Handle tool invocation errors by returning a ToolMessage with error
+				// This ensures the conversation history remains valid (every tool_use has a tool_result)
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
-				// Check if this is a schema validation error from LangChain
+				// Create error message content
+				let errorContent: string;
 				if (
 					error instanceof ToolInputParsingException ||
 					errorMessage.includes('expected schema')
 				) {
-					throw new ValidationError(`Invalid input for tool ${toolCall.name}: ${errorMessage}`, {
-						field: 'toolArgs',
-						value: toolCall.args,
-					});
+					errorContent = `Invalid input for tool ${toolCall.name}: ${errorMessage}`;
+				} else {
+					errorContent = `Tool ${toolCall.name} failed: ${errorMessage}`;
 				}
 
-				// For other errors, wrap in ToolExecutionError
-				throw new ToolExecutionError(`Tool ${toolCall.name} failed: ${errorMessage}`, {
-					toolName: toolCall.name,
+				// Return a ToolMessage with the error to maintain conversation continuity
+				return new ToolMessage({
+					content: errorContent,
+					tool_call_id: toolCall.id!,
+					// Include error flag so tools can handle errors appropriately
+					additional_kwargs: { error: true },
 				});
 			}
 		}),
