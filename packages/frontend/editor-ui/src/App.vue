@@ -54,6 +54,7 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+	builderStore.openChat();
 });
 
 onBeforeUnmount(() => {

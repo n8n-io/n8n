@@ -50,7 +50,7 @@ const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
-	if (name === 'initBuilderChat') {
+	if (name === 'sendChatMessage') {
 		isBuildMode.value = true;
 	}
 });

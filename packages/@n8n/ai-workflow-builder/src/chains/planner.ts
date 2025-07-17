@@ -3,8 +3,9 @@ import type { AIMessageChunk } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { LLMServiceError } from '../errors';
 
 export const plannerPrompt = new SystemMessage(
 	`You are a Workflow Planner for n8n, a platform that helps users automate processes across different services and APIs.
@@ -85,7 +86,7 @@ const chatPrompt = ChatPromptTemplate.fromMessages([
 
 export const plannerChain = (llm: BaseChatModel) => {
 	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
+		throw new LLMServiceError("LLM doesn't support binding tools", { llmModel: llm._llmType() });
 	}
 
 	return chatPrompt
