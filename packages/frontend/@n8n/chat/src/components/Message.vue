@@ -3,7 +3,7 @@
 import markdownIt from 'markdown-it';
 import mathjax3 from 'markdown-it-mathjax3';
 const md = markdownIt({
-	html: true,
+	html: false,
 	breaks: true,
 	linkify: true,
 	typographer: true,
