@@ -1489,6 +1489,10 @@ export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	/**
+	 * If true, the resource locator will not show an error if the credentials are not selected
+	 */
+	skipCredentialsCheckInRLC?: boolean;
 	allowNewResource?: {
 		label: string;
 		defaultName: string;
