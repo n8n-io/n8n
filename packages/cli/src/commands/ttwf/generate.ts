@@ -15,7 +15,7 @@ interface WorkflowGenerationDatasetItem {
 	prompt: string;
 	referenceWorkflow: string;
 }
-
+// @ts-expect-error We'll use this later for evals
 async function _waitForWorkflowGenerated(aiResponse: AsyncGenerator<{ messages: any[] }>) {
 	let workflowJson: string | undefined;
 
@@ -81,6 +81,7 @@ export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>
 	/**
 	 * Reads the dataset file in JSONL format
 	 */
+	// @ts-expect-error We'll use this later for evals
 	private async readDataset(filePath: string): Promise<WorkflowGenerationDatasetItem[]> {
 		try {
 			const data = await fs.promises.readFile(filePath, { encoding: 'utf-8' });
