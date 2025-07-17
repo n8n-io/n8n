@@ -60,11 +60,11 @@ export const getStatus = async (context: IRestApiContext): Promise<SourceControl
 export const getRemoteWorkflow = async (
 	context: IRestApiContext,
 	workflowId: string,
-): Promise<{ content: IWorkflowDb }> => {
+): Promise<{ content: IWorkflowDb; type: 'workflow' }> => {
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`${sourceControlApiRoot}/get-workflow/${workflowId}`,
+		`${sourceControlApiRoot}/remote-content/workflow/${workflowId}`,
 	);
 };
 
