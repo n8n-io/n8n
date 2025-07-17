@@ -121,6 +121,16 @@ const plugins: UserConfig['plugins'] = [
 		modernPolyfills: true,
 		renderLegacyChunks: false,
 	}),
+	{
+		name: 'Insert config script',
+		transformIndexHtml: (html, ctx) => {
+			const replacement = ctx.server
+				? '' // Skip when using Vite dev server
+				: '<script src="/{{REST_ENDPOINT}}/config.js"></script>';
+
+			return html.replace('%CONFIG_SCRIPT%', replacement);
+		},
+	},
 	// For sanitize-html
 	nodePolyfills({
 		include: ['fs', 'path', 'url', 'util', 'timers'],
