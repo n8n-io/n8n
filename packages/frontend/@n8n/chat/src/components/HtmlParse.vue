@@ -391,7 +391,7 @@ const parsedBlocks = computed((): ParsedNode[] => {
 				<div v-html="node.html" />
 			</mjx-container>
 			<table v-else-if="node.tag === 'table'" v-bind="node.props" v-html="node.html" />
-			<code v-else-if="node.tag === 'code'" v-bind="node.props" v-html="node.html" />
+			<code v-else-if="node.tag === 'code'" v-bind="node.props" v-text="node.html" />
 		</template>
 	</template>
 </template>
