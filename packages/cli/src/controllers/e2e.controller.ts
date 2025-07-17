@@ -245,7 +245,7 @@ export class E2EController {
 		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
 		return {
 			success: true,
-			message: `Environment feature flags updated`,
+			message: 'Environment feature flags updated',
 			flags: currentFlags,
 		};
 	}
