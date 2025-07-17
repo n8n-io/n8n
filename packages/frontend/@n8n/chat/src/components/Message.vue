@@ -2,6 +2,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import markdownIt from 'markdown-it';
 import mathjax3 from 'markdown-it-mathjax3';
+import { computed, ref, toRefs, onMounted } from 'vue';
+
+import { useOptions } from '@n8n/chat/composables';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+
+import ChatFile from './ChatFile.vue';
+import HtmlParse from './HtmlParse.vue';
+
 const md = markdownIt({
 	html: false,
 	breaks: true,
@@ -9,12 +17,6 @@ const md = markdownIt({
 	typographer: true,
 });
 md.use(mathjax3);
-import { computed, ref, toRefs, onMounted } from 'vue';
-
-import { useOptions } from '@n8n/chat/composables';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
-import HtmlParse from './HtmlParse.vue';
-import ChatFile from './ChatFile.vue';
 
 const props = defineProps<{
 	message: ChatMessage;
