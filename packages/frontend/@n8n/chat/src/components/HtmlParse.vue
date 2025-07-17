@@ -69,6 +69,25 @@ const TAG_CONFIG = {
 	]),
 } as const;
 
+// Whitelist of allowed attributes for security
+const ALLOWED_ATTRIBUTES = new Set([
+	'class',
+	'id',
+	'href',
+	'target',
+	'rel',
+	'src',
+	'alt',
+	'title',
+	'width',
+	'height',
+	'style',
+	'role',
+	'aria-label',
+	'aria-describedby',
+	'data-*', // Allow data attributes (will be checked with prefix)
+]);
+
 // Security attributes for specific tags
 const SECURITY_ATTRIBUTES = {
 	a: {
@@ -91,6 +110,53 @@ const props = defineProps<{
 	html?: string;
 	node?: ParsedNode[];
 }>();
+
+/**
+ * Check if an attribute is allowed
+ * @param attrName - Attribute name to check
+ * @returns Whether the attribute is allowed
+ */
+function isAllowedAttribute(attrName: string): boolean {
+	// Block all event handlers (onclick, onload, etc.)
+	if (attrName.toLowerCase().startsWith('on')) {
+		return false;
+	}
+
+	// Allow data-* attributes
+	if (attrName.startsWith('data-')) {
+		return true;
+	}
+
+	// Check against whitelist
+	return ALLOWED_ATTRIBUTES.has(attrName.toLowerCase());
+}
+
+/**
+ * Sanitize attributes by filtering out potentially dangerous ones
+ * @param attributes - Raw attributes from DOM element
+ * @returns Sanitized attributes
+ */
+function sanitizeAttributes(attributes: Record<string, string>): Record<string, string> {
+	const sanitized: Record<string, string> = {};
+
+	for (const [name, value] of Object.entries(attributes)) {
+		if (isAllowedAttribute(name)) {
+			// Additional validation for specific attributes
+			if (name.toLowerCase() === 'href') {
+				// Block javascript: and data: URLs for security
+				if (
+					value.trim().toLowerCase().startsWith('javascript:') ||
+					value.trim().toLowerCase().startsWith('data:')
+				) {
+					continue;
+				}
+			}
+			sanitized[name] = value;
+		}
+	}
+
+	return sanitized;
+}
 
 /**
  * Parse attributes from DOM element
@@ -196,6 +262,21 @@ function createElementNode(
 }
 
 /**
+ * Check if a tag is in any of the allowed tag sets
+ * @param tagName - Tag name to check
+ * @returns Whether the tag is allowed
+ */
+function isAllowedTag(tagName: string): boolean {
+	return (
+		TAG_CONFIG.COMPONENT_TAGS.has(tagName) ||
+		TAG_CONFIG.RENDER_HTML_WITH_PROPS.has(tagName) ||
+		TAG_CONFIG.RENDER_HTML_TAGS.has(tagName) ||
+		TAG_CONFIG.SECURITY_TAGS.has(tagName) ||
+		TAG_CONFIG.ELEMENT_TAGS.has(tagName)
+	);
+}
+
+/**
  * Parse a single DOM node
  * @param node - DOM node to parse
  * @returns ParsedNode or null
@@ -211,6 +292,12 @@ function parseNode(node: Node): ParsedNode | null {
 	if (node.nodeType === Node.ELEMENT_NODE) {
 		const element = node as Element;
 		const tagName = element.tagName?.toLowerCase() || 'p';
+
+		// Security check: Only allow whitelisted tags
+		if (!isAllowedTag(tagName)) {
+			console.warn(`Blocked potentially unsafe tag: ${tagName}`);
+			return null;
+		}
 
 		// Check if it's a component tag
 		if (TAG_CONFIG.COMPONENT_TAGS.has(tagName)) {
@@ -231,22 +318,20 @@ function parseNode(node: Node): ParsedNode | null {
 		// Handle security tags (like 'a')
 		if (TAG_CONFIG.SECURITY_TAGS.has(tagName)) {
 			const attributes = parseAttributes(element);
-			const secureAttributes = addSecurityAttributes(tagName, attributes);
+			const sanitizedAttributes = sanitizeAttributes(attributes);
+			const secureAttributes = addSecurityAttributes(tagName, sanitizedAttributes);
 			return createElementNode(element, tagName, secureAttributes);
 		}
 
 		// Handle regular element tags
 		if (TAG_CONFIG.ELEMENT_TAGS.has(tagName)) {
 			const attributes = parseAttributes(element);
-			return createElementNode(element, tagName, attributes);
+			const sanitizedAttributes = sanitizeAttributes(attributes);
+			return createElementNode(element, tagName, sanitizedAttributes);
 		}
-
-		// Default: treat as regular element
-		const attributes = parseAttributes(element);
-		return createElementNode(element, tagName, attributes);
 	}
 
-	// Ignore other node types
+	// Ignore other node types and unsafe tags
 	return null;
 }
 
@@ -298,11 +383,16 @@ const parsedBlocks = computed((): ParsedNode[] => {
 			v-else-if="node.type === 'component'"
 			v-bind="node.props"
 		/>
-		<component
-			:is="resolveComponent(node.tag)"
-			v-else-if="node.type === 'renderHtml'"
-			v-bind="node.props"
-			v-html="node.html"
-		/>
+		<template v-else-if="node.type === 'renderHtml'">
+			<mjx-container v-if="node.tag === 'mjx-container'" v-bind="node.props">
+				<div v-html="node.html" />
+			</mjx-container>
+			<img v-else-if="node.tag === 'img'" v-bind="node.props" />
+			<video v-else-if="node.tag === 'video'" v-bind="node.props" v-html="node.html" />
+			<audio v-else-if="node.tag === 'audio'" v-bind="node.props" v-html="node.html" />
+			<table v-else-if="node.tag === 'table'" v-bind="node.props" v-html="node.html" />
+			<hr v-else-if="node.tag === 'hr'" v-bind="node.props" />
+			<code v-else-if="node.tag === 'code'" v-bind="node.props" v-html="node.html" />
+		</template>
 	</template>
 </template>
