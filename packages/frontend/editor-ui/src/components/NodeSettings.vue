@@ -6,6 +6,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
@@ -39,6 +40,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -142,6 +144,8 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
 const currentWorkflow = computed(() =>
@@ -773,7 +777,7 @@ watch(node, () => {
 	setNodeValues();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	populateHiddenIssuesSet();
 	populateSettings();
 	setNodeValues();
@@ -783,6 +787,10 @@ onMounted(() => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
+
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
+	}
 });
 
 onBeforeUnmount(() => {
@@ -980,6 +988,10 @@ function handleWheelEvent(event: WheelEvent) {
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
+				<CommunityNodeUpdateInfo
+					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					data-test-id="update-available"
+				/>
 				<ParameterInputList
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
