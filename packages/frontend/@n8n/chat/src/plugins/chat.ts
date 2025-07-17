@@ -1,3 +1,7 @@
+import { v4 as uuidv4 } from 'uuid';
+import type { Plugin } from 'vue';
+import { computed, nextTick, ref } from 'vue';
+
 import * as api from '@n8n/chat/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -8,9 +12,6 @@ import {
 	handleNodeStart,
 	handleNodeComplete,
 } from '@n8n/chat/utils/streamingHandlers';
-import { v4 as uuidv4 } from 'uuid';
-import type { Plugin } from 'vue';
-import { computed, nextTick, ref } from 'vue';
 
 export const ChatPlugin: Plugin<ChatOptions> = {
 	install(app, options) {

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
-import { chatEventBus } from '@n8n/chat/event-buses';
-import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 import { useFileDialog } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
+
+import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
 import type { ChatMessage } from '../types';
