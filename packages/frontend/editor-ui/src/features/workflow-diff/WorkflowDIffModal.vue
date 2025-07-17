@@ -20,6 +20,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnection, CanvasNode } from '@/types';
+import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
@@ -36,6 +38,7 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const sourceControlStore = useSourceControlStore();
+const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -185,6 +188,32 @@ const connectionsDiff = computed(() => {
 	return acc;
 });
 
+type SettingsChange = {
+	name: string;
+	before: string;
+	after: string;
+};
+const settingsDiff = computed(() => {
+	const topSettings = topWorkFlow.value.state.value?.workflow?.settings ?? {};
+	const bottomSettings = bottomWorkFlow.value.state.value?.workflow?.settings ?? {};
+
+	const allKeys = new Set([...Object.keys(topSettings), ...Object.keys(bottomSettings)]);
+
+	return [...allKeys].reduce<SettingsChange[]>((acc, key) => {
+		const val1 = topSettings[key as keyof typeof topSettings];
+		const val2 = bottomSettings[key as keyof typeof bottomSettings];
+
+		if (val1 !== val2) {
+			acc.push({
+				name: key,
+				before: String(val1),
+				after: String(val2),
+			});
+		}
+		return acc;
+	}, []);
+});
+
 function getNodeStatusClass(id: string) {
 	const status = diff.value?.get(id)?.status ?? 'equal';
 	return $style[status];
@@ -238,10 +267,12 @@ const tabs = computed(() => [
 		count: connectionsDiff.value.size,
 		disabled: connectionsDiff.value.size === 0,
 	},
-	// {
-	// 	value: 'settings',
-	// 	label: 'Settings',
-	// },
+	{
+		value: 'settings',
+		label: 'Settings',
+		count: settingsDiff.value.length,
+		disabled: settingsDiff.value.length === 0,
+	},
 ]);
 
 const detailsPanelData = computed(() => {
@@ -298,6 +329,10 @@ function onResize({ width }: { width: number }) {
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
 }
+
+const changesCount = computed(
+	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
+);
 </script>
 
 <template>
@@ -334,15 +369,20 @@ function handleBeforeClose() {
 						:popper-class="$style.popper"
 					>
 						<N8nButton type="secondary">
-							{{ nodeChanges.length + connectionsDiff.size }} Changes
+							<div v-if="changesCount" :class="$style.circleBadge">
+								{{ changesCount }}
+							</div>
+							Changes
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu>
-								<div style="width: 300px; padding: 2px 12px">
+								<div style="min-width: 300px; padding: 2px 12px">
 									<N8nRadioButtons v-model="activeTab" :options="tabs" :class="$style.tabs">
 										<template #option="{ label, count }">
 											<div>
-												<span v-if="count" class="badge">{{ count }}</span>
+												<span v-if="count">
+													{{ count }}
+												</span>
 												{{ label }}
 											</div>
 										</template>
@@ -373,6 +413,18 @@ function handleBeforeClose() {
 														</li>
 													</ul>
 												</div>
+											</li>
+										</ul>
+										<ul v-if="activeTab === 'settings'">
+											<li v-for="setting in settingsDiff" :key="setting.name">
+												<N8nText color="text-dark" size="small" tag="div" bold>{{
+													i18n.baseText(`workflowSettings.${setting.name}`)
+												}}</N8nText>
+												<NodeDiff
+													:old-string="setting.before"
+													:new-string="setting.after"
+													:class="$style.noNumberDiff"
+												/>
 											</li>
 										</ul>
 									</div>
@@ -798,5 +850,26 @@ function handleBeforeClose() {
 }
 .edge-equal {
 	opacity: 0.5;
+}
+
+.noNumberDiff {
+	min-height: 41px;
+	:global(.blob-num) {
+		display: none;
+	}
+}
+
+.circleBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background-color: var(--color-background-medium);
+	color: var(--color-text-dark);
+	font-size: 10px;
+	font-weight: bold;
+	line-height: 1;
 }
 </style>

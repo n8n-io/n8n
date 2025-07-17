@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CodeDiff } from 'v-code-diff';
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		oldString: string;
 		newString: string;
@@ -8,25 +8,20 @@ withDefaults(
 		language?: string;
 		hideStat?: boolean;
 		hideHeader?: boolean;
+		forceInlineComparison?: boolean;
+		diffStyle?: 'word' | 'char';
 	}>(),
 	{
 		outputFormat: 'line-by-line',
 		language: 'json',
 		hideHeader: true,
+		diffStyle: 'word',
 	},
 );
 </script>
 
 <template>
-	<CodeDiff
-		:old-string
-		:new-string
-		:output-format
-		:language
-		:hide-stat
-		:hide-header
-		class="code-diff"
-	/>
+	<CodeDiff v-bind="props" class="code-diff" />
 </template>
 
 <style scoped>
