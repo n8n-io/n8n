@@ -10,7 +10,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
 import { VIEWS } from '@/constants';
 import router from '@/router';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -102,6 +102,25 @@ const connectionString = ref(`
 const connectionCode = computed(() => {
 	return `\`\`\`json${connectionString.value}\`\`\``;
 });
+
+const getProjectIcon = (workflow: WorkflowResource): IconOrEmoji => {
+	if (workflow.homeProject?.type === 'personal') {
+		return { type: 'icon', value: 'user' };
+	} else if (workflow.homeProject?.name) {
+		return isIconOrEmoji(workflow.homeProject.icon)
+			? workflow.homeProject.icon
+			: { type: 'icon', value: 'layers' };
+	} else {
+		return { type: 'icon', value: 'house' };
+	}
+};
+
+const getProjectName = (workflow: WorkflowResource): string => {
+	if (workflow.homeProject?.type === 'personal') {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return workflow.homeProject?.name ?? '';
+};
 
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
@@ -274,11 +293,11 @@ onMounted(async () => {
 								:new-window="true"
 							>
 								<ProjectIcon
-									v-if="item.homeProject?.icon"
-									:icon="item.homeProject?.icon as IconOrEmoji"
+									v-if="item.homeProject"
+									:icon="getProjectIcon(item)"
 									:border-less="true"
 								/>
-								{{ item.homeProject.name }}
+								{{ getProjectName(item) }}
 								<n8n-icon
 									icon="external-link"
 									:class="$style['link-icon']"
