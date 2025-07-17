@@ -31,7 +31,7 @@ const toolDisplayName = computed(() => {
 });
 
 const latestInput = computed(() => {
-	const inputUpdate = props.message.updates.find((u) => u.type === 'input');
+	const inputUpdate = props.message.updates?.find((u) => u.type === 'input');
 	return inputUpdate?.data;
 });
 
