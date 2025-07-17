@@ -5,7 +5,6 @@ import {
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
-	SEVEN_DAYS_IN_MILLIS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { Version, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
@@ -172,15 +171,21 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	};
 
 	const shouldShowWhatsNewCallout = (): boolean => {
-		const createdAt = usersStore.currentUser.createdAt;
-		const isOlderThanSevenDays = createdAt
-			? Date.now() - new Date(createdAt).getTime() >= SEVEN_DAYS_IN_MILLIS
-			: true;
+		const createdAt = usersStore.currentUser?.createdAt;
+		let hasNewArticle = false;
+		if (createdAt) {
+			const userCreatedAt = new Date(createdAt).getTime();
+			hasNewArticle = whatsNewArticles.value.some((item) => {
+				const updatedAt = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+				return updatedAt > userCreatedAt;
+			});
+		} else {
+			hasNewArticle = true;
+		}
 		const allArticlesDismissed = whatsNewArticles.value.every((item) =>
 			lastDismissedWhatsNewCallout.value.includes(item.id),
 		);
-
-		return isOlderThanSevenDays && !allArticlesDismissed;
+		return hasNewArticle && !allArticlesDismissed;
 	};
 
 	const fetchWhatsNew = async () => {
