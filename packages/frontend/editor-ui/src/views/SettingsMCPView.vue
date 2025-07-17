@@ -10,7 +10,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
 import { VIEWS } from '@/constants';
 import router from '@/router';
-import { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -226,7 +226,8 @@ onMounted(async () => {
 									params: { name: item.id },
 								}).fullPath
 							"
-							:class="$style['name-link']"
+							:theme="'text'"
+							:class="$style['table-link']"
 						>
 							{{ item.name }}
 							<n8n-icon
@@ -238,19 +239,52 @@ onMounted(async () => {
 					</template>
 					<template #[`item.parentFolder`]="{ item }">
 						<span v-if="item.parentFolder" :class="$style['folder-cell']">
-							<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-							{{ item.parentFolder.name }}
+							<n8n-link
+								v-if="item.homeProject"
+								:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
+								:theme="'text'"
+								:class="$style['table-link']"
+								:new-window="true"
+							>
+								{{ item.parentFolder.name }}
+								<n8n-icon
+									icon="external-link"
+									:class="$style['link-icon']"
+									color="text-light"
+								></n8n-icon>
+							</n8n-link>
+							<span v-else>
+								<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
+								{{ item.parentFolder.name }}
+							</span>
 						</span>
 						<span v-else>-</span>
 					</template>
 					<template #[`item.homeProject`]="{ item }">
 						<span v-if="item.homeProject" :class="$style['folder-cell']">
-							<ProjectIcon
-								v-if="item.homeProject?.icon"
-								:icon="item.homeProject?.icon as IconOrEmoji"
-								:border-less="true"
-							/>
-							{{ item.homeProject.name }}
+							<n8n-link
+								:to="
+									router.resolve({
+										name: VIEWS.PROJECTS_WORKFLOWS,
+										params: { projectId: item.homeProject.id },
+									}).fullPath
+								"
+								:theme="'text'"
+								:class="[$style['table-link'], $style['project-link']]"
+								:new-window="true"
+							>
+								<ProjectIcon
+									v-if="item.homeProject?.icon"
+									:icon="item.homeProject?.icon as IconOrEmoji"
+									:border-less="true"
+								/>
+								{{ item.homeProject.name }}
+								<n8n-icon
+									icon="external-link"
+									:class="$style['link-icon']"
+									color="text-light"
+								></n8n-icon>
+							</n8n-link>
 						</span>
 						<span v-else>-</span>
 					</template>
@@ -358,18 +392,31 @@ onMounted(async () => {
 	display: none;
 }
 
-.name-link :global(.n8n-text) {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-4xs);
+.table-link {
+	color: var(--color-text-base);
 
-	.link-icon {
-		display: none;
+	:global(.n8n-text) {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3xs);
+
+		.link-icon {
+			display: none;
+		}
+
+		&:hover {
+			.link-icon {
+				display: inline-flex;
+			}
+		}
 	}
 
-	&:hover {
+	&.project-link {
+		:global(.n8n-text) {
+			gap: 0;
+		}
 		.link-icon {
-			display: inline-flex;
+			margin-left: var(--spacing-3xs);
 		}
 	}
 }
