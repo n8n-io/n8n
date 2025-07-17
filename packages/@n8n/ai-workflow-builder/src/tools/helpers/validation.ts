@@ -1,5 +1,11 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
+import {
+	ConnectionError,
+	NodeNotFoundError,
+	NodeTypeNotFoundError,
+	ValidationError,
+} from '../../errors';
 import type { ToolError } from '../../types/tools';
 import type { SimpleWorkflow } from '../../types/workflow';
 
@@ -45,8 +51,12 @@ export function findNodeType(
 export function validateConnection(sourceNode: INode, targetNode: INode): ToolError | null {
 	// Check if source and target are the same
 	if (sourceNode.id === targetNode.id) {
+		const error = new ConnectionError('Cannot connect a node to itself', {
+			fromNodeId: sourceNode.id,
+			toNodeId: targetNode.id,
+		});
 		return {
-			message: 'Cannot connect a node to itself',
+			message: error.message,
 			code: 'SELF_CONNECTION',
 			details: { sourceId: sourceNode.id, targetId: targetNode.id },
 		};
@@ -63,8 +73,10 @@ export function createValidationError(
 	code: string,
 	details?: Record<string, string>,
 ): ToolError {
+	// Create the appropriate error instance for better tracking
+	const error = new ValidationError(message, { tags: { code, ...details } });
 	return {
-		message,
+		message: error.message,
 		code,
 		details,
 	};
@@ -74,20 +86,24 @@ export function createValidationError(
  * Create a node not found error
  */
 export function createNodeNotFoundError(nodeIdentifier: string): ToolError {
-	return createValidationError(
-		`Node "${nodeIdentifier}" not found in the workflow`,
-		'NODE_NOT_FOUND',
-		{ nodeIdentifier },
-	);
+	const error = new NodeNotFoundError(nodeIdentifier);
+	return {
+		message: error.message,
+		code: 'NODE_NOT_FOUND',
+		details: { nodeIdentifier },
+	};
 }
 
 /**
  * Create a node type not found error
  */
 export function createNodeTypeNotFoundError(nodeTypeName: string): ToolError {
-	return createValidationError(`Node type "${nodeTypeName}" not found`, 'NODE_TYPE_NOT_FOUND', {
-		nodeTypeName,
-	});
+	const error = new NodeTypeNotFoundError(nodeTypeName);
+	return {
+		message: error.message,
+		code: 'NODE_TYPE_NOT_FOUND',
+		details: { nodeTypeName },
+	};
 }
 
 /**

@@ -2,9 +2,11 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import { isCommand } from '@langchain/langgraph';
 
+import { ToolExecutionError, ValidationError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
+import { ToolInputParsingException } from '@langchain/core/tools';
 
 /**
  * PARALLEL TOOL EXECUTION
@@ -35,12 +37,16 @@ export async function executeToolsInParallel(
 	const lastMessage = state.messages.at(-1);
 
 	if (!lastMessage || !isAIMessage(lastMessage)) {
-		throw new Error('Most recent message must be an AIMessage with tool calls');
+		const error = new WorkflowStateError(
+			'Most recent message must be an AIMessage with tool calls',
+		);
+		throw error;
 	}
 
 	const aiMessage = lastMessage;
 	if (!aiMessage.tool_calls?.length) {
-		throw new Error('AIMessage must have tool calls');
+		const error = new WorkflowStateError('AIMessage must have tool calls');
+		throw error;
 	}
 
 	// Execute all tools in parallel
@@ -48,18 +54,41 @@ export async function executeToolsInParallel(
 		aiMessage.tool_calls.map(async (toolCall) => {
 			const tool = toolMap.get(toolCall.name);
 			if (!tool) {
-				throw new Error(`Tool ${toolCall.name} not found`);
+				throw new ToolExecutionError(`Tool ${toolCall.name} not found`, {
+					toolName: toolCall.name,
+				});
 			}
 
-			const result: unknown = await tool.invoke(toolCall.args ?? {}, {
-				toolCall: {
-					id: toolCall.id,
-					name: toolCall.name,
-					args: toolCall.args ?? {},
-				},
-			});
+			try {
+				const result: unknown = await tool.invoke(toolCall.args ?? {}, {
+					toolCall: {
+						id: toolCall.id,
+						name: toolCall.name,
+						args: toolCall.args ?? {},
+					},
+				});
 
-			return result;
+				return result;
+			} catch (error) {
+				// Handle tool invocation errors, including schema validation errors
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+				// Check if this is a schema validation error from LangChain
+				if (
+					error instanceof ToolInputParsingException ||
+					errorMessage.includes('expected schema')
+				) {
+					throw new ValidationError(`Invalid input for tool ${toolCall.name}: ${errorMessage}`, {
+						field: 'toolArgs',
+						value: toolCall.args,
+					});
+				}
+
+				// For other errors, wrap in ToolExecutionError
+				throw new ToolExecutionError(`Tool ${toolCall.name} failed: ${errorMessage}`, {
+					toolName: toolCall.name,
+				});
+			}
 		}),
 	);
 

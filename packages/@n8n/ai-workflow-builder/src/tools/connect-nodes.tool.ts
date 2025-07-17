@@ -3,6 +3,12 @@ import type { Logger } from '@n8n/backend-common';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	ConnectionError,
+	NodeNotFoundError,
+	NodeTypeNotFoundError,
+	ValidationError,
+} from '../errors';
 import type { SimpleWorkflow } from '../types/workflow';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -68,8 +74,12 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 
 				// Check if both nodes exist
 				if (!matchedSourceNode || !matchedTargetNode) {
+					const missingNodeId = !matchedSourceNode
+						? validatedInput.sourceNodeId
+						: validatedInput.targetNodeId;
+					const nodeError = new NodeNotFoundError(missingNodeId);
 					const error = {
-						message: `Source node "${validatedInput.sourceNodeId}" or target node "${validatedInput.targetNodeId}" not found`,
+						message: nodeError.message,
 						code: 'NODES_NOT_FOUND',
 						details: {
 							sourceNodeId: validatedInput.sourceNodeId,
@@ -87,8 +97,10 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 				const targetNodeType = nodeTypes.find((nt) => nt.name === matchedTargetNode!.type);
 
 				if (!sourceNodeType || !targetNodeType) {
+					const missingType = !sourceNodeType ? matchedSourceNode.type : matchedTargetNode.type;
+					const typeError = new NodeTypeNotFoundError(missingType);
 					const error = {
-						message: 'One or both node types not found in registry',
+						message: typeError.message,
 						code: 'NODE_TYPE_NOT_FOUND',
 						details: {
 							sourceType: matchedSourceNode.type,
@@ -115,8 +127,12 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 				);
 
 				if (inferResult.error) {
+					const connectionError = new ConnectionError(inferResult.error, {
+						fromNodeId: matchedSourceNode.id,
+						toNodeId: matchedTargetNode.id,
+					});
 					const error = {
-						message: inferResult.error,
+						message: connectionError.message,
 						code: 'CONNECTION_TYPE_INFERENCE_ERROR',
 						details: {
 							sourceNode: matchedSourceNode.name,
@@ -175,8 +191,12 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 				);
 
 				if (!validation.valid) {
+					const connectionError = new ConnectionError(validation.error ?? 'Invalid connection', {
+						fromNodeId: matchedSourceNode.id,
+						toNodeId: matchedTargetNode.id,
+					});
 					const error = {
-						message: validation.error ?? 'Invalid connection',
+						message: connectionError.message,
 						code: 'INVALID_CONNECTION',
 						details: {
 							sourceNode: matchedSourceNode.name,
@@ -244,11 +264,24 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
-				const toolError = {
-					message: error instanceof Error ? error.message : 'Unknown error occurred',
-					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
-					details: error instanceof z.ZodError ? error.errors : undefined,
-				};
+				let toolError;
+
+				if (error instanceof z.ZodError) {
+					const validationError = new ValidationError('Invalid connection parameters', {
+						field: error.errors[0]?.path.join('.'),
+						value: error.errors[0]?.message,
+					});
+					toolError = {
+						message: validationError.message,
+						code: 'VALIDATION_ERROR',
+						details: error.errors,
+					};
+				} else {
+					toolError = {
+						message: error instanceof Error ? error.message : 'Unknown error occurred',
+						code: 'EXECUTION_ERROR',
+					};
+				}
 
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);

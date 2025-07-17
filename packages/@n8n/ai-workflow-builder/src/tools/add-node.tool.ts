@@ -2,6 +2,7 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { NodeTypeNotFoundError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
@@ -100,8 +101,9 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				// Find the node type
 				const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
 				if (!nodeTypeDesc) {
+					const nodeError = new NodeTypeNotFoundError(nodeType);
 					const error = {
-						message: `Node type "${nodeType}" not found`,
+						message: nodeError.message,
 						code: 'NODE_TYPE_NOT_FOUND',
 						details: { nodeType },
 					};
@@ -143,11 +145,24 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
-				const toolError: ToolError = {
-					message: error instanceof Error ? error.message : 'Unknown error occurred',
-					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
-					details: error instanceof z.ZodError ? error.errors : undefined,
-				};
+				let toolError: ToolError;
+
+				if (error instanceof z.ZodError) {
+					const validationError = new ValidationError('Invalid input parameters', {
+						field: error.errors[0]?.path.join('.'),
+						value: error.errors[0]?.message,
+					});
+					toolError = {
+						message: validationError.message,
+						code: 'VALIDATION_ERROR',
+						details: error.errors,
+					};
+				} else {
+					toolError = {
+						message: error instanceof Error ? error.message : 'Unknown error occurred',
+						code: 'EXECUTION_ERROR',
+					};
+				}
 
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);

@@ -247,7 +247,7 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Node "non-existent" not found in the workflow');
+			expectToolError(content, 'Error: Node with ID "non-existent" not found in workflow');
 		});
 
 		it('should handle unknown node type', async () => {
@@ -286,7 +286,7 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, /Failed to update node parameters/);
+			expectToolError(content, 'Error: Invalid parameters structure returned from LLM');
 		});
 
 		it('should handle validation errors', async () => {
@@ -530,6 +530,48 @@ describe('UpdateNodeParametersTool', () => {
 			expectToolError(content, 'Error: Failed to update node parameters: LLM service unavailable');
 		});
 
+		it('should handle "Received tool input did not match expected schema" error from parametersChain', async () => {
+			const existingWorkflow = createWorkflow([
+				createNode({
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						method: 'GET',
+						url: 'https://example.com',
+					},
+				}),
+			]);
+			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
+
+			// Mock chain throwing schema validation error
+			const schemaError = new Error('Received tool input did not match expected schema');
+			mockChain.invoke.mockRejectedValue(schemaError);
+
+			const mockConfig = createToolConfigWithWriter(
+				'update_node_parameters',
+				'test-call-schema-error',
+			);
+
+			const result = await updateNodeParametersTool.invoke(
+				buildUpdateNodeInput('node1', ['Change method to POST']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			// The error should be wrapped as a ToolExecutionError
+			expectToolError(
+				content,
+				'Error: Failed to update node parameters: Received tool input did not match expected schema',
+			);
+
+			// Verify the error was passed through the reporter
+			const progressCalls = extractProgressMessages(mockConfig.writer);
+			const errorMessage = findProgressMessage(progressCalls, 'error');
+			expect(errorMessage).toBeDefined();
+			expect(errorMessage?.updates[0]?.type).toBe('error');
+		});
+
 		it('should pass correct context to parameter updater chain', async () => {
 			const existingWorkflow = createWorkflow([
 				createNode({
@@ -662,6 +704,56 @@ describe('UpdateNodeParametersTool', () => {
 			expect(message).toContain('- Add console log statement');
 			expect(message).toContain('- Log the word "test"');
 			expect(message).toContain('- Use JavaScript syntax');
+		});
+
+		it('should properly wrap chain schema errors as ToolExecutionError', async () => {
+			const existingWorkflow = createWorkflow([
+				createNode({
+					id: 'test-node',
+					name: 'Set Node',
+					type: 'n8n-nodes-base.set',
+					parameters: {},
+				}),
+			]);
+			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
+
+			// Mock chain throwing a detailed schema validation error
+			const schemaError = new Error(
+				'Received tool input did not match expected schema: Invalid parameters structure',
+			);
+			mockChain.invoke.mockRejectedValue(schemaError);
+
+			const mockConfig = createToolConfigWithWriter(
+				'update_node_parameters',
+				'test-schema-validation',
+			);
+
+			const result = await updateNodeParametersTool.invoke(
+				buildUpdateNodeInput('test-node', ['Add field mapping']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			// Check that the error is properly formatted
+			expectToolError(
+				content,
+				/Failed to update node parameters.*Received tool input did not match expected schema/,
+			);
+
+			// Verify the error reporter received a ToolExecutionError
+			const progressCalls = extractProgressMessages(mockConfig.writer);
+			const errorCall = progressCalls.find((call) => call.status === 'error');
+			expect(errorCall).toBeDefined();
+
+			// The error should be a ToolExecutionError with proper metadata
+			const errorData = errorCall?.updates[0]?.data;
+			expect(errorData).toBeDefined();
+			// Since the error is converted to a plain object for reporting, check the message
+			expect(JSON.stringify(errorData)).toContain('Failed to update node parameters');
+			expect(JSON.stringify(errorData)).toContain(
+				'Received tool input did not match expected schema',
+			);
 		});
 	});
 });

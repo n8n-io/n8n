@@ -2,6 +2,7 @@ import { tool } from '@langchain/core/tools';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { ValidationError, ToolExecutionError } from '../errors';
 import { NodeSearchEngine } from './engines/node-search-engine';
 import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -164,12 +165,21 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 				return createSuccessResponse(config, responseMessage);
 			} catch (error) {
 				// Handle validation or unexpected errors
-				const toolError = {
-					message: error instanceof Error ? error.message : 'Unknown error occurred',
-					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
-					details: error instanceof z.ZodError ? error.errors : undefined,
-				};
+				if (error instanceof z.ZodError) {
+					const validationError = new ValidationError('Invalid input parameters', {
+						extra: { errors: error.errors },
+					});
+					reporter.error(validationError);
+					return createErrorResponse(config, validationError);
+				}
 
+				const toolError = new ToolExecutionError(
+					error instanceof Error ? error.message : 'Unknown error occurred',
+					{
+						toolName: 'search_nodes',
+						cause: error instanceof Error ? error : undefined,
+					},
+				);
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);
 			}

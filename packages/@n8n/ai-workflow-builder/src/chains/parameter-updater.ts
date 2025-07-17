@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import type { Logger } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { LLMServiceError } from '../errors';
 import type { ParameterUpdaterOptions } from '../types/config';
 import { ParameterUpdatePromptBuilder } from './prompts/prompt-builder';
 
@@ -58,7 +58,7 @@ export const createParameterUpdaterChain = (
 	logger?: Logger,
 ) => {
 	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
+		throw new LLMServiceError("LLM doesn't support binding tools", { llmModel: llm._llmType() });
 	}
 
 	// Build dynamic system prompt based on context
@@ -74,6 +74,7 @@ export const createParameterUpdaterChain = (
 	// Log token estimate for monitoring
 	const tokenEstimate = ParameterUpdatePromptBuilder.estimateTokens(systemPromptContent);
 	logger?.debug(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
+
 	// Cache system prompt and node definition prompt
 	const systemPrompt = new SystemMessage({
 		content: [

@@ -206,7 +206,7 @@ describe('RemoveNodeTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Node "non-existent" not found in the workflow');
+			expectToolError(content, 'Error: Node with ID "non-existent" not found in workflow');
 		});
 
 		it('should handle removing node with AI connections', async () => {
@@ -284,7 +284,7 @@ describe('RemoveNodeTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			expectToolError(content, 'Error: Node "any-node" not found in the workflow');
+			expectToolError(content, 'Error: Node with ID "any-node" not found in workflow');
 		});
 
 		it('should count connections correctly for complex workflows', async () => {

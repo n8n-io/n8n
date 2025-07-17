@@ -4,6 +4,7 @@ import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-w
 import { z } from 'zod';
 
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
+import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
@@ -110,6 +111,7 @@ export function createUpdateNodeParametersTool(
 						},
 						logger,
 					);
+
 					const newParameters = (await parametersChain.invoke({
 						user_workflow_prompt: state.prompt,
 						workflow_json: JSON.stringify(workflow, null, 2),
@@ -124,12 +126,18 @@ export function createUpdateNodeParametersTool(
 
 					// Ensure newParameters is a valid object
 					if (!newParameters || typeof newParameters !== 'object') {
-						throw new Error('Invalid parameters returned from LLM');
+						throw new ParameterUpdateError('Invalid parameters returned from LLM', {
+							nodeId,
+							nodeType: node.type,
+						});
 					}
 
 					// Ensure parameters property exists and is valid
 					if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
-						throw new Error('Invalid parameters structure returned from LLM');
+						throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
+							nodeId,
+							nodeType: node.type,
+						});
 					}
 
 					// Fix expression prefixes in the new parameters
@@ -170,22 +178,37 @@ export function createUpdateNodeParametersTool(
 					const stateUpdates = updateNodeInWorkflow(state, nodeId, updatedNode);
 					return createSuccessResponse(config, message, stateUpdates);
 				} catch (error) {
-					const toolError = {
-						message: `Failed to update node parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
-						code: 'PARAMETER_UPDATE_FAILED',
-						details: { error: error instanceof Error ? error.message : error },
-					};
+					if (error instanceof ParameterUpdateError) {
+						reporter.error(error);
+						return createErrorResponse(config, error);
+					}
+					const toolError = new ToolExecutionError(
+						`Failed to update node parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
+						{
+							toolName: 'update_node_parameters',
+							cause: error instanceof Error ? error : undefined,
+						},
+					);
 					reporter.error(toolError);
 					return createErrorResponse(config, toolError);
 				}
 			} catch (error) {
 				// Handle validation or unexpected errors
-				const toolError = {
-					message: error instanceof Error ? error.message : 'Unknown error occurred',
-					code: error instanceof z.ZodError ? 'VALIDATION_ERROR' : 'EXECUTION_ERROR',
-					details: error instanceof z.ZodError ? error.errors : undefined,
-				};
+				if (error instanceof z.ZodError) {
+					const validationError = new ValidationError('Invalid input parameters', {
+						extra: { errors: error.errors },
+					});
+					reporter.error(validationError);
+					return createErrorResponse(config, validationError);
+				}
 
+				const toolError = new ToolExecutionError(
+					error instanceof Error ? error.message : 'Unknown error occurred',
+					{
+						toolName: 'update_node_parameters',
+						cause: error instanceof Error ? error : undefined,
+					},
+				);
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);
 			}

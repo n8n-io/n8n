@@ -1,6 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
+import { ToolInputParsingException } from '@langchain/core/tools';
 import type { Command as CommandType } from '@langchain/langgraph';
 import type { IRunExecutionData } from 'n8n-workflow';
 
@@ -353,6 +354,156 @@ describe('tool-executor', () => {
 
 				await expect(executeToolsInParallel(options)).rejects.toThrow(
 					'Tool non_existent_tool not found',
+				);
+			});
+
+			it('should wrap schema validation errors as ValidationError', async () => {
+				const mockTool = createMockTool(null);
+				// Mock tool throwing a ToolInputParsingException
+				mockTool.invoke = jest
+					.fn()
+					.mockRejectedValue(
+						new ToolInputParsingException('Received tool input did not match expected schema'),
+					);
+
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'test_tool',
+						args: { invalidParam: 'value' },
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Invalid input for tool test_tool: Received tool input did not match expected schema',
+				);
+			});
+
+			it('should wrap schema validation errors with "expected schema" message as ValidationError', async () => {
+				const mockTool = createMockTool(null);
+				// Mock tool throwing a regular Error with schema validation message
+				mockTool.invoke = jest
+					.fn()
+					.mockRejectedValue(new Error('Tool input validation failed: expected schema'));
+
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'update_params',
+						args: { wrongField: 123 },
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>([['update_params', mockTool]]);
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Invalid input for tool update_params: Tool input validation failed: expected schema',
+				);
+			});
+
+			it('should wrap other tool errors as ToolExecutionError', async () => {
+				const mockTool = createMockTool(null);
+				// Mock tool throwing a generic error
+				mockTool.invoke = jest.fn().mockRejectedValue(new Error('Connection timeout'));
+
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'http_request',
+						args: { url: 'https://example.com' },
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>([['http_request', mockTool]]);
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Tool http_request failed: Connection timeout',
+				);
+			});
+
+			it('should handle non-Error objects thrown by tools', async () => {
+				const mockTool = createMockTool(null);
+				// Mock tool throwing a non-Error object
+				mockTool.invoke = jest.fn().mockRejectedValue('String error');
+
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'test_tool',
+						args: {},
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>([['test_tool', mockTool]]);
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Tool test_tool failed: Unknown error occurred',
+				);
+			});
+
+			it('should handle multiple tools with mixed success and failure', async () => {
+				const successMessage = new ToolMessage({
+					content: 'Success',
+					tool_call_id: 'call-1',
+				});
+				const mockSuccessTool = createMockTool(successMessage);
+
+				const mockFailureTool = createMockTool(null);
+				mockFailureTool.invoke = jest
+					.fn()
+					.mockRejectedValue(
+						new ToolInputParsingException('Received tool input did not match expected schema'),
+					);
+
+				const aiMessage = new AIMessage('');
+				aiMessage.tool_calls = [
+					{
+						id: 'call-1',
+						name: 'success_tool',
+						args: { valid: true },
+						type: 'tool_call',
+					},
+					{
+						id: 'call-2',
+						name: 'failure_tool',
+						args: { invalid: true },
+						type: 'tool_call',
+					},
+				];
+
+				const state = createState([aiMessage]);
+				const toolMap = new Map<string, DynamicStructuredTool>([
+					['success_tool', mockSuccessTool],
+					['failure_tool', mockFailureTool],
+				]);
+
+				const options: ToolExecutorOptions = { state, toolMap };
+
+				// Since Promise.all fails fast, the whole operation should fail
+				await expect(executeToolsInParallel(options)).rejects.toThrow(
+					'Invalid input for tool failure_tool:',
 				);
 			});
 		});

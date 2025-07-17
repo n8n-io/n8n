@@ -4,10 +4,11 @@ import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import { assert, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 
 import { conversationCompactChain } from './chains/conversation-compact';
+import { LLMServiceError } from './errors';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
@@ -68,8 +69,14 @@ export class WorkflowBuilderAgent {
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			assert(this.llmSimpleTask, 'LLM not setup');
-			assert(typeof this.llmSimpleTask.bindTools === 'function', 'LLM does not support tools');
+			if (!this.llmSimpleTask) {
+				throw new LLMServiceError('LLM not setup');
+			}
+			if (typeof this.llmSimpleTask.bindTools !== 'function') {
+				throw new LLMServiceError('LLM does not support tools', {
+					llmModel: this.llmSimpleTask._llmType(),
+				});
+			}
 
 			const prompt = await mainAgentPrompt.invoke(state);
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
@@ -120,7 +127,9 @@ export class WorkflowBuilderAgent {
 		}
 
 		const compactSession = async (state: typeof WorkflowState.State) => {
-			assert(this.llmSimpleTask, 'LLM not setup');
+			if (!this.llmSimpleTask) {
+				throw new LLMServiceError('LLM not setup');
+			}
 			const messages = state.messages;
 			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
 
@@ -259,7 +268,7 @@ export class WorkflowBuilderAgent {
 				}
 			} catch (error) {
 				// Thread doesn't exist yet
-				console.log('No session found for workflow:', workflowId);
+				this.logger?.debug('No session found for workflow:', { workflowId, error });
 			}
 		}
 

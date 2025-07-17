@@ -8,6 +8,7 @@ import { Client } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 
+import { LLMServiceError } from './errors';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
 import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
 
@@ -34,59 +35,70 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async setupModels(user?: IUser) {
-		if (this.llmSimpleTask && this.llmComplexTask) {
-			return;
-		}
+		try {
+			if (this.llmSimpleTask && this.llmComplexTask) {
+				return;
+			}
 
-		// If client is provided, use it for API proxy
-		if (this.client && user) {
-			const authHeaders = await this.client.generateApiProxyCredentials(user);
-			// Extract baseUrl from client configuration
-			const baseUrl = this.client.getApiProxyBaseUrl();
+			// If client is provided, use it for API proxy
+			if (this.client && user) {
+				const authHeaders = await this.client.generateApiProxyCredentials(user);
+				// Extract baseUrl from client configuration
+				const baseUrl = this.client.getApiProxyBaseUrl();
 
-			this.llmSimpleTask = await gpt41mini({
-				baseUrl: baseUrl + '/openai',
-				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
-				apiKey: '-',
-				headers: {
-					Authorization: authHeaders.apiKey,
-				},
-			});
-			this.llmComplexTask = await anthropicClaudeSonnet4({
-				baseUrl: baseUrl + '/anthropic',
-				apiKey: '-',
-				headers: {
-					Authorization: authHeaders.apiKey,
-				},
-			});
-
-			this.tracingClient = new Client({
-				apiKey: '-',
-				apiUrl: baseUrl + '/langsmith',
-				autoBatchTracing: false,
-				traceBatchConcurrency: 1,
-				fetchOptions: {
+				this.llmSimpleTask = await gpt41mini({
+					baseUrl: baseUrl + '/openai',
+					// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
+					apiKey: '-',
 					headers: {
 						Authorization: authHeaders.apiKey,
 					},
+				});
+				this.llmComplexTask = await anthropicClaudeSonnet4({
+					baseUrl: baseUrl + '/anthropic',
+					apiKey: '-',
+					headers: {
+						Authorization: authHeaders.apiKey,
+					},
+				});
+
+				this.tracingClient = new Client({
+					apiKey: '-',
+					apiUrl: baseUrl + '/langsmith',
+					autoBatchTracing: false,
+					traceBatchConcurrency: 1,
+					fetchOptions: {
+						headers: {
+							Authorization: authHeaders.apiKey,
+						},
+					},
+				});
+				return;
+			}
+			// If base URL is not set, use environment variables
+			this.llmSimpleTask = await gpt41mini({
+				apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+			});
+
+			// this.llmComplexTask = await gpt41({
+			// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+			// });
+			this.llmComplexTask = await anthropicClaudeSonnet4({
+				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+				headers: {
+					'anthropic-beta': 'prompt-caching-2024-07-31',
 				},
 			});
-			return;
+		} catch (error) {
+			const llmError = new LLMServiceError('Failed to setup LLM models', {
+				cause: error,
+				tags: {
+					hasClient: !!this.client,
+					hasUser: !!user,
+				},
+			});
+			throw llmError;
 		}
-		// If base URL is not set, use environment variables
-		this.llmSimpleTask = await gpt41mini({
-			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-		});
-
-		// this.llmComplexTask = await gpt41({
-		// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-		// });
-		this.llmComplexTask = await anthropicClaudeSonnet4({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			headers: {
-				'anthropic-beta': 'prompt-caching-2024-07-31',
-			},
-		});
 	}
 
 	private getNodeTypes(): INodeTypeDescription[] {
@@ -104,7 +116,10 @@ export class AiWorkflowBuilderService {
 				try {
 					return { ...this.nodeTypes.getByNameAndVersion(nodeName).description, name: nodeName };
 				} catch (error) {
-					console.log('Error getting node type', 'nodeName:', nodeName, 'error:', error);
+					this.logger?.error('Error getting node type', {
+						nodeName,
+						error: error instanceof Error ? error.message : 'Unknown error',
+					});
 					return undefined;
 				}
 			})
@@ -135,10 +150,14 @@ export class AiWorkflowBuilderService {
 			await this.setupModels(user);
 		}
 
+		if (!this.llmComplexTask || !this.llmSimpleTask) {
+			throw new LLMServiceError('Failed to initialize LLM models');
+		}
+
 		this.agent ??= new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			llmSimpleTask: this.llmComplexTask!,
-			llmComplexTask: this.llmComplexTask!,
+			llmSimpleTask: this.llmComplexTask,
+			llmComplexTask: this.llmComplexTask,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
 			tracer: this.tracingClient
