@@ -18,10 +18,10 @@ const isFocused = ref(false);
 const prompt = ref('');
 const hasContent = computed(() => prompt.value.trim().length > 0);
 
-async function onSubmit() {
+function onSubmit() {
 	builderStore.openChat();
 	emit('delete', id.value);
-	await builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
+	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 	isPromptVisible.value = false;
 }
 </script>
