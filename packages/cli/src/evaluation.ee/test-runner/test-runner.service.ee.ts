@@ -366,7 +366,7 @@ export class TestRunnerService {
 		return workflow.nodes.filter(
 			(node) =>
 				node.type === EVALUATION_NODE_TYPE &&
-				!node.disabled &&
+				node.disabled !== true &&
 				(node.parameters.operation === operation ||
 					(defaultOption && node.parameters.operation === undefined)),
 		);
