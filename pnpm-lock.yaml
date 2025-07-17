@@ -1822,9 +1822,6 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
-      markdown-it-link-attributes:
-        specifier: ^4.0.1
-        version: 4.0.1
       markdown-it-mathjax3:
         specifier: ^4.3.2
         version: 4.3.2(encoding@0.1.13)
@@ -1834,9 +1831,6 @@ importers:
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.8.3)
-      vue-markdown-render:
-        specifier: catalog:frontend
-        version: 2.2.1(vue@3.5.13(typescript@5.8.3))
     devDependencies:
       '@iconify-json/mdi':
         specifier: ^1.1.54
