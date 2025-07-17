@@ -350,6 +350,383 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test('should return node graph with agent node and all prompt types when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+						prompts: { text: 'Agent prompt text', ...optionalPrompts },
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: false })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent tool node and prompt text when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						text: 'Tool agent prompt',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-tool-node-id',
+					name: 'Agent Tool Node',
+					type: '@n8n/n8n-nodes-langchain.agentTool',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agentTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'agent-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.agentTool',
+						version: 1,
+						position: [300, 300],
+						prompts: { text: 'Tool agent prompt', ...optionalPrompts },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with openai langchain node and prompts array when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							values: [
+								{ role: 'system', content: 'You are a helpful assistant.' },
+								{ role: 'user', content: 'Hello!' },
+							],
+						},
+					},
+					id: 'openai-node-id',
+					name: 'OpenAI Node',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'openai-node-id',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'OpenAI Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain summarization node and summarization prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						options: {
+							summarizationMethodAndPrompts: {
+								values: { summaryPrompt: 'Summarize this text.' },
+							},
+						},
+					},
+					id: 'summarization-node-id',
+					name: 'Summarization Node',
+					type: '@n8n/n8n-nodes-langchain.chainSummarization',
+					typeVersion: 1,
+					position: [500, 500],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainSummarization'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'summarization-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainSummarization',
+						version: 1,
+						position: [500, 500],
+						prompts: { summaryPrompt: 'Summarize this text.' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Summarization Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with langchain custom tool node and description prompt when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						description: 'Custom tool description',
+					},
+					id: 'custom-tool-node-id',
+					name: 'Custom Tool Node',
+					type: '@n8n/n8n-nodes-langchain.customTool',
+					typeVersion: 1,
+					position: [600, 600],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.customTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'custom-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.customTool',
+						version: 1,
+						position: [600, 600],
+						// prompts: { description: 'Custom tool description' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Custom Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain llm node and messageValues prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							messageValues: [
+								{ role: 'system', content: 'Chain LLM system prompt.' },
+								{ role: 'user', content: 'Chain LLM user prompt.' },
+							],
+						},
+					},
+					id: 'chain-llm-node-id',
+					name: 'Chain LLM Node',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [700, 700],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainLlm'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'chain-llm-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1,
+						position: [700, 700],
+						prompts: [
+							{ role: 'system', content: 'Chain LLM system prompt.' },
+							{ role: 'user', content: 'Chain LLM user prompt.' },
+						],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Chain LLM Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
 	test('should return node graph with stickies indicating overlap', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),

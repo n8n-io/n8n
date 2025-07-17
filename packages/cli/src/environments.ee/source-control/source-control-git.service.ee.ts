@@ -387,4 +387,20 @@ export class SourceControlGitService {
 		const statusResult = await this.git.status();
 		return statusResult;
 	}
+
+	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getFileContent)');
+		}
+		try {
+			const content = await this.git.show([`${commit}:${filePath}`]);
+			return content;
+		} catch (error) {
+			this.logger.error('Failed to get file content', { filePath, error });
+			throw new UnexpectedError(
+				`Could not get content for file: ${filePath}: ${(error as Error)?.message}`,
+				{ cause: error },
+			);
+		}
+	}
 }

@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.103.0
+
+### What changed?
+
+We will no longer be allowing users to use `responseData` within the Webhook node since this is now sandboxed in an iframe, which may break workflows relying on browser APIs like `localStorage` and `fetch` from within custom code.
+
+### When is action necessary?
+
+If your workflow is using the Webhook node and uses JavaScript in `responseData` to make `fetch` calls or access `localStorage`, you may need to refactor it due to the new iframe sandboxing.
+
 ## 1.102.0
 
 ### What changed?
@@ -12,8 +22,8 @@ with libraries like `puppeteer` at the cost of security.
 
 ### When is action necessary?
 
-If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not 
-currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`, 
+If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not
+currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`,
 at your own risk.
 
 ## 1.98.0

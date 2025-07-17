@@ -118,12 +118,12 @@ function onFocusNode() {
 	>
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nTooltip
+				v-if="isExecuteNodeVisible"
 				placement="top"
 				:disabled="!isDisabled"
 				:content="i18n.baseText('ndv.execute.deactivated')"
 			>
 				<N8nIconButton
-					v-if="isExecuteNodeVisible"
 					data-test-id="execute-node-button"
 					type="tertiary"
 					text
