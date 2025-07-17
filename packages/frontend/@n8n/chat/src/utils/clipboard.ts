@@ -4,8 +4,8 @@ export const clipboard = async (text: string): Promise<void> => {
 		try {
 			await navigator.clipboard.writeText(text);
 			return;
-		} catch (err) {
-			console.error(err ?? new DOMException('The request is not allowed', 'NotAllowedError'));
+		} catch (error) {
+			console.error(error ?? new DOMException('The request is not allowed', 'NotAllowedError'));
 		}
 	}
 	const span = document.createElement('span');
@@ -19,8 +19,8 @@ export const clipboard = async (text: string): Promise<void> => {
 	selection?.addRange(range);
 	try {
 		window.document.execCommand('copy');
-	} catch (err) {
-		console.error(`execCommand Error: ${err}`);
+	} catch (error) {
+		console.error(`execCommand Error: ${error}`);
 	}
 	selection?.removeAllRanges();
 	window.document.body.removeChild(span);

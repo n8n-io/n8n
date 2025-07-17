@@ -1,10 +1,27 @@
 <script setup lang="ts">
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import isEmpty from 'lodash/isEmpty';
+
 import { computed, ref, onUnmounted, onDeactivated } from 'vue';
+
 import { N8nIcon } from '@n8n/design-system';
 import { useTimeoutFn } from '@vueuse/core';
-import hljs from 'highlight.js';
-import isEmpty from 'lodash/isEmpty';
+
 import { clipboard } from '../utils/clipboard';
+
+// Register languages with hljs core
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('html', xml); // xml can handle html as well
+hljs.registerLanguage('json', javascript); // javascript can handle json
 
 interface Props {
 	data: string;
@@ -24,7 +41,7 @@ const isCopied = ref(false);
 
 const filterLanguage = computed(() => {
 	if (isEmpty(props.data) || isEmpty(props.language)) return '';
-	return hljs.getLanguage(props.language)?.name || '';
+	return hljs.getLanguage(props.language)?.name ?? '';
 });
 
 const filterData = computed(() => {
@@ -40,7 +57,7 @@ interface Emits {
 	copy: [text: string];
 }
 
-const emits = defineEmits<Emits>();
+const emit = defineEmits<Emits>();
 
 const { start, stop } = useTimeoutFn(
 	() => {
@@ -55,11 +72,11 @@ const { start, stop } = useTimeoutFn(
 function onCopyClick(): void {
 	const text = props.data;
 
-	clipboard(text || '');
+	void clipboard(text ?? '');
 
 	isCopied.value = true;
 
-	emits('copy', text);
+	emit('copy', text);
 
 	start();
 }
@@ -75,7 +92,7 @@ onDeactivated(() => {
 <template>
 	<div class="highlight">
 		<div class="highlight-tool-bar">
-			<span class="highlight-language">{{ filterLanguage || language }}</span>
+			<span class="highlight-language">{{ filterLanguage ?? language }}</span>
 			<template v-if="copyable">
 				<div v-if="!isCopied" class="highlight-copy-btn" @click="onCopyClick">
 					<N8nIcon icon="copy" />
