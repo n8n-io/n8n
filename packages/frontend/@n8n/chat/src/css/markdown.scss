@@ -1,396 +1,121 @@
-@use 'sass:meta';
+@use 'sass:math';
 
-@include meta.load-css('highlight.js/styles/github.css');
-
-@mixin hljs-dark-theme {
-	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+@function toRem($px) {
+	@return math.div(math.round(math.div($px, 21.3) * 1000), 1000) + rem;
 }
 
+// Light theme colors
+$markdown-text-color-light: #000;
+$markdown-link-color-light: #7a283a;
+$markdown-link-hover-light: hsl(0, 25%, 65%);
+$markdown-link-active-light: hsl(0, 25%, 45%);
+$markdown-code-bg-light: #f6f8fa;
+$markdown-code-color-light: #24292e;
+$markdown-blockquote-color-light: #6a737d;
+$markdown-blockquote-border-light: #dfe2e5;
+$markdown-hr-color-light: rgba(31, 35, 41, 0.15);
+$markdown-table-border-light: #d0d7de;
+$markdown-table-header-bg-light: #f6f8fa;
+$markdown-table-bg-light: #fff;
+
+// Dark theme colors
+$markdown-text-color-dark: #e6edf3;
+$markdown-link-color-dark: #f85149;
+$markdown-link-hover-dark: #ff7b72;
+$markdown-link-active-dark: #da3633;
+$markdown-code-bg-dark: #262c36;
+$markdown-code-color-dark: #646a73;
+$markdown-blockquote-color-dark: #8b949e;
+$markdown-blockquote-border-dark: #bbbfc4;
+$markdown-hr-color-dark: #444546;
+$markdown-table-border-dark: #525455;
+$markdown-table-header-bg-dark: rgba(255, 255, 255, 0.25);
+$markdown-table-bg-dark: transparent;
+
+@mixin markdown-dark-theme {
+	.chat-message-markdown {
+		color: $markdown-text-color-dark;
+		a {
+			color: $markdown-link-color-dark;
+
+			&:hover {
+				color: $markdown-link-hover-dark;
+			}
+			&:active {
+				color: $markdown-link-active-dark;
+			}
+		}
+
+		hr {
+			background: $markdown-hr-color-dark;
+		}
+
+		.code {
+			background: $markdown-code-bg-dark;
+			color: $markdown-code-color-dark;
+		}
+
+		blockquote {
+			color: $markdown-blockquote-color-dark;
+			border-left-color: $markdown-blockquote-border-dark;
+		}
+
+		table {
+			border-left-color: $markdown-table-border-dark;
+			border-bottom-color: $markdown-table-border-dark;
+			background-color: $markdown-table-bg-dark;
+
+			thead tr {
+				background-color: $markdown-table-header-bg-dark;
+			}
+
+			th,
+			td {
+				border-top-color: $markdown-table-border-dark;
+				border-right-color: $markdown-table-border-dark;
+				padding: 8px 12px;
+				height: 40px;
+			}
+		}
+	}
+}
+
+// Apply dark theme
 body {
 	&[data-theme='dark'] {
-		@include hljs-dark-theme;
+		@include markdown-dark-theme;
 	}
 
 	@media (prefers-color-scheme: dark) {
-		@include hljs-dark-theme;
+		@include markdown-dark-theme;
 	}
 }
 
-// https://github.com/pxlrbt/markdown-css
 .chat-message-markdown {
-	/*
-		universalize.css (v1.0.2) — by Alexander Sandberg (https://alexandersandberg.com)
-		------------------------------------------------------------------------------
-
-		Based on Sanitize.css (https://github.com/csstools/sanitize.css).
-
-		(all) = Used for all browsers.
-		x lines = Applies to x lines down, including current line.
-
-		------------------------------------------------------------------------------
-	*/
-
-	/*
-		1. Use default UI font (all)
-		2. Make font size more accessible to everyone (all)
-		3. Make line height consistent (all)
-		4. Prevent font size adjustment after orientation changes (IE, iOS)
-		5. Prevent overflow from long words (all)
-	*/
-	line-height: 1.4; /* 3 */
-	-webkit-text-size-adjust: 100%; /* 4 */
-	word-break: break-word; /* 5 */
-
-	/*
-		Prevent padding and border from affecting width (all)
-	*/
-	*,
-	::before,
-	::after {
-		box-sizing: border-box;
+	-ms-text-size-adjust: 100%;
+	-webkit-text-size-adjust: 100%;
+	margin: 0;
+	font-size: toRem(16);
+	line-height: 1.5;
+	word-wrap: break-word;
+	white-space: normal;
+	color: $markdown-text-color-light;
+	> :first-child {
+		margin-top: 0;
 	}
-
-	/*
-		1. Inherit text decoration (all)
-		2. Inherit vertical alignment (all)
-	*/
-	::before,
-	::after {
-		text-decoration: inherit; /* 1 */
-		vertical-align: inherit; /* 2 */
+	> :last-child {
+		margin-bottom: 0;
 	}
-
-	/*
-		Remove inconsistent and unnecessary margins
-	*/
-	body, /* (all) */
-	dl dl, /* (Chrome, Edge, IE, Safari) 5 lines */
-	dl ol,
-	dl ul,
-	ol dl,
-	ul dl,
-	ol ol, /* (Edge 18-, IE) 4 lines */
-	ol ul,
-	ul ol,
-	ul ul,
-	button, /* (Safari) 3 lines */
-	input,
-	select,
-	textarea {
-		/* (Firefox, Safari) */
-		margin: 0;
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	p {
+		margin-top: toRem(18);
+		margin-bottom: toRem(13);
 	}
-
-	/*
-		1. Show overflow (IE18-, IE)
-		2. Correct sizing (Firefox)
-	*/
-	hr {
-		overflow: visible;
-		height: 0;
-	}
-
-	/*
-		Add correct display
-	*/
-	main, /* (IE11) */
-	details {
-		/* (Edge 18-, IE) */
-		display: block;
-	}
-
-	summary {
-		/* (all) */
-		display: list-item;
-	}
-
-	/*
-		Remove style on navigation lists (all)
-	*/
-	nav ol,
-	nav ul {
-		list-style: none;
-		padding: 0;
-	}
-
-	/*
-		1. Use default monospace UI font (all)
-		2. Correct font sizing (all)
-	*/
-	pre,
-	code,
-	kbd,
-	samp {
-		font-family:
-			var(--font-family-monospace),
-			/* macOS emoji */ 'Apple Color Emoji',
-			/* Windows emoji */ 'Segoe UI Emoji',
-			/* Windows emoji */ 'Segoe UI Symbol',
-			/* Linux emoji */ 'Noto Color Emoji'; /* 1 */
-
-		font-size: 1em; /* 2 */
-	}
-
-	/*
-		1. Change cursor for <abbr> elements (all)
-		2. Add correct text decoration (Edge 18-, IE, Safari)
-	*/
-	abbr[title] {
-		cursor: help; /* 1 */
-		text-decoration: underline; /* 2 */
-		-webkit-text-decoration: underline dotted;
-		text-decoration: underline dotted; /* 2 */
-	}
-
-	/*
-		Add correct font weight (Chrome, Edge, Safari)
-	*/
-	b,
-	strong {
-		font-weight: var(--font-weight-bold);
-	}
-
-	/*
-		Add correct font size (all)
-	*/
-	small {
-		font-size: 80%;
-	}
-
-	/*
-		Change alignment on media elements (all)
-	*/
-	audio,
-	canvas,
-	iframe,
-	img,
-	svg,
-	video {
-		vertical-align: middle;
-	}
-
-	/*
-		Remove border on iframes (all)
-	*/
-	iframe {
-		border-style: none;
-	}
-
-	/*
-		Change fill color to match text (all)
-	*/
-	svg:not([fill]) {
-		fill: currentColor;
-	}
-
-	/*
-		Hide overflow (IE11)
-	*/
-	svg:not(:root) {
-		overflow: hidden;
-	}
-
-	/*
-		Show overflow (Edge 18-, IE)
-	*/
-	button,
-	input {
-		overflow: visible;
-	}
-
-	/*
-		Remove inheritance of text transform (Edge 18-, Firefox, IE)
-	*/
-	button,
-	select {
-		text-transform: none;
-	}
-
-	/*
-		Correct inability to style buttons (iOS, Safari)
-	*/
-	button,
-	[type='button'],
-	[type='reset'],
-	[type='submit'] {
-		-webkit-appearance: button;
-	}
-
-	/*
-		1. Fix inconsistent appearance (all)
-		2. Correct padding (Firefox)
-	*/
-	fieldset {
-		border: 1px solid #666; /* 1 */
-		padding: 0.35em 0.75em 0.625em; /* 2 */
-	}
-
-	/*
-		1. Correct color inheritance from <fieldset> (IE)
-		2. Correct text wrapping (Edge 18-, IE)
-	*/
-	legend {
-		color: inherit; /* 1 */
-		display: table; /* 2 */
-		max-width: 100%; /* 2 */
-		white-space: normal; /* 2 */
-	}
-
-	/*
-		1. Add correct display (Edge 18-, IE)
-		2. Add correct vertical alignment (Chrome, Edge, Firefox)
-	*/
-	progress {
-		display: inline-block; /* 1 */
-		vertical-align: baseline; /* 2 */
-	}
-
-	/*
-		1. Remove default vertical scrollbar (IE)
-		2. Change resize direction (all)
-	*/
-	textarea {
-		overflow: auto; /* 1 */
-		resize: vertical; /* 2 */
-	}
-
-	/*
-		1. Correct outline style (Safari)
-		2. Correct odd appearance (Chrome, Edge, Safari)
-	*/
-	[type='search'] {
-		outline-offset: -2px; /* 1 */
-		-webkit-appearance: textfield; /* 2 */
-	}
-
-	/*
-		Correct cursor style of increment and decrement buttons (Safari)
-	*/
-	::-webkit-inner-spin-button,
-	::-webkit-outer-spin-button {
-		height: auto;
-	}
-
-	/*
-		Correct text style (Chrome, Edge, Safari)
-	*/
-	::-webkit-input-placeholder {
-		color: inherit;
-		opacity: 0.54;
-	}
-
-	/*
-		Remove inner padding (Chrome, Edge, Safari on macOS)
-	*/
-	::-webkit-search-decoration {
-		-webkit-appearance: none;
-	}
-
-	/*
-		1. Inherit font properties (Safari)
-		2. Correct inability to style upload buttons (iOS, Safari)
-	*/
-	::-webkit-file-upload-button {
-		font: inherit; /* 1 */
-		-webkit-appearance: button; /* 2 */
-	}
-
-	/*
-		Remove inner border and padding of focus outlines (Firefox)
-	*/
-	::-moz-focus-inner {
-		border-style: none;
-		padding: 0;
-	}
-
-	/*
-		Restore focus outline style (Firefox)
-	*/
-	:-moz-focusring {
-		outline: 1px dotted ButtonText;
-	}
-
-	/*
-		Remove :invalid styles (Firefox)
-	*/
-	:-moz-ui-invalid {
-		box-shadow: none;
-	}
-
-	/*
-		Change cursor on busy elements (all)
-	*/
-	[aria-busy='true'] {
-		cursor: progress;
-	}
-
-	/*
-		Change cursor on control elements (all)
-	*/
-	[aria-controls] {
-		cursor: pointer;
-	}
-
-	/*
-		Change cursor on disabled, non-editable, or inoperable elements (all)
-	*/
-	[aria-disabled='true'],
-	[disabled] {
-		cursor: not-allowed;
-	}
-
-	/*
-		Change display on visually hidden accessible elements (all)
-	*/
-	[aria-hidden='false'][hidden] {
-		display: inline;
-		display: initial;
-	}
-
-	[aria-hidden='false'][hidden]:not(:focus) {
-		clip: rect(0, 0, 0, 0);
-		position: absolute;
-	}
-
-	/*
-		Print out URLs after links (all)
-	*/
-	@media print {
-		a[href^='http']::after {
-			content: ' (' attr(href) ')';
-		}
-	}
-	/* ----- Variables ----- */
-
-	/* Light mode default, dark mode if recognized as preferred */
-	:root {
-		--background-main: #fefefe;
-		--background-element: #eee;
-		--background-inverted: #282a36;
-		--text-main: #1f1f1f;
-		--text-alt: #333;
-		--text-inverted: #fefefe;
-		--border-element: #282a36;
-		--theme: #7a283a;
-		--theme-light: hsl(0, 25%, 65%);
-		--theme-dark: hsl(0, 25%, 45%);
-	}
-
-	/* @media (prefers-color-scheme: dark) {
-		:root {
-			--background-main: #282a36;
-			--text-main: #fefefe;
-		}
-	} */
-	/* ----- Base ----- */
-
-	body {
-		margin: auto;
-		max-width: 36rem;
-		min-height: 100%;
-		overflow-x: hidden;
-	}
-	/* ----- Typography ----- */
 
 	h1,
 	h2,
@@ -398,249 +123,169 @@ body {
 	h4,
 	h5,
 	h6 {
-		margin: 2rem 0 0.8em;
+		font-weight: 600;
 	}
 
-	/*
-		Heading sizes based on a modular scale of 1.25 (all)
-	*/
 	h1 {
-		font-size: 2.441rem;
-		line-height: 1.1;
+		font-size: toRem(27);
+		line-height: 1.5;
 	}
 
 	h2 {
-		font-size: 1.953rem;
-		line-height: 1.15;
+		font-size: toRem(22);
+		line-height: 1.5;
 	}
 
 	h3 {
-		font-size: 1.563rem;
-		line-height: 1.2;
+		font-size: toRem(18);
+		line-height: 1.5;
 	}
 
 	h4 {
-		font-size: 1.25rem;
-		line-height: 1.3;
+		font-size: toRem(16);
+		line-height: 1.5;
 	}
 
 	h5 {
-		font-size: 1rem;
-		line-height: 1.4;
+		font-size: toRem(14);
+		line-height: 1.5;
 	}
 
 	h6 {
-		font-size: 1rem;
-		line-height: 1.4;
-
-		/* differentiate from h5, somehow. color or style? */
+		font-size: toRem(13.6);
+		line-height: 1.5;
 	}
 
-	p,
-	ul,
-	ol,
-	figure {
-		margin: 0.6rem 0 1.2rem;
-	}
-
-	/*
-		Subtitles
-		- Change to header h* + span instead?
-		- Add support for taglines (small title above main) as well? Needs <header>:
-			header > span:first-child
-	*/
-	h1 span,
-	h2 span,
-	h3 span,
-	h4 span,
-	h5 span,
-	h6 span {
-		display: block;
-		font-size: 1em;
-		font-style: italic;
-		font-weight: var(--font-weight-regular);
-		line-height: 1.3;
-		margin-top: 0.3em;
-	}
-
-	h1 span {
-		font-size: 0.6em;
-	}
-
-	h2 span {
-		font-size: 0.7em;
-	}
-
-	h3 span {
-		font-size: 0.8em;
-	}
-
-	h4 span {
-		font-size: 0.9em;
-	}
-
-	small {
-		font-size: 1em;
-		opacity: 0.8; /* or some other way of differentiating it from body text */
-	}
-
-	mark {
-		background: pink; /* change to proper color, based on theme */
-	}
-
-	/*
-		Define a custom tab-size in browsers that support it.
-	*/
-	pre {
-		-moz-tab-size: 4;
-		-o-tab-size: 4;
-		tab-size: 4;
-	}
-
-	/*
-		Long underlined text can be hard to read for dyslexics. Replace with bold.
-	*/
-	ins {
-		text-decoration: none;
-		font-weight: var(--font-weight-bold);
-	}
-
-	blockquote {
-		border-left: 0.3rem solid #7a283a;
-		border-left: 0.3rem solid var(--theme);
-		margin: 0.6rem 0 1.2rem 0;
-		padding-left: 2rem;
-	}
-
-	blockquote p {
-		font-size: 1.2em;
-		font-style: italic;
-	}
-
-	figure {
-		margin: 0;
-	}
-	/* ----- Layout ----- */
-
-	body {
-		background: #fefefe;
-		background: var(--background-main);
-		color: #1f1f1f;
-		color: var(--text-main);
+	p {
+		font-size: toRem(16);
+		line-height: 1.5;
+		font-weight: 400;
 	}
 
 	a {
-		color: #7a283a;
-		color: var(--theme);
+		color: $markdown-link-color-light;
 		text-decoration: underline;
+
+		&:hover {
+			color: $markdown-link-hover-light;
+		}
+		&:active {
+			color: $markdown-link-active-light;
+		}
 	}
 
-	a:hover {
-		color: hsl(0, 25%, 65%);
-		color: var(--theme-light);
+	hr {
+		height: 1px;
+		margin: toRem(13) 0;
+		background: $markdown-hr-color-light;
+		border: none;
+		display: block;
 	}
 
-	a:active {
-		color: hsl(0, 25%, 45%);
-		color: var(--theme-dark);
-	}
-
-	:focus {
-		outline: 3px solid hsl(0, 25%, 65%);
-		outline: 3px solid var(--theme-light);
-		outline-offset: 3px;
-	}
-
-	input {
-		background: #eee;
-		background: var(--background-element);
-		padding: 0.5rem 0.65rem;
-		border-radius: 0.5rem;
-		border: 2px solid #282a36;
-		border: 2px solid var(--border-element);
-		font-size: 1rem;
-	}
-
-	mark {
-		background: pink; /* change to proper color, based on theme */
-		padding: 0.1em 0.15em;
-	}
-
-	kbd, /* different style for kbd? */
-	code {
-		padding: 0.1em 0.25em;
-		border-radius: 0.2rem;
-		-webkit-box-decoration-break: clone;
-		box-decoration-break: clone;
-	}
-
-	kbd > kbd {
-		padding-left: 0;
-		padding-right: 0;
+	code,
+	kbd,
+	pre,
+	samp {
+		font-family: monospace;
+		font-size: toRem(16);
 	}
 
 	pre {
-		-moz-tab-size: 4;
-		-o-tab-size: 4;
-		tab-size: 4;
+		border-radius: 4px;
 	}
 
-	pre code {
-		display: block;
-		padding: 0 0 0.5rem 0.5rem;
-		word-break: normal;
-		overflow-x: auto;
-	}
-	/* ----- Forms ----- */
-	/* ----- Misc ----- */
-
-	[tabindex='-1']:focus {
-		outline: none;
+	.code {
+		background: $markdown-code-bg-light;
+		color: $markdown-code-color-light;
+		border-radius: var(--chat--border-radius, 4px);
+		font-size: 12px;
+		padding: 2px 4px;
+		margin: 0 2px;
 	}
 
-	[hidden] {
-		display: none;
+	video {
+		max-height: 240px;
+		max-width: 100%;
+		object-fit: cover;
 	}
 
-	[aria-disabled],
-	[disabled] {
-		cursor: not-allowed !important;
-		pointer-events: none !important;
+	blockquote {
+		margin: 0;
+		padding: 0 toRem(16);
+		color: $markdown-blockquote-color-light;
+		border-left: toRem(4) solid $markdown-blockquote-border-light;
 	}
 
-	/*
-		Style anchor links only
-	*/
-	a[href^='#']::after {
-		content: '';
-	}
-
-	/*
-		Skip link
-	*/
-	body > a:first-child {
-		background: #7a283a;
-		background: var(--theme);
-		border-radius: 0.2rem;
-		color: #fefefe;
-		color: var(--text-inverted);
-		padding: 0.3em 0.5em;
-		position: absolute;
-		top: -10rem;
-	}
-
-	body > a:first-child:focus {
-		top: 1rem;
-	}
-
-	// Lists
 	ul,
 	ol {
-		padding-left: 1.5rem;
-		margin-bottom: 1rem;
+		margin-top: 0;
+		margin-bottom: 0;
+		padding-left: toRem(32);
+	}
 
-		li {
-			margin-bottom: 0.5rem;
+	table {
+		border-spacing: 0;
+		border-collapse: collapse;
+		display: block;
+		width: max-content;
+		max-width: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
+		border-left: toRem(1) solid $markdown-table-border-light;
+		border-bottom: toRem(1) solid $markdown-table-border-light;
+		background-color: $markdown-table-bg-light;
+
+		thead tr {
+			background-color: $markdown-table-header-bg-light;
+		}
+
+		th,
+		td {
+			padding: toRem(6) toRem(13);
+			border-top: toRem(1) solid $markdown-table-border-light;
+			border-right: toRem(1) solid $markdown-table-border-light;
+		}
+	}
+
+	.task-list-item {
+		list-style-type: none;
+
+		label {
+			font-weight: 400;
+		}
+
+		&.enabled label {
+			cursor: pointer;
+		}
+
+		& + .task-list-item {
+			margin-top: toRem(4);
+		}
+
+		.handle {
+			display: none;
+		}
+
+		.task-list-item-checkbox {
+			margin: 0 toRem(3.2) toRem(4) toRem(-22.4);
+			vertical-align: middle;
+		}
+	}
+
+	.contains-task-list {
+		position: relative;
+
+		&:dir(rtl) .task-list-item-checkbox {
+			margin: 0 toRem(-25.6) toRem(4) toRem(3.2);
+		}
+
+		&:hover .task-list-item-convert-container,
+		&:focus-within .task-list-item-convert-container {
+			display: block;
+			width: auto;
+			height: toRem(24);
+			overflow: visible;
+			clip: auto;
 		}
 	}
 }

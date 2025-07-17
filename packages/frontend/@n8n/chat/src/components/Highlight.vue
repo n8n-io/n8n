@@ -74,61 +74,94 @@ onDeactivated(() => {
 
 <template>
 	<div class="highlight">
-		<div class="highlight-tool-bar d-flex align-center">
-			<span v-if="language" class="highlight-language">{{ filterLanguage || language }}</span>
-			<div class="spacer flex-grow-1" />
+		<div class="highlight-tool-bar">
+			<span class="highlight-language">{{ filterLanguage || language }}</span>
 			<template v-if="copyable">
-				<div v-if="!isCopied" class="cursor-pointer d-flex align-center" @click="onCopyClick">
+				<div v-if="!isCopied" class="highlight-copy-btn" @click="onCopyClick">
 					<N8nIcon icon="copy" />
-					<span class="ml-2">Copy</span>
+					<span class="highlight-copy-text">Copy</span>
 				</div>
 				<div v-else>Copy Successfully</div>
 			</template>
 		</div>
-		<pre class="code-box"><code ref="_codeBlock" v-html="filterData"></code></pre>
+		<pre class="highlight-code-box"><code ref="_codeBlock" v-html="filterData"></code></pre>
 	</div>
 </template>
 
 <style lang="scss">
-@use 'highlight.js/styles/atom-one-dark.css';
+@use 'sass:meta';
+
+@include meta.load-css('highlight.js/styles/github.css');
+
+@mixin hljs-dark-theme {
+	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+}
+
+$highlight-border-color-light: #d1d9e0;
+$highlight-background-color-light: #fff;
+$highlight-tool-bar-background-light: #e0e6eb;
+$highlight-tool-bar-color-light: #000;
+$highlight-tool-bar-border-light: #d1d9e0;
+$highlight-border-color-dark: #3d444d;
+$highlight-background-color-dark: #151619;
+$highlight-tool-bar-background-dark: #151b23;
+$highlight-tool-bar-color-dark: #fff;
+$highlight-tool-bar-border-dark: #3d444d;
+
+body {
+	&[data-theme='dark'] {
+		@include hljs-dark-theme;
+		.highlight {
+			border: 1px solid $highlight-border-color-dark;
+			background-color: $highlight-background-color-dark;
+			&-tool-bar {
+				background: $highlight-tool-bar-background-dark;
+				color: $highlight-tool-bar-color-dark;
+				border-bottom: 1px solid $highlight-tool-bar-border-dark;
+			}
+		}
+	}
+
+	@media (prefers-color-scheme: dark) {
+		@include hljs-dark-theme;
+	}
+}
 
 .highlight {
-	margin: 0;
-	color: #abb2bf;
-	background: #272822;
+	margin: 8px 0;
+	min-width: 300px;
 	min-height: 100%;
 	display: block;
-	border-radius: var(--chat--border-radius);
+	border-radius: 4px;
 	overflow: hidden;
+	border: 1px solid $highlight-border-color-light;
+	background-color: $highlight-background-color-light;
 	&-language {
 		text-transform: capitalize;
 	}
 	&-tool-bar {
-		background: #34352f;
+		color: $highlight-tool-bar-color-light;
+		background: $highlight-tool-bar-background-light;
 		font-size: 12px;
 		padding: 6px 12px;
+		border-bottom: 1px solid #d1d9e0;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 	}
 
-	.code-box {
-		padding: 16px;
+	&-code-box {
+		padding: 8px;
+		border-radius: 0;
+		overflow-x: auto;
 	}
-	.spacer {
-		flex-grow: 1;
-	}
-	.flex-grow-1 {
-		flex-grow: 1;
-	}
-	.cursor-pointer {
+	&-copy-btn {
+		display: flex;
+		align-items: center;
 		cursor: pointer;
 	}
-	.d-flex {
-		display: flex;
-	}
-	.align-center {
-		align-items: center;
-	}
-	.ml-2 {
-		margin-left: 8px;
+	&-copy-text {
+		margin-left: 4px;
 	}
 }
 </style>
