@@ -1,6 +1,9 @@
 /* eslint-disable import-x/no-default-export */
+import { currentsReporter } from '@currents/playwright';
 import type { Project } from '@playwright/test';
 import { defineConfig } from '@playwright/test';
+
+import currentsConfig from './currents.config';
 
 /*
  * Mode-based Test Configuration
@@ -105,6 +108,7 @@ export default defineConfig({
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
 				['blob'],
+				currentsReporter(currentsConfig),
 			]
 		: [['html']],
 
