@@ -223,7 +223,7 @@ onMounted(async () => {
 		</el-scrollbar>
 
 		<n8n-callout
-			v-if="!isLoading && !inputColumns.length && run?.status === 'success'"
+			v-if="!isLoading && !inputColumns.length && run?.status === 'completed'"
 			theme="secondary"
 			icon="info"
 			class="mb-s"
