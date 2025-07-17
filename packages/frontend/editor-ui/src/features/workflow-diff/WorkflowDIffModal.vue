@@ -294,6 +294,10 @@ const panelWidth = ref(350);
 function onResize({ width }: { width: number }) {
 	panelWidth.value = width;
 }
+
+function handleBeforeClose() {
+	selectedDetailId.value = undefined;
+}
 </script>
 
 <template>
@@ -305,6 +309,7 @@ function onResize({ width }: { width: number }) {
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		@before-close="handleBeforeClose"
 	>
 		<template #header="{ closeDialog }">
 			<div style="display: flex; align-items: center; justify-content: space-between">
