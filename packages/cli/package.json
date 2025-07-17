@@ -86,9 +86,11 @@
     "@azure/identity": "4.3.0",
     "@azure/keyvault-secrets": "4.8.0",
     "@google-cloud/secret-manager": "5.6.0",
+    "@modelcontextprotocol/sdk": "1.12.3",
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:^",
+    "@n8n/backend-test-utils": "workspace:^",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:^",
@@ -96,7 +98,6 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@n8n/backend-test-utils": "workspace:^",
     "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
@@ -106,6 +107,7 @@
     "@n8n_io/license-sdk": "2.22.0",
     "@rudderstack/rudder-sdk-node": "2.1.4",
     "@sentry/node": "catalog:",
+    "ajv": "^8.17.1",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "bcryptjs": "2.4.3",
@@ -179,7 +181,6 @@
     "yamljs": "0.3.0",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
-    "@modelcontextprotocol/sdk": "1.12.3",
     "zod-to-json-schema": "catalog:"
   }
 }
