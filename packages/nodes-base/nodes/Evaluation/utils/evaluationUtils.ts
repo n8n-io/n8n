@@ -6,9 +6,26 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import { metricHandlers } from './metricHandlers';
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
+import { metricHandlers } from './metricHandlers';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
+
+function withEvaluationData(this: IExecuteFunctions, data: IDataObject): INodeExecutionData[] {
+	const isEvaluationMode = this.getMode() === 'evaluation';
+	const inputData = this.getInputData();
+	if (!inputData.length) {
+		return inputData;
+	}
+
+	return [
+		{
+			...inputData[0],
+			// test-runner only looks at first item. Don't need to duplicate the data for each item
+			evaluationData: isEvaluationMode ? data : undefined,
+		},
+		...inputData.slice(1),
+	];
+}
 
 export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
@@ -87,13 +104,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		'RAW', // default value for Value Input Mode
 	);
 
-	const isEvaluationMode = this.getMode() === 'evaluation';
-	return [
-		this.getInputData().map((item) => ({
-			...item,
-			evaluationData: isEvaluationMode ? outputs : undefined,
-		})),
-	];
+	return [withEvaluationData.call(this, outputs)];
 }
 
 export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
@@ -129,13 +140,7 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 		return acc;
 	}, {} as IDataObject);
 
-	const isEvaluationMode = this.getMode() === 'evaluation';
-	return [
-		this.getInputData().map((item) => ({
-			...item,
-			evaluationData: isEvaluationMode ? inputs : undefined,
-		})),
-	];
+	return [withEvaluationData.call(this, inputs)];
 }
 
 export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
