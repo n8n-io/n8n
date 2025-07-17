@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import MessageRating from './MessageRating.vue';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
 import AssistantAvatar from '../../AskAssistantAvatar/AssistantAvatar.vue';
@@ -16,9 +17,18 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	rate: [rating: 'up' | 'down', feedback?: string];
+}>();
+
 const { t } = useI18n();
 
 const isUserMessage = computed(() => props.message.role === 'user');
+
+function onRate(rating: 'up' | 'down', feedback?: string) {
+	emit('rate', rating, feedback);
+}
 </script>
 
 <template>
@@ -37,6 +47,12 @@ const isUserMessage = computed(() => props.message.role === 'user');
 			</template>
 		</div>
 		<slot></slot>
+		<MessageRating
+			v-if="message.showRating && !isUserMessage"
+			:style="message.ratingStyle"
+			:show-feedback="message.showFeedback"
+			@rate="onRate"
+		/>
 	</div>
 </template>
 

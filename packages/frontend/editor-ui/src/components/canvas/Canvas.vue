@@ -714,7 +714,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 	}
 }
 
-async function onTidyUp(payload: { source: CanvasLayoutSource }) {
+async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
+	if (payload.nodeIdsFilter) {
+		clearSelectedNodes();
+		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
+	}
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
