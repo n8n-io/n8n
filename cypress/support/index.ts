@@ -51,7 +51,9 @@ declare global {
 			enableQueueMode(): void;
 			disableQueueMode(): void;
 			changeQuota(feature: string, value: number): void;
-			setEnvFeatureFlags(flags: N8nEnvFeatFlags): Chainable<{ success: boolean; flags?: N8nEnvFeatFlags; error?: string }>;
+			setEnvFeatureFlags(
+				flags: N8nEnvFeatFlags,
+			): Chainable<{ success: boolean; flags?: N8nEnvFeatFlags; error?: string }>;
 			clearEnvFeatureFlags(): Chainable<{ success: boolean; flags: N8nEnvFeatFlags }>;
 			getEnvFeatureFlags(): Chainable<N8nEnvFeatFlags>;
 			waitForLoad(waitForIntercepts?: boolean): void;

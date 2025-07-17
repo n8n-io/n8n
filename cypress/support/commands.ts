@@ -124,9 +124,15 @@ const getEnvFeatureFlags = () =>
 	cy.request('GET', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`);
 
 // Environment feature flags commands (using E2E API)
-Cypress.Commands.add('setEnvFeatureFlags', (flags: N8nEnvFeatFlags) => setEnvFeatureFlags(flags).then(response => response.body.data));
-Cypress.Commands.add('clearEnvFeatureFlags', () => setEnvFeatureFlags({}).then(response => response.body.data));
-Cypress.Commands.add('getEnvFeatureFlags', () => getEnvFeatureFlags().then(response => response.body.data));
+Cypress.Commands.add('setEnvFeatureFlags', (flags: N8nEnvFeatFlags) =>
+	setEnvFeatureFlags(flags).then((response) => response.body.data),
+);
+Cypress.Commands.add('clearEnvFeatureFlags', () =>
+	setEnvFeatureFlags({}).then((response) => response.body.data),
+);
+Cypress.Commands.add('getEnvFeatureFlags', () =>
+	getEnvFeatureFlags().then((response) => response.body.data),
+);
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {

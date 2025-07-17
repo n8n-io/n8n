@@ -32,7 +32,7 @@ function runTests(options) {
 	const testProcess = spawn(cmd, [], {
 		stdio: 'inherit',
 		shell: true,
-		env: process.env // TODO: Maybe pass only the necessary environment variables instead of all
+		env: process.env, // TODO: Maybe pass only the necessary environment variables instead of all
 	});
 
 	// Listen for termination signals to properly kill the test process
