@@ -1,42 +1,34 @@
 import { Command } from '@n8n/decorators';
-import fs from 'fs';
-import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
 
-interface WorkflowGeneratedMessage {
-	role: 'assistant';
-	type: 'workflow-generated';
-	codeSnippet: string;
-}
+// interface WorkflowGenerationDatasetItem {
+// 	prompt: string;
+// 	referenceWorkflow: string;
+// }
+// We'll use this later for evals
+// async function _waitForWorkflowGenerated(aiResponse: AsyncGenerator<{ messages: any[] }>) {
+// 	let workflowJson: string | undefined;
 
-interface WorkflowGenerationDatasetItem {
-	prompt: string;
-	referenceWorkflow: string;
-}
-// @ts-expect-error We'll use this later for evals
-async function _waitForWorkflowGenerated(aiResponse: AsyncGenerator<{ messages: any[] }>) {
-	let workflowJson: string | undefined;
+// 	for await (const chunk of aiResponse) {
+// 		const wfGeneratedMessage = chunk.messages.find(
+// 			(m): m is WorkflowGeneratedMessage =>
+// 				'type' in m && (m as { type?: string }).type === 'workflow-generated',
+// 		);
 
-	for await (const chunk of aiResponse) {
-		const wfGeneratedMessage = chunk.messages.find(
-			(m): m is WorkflowGeneratedMessage =>
-				'type' in m && (m as { type?: string }).type === 'workflow-generated',
-		);
+// 		if (wfGeneratedMessage?.codeSnippet) {
+// 			workflowJson = wfGeneratedMessage.codeSnippet;
+// 		}
+// 	}
 
-		if (wfGeneratedMessage?.codeSnippet) {
-			workflowJson = wfGeneratedMessage.codeSnippet;
-		}
-	}
+// 	if (!workflowJson) {
+// 		// FIXME: Use proper error class
+// 		throw new UserError('No workflow generated message found in AI response');
+// 	}
 
-	if (!workflowJson) {
-		// FIXME: Use proper error class
-		throw new UserError('No workflow generated message found in AI response');
-	}
-
-	return workflowJson;
-}
+// 	return workflowJson;
+// }
 
 const flagsSchema = z.object({
 	prompt: z
@@ -81,28 +73,28 @@ export class TTWFGenerateCommand extends BaseCommand<z.infer<typeof flagsSchema>
 	/**
 	 * Reads the dataset file in JSONL format
 	 */
-	// @ts-expect-error We'll use this later for evals
-	private async readDataset(filePath: string): Promise<WorkflowGenerationDatasetItem[]> {
-		try {
-			const data = await fs.promises.readFile(filePath, { encoding: 'utf-8' });
+	// We'll use this later for evals
+	// private async readDataset(filePath: string): Promise<WorkflowGenerationDatasetItem[]> {
+	// 	try {
+	// 		const data = await fs.promises.readFile(filePath, { encoding: 'utf-8' });
 
-			const lines = data.split('\n').filter((line) => line.trim() !== '');
+	// 		const lines = data.split('\n').filter((line) => line.trim() !== '');
 
-			if (lines.length === 0) {
-				throw new UserError('Dataset file is empty or contains no valid lines');
-			}
+	// 		if (lines.length === 0) {
+	// 			throw new UserError('Dataset file is empty or contains no valid lines');
+	// 		}
 
-			return lines.map((line, index) => {
-				try {
-					return jsonParse<WorkflowGenerationDatasetItem>(line);
-				} catch (error) {
-					throw new UserError(`Invalid JSON line on index: ${index}`);
-				}
-			});
-		} catch (error) {
-			throw new UserError(`Failed to read dataset file: ${error}`);
-		}
-	}
+	// 		return lines.map((line, index) => {
+	// 			try {
+	// 				return jsonParse<WorkflowGenerationDatasetItem>(line);
+	// 			} catch (error) {
+	// 				throw new UserError(`Invalid JSON line on index: ${index}`);
+	// 			}
+	// 		});
+	// 	} catch (error) {
+	// 		throw new UserError(`Failed to read dataset file: ${error}`);
+	// 	}
+	// }
 
 	async run() {
 		this.logger.error(
