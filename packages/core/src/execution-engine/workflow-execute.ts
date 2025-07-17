@@ -1215,21 +1215,19 @@ export class WorkflowExecute {
 			// Does not block the execution from continuing
 			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
 			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error(
-					new UnexpectedError('node execution returned incorrect data'),
-					{
-						extra: {
-							nodeName: node.name,
-							nodeType: node.type,
-							nodeVersion: node.typeVersion,
-							workflowId: workflow.id,
-							workflowName: workflow.name ?? 'Unnamed workflow',
-							executionId: this.additionalData.executionId ?? 'unsaved-execution',
-							errorPath: jsonCompatibleResult.errorPath,
-							errorMessage: jsonCompatibleResult.errorMessage,
-						},
+				Container.get(ErrorReporter).error('node execution returned incorrect data', {
+					shouldBeLogged: false,
+					extra: {
+						nodeName: node.name,
+						nodeType: node.type,
+						nodeVersion: node.typeVersion,
+						workflowId: workflow.id,
+						workflowName: workflow.name ?? 'Unnamed workflow',
+						executionId: this.additionalData.executionId ?? 'unsaved-execution',
+						errorPath: jsonCompatibleResult.errorPath,
+						errorMessage: jsonCompatibleResult.errorMessage,
 					},
-				);
+				});
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(
