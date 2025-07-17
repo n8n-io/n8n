@@ -152,6 +152,13 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Merge Text Responses',
+				name: 'mergeTextResponses',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to merge all text parts of the response into a single output string',
+			},
+			{
 				displayName: 'System Message',
 				name: 'system',
 				type: 'string',
@@ -274,6 +281,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 interface MessageOptions {
+	mergeTextResponses?: boolean;
 	codeExecution?: boolean;
 	webSearch?: boolean;
 	allowedDomains?: string;
@@ -375,11 +383,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		})) as MessagesResponse;
 	}
 
+	const text = options.mergeTextResponses
+		? response.content
+				.filter((c) => c.type === 'text')
+				.map((c) => c.text)
+				.join(' ')
+		: undefined;
+
 	if (simplify) {
 		return [
 			{
 				json: {
 					content: response.content,
+					text,
 				},
 				pairedItem: { item: i },
 			},
@@ -388,7 +404,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: { ...response },
+			json: { ...response, text },
 			pairedItem: { item: i },
 		},
 	];
