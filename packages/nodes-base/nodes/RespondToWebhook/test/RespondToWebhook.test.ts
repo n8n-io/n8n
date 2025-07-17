@@ -29,7 +29,11 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.4 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
-				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }),
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
 			]);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
@@ -47,7 +51,11 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
-				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }),
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
 			]);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {

@@ -36,7 +36,11 @@ describe('Test Chat Node', () => {
 		});
 		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
-			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
+			{
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: { mode: 'hostedChat', options: { responseMode: 'responseNodes' } },
+			} as any,
 		]);
 
 		const result = await chat.execute.call(mockExecuteFunctions);
@@ -56,7 +60,11 @@ describe('Test Chat Node', () => {
 		});
 		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
-			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
+			{
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: { mode: 'hostedChat', options: { responseMode: 'responseNodes' } },
+			} as any,
 		]);
 
 		const memory = { chatHistory: { addAIChatMessage: jest.fn() } };
@@ -79,7 +87,11 @@ describe('Test Chat Node', () => {
 		});
 		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
-			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
+			{
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: { mode: 'hostedChat', options: { responseMode: 'responseNodes' } },
+			} as any,
 		]);
 
 		const result = await chat.execute.call(mockExecuteFunctions);
@@ -98,7 +110,11 @@ describe('Test Chat Node', () => {
 		});
 		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
-			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
+			{
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: { mode: 'hostedChat', options: { responseMode: 'responseNodes' } },
+			} as any,
 		]);
 
 		const result = await chat.execute.call(mockExecuteFunctions);
@@ -113,7 +129,11 @@ describe('Test Chat Node', () => {
 		mockExecuteFunctions.getInputData.mockReturnValue([data]);
 		mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 		mockExecuteFunctions.getParentNodes.mockReturnValue([
-			{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false } as any,
+			{
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: { mode: 'hostedChat', options: { responseMode: 'responseNodes' } },
+			} as any,
 		]);
 
 		const result = await chat.onMessage(mockExecuteFunctions, data);

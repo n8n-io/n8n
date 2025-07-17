@@ -47,7 +47,7 @@ describe('autoDetectResponseMode', () => {
 	test('should return hostedChat when start node is CHAT_TRIGGER_NODE_TYPE, method is POST, and public is true', () => {
 		const workflowStartNode = mock<INode>({
 			type: CHAT_TRIGGER_NODE_TYPE,
-			parameters: { public: true },
+			parameters: { options: { responseMode: 'responseNodes' } },
 		});
 		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
 		expect(result).toBe('hostedChat');

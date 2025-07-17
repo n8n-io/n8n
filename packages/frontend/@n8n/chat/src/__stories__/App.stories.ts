@@ -47,7 +47,7 @@ export const Windowed: Story = {
 export const WorkflowChat: Story = {
 	name: 'Workflow Chat',
 	args: {
-		webhookUrl: 'http://localhost:5678/webhook/ad712f8b-3546-4d08-b049-e0d035334a4c/chat',
+		webhookUrl: 'http://localhost:5678/webhook/ad324b56-3e40-4b27-874f-58d150504edc/chat',
 		mode: 'fullscreen',
 		allowedFilesMimeTypes: 'image/*,text/*,audio/*, application/pdf',
 		allowFileUploads: true,
