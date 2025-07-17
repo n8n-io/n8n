@@ -15,5 +15,7 @@ const isEnabled = computed(() => envFeatureFlag.check.value(props.name));
 </script>
 
 <template>
-	<slot v-if="isEnabled" />
+	<div>
+		<slot v-if="isEnabled" />
+	</div>
 </template>
