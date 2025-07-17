@@ -97,6 +97,7 @@ import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue'
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
 import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
+import { I18nT } from 'vue-i18n';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -1758,13 +1759,13 @@ defineExpose({ enterEditMode });
 				<div v-if="search">
 					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 					<N8nText>
-						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 							<template #link>
 								<a href="#" @click="onSearchClear">
 									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 								</a>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</N8nText>
 				</div>
 				<N8nText v-else>
@@ -1832,13 +1833,13 @@ defineExpose({ enterEditMode });
 			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
 				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 				<N8nText>
-					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click="onSearchClear">
 								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 							</a>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</N8nText>
 			</div>
 

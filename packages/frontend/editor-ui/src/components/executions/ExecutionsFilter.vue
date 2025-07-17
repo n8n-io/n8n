@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -303,7 +304,7 @@ onBeforeMount(() => {
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">
 					<template #content>
-						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip" />
+						<I18nT tag="span" keypath="executionsFilter.customData.docsTooltip" scope="global" />
 					</template>
 					<span :class="[$style.label, $style.savedDataLabel]">
 						<span>{{ locale.baseText('executionsFilter.savedData') }}</span>
@@ -316,7 +317,7 @@ onBeforeMount(() => {
 					}}</label>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
-							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -325,7 +326,7 @@ onBeforeMount(() => {
 										>{{ locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 									>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<n8n-input
 							id="execution-filter-saved-data-key"
@@ -341,13 +342,13 @@ onBeforeMount(() => {
 					<div :class="$style.checkboxWrapper">
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+								<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 									<template #link>
 										<a href="#" @click.prevent="goToUpgrade">{{
 											locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
-								</i18n-t>
+								</I18nT>
 							</template>
 							<n8n-checkbox
 								:label="locale.baseText('executionsFilter.savedDataExactMatch')"
@@ -363,13 +364,13 @@ onBeforeMount(() => {
 					}}</label>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
-							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
 									<a href="#" @click.prevent="goToUpgrade">{{
 										locale.baseText('executionsFilter.customData.inputTooltip.link')
 									}}</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<n8n-input
 							id="execution-filter-saved-data-value"
