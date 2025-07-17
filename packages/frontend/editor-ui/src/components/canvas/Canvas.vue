@@ -715,7 +715,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 }
 
 async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
-	if (payload.nodeIdsFilter) {
+	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
 		clearSelectedNodes();
 		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
 	}
