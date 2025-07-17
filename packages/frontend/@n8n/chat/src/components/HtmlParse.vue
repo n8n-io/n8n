@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Component } from 'vue';
-import Highlight from '../Highlight.vue';
+import Highlight from './Highlight.vue';
 import isEmpty from 'lodash/isEmpty';
 
 interface TextNode {
@@ -219,7 +219,7 @@ function parseNode(node: Node): ParsedNode | null {
 
 		// Check if it's a render HTML tag with props
 		if (TAG_CONFIG.RENDER_HTML_WITH_PROPS.has(tagName)) {
-			const props = tagName === 'code' ? { class: 'e-code' } : undefined;
+			const props = tagName === 'code' ? { class: 'code' } : undefined;
 			return createRenderHtmlNode(element, tagName, props);
 		}
 
