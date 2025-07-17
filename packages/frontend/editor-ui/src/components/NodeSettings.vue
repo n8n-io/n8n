@@ -1039,6 +1039,11 @@ function handleWheelEvent(event: WheelEvent) {
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
 		<n8n-block-ui :show="blockUI" />
+		<CommunityNodeFooter
+			v-if="openPanel === 'settings' && isCommunityNode"
+			:package-name="packageName"
+			:show-manage="useUsersStore().isInstanceOwner"
+		/>
 	</div>
 </template>
 
