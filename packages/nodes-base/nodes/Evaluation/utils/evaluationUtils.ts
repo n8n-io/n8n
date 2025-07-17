@@ -89,12 +89,10 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 
 	const isEvaluationMode = this.getMode() === 'evaluation';
 	return [
-		[
-			{
-				...this.getInputData()[0],
-				evaluationData: isEvaluationMode ? outputs : undefined,
-			},
-		],
+		this.getInputData().map((item) => ({
+			...item,
+			evaluationData: isEvaluationMode ? outputs : undefined,
+		})),
 	];
 }
 
@@ -133,12 +131,10 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 
 	const isEvaluationMode = this.getMode() === 'evaluation';
 	return [
-		[
-			{
-				...this.getInputData()[0],
-				evaluationData: isEvaluationMode ? inputs : undefined,
-			},
-		],
+		this.getInputData().map((item) => ({
+			...item,
+			evaluationData: isEvaluationMode ? inputs : undefined,
+		})),
 	];
 }
 
