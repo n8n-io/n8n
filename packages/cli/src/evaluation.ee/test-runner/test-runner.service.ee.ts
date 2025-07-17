@@ -419,8 +419,7 @@ export class TestRunnerService {
 
 		return evalNodes.reduce((accu: IDataObject, node: INode) => {
 			const runs = execution.data.resultData.runData[node.name];
-			const data =
-				runs[runs.length - 1]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
+			const data = runs[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
 
 			return {
 				...accu,
