@@ -22,6 +22,7 @@ import config from '@/config';
 import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
+import { UsageService } from '@/services/usage.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { mockInstance } from '@test/mocking';
 import { getPersonalProject } from '@test-integration/db/projects';
@@ -288,6 +289,7 @@ describe('WorkflowStatisticsService', () => {
 				ownershipService,
 				userService,
 				eventService,
+				mock<UsageService>(),
 			);
 			globalConfig.diagnostics.enabled = true;
 			config.set('deployment.type', 'n8n-testing');

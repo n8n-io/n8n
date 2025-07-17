@@ -14,7 +14,7 @@ import {
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import { JsonColumn, WithTimestamps } from './abstract-entity';
+import { JsonColumn, WithTimestamps, dbType } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
@@ -42,7 +42,12 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'bigint', default: 0 })
 	tokensConsumed: number;
 
-	@Column({ type: 'bigint', default: 0 })
+	@Column({
+		type: dbType === 'sqlite' ? 'real' : 'decimal',
+		precision: 20,
+		scale: 10,
+		default: 0,
+	})
 	costIncurred: number;
 
 	@Column({ length: 32, nullable: true })

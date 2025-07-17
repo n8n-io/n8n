@@ -13,7 +13,7 @@ import {
 import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { DateTimeColumn, datetimeColumnType } from './abstract-entity';
+import { DateTimeColumn, datetimeColumnType, dbType } from './abstract-entity';
 import type { ExecutionAnnotation } from './execution-annotation.ee';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
@@ -45,7 +45,12 @@ export class ExecutionEntity {
 	@Column({ type: 'bigint', default: 0 })
 	tokensConsumed: number;
 
-	@Column({ type: 'bigint', default: 0 })
+	@Column({
+		type: dbType === 'sqlite' ? 'real' : 'decimal',
+		precision: 20,
+		scale: 10,
+		default: 0,
+	})
 	costIncurred: number;
 
 	@Column({ nullable: true })

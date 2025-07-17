@@ -329,6 +329,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} else {
 		returnData.push({ json: response, pairedItem: { item: i } });
 	}
+	// push token usage info
+	returnData.push({
+		json: {
+			prompt_tokens: response?.usage?.prompt_tokens ?? 0,
+			completion_tokens: response?.usage?.completion_tokens ?? 0,
+			model: response?.model,
+		},
+	});
 
 	return returnData;
 }

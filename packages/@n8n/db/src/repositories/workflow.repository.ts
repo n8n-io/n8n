@@ -89,8 +89,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (!workflowData) {
 			throw new Error('Workflow not found');
 		}
-		const newTokensConsumed = workflowData.tokensConsumed + tokensConsumed;
-		const newTotalCost = workflowData.costIncurred + totalCost;
+		const newTokensConsumed = Number(workflowData.tokensConsumed) + Number(tokensConsumed);
+		const newTotalCost = Number(workflowData.costIncurred) + Number(totalCost);
 		return await this.update(workflowId, {
 			tokensConsumed: newTokensConsumed,
 			costIncurred: newTotalCost,

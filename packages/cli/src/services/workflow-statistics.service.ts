@@ -17,9 +17,10 @@ import type {
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 import { TypedEmitter } from '@/typed-emitter';
-import { LLM_PRICING_INFORMATION } from '@/constants/LLMPricing';
 
 import { OwnershipService } from './ownership.service';
+import { getTokensConsumedAndCostIncurred } from './token-usage.utility';
+import { UsageService } from './usage.service';
 
 const isStatusRootExecution = {
 	success: true,
@@ -72,8 +73,6 @@ type WorkflowStatisticsEvents = {
 	};
 };
 
-const DEFAULT_MODEL_FOR_COST_ESTIMATE = 'gpt-4o-mini';
-
 @Service()
 export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEvents> {
 	constructor(
@@ -84,6 +83,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
 		private readonly eventService: EventService,
+		private readonly usageService: UsageService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -105,95 +105,21 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		executionId?: string,
 		userId?: string,
 	): Promise<void> {
-		// Calculate total tokens consumed from the execution data
-		// essentially parsing the runData json object
-		let totalTokens = 0;
-		let totalCost = 0;
-
 		if (executionId) {
-			const resultRunData = runData['data']['resultData']['runData'];
-
-			for (const [, nodeData] of Object.entries(resultRunData)) {
-				if (nodeData && nodeData[0]?.data?.ai_languageModel) {
-					const ai_languageModel = nodeData[0]?.data?.ai_languageModel;
-					if (ai_languageModel[0]) {
-						// Type guard to check if json has the expected response structure
-						const jsonData = ai_languageModel[0][0]?.json;
-						if (jsonData && typeof jsonData === 'object' && 'response' in jsonData) {
-							const response = (jsonData as any).response;
-							if (response && typeof response === 'object' && 'generations' in response) {
-								const model =
-									response.generations?.[0]?.[0]?.generationInfo?.model_name ??
-									(nodeData?.[0]?.inputOverride?.ai_languageModel?.[0]?.[0]?.json as any)?.options
-										?.model_name;
-								const promptTokenUsage =
-									(jsonData as any)?.tokenUsage?.promptTokens ??
-									(jsonData as any)?.tokenUsageEstimate?.promptTokens;
-								const completionTokenUsage =
-									(jsonData as any)?.tokenUsage?.completionTokens ??
-									(jsonData as any)?.tokenUsageEstimate?.completionTokens;
-
-								// log the usage
-								this.logger.info(`LLM Model: ${JSON.stringify(model)}`, {
-									promptTokenUsage,
-									completionTokenUsage,
-								});
-
-								// update token usage
-								if (
-									typeof promptTokenUsage === 'number' &&
-									typeof completionTokenUsage === 'number'
-								) {
-									totalTokens += promptTokenUsage + completionTokenUsage;
-								}
-
-								// calculate the cost.
-								// if the model cannot be extracted, use the default model for cost estimate
-								let modelUsed: String;
-								if (typeof model === 'string' && model.toLowerCase() in LLM_PRICING_INFORMATION) {
-									modelUsed = model.toLowerCase();
-								} else {
-									this.logger.warn(
-										`Model ${model} not found in LLM_PRICING_INFORMATION. Using ${DEFAULT_MODEL_FOR_COST_ESTIMATE} for cost estimate.`,
-									);
-									modelUsed = DEFAULT_MODEL_FOR_COST_ESTIMATE;
-								}
-
-								if (promptTokenUsage && completionTokenUsage) {
-									const inputCost =
-										promptTokenUsage *
-										LLM_PRICING_INFORMATION[modelUsed as keyof typeof LLM_PRICING_INFORMATION][
-											'Input'
-										];
-									const outputCost =
-										completionTokenUsage *
-										LLM_PRICING_INFORMATION[modelUsed as keyof typeof LLM_PRICING_INFORMATION][
-											'Output'
-										];
-									const cost = inputCost + outputCost;
-									totalCost += cost;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			this.logger.info(`Total cost: ${totalCost}, total tokens: ${totalTokens}`);
+			const { totalTokens, totalCost } = getTokensConsumedAndCostIncurred(runData);
 
 			// update the token consumed for the execution
 			try {
+				this.logger.info(
+					`execution ${executionId}: ${totalTokens} tokens consumed, ${totalCost} cost incurred`,
+				);
 				await this.executionRepository.update(
 					{ id: executionId },
 					{ tokensConsumed: totalTokens, costIncurred: totalCost },
 				);
 			} catch (error) {
-				this.logger.debug('Failed to update tokensConsumed for execution', {
-					executionId,
-					totalTokens,
-					totalCost,
-					error: error.message,
-				});
+				this.logger.error(`Failed to update tokensConsumed for execution ${executionId}`);
+				this.logger.error(`Error: ${error}`);
 			}
 
 			// update the total token consumed by this workflow
@@ -204,25 +130,39 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 					totalCost,
 				);
 			} catch (error) {
-				this.logger.debug('Failed to update tokensConsumed for workflow', {
-					workflowId: workflowData.id,
-					totalTokens,
-					totalCost,
-					error: error.message,
-				});
+				this.logger.error(`Failed to update tokensConsumed for workflow ${workflowData.id}`);
+				this.logger.error(`Error: ${error}`);
 			}
 
 			// update the total token consumed by this user
+			// if the cost incurred is not zero, then we add a usage record
 			if (userId) {
 				try {
 					await this.userService.addTokensConsumedAndCostByUser(userId, totalTokens, totalCost);
 				} catch (error) {
-					this.logger.debug('Failed to update tokensConsumed for user', {
-						userId,
-						totalTokens,
-						totalCost,
-						error: error.message,
-					});
+					this.logger.error(`Failed to update tokensConsumed for user ${userId}`);
+					this.logger.error(`Error: ${error}`);
+				}
+
+				try {
+					if (totalCost > 0) {
+						await this.usageService.addTransactionRecord({
+							workflowId: workflowData.id,
+							userId,
+							executionDate: runData.startedAt,
+							tokensConsumed: totalTokens,
+							costIncurred: totalCost,
+						});
+					}
+					this.logger.info(`Added usage record for user ${userId} for workflow ${workflowData.id}`);
+					this.logger.info(
+						`Usage record: ${JSON.stringify(await this.usageService.getUsageByWorkflowId(workflowData.id))}`,
+					);
+				} catch (error) {
+					this.logger.error(
+						`Failed to add usage record for user ${userId} for workflow ${workflowData.id}`,
+					);
+					this.logger.error(`Error: ${error}`);
 				}
 			}
 		}

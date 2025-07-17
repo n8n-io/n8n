@@ -65,7 +65,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ type: 'bigint', default: 0 })
 	tokensConsumed: number;
 
-	@Column({ type: 'bigint', default: 0 })
+	@Column({
+		type: dbType === 'sqlite' ? 'real' : 'decimal',
+		precision: 20,
+		scale: 10,
+		default: 0,
+	})
 	costIncurred: number;
 
 	@JsonColumn({

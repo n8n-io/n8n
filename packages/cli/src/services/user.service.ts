@@ -60,8 +60,8 @@ export class UserService {
 		costIncurred: number,
 	) {
 		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
-		user.tokensConsumed += tokensConsumed;
-		user.costIncurred += costIncurred;
+		user.tokensConsumed = Number(user.tokensConsumed) + Number(tokensConsumed);
+		user.costIncurred = Number(user.costIncurred) + Number(costIncurred);
 		await this.userRepository.save(user);
 	}
 
