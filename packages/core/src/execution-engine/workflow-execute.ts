@@ -1216,7 +1216,7 @@ export class WorkflowExecute {
 			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
 			if (!jsonCompatibleResult.isValid) {
 				Container.get(ErrorReporter).error(
-					new UnexpectedError('node execution output incorrect data'),
+					new UnexpectedError('node execution returned incorrect data'),
 					{
 						extra: {
 							nodeName: node.name,
