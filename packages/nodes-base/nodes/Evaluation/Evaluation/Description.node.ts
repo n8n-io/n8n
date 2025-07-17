@@ -41,6 +41,7 @@ export const setInputsProperties: INodeProperties[] = [
 						name: 'inputName',
 						type: 'string',
 						default: '',
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Value',
@@ -104,6 +105,7 @@ export const setOutputProperties: INodeProperties[] = [
 						name: 'outputName',
 						type: 'string',
 						default: '',
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Value',
