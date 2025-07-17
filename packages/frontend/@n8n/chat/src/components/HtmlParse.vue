@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { Component } from 'vue';
-import Highlight from './Highlight.vue';
 import isEmpty from 'lodash/isEmpty';
+
+import { computed, defineAsyncComponent } from 'vue';
+import type { Component } from 'vue';
 
 interface TextNode {
 	type: 'text';
@@ -19,13 +19,13 @@ interface ElementNode {
 interface ComponentNode {
 	type: 'component';
 	tag: string;
-	props: Record<string, any>;
+	props: Record<string, unknown>;
 }
 
 interface RenderHtmlNode {
 	type: 'renderHtml';
 	tag: string;
-	props?: Record<string, any>;
+	props?: Record<string, unknown>;
 	html: string;
 }
 
@@ -40,7 +40,7 @@ const TAG_CONFIG = {
 	RENDER_HTML_WITH_PROPS: new Set(['code']),
 
 	// Tags that should be rendered as pure HTML
-	RENDER_HTML_TAGS: new Set(['mjx-container', 'img', 'video', 'audio', 'table', 'hr']),
+	RENDER_HTML_TAGS: new Set(['mjx-container', 'table']),
 
 	// Tags that need special security attributes
 	SECURITY_TAGS: new Set(['a']),
@@ -66,6 +66,8 @@ const TAG_CONFIG = {
 		'ol',
 		'li',
 		'blockquote',
+		'img',
+		'hr',
 	]),
 } as const;
 
@@ -98,12 +100,12 @@ const SECURITY_ATTRIBUTES = {
 
 // Component mapping
 const COMPONENT_MAP: Record<string, Component> = {
-	highlight: Highlight,
+	highlight: defineAsyncComponent(() => import('./Highlight.vue')),
 };
 
 // Resolve component name
 const resolveComponent = (name: string): Component | string => {
-	return COMPONENT_MAP[name] || name;
+	return COMPONENT_MAP[name] ?? name;
 };
 
 const props = defineProps<{
@@ -197,13 +199,13 @@ function addSecurityAttributes(
 function createComponentNode(element: Element, tagName: string): ComponentNode | null {
 	if (tagName === 'pre') {
 		const codeElement = element.querySelector(':scope > code');
-		const className = codeElement?.className || '';
+		const className = codeElement?.className ?? '';
 		const lang = className.split('-')[1];
 		return {
 			type: 'component',
 			tag: 'highlight',
 			props: {
-				data: codeElement?.textContent || '',
+				data: codeElement?.textContent ?? '',
 				language: lang,
 			},
 		};
@@ -221,7 +223,7 @@ function createComponentNode(element: Element, tagName: string): ComponentNode |
 function createRenderHtmlNode(
 	element: Element,
 	tagName: string,
-	props?: Record<string, any>,
+	props?: Record<string, unknown>,
 ): RenderHtmlNode {
 	return {
 		type: 'renderHtml',
@@ -291,7 +293,7 @@ function parseNode(node: Node): ParsedNode | null {
 	// Handle element nodes
 	if (node.nodeType === Node.ELEMENT_NODE) {
 		const element = node as Element;
-		const tagName = element.tagName?.toLowerCase() || 'p';
+		const tagName = element.tagName?.toLowerCase() ?? 'p';
 
 		// Security check: Only allow whitelisted tags
 		if (!isAllowedTag(tagName)) {
@@ -358,12 +360,13 @@ function parseHTML(html: string): ParsedNode[] {
 
 // Parse content with memoization
 const parsedBlocks = computed((): ParsedNode[] => {
-	if (!isEmpty(props.node)) return props.node || [];
-	return parseHTML(props.html || '');
+	if (!isEmpty(props.node)) return props.node ?? [];
+	return parseHTML(props.html ?? '');
 });
 </script>
 
 <template>
+	<!-- eslint-disable-next-line vue/no-multiple-template-root -->
 	<template v-for="(node, index) in parsedBlocks" :key="index">
 		<template v-if="node.type === 'text'">
 			{{ node.content }}
@@ -387,11 +390,7 @@ const parsedBlocks = computed((): ParsedNode[] => {
 			<mjx-container v-if="node.tag === 'mjx-container'" v-bind="node.props">
 				<div v-html="node.html" />
 			</mjx-container>
-			<img v-else-if="node.tag === 'img'" v-bind="node.props" />
-			<video v-else-if="node.tag === 'video'" v-bind="node.props" v-html="node.html" />
-			<audio v-else-if="node.tag === 'audio'" v-bind="node.props" v-html="node.html" />
 			<table v-else-if="node.tag === 'table'" v-bind="node.props" v-html="node.html" />
-			<hr v-else-if="node.tag === 'hr'" v-bind="node.props" />
 			<code v-else-if="node.tag === 'code'" v-bind="node.props" v-html="node.html" />
 		</template>
 	</template>

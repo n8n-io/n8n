@@ -23,8 +23,8 @@ $markdown-text-color-dark: #e6edf3;
 $markdown-link-color-dark: #f85149;
 $markdown-link-hover-dark: #ff7b72;
 $markdown-link-active-dark: #da3633;
-$markdown-code-bg-dark: #262c36;
-$markdown-code-color-dark: #646a73;
+$markdown-code-bg-dark: #151619;
+$markdown-code-color-dark: #e6edf3;
 $markdown-blockquote-color-dark: #8b949e;
 $markdown-blockquote-border-dark: #bbbfc4;
 $markdown-hr-color-dark: #444546;
@@ -101,10 +101,10 @@ body {
 	white-space: normal;
 	color: $markdown-text-color-light;
 	> :first-child {
-		margin-top: 0;
+		margin-top: 0 !important;
 	}
 	> :last-child {
-		margin-bottom: 0;
+		margin-bottom: 0 !important;
 	}
 	h1,
 	h2,
@@ -203,6 +203,12 @@ body {
 		margin: 0 2px;
 	}
 
+	img {
+		max-width: 400px;
+		max-height: 240px;
+		max-width: 100%;
+		object-fit: contain;
+	}
 	video {
 		max-height: 240px;
 		max-width: 100%;
