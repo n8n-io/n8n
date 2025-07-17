@@ -40,15 +40,23 @@ const isMoving = ref(false);
 
 const moveStartListener = vf.onMoveStart(() => {
 	isMoving.value = true;
+	shouldShowInputPanel.value = false;
 });
 
 const moveEndListener = vf.onMoveEnd(() => {
 	isMoving.value = false;
+	shouldShowInputPanel.value = getShouldShowInputPanel();
+});
+
+const viewportChangeListener = vf.onViewportChange(() => {
+	isMoving.value = false;
+	shouldShowInputPanel.value = false;
 });
 
 onBeforeUnmount(() => {
 	moveStartListener.off();
 	moveEndListener.off();
+	viewportChangeListener.off();
 });
 
 const isVisible = computed(() =>
@@ -126,6 +134,20 @@ function handleOpenNdv() {
 	}
 }
 
+function getShouldShowInputPanel() {
+	const active = activeElement.value;
+
+	if (!active || !containerRef.value || !containerRef.value.contains(active)) {
+		return false;
+	}
+
+	// TODO: find a way to implement this without depending on test ID
+	return (
+		!!active.closest('[data-test-id=inline-expression-editor-input]') ||
+		!!inputPanelRef.value?.$el.contains(active)
+	);
+}
+
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
@@ -134,10 +156,7 @@ watchOnce(isVisible, (visible) => {
 
 watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	if (active && containerRef.value?.contains(active)) {
-		// TODO: find a way to implement this without depending on test ID
-		shouldShowInputPanel.value =
-			!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-			!!inputPanelRef.value?.$el.contains(active);
+		shouldShowInputPanel.value = getShouldShowInputPanel();
 	}
 
 	if (selected.every((sel) => sel.id !== node.value?.id)) {
