@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { getTestCasesColumns } from './utils';
 
 const router = useRouter();
 const toast = useToast();
@@ -86,6 +87,8 @@ const columns = computed(
 			showHeaderTooltip: true,
 			formatter: (row: TestCaseExecutionRecord) => row.metrics?.[metric]?.toFixed(2) ?? '-',
 		})),
+		...getTestCasesColumns(filteredTestCases.value, 'inputs'),
+		...getTestCasesColumns(filteredTestCases.value, 'outputs'),
 	],
 );
 
