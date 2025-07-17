@@ -1,9 +1,11 @@
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -417,6 +419,10 @@ export function generateNodesGraph(
 			nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
 				(metric: { name: string }) => metric.name,
 			);
+		} else if (node.type === CODE_NODE_TYPE) {
+			const { language } = node.parameters;
+			nodeItem.language =
+				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -456,7 +462,7 @@ export function generateNodesGraph(
 					(((node.parameters?.messages as IDataObject) ?? {}).values as IDataObject[]) ?? [];
 			}
 
-			if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			if (node.type === AGENT_LANGCHAIN_NODE_TYPE || node.type === AGENT_TOOL_LANGCHAIN_NODE_TYPE) {
 				const prompts: IDataObject = {};
 
 				if (node.parameters?.text) {

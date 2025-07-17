@@ -12,9 +12,9 @@ import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
 import { SourceControlContext } from './types/source-control-context';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class SourceControlScopedService {
@@ -65,17 +65,23 @@ export class SourceControlScopedService {
 
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
+		id?: string,
 	): Promise<WorkflowEntity[] | undefined> {
 		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
 
+		const where = this.getWorkflowsInAdminProjectsFromContextFilter(context);
+		if (id) {
+			where.id = id;
+		}
+
 		return await this.workflowRepository.find({
 			select: {
 				id: true,
 			},
-			where: this.getWorkflowsInAdminProjectsFromContextFilter(context),
+			where,
 		});
 	}
 

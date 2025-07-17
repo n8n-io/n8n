@@ -113,6 +113,22 @@ export class ModuleRegistry {
 		}
 	}
 
+	async shutdownModule(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping shutdown for unregistered module', { moduleName });
+			return;
+		}
+
+		await Container.get(moduleEntry.class).shutdown?.();
+
+		const index = this.activeModules.indexOf(moduleName);
+		if (index > -1) this.activeModules.splice(index, 1);
+
+		this.logger.debug(`Shut down module "${moduleName}"`);
+	}
+
 	isActive(moduleName: ModuleName) {
 		return this.activeModules.includes(moduleName);
 	}
