@@ -10,7 +10,7 @@ describe('require resolver', () => {
 	beforeEach(() => {
 		defaultOpts = {
 			allowedBuiltInModules: new Set(['path', 'fs']),
-			allowedExternalModules: new Set(['lodash']),
+			allowedExternalModules: new Set(['es-toolkit']),
 		};
 	});
 
@@ -41,7 +41,7 @@ describe('require resolver', () => {
 	describe('external modules', () => {
 		it('should allow requiring whitelisted external modules', () => {
 			const resolver = createRequireResolver(defaultOpts);
-			expect(() => resolver('lodash')).not.toThrow();
+			expect(() => resolver('es-toolkit')).not.toThrow();
 		});
 
 		it('should throw when requiring non-whitelisted external modules', () => {
@@ -57,7 +57,7 @@ describe('require resolver', () => {
 				allowedExternalModules: '*',
 			});
 
-			expect(() => resolver('lodash')).not.toThrow();
+			expect(() => resolver('es-toolkit')).not.toThrow();
 			expect(() => resolver('express')).not.toThrow();
 		});
 	});

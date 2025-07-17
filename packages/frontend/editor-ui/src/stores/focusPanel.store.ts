@@ -1,7 +1,7 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 
 import {
 	type NodeParameterValueType,

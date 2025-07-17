@@ -1,6 +1,6 @@
 import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/constants';

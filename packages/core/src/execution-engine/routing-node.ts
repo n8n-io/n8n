@@ -3,9 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import get from 'lodash/get';
-import merge from 'lodash/merge';
-import set from 'lodash/set';
+import { get, merge, set } from 'es-toolkit/compat';
 import {
 	NodeHelpers,
 	NodeApiError,

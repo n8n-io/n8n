@@ -1,7 +1,6 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import isArray from 'lodash/isArray';
-import isObject from 'lodash/isObject';
+import { isArray, isObject } from 'es-toolkit/compat';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';

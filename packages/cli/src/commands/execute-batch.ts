@@ -4,7 +4,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import fs from 'fs';
 import { diff } from 'json-diff';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import os from 'os';

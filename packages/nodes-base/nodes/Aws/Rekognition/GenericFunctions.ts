@@ -1,5 +1,5 @@
 import { pascalCase } from 'change-case';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

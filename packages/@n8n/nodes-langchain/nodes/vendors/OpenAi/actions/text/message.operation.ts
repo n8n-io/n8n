@@ -1,5 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
-import _omit from 'lodash/omit';
+import { getConnectedTools } from '@utils/helpers';
+import { omit as _omit } from 'es-toolkit/compat';
 import type {
 	INodeProperties,
 	IExecuteFunctions,
@@ -7,8 +8,6 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
-
-import { getConnectedTools } from '@utils/helpers';
 
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 import type { ChatCompletion } from '../../helpers/interfaces';

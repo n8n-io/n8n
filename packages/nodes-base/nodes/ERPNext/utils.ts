@@ -1,6 +1,4 @@
-import flow from 'lodash/flow';
-import sortBy from 'lodash/sortBy';
-import uniqBy from 'lodash/uniqBy';
+import { flow, sortBy, uniqBy } from 'es-toolkit/compat';
 
 export type DocumentProperties = {
 	customProperty: Array<{ field: string; value: string }>;

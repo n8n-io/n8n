@@ -1,4 +1,4 @@
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
 
 import type { UpdateRecord } from './interfaces';

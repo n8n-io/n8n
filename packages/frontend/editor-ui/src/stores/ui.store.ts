@@ -67,7 +67,7 @@ import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
-import identity from 'lodash/identity';
+import { identity } from 'es-toolkit/compat';
 
 let savedTheme: ThemeOption = 'system';
 

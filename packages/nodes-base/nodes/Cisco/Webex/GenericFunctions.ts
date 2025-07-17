@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import upperFirst from 'lodash/upperFirst';
+import { upperFirst } from 'es-toolkit/compat';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,

@@ -1,6 +1,6 @@
 import { snakeCase } from 'change-case';
 import { createHash } from 'crypto';
-import omit from 'lodash/omit';
+import { omit } from 'es-toolkit/compat';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,

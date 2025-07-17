@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import {
 	NodeOperationError,
 	type IExecuteFunctions,
@@ -11,7 +11,7 @@ import {
 
 import * as IfV2 from '../../V2/IfV2.node';
 
-jest.mock('lodash/set', () => jest.fn());
+jest.mock('es-toolkit/set', () => jest.fn());
 
 describe('Test IF v2 Node Tests', () => {
 	afterEach(() => jest.resetAllMocks());

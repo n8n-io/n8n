@@ -6,7 +6,7 @@
 import { Logger, isObjectLiteral } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,

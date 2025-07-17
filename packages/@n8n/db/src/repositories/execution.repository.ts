@@ -22,7 +22,7 @@ import {
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {

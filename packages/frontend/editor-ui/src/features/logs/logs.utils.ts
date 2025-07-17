@@ -17,8 +17,7 @@ import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
-import get from 'lodash/get';
-import isEmpty from 'lodash/isEmpty';
+import { get, isEmpty } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 

@@ -36,7 +36,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';

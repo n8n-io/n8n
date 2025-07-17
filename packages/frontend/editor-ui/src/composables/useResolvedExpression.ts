@@ -2,7 +2,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
 
-import debounce from 'lodash/debounce';
+import { debounce } from 'es-toolkit/compat';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
 import {
 	computed,

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
-import merge from 'lodash/merge';
+import { merge } from 'es-toolkit/compat';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {

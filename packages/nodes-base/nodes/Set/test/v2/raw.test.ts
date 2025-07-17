@@ -1,4 +1,4 @@
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
 	NodeOperationError,

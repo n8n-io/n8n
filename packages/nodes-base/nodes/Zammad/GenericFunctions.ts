@@ -1,4 +1,4 @@
-import flow from 'lodash/flow';
+import { flow } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	IDataObject,

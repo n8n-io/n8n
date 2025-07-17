@@ -1,10 +1,4 @@
-import get from 'lodash/get';
-import isEmpty from 'lodash/isEmpty';
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
-import pick from 'lodash/pick';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
+import { get, isEmpty, isEqual, lt, pick, set, unset } from 'es-toolkit/compat';
 import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
 import type {
 	IDataObject,

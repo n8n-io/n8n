@@ -1,4 +1,4 @@
-import isEmpty from 'lodash/isEmpty';
+import { isEmpty } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
 import type {

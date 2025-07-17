@@ -1,18 +1,20 @@
-import clone from 'lodash/clone';
-import compact from 'lodash/compact';
-import concat from 'lodash/concat';
-import escapeRegExp from 'lodash/escapeRegExp';
-import every from 'lodash/every';
-import first from 'lodash/first';
-import isArray from 'lodash/isArray';
-import isString from 'lodash/isString';
-import last from 'lodash/last';
-import set from 'lodash/set';
-import some from 'lodash/some';
-import split from 'lodash/split';
-import toNumber from 'lodash/toNumber';
-import toString from 'lodash/toString';
-import trim from 'lodash/trim';
+import {
+	clone,
+	compact,
+	concat,
+	escapeRegExp,
+	every,
+	first,
+	isArray,
+	isString,
+	last,
+	set,
+	some,
+	split,
+	toNumber,
+	toString,
+	trim,
+} from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

@@ -1,5 +1,5 @@
 import { createPrivateKey } from 'crypto';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import type snowflake from 'snowflake-sdk';
 
 import { formatPrivateKey } from '@utils/utilities';

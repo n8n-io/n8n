@@ -3,9 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable prefer-spread */
-import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-
+import { get, isEqual } from 'es-toolkit/compat';
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionTypes } from './interfaces';

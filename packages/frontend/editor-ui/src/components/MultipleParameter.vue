@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 

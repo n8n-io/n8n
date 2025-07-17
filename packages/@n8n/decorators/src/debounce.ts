@@ -1,7 +1,7 @@
-import debounce from 'lodash/debounce';
+import { debounce } from 'es-toolkit/compat';
 
 /**
- * Debounce a class method using `lodash/debounce`.
+ * Debounce a class method using `es-toolkit/debounce`.
  *
  * @param waitMs - Number of milliseconds to debounce method by.
  *

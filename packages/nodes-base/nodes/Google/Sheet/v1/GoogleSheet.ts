@@ -1,4 +1,4 @@
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';

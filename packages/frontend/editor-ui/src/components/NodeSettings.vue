@@ -29,7 +29,7 @@ import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { nameIsParameter } from '@/utils/nodeSettingsUtils';

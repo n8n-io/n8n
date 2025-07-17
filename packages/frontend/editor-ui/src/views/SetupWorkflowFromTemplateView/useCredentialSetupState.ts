@@ -12,7 +12,7 @@ import {
 import type { INodeCredentialDescription, INodeCredentialsDetails } from 'n8n-workflow';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
-import sortBy from 'lodash/sortBy';
+import { sortBy } from 'es-toolkit/compat';
 
 //#region Types
 

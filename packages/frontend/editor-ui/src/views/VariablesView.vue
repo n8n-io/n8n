@@ -36,7 +36,7 @@ import {
 } from '@n8n/design-system';
 import { uid } from '@n8n/design-system/utils';
 import { useAsyncState } from '@vueuse/core';
-import pickBy from 'lodash/pickBy';
+import { pickBy } from 'es-toolkit/compat';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 
 const settingsStore = useSettingsStore();

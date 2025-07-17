@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import pick from 'lodash/pick';
+import { pick } from 'es-toolkit/compat';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import type { UpdateExecutionPayload } from '@/interfaces';

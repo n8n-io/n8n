@@ -66,9 +66,7 @@ import {
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
-import findLast from 'lodash/findLast';
-import isEqual from 'lodash/isEqual';
-import pick from 'lodash/pick';
+import { findLast, isEqual, pick } from 'es-toolkit/compat';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/api/workflows';

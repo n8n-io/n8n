@@ -1,6 +1,6 @@
 import type { BinaryToTextEncoding } from 'crypto';
 import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,

@@ -1,7 +1,6 @@
 import type { ImapSimple, ImapSimpleOptions, Message, SearchCriteria } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
-import find from 'lodash/find';
-import isEmpty from 'lodash/isEmpty';
+import { find, isEmpty } from 'es-toolkit/compat';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';

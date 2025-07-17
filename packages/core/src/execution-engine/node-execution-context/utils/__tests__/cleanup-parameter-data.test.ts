@@ -1,4 +1,4 @@
-import toPlainObject from 'lodash/toPlainObject';
+import { toPlainObject } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 import type { NodeParameterValue } from 'n8n-workflow';
 

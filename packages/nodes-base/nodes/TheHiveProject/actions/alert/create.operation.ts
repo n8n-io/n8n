@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

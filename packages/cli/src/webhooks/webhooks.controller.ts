@@ -1,6 +1,6 @@
 import { Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 
 import { WebhookService } from './webhook.service';
 import type { Method } from './webhook.types';

@@ -1,5 +1,4 @@
-import get from 'lodash/get';
-import unset from 'lodash/unset';
+import { get, unset } from 'es-toolkit/compat';
 import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IBinaryData,

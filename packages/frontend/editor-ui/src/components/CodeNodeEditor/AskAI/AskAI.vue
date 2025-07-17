@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import snakeCase from 'lodash/snakeCase';
+import { snakeCase } from 'es-toolkit/compat';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';

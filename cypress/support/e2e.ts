@@ -1,6 +1,5 @@
 import registerCypressGrep from '@cypress/grep/src/support';
-import cloneDeep from 'lodash/cloneDeep';
-import merge from 'lodash/merge';
+import { cloneDeep, merge } from 'es-toolkit/compat';
 
 import { settings } from './commands';
 

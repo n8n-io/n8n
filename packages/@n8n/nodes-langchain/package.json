@@ -209,7 +209,7 @@
     "js-tiktoken": "^1.0.12",
     "jsdom": "23.0.1",
     "langchain": "0.3.29",
-    "lodash": "catalog:",
+    "es-toolkit": "catalog:",
     "mammoth": "1.7.2",
     "mime-types": "2.1.35",
     "mongodb": "6.11.0",

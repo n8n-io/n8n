@@ -1,6 +1,4 @@
-import flow from 'lodash/flow';
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
+import { flow, isEmpty, omit } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,

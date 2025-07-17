@@ -1,5 +1,5 @@
 import * as nacl_factory from 'js-nacl';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,

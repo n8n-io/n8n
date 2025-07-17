@@ -1,4 +1,4 @@
-import debounce from 'lodash/debounce';
+import { debounce } from 'es-toolkit/compat';
 import { EventEmitter } from 'node:events';
 
 type Payloads<ListenerMap> = {

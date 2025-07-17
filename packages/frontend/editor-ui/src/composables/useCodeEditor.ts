@@ -51,7 +51,7 @@ import {
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
-import debounce from 'lodash/debounce';
+import { debounce } from 'es-toolkit/compat';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 

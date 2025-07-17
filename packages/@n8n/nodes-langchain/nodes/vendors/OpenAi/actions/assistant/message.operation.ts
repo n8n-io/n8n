@@ -3,7 +3,7 @@ import { AgentExecutor } from 'langchain/agents';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { BufferWindowMemory } from 'langchain/memory';
-import omit from 'lodash/omit';
+import { omit } from 'es-toolkit/compat';
 import type {
 	IDataObject,
 	IExecuteFunctions,

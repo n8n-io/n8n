@@ -10,6 +10,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
+
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
 	IBinaryData,

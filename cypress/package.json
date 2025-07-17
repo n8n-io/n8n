@@ -18,7 +18,6 @@
   "devDependencies": {
     "@cypress/grep": "^4.1.0",
     "@n8n/api-types": "workspace:*",
-    "@types/lodash": "catalog:",
     "eslint-plugin-cypress": "^4.3.0",
     "mocha-junit-reporter": "^2.2.1",
     "n8n-workflow": "workspace:*"
@@ -30,7 +29,7 @@
     "cypress-otp": "^1.0.3",
     "cypress-real-events": "^1.14.0",
     "flatted": "catalog:",
-    "lodash": "catalog:",
+    "es-toolkit": "catalog:",
     "nanoid": "catalog:",
     "start-server-and-test": "^2.0.10"
   }

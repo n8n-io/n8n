@@ -1,5 +1,4 @@
-import isEmpty from 'lodash/isEmpty';
-import set from 'lodash/set';
+import { isEmpty, set } from 'es-toolkit/compat';
 import type {
 	IExecuteFunctions,
 	IDataObject,

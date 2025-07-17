@@ -6,7 +6,7 @@ import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import get from 'lodash/get';
+import { get } from 'es-toolkit/compat';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,

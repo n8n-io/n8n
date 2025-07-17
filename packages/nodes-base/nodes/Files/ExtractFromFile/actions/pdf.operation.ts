@@ -1,4 +1,4 @@
-import unset from 'lodash/unset';
+import { unset } from 'es-toolkit/compat';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 

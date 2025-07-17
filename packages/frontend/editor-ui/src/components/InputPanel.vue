@@ -11,7 +11,7 @@ import {
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import uniqBy from 'lodash/uniqBy';
+import { uniqBy } from 'es-toolkit/compat';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	type INodeInputConfiguration,

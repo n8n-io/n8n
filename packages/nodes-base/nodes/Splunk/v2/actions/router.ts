@@ -1,4 +1,4 @@
-import set from 'lodash/set';
+import { set } from 'es-toolkit/compat';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
