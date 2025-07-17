@@ -7,14 +7,20 @@ import { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
 import type { ErrorReporter } from 'n8n-core';
 
-jest.useFakeTimers();
-
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;
 	let mockLogger: ReturnType<typeof mock<Logger>>;
 	let mockErrorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let chatService: ChatService;
 	let mockWs: ReturnType<typeof mock<WebSocket>>;
+
+	feforeAll(() => {
+		jest.useFakeTimers();
+	});
+
+	afterAll(() => {
+		jest.useRealTimers();
+	});
 
 	beforeEach(() => {
 		mockExecutionManager = mock<ChatExecutionManager>();
