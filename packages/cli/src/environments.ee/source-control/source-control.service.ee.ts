@@ -1048,10 +1048,4 @@ export class SourceControlService {
 		await this.sanityCheck();
 		await this.gitService.setGitUserDetails(name, email);
 	}
-
-	async getFileContent(filePath: string): Promise<string> {
-		await this.sanityCheck();
-		const fileContent = await this.gitService.getFileContent(filePath);
-		return fileContent;
-	}
 }
