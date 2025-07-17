@@ -235,6 +235,7 @@ export class ErrorReporter {
 		return (
 			error instanceof Error &&
 			error.name === 'QueryFailedError' &&
+			typeof error.message === 'string' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
 		);
 	}
