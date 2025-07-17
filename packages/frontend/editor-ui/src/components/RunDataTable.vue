@@ -16,6 +16,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { I18nT } from 'vue-i18n';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -514,6 +515,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -525,7 +527,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
@@ -628,14 +629,18 @@ watch(
 						<N8nTooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<I18nT
+										tag="span"
+										keypath="dataMapping.tableView.tableColumnsExceeded.tooltip"
+										scope="global"
+									>
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
 												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
-									</i18n-t>
+									</I18nT>
 								</div>
 							</template>
 							<span>
@@ -676,6 +681,7 @@ watch(
 						@mouseleave="onMouseLeaveCell"
 					>
 						<N8nTooltip
+							v-if="tableData.metadata.data[index1]"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
@@ -687,7 +693,6 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
 								element="a"
 								type="secondary"
