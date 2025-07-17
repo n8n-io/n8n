@@ -14,6 +14,7 @@ import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from '
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import { ElPopover } from 'element-plus';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -65,7 +66,7 @@ const isOnceVisible = ref(isVisible.value);
 const shouldShowInputPanel = ref(false);
 
 const containerRef = useTemplateRef('container');
-const inputPanelContainerRef = useTemplateRef('inputPanelContainer');
+const inputPanelRef = useTemplateRef('inputPanel');
 const activeElement = useActiveElement();
 
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
@@ -136,7 +137,7 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 		// TODO: find a way to implement this without depending on test ID
 		shouldShowInputPanel.value =
 			!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-			!!inputPanelContainerRef.value?.contains(active);
+			!!inputPanelRef.value?.$el.contains(active);
 	}
 
 	if (selected.every((sel) => sel.id !== node.value?.id)) {
@@ -154,43 +155,75 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
 		}"
 	>
-		<template v-if="isOnceVisible">
-			<ExperimentalCanvasNodeSettings
+		<template v-if="node && isOnceVisible">
+			<ElPopover
 				v-if="isExpanded"
-				tabindex="-1"
-				:node-id="nodeId"
-				:class="$style.settingsView"
-				:no-wheel="
-					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
-				"
-				:is-read-only="isReadOnly"
+				:visible="shouldShowInputPanel"
+				placement="left-start"
+				:show-arrow="false"
+				:popper-class="$style.inputPanelContainer"
+				:width="360"
+				:offset="8"
 			>
-				<template #actions>
-					<div :class="$style.actions">
-						<div :class="$style.icon">
-							<CanvasNodeStatusIcons size="small" spinner-scrim />
-						</div>
-						<N8nIconButton
-							icon="maximize-2"
-							type="secondary"
-							text
-							size="mini"
-							icon-size="small"
-							aria-label="Open..."
-							@click="handleOpenNdv"
-						/>
-						<N8nIconButton
-							icon="chevron-down"
-							type="secondary"
-							text
-							size="mini"
-							icon-size="medium"
-							aria-label="Toggle expand"
-							@click="handleToggleExpand"
-						/>
-					</div>
+				<template #reference>
+					<ExperimentalCanvasNodeSettings
+						tabindex="-1"
+						:node-id="nodeId"
+						:class="$style.settingsView"
+						:no-wheel="
+							!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
+						"
+						:is-read-only="isReadOnly"
+					>
+						<template #actions>
+							<div :class="$style.actions">
+								<div :class="$style.icon">
+									<CanvasNodeStatusIcons size="small" spinner-scrim />
+								</div>
+								<N8nIconButton
+									icon="maximize-2"
+									type="secondary"
+									text
+									size="mini"
+									icon-size="small"
+									aria-label="Open..."
+									@click="handleOpenNdv"
+								/>
+								<N8nIconButton
+									icon="chevron-down"
+									type="secondary"
+									text
+									size="mini"
+									icon-size="medium"
+									aria-label="Toggle expand"
+									@click="handleToggleExpand"
+								/>
+							</div>
+						</template>
+					</ExperimentalCanvasNodeSettings>
 				</template>
-			</ExperimentalCanvasNodeSettings>
+				<InputPanel
+					ref="inputPanel"
+					:tabindex="-1"
+					:class="$style.inputPanel"
+					:workflow="workflow"
+					:run-index="0"
+					compact
+					push-ref=""
+					display-mode="schema"
+					disable-display-mode-selection
+					:active-node-name="node.name"
+					:current-node-name="expressionResolveCtx?.inputNode?.name"
+					:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+					:focused-mappable-input="ndvStore.focusedMappableInput"
+				>
+					<template #header>
+						<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
+							Input
+						</N8nText>
+					</template>
+				</InputPanel>
+			</ElPopover>
 			<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
 				<NodeTitle
 					v-if="node"
@@ -216,34 +249,6 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 					<N8nIcon icon="chevron-up" size="medium" :class="$style.icon" />
 				</div>
 			</div>
-			<Transition name="input">
-				<div
-					v-if="shouldShowInputPanel && node"
-					ref="inputPanelContainer"
-					:class="$style.inputPanelContainer"
-					:tabindex="-1"
-				>
-					<InputPanel
-						:class="$style.inputPanel"
-						:workflow="workflow"
-						:run-index="0"
-						compact
-						push-ref=""
-						display-mode="schema"
-						disable-display-mode-selection
-						:active-node-name="node.name"
-						:current-node-name="expressionResolveCtx?.inputNode?.name"
-						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-						:focused-mappable-input="ndvStore.focusedMappableInput"
-					>
-						<template #header>
-							<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
-								Input
-							</N8nText>
-						</template>
-					</InputPanel>
-				</div>
-			</Transition>
 		</template>
 	</div>
 </template>
@@ -256,8 +261,9 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
 	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
+	overflow: hidden;
 
-	--canvas-node--border-color: var(--border-color-base);
+	--canvas-node--border-color: var(--color-text-lighter);
 
 	&.expanded {
 		cursor: default;
@@ -283,7 +289,6 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 :root .settingsView {
 	z-index: 1000;
 	width: 100%;
-	border-radius: var(--border-radius-base);
 
 	height: auto;
 	max-height: calc(min(calc(var(--canvas-node--height) * 2), 300px) - var(--border-width-base) * 2);
@@ -329,14 +334,9 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 }
 
 .inputPanelContainer {
-	position: absolute;
-	right: 100%;
-	top: 0;
-	padding-right: var(--spacing-4xs);
-	margin-top: calc(-1 * var(--border-width-base));
-	width: 180px;
-	z-index: 2000;
-	max-height: 80vh;
+	background-color: transparent !important;
+	padding: 0 !important;
+	border: none !important;
 }
 
 .inputPanel {
@@ -353,17 +353,5 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 .inputPanelTitle {
 	text-transform: uppercase;
 	letter-spacing: 3px;
-}
-</style>
-
-<style lang="scss" scoped>
-.input-enter-active,
-.input-leave-active {
-	transition: opacity 0.3s ease;
-}
-
-.input-enter-from,
-.input-leave-to {
-	opacity: 0;
 }
 </style>
