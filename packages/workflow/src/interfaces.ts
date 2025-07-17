@@ -1474,6 +1474,10 @@ export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	/**
+	 * If true, the resource locator will not show an error if the credentials are not selected
+	 */
+	skipCredentialsCheckInRLC?: boolean;
 	allowNewResource?: {
 		label: string;
 		defaultName: string;
@@ -2629,6 +2633,7 @@ export interface INodeGraphItem {
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];
+	language?: string; // only for Code node: 'javascript' or 'python'
 }
 
 export interface INodeNameIndex {

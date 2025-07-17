@@ -141,7 +141,7 @@ export default mergeConfig(
 		plugins,
 		resolve: { alias },
 		base: publicPath,
-		envPrefix: 'VUE',
+		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
 			preprocessorOptions: {
 				scss: {
