@@ -16,6 +16,20 @@ import {
 	deleteDatapoint,
 	getAllDatapoints,
 	updateDatapoint,
+	createCharge,
+	uncleGoal,
+	createAllDatapoints,
+	getSingleDatapoint,
+	getGoal,
+	getAllGoals,
+	getArchivedGoals,
+	createGoal,
+	updateGoal,
+	refreshGoal,
+	shortCircuitGoal,
+	stepDownGoal,
+	cancelStepDownGoal,
+	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
 
@@ -50,8 +64,20 @@ export class Beeminder implements INodeType {
 				required: true,
 				options: [
 					{
+						name: 'Charge',
+						value: 'charge',
+					},
+					{
 						name: 'Datapoint',
 						value: 'datapoint',
+					},
+					{
+						name: 'Goal',
+						value: 'goal',
+					},
+					{
+						name: 'User',
+						value: 'user',
 					},
 				],
 				default: 'datapoint',
@@ -61,6 +87,38 @@ export class Beeminder implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['charge'],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a charge',
+						action: 'Create a charge',
+					},
+					{
+						name: 'Uncle',
+						value: 'uncle',
+						description: 'Derail a goal and charge the pledge amount',
+						action: 'Derail a goal and charge the pledge amount',
+					},
+				],
+				default: 'create',
+				required: true,
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['datapoint'],
+					},
+				},
 				options: [
 					{
 						name: 'Create',
@@ -69,10 +127,22 @@ export class Beeminder implements INodeType {
 						action: 'Create datapoint for goal',
 					},
 					{
+						name: 'Create All',
+						value: 'createAll',
+						description: 'Create multiple datapoints at once',
+						action: 'Create multiple datapoints at once',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a datapoint',
 						action: 'Delete a datapoint',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a single datapoint',
+						action: 'Get a single datapoint',
 					},
 					{
 						name: 'Get Many',
@@ -91,6 +161,96 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new goal',
+						action: 'Create a new goal',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a specific goal',
+						action: 'Get a specific goal',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all goals',
+						action: 'Get all goals',
+					},
+					{
+						name: 'Get Archived',
+						value: 'getArchived',
+						description: 'Get archived goals',
+						action: 'Get archived goals',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a goal',
+						action: 'Update a goal',
+					},
+					{
+						name: 'Refresh',
+						value: 'refresh',
+						description: 'Refresh goal data',
+						action: 'Refresh goal data',
+					},
+					{
+						name: 'Short Circuit',
+						value: 'shortCircuit',
+						description: 'Short circuit pledge',
+						action: 'Short circuit pledge',
+					},
+					{
+						name: 'Step Down',
+						value: 'stepDown',
+						description: 'Step down pledge',
+						action: 'Step down pledge',
+					},
+					{
+						name: 'Cancel Step Down',
+						value: 'cancelStepDown',
+						description: 'Cancel step down',
+						action: 'Cancel step down',
+					},
+				],
+				default: 'get',
+				required: true,
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['user'],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get user information',
+						action: 'Get user information',
+					},
+				],
+				default: 'get',
+				required: true,
+			},
+			{
 				displayName: 'Goal Name or ID',
 				name: 'goalName',
 				type: 'options',
@@ -105,6 +265,159 @@ export class Beeminder implements INodeType {
 				default: '',
 				description:
 					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				required: true,
+			},
+			{
+				displayName: 'Goal Name or ID',
+				name: 'goalName',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGoals',
+				},
+				displayOptions: {
+					show: {
+						resource: ['charge'],
+						operation: ['uncle'],
+					},
+				},
+				default: '',
+				description:
+					'The name of the goal to derail. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				required: true,
+			},
+			{
+				displayName: 'Goal Name or ID',
+				name: 'goalName',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGoals',
+				},
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['get', 'update', 'refresh', 'shortCircuit', 'stepDown', 'cancelStepDown'],
+					},
+				},
+				default: '',
+				description:
+					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				required: true,
+			},
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['charge'],
+						operation: ['create'],
+					},
+				},
+				default: 0,
+				description: 'Charge amount in USD',
+				required: true,
+			},
+			{
+				displayName: 'Datapoints',
+				name: 'datapoints',
+				type: 'json',
+				displayOptions: {
+					show: {
+						resource: ['datapoint'],
+						operation: ['createAll'],
+					},
+				},
+				default: '[]',
+				description:
+					'Array of datapoint objects to create. Each object should contain value and optionally timestamp, comment, etc.',
+				placeholder:
+					'[{"value": 1, "comment": "First datapoint"}, {"value": 2, "comment": "Second datapoint"}]',
+				required: true,
+			},
+			{
+				displayName: 'Goal Slug',
+				name: 'slug',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['create'],
+					},
+				},
+				default: '',
+				description: 'Unique identifier for the goal',
+				required: true,
+			},
+			{
+				displayName: 'Goal Title',
+				name: 'title',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['create'],
+					},
+				},
+				default: '',
+				description: 'Human-readable title for the goal',
+				required: true,
+			},
+			{
+				displayName: 'Goal Type',
+				name: 'goal_type',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['create'],
+					},
+				},
+				options: [
+					{
+						name: 'Hustler',
+						value: 'hustler',
+					},
+					{
+						name: 'Biker',
+						value: 'biker',
+					},
+					{
+						name: 'Fatloser',
+						value: 'fatloser',
+					},
+					{
+						name: 'Gainer',
+						value: 'gainer',
+					},
+					{
+						name: 'Inboxer',
+						value: 'inboxer',
+					},
+					{
+						name: 'Drinker',
+						value: 'drinker',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+					},
+				],
+				default: 'hustler',
+				description: 'Type of goal',
+				required: true,
+			},
+			{
+				displayName: 'Goal Units',
+				name: 'gunits',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['create'],
+					},
+				},
+				default: '',
+				description: 'Units for the goal (e.g., "hours", "pages", "pounds")',
 				required: true,
 			},
 			{
@@ -160,7 +473,7 @@ export class Beeminder implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: ['update', 'delete'],
+						operation: ['update', 'delete', 'get'],
 					},
 				},
 				required: true,
@@ -200,6 +513,172 @@ export class Beeminder implements INodeType {
 						default: '',
 						placeholder: '',
 						description: 'String to uniquely identify a datapoint',
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['charge'],
+						operation: ['create'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Note',
+						name: 'note',
+						type: 'string',
+						default: '',
+						description: 'Charge explanation',
+					},
+					{
+						displayName: 'Dry Run',
+						name: 'dryrun',
+						type: 'string',
+						default: '',
+						description: 'Test charge creation without actually charging',
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['create'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Goal Date',
+						name: 'goaldate',
+						type: 'dateTime',
+						default: '',
+						description: 'Target date for the goal',
+					},
+					{
+						displayName: 'Goal Value',
+						name: 'goalval',
+						type: 'number',
+						default: 0,
+						description: 'Target value for the goal',
+					},
+					{
+						displayName: 'Rate',
+						name: 'rate',
+						type: 'number',
+						default: 0,
+						description: 'Rate of progress (units per day)',
+					},
+				],
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['update'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'Goal title',
+					},
+					{
+						displayName: 'Goal Date',
+						name: 'goaldate',
+						type: 'dateTime',
+						default: '',
+						description: 'Target date for the goal',
+					},
+					{
+						displayName: 'Goal Value',
+						name: 'goalval',
+						type: 'number',
+						default: 0,
+						description: 'Target value for the goal',
+					},
+					{
+						displayName: 'Rate',
+						name: 'rate',
+						type: 'number',
+						default: 0,
+						description: 'Rate of progress (units per day)',
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['get'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Include Datapoints',
+						name: 'datapoints',
+						type: 'boolean',
+						default: false,
+						description: 'Include datapoints in the response',
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['user'],
+						operation: ['get'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Associations',
+						name: 'associations',
+						type: 'string',
+						default: '',
+						description: 'Include associations in the response',
+					},
+					{
+						displayName: 'Skinny',
+						name: 'skinny',
+						type: 'boolean',
+						default: false,
+						description: 'Return minimal user data',
+					},
+					{
+						displayName: 'Datapoints Count',
+						name: 'datapoints_count',
+						type: 'number',
+						default: 0,
+						description: 'Number of datapoints to include',
 					},
 				],
 			},
@@ -363,6 +842,185 @@ export class Beeminder implements INodeType {
 							datapointId,
 						};
 						results = await deleteDatapoint.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'createAll') {
+						const datapoints = this.getNodeParameter('datapoints', i) as string;
+						const data: IDataObject = {
+							goalName,
+							datapoints: JSON.parse(datapoints),
+						};
+						results = await createAllDatapoints.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'get') {
+						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const data: IDataObject = {
+							goalName,
+							datapointId,
+						};
+						results = await getSingleDatapoint.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				} else if (resource === 'charge') {
+					if (operation === 'create') {
+						const amount = this.getNodeParameter('amount', i) as number;
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {
+							amount,
+						};
+						Object.assign(data, options);
+
+						results = await createCharge.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'uncle') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+
+						results = await uncleGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				} else if (resource === 'goal') {
+					if (operation === 'create') {
+						const slug = this.getNodeParameter('slug', i) as string;
+						const title = this.getNodeParameter('title', i) as string;
+						const goalType = this.getNodeParameter('goal_type', i) as string;
+						const gunits = this.getNodeParameter('gunits', i) as string;
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {
+							slug,
+							title,
+							goal_type: goalType,
+							gunits,
+						};
+						Object.assign(data, options);
+
+						if (data.goaldate) {
+							data.goaldate = moment.tz(data.goaldate, timezone).unix();
+						}
+						results = await createGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'get') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {
+							goalName,
+						};
+						Object.assign(data, options);
+
+						results = await getGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'getAll') {
+						results = await getAllGoals.call(this);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'getArchived') {
+						results = await getArchivedGoals.call(this);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'update') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
+						const data: IDataObject = {
+							goalName,
+						};
+						Object.assign(data, options);
+
+						if (data.goaldate) {
+							data.goaldate = moment.tz(data.goaldate, timezone).unix();
+						}
+						results = await updateGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'refresh') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+						results = await refreshGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'shortCircuit') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+						results = await shortCircuitGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'stepDown') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+						results = await stepDownGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'cancelStepDown') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+						results = await cancelStepDownGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				} else if (resource === 'user') {
+					if (operation === 'get') {
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {};
+						Object.assign(data, options);
+
+						results = await getUser.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
