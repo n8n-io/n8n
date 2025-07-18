@@ -27,8 +27,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const chatNodeExists = computed(() => props.triggerNodes.some((node) => isChatNode(node)));
-
 const selectableTriggerNodes = computed(() =>
 	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
 );
@@ -49,6 +47,7 @@ const label = computed(() => {
 
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
+
 const actions = computed(() =>
 	props.triggerNodes
 		.filter((node) => !isChatNode(node))
@@ -65,6 +64,7 @@ const actions = computed(() =>
 			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
+
 const isSplitButton = computed(
 	() => selectableTriggerNodes.value.length > 1 && props.selectedTriggerNodeName !== undefined,
 );
@@ -85,34 +85,31 @@ const activeTriggerNode = computed(() =>
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			isSplitButton ? $style.split : '',
-			chatNodeExists ? $style.chatNodeExists : '',
-		]"
-	>
+	<div :class="[$style.component, isSplitButton ? $style.split : '']">
 		<KeyboardShortcutTooltip
-			:label="label"
+			label="Hello mate does this work?"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
 			:disabled="executing"
 		>
 			<N8nButton
+				square
 				:loading="executing"
 				:disabled="disabled"
-				size="small"
+				size="medium"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
 				@click="emit('execute')"
 			>
-				<NodeIcon
-					v-if="!executing"
-					:class="$style.menuIcon"
-					:size="16"
-					:node-type="getNodeTypeByName(activeTriggerNode!.name)"
-				/>
+				<div :class="$style.center">
+					<NodeIcon
+						v-if="!executing"
+						:class="$style.menuIcon"
+						:size="14"
+						:node-type="getNodeTypeByName(activeTriggerNode!.name)"
+					/>
+				</div>
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 		<template v-if="isSplitButton">
@@ -157,16 +154,6 @@ const activeTriggerNode = computed(() =>
 	align-items: stretch;
 }
 
-.chatNodeExists {
-	padding-right: 2px;
-	border-right: 1px solid var(--color-foreground-base);
-}
-
-.divider {
-	width: 1px;
-	background-color: var(--button-font-color, var(--color-button-primary-font));
-}
-
 .chevron {
 	width: 40px;
 	border-top-left-radius: 0;
@@ -183,11 +170,24 @@ const activeTriggerNode = computed(() =>
 	gap: var(--spacing-2xs);
 }
 
+.center {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.center > div {
+	position: absolute;
+	left: -5px;
+	top: -2px;
+}
+
 .menuItem.disabled .menuIcon {
 	opacity: 0.2;
 }
 
-.menuIcon {
+.menuIcon,
+.triggerIcon {
 	& > div {
 		color: var(--color-button-primary-font) !important;
 	}

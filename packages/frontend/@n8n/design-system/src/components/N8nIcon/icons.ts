@@ -130,6 +130,7 @@ import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
+import IconLucidePanelBottom from '~icons/lucide/panel-bottom';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
@@ -154,6 +155,7 @@ import IconLucideServer from '~icons/lucide/server';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
+import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -528,6 +530,7 @@ export const updatedIconSet = {
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-right': IconLucidePanelRight,
+	'panel-bottom': IconLucidePanelBottom, // alias for backward compatibility
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
@@ -551,6 +554,7 @@ export const updatedIconSet = {
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
+	sparkles: IconLucideSparkles,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-pen': IconLucideSquarePen,

@@ -80,7 +80,11 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				:read-only="readOnly"
 				:executing="executing"
 				v-bind="$attrs"
-			/>
+			>
+				<template #nodes><slot name="nodes" /></template>
+				<template #chat><slot name="chat" /></template>
+				<template #trigger><slot name="trigger" /></template>
+			</Canvas>
 		</div>
 		<slot />
 		<ExperimentalNodeDetailsDrawer

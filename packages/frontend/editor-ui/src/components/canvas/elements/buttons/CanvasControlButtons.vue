@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -49,44 +50,128 @@ function onZoomToFit() {
 function onTidyUp() {
 	emit('tidy-up');
 }
+
+const assistantStore = useAssistantStore();
+
+function onAskAssistantButtonClick() {
+	if (!assistantStore.chatWindowOpen)
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
+
+	assistantStore.toggleChatOpen();
+}
 </script>
 <template>
-	<Controls :class="$style.viewControls" :show-zoom="false" :show-fit-view="false">
-		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
-			<N8nIconButton
-				type="tertiary"
-				size="medium"
-				icon="minus"
-				text
-				data-test-id="zoom-out-button"
-				@click="onZoomOut"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.zoomToFit')"
-			:shortcut="{ keys: ['1'] }"
-		>
-			<N8nButton type="tertiary" size="mini" text @click="onZoomToFit">
-				{{ Math.round(props.zoom * 100) }}%
-			</N8nButton>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
-			<N8nIconButton
-				type="tertiary"
-				size="medium"
-				icon="plus"
-				text
-				data-test-id="zoom-in-button"
-				@click="onZoomIn"
-			/>
-		</KeyboardShortcutTooltip>
+	<Controls :show-zoom="false" :show-fit-view="false">
+		<div :class="$style.controlGroup">
+			<div :class="$style.controlSurface">
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.zoomOut')"
+					:shortcut="{ keys: ['-'] }"
+				>
+					<N8nIconButton
+						type="tertiary"
+						size="medium"
+						icon="minus"
+						text
+						data-test-id="zoom-out-button"
+						@click="onZoomOut"
+					/>
+				</KeyboardShortcutTooltip>
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.zoomToFit')"
+					:shortcut="{ keys: ['1'] }"
+				>
+					<N8nButton type="tertiary" size="mini" text @click="onZoomToFit">
+						{{ Math.round(props.zoom * 100) }}%
+					</N8nButton>
+				</KeyboardShortcutTooltip>
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.zoomIn')"
+					:shortcut="{ keys: ['+'] }"
+				>
+					<N8nIconButton
+						type="tertiary"
+						size="medium"
+						icon="plus"
+						text
+						data-test-id="zoom-in-button"
+						@click="onZoomIn"
+					/>
+				</KeyboardShortcutTooltip>
+			</div>
+			<div :class="$style.controlSurface">
+				<slot name="chat"></slot>
+			</div>
+		</div>
+		<div :class="$style.controlGroup">
+			<div :class="$style.controlSurface">
+				<slot name="trigger"></slot>
+			</div>
+			<div :class="$style.controlSurface">
+				<slot name="nodes"></slot>
+			</div>
+		</div>
+		<div :class="$style.controlGroup">
+			<div :class="$style.controlSurface">
+				<KeyboardShortcutTooltip label="Ask Assistant">
+					<N8nIconButton
+						type="tertiary"
+						size="medium"
+						icon="sparkles"
+						text
+						@click="onAskAssistantButtonClick"
+					/>
+				</KeyboardShortcutTooltip>
+			</div>
+			<div :class="$style.controlSurface">
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.zoomIn')"
+					:shortcut="{ keys: ['+'] }"
+				>
+					<N8nIconButton
+						type="tertiary"
+						size="medium"
+						icon="panel-bottom"
+						text
+						data-test-id="zoom-in-button"
+						@click="onZoomIn"
+					/>
+				</KeyboardShortcutTooltip>
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.zoomIn')"
+					:shortcut="{ keys: ['+'] }"
+				>
+					<N8nIconButton
+						type="tertiary"
+						size="medium"
+						icon="panel-right"
+						text
+						data-test-id="zoom-in-button"
+						@click="onZoomIn"
+					/>
+				</KeyboardShortcutTooltip>
+			</div>
+		</div>
 	</Controls>
 </template>
 
 <style module lang="scss">
-.viewControls {
+.controlSurface {
 	display: flex;
 	gap: var(--spacing-xs);
+	background-color: var(--color-background-xlight);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	gap: var(--spacing-6xs);
+}
+
+.controlGroup {
+	display: flex;
+	gap: var(--spacing-2xs);
 }
 
 .iconButton {
@@ -103,13 +188,11 @@ function onTidyUp() {
 <style lang="scss">
 .vue-flow__controls {
 	display: flex;
-	gap: var(--spacing-xs);
+	justify-content: space-between;
 	box-shadow: none;
-	background-color: var(--color-background-xlight);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-base);
 	margin: 12px;
 	padding: 0;
+	width: calc(100% - 24px);
 }
 </style>
 

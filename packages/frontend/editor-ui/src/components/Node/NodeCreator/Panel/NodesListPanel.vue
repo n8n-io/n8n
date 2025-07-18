@@ -20,11 +20,9 @@ import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
-import NodeIcon from '@/components/NodeIcon.vue';
 
 import CommunityNodeDetails from './CommunityNodeDetails.vue';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
-import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -32,7 +30,7 @@ const i18n = useI18n();
 const { callDebounced } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, updateCurrentViewStack, resetViewStacks } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
 
@@ -160,165 +158,93 @@ function onBackButton() {
 </script>
 
 <template>
-	<transition
-		v-if="viewStacks.length > 0"
-		:name="`panel-slide-${activeViewStack.transitionDirection}`"
-		@after-leave="onTransitionEnd"
+	<div
+		:key="`${activeViewStack.uuid}`"
+		:class="[$style.nodesListPanel, activeViewStack.panelClass]"
+		@keydown.capture.stop
 	>
-		<aside
-			:key="`${activeViewStack.uuid}`"
-			:class="[$style.nodesListPanel, activeViewStack.panelClass]"
-			@keydown.capture.stop
+		<SearchBar
+			v-if="showSearchBar"
+			:class="$style.searchBar"
+			:placeholder="
+				searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
+			"
+			:model-value="activeViewStack.search"
+			@update:model-value="onSearch"
+		/>
+
+		<div
+			v-if="activeViewStack && activeViewStack.title !== 'What happens next?'"
+			:class="$style.activeStack"
 		>
-			<header
-				:class="{
-					[$style.header]: true,
-					[$style.hasBg]: !activeViewStack.subtitle,
-					'nodes-list-panel-header': true,
-				}"
-				data-test-id="nodes-list-header"
-			>
-				<div :class="$style.top">
-					<button
-						v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
-						:class="$style.backButton"
-						@click="onBackButton"
-					>
-						<n8n-icon :class="$style.backButtonIcon" icon="arrow-left" :size="22" />
-					</button>
-					<NodeIcon
-						v-if="activeViewStack.nodeIcon"
-						:class="$style.nodeIcon"
-						:icon-source="activeViewStack.nodeIcon"
-						:circle="false"
-						:show-tooltip="false"
-						:size="20"
-						:use-updated-icons="true"
-					/>
-					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
-
-					<CommunityNodeDocsLink
-						v-if="communityNodeDetails"
-						:package-name="communityNodeDetails.packageName"
-					/>
-				</div>
-				<p
-					v-if="activeViewStack.subtitle"
-					:class="{ [$style.subtitle]: true, [$style.offsetSubtitle]: viewStacks.length > 1 }"
-					v-text="activeViewStack.subtitle"
-				/>
-			</header>
-
-			<SearchBar
-				v-if="showSearchBar"
-				:class="$style.searchBar"
-				:placeholder="
-					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
-				"
-				:model-value="activeViewStack.search"
-				@update:model-value="onSearch"
+			<N8nIconButton
+				v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
+				icon="arrow-left"
+				type="tertiary"
+				text
+				@click="onBackButton"
 			/>
+			<N8nText size="small" color="text-base">{{ activeViewStack.title }}</N8nText>
+		</div>
 
-			<CommunityNodeDetails v-if="communityNodeDetails" />
-			<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
+		<CommunityNodeDetails v-if="communityNodeDetails" />
+		<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
 
-			<div :class="$style.renderedItems">
-				<n8n-notice
-					v-if="activeViewStack.info && !activeViewStack.search"
-					:class="$style.info"
-					:content="activeViewStack.info"
-					theme="warning"
-				/>
-				<!-- Actions mode -->
-				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
-
-				<!-- Nodes Mode -->
-				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
-			</div>
-
-			<CommunityNodeFooter
-				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
-				:package-name="communityNodeDetails.packageName"
-				:show-manage="communityNodeDetails.installed && isInstanceOwner"
+		<div :class="$style.renderedItems">
+			<n8n-notice
+				v-if="activeViewStack.info && !activeViewStack.search"
+				:class="$style.info"
+				:content="activeViewStack.info"
+				theme="warning"
 			/>
-		</aside>
-	</transition>
+			<!-- Actions mode -->
+			<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
+
+			<!-- Nodes Mode -->
+			<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
+		</div>
+
+		<CommunityNodeFooter
+			v-if="communityNodeDetails && !isCommunityNodeActionsMode"
+			:package-name="communityNodeDetails.packageName"
+			:show-manage="communityNodeDetails.installed && isInstanceOwner"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>
-:global(.panel-slide-in-leave-active),
-:global(.panel-slide-in-enter-active),
-:global(.panel-slide-out-leave-active),
-:global(.panel-slide-out-enter-active) {
-	transition: transform 200ms ease;
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-:global(.panel-slide-out-enter-from),
-:global(.panel-slide-in-leave-to) {
-	transform: translateX(0);
-	z-index: -1;
-}
-
-:global(.panel-slide-out-leave-to),
-:global(.panel-slide-in-enter-from) {
-	transform: translateX(100%);
-	// Make sure the leaving panel stays on top
-	// for the slide-out panel effect
-	z-index: 1;
-}
 .info {
 	margin: var(--spacing-2xs) var(--spacing-s);
 }
-.backButton {
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	padding: var(--spacing-2xs) var(--spacing-xs) 0 0;
+
+.activeStack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 }
 
-.backButtonIcon {
-	color: $node-creator-arrow-color;
-	padding: 0;
-}
-.nodeIcon {
-	--node-icon-size: 20px;
-	margin-right: var(--spacing-s);
-}
 .renderedItems {
 	overflow: auto;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	scrollbar-width: none; /* Firefox 64 */
-	padding-bottom: var(--spacing-xl);
-	&::-webkit-scrollbar {
-		display: none;
-	}
 }
+
 .searchBar {
 	flex-shrink: 0;
 }
+
 .nodesListPanel {
-	background: var(--color-background-xlight);
-	height: 100%;
-	background-color: $node-creator-background-color;
-	--color-background-node-icon-badge: var(--color-background-xlight);
+	background: var(--color-foreground-light);
+	height: 600px;
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;
-
-	&:before {
-		box-sizing: border-box;
-		content: '';
-		border-left: 1px solid $node-creator-border-color;
-		width: 1px;
-		position: absolute;
-		height: 100%;
-	}
+	border-radius: 8px;
+	border: 1px solid var(--color-foreground-base);
+	overflow: hidden;
 }
+
 .footer {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);

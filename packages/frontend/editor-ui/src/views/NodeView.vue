@@ -110,8 +110,6 @@ import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
-import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
-import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -129,13 +127,11 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
-import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 defineOptions({
@@ -2073,7 +2069,34 @@ onBeforeUnmount(() => {
 			<Suspense>
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
-			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
+			<template #nodes>
+				<NodeCreation
+					:create-node-active="nodeCreatorStore.isCreateNodeActive"
+					:node-view-scale="viewportTransform.zoom"
+					@toggle-node-creator="onToggleNodeCreator"
+					@add-nodes="onAddNodesAndConnections"
+				/>
+			</template>
+			<template v-if="chatTriggerNode" #chat>
+				<CanvasChatButton
+					v-if="isLogsPanelOpen"
+					type="tertiary"
+					:label="i18n.baseText('chat.hide')"
+					@click="logsStore.toggleOpen(false)"
+				/>
+				<KeyboardShortcutTooltip
+					v-else
+					:label="i18n.baseText('chat.open')"
+					:shortcut="{ keys: ['c'] }"
+				>
+					<CanvasChatButton
+						:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
+						:label="i18n.baseText('chat.open')"
+						@click="onOpenChat"
+					/>
+				</KeyboardShortcutTooltip>
+			</template>
+			<template v-if="isRunWorkflowButtonVisible" #trigger>
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
@@ -2087,27 +2110,6 @@ onBeforeUnmount(() => {
 					@execute="runEntireWorkflow('main')"
 					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 				/>
-				<template v-if="containsChatTriggerNodes">
-					<CanvasChatButton
-						v-if="isLogsPanelOpen"
-						type="tertiary"
-						:label="i18n.baseText('chat.hide')"
-						:class="$style.chatButton"
-						@click="logsStore.toggleOpen(false)"
-					/>
-					<KeyboardShortcutTooltip
-						v-else
-						:label="i18n.baseText('chat.open')"
-						:shortcut="{ keys: ['c'] }"
-					>
-						<CanvasChatButton
-							:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
-							:label="i18n.baseText('chat.open')"
-							:class="$style.chatButton"
-							@click="onOpenChat"
-						/>
-					</KeyboardShortcutTooltip>
-				</template>
 				<CanvasStopCurrentExecutionButton
 					v-if="isStopExecutionButtonVisible"
 					:stopping="isStoppingExecution"
@@ -2117,7 +2119,7 @@ onBeforeUnmount(() => {
 					v-if="isStopWaitingForWebhookButtonVisible"
 					@click="onStopWaitingForWebhook"
 				/>
-			</div>
+			</template>
 
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"
@@ -2127,16 +2129,6 @@ onBeforeUnmount(() => {
 			>
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
-
-			<Suspense>
-				<LazyNodeCreation
-					v-if="!isCanvasReadOnly"
-					:create-node-active="nodeCreatorStore.isCreateNodeActive"
-					:node-view-scale="viewportTransform.zoom"
-					@toggle-node-creator="onToggleNodeCreator"
-					@add-nodes="onAddNodesAndConnections"
-				/>
-			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
 					v-if="!isNDVV2"
@@ -2217,10 +2209,6 @@ onBeforeUnmount(() => {
 				margin: 0;
 			}
 		}
-	}
-
-	.chatButton {
-		align-self: stretch;
 	}
 }
 

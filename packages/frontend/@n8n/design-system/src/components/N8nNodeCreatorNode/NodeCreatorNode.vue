@@ -63,7 +63,7 @@ const { t } = useI18n();
 		</div>
 		<slot name="dragContent" />
 		<button v-if="showActionArrow" :class="$style.panelIcon">
-			<N8nIcon icon="arrow-right" size="large" />
+			<N8nIcon icon="arrow-right" size="small" />
 		</button>
 	</div>
 </template>
@@ -74,7 +74,7 @@ const { t } = useI18n();
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing-5xs) var(--spacing-2xs) var(--spacing-xs) 0;
 
 	&.hasAction {
 		user-select: none;

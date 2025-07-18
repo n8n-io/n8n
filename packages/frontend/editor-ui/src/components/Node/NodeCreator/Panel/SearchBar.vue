@@ -76,14 +76,14 @@ defineExpose({
 <style lang="scss" module>
 .searchContainer {
 	display: flex;
-	height: 40px;
+	height: 32px;
 	padding: 0 var(--spacing-xs);
 	align-items: center;
-	margin: var(--search-margin, var(--spacing-s));
+	margin: var(--search-margin, var(--spacing-2xs));
 	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
-	background-color: $node-creator-search-background-color;
+	background-color: var(--color-foreground-xlight);
 	color: $node-creator-search-placeholder-color;
 	border-radius: 4px;
 
@@ -111,7 +111,7 @@ defineExpose({
 		outline: none;
 		font-size: var(--font-size-s);
 		appearance: none;
-		background-color: var(--color-background-xlight);
+		background-color: var(--color-foreground-xlight);
 		color: var(--color-text-dark);
 
 		&::placeholder,

@@ -958,7 +958,11 @@ provide(CanvasKey, {
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
-		/>
+		>
+			<template #nodes><slot name="nodes" /></template>
+			<template #trigger><slot name="trigger" /></template>
+			<template #chat><slot name="chat" /></template>
+		</CanvasControlButtons>
 
 		<Suspense>
 			<ContextMenu @action="onContextMenuAction" />

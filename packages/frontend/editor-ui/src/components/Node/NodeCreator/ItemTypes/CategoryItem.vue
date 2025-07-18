@@ -46,7 +46,7 @@ const categoryName = computed(() => {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-compact);
-	padding: var(--spacing-2xs) var(--spacing-s);
+
 	border-bottom: 1px solid $node-creator-border-color;
 	display: flex;
 	cursor: pointer;

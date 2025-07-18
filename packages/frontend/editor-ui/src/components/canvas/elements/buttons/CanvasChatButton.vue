@@ -6,11 +6,11 @@ export type Props = Pick<ButtonProps, 'label' | 'type'>;
 defineProps<Props>();
 </script>
 <template>
-	<N8nButton
+	<N8nIconButton
 		size="medium"
 		text
 		icon="message-circle"
-		:type="type"
+		type="tertiary"
 		data-test-id="workflow-chat-button"
 	/>
 </template>
