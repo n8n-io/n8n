@@ -33,14 +33,14 @@ const handleClasses = 'target';
 	position: absolute;
 	top: 50%;
 	left: calc(var(--spacing-xs) * -1);
-	transform: translate(-100%, -50%);
+	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1)) translate(-100%, 0);
+	transform-origin: center left;
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
 	background: var(--color-canvas-label-background);
 	z-index: 1;
 	text-align: center;
 	white-space: nowrap;
-	zoom: var(--canvas-zoom-compensation-factor, 1);
 }
 
 .required .label::after {

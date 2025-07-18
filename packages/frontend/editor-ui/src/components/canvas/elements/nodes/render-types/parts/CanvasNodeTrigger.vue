@@ -129,7 +129,8 @@ async function handleClickExecute() {
 		transition:
 			translate 0.1s ease-in,
 			opacity 0.1s ease-in;
-		zoom: var(--canvas-zoom-compensation-factor, 1);
+		transform: scale(var(--canvas-zoom-compensation-factor, 1));
+		transform-origin: center right;
 	}
 
 	&.interactive.hovered button {
