@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/base';
+import type { n8nPage } from '../pages/n8nPage';
 
 // Example of using helper functions inside a test
 test.describe('Debug mode', () => {
@@ -22,8 +23,8 @@ test.describe('Debug mode', () => {
 	});
 
 	// Helper function to create basic workflow
-	async function createBasicWorkflow(n8n, url = URLS.FAILING) {
-		await n8n.workflows.clickAddWorklowButton();
+	async function createBasicWorkflow(n8n: n8nPage, url = URLS.FAILING) {
+		await n8n.workflows.clickAddWorkflowButton();
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', url);
@@ -33,7 +34,7 @@ test.describe('Debug mode', () => {
 	}
 
 	// Helper function to import execution for debugging
-	async function importExecutionForDebugging(n8n) {
+	async function importExecutionForDebugging(n8n: n8nPage) {
 		await n8n.canvas.clickExecutionsTab();
 		await n8n.executions.clickDebugInEditorButton();
 		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED);
@@ -105,7 +106,7 @@ test.describe('Debug mode', () => {
 		expect(n8n.page.url()).toContain('/debug');
 	});
 
-	async function attemptCopyToEditor(n8n) {
+	async function attemptCopyToEditor(n8n: n8nPage) {
 		await n8n.canvas.clickExecutionsTab();
 		await n8n.executions.clickLastExecutionItem();
 		await n8n.executions.clickCopyToEditorButton();

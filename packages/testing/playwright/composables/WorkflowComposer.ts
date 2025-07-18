@@ -22,4 +22,28 @@ export class WorkflowComposer {
 		await responsePromise;
 		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage);
 	}
+
+	async createWorkflow(name?: string) {
+		await this.n8n.workflows.clickAddWorkflowButton();
+		const workflowName = name ?? 'My New Workflow';
+		await this.n8n.canvas.setWorkflowName(workflowName);
+		await this.n8n.canvas.saveWorkflow();
+	}
+
+	/**
+	 * Creates a new workflow by importing a JSON file
+	 * @param fileName - The workflow JSON file name (e.g., 'test_pdf_workflow.json', will search in workflows folder)
+	 * @param name - Optional custom name. If not provided, generates a unique name
+	 * @returns The actual workflow name that was used
+	 */
+	async createWorkflowFromJsonFile(
+		fileName: string,
+		name?: string,
+	): Promise<{ workflowName: string }> {
+		const workflowName = name ?? `Imported Workflow ${Date.now()}`;
+		await this.n8n.goHome();
+		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.canvas.importWorkflow(fileName, workflowName);
+		return { workflowName };
+	}
 }
