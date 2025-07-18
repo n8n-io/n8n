@@ -4,6 +4,7 @@ import type {
 	TestCaseExecutionRepository,
 	TestRunRepository,
 	WorkflowRepository,
+	User,
 } from '@n8n/db';
 import { readFileSync } from 'fs';
 import type { Mock } from 'jest-mock';
@@ -1666,6 +1667,227 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetOutputsNodes(workflow);
 			}).not.toThrow();
+		});
+	});
+
+	describe('runTest', () => {
+		const dataSetExecutionId = 'execution-123';
+		const fullWorkflowExecutionId = 'execution-456';
+
+		const mockUser = mock<User>({
+			id: 'user-123',
+			email: 'test@example.com',
+		});
+
+		const mockWorkflow = mock<IWorkflowBase>({
+			id: 'workflow-123',
+			name: 'Test Workflow',
+			nodes: [
+				{
+					id: 'trigger-node',
+					name: 'Dataset Trigger',
+					type: EVALUATION_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					disabled: false,
+					position: [0, 0],
+					parameters: {
+						documentId: 'doc-123',
+						sheetName: 'Sheet1',
+					},
+					credentials: {
+						googleSheetsOAuth2Api: {
+							id: 'cred-123',
+							name: 'Google Sheets Credential',
+						},
+					},
+				},
+				{
+					id: 'metrics-node',
+					name: 'Set Metrics',
+					type: EVALUATION_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'customMetrics',
+						metrics: {
+							assignments: [
+								{
+									id: '1',
+									name: 'accuracy',
+									value: 0.95,
+								},
+							],
+						},
+					},
+				},
+			],
+			connections: {},
+		});
+
+		const mockTestRun = mock<TestRun>({
+			id: 'test-run-123',
+			workflowId: 'workflow-123',
+			status: 'new',
+		});
+
+		const mockDatasetExecution = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'Dataset Trigger': [
+							{
+								data: {
+									main: [
+										[
+											{ json: { id: 1, name: 'Test Case 1' } },
+											{ json: { id: 2, name: 'Test Case 2' } },
+										],
+									],
+								},
+								error: undefined,
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const mockTestCaseExecution = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'Set Metrics': [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: { accuracy: 0.95 },
+											},
+										],
+									],
+								},
+								error: undefined,
+							},
+						],
+					},
+					error: undefined,
+				},
+			},
+			startedAt: new Date('2023-01-01T10:00:00Z'),
+			stoppedAt: new Date('2023-01-01T10:00:05Z'),
+		});
+
+		beforeEach(() => {
+			// Reset all mocks
+			jest.clearAllMocks();
+
+			// Setup common mocks
+			workflowRepository.findById.mockResolvedValue(mockWorkflow as any);
+			testRunRepository.createTestRun.mockResolvedValue(mockTestRun);
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as any);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as any);
+			testRunRepository.markAsError.mockResolvedValue(undefined as any);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as any);
+
+			// Mock the database manager
+			const mockDbManager = {
+				transaction: jest.fn().mockImplementation(async (callback) => {
+					return await callback({});
+				}),
+			};
+			Object.defineProperty(testRunRepository, 'manager', {
+				value: mockDbManager,
+				writable: true,
+			});
+
+			// Mock test case execution repository
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(mock());
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as any);
+
+			// Mock workflow runner and active executions
+			activeExecutions.stopExecution.mockReturnValue(undefined as any);
+			workflowRunner.run.mockImplementation(async (data) => {
+				if (data.destinationNode === 'Dataset Trigger') {
+					return dataSetExecutionId;
+				}
+
+				return fullWorkflowExecutionId;
+			});
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId: string) => {
+				if (executionId === dataSetExecutionId) {
+					return await Promise.resolve(mockDatasetExecution);
+				}
+
+				return await Promise.resolve(mockTestCaseExecution);
+			});
+
+			// Mock telemetry
+			telemetry.track.mockReturnValue(undefined as any);
+		});
+
+		it('should successfully run a test with valid workflow and test cases', async () => {
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(workflowRepository.findById).toHaveBeenCalledWith(mockWorkflow.id);
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(mockWorkflow.id);
+			expect(testRunRepository.markAsRunning).toHaveBeenCalledWith(mockTestRun.id);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User ran test', {
+				run_id: mockTestRun.id,
+				user_id: mockUser.id,
+				workflow_id: mockWorkflow.id,
+			});
+
+			// Should run dataset trigger and extract test cases
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ destinationNode: 'Dataset Trigger' }),
+			);
+			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(dataSetExecutionId);
+			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(fullWorkflowExecutionId);
+
+			const aggregatedMetrics = {
+				accuracy: 0.95,
+				completionTokens: 0,
+				executionTime: 5000,
+				promptTokens: 0,
+				totalTokens: 0,
+			};
+
+			// Should create test case executions for each test case
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledTimes(2);
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith({
+				completedAt: expect.any(Date),
+				runAt: expect.any(Date),
+				executionId: fullWorkflowExecutionId,
+				inputs: {},
+				metrics: aggregatedMetrics,
+				outputs: {},
+				status: 'success',
+				testRun: {
+					id: mockTestRun.id,
+				},
+			});
+
+			// // Should mark test run as completed
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith(
+				mockTestRun.id,
+				aggregatedMetrics,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Test run finished', {
+				run_id: mockTestRun.id,
+				workflow_id: mockWorkflow.id,
+				duration: expect.any(Number),
+				error_message: '',
+				errored_test_case_count: 0,
+				metric_count: 5,
+				start: expect.any(Number),
+				status: 'success',
+				test_case_count: 2,
+				test_type: 'evaluation',
+			});
 		});
 	});
 });
