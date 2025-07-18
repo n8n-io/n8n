@@ -98,10 +98,10 @@ describe('AI Builder store', () => {
 		expect(builderStore.chatWidth).toBe(MAX_CHAT_WIDTH);
 	});
 
-	it('should open chat window', () => {
+	it('should open chat window', async () => {
 		const builderStore = useBuilderStore();
 
-		builderStore.openChat();
+		await builderStore.openChat();
 		expect(builderStore.chatWindowOpen).toBe(true);
 	});
 
