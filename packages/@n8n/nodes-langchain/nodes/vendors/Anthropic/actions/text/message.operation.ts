@@ -412,7 +412,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 }
 
 async function getTools(this: IExecuteFunctions, options: MessageOptions) {
-	const connectedTools = await getConnectedTools(this, true);
+	let connectedTools: Tool[] = [];
+	const nodeInputs = this.getNodeInputs();
+	// the node can be used as a tool, in this case there won't be any connected tools
+	if (nodeInputs.some((i) => i.type === 'ai_tool')) {
+		connectedTools = await getConnectedTools(this, true);
+	}
+
 	const tools: AnthropicTool[] = connectedTools.map((t) => ({
 		type: 'custom',
 		name: t.name,
