@@ -9,7 +9,7 @@ describe('Anthropic -> utils', () => {
 	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	describe('getMimeType', () => {

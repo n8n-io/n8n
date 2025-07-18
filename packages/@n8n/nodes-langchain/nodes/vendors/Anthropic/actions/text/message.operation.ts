@@ -38,7 +38,7 @@ const properties: INodeProperties[] = [
 			multipleValues: true,
 		},
 		placeholder: 'Add Message',
-		default: { values: [{ content: '' }] },
+		default: { values: [{ content: '', role: 'user' }] },
 		options: [
 			{
 				displayName: 'Values',

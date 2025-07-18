@@ -20,7 +20,7 @@ describe('Anthropic Node', () => {
 	const getBaseUrlMock = jest.spyOn(utils, 'getBaseUrl');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	describe('Text -> Message', () => {

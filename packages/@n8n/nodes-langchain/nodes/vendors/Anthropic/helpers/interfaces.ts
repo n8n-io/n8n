@@ -81,7 +81,7 @@ export type Tool =
 
 export interface MessagesResponse {
 	content: Content[];
-	stop_reason: string;
+	stop_reason: string | null;
 }
 
 export interface PromptResponse {

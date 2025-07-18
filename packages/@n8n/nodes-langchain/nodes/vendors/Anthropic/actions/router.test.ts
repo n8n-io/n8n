@@ -8,7 +8,7 @@ import * as prompt from './prompt';
 import { router } from './router';
 import * as text from './text';
 
-describe('Google Gemini router', () => {
+describe('Anthropic router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 	const mockDocument = jest.spyOn(document.analyze, 'execute');
 	const mockFile = jest.spyOn(file.upload, 'execute');
@@ -24,7 +24,7 @@ describe('Google Gemini router', () => {
 	];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
