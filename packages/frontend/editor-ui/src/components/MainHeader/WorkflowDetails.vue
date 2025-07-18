@@ -61,6 +61,7 @@ import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { sanitizeFilename } from '@/utils/fileUtils';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -798,12 +799,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							{{ i18n.baseText('workflowDetails.share') }}
 						</N8nButton>
 						<template #content>
-							<i18n-t
+							<I18nT
 								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 										.tooltip
 								"
 								tag="span"
+								scope="global"
 							>
 								<template #action>
 									<a @click="goToUpgrade">
@@ -815,7 +817,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 										}}
 									</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</N8nTooltip>
 				</template>

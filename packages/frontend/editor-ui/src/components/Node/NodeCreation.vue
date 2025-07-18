@@ -135,14 +135,13 @@ function onAskAssistantButtonClick() {
 			<n8n-icon-button
 				type="tertiary"
 				size="large"
-				icon="list"
+				icon="panel-right"
 				@click="focusPanelStore.toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<n8n-tooltip placement="left">
+		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<n8n-button
-				v-if="assistantStore.canShowAssistantButtonsOnCanvas"
 				type="tertiary"
 				size="large"
 				square

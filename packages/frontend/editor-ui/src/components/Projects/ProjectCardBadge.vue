@@ -153,9 +153,12 @@ const projectLocation = computed(() => {
 </script>
 <template>
 	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
+		<N8nTooltip
+			v-if="badgeText"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0"
+			placement="top"
+		>
 			<N8nBadge
-				v-if="badgeText"
 				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
 				data-test-id="card-badge"
@@ -172,13 +175,12 @@ const projectLocation = computed(() => {
 			</template>
 		</N8nTooltip>
 		<slot />
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0" placement="top">
-			<div
-				v-if="numberOfMembersInHomeTeamProject"
-				:class="$style['count-badge']"
-				theme="tertiary"
-				bold
-			>
+		<N8nTooltip
+			v-if="numberOfMembersInHomeTeamProject"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0"
+			placement="top"
+		>
+			<div :class="$style['count-badge']" theme="tertiary" bold>
 				+{{ numberOfMembersInHomeTeamProject }}
 			</div>
 			<template #content>

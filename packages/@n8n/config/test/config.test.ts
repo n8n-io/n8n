@@ -149,6 +149,7 @@ describe('GlobalConfig', () => {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: [],
+			pythonEnabled: true,
 		},
 		publicApi: {
 			disabled: false,

@@ -1,3 +1,4 @@
+import { IWorkflowToImport } from '@/interfaces';
 import type {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -14,18 +15,15 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
@@ -42,6 +40,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
@@ -49,6 +48,10 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class SourceControlService {
@@ -65,6 +68,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private sourceControlScopedService: SourceControlScopedService,
 		private tagRepository: TagRepository,
 		private folderRepository: FolderRepository,
 		private readonly eventService: EventService,
@@ -1047,5 +1051,40 @@ export class SourceControlService {
 	): Promise<void> {
 		await this.sanityCheck();
 		await this.gitService.setGitUserDetails(name, email);
+	}
+
+	async getRemoteFileEntity({
+		user,
+		type,
+		id,
+		commit = 'HEAD',
+	}: {
+		user: User;
+		type: SourceControlledFile['type'];
+		id?: string;
+		commit?: string;
+	}): Promise<IWorkflowToImport> {
+		await this.sanityCheck();
+		const context = new SourceControlContext(user);
+		switch (type) {
+			case 'workflow': {
+				if (typeof id === 'undefined') {
+					throw new BadRequestError('Workflow ID is required to fetch workflow content');
+				}
+
+				const authorizedWorkflows =
+					await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context, id);
+				if (authorizedWorkflows && authorizedWorkflows.length === 0) {
+					throw new ForbiddenError(`You are not allowed to access workflow with id ${id}`);
+				}
+				const content = await this.gitService.getFileContent(
+					`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${id}.json`,
+					commit,
+				);
+				return jsonParse<IWorkflowToImport>(content);
+			}
+			default:
+				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
 	}
 }
