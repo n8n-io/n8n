@@ -17,7 +17,9 @@ const {
 	fitView,
 	findNode,
 	addSelectedNodes,
+	onPaneClick,
 } = useVueFlow({ id: props.id });
+
 const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
 	useInjectViewportSync();
 
@@ -44,6 +46,18 @@ onViewportChange(({ from, viewport }) => {
 
 onNodeClick(({ node }) => triggerNodeClick(node.id));
 
+onPaneClick(() => {
+	setTimeout(() => {
+		// prevent pane clicks from deselecting nodes
+		const node = findNode(selectedDetailId.value);
+		if (!node) {
+			addSelectedNodes([]);
+			return;
+		}
+		addSelectedNodes([node]);
+	}, 0);
+});
+
 watch(selectedDetailId, (id) => {
 	const node = findNode(id);
 	if (!node) {
@@ -51,7 +65,7 @@ watch(selectedDetailId, (id) => {
 		return;
 	}
 	addSelectedNodes([node]); // Add node to selection
-	const desiredPixelPadding = node.dimensions.width * 5; // or node.height * 0.5
+	const desiredPixelPadding = node.dimensions.height * 5;
 	const nodeBoundingSize = Math.max(node.dimensions.width, node.dimensions.height);
 	const paddingRatio = desiredPixelPadding / nodeBoundingSize;
 	void fitView({ nodes: [node.id], padding: paddingRatio, duration: 500 });
