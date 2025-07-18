@@ -67,15 +67,21 @@ defineSlots<{ actions?: {} }>();
 }
 
 .titleText {
-	flex-basis: 0;
+	min-width: 0;
+	flex-grow: 1;
 	flex-shrink: 1;
 	font-weight: var(--font-weight-medium);
 	font-size: var(--font-size-s);
+	overflow: hidden;
+
+	/* Same amount of padding and negative margin for border to not be cut by overflow: hidden */
+	padding: var(--spacing-2xs);
+	margin: calc(-1 * var(--spacing-2xs));
 }
 
 .subTitleText {
 	width: 0;
-	flex-grow: 1;
+	flex-grow: 100;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
