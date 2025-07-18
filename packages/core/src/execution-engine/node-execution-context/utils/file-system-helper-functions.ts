@@ -1,4 +1,4 @@
-import { safeJoinPath } from '@n8n/backend-common';
+import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -34,52 +34,17 @@ export function isFilePathBlocked(filePath: string): boolean {
 	const resolvedFilePath = resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
-	//if allowed paths are defined, allow access only to those paths
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return false;
-			}
-		}
-
+	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];
+	if (
+		restrictedPaths.some((restrictedPath) => isContainedWithin(restrictedPath, resolvedFilePath))
+	) {
 		return true;
 	}
 
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
-	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder, staticCacheDir];
-
-		if (process.env[CONFIG_FILES]) {
-			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-		}
-
-		if (process.env[CUSTOM_EXTENSION_ENV]) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-			restrictedPaths.push(...customExtensionFolders);
-		}
-
-		if (process.env[BINARY_DATA_STORAGE_PATH]) {
-			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-		}
-
-		//check if the file path is restricted
-		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return true;
-			}
-		}
+	if (allowedPaths.length) {
+		return !allowedPaths.some((allowedPath) => isContainedWithin(allowedPath, resolvedFilePath));
 	}
 
-	//path is not restricted
 	return false;
 }
 
@@ -120,3 +85,34 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
 });
+
+/**
+ * @returns The restricted paths for the n8n instance.
+ */
+function getN8nRestrictedPaths() {
+	const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
+	const restrictedPaths = [n8nFolder, staticCacheDir];
+
+	if (process.env[CONFIG_FILES]) {
+		restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
+	}
+
+	if (process.env[CUSTOM_EXTENSION_ENV]) {
+		const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+		restrictedPaths.push(...customExtensionFolders);
+	}
+
+	if (process.env[BINARY_DATA_STORAGE_PATH]) {
+		restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
+	}
+
+	return restrictedPaths;
+}

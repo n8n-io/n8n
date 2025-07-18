@@ -144,12 +144,11 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button type="tertiary" size="large" icon="list" @click="toggleFocusPanel" />
+			<n8n-icon-button type="tertiary" size="large" icon="panel-right" @click="toggleFocusPanel" />
 		</KeyboardShortcutTooltip>
-		<n8n-tooltip placement="left">
+		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<n8n-button
-				v-if="assistantStore.canShowAssistantButtonsOnCanvas"
 				type="tertiary"
 				size="large"
 				square
