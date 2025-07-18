@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -29,6 +29,8 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExecutionData } from '@/composables/useExecutionData';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -49,6 +51,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
@@ -107,6 +110,10 @@ const isExecutable = computed(() => {
 		foreignCredentials,
 	);
 });
+
+const node = computed(() => resolvedParameter.value?.node);
+
+const { hasNodeRun } = useExecutionData({ node });
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -345,7 +352,11 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
 						<div :class="$style.parameterOptionsWrapper">
-							<div></div>
+							<div>
+								<N8nInfoTip v-if="!hasNodeRun" :bold="true">
+									{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
+								</N8nInfoTip>
+							</div>
 							<ParameterOptions
 								v-if="isDisplayed"
 								:parameter="resolvedParameter.parameter"
