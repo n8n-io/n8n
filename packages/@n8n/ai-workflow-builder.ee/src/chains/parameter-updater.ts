@@ -57,8 +57,10 @@ export const createParameterUpdaterChain = (
 	options: ParameterUpdaterOptions,
 	logger?: Logger,
 ) => {
-	if (!llm.bindTools) {
-		throw new LLMServiceError("LLM doesn't support binding tools", { llmModel: llm._llmType() });
+	if (typeof llm.withStructuredOutput !== 'function') {
+		throw new LLMServiceError("LLM doesn't support withStructuredOutput", {
+			llmModel: llm._llmType(),
+		});
 	}
 
 	// Build dynamic system prompt based on context

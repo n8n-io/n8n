@@ -66,24 +66,3 @@ export function extractConnectionParameters(parameters: INodeParameters): INodeP
 
 	return connectionParams;
 }
-
-/**
- * Check if a parameter name affects connections
- * @param parameterName - The parameter name to check
- * @returns True if the parameter affects connections
- */
-export function isConnectionParameter(parameterName: string): boolean {
-	return CONNECTION_AFFECTING_PARAMETERS.has(parameterName);
-}
-
-/**
- * Log connection parameter warnings if debug mode is enabled
- * @param warnings - Array of warning messages
- * @param nodeType - The type of node being created
- */
-export function logConnectionParameterWarnings(warnings: string[], _nodeType: string): void {
-	if (warnings.length > 0) {
-		// console.log(`[Connection Parameters] Warnings for node type ${nodeType}:`);
-		warnings.forEach((warning) => console.log(`  - ${warning}`));
-	}
-}
