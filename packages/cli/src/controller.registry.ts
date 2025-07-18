@@ -1,7 +1,7 @@
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -87,11 +87,12 @@ export class ControllerRegistry {
 				...(route.skipAuth
 					? []
 					: ([
-							this.authService.createAuthMiddleware(route.allowSkipMFA),
+							this.authService.createAuthMiddleware(route.allowSkipMFA, route.apiKeyAuth),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
+				// ...(route.apiKeyAuth ? [this.createApiKeyMiddleware()] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
 				route.usesTemplates

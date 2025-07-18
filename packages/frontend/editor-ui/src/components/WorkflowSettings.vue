@@ -73,6 +73,7 @@ const defaultValues = ref({
 	saveExecutionProgress: false,
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
+	availableInMCP: false,
 });
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
@@ -377,6 +378,10 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
+const toggleAvailableInMCP = () => {
+	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
+};
+
 const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
@@ -457,6 +462,10 @@ onMounted(async () => {
 	}
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
+	}
+
+	if (workflowSettingsData.availableInMCP === undefined) {
+		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
 
 	workflowSettings.value = workflowSettingsData;
@@ -809,6 +818,31 @@ onMounted(async () => {
 						</el-col>
 					</el-row>
 				</div>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						<label for="avalableInMCP">
+							{{ i18n.baseText('workflowSettings.availableInMCP') + ':' }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+								</template>
+								<n8n-icon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</el-col>
+					<el-col :span="14">
+						<div>
+							<el-switch
+								ref="inputField"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:model-value="workflowSettings.availableInMCP ?? false"
+								active-color="#13ce66"
+								data-test-id="workflow-settings-vailable-in-mcp"
+								@update:model-value="toggleAvailableInMCP"
+							></el-switch>
+						</div>
+					</el-col>
+				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						<label for="timeSavedPerExecution">
