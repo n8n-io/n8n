@@ -388,7 +388,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		? response.content
 				.filter((c) => c.type === 'text')
 				.map((c) => c.text)
-				.join(' ')
+				.join('')
 		: undefined;
 
 	if (simplify) {
