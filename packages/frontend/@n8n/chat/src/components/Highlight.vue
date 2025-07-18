@@ -1,16 +1,13 @@
 <script setup lang="ts">
+import { computed, ref, onUnmounted, onDeactivated } from 'vue';
+import { N8nIcon } from '@n8n/design-system';
+import { useTimeoutFn } from '@vueuse/core';
 import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import javascript from 'highlight.js/lib/languages/javascript';
 import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
-import isEmpty from 'lodash/isEmpty';
-
-import { computed, ref, onUnmounted, onDeactivated } from 'vue';
-
-import { N8nIcon } from '@n8n/design-system';
-import { useTimeoutFn } from '@vueuse/core';
 
 import { clipboard } from '../utils/clipboard';
 
@@ -40,14 +37,14 @@ const props = withDefaults(defineProps<Props>(), {
 const isCopied = ref(false);
 
 const filterLanguage = computed(() => {
-	if (isEmpty(props.data) || isEmpty(props.language)) return '';
+	if (!props.data || !props.language) return '';
 	return hljs.getLanguage(props.language)?.name ?? '';
 });
 
 const filterData = computed(() => {
-	if (isEmpty(props.data)) return '';
+	if (!props.data) return '';
 	const langName = filterLanguage.value;
-	if (!isEmpty(langName)) {
+	if (langName) {
 		return hljs.highlight(props.data, { language: langName }).value;
 	}
 	return hljs.highlightAuto(props.data).value;
@@ -101,7 +98,10 @@ onDeactivated(() => {
 				<div v-else>Copy Successfully</div>
 			</template>
 		</div>
-		<pre class="highlight-code-box"><code ref="_codeBlock" v-html="filterData"></code></pre>
+		<pre class="highlight-code-box">
+			<!-- eslint-disable-next-line vue/no-v-html -->
+			<code ref="_codeBlock" v-html="filterData"></code>
+		</pre>
 	</div>
 </template>
 
