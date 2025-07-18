@@ -44,6 +44,7 @@ export class AiController {
 		try {
 			const aiResponse = this.workflowBuilderService.chat(
 				{
+					// @ts-expect-error: Needs #17424 to be merged first
 					question: payload.payload.question ?? '',
 				},
 				req.user,
