@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import NodeTitle from '@/components/NodeTitle.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement, watchOnce } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
@@ -16,6 +15,7 @@ import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 import { ElPopover } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -275,16 +275,15 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 				</InputPanel>
 			</ElPopover>
 			<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
-				<NodeTitle
-					v-if="node"
-					:class="$style.collapsedNodeName"
-					:model-value="node.name"
-					:node-type="nodeType"
-					read-only
-					:is-node-disabled="node.disabled ?? false"
-					:sub-title="subTitle"
-					layout="stacked"
-				/>
+				<NodeIcon :node-type="nodeType" :size="18" />
+				<div :class="$style.collapsedNodeName">
+					<N8nText bold>
+						{{ node.name }}
+					</N8nText>
+					<N8nText bold size="small" color="text-light">
+						{{ subTitle }}
+					</N8nText>
+				</div>
 				<div :class="$style.actions">
 					<div :class="$style.icon">
 						<CanvasNodeStatusIcons size="small" spinner-scrim />
@@ -355,7 +354,6 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	background-color: white;
 	padding: var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs) var(--spacing-2xs);
 	background-color: var(--color-background-xlight);
-	color: var(--color-text-base);
 	cursor: pointer;
 
 	.disabled & {
@@ -372,8 +370,15 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 .collapsedNodeName {
 	width: 0;
 	flex-grow: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-5xs);
+
+	& > * {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 
 .settingsView {
@@ -385,6 +390,7 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 .actions {
 	display: flex;
 	align-items: center;
+	color: var(--color-text-base);
 
 	& > button {
 		color: var(--color-text-light);
