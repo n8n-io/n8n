@@ -165,7 +165,9 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
-	const focusedNodeParametersInTelemetryFormat = computed(() =>
+	const focusedNodeParametersInTelemetryFormat = computed<
+		Array<{ parameterPath: string; nodeType: string }>
+	>(() =>
 		focusedNodeParameters.value.map((x) => ({
 			parameterPath: x.parameterPath,
 			nodeType: isRichParameter(x) ? x.node.type : 'unresolved',

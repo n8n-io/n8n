@@ -1003,9 +1003,8 @@ async function optionSelected(command: string) {
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
 			telemetry.track('User opened focus panel', {
-				source: 'parameterDropdown',
+				source: 'parameterButton',
 				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-				parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
 			});
 			return;
 	}

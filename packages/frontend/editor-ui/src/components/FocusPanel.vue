@@ -258,17 +258,16 @@ function closeFocusPanel() {
 	telemetry.track('User closed focus panel', {
 		source: 'closeIcon',
 		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
 	});
 
 	focusPanelStore.closeFocusPanel();
 }
 
 function onExecute() {
-	telemetry.track('User executed node from focus panel', {
-		nodeType: resolvedParameter.value?.node.type ?? 'executed without a node, should never happen',
-		parameter: resolvedParameter.value?.parameterPath,
-	});
+	telemetry.track(
+		'User executed node from focus panel',
+		focusPanelStore.focusedNodeParametersInTelemetryFormat[0],
+	);
 }
 
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
@@ -352,13 +351,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:square="true"
 								:hide-label="true"
 								telemetry-source="focus"
-							></NodeExecuteButton>
+								@execute="onExecute"
+							/>
 							<N8nIcon
 								:class="$style.closeButton"
 								icon="x"
 								color="text-base"
 								size="xlarge"
-								@click="focusPanelStore.closeFocusPanel"
+								@click="closeFocusPanel"
 							/>
 						</div>
 					</div>
