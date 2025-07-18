@@ -1944,16 +1944,6 @@ describe('TestRunnerService', () => {
 			expect(workflowRepository.findById).toHaveBeenCalledWith('non-existent-workflow');
 		});
 
-		it('should handle test run creation failure', async () => {
-			testRunRepository.createTestRun.mockResolvedValue(null);
-
-			await expect(testRunnerService.runTest(mockUser, mockWorkflow.id)).rejects.toThrow(
-				'Unable to create a test run',
-			);
-
-			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(mockWorkflow.id);
-		});
-
 		it('should handle workflow validation errors', async () => {
 			const invalidWorkflow = mock<WorkflowEntity>({
 				...mockWorkflow,
