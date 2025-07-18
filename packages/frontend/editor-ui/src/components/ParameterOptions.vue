@@ -56,7 +56,7 @@ const shouldShowExpressionSelector = computed(
 const isFocusPanelFeatureEnabled = computed(() => {
 	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
 });
-const hasFocusAction = computed(
+const canBeOpenedInFocusPanel = computed(
 	() =>
 		isFocusPanelFeatureEnabled.value &&
 		!props.parameter.isNodeSetting &&
@@ -72,10 +72,6 @@ const shouldShowOptions = computed(() => {
 
 	if (props.parameter.type === 'collection' || props.parameter.type === 'credentialsSelect') {
 		return false;
-	}
-
-	if (hasFocusAction.value) {
-		return true;
 	}
 
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
@@ -106,37 +102,22 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
-	const focusAction = {
-		label: i18n.baseText('parameterInput.focusParameter'),
-		value: 'focus',
-		disabled: false,
-	};
-
 	if (isHtmlEditor.value && !isValueAnExpression.value) {
-		const formatHtmlAction = {
-			label: i18n.baseText('parameterInput.formatHtml'),
-			value: 'formatHtml',
-		};
-
-		return hasFocusAction.value ? [formatHtmlAction, focusAction] : [formatHtmlAction];
+		return [
+			{
+				label: i18n.baseText('parameterInput.formatHtml'),
+				value: 'formatHtml',
+			},
+		];
 	}
 
-	const resetAction = {
-		label: resetValueLabel.value,
-		value: 'resetValue',
-		disabled: isDefault.value,
-	};
-
-	// The reset value action is not working correctly for these
-	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
-		props.parameter.typeOptions?.editor ?? '',
-	);
-
-	// Conditionally build actions array without nulls to ensure correct typing
 	const parameterActions = [
-		hasResetAction ? [resetAction] : [],
-		hasFocusAction.value ? [focusAction] : [],
-	].flat();
+		{
+			label: resetValueLabel.value,
+			value: 'resetValue',
+			disabled: isDefault.value,
+		},
+	];
 
 	if (
 		hasRemoteMethod.value ||
@@ -177,7 +158,7 @@ const onViewSelected = (selected: string) => {
 			</n8n-text>
 		</div>
 		<div v-else :class="$style.controlsContainer">
-			<N8nTooltip v-if="hasFocusAction">
+			<N8nTooltip v-if="canBeOpenedInFocusPanel">
 				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
 				<N8nIconButton
 					type="tertiary"
