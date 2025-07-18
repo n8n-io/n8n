@@ -18,7 +18,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnection, CanvasNode } from '@/types';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -268,6 +268,7 @@ function previousNodeChange() {
 }
 
 const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
+
 const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
@@ -288,6 +289,7 @@ const tabs = computed(() => [
 		disabled: settingsDiff.value.length === 0,
 	},
 ]);
+
 function setActiveTab(active: boolean) {
 	if (!active) {
 		activeTab.value = undefined;
@@ -355,19 +357,19 @@ onNodeClick((nodeId) => {
 		@before-close="handleBeforeClose"
 	>
 		<template #header="{ closeDialog }">
-			<div style="display: flex; align-items: center; justify-content: space-between">
-				<div style="display: flex; align-items: center">
+			<div :class="$style.header">
+				<div :class="$style.headerLeft">
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
 						class="mr-xs"
 						@click="closeDialog"
 					></N8nIconButton>
-					<n8n-heading tag="h1" size="xlarge">
+					<N8nHeading tag="h1" size="xlarge">
 						{{
 							topWorkFlow.state.value?.workflow?.name || bottomWorkFlow.state.value?.workflow?.name
 						}}
-					</n8n-heading>
+					</N8nHeading>
 				</div>
 
 				<div>
@@ -385,7 +387,7 @@ onNodeClick((nodeId) => {
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu>
-								<div style="min-width: 300px; padding: 2px 12px">
+								<div :class="$style.dropdownContent">
 									<N8nRadioButtons v-model="activeTab" :options="tabs" :class="$style.tabs">
 										<template #option="{ label, count }">
 											<span v-if="count" class="mr-3xs">
@@ -453,9 +455,9 @@ onNodeClick((nodeId) => {
 			</div>
 		</template>
 		<template #content>
-			<div style="display: flex; height: 100%">
-				<div style="display: flex; flex-direction: column; height: 100%; flex: 1">
-					<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
+			<div :class="$style.workflowDiffContent">
+				<div :class="$style.workflowDiff">
+					<div :class="$style.workflowDiffPanel">
 						<template v-if="topWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 								<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
@@ -486,15 +488,7 @@ onNodeClick((nodeId) => {
 								</SyncedWorkflowCanvas>
 							</template>
 							<template v-else>
-								<div
-									style="
-										height: 100%;
-										display: flex;
-										flex-direction: column;
-										align-items: center;
-										justify-content: center;
-									"
-								>
+								<div :class="$style.emptyWorkflow">
 									<template v-if="bottomWorkFlow.state.value?.remote">
 										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
 										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
@@ -507,7 +501,7 @@ onNodeClick((nodeId) => {
 							</template>
 						</template>
 					</div>
-					<div style="flex: 1; position: relative; border-top: 1px solid #ddd">
+					<div :class="$style.workflowDiffPanel">
 						<template v-if="bottomWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 								<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
@@ -538,15 +532,7 @@ onNodeClick((nodeId) => {
 								</SyncedWorkflowCanvas>
 							</template>
 							<template v-else>
-								<div
-									style="
-										height: 100%;
-										display: flex;
-										flex-direction: column;
-										align-items: center;
-										justify-content: center;
-									"
-								>
+								<div :class="$style.emptyWorkflow">
 									<template v-if="bottomWorkFlow.state.value?.remote">
 										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
@@ -619,7 +605,6 @@ onNodeClick((nodeId) => {
 }
 
 .popper {
-	/* dropshadow-floating-card */
 	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
@@ -753,12 +738,10 @@ onNodeClick((nodeId) => {
 
 .edge-deleted {
 	--canvas-edge-color: var(--color-node-icon-red);
-	/* --color-foreground-xdark: var(--color-node-icon-red); */
 	--edge-highlight-color: rgba(234, 31, 48, 0.2);
 }
 .edge-added {
 	--canvas-edge-color: var(--color-node-icon-green);
-	/* --color-foreground-xdark: var(--color-node-icon-green); */
 	--edge-highlight-color: rgba(14, 171, 84, 0.2);
 }
 .edge-equal {
@@ -784,5 +767,47 @@ onNodeClick((nodeId) => {
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
+}
+
+.dropdownContent {
+	min-width: 300px;
+	padding: 2px 12px;
+}
+
+.workflowDiffContent {
+	display: flex;
+	height: 100%;
+}
+
+.workflowDiff {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	flex: 1;
+}
+
+.workflowDiffPanel {
+	flex: 1;
+	position: relative;
+	border-top: 1px solid #ddd;
+}
+
+.emptyWorkflow {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.headerLeft {
+	display: flex;
+	align-items: center;
 }
 </style>
