@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, onUnmounted, onDeactivated } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
-import { useTimeoutFn } from '@vueuse/core';
 import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import javascript from 'highlight.js/lib/languages/javascript';
 import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
+import { computed, ref, onUnmounted, onDeactivated } from 'vue';
+import { N8nIcon } from '@n8n/design-system';
+import { useTimeoutFn } from '@vueuse/core';
 
 import { clipboard } from '../utils/clipboard';
 
