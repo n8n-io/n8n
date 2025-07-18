@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, watchEffect } from 'vue';
+import { computed, watch, ref, onMounted } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -47,44 +47,50 @@ async function onUserMessage(content: string) {
 }
 
 // Watch for workflow updates and apply them
-watchEffect(() => {
-	builderStore.workflowMessages
-		.filter((msg) => msg.id && !processedWorkflowUpdates.value.has(msg.id))
-		.forEach((msg) => {
-			if (msg.id && isWorkflowUpdatedMessage(msg)) {
-				processedWorkflowUpdates.value.add(msg.id);
+watch(
+	() => builderStore.workflowMessages,
+	(messages) => {
+		messages
+			.filter((msg) => {
+				return msg.id && !processedWorkflowUpdates.value.has(msg.id);
+			})
+			.forEach((msg) => {
+				if (msg.id && isWorkflowUpdatedMessage(msg)) {
+					processedWorkflowUpdates.value.add(msg.id);
 
-				const currentWorkflowJson = builderStore.getWorkflowSnapshot();
-				const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
+					const currentWorkflowJson = builderStore.getWorkflowSnapshot();
+					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
-				if (result.success) {
-					// Import the updated workflow
-					nodeViewEventBus.emit('importWorkflowData', {
-						data: result.workflowData,
-						tidyUp: true,
-						nodesIdsToTidyUp: result.newNodeIds,
-						regenerateIds: false,
-					});
-					// Track tool usage for telemetry
-					const newToolMessages = builderStore.toolMessages.filter(
-						(toolMsg) =>
-							toolMsg.status !== 'running' &&
-							toolMsg.toolCallId &&
-							!trackedTools.value.has(toolMsg.toolCallId),
-					);
+					if (result.success) {
+						// Import the updated workflow
+						nodeViewEventBus.emit('importWorkflowData', {
+							data: result.workflowData,
+							tidyUp: true,
+							nodesIdsToTidyUp: result.newNodeIds,
+							regenerateIds: false,
+						});
+						// Track tool usage for telemetry
+						const newToolMessages = builderStore.toolMessages.filter(
+							(toolMsg) =>
+								toolMsg.status !== 'running' &&
+								toolMsg.toolCallId &&
+								!trackedTools.value.has(toolMsg.toolCallId),
+						);
 
-					newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+						newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
 
-					telemetry.track('Workflow modified by builder', {
-						tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-						start_workflow_json: currentWorkflowJson,
-						end_workflow_json: msg.codeSnippet,
-						workflow_id: workflowsStore.workflowId,
-					});
+						telemetry.track('Workflow modified by builder', {
+							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+							start_workflow_json: currentWorkflowJson,
+							end_workflow_json: msg.codeSnippet,
+							workflow_id: workflowsStore.workflowId,
+						});
+					}
 				}
-			}
-		});
-});
+			});
+	},
+	{ deep: true },
+);
 
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
@@ -118,15 +124,6 @@ function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up'
 watch(currentRoute, () => {
 	onNewWorkflow();
 });
-
-watch(
-	() => workflowsStore.workflowId,
-	async (workflowId) => {
-		if (workflowId && !workflowsStore.isNewWorkflow) {
-			await builderStore.loadSessions();
-		}
-	},
-);
 </script>
 
 <template>

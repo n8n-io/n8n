@@ -100,13 +100,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	/**
 	 * Opens the chat panel and adjusts the canvas viewport to make room.
 	 */
-	function openChat() {
+	async function openChat() {
 		chatWindowOpen.value = true;
-		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
+		chatMessages.value = [];
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
+		await loadSessions();
 	}
 
 	/**
@@ -186,7 +187,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const userMsg = createUserMessage(userMessage, messageId);
 		chatMessages.value = [...chatMessages.value, userMsg];
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
-		openChat();
 		streaming.value = true;
 	}
 
@@ -233,7 +233,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		prepareForStreaming(text, messageId);
 
-		const payload = createBuilderPayload(text, { quickReplyType });
+		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const payload = createBuilderPayload(text, {
+			quickReplyType,
+			workflow: workflowsStore.workflow,
+			executionData: executionResult,
+			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+		});
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
 		try {
@@ -289,10 +295,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				chatMessages.value = clearMessages();
 
 				// Convert and add messages from the session
-				const convertedMessages = latestSession.messages.map((msg) => {
-					const id = generateMessageId();
-					return mapAssistantMessageToUI(msg, id);
-				});
+				const convertedMessages = latestSession.messages
+					.map((msg) => {
+						const id = generateMessageId();
+						return mapAssistantMessageToUI(msg, id);
+					})
+					// Do not include wf updated messages from session
+					.filter((msg) => msg.type !== 'workflow-updated');
 
 				chatMessages.value = convertedMessages;
 			}
@@ -357,13 +366,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function getWorkflowSnapshot() {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
 	}
-	// Reset on route change (but only if actually leaving the workflow view)
-	watch(route, (newRoute, oldRoute) => {
-		// Only reset if we're actually navigating away from the workflow
-		if (newRoute.name !== oldRoute?.name) {
-			resetBuilderChat();
-		}
-	});
 
 	// Public API
 	return {

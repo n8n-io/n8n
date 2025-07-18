@@ -1,8 +1,7 @@
 import type { ChatRequest } from '@/types/assistant.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import type { IRunExecutionData } from 'n8n-workflow';
+import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
 
 export function generateMessageId(): string {
 	return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -13,29 +12,41 @@ export function createBuilderPayload(
 	options: {
 		quickReplyType?: string;
 		executionData?: IRunExecutionData['resultData'];
+		workflow?: IWorkflowDb;
+		nodesForSchema?: string[];
 	} = {},
 ): ChatRequest.UserChatMessage {
-	const workflowsStore = useWorkflowsStore();
-	const usersStore = useUsersStore();
 	const assistantHelpers = useAIAssistantHelpers();
+	const workflowContext: {
+		currentWorkflow?: Partial<IWorkflowDb>;
+		executionData?: IRunExecutionData['resultData'];
+		executionSchema?: NodeExecutionSchema[];
+	} = {};
 
-	const nodes = workflowsStore.workflow.nodes.map((node) => node.name);
-	const schemas = assistantHelpers.getNodesSchemas(nodes);
+	if (options.workflow) {
+		workflowContext.currentWorkflow = {
+			...assistantHelpers.simplifyWorkflowForAssistant(options.workflow),
+			id: options.workflow.id,
+		};
+	}
+
+	if (options.executionData) {
+		workflowContext.executionData = assistantHelpers.simplifyResultData(options.executionData);
+	}
+
+	if (options.nodesForSchema?.length) {
+		workflowContext.executionSchema = assistantHelpers.getNodesSchemas(
+			options.nodesForSchema,
+			true,
+		);
+	}
 
 	return {
-		user: {
-			firstName: usersStore.currentUser?.firstName ?? '',
-		},
-		question: text,
+		role: 'user',
+		type: 'message',
+		text,
 		quickReplyType: options.quickReplyType,
-		// @ts-expect-error: Schema type mismatch with executionData
-		executionData: schemas ?? {},
-		workflowContext: {
-			currentWorkflow: {
-				...assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
-				id: workflowsStore.workflowId,
-			},
-		},
+		workflowContext,
 	};
 }
 

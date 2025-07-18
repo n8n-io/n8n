@@ -31,8 +31,10 @@ async function onSubmit() {
 	if (isNewWorkflow) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
-	builderStore.openChat();
+	// Here we need to await for chat to open and session to be loaded
+	await builderStore.openChat();
 	emit('delete', id.value);
+
 	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 	isPromptVisible.value = false;
 }

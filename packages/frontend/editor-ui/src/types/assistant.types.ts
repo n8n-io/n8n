@@ -93,7 +93,6 @@ export namespace ChatRequest {
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
-		executionData?: IRunExecutionData['resultData'];
 	}
 
 	export interface UserContext {

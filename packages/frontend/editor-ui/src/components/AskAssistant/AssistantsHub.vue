@@ -28,7 +28,7 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 function toggleAssistantMode() {
 	isBuildMode.value = !isBuildMode.value;
 	if (isBuildMode.value) {
-		builderStore.openChat();
+		void builderStore.openChat();
 	} else {
 		assistantStore.openChat();
 	}
