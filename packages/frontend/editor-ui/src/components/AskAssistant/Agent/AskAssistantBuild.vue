@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, watch, ref } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
