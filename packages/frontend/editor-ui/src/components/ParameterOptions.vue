@@ -22,6 +22,7 @@ interface Props {
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
+	isContentOverridden?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+	isContentOverridden: false,
 });
 
 const emit = defineEmits<{
@@ -60,6 +62,7 @@ const canBeOpenedInFocusPanel = computed(
 		isFocusPanelFeatureEnabled.value &&
 		!props.parameter.isNodeSetting &&
 		!props.isReadOnly &&
+		!props.isContentOverridden &&
 		activeNode.value && // checking that it's inside ndv
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),
 );
