@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { isChatNode } from '@/utils/aiUtils';
+import { I18nT } from 'vue-i18n';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -136,7 +137,7 @@ const activeTriggerNode = computed(() =>
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
 						<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
 						<span>
-							<I18nT keypath="nodeView.runButtonText.from">
+							<I18nT keypath="nodeView.runButtonText.from" scope="global">
 								<template #nodeName>
 									<N8nText bold size="small">{{ item.label }}</N8nText>
 								</template>

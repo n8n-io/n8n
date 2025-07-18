@@ -63,6 +63,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
+import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
 import type { WebhookResponse } from '@/webhooks/webhook-response';
 import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -204,28 +205,6 @@ export const handleFormRedirectionCase = (
 
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
-
-/** Return webhook response when responseMode is set to "onReceived" */
-export function getResponseOnReceived(
-	responseData: WebhookResponseData | string | undefined,
-	webhookResultData: IWebhookResponseData,
-	responseCode: number,
-): IWebhookResponseCallbackData {
-	const callbackData: IWebhookResponseCallbackData = { responseCode };
-	// Return response directly and do not wait for the workflow to finish
-	if (responseData === 'noData') {
-		// Return without data
-	} else if (responseData) {
-		// Return the data specified in the response data option
-		callbackData.data = responseData as unknown as IDataObject;
-	} else if (webhookResultData.webhookResponse !== undefined) {
-		// Data to respond with is given
-		callbackData.data = webhookResultData.webhookResponse;
-	} else {
-		callbackData.data = { message: 'Workflow was started' };
-	}
-	return callbackData;
-}
 
 export function setupResponseNodePromise(
 	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
@@ -549,8 +528,9 @@ export async function executeWebhook(
 		// Now that we know that the workflow should run we can return the default response
 		// directly if responseMode it set to "onReceived" and a response should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
-			const callbackData = getResponseOnReceived(responseData, webhookResultData, responseCode);
-			responseCallback(null, callbackData);
+			const responseBody = extractWebhookOnReceivedResponse(responseData, webhookResultData);
+			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
+			responseCallback(null, webhookResponse);
 			didSendResponse = true;
 		}
 

@@ -153,4 +153,5 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	envFeatureFlags: {},
 };

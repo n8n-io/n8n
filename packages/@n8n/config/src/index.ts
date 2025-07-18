@@ -48,6 +48,7 @@ export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
+export { NodesConfig } from './configs/nodes.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 

@@ -118,7 +118,7 @@ function onEdit(id: string) {
 		</div>
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
 			<n8n-text>
-				<i18n-t keypath="settings.api.view.info" tag="span">
+				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 					<template #apiAction>
 						<a
 							data-test-id="api-docs-link"
@@ -135,7 +135,7 @@ function onEdit(id: string) {
 							v-text="i18n.baseText('settings.api.view.info.webhook')"
 						/>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</n8n-text>
 		</p>
 
