@@ -2931,6 +2931,12 @@ importers:
       eslint-plugin-playwright:
         specifier: 2.2.0
         version: 2.2.0(eslint@9.29.0(jiti@1.21.7))
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
+      json-diff:
+        specifier: 1.0.6
+        version: 1.0.6
       n8n-containers:
         specifier: workspace:*
         version: link:../containers
@@ -15465,8 +15471,8 @@ packages:
   vue-component-type-helpers@2.2.10:
     resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
-  vue-component-type-helpers@3.0.2:
-    resolution: {integrity: sha512-pbzPt5TlLZijRXt+/uhYRxTkIQkY09Ylx9t9lSk2ZjCv+bqyDRWH0RDUso7kOYQhG7m6SHXPhXEjD27LxKFryA==}
+  vue-component-type-helpers@3.0.3:
+    resolution: {integrity: sha512-koiBu7lO8e6w/UlbZAAIW11qcFQocYIl7Nh/SVwGZ804ej5KrncU32bRxi2zfU2Kyf6HWuk1CeeVP2rhIL+vyQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -18039,7 +18045,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.10.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.10.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.10.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -20952,7 +20958,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.3)
-      vue-component-type-helpers: 3.0.2
+      vue-component-type-helpers: 3.0.3
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -22629,28 +22635,15 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.10.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.10.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
       axios: 1.8.3
       is-retry-allowed: 2.2.0
-
-  axios@1.10.0:
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
-      form-data: 4.0.2
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.10.0(debug@4.3.6):
     dependencies:
@@ -23007,7 +23000,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.8.3):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       axios-retry: 4.5.0(axios@1.10.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -24577,7 +24570,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -24601,7 +24594,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3)
       eslint: 9.29.0(jiti@1.21.7)
@@ -24640,7 +24633,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -25575,7 +25568,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -25971,7 +25964,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -27133,7 +27126,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.3(@langchain/core@0.3.61(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -28825,7 +28818,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -29077,7 +29070,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -29732,7 +29725,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -29757,7 +29750,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -30232,7 +30225,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -31677,7 +31670,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.10: {}
 
-  vue-component-type-helpers@3.0.2: {}
+  vue-component-type-helpers@3.0.3: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.3)):
     dependencies:

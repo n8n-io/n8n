@@ -21,7 +21,7 @@ async function globalSetup() {
 	const n8nBaseUrl = process.env.N8N_BASE_URL;
 	if (!n8nBaseUrl) {
 		console.log('⚠️  N8N_BASE_URL environment variable is not set, skipping database reset');
-		if (process.env.CI) {
+		if (process.env.CI && process.env.N8N_DOCKER_IMAGE) {
 			await pullImagesForCI();
 		}
 		return;

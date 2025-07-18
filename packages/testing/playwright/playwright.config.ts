@@ -42,6 +42,15 @@ const containerConfigs = [
 	{ name: 'mode:multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
+// Workflow tests are run in a separate project, since they are not run in parallel with the other tests
+const workflowProject: Project = {
+	name: 'mode:workflows',
+	testDir: './test-workflows',
+	testMatch: 'workflow-tests.spec.ts',
+	retries: process.env.CI ? 2 : 0,
+	fullyParallel: true,
+};
+
 // Parallel tests can run fully parallel on a worker
 // Sequential tests can run on a single worker, since the need a DB reset
 // Chaos tests can run on a single worker, since they can destroy containers etc, these need to be isolate from DB tests since they are destructive
@@ -128,5 +137,8 @@ export default defineConfig({
 		? containerConfigs
 				.filter(({ name }) => name === 'mode:standard')
 				.flatMap(({ name, config }) => createProjectTrio(name, config))
-		: containerConfigs.flatMap(({ name, config }) => createProjectTrio(name, config)),
+				.concat([workflowProject])
+		: containerConfigs
+				.flatMap(({ name, config }) => createProjectTrio(name, config))
+				.concat([workflowProject]),
 });

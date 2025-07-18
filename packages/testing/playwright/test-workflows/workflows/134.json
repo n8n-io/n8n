@@ -1,0 +1,235 @@
+{
+	"createdAt": "2021-03-15T08:59:35.889Z",
+	"updatedAt": "2021-04-01T15:38:45.311Z",
+	"id": "134",
+	"name": "TravisCI:Build:trigger getAll get restart cancel",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "efbe46b1-9480-434d-b571-430942f31364"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {
+					"order": "asc",
+					"sortBy": "id"
+				}
+			},
+			"name": "TravisCI",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "102",
+					"name": "Travis API"
+				}
+			},
+			"id": "d772b5ee-80af-4627-9278-034a1237da92"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"buildId": "={{$node[\"TravisCI\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "TravisCI1",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "102",
+					"name": "Travis API"
+				}
+			},
+			"id": "df4d7fe1-85f5-4908-a609-faa41a13a9d1"
+		},
+		{
+			"parameters": {
+				"operation": "trigger",
+				"slug": "nodemationqa/nodeQA",
+				"branch": "master",
+				"additionalFields": {}
+			},
+			"name": "TravisCI2",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "102",
+					"name": "Travis API"
+				}
+			},
+			"id": "04e656d2-ac8b-4b4e-995b-a167be00ddd2"
+		},
+		{
+			"parameters": {
+				"operation": "restart",
+				"buildId": "={{$node[\"TravisCI\"].json[\"id\"]}}"
+			},
+			"name": "TravisCI3",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [1200, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "102",
+					"name": "Travis API"
+				}
+			},
+			"id": "7fbaf00c-202f-4e95-9645-c8690ab5c829"
+		},
+		{
+			"parameters": {
+				"buildId": "={{$node[\"TravisCI\"].json[\"id\"]}}"
+			},
+			"name": "TravisCI4",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [1500, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "102",
+					"name": "Travis API"
+				}
+			},
+			"id": "0e5565a4-d5cd-4471-aa01-740cf2f45e43"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 2 Seconds",
+			"type": "n8n-nodes-base.function",
+			"position": [600, 300],
+			"typeVersion": 1,
+			"id": "b84a023d-475e-42ac-888a-e0c43d13e10e"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 2 Seconds1",
+			"type": "n8n-nodes-base.function",
+			"position": [1050, 300],
+			"typeVersion": 1,
+			"id": "2303fc2b-2701-44b7-98ed-139094b9c457"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 2 Seconds2",
+			"type": "n8n-nodes-base.function",
+			"position": [1350, 300],
+			"typeVersion": 1,
+			"id": "3bdb67df-5473-42f6-aacb-5125ac0483b7"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "TravisCI2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TravisCI": {
+			"main": [
+				[
+					{
+						"node": "TravisCI1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TravisCI2": {
+			"main": [
+				[
+					{
+						"node": "Sleep 2 Seconds",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 2 Seconds": {
+			"main": [
+				[
+					{
+						"node": "TravisCI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TravisCI1": {
+			"main": [
+				[
+					{
+						"node": "Sleep 2 Seconds1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 2 Seconds1": {
+			"main": [
+				[
+					{
+						"node": "TravisCI3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TravisCI3": {
+			"main": [
+				[
+					{
+						"node": "Sleep 2 Seconds2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 2 Seconds2": {
+			"main": [
+				[
+					{
+						"node": "TravisCI4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

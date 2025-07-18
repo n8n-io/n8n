@@ -35,3 +35,4 @@ trivy_report*
 compiled
 jest.config.js
 packages/cli/src/modules/my-feature
+packages/testing/playwright/test-workflows/.workflow-setup-complete
