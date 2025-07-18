@@ -11,6 +11,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
 import semver from 'semver';
+import { N8nText } from '@n8n/design-system';
+import { useUIStore } from '@/stores/ui.store';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
@@ -53,15 +55,20 @@ const isLatestPackageVerified = ref<boolean>(true);
 
 const packageVersion = ref<string>(communityStorePackage.value.updateAvailable ?? '');
 
+const includedNodes = computed(() => {
+	return communityStorePackage.value.installedNodes.map((node) => node.name).join(', ');
+});
+
 const getModalContent = computed(() => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 		return {
 			title: i18n.baseText('settings.communityNodes.confirmModal.uninstall.title'),
-			message: i18n.baseText('settings.communityNodes.confirmModal.uninstall.message', {
+			message: i18n.baseText('settings.communityNodes.confirmModal.includedNodes', {
 				interpolate: {
-					packageName: props.activePackageName,
+					nodes: includedNodes.value,
 				},
 			}),
+			description: i18n.baseText('settings.communityNodes.confirmModal.uninstall.description'),
 			buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
 			buttonLoadingLabel: i18n.baseText(
 				'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
@@ -69,25 +76,38 @@ const getModalContent = computed(() => {
 		};
 	}
 	return {
-		title: i18n.baseText('settings.communityNodes.confirmModal.update.title', {
+		title: i18n.baseText('settings.communityNodes.confirmModal.update.title'),
+		message: i18n.baseText('settings.communityNodes.confirmModal.includedNodes', {
 			interpolate: {
-				packageName: props.activePackageName,
+				nodes: includedNodes.value,
 			},
 		}),
 		description: i18n.baseText('settings.communityNodes.confirmModal.update.description'),
 		warning: i18n.baseText('settings.communityNodes.confirmModal.update.warning'),
-		message: i18n.baseText('settings.communityNodes.confirmModal.update.message', {
-			interpolate: {
-				packageName: props.activePackageName,
-				version: packageVersion.value,
-			},
-		}),
 		buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
 		buttonLoadingLabel: i18n.baseText(
 			'settings.communityNodes.confirmModal.update.buttonLoadingLabel',
 		),
 	};
 });
+
+const nodesInWorkflows = [
+	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
+	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
+	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
+	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
+	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
+	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
+	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
+	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
+	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
+	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
+	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
+	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
+	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
+	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
+	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
+];
 
 const onModalClose = () => {
 	return !loading.value;
@@ -200,6 +220,10 @@ function setPackageVersion() {
 	}
 }
 
+const onClick = async () => {
+	useUIStore().closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+};
+
 onMounted(async () => {
 	if (props.activePackageName) {
 		await fetchPackageInfo(props.activePackageName);
@@ -212,7 +236,7 @@ onMounted(async () => {
 
 <template>
 	<Modal
-		width="540px"
+		width="640px"
 		:name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY"
 		:title="getModalContent.title"
 		:event-bus="modalBus"
@@ -221,22 +245,29 @@ onMounted(async () => {
 		:before-close="onModalClose"
 	>
 		<template #content>
-			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div
-				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
-				:class="$style.descriptionContainer"
-			>
-				<n8n-info-tip theme="info" type="note" :bold="false">
-					<span v-text="getModalContent.description"></span>
-				</n8n-info-tip>
-				<n8n-notice
-					v-if="!isLatestPackageVerified"
-					data-test-id="communityPackageManageConfirmModal-warning"
-					:content="getModalContent.warning"
-				/>
+			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
+			<n8n-notice
+				v-if="!isLatestPackageVerified"
+				data-test-id="communityPackageManageConfirmModal-warning"
+				:content="getModalContent.warning"
+			/>
+			<div :class="$style.descriptionContainer">
+				<N8nText size="medium" color="text-base">
+					{{ getModalContent.description }}
+				</N8nText>
 			</div>
+
+			<NodesInWorkflowTable v-if="nodesInWorkflows?.length" :data="nodesInWorkflows" />
 		</template>
 		<template #footer>
+			<n8n-button
+				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
+				size="large"
+				float="left"
+				type="secondary"
+				data-test-id="close-button"
+				@click="onClick"
+			/>
 			<n8n-button
 				:loading="loading"
 				:disabled="loading"
