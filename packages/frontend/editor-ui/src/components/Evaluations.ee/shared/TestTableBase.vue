@@ -214,7 +214,8 @@ defineSlots<{
 	border-radius: 12px;
 
 	:global(.el-scrollbar__wrap) {
-		overflow: hidden;
+		overflow-y: hidden;
+		overflow-x: auto;
 	}
 
 	:global(.el-table__column-resize-proxy) {
