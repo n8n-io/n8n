@@ -59,7 +59,9 @@ const container = ref<HTMLDivElement>();
 const dropdownId = uuid();
 
 const options = computed<ITag[]>(() => {
-	return props.allTags.filter((tag: ITag) => tag && tag.name.includes(filter.value));
+	return props.allTags.filter(
+		(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+	);
 });
 
 const appliedTags = computed<string[]>(() => {
