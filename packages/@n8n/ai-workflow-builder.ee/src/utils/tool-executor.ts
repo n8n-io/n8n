@@ -52,14 +52,13 @@ export async function executeToolsInParallel(
 	// Execute all tools in parallel
 	const toolResults = await Promise.all(
 		aiMessage.tool_calls.map(async (toolCall) => {
-			const tool = toolMap.get(toolCall.name);
-			if (!tool) {
-				throw new ToolExecutionError(`Tool ${toolCall.name} not found`, {
-					toolName: toolCall.name,
-				});
-			}
-
 			try {
+				const tool = toolMap.get(toolCall.name);
+				if (!tool) {
+					throw new ToolExecutionError(`Tool ${toolCall.name} not found`, {
+						toolName: toolCall.name,
+					});
+				}
 				const result: unknown = await tool.invoke(toolCall.args ?? {}, {
 					toolCall: {
 						id: toolCall.id,
@@ -88,7 +87,7 @@ export async function executeToolsInParallel(
 				// Return a ToolMessage with the error to maintain conversation continuity
 				return new ToolMessage({
 					content: errorContent,
-					tool_call_id: toolCall.id!,
+					tool_call_id: toolCall.id ?? '',
 					// Include error flag so tools can handle errors appropriately
 					additional_kwargs: { error: true },
 				});

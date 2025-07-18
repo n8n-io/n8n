@@ -125,6 +125,7 @@ export class ParameterUpdateError extends OperationalError {
 			tags: {
 				...options?.tags,
 				nodeId: options?.nodeId,
+				nodeType: options?.nodeType,
 				parameter: options?.parameter,
 			},
 			shouldReport: false,
