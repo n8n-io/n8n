@@ -11,7 +11,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { N8nIconButton } from '@n8n/design-system';
 
 interface Props {
 	parameter: INodeProperties;
