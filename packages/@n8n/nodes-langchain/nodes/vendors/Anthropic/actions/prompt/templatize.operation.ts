@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 		},
 		description: 'Messages that constitute the prompt to be templatized',
 		placeholder: 'Add Message',
-		default: { values: [{ content: '' }] },
+		default: { values: [{ content: '', role: 'user' }] },
 		options: [
 			{
 				displayName: 'Values',
