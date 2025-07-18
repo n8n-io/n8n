@@ -1,8 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
-import type { IRunExecutionData } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import type { ChatPayload } from './workflow-builder-agent';
 
 /**
  * Reducer for collecting workflow operations from parallel tool executions.
@@ -37,8 +37,7 @@ export const WorkflowState = Annotation.Root({
 		reducer: messagesStateReducer,
 		default: () => [],
 	}),
-	// The original prompt from the user.
-	prompt: Annotation<string>({ reducer: (x, y) => y ?? x ?? '' }),
+	// // The original prompt from the user.
 	// The JSON representation of the workflow being built.
 	// Now a simple field without custom reducer - all updates go through operations
 	workflowJSON: Annotation<SimpleWorkflow>({
@@ -51,9 +50,8 @@ export const WorkflowState = Annotation.Root({
 		default: () => [],
 	}),
 	// Whether the user prompt is a workflow prompt.
-	isWorkflowPrompt: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
-	// The execution data from the last workflow run.
-	executionData: Annotation<IRunExecutionData['resultData'] | undefined>({
-		reducer: (x, y) => (y === undefined ? undefined : (y ?? x ?? undefined)),
+	// Latest workflow context
+	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
+		reducer: (x, y) => y ?? x,
 	}),
 });

@@ -18,7 +18,6 @@ import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
-	validateParameters,
 	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
@@ -113,9 +112,9 @@ export function createUpdateNodeParametersTool(
 					);
 
 					const newParameters = (await parametersChain.invoke({
-						user_workflow_prompt: state.prompt,
-						workflow_json: JSON.stringify(workflow, null, 2),
-						execution_data_schema: JSON.stringify(state.executionData, null, 2),
+						workflow_json: workflow,
+						execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
+						execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
 						node_id: nodeId,
 						node_name: node.name,
 						node_type: node.type,
@@ -148,14 +147,6 @@ export function createUpdateNodeParametersTool(
 						currentParameters,
 						fixedParameters as INodeParameters,
 					);
-
-					// Validate the updated parameters
-					const validation = validateParameters(updatedParameters, nodeType);
-					if (!validation.valid) {
-						reportProgress(reporter, 'Warning: Some required parameters may be missing', {
-							missing: validation.missingRequired,
-						});
-					}
 
 					// Create updated node
 					const updatedNode = updateNodeWithParameters(node, updatedParameters);

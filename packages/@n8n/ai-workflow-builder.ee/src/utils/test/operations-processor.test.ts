@@ -1,4 +1,4 @@
-import type { INode, IConnections, IRunExecutionData } from 'n8n-workflow';
+import type { INode, IConnections } from 'n8n-workflow';
 
 import { createNode, createWorkflow } from '../../../test/test-utils';
 import type { SimpleWorkflow, WorkflowOperation } from '../../types/workflow';
@@ -385,9 +385,7 @@ describe('operations-processor', () => {
 			workflowJSON,
 			workflowOperations,
 			messages: [],
-			prompt: '',
-			isWorkflowPrompt: true,
-			executionData: {} as IRunExecutionData['resultData'],
+			workflowContext: {},
 		});
 
 		it('should process operations and clear them', () => {
