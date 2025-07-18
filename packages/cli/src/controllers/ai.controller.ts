@@ -11,7 +11,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
-import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { IRunData, OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
@@ -55,8 +55,7 @@ export class AiController {
 						payload.payload.workflowContext?.currentWorkflow ?? {},
 					),
 					workflowId,
-					// @ts-ignore
-					executionData: payload.payload.executionData ?? {},
+					executionData: { runData: (payload.payload.executionData as IRunData) ?? {} },
 				},
 				req.user,
 			);

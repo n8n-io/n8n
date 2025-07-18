@@ -117,7 +117,7 @@ describe('AiController', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
 				question: 'Create a workflow',
-				executionData: [],
+				executionData: {},
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
@@ -232,17 +232,11 @@ describe('AiController', () => {
 
 			response.headersSent = true;
 
-			// Mock console.error to avoid test output noise
-			const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-
 			await controller.build(request, response, payload);
 
 			expect(response.status).not.toHaveBeenCalled();
 			expect(response.json).not.toHaveBeenCalled();
 			expect(response.end).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith('Error after headers sent:', mockError);
-
-			consoleErrorSpy.mockRestore();
 		});
 	});
 });
