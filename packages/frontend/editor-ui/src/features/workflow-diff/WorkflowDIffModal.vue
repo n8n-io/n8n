@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Edge from '@/components/canvas/elements/edges/CanvasEdge.vue';
 import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -23,11 +22,11 @@ import { N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { BaseEdge } from '@vue-flow/core';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
+import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
 const props = defineProps<{
@@ -87,7 +86,11 @@ const remote = useAsyncState<WorkflowDiff | undefined, [], false>(
 					node.focusable = false;
 					return node;
 				}),
-				connections: connections.value,
+				connections: connections.value.map((connection) => {
+					connection.selectable = false;
+					connection.focusable = false;
+					return connection;
+				}),
 				remote: true,
 			};
 		} catch {
@@ -120,7 +123,11 @@ const local = useAsyncState<WorkflowDiff | undefined, [], false>(
 					node.focusable = false;
 					return node;
 				}),
-				connections: connections.value,
+				connections: connections.value.map((connection) => {
+					connection.selectable = false;
+					connection.focusable = false;
+					return connection;
+				}),
 				remote: false,
 			};
 		} catch {
@@ -470,26 +477,11 @@ onNodeClick((nodeId) => {
 										</Node>
 									</template>
 									<template #edge="{ edgeProps, arrowHeadMarkerId }">
-										<Edge
+										<HighlightedEdge
 											v-bind="edgeProps"
-											read-only
-											:selected="false"
 											:marker-end="`url(#${arrowHeadMarkerId})`"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-										>
-											<template #highlight="{ segments }">
-												<BaseEdge
-													v-for="segment in segments"
-													:key="segment[0]"
-													:style="{
-														strokeWidth: 15,
-														stroke: 'var(--edge-highlight-color)',
-													}"
-													:path="segment[0]"
-													:interaction-width="0"
-												/>
-											</template>
-										</Edge>
+										/>
 									</template>
 								</SyncedWorkflowCanvas>
 							</template>
@@ -537,26 +529,11 @@ onNodeClick((nodeId) => {
 										</Node>
 									</template>
 									<template #edge="{ edgeProps, arrowHeadMarkerId }">
-										<Edge
+										<HighlightedEdge
 											v-bind="edgeProps"
-											read-only
-											:selected="false"
 											:marker-end="`url(#${arrowHeadMarkerId})`"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-										>
-											<template #highlight="{ segments }">
-												<BaseEdge
-													v-for="segment in segments"
-													:key="segment[0]"
-													:style="{
-														strokeWidth: 15,
-														stroke: 'var(--edge-highlight-color)',
-													}"
-													:path="segment[0]"
-													:interaction-width="0"
-												/>
-											</template>
-										</Edge>
+										/>
 									</template>
 								</SyncedWorkflowCanvas>
 							</template>
