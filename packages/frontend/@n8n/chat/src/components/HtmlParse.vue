@@ -98,7 +98,7 @@ const SECURITY_ATTRIBUTES = {
 
 // Component mapping
 const COMPONENT_MAP: Record<string, Component> = {
-	highlight: defineAsyncComponent(async () => import('./Highlight.vue')),
+	highlight: defineAsyncComponent(async () => await import('./Highlight.vue')),
 };
 
 // Resolve component name
