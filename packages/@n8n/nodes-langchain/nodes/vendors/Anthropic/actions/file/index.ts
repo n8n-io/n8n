@@ -1,11 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as deleteOperation from './delete.operation';
+import * as deleteFile from './delete.operation';
 import * as get from './get.operation';
 import * as list from './list.operation';
 import * as upload from './upload.operation';
 
-export { deleteOperation as delete, get, list, upload };
+export { deleteFile, get, list, upload };
 
 export const description: INodeProperties[] = [
 	{
@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'Delete File',
-				value: 'delete',
+				value: 'deleteFile',
 				action: 'Delete a file',
 				description: 'Delete a file from the Anthropic API',
 			},
@@ -46,7 +46,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
-	...deleteOperation.description,
+	...deleteFile.description,
 	...get.description,
 	...list.description,
 	...upload.description,

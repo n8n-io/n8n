@@ -4,7 +4,7 @@ type NodeMap = {
 	text: 'message';
 	image: 'analyze';
 	document: 'analyze';
-	file: 'upload' | 'delete' | 'get' | 'list';
+	file: 'upload' | 'deleteFile' | 'get' | 'list';
 	prompt: 'generate' | 'improve' | 'templatize';
 };
 

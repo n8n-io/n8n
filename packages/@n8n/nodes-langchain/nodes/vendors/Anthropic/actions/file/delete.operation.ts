@@ -16,7 +16,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['delete'],
+		operation: ['deleteFile'],
 		resource: ['file'],
 	},
 };
