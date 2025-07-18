@@ -3,7 +3,6 @@ import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
@@ -44,22 +43,6 @@ const state = reactive({
 const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
-
-const nodeCreatorInlineStyle = computed(() => {
-	const rightPosition = getRightOffset();
-	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px`, right: `${rightPosition}px` };
-});
-
-function getRightOffset() {
-	if (assistantStore.isAssistantOpen) {
-		return assistantStore.chatWidth;
-	}
-	if (builderStore.isAssistantOpen) {
-		return builderStore.chatWidth;
-	}
-
-	return 0;
-}
 
 function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
@@ -169,21 +152,18 @@ onBeforeUnmount(() => {
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"
 		/>
-		<SlideTransition>
-			<div
-				v-if="active"
-				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true }"
-				:style="nodeCreatorInlineStyle"
-				data-test-id="node-creator"
-				@dragover="onDragOver"
-				@drop="onDrop"
-				@mousedown="onMouseDown"
-				@mouseup="onMouseUp"
-			>
-				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
-			</div>
-		</SlideTransition>
+		<div
+			v-if="active"
+			ref="nodeCreator"
+			:class="{ [$style.nodeCreator]: true }"
+			data-test-id="node-creator"
+			@dragover="onDragOver"
+			@drop="onDrop"
+			@mousedown="onMouseDown"
+			@mouseup="onMouseUp"
+		>
+			<NodesListPanel @node-type-selected="onNodeTypeSelected" />
+		</div>
 	</div>
 </template>
 
@@ -197,7 +177,7 @@ onBeforeUnmount(() => {
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
-	right: 0;
+	right: 50%;
 	z-index: var(--z-index-node-creator);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;
@@ -206,7 +186,7 @@ onBeforeUnmount(() => {
 .nodeCreatorScrim {
 	position: fixed;
 	top: $header-height;
-	right: 0;
+	right: 50%;
 	bottom: 0;
 	left: $sidebar-width;
 	opacity: 0;

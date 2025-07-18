@@ -2189,7 +2189,6 @@ onBeforeUnmount(() => {
 	background-color: var(--color-background-xlight);
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
-	padding: 1px 0 1px 4px;
 	bottom: 8px;
 	width: auto;
 

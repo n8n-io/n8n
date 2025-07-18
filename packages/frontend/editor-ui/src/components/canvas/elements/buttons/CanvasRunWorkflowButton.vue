@@ -99,7 +99,7 @@ const activeTriggerNode = computed(() =>
 			<N8nButton
 				:loading="executing"
 				:disabled="disabled"
-				size="xmini"
+				size="small"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
