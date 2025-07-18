@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import {
-	NodeConnectionTypes,
-	type IRunData,
-	type IRunExecutionData,
-	type Workflow,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -26,6 +21,7 @@ import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
+import { useExecutionData } from '@/composables/useExecutionData';
 
 // Types
 
@@ -111,6 +107,7 @@ const collapsingColumnName = ref<string | null>(null);
 const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
+const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -148,29 +145,6 @@ const isNodeRunning = computed(() => {
 });
 
 const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-
-const workflowExecution = computed(() => {
-	return workflowsStore.getWorkflowExecution;
-});
-
-const workflowRunData = computed(() => {
-	if (workflowExecution.value === null) {
-		return null;
-	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
-	if (!executionData?.resultData?.runData) {
-		return null;
-	}
-	return executionData.resultData.runData;
-});
-
-const hasNodeRun = computed(() => {
-	if (workflowsStore.subWorkflowExecutionError) return true;
-
-	return Boolean(
-		node.value && workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name),
-	);
-});
 
 const runTaskData = computed(() => {
 	if (!node.value || workflowExecution.value === null) {
