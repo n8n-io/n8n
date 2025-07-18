@@ -1,30 +1,26 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import hljs from 'highlight.js/lib/core';
-import bash from 'highlight.js/lib/languages/bash';
-import javascript from 'highlight.js/lib/languages/javascript';
-import python from 'highlight.js/lib/languages/python';
-import typescript from 'highlight.js/lib/languages/typescript';
-import xml from 'highlight.js/lib/languages/xml';
-import type MarkdownIt from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
+import markdownIt from 'markdown-it';
+import mathjax3 from 'markdown-it-mathjax3';
 import { computed, ref, toRefs, onMounted } from 'vue';
-import VueMarkdown from 'vue-markdown-render';
 
 import { useOptions } from '@n8n/chat/composables';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import ChatFile from './ChatFile.vue';
+import HtmlParse from './HtmlParse.vue';
+
+const md = markdownIt({
+	html: false,
+	breaks: true,
+	linkify: true,
+	typographer: true,
+});
+md.use(mathjax3);
 
 const props = defineProps<{
 	message: ChatMessage;
 }>();
-
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('xml', xml);
-hljs.registerLanguage('bash', bash);
 
 defineSlots<{
 	beforeMessage(props: { message: ChatMessage }): ChatMessage;
@@ -48,15 +44,6 @@ const classes = computed(() => {
 	};
 });
 
-const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-	vueMarkdownItInstance.use(markdownLink, {
-		attrs: {
-			target: '_blank',
-			rel: 'noopener',
-		},
-	});
-};
-
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
@@ -64,19 +51,6 @@ const scrollToView = () => {
 		});
 	}
 };
-
-const markdownOptions = {
-	highlight(str: string, lang: string) {
-		if (lang && hljs.getLanguage(lang)) {
-			try {
-				return hljs.highlight(str, { language: lang }).value;
-			} catch {}
-		}
-
-		return ''; // use external default escaping
-	},
-};
-
 const messageComponents = { ...(options?.messageComponents ?? {}) };
 
 defineExpose({ scrollToView });
@@ -101,6 +75,10 @@ onMounted(async () => {
 		}
 	}
 });
+
+const onMessageRender = (value: string) => {
+	return md.render(value);
+};
 </script>
 
 <template>
@@ -112,13 +90,9 @@ onMounted(async () => {
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
 			</template>
-			<VueMarkdown
-				v-else
-				class="chat-message-markdown"
-				:source="messageText"
-				:options="markdownOptions"
-				:plugins="[linksNewTabPlugin]"
-			/>
+			<div v-else class="chat-message-markdown">
+				<HtmlParse :html="onMessageRender(messageText)" />
+			</div>
 			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
 				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
 					<ChatFile :file="file" :is-removable="false" :is-previewable="true" />
@@ -127,7 +101,6 @@ onMounted(async () => {
 		</slot>
 	</div>
 </template>
-
 <style lang="scss">
 .chat-message {
 	display: block;
@@ -205,17 +178,6 @@ onMounted(async () => {
 
 		> *:last-child {
 			margin-bottom: 0;
-		}
-
-		pre {
-			font-family: inherit;
-			font-size: inherit;
-			margin: 0;
-			white-space: pre-wrap;
-			box-sizing: border-box;
-			padding: var(--chat--spacing);
-			background: var(--chat--message--pre--background);
-			border-radius: var(--chat--border-radius);
 		}
 	}
 	.chat-message-files {

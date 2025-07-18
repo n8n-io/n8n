@@ -39,10 +39,9 @@
     "@n8n/design-system": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "highlight.js": "catalog:frontend",
-    "markdown-it-link-attributes": "^4.0.1",
+    "markdown-it-mathjax3": "^4.3.2",
     "uuid": "catalog:",
-    "vue": "catalog:frontend",
-    "vue-markdown-render": "catalog:frontend"
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
