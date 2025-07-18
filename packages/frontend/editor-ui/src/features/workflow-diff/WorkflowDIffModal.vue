@@ -377,6 +377,7 @@ onNodeClick((nodeId) => {
 						trigger="click"
 						:popper-options="{ modifiers: [{ name: 'offset', options: { offset: [0, 0] } }] }"
 						:popper-class="$style.popper"
+						class="mr-xs"
 						@visible-change="setActiveTab"
 					>
 						<N8nButton type="secondary">
@@ -444,11 +445,13 @@ onNodeClick((nodeId) => {
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
+						:class="$style.navigationButton"
 						@click="previousNodeChange"
 					></N8nIconButton>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
+						:class="$style.navigationButton"
 						@click="nextNodeChange"
 					></N8nIconButton>
 				</div>
@@ -809,5 +812,10 @@ onNodeClick((nodeId) => {
 .headerLeft {
 	display: flex;
 	align-items: center;
+}
+
+.navigationButton {
+	height: 34px !important;
+	width: 34px !important;
 }
 </style>
