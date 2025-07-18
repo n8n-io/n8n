@@ -828,7 +828,6 @@ function handleWheelEvent(event: WheelEvent) {
 			'node-settings': true,
 			dragging: dragging,
 			embedded: props.isEmbeddedInCanvas,
-			disabled: props.activeNode?.disabled,
 		}"
 		@keydown.stop
 	>

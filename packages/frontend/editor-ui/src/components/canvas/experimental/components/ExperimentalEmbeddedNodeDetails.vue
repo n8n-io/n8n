@@ -5,16 +5,16 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
+import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -168,29 +168,11 @@ watchOnce(isVisible, (visible) => {
 				:sub-title="subTitle"
 			>
 				<template #actions>
-					<div :class="$style.actions">
-						<div :class="$style.icon">
-							<CanvasNodeStatusIcons size="small" spinner-scrim />
-						</div>
-						<N8nIconButton
-							icon="maximize-2"
-							type="secondary"
-							text
-							size="mini"
-							icon-size="small"
-							aria-label="Open..."
-							@click="handleOpenNdv"
-						/>
-						<N8nIconButton
-							icon="chevron-down"
-							type="secondary"
-							text
-							size="mini"
-							icon-size="medium"
-							aria-label="Toggle expand"
-							@click="handleToggleExpand"
-						/>
-					</div>
+					<ExperimentalEmbeddedNdvActions
+						:is-expanded="isExpanded"
+						@open-ndv="handleOpenNdv"
+						@toggle-expand="handleToggleExpand"
+					/>
 				</template>
 			</ExperimentalCanvasNodeSettings>
 		</ExperimentalEmbeddedNdvMapper>
@@ -204,21 +186,11 @@ watchOnce(isVisible, (visible) => {
 					{{ subTitle }}
 				</N8nText>
 			</div>
-			<div :class="$style.actions">
-				<div :class="$style.icon">
-					<CanvasNodeStatusIcons size="small" spinner-scrim />
-				</div>
-				<N8nIconButton
-					icon="maximize-2"
-					type="secondary"
-					text
-					size="mini"
-					icon-size="small"
-					aria-label="Open..."
-					@click.stop="handleOpenNdv"
-				/>
-				<N8nIcon icon="chevron-up" size="medium" :class="$style.icon" />
-			</div>
+			<ExperimentalEmbeddedNdvActions
+				:is-expanded="isExpanded"
+				@open-ndv="handleOpenNdv"
+				@toggle-expand="handleToggleExpand"
+			/>
 		</div>
 	</div>
 </template>
@@ -304,19 +276,5 @@ watchOnce(isVisible, (visible) => {
 	& > * {
 		zoom: var(--zoom);
 	}
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	color: var(--color-text-base);
-
-	& > button {
-		color: var(--color-text-light);
-	}
-}
-
-.icon {
-	margin-inline: var(--spacing-2xs);
 }
 </style>

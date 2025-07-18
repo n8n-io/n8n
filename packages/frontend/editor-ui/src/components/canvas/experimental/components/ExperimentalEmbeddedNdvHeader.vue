@@ -22,7 +22,7 @@ defineSlots<{ actions?: {} }>();
 </script>
 
 <template>
-	<div :class="$style.component">
+	<div :class="[$style.component, node.disabled ? $style.disabled : '']">
 		<div :class="$style.title">
 			<NodeIcon :node-type="nodeType" :size="16" />
 			<div :class="$style.titleText">
