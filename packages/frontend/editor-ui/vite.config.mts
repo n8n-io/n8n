@@ -1,7 +1,8 @@
 import vue from '@vitejs/plugin-vue';
 import { posix as pathPosix, resolve } from 'path';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
@@ -63,9 +64,14 @@ const alias = [
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash/$1',
 	},
+	{
+		// For sanitize-html
+		find: 'source-map-js',
+		replacement: resolve(__dirname, 'src/source-map-js-shim'),
+	},
 ];
 
-const plugins = [
+const plugins: UserConfig['plugins'] = [
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
@@ -125,6 +131,10 @@ const plugins = [
 			return html.replace('%CONFIG_SCRIPT%', replacement);
 		},
 	},
+	// For sanitize-html
+	nodePolyfills({
+		include: ['fs', 'path', 'url', 'util', 'timers'],
+	}),
 ];
 
 const { RELEASE: release } = process.env;
