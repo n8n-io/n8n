@@ -131,4 +131,14 @@ describe('isJsonCompatible', () => {
 
 		expect(result.isValid).toBe(true);
 	});
+
+	test('skip keys that are in the keysToIgnore set', () => {
+		const value = {
+			invalidObject: { invalidBecauseUndefined: undefined },
+			validObject: { key: 'value' },
+		};
+		const result = isJsonCompatible(value, new Set(['invalidObject']));
+
+		expect(result.isValid).toBe(true);
+	});
 });
