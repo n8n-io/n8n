@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { getTestCasesColumns } from './utils';
 
 const router = useRouter();
 const toast = useToast();
@@ -65,6 +66,8 @@ const handleRowClick = (row: TestCaseExecutionRecord) => {
 	}
 };
 
+const inputColumns = computed(() => getTestCasesColumns(filteredTestCases.value, 'inputs'));
+
 const columns = computed(
 	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => [
 		{
@@ -86,6 +89,8 @@ const columns = computed(
 			showHeaderTooltip: true,
 			formatter: (row: TestCaseExecutionRecord) => row.metrics?.[metric]?.toFixed(2) ?? '-',
 		})),
+		...inputColumns.value,
+		...getTestCasesColumns(filteredTestCases.value, 'outputs'),
 	],
 );
 
@@ -156,6 +161,7 @@ onMounted(async () => {
 				}}
 			</N8nText>
 		</n8n-callout>
+
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
@@ -215,6 +221,23 @@ onMounted(async () => {
 				</div>
 			</div>
 		</el-scrollbar>
+
+		<n8n-callout
+			v-if="
+				!isLoading &&
+				!inputColumns.length &&
+				run?.status === 'completed' &&
+				run?.finalResult === 'success'
+			"
+			theme="secondary"
+			icon="info"
+			class="mb-s"
+		>
+			<N8nText size="small" :class="$style.capitalized">
+				{{ locale.baseText('evaluation.runDetail.notice.useSetInputs') }}
+			</N8nText>
+		</n8n-callout>
+
 		<div v-if="isLoading" :class="$style.loading">
 			<n8n-loading :loading="true" :rows="5" />
 		</div>

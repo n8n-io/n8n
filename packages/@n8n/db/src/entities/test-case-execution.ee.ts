@@ -54,4 +54,10 @@ export class TestCaseExecution extends WithStringId {
 
 	@JsonColumn({ nullable: true })
 	metrics: TestCaseRunMetrics;
+
+	@JsonColumn({ nullable: true })
+	inputs: IDataObject;
+
+	@JsonColumn({ nullable: true })
+	outputs: IDataObject;
 }

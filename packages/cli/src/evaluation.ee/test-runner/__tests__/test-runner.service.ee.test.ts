@@ -1026,7 +1026,7 @@ describe('TestRunnerService', () => {
 			}
 		});
 
-		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node is disabled', () => {
+		it('should throw SET_METRICS_NODE_NOT_FOUND when metrics node is disabled', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [
 					{
@@ -1061,8 +1061,8 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).validateSetMetricsNodes(workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
-				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_FOUND');
+				expect(error.extra).toEqual({});
 			}
 		});
 
