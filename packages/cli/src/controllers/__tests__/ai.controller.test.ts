@@ -146,7 +146,7 @@ describe('AiController', () => {
 					question: 'Create a workflow',
 					currentWorkflowJSON: JSON.stringify({ id: 'workflow123' }),
 					workflowId: 'workflow123',
-					executionData: [],
+					executionData: { runData: {} },
 				},
 				request.user,
 			);
