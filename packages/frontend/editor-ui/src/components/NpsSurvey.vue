@@ -69,19 +69,23 @@ async function closeDialog(): Promise<void> {
 
 		await useNpsSurveyStore().ignoreNpsSurvey();
 	}
+	// If the user closes the nps modal, we send two events
+	// 1. User responded value survey score
+	// 2. User responded value survey feedback (if not empty)
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
 			instance_id: rootStore.instanceId,
 			email: '',
 			nps: form.value.value,
 		});
-	}
-	if (form.value.value !== '' && form.value.feedback.trim() !== '') {
-		telemetry.track('User responded value survey feedback', {
-			instance_id: rootStore.instanceId,
-			nps: form.value.value,
-			feedback: form.value.feedback,
-		});
+
+		if (form.value.feedback.trim() !== '') {
+			telemetry.track('User responded value survey feedback', {
+				instance_id: rootStore.instanceId,
+				feedback: form.value.feedback,
+				nps: form.value.value,
+			});
+		}
 	}
 }
 
