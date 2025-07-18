@@ -23,7 +23,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
-import { ElDropdown, ElDropdownMenu } from 'element-plus';
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 import HighlightedEdge from './HighlightedEdge.vue';
@@ -343,6 +343,22 @@ onNodeClick((nodeId) => {
 		selectedDetailId.value = nodeId;
 	}
 });
+
+const modifiers = [
+	{
+		name: 'preventOverflow',
+		options: {
+			boundary: 'viewport',
+			padding: 8,
+		},
+	},
+	{
+		name: 'offset',
+		options: {
+			offset: [80, 8],
+		},
+	},
+];
 </script>
 
 <template>
@@ -375,7 +391,10 @@ onNodeClick((nodeId) => {
 				<div>
 					<ElDropdown
 						trigger="click"
-						:popper-options="{ modifiers: [{ name: 'offset', options: { offset: [0, 0] } }] }"
+						:popper-options="{
+							placement: 'bottom-end',
+							modifiers,
+						}"
 						:popper-class="$style.popper"
 						class="mr-xs"
 						@visible-change="setActiveTab"
@@ -387,9 +406,14 @@ onNodeClick((nodeId) => {
 							Changes
 						</N8nButton>
 						<template #dropdown>
-							<ElDropdownMenu>
+							<ElDropdownMenu :hide-on-click="false">
 								<div :class="$style.dropdownContent">
-									<N8nRadioButtons v-model="activeTab" :options="tabs" :class="$style.tabs">
+									<N8nRadioButtons
+										v-model="activeTab"
+										:options="tabs"
+										:class="$style.tabs"
+										class="mb-xs"
+									>
 										<template #option="{ label, count }">
 											<span v-if="count" class="mr-3xs">
 												{{ count }}
@@ -398,36 +422,58 @@ onNodeClick((nodeId) => {
 										</template>
 									</N8nRadioButtons>
 									<div>
-										<ul v-if="activeTab === 'nodes'" :class="$style.changes">
-											<li v-for="change in nodeChanges" :key="change.node.id">
+										<ul v-if="activeTab === 'nodes'">
+											<ElDropdownItem
+												v-for="change in nodeChanges"
+												:key="change.node.id"
+												:class="{
+													[$style.clickableChange]: true,
+													[$style.clickableChangeActive]: selectedDetailId === change.node.id,
+												}"
+												@click.prevent="selectedDetailId = change.node.id"
+											>
 												<DiffBadge :type="change.status" />
 												<NodeIcon :node-type="change.type" :size="16" />
 												{{ change.node.name }}
-											</li>
+											</ElDropdownItem>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
 											<li v-for="change in connectionsDiff" :key="change[0]">
 												<div>
 													<DiffBadge :type="change[1].status" />
 												</div>
-												<div>
+												<div style="flex: 1">
 													<ul :class="$style.changesNested">
-														<li>
-															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />{{
-																change[1].connection.source.name
-															}}
-														</li>
-														<li>
+														<ElDropdownItem
+															:class="{
+																[$style.clickableChange]: true,
+																[$style.clickableChangeActive]:
+																	selectedDetailId === change[1].connection.source.id,
+															}"
+															@click.prevent="selectedDetailId = change[1].connection.source.id"
+														>
+															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
+															{{ change[1].connection.source.name }}
+														</ElDropdownItem>
+														<div :class="$style.separator"></div>
+														<ElDropdownItem
+															:class="{
+																[$style.clickableChange]: true,
+																[$style.clickableChangeActive]:
+																	selectedDetailId === change[1].connection.target.id,
+															}"
+															@click.prevent="selectedDetailId = change[1].connection.target.id"
+														>
 															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
 															{{ change[1].connection.target.name }}
-														</li>
+														</ElDropdownItem>
 													</ul>
 												</div>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'settings'">
 											<li v-for="setting in settingsDiff" :key="setting.name">
-												<N8nText color="text-dark" size="small" tag="div" bold>{{
+												<N8nText color="text-dark" size="medium" tag="div" bold>{{
 													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
 												}}</N8nText>
 												<NodeDiff
@@ -626,16 +672,24 @@ onNodeClick((nodeId) => {
 	}
 }
 
-.changesNested {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	> li {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 4px 0;
-	}
+.separator {
+	width: 1px;
+	height: 10px;
+	background-color: var(--color-foreground-xdark);
+	margin: -5px 23px;
+	position: relative;
+	z-index: 1;
+}
+
+.clickableChange {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border-radius: 4px;
+}
+
+.clickableChangeActive {
+	background-color: var(--color-background-medium);
 }
 
 .deleted,
@@ -753,6 +807,7 @@ onNodeClick((nodeId) => {
 
 .noNumberDiff {
 	min-height: 41px;
+	margin-bottom: 10px !important;
 	:global(.blob-num) {
 		display: none;
 	}
