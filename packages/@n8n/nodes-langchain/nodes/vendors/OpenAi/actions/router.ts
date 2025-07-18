@@ -62,7 +62,7 @@ export async function router(this: IExecuteFunctions) {
 
 			if (error instanceof NodeApiError) {
 				// If the error is a rate limit error, we want to handle it differently
-				const errorCode: string | undefined = (error.cause as any).error?.error?.code;
+				const errorCode: string | undefined = (error.cause as any)?.error?.error?.code;
 				if (errorCode) {
 					const customErrorMessage = getCustomErrorMessage(errorCode);
 					if (customErrorMessage) {
