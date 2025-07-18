@@ -29,6 +29,7 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
+import { useStyles } from '@/composables/useStyles';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -310,7 +311,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px` }"
+			:style="{ width: `${focusPanelWidth}px`, zIndex: useStyles().APP_Z_INDEXES.NDV }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
