@@ -9,7 +9,7 @@ import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
 
 interface Props {
-	message: ChatUI.TextMessage & { id: string; read: boolean; quickReplies?: ChatUI.QuickReply[] };
+	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
 	isFirstOfRole: boolean;
 	user?: {
 		firstName: string;
@@ -20,6 +20,10 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const emit = defineEmits<{
+	rate: [rating: 'up' | 'down', feedback?: string];
+}>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
 
@@ -38,7 +42,12 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@rate="(rating, feedback) => emit('rate', rating, feedback)"
+	>
 		<div :class="$style.textMessage">
 			<span
 				v-if="message.role === 'user'"

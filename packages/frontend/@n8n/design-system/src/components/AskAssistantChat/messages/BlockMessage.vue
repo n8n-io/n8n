@@ -16,11 +16,19 @@ interface Props {
 }
 
 defineProps<Props>();
+const emit = defineEmits<{
+	rate: [rating: 'up' | 'down', feedback?: string];
+}>();
 const { renderMarkdown } = useMarkdown();
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@rate="(rating, feedback) => emit('rate', rating, feedback)"
+	>
 		<div :class="$style.block">
 			<div :class="$style.blockTitle">
 				{{ message.title }}

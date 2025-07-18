@@ -3,15 +3,21 @@ import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useRouter } from 'vue-router';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const emit = defineEmits<{
 	delete: [id: string];
 }>();
 const i18n = useI18n();
+const router = useRouter();
 
 const { id } = useCanvasNode();
 const builderStore = useBuilderStore();
+const workflowsStore = useWorkflowsStore();
 
+const workflowSaver = useWorkflowSaving({ router });
 const isPromptVisible = ref(true);
 const isFocused = ref(false);
 
@@ -19,9 +25,17 @@ const prompt = ref('');
 const hasContent = computed(() => prompt.value.trim().length > 0);
 
 async function onSubmit() {
-	builderStore.openChat();
+	const isNewWorkflow = workflowsStore.isNewWorkflow;
+
+	// Save the workflow to get workflow ID which is used for session
+	if (isNewWorkflow) {
+		await workflowSaver.saveCurrentWorkflow();
+	}
+	// Here we need to await for chat to open and session to be loaded
+	await builderStore.openChat();
 	emit('delete', id.value);
-	await builderStore.initBuilderChat(prompt.value, 'canvas');
+
+	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 	isPromptVisible.value = false;
 }
 </script>

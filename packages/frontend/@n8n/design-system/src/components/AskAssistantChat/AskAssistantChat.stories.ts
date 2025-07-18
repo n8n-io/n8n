@@ -399,73 +399,193 @@ RichTextMessage.args = {
 	]),
 };
 
-export const WorkflowStepsChat = Template.bind({});
-WorkflowStepsChat.args = {
+export const TextMessageWithRegularRating = Template.bind({});
+TextMessageWithRegularRating.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
 	messages: getMessages([
 		{
-			id: '123',
-			type: 'workflow-step',
+			id: '127',
+			type: 'text',
 			role: 'assistant',
-			steps: [
-				'Create a new HTTP Trigger node',
-				'Add a Transform node to process the data',
-				'Connect to your database using PostgreSQL node',
-				'Send confirmation email with SendGrid node',
+			content:
+				"I've generated a workflow that automatically processes your CSV files and sends email notifications. The workflow includes error handling and data validation steps.",
+			read: false,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const TextMessageWithMinimalRating = Template.bind({});
+TextMessageWithMinimalRating.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '128',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Here's a quick tip: You can use the Code node to transform data between different formats.",
+			read: false,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const MultipleMessagesWithRatings = Template.bind({});
+MultipleMessagesWithRatings.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '129',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me create a workflow for processing webhooks?',
+			read: true,
+		},
+		{
+			id: '130',
+			type: 'text',
+			role: 'assistant',
+			content: "I'll help you create a webhook processing workflow. Here are the steps:",
+			read: true,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+		{
+			id: '131',
+			type: 'text',
+			role: 'assistant',
+			content: `Follow these steps:
+1. Add a Webhook node to receive incoming data
+2. Use a Switch node to route based on webhook type
+3. Add data transformation with a Code node
+4. Store results in your database`,
+			read: true,
+		},
+		{
+			id: '132',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'This workflow will handle incoming webhooks efficiently and store the processed data.',
+			read: false,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const CodeDiffWithMinimalRating = Template.bind({});
+CodeDiffWithMinimalRating.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '133',
+			type: 'code-diff',
+			role: 'assistant',
+			description: 'Fix the error handling in your code',
+			codeDiff:
+				'@@ -1,3 +1,8 @@\\n const data = await fetchData();\\n-return data;\\n+\\n+if (!data || data.error) {\\n+  throw new Error(data?.error || "Failed to fetch data");\\n+}\\n+\\n+return data;',
+			suggestionId: 'fix_error_handling',
+			read: false,
+			showRating: true,
+			ratingStyle: 'minimal',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const ToolMessageRunning = Template.bind({});
+ToolMessageRunning.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '127',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_123',
+			status: 'running',
+			updates: [
+				{
+					type: 'progress',
+					data: { message: 'Analyzing the codebase structure...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'input',
+					data: {
+						query: 'Find all Vue components in the project',
+						path: '/src/components',
+					},
+					timestamp: new Date().toISOString(),
+				},
 			],
 			read: false,
 		},
 	]),
 };
 
-export const WorkflowNodesChat = Template.bind({});
-WorkflowNodesChat.args = {
+export const ToolMessageCompleted = Template.bind({});
+ToolMessageCompleted.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
 	messages: getMessages([
 		{
-			id: '124',
-			type: 'workflow-node',
+			id: '128',
+			type: 'tool',
 			role: 'assistant',
-			nodes: ['HTTP Trigger', 'Transform', 'PostgreSQL', 'SendGrid'],
-			read: false,
-		},
-	]),
-};
-
-export const ComposedNodesChat = Template.bind({});
-ComposedNodesChat.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
-		{
-			id: '125',
-			type: 'workflow-composed',
-			role: 'assistant',
-			nodes: [
+			toolName: 'search_files',
+			toolCallId: 'call_456',
+			status: 'completed',
+			updates: [
 				{
-					name: 'HTTP Trigger',
-					type: 'n8n-nodes-base.httpTrigger',
-					parameters: {
-						path: '/webhook',
-						authentication: 'none',
+					type: 'input',
+					data: {
+						pattern: '*.vue',
+						directory: '/src',
 					},
-					position: [100, 100],
+					timestamp: new Date().toISOString(),
 				},
 				{
-					name: 'Transform',
-					type: 'n8n-nodes-base.set',
-					parameters: {
-						values: { field: 'value' },
+					type: 'progress',
+					data: { message: 'Searching for Vue files...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'output',
+					data: {
+						files: [
+							'/src/components/Button.vue',
+							'/src/components/Modal.vue',
+							'/src/views/Home.vue',
+						],
+						count: 3,
 					},
-					position: [300, 100],
+					timestamp: new Date().toISOString(),
 				},
 			],
 			read: false,
@@ -473,18 +593,123 @@ ComposedNodesChat.args = {
 	]),
 };
 
-export const RateWorkflowMessage = Template.bind({});
-RateWorkflowMessage.args = {
+export const ToolMessageError = Template.bind({});
+ToolMessageError.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
 	messages: getMessages([
 		{
-			id: '126',
-			type: 'rate-workflow',
+			id: '129',
+			type: 'tool',
 			role: 'assistant',
-			content: 'Is this workflow helpful?',
+			toolName: 'database_query',
+			toolCallId: 'call_789',
+			status: 'error',
+			updates: [
+				{
+					type: 'input',
+					data: {
+						query: 'SELECT * FROM users WHERE id = 123',
+						database: 'production',
+					},
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Connecting to database...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'error',
+					data: {
+						error: 'Connection timeout',
+						details: 'Failed to connect to database after 30 seconds',
+					},
+					timestamp: new Date().toISOString(),
+				},
+			],
+			read: false,
+		},
+	]),
+};
+
+export const MixedMessagesWithTools = Template.bind({});
+MixedMessagesWithTools.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '130',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me analyze my workflow?',
+			read: true,
+		},
+		{
+			id: '131',
+			type: 'text',
+			role: 'assistant',
+			content: "I'll analyze your workflow now. Let me search for the relevant files.",
+			read: true,
+		},
+		{
+			id: '132',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'search_workflow_files',
+			toolCallId: 'call_999',
+			status: 'completed',
+			updates: [
+				{
+					type: 'input',
+					data: {
+						workflowId: 'wf_123',
+						includeNodes: true,
+					},
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Loading workflow configuration...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Analyzing node connections...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'output',
+					data: {
+						nodes: 5,
+						connections: 8,
+						issues: ['Missing error handling in HTTP node', 'Unused variable in Code node'],
+					},
+					timestamp: new Date().toISOString(),
+				},
+			],
+			read: true,
+		},
+		{
+			id: '133',
+			type: 'text',
+			role: 'assistant',
+			content: 'I found some issues in your workflow. Here are my recommendations:',
+			read: true,
+		},
+		{
+			id: '134',
+			type: 'code-diff',
+			role: 'assistant',
+			description: 'Add error handling to your HTTP node',
+			codeDiff:
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				'@@ -1,3 +1,8 @@\n const response = await $http.request(options);\n-return response.data;\n+\n+if (response.status !== 200) {\n+  throw new Error(`HTTP request failed with status ${response.status}`);\n+}\n+\n+return response.data;',
+			suggestionId: 'fix_http_error',
 			read: false,
 		},
 	]),

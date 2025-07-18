@@ -81,3 +81,18 @@ export async function claimFreeAiCredits(
 		projectId,
 	} as IDataObject);
 }
+
+export async function getAiSessions(
+	ctx: IRestApiContext,
+	workflowId?: string,
+): Promise<{
+	sessions: Array<{
+		sessionId: string;
+		messages: ChatRequest.MessageResponse[];
+		lastUpdated: string;
+	}>;
+}> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
+		workflowId,
+	} as IDataObject);
+}

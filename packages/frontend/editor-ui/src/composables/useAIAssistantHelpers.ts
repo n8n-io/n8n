@@ -180,7 +180,7 @@ export const useAIAssistantHelpers = () => {
 	 * @param nodeNames The names of the nodes to get the schema for
 	 * @returns An array of NodeExecutionSchema objects
 	 */
-	function getNodesSchemas(nodeNames: string[]) {
+	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		for (const name of nodeNames) {
 			const node = workflowsStore.getNodeByName(name);
@@ -188,7 +188,10 @@ export const useAIAssistantHelpers = () => {
 				continue;
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
-			const schema = getSchemaForExecutionData(executionDataToJson(getInputDataWithPinned(node)));
+			const schema = getSchemaForExecutionData(
+				executionDataToJson(getInputDataWithPinned(node)),
+				excludeValues,
+			);
 			schemas.push({
 				nodeName: node.name,
 				schema,
