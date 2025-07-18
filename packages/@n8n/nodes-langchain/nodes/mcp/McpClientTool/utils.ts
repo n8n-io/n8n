@@ -167,16 +167,6 @@ export async function connectMcpClient({
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				eventSourceInit: {
-					fetch: async (url, init) =>
-						await fetch(url, {
-							...init,
-							headers: {
-								...headers,
-								Accept: 'text/event-stream',
-							},
-						}),
-				},
 				requestInit: { headers },
 			});
 			await client.connect(transport);

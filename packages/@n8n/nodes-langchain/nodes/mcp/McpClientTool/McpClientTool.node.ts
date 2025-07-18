@@ -109,7 +109,7 @@ export class McpClientTool implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Server Sent Events (deprecated)',
+						name: 'Server Sent Events (Deprecated)',
 						value: 'sse',
 					},
 					{
@@ -232,7 +232,7 @@ export class McpClientTool implements INodeType {
 
 		let serverTransport: McpServerTransport;
 		let endpointUrl: string;
-		if (node.typeVersion == 1) {
+		if (node.typeVersion === 1) {
 			serverTransport = 'sse';
 			endpointUrl = this.getNodeParameter('sseEndpoint', itemIndex) as string;
 		} else {

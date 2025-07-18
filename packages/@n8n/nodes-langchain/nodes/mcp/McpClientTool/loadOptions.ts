@@ -12,7 +12,7 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 	const node = this.getNode();
 	let serverTransport: McpServerTransport;
 	let endpointUrl: string;
-	if (node.typeVersion == 1) {
+	if (node.typeVersion === 1) {
 		serverTransport = 'sse';
 		endpointUrl = this.getNodeParameter('sseEndpoint') as string;
 	} else {
