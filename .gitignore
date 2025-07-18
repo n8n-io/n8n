@@ -34,3 +34,4 @@ compiled_app_output
 trivy_report*
 compiled
 jest.config.js
+packages/cli/src/modules/my-feature
