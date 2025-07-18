@@ -3,7 +3,6 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { ToolInputParsingException } from '@langchain/core/tools';
 import type { Command as CommandType } from '@langchain/langgraph';
-import type { IRunExecutionData } from 'n8n-workflow';
 
 import { createWorkflow, createNode } from '../../../test/test-utils';
 import type { ToolExecutorOptions } from '../../types/config';
@@ -48,11 +47,7 @@ describe('tool-executor', () => {
 			workflowJSON: createWorkflow([]),
 			workflowOperations: null,
 			messages,
-			prompt: '',
-			isWorkflowPrompt: true,
-			executionData: {
-				runData: {},
-			} as IRunExecutionData['resultData'],
+			workflowContext: {},
 		});
 
 		// Helper to create mock tool

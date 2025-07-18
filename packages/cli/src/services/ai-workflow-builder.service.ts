@@ -1,9 +1,10 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import type { IUser, IRunExecutionData } from 'n8n-workflow';
+import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
@@ -47,15 +48,7 @@ export class WorkflowBuilderService {
 		return this.service;
 	}
 
-	async *chat(
-		payload: {
-			question: string;
-			currentWorkflowJSON: string;
-			workflowId?: string;
-			executionData?: IRunExecutionData['resultData'];
-		},
-		user: IUser,
-	) {
+	async *chat(payload: ChatPayload, user: IUser) {
 		const service = await this.getService();
 		yield* service.chat(payload, user);
 	}

@@ -4,8 +4,12 @@ import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import { jsonParse } from 'n8n-workflow';
-import type { INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
+import type {
+	INodeTypeDescription,
+	IRunExecutionData,
+	IWorkflowBase,
+	NodeExecutionSchema,
+} from 'n8n-workflow';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError } from './errors';
@@ -32,10 +36,12 @@ export interface WorkflowBuilderAgentConfig {
 }
 
 export interface ChatPayload {
-	question: string;
-	currentWorkflowJSON?: string;
-	workflowId?: string;
-	executionData?: IRunExecutionData['resultData'];
+	message: string;
+	workflowContext?: {
+		executionSchema?: NodeExecutionSchema[];
+		currentWorkflow?: Partial<IWorkflowBase>;
+		executionData?: IRunExecutionData['resultData'];
+	};
 }
 
 export class WorkflowBuilderAgent {
@@ -78,7 +84,11 @@ export class WorkflowBuilderAgent {
 				});
 			}
 
-			const prompt = await mainAgentPrompt.invoke(state);
+			const prompt = await mainAgentPrompt.invoke({
+				...state,
+				executionData: state.workflowContext?.executionData ?? {},
+				executionSchema: state.workflowContext?.executionSchema ?? [],
+			});
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
@@ -115,7 +125,7 @@ export class WorkflowBuilderAgent {
 			const messages = state.messages;
 			const stateUpdate: Partial<typeof WorkflowState.State> = {
 				workflowOperations: null,
-				executionData: undefined,
+				workflowContext: {},
 				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
 				workflowJSON: {
 					nodes: [],
@@ -163,14 +173,19 @@ export class WorkflowBuilderAgent {
 			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
 		});
 	}
+
+	static generateThreadId(workflowId?: string, userId?: string) {
+		return workflowId
+			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
+			: crypto.randomUUID();
+	}
+
 	async *chat(payload: ChatPayload, userId?: string) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
-
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = payload.workflowId
-			? `workflow-${payload.workflowId}-user-${userId ?? new Date().getTime()}`
-			: `user-${userId ?? new Date().getTime()}-default`;
+		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
 
 		// Configure thread for checkpointing
 		const threadConfig = {
@@ -188,14 +203,13 @@ export class WorkflowBuilderAgent {
 		if (!existingCheckpoint?.checkpoint) {
 			// First message - use initial state
 			const initialState: typeof WorkflowState.State = {
-				messages: [new HumanMessage({ content: payload.question })],
-				prompt: payload.question,
-				workflowJSON: payload.currentWorkflowJSON
-					? jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON)
-					: { nodes: [], connections: {} },
+				messages: [new HumanMessage({ content: payload.message })],
+				workflowJSON: (payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
+					nodes: [],
+					connections: {},
+				},
 				workflowOperations: [],
-				isWorkflowPrompt: false,
-				executionData: payload.executionData,
+				workflowContext: payload.workflowContext,
 			};
 
 			stream = await agent.stream(initialState, {
@@ -207,25 +221,23 @@ export class WorkflowBuilderAgent {
 		} else {
 			// Subsequent message - update the state with current workflow
 			const stateUpdate: Partial<typeof WorkflowState.State> = {
+				messages: [new HumanMessage({ content: payload.message })],
 				workflowOperations: [], // Clear any pending operations from previous message
-				executionData: payload.executionData, // Update with latest execution data
+				workflowContext: payload.workflowContext,
 				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
 			};
 
-			if (payload.currentWorkflowJSON) {
-				stateUpdate.workflowJSON = jsonParse<SimpleWorkflow>(payload.currentWorkflowJSON);
+			if (payload.workflowContext?.currentWorkflow) {
+				stateUpdate.workflowJSON = payload.workflowContext?.currentWorkflow as SimpleWorkflow;
 			}
 
 			// Stream with just the new message
-			stream = await agent.stream(
-				{ messages: [new HumanMessage({ content: payload.question })], ...stateUpdate },
-				{
-					...threadConfig,
-					streamMode: ['updates', 'custom'],
-					recursionLimit: 80,
-					callbacks: this.tracer ? [this.tracer] : undefined,
-				},
-			);
+			stream = await agent.stream(stateUpdate, {
+				...threadConfig,
+				streamMode: ['updates', 'custom'],
+				recursionLimit: 80,
+				callbacks: this.tracer ? [this.tracer] : undefined,
+			});
 		}
 
 		// Use the stream processor utility to handle chunk processing
@@ -243,7 +255,7 @@ export class WorkflowBuilderAgent {
 		const sessions = [];
 
 		if (workflowId) {
-			const threadId = `workflow-${workflowId}-user-${userId ?? 'anonymous'}`;
+			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
 			const threadConfig = {
 				configurable: {
 					thread_id: threadId,

@@ -11,7 +11,12 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
-import { IRunData, OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import {
+	IRunData,
+	IRunExecutionData,
+	NodeExecutionSchema,
+	OPEN_AI_API_CREDENTIAL_TYPE,
+} from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
@@ -46,16 +51,15 @@ export class AiController {
 		@Body payload: AiBuilderChatRequestDto,
 	) {
 		try {
-			const workflowId = payload.payload.workflowContext?.currentWorkflow?.id;
-
+			const { text, workflowContext } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
-					question: payload.payload.question ?? '',
-					currentWorkflowJSON: JSON.stringify(
-						payload.payload.workflowContext?.currentWorkflow ?? {},
-					),
-					workflowId,
-					executionData: { runData: (payload.payload.executionData as IRunData) ?? {} },
+					message: text,
+					workflowContext: {
+						currentWorkflow: workflowContext.currentWorkflow,
+						executionData: workflowContext.executionData,
+						executionSchema: workflowContext.executionSchema,
+					},
 				},
 				req.user,
 			);

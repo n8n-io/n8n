@@ -453,10 +453,6 @@ export function inferConnectionType(
 	sourceNodeType: INodeTypeDescription,
 	targetNodeType: INodeTypeDescription,
 ): InferConnectionTypeResult {
-	// console.log('=== Inferring Connection Type ===');
-	// console.log(`Source Node: ${sourceNode.name} (type: ${sourceNode.type})`);
-	// console.log(`Target Node: ${targetNode.name} (type: ${targetNode.type})`);
-
 	// Get available output and input types
 	const sourceOutputTypes = getNodeOutputTypes(sourceNodeType);
 	const targetInputTypes = getNodeInputTypes(targetNodeType, targetNode);
@@ -476,12 +472,6 @@ export function inferConnectionType(
 		isSubNode(targetNodeType, targetNode) ||
 		(typeof targetNodeType.inputs === 'string' && !targetHasMainInput);
 
-	// console.log(`Source has main input: ${sourceHasMainInput}, is sub-node: ${sourceIsSubNode}`);
-	// console.log(`Target has main input: ${targetHasMainInput}, is sub-node: ${targetIsSubNode}`);
-
-	// console.log(`Source output types: [${sourceOutputTypes.join(', ')}]`);
-	// console.log(`Target input types: [${targetInputTypes.join(', ')}]`);
-
 	// Find matching connection types
 	const matchingTypes = sourceOutputTypes.filter((outputType) =>
 		targetInputTypes.includes(outputType),
@@ -494,20 +484,16 @@ export function inferConnectionType(
 		// console.log('Scenario: Sub-node to main node (AI connection)');
 		// Find AI connection types in the matches
 		const aiConnectionTypes = matchingTypes.filter((type) => type.startsWith('ai_'));
-		// console.log(`AI connection types found: [${aiConnectionTypes.join(', ')}]`);
 
 		if (aiConnectionTypes.length === 1) {
-			// console.log(`Selected connection type: ${aiConnectionTypes[0]}`);
 			return { connectionType: aiConnectionTypes[0] };
 		} else if (aiConnectionTypes.length > 1) {
 			// Multiple AI connection types possible
-			// console.log('Multiple AI connection types found');
 			return {
 				possibleTypes: aiConnectionTypes,
 				error: `Multiple AI connection types possible: ${aiConnectionTypes.join(', ')}. Please specify which one to use.`,
 			};
 		}
-		// console.log('No AI connection types found in matches');
 	}
 
 	// Handle reversed AI connections (main node to sub-node - needs swap)
@@ -517,65 +503,48 @@ export function inferConnectionType(
 		const targetOutputTypes = getNodeOutputTypes(targetNodeType);
 		const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);
 
-		// console.log(`Target output types: [${targetOutputTypes.join(', ')}]`);
-		// console.log(`Source input types: [${sourceInputTypes.join(', ')}]`);
-
 		const reverseAiMatches = targetOutputTypes
 			.filter((type) => type.startsWith('ai_'))
 			.filter((type) => sourceInputTypes.includes(type));
 
-		// console.log(`Reverse AI matches: [${reverseAiMatches.join(', ')}]`);
-
 		if (reverseAiMatches.length === 1) {
-			// console.log(`Selected connection type (with swap): ${reverseAiMatches[0]}`);
 			return {
 				connectionType: reverseAiMatches[0],
 				requiresSwap: true,
 			};
 		} else if (reverseAiMatches.length > 1) {
-			// console.log('Multiple reverse AI matches found');
 			return {
 				possibleTypes: reverseAiMatches,
 				requiresSwap: true,
 				error: `Multiple AI connection types possible (requires swap): ${reverseAiMatches.join(', ')}. Please specify which one to use.`,
 			};
 		}
-		// console.log('No reverse AI matches found');
 	}
 
 	// Handle main connections
 	if (!sourceIsSubNode && !targetIsSubNode) {
-		// console.log('Scenario: Main node to main node');
 		if (matchingTypes.includes(NodeConnectionTypes.Main)) {
-			// console.log('Selected connection type: main');
 			return { connectionType: NodeConnectionTypes.Main };
 		}
-		// console.log('No main connection type found in matches');
 	}
 
 	// Handle sub-node to sub-node connections
 	if (sourceIsSubNode && targetIsSubNode) {
-		// console.log('Scenario: Sub-node to sub-node');
 		// Check for AI document connections or other specific sub-node to sub-node connections
 		const subNodeConnections = matchingTypes.filter((type) => type.startsWith('ai_'));
-		// console.log(`Sub-node connection types found: [${subNodeConnections.join(', ')}]`);
 
 		if (subNodeConnections.length === 1) {
-			// console.log(`Selected connection type: ${subNodeConnections[0]}`);
 			return { connectionType: subNodeConnections[0] };
 		} else if (subNodeConnections.length > 1) {
-			// console.log('Multiple sub-node connection types found');
 			return {
 				possibleTypes: subNodeConnections,
 				error: `Multiple connection types possible between sub-nodes: ${subNodeConnections.join(', ')}. Please specify which one to use.`,
 			};
 		}
-		// console.log('No AI connection types found for sub-node to sub-node');
 	}
 
 	// No valid connection found
 	if (matchingTypes.length === 0) {
-		// console.log('ERROR: No matching connection types found');
 		return {
 			error: `No compatible connection types found between "${sourceNode.name}" (outputs: ${sourceOutputTypes.join(', ') || 'none'}) and "${targetNode.name}" (inputs: ${targetInputTypes.join(', ') || 'none'})`,
 		};
@@ -583,11 +552,9 @@ export function inferConnectionType(
 
 	// If we have other matching types but couldn't determine the best one
 	if (matchingTypes.length === 1) {
-		// console.log(`Fallback: Using single matching type: ${matchingTypes[0]}`);
 		return { connectionType: matchingTypes[0] };
 	}
 
-	// console.log(`ERROR: Multiple matching types found: [${matchingTypes.join(', ')}]`);
 	return {
 		possibleTypes: matchingTypes,
 		error: `Multiple connection types possible: ${matchingTypes.join(', ')}. Please specify which one to use.`,

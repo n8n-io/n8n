@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { Client } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
-import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from './errors';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
@@ -167,25 +167,10 @@ export class AiWorkflowBuilderService {
 		return this.agent;
 	}
 
-	async *chat(
-		payload: {
-			question: string;
-			currentWorkflowJSON?: string;
-			workflowId?: string;
-			executionData?: IRunExecutionData['resultData'];
-		},
-		user?: IUser,
-	) {
+	async *chat(payload: ChatPayload, user?: IUser) {
 		const agent = await this.getAgent(user);
 
-		const chatPayload: ChatPayload = {
-			question: payload.question,
-			currentWorkflowJSON: payload.currentWorkflowJSON,
-			workflowId: payload.workflowId,
-			executionData: payload.executionData,
-		};
-
-		for await (const output of agent.chat(chatPayload, user?.id?.toString())) {
+		for await (const output of agent.chat(payload, user?.id?.toString())) {
 			yield output;
 		}
 	}

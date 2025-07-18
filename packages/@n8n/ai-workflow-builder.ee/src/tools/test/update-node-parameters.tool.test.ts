@@ -608,7 +608,6 @@ describe('UpdateNodeParametersTool', () => {
 
 			expect(mockChain.invoke).toHaveBeenCalledWith(
 				expect.objectContaining({
-					user_workflow_prompt: 'Test workflow prompt',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					workflow_json: expect.stringContaining('test-node'),
 					execution_data_schema: JSON.stringify({ test: 'data' }, null, 2),
