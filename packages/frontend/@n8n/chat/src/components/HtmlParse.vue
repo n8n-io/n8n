@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import isEmpty from 'lodash/isEmpty';
-
 import { computed, defineAsyncComponent } from 'vue';
 import type { Component } from 'vue';
 
@@ -360,7 +358,7 @@ function parseHTML(html: string): ParsedNode[] {
 
 // Parse content with memoization
 const parsedBlocks = computed((): ParsedNode[] => {
-	if (!isEmpty(props.node)) return props.node ?? [];
+	if (props.node && props.node.length > 0) return props.node;
 	return parseHTML(props.html ?? '');
 });
 </script>
@@ -388,8 +386,10 @@ const parsedBlocks = computed((): ParsedNode[] => {
 		/>
 		<template v-else-if="node.type === 'renderHtml'">
 			<mjx-container v-if="node.tag === 'mjx-container'" v-bind="node.props">
+				<!-- eslint-disable-next-line vue/no-v-html -->
 				<div v-html="node.html" />
 			</mjx-container>
+			<!-- eslint-disable-next-line vue/no-v-html -->
 			<table v-else-if="node.tag === 'table'" v-bind="node.props" v-html="node.html" />
 			<code v-else-if="node.tag === 'code'" v-bind="node.props" v-text="node.html" />
 		</template>

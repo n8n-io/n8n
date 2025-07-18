@@ -41,7 +41,6 @@
     "highlight.js": "catalog:frontend",
     "markdown-it-mathjax3": "^4.3.2",
     "uuid": "catalog:",
-    "lodash": "catalog:",
     "vue": "catalog:frontend"
   },
   "devDependencies": {
@@ -56,8 +55,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vite-plugin-dts": "^4.5.3",
-    "vue-tsc": "catalog:frontend",
-    "@types/lodash": "catalog:"
+    "vue-tsc": "catalog:frontend"
   },
   "files": [
     "README.md",

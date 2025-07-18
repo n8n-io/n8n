@@ -1819,9 +1819,6 @@ importers:
       highlight.js:
         specifier: catalog:frontend
         version: 11.9.0
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
       markdown-it-mathjax3:
         specifier: ^4.3.2
         version: 4.3.2(encoding@0.1.13)
@@ -1847,9 +1844,6 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.4(vite@6.3.5(@types/node@20.19.1)(jiti@1.21.7)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.8.3))
