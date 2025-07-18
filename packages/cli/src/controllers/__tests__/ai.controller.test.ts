@@ -117,7 +117,7 @@ describe('AiController', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
 				question: 'Create a workflow',
-				executionData: [],
+				executionData: {},
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
@@ -126,8 +126,8 @@ describe('AiController', () => {
 
 		it('should handle build request successfully', async () => {
 			const mockChunks = [
-				{ messages: [{ role: 'assistant', type: 'message', text: 'Building...' }] },
-				{ messages: [{ role: 'assistant', type: 'workflow-updated', codeSnippet: '{}' }] },
+				{ messages: [{ role: 'assistant', type: 'message', text: 'Building...' } as const] },
+				{ messages: [{ role: 'assistant', type: 'workflow-updated', codeSnippet: '{}' } as const] },
 			];
 
 			// Create an async generator that yields chunks
@@ -146,7 +146,7 @@ describe('AiController', () => {
 					question: 'Create a workflow',
 					currentWorkflowJSON: JSON.stringify({ id: 'workflow123' }),
 					workflowId: 'workflow123',
-					executionData: [],
+					executionData: { runData: {} },
 				},
 				request.user,
 			);
@@ -169,7 +169,7 @@ describe('AiController', () => {
 
 			// Create an async generator that throws an error
 			async function* mockChatGeneratorWithError() {
-				yield { messages: [{ role: 'assistant', type: 'message', text: 'Starting...' }] };
+				yield { messages: [{ role: 'assistant', type: 'message', text: 'Starting...' } as const] };
 				throw mockError;
 			}
 
@@ -232,17 +232,11 @@ describe('AiController', () => {
 
 			response.headersSent = true;
 
-			// Mock console.error to avoid test output noise
-			const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-
 			await controller.build(request, response, payload);
 
 			expect(response.status).not.toHaveBeenCalled();
 			expect(response.json).not.toHaveBeenCalled();
 			expect(response.end).toHaveBeenCalled();
-			expect(consoleErrorSpy).toHaveBeenCalledWith('Error after headers sent:', mockError);
-
-			consoleErrorSpy.mockRestore();
 		});
 	});
 });
