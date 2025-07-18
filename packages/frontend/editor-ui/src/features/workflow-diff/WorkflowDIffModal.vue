@@ -21,18 +21,20 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { N8nText } from '@n8n/design-system';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
+import { BaseEdge } from '@vue-flow/core';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-const { selectedDetailId } = useProvideViewportSync();
+const { selectedDetailId, onNodeClick } = useProvideViewportSync();
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
@@ -80,7 +82,12 @@ const remote = useAsyncState<WorkflowDiff | undefined, [], false>(
 			return {
 				workflow,
 				workflowObject,
-				nodes: nodes.value,
+				nodes: nodes.value.map((node) => {
+					node.draggable = false;
+					node.selectable = false;
+					node.focusable = false;
+					return node;
+				}),
 				connections: connections.value,
 				remote: true,
 			};
@@ -108,7 +115,12 @@ const local = useAsyncState<WorkflowDiff | undefined, [], false>(
 			return {
 				workflow,
 				workflowObject,
-				nodes: nodes.value,
+				nodes: nodes.value.map((node) => {
+					node.draggable = false;
+					node.selectable = false;
+					node.focusable = false;
+					return node;
+				}),
 				connections: connections.value,
 				remote: false,
 			};
@@ -253,27 +265,36 @@ function previousNodeChange() {
 	selectedDetailId.value = nodeChanges.value[previousIndex]?.node.id;
 }
 
-const activeTab = ref<'nodes' | 'connectors' | 'settings'>('nodes');
+const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
 const tabs = computed(() => [
 	{
-		value: 'nodes',
+		value: 'nodes' as const,
 		label: 'Nodes',
 		count: nodeChanges.value.length,
 		disabled: nodeChanges.value.length === 0,
 	},
 	{
-		value: 'connectors',
+		value: 'connectors' as const,
 		label: 'Connectors',
 		count: connectionsDiff.value.size,
 		disabled: connectionsDiff.value.size === 0,
 	},
 	{
-		value: 'settings',
+		value: 'settings' as const,
 		label: 'Settings',
 		count: settingsDiff.value.length,
 		disabled: settingsDiff.value.length === 0,
 	},
 ]);
+function setActiveTab(active: boolean) {
+	if (!active) {
+		activeTab.value = undefined;
+		return;
+	}
+
+	const value = tabs.value.find((tab) => !tab.disabled)?.value ?? 'nodes';
+	activeTab.value = value;
+}
 
 const detailsPanelData = computed(() => {
 	if (!selectedDetailId.value) return undefined;
@@ -308,14 +329,6 @@ const nodeDiffs = computed(() => {
 	};
 });
 
-watch(nodeChanges, (changes) => {
-	if (changes.length) {
-		selectedDetailId.value = changes[0].node.id;
-	} else {
-		selectedDetailId.value = undefined;
-	}
-});
-
 const outputFormat = ref<'side-by-side' | 'line-by-line'>('line-by-line');
 function toggleOutputFormat() {
 	outputFormat.value = outputFormat.value === 'line-by-line' ? 'side-by-side' : 'line-by-line';
@@ -333,6 +346,14 @@ function handleBeforeClose() {
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
 );
+
+onNodeClick((nodeId) => {
+	const status = diff.value.get(nodeId)?.status;
+
+	if (status && status !== NodeDiffStatus.Eq) {
+		selectedDetailId.value = nodeId;
+	}
+});
 </script>
 
 <template>
@@ -367,6 +388,7 @@ const changesCount = computed(
 						trigger="click"
 						:popper-options="{ modifiers: [{ name: 'offset', options: { offset: [0, 0] } }] }"
 						:popper-class="$style.popper"
+						@visible-change="setActiveTab"
 					>
 						<N8nButton type="secondary">
 							<div v-if="changesCount" :class="$style.circleBadge">
@@ -379,12 +401,10 @@ const changesCount = computed(
 								<div style="min-width: 300px; padding: 2px 12px">
 									<N8nRadioButtons v-model="activeTab" :options="tabs" :class="$style.tabs">
 										<template #option="{ label, count }">
-											<div>
-												<span v-if="count">
-													{{ count }}
-												</span>
-												{{ label }}
-											</div>
+											<span v-if="count" class="mr-3xs">
+												{{ count }}
+											</span>
+											{{ label }}
 										</template>
 									</N8nRadioButtons>
 									<div>
@@ -418,7 +438,7 @@ const changesCount = computed(
 										<ul v-if="activeTab === 'settings'">
 											<li v-for="setting in settingsDiff" :key="setting.name">
 												<N8nText color="text-dark" size="small" tag="div" bold>{{
-													i18n.baseText(`workflowSettings.${setting.name}`)
+													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
 												}}</N8nText>
 												<NodeDiff
 													:old-string="setting.before"
@@ -471,7 +491,20 @@ const changesCount = computed(
 											read-only
 											:selected="false"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-										/>
+										>
+											<template #highlight="{ segments }">
+												<BaseEdge
+													v-for="segment in segments"
+													:key="segment[0]"
+													:style="{
+														strokeWidth: 10,
+														stroke: 'var(--edge-highlight-color)',
+													}"
+													:path="segment[0]"
+													:interaction-width="0"
+												/>
+											</template>
+										</Edge>
 									</template>
 								</SyncedWorkflowCanvas>
 							</template>
@@ -519,7 +552,20 @@ const changesCount = computed(
 											read-only
 											:selected="false"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-										/>
+										>
+											<template #highlight="{ segments }">
+												<BaseEdge
+													v-for="segment in segments"
+													:key="segment[0]"
+													:style="{
+														strokeWidth: 10,
+														stroke: 'var(--edge-highlight-color)',
+													}"
+													:path="segment[0]"
+													:interaction-width="0"
+												/>
+											</template>
+										</Edge>
 									</template>
 								</SyncedWorkflowCanvas>
 							</template>
@@ -572,19 +618,19 @@ const changesCount = computed(
 							padding: 12px 10px;
 						"
 					>
-						<N8nIconButton
-							icon="file-diff"
-							type="secondary"
-							@click="toggleOutputFormat"
-						></N8nIconButton>
-						<NodeIcon :node-type="detailsPanelData.type" :size="16" />
+						<NodeIcon class="ml-xs" :node-type="detailsPanelData.type" :size="16" />
 						<N8nHeading size="small" color="text-dark" bold>
 							{{ detailsPanelData.node.name }}
 						</N8nHeading>
 						<N8nIconButton
-							icon="x"
+							icon="file-diff"
 							type="secondary"
 							class="ml-auto"
+							@click="toggleOutputFormat"
+						></N8nIconButton>
+						<N8nIconButton
+							icon="x"
+							type="secondary"
 							text
 							@click="selectedDetailId = undefined"
 						></N8nIconButton>
@@ -844,9 +890,11 @@ const changesCount = computed(
 
 .edge-deleted {
 	--color-foreground-xdark: var(--color-node-icon-red);
+	--edge-highlight-color: rgba(255, 150, 90, 0.2);
 }
 .edge-added {
 	--color-foreground-xdark: var(--color-node-icon-green);
+	--edge-highlight-color: rgba(14, 171, 84, 0.2);
 }
 .edge-equal {
 	opacity: 0.5;

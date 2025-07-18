@@ -15,19 +15,21 @@ type ViewportUpdate = {
 
 export type ViewportSyncReturn = {
 	onViewportChange: (
-		// eslint-disable-next-line id-denylist
-		callback: (update: { from: string; viewport: { x: number; y: number; zoom: number } }) => void,
+		handler: (update: { from: string; viewport: { x: number; y: number; zoom: number } }) => void,
 	) => void;
 	triggerViewportChange: (update: {
 		from: string;
 		viewport: { x: number; y: number; zoom: number };
 	}) => void;
+	onNodeClick: (handler: (update: string) => void) => void;
+	triggerNodeClick: (update: string) => void;
 	selectedDetailId: Ref<string | undefined>;
 	syncIsEnabled: Ref<boolean>;
 };
 
 const [useProvideViewportSync, useInject] = createInjectionState<[], ViewportSyncReturn>(() => {
 	const onViewportChange = createEventHook<ViewportUpdate>();
+	const onNodeClick = createEventHook<string>();
 
 	const selectedDetailId = ref<string>();
 	const syncIsEnabled = ref(true);
@@ -60,6 +62,8 @@ const [useProvideViewportSync, useInject] = createInjectionState<[], ViewportSyn
 	return {
 		onViewportChange: onViewportChange.on,
 		triggerViewportChange,
+		onNodeClick: onNodeClick.on,
+		triggerNodeClick: onNodeClick.trigger,
 		selectedDetailId,
 		syncIsEnabled,
 	};

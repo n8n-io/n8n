@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import CanvasBackground from '@/components/canvas/elements/background/CanvasBackground.vue';
 import { useInjectViewportSync } from '@/features/workflow-diff/useViewportSync';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
+
 const props = defineProps<{
 	id: string;
 	nodes: CanvasNode[];
@@ -14,8 +16,10 @@ const {
 	onNodeClick,
 	fitView,
 	findNode,
+	addSelectedNodes,
 } = useVueFlow({ id: props.id });
-const { triggerViewportChange, onViewportChange, selectedDetailId } = useInjectViewportSync();
+const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
+	useInjectViewportSync();
 
 /**
  * Flag to ignore viewport changes triggered by remote updates,
@@ -38,16 +42,16 @@ onViewportChange(({ from, viewport }) => {
 	requestAnimationFrame(() => (isApplyingRemoteUpdate = false));
 });
 
-onNodeClick(({ event, node }) => {
-	selectedDetailId.value = node.id; // Set selected node ID for details drawer
-});
+onNodeClick(({ node }) => triggerNodeClick(node.id));
 
 watch(selectedDetailId, (id) => {
 	const node = findNode(id);
 	if (!node) {
+		addSelectedNodes([]); // Clear selection if node not found
 		return;
 	}
-	const desiredPixelPadding = node.dimensions.width * 3; // or node.height * 0.5
+	addSelectedNodes([node]); // Add node to selection
+	const desiredPixelPadding = node.dimensions.width * 5; // or node.height * 0.5
 	const nodeBoundingSize = Math.max(node.dimensions.width, node.dimensions.height);
 	const paddingRatio = desiredPixelPadding / nodeBoundingSize;
 	void fitView({ nodes: [node.id], padding: paddingRatio, duration: 500 });
@@ -62,6 +66,9 @@ watch(selectedDetailId, (id) => {
 			</template>
 			<template #edge="{ edgeProps }">
 				<slot name="edge" v-bind="{ edgeProps }" />
+			</template>
+			<template #canvas-background="{ viewport }">
+				<CanvasBackground :striped="false" :viewport="viewport" />
 			</template>
 		</Canvas>
 	</div>
