@@ -50,6 +50,7 @@ export class WorkflowBuilderService {
 
 	async *chat(payload: ChatPayload, user: IUser) {
 		const service = await this.getService();
+		// @ts-expect-error: Needs #17424 to be merged first
 		yield* service.chat(payload, user);
 	}
 
