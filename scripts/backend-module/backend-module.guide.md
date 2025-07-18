@@ -1,6 +1,6 @@
 # Backend module
 
-A backend module is a self-contained unit of functionality tied to a specific feature.
+A backend module is a self-contained unit of backend functionality tied to a specific n8n feature.
 
 Benefits of modularity:
 
@@ -38,21 +38,24 @@ A module’s file structure is as follows:
 
 This is only a template - your module may not need all of these files, or it may need more than these and also subdirs to keep things organized. Infixes are currently not required (except for the `.module.ts` entrypoint), but infixes are strongly recommended as they make the contents searchable and discoverable.
 
-Since backend modules curreny live at `packages/cli/src/modules`, imports can be:
+Backend modules currently live at `packages/cli/src/modules`, so imports can be:
 
 - from inside the module dir
 - from common packages like `@n8n/db`, `@n8n/backend-common`, `@n8n/backend-test-utils`, etc.
-- from `cli` or from third-party libs available in, or added to, `cli`
+- from `cli`
+- from third-party libs available in, or added to, `cli`
 
 Modules are managed via env vars:
 
-- To enable a module, i.e. to activate it on instance startup, use the env var `N8N_ENABLED_MODULES`.
-- To disable a module, i.e. to skip it on instance startup, use the env var `N8N_DISABLED_MODULES`.
+- To enable a module (activate it on instance startup), use the env var `N8N_ENABLED_MODULES`.
+- To disable a module (skip it on instance startup), use the env var `N8N_DISABLED_MODULES`.
 - Some modules are **default modules** so they are always enabled unless specifically disabled.
+
+Modules that are under a license flag are automatically skipped on startup if the instance is not licensed to use the feature.
 
 ## Entrypoint
 
-The `.module.ts` file is the entrypoint of the module, using the `@BackendModule()` decorator:
+The `.module.ts` file is the entrypoint of the module and uses the `@BackendModule()` decorator:
 
 ```ts
 @BackendModule({ name: 'my-feature' })
@@ -87,14 +90,14 @@ export class MyFeatureModule implements ModuleInterface {
 
 The entrypoint is responsible for providing:
 
-- initialization logic, e.g. in insights, start compaction timers,
-- shutdown logic, e.g. in insights, stop compaction timers,
-- database entities to register with `typeorm`, e.g. in insights, the three database entities `InsightsMetadata`, `InsightsByPeriod` and `InsightsRaw`
-- settings sent to the client, e.g. in insights, `{ summary: true, dashboard: false }`
+- **initialization logic**, e.g. in insights, start compaction timers,
+- **shutdown logic**, e.g. in insights, stop compaction timers,
+- **database entities** to register with `typeorm`, e.g. in insights, the three database entities `InsightsMetadata`, `InsightsByPeriod` and `InsightsRaw`
+- **settings** to send to the client for adjusting the UI, e.g. in insights, `{ summary: true, dashboard: false }`
 
 A module entrypoint may or may not need to implement all of these methods.
 
-Why dynamic imports in entrypoint methods? `await import('...')` ensures we load module-specific logic **only when needed**, so that n8n instances which do not have a module enabled do not pay for the performance cost. Linting enforces that relative imports in the module entrypoint must use dynamic imports. Loading on demand is also the reason why the entrypoint does not use dependency injection - linting enforces this as well.
+Why do we use dynamic imports in entrypoint methods? `await import('...')` ensures we load module-specific logic **only when needed**, so that n8n instances which do not have a module enabled, or do not have licensed access to it, do not pay for the performance cost. Linting enforces that relative imports in the entrypoint use dynamic imports. Loading on demand is also the reason why the entrypoint does not use dependency injection, and forbids it via linting.
 
 A module may be fully behind a license flag:
 
@@ -140,7 +143,7 @@ Module-level decorators to be aware of:
 
 ## Controller
 
-To register a **controller** with the server, simply import the controller file in the module entrypoint: 
+To register a controller with the server, simply import the controller file in the module entrypoint: 
 
 ```ts
 @BackendModule({ name: 'my-feature' })
@@ -190,7 +193,7 @@ export class MyFeatureModule implements ModuleInterface {
 }
 ```
 
-A module may have one or multiple services.
+A module typically has one service, but it may have as many as needed.
 
 ```ts
 @Service()
@@ -262,7 +265,7 @@ export class MyFeatureEntity extends BaseEntity {
 
 We recommend using the `.entity.ts` infix, but omit the `-Entity` suffix from the class name to make it less verbose. (The `-Entity` suffix is being used in the setup example only for consistency with other placeholders.)
 
-Entities **must be registered** with `typeorm` in the module entrypoint:
+Entities must be registered with `typeorm` in the module entrypoint:
 
 ```ts
 class MyFeatureModule implements ModuleInterface {
@@ -324,7 +327,7 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 - Add request payload validation using `zod` at `@n8n/api-types`
 - Add a module to default modules at `packages/@n8n/backend-common/src/modules/module-registry.ts`
 
-2. License events (e.g. expiration) currently do not trigger module shutdown or re-activation at runtime.
+2. License events (e.g. expiration) currently do not trigger module shutdown or initialization at runtime.
 
 3. Some core functionality is yet to be moved from `cli` into common packages. This is not a blocker for module adoption, but this is desirable so that (a) modules become decoupled from `cli` in the long term, and (b) future external extensions can access some of that functionality. 
 
@@ -332,30 +335,10 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 
 ### FAQs
 
-**What is a good example of a backend module?**
-
-Our first backend module is the `insights` module at `packages/@n8n/modules/insights`.
-
-**My feature is already a separate _package_ at `packages/@n8n/{feature}`, How does this work with modules?**
-
-If your feature is already fully decoupled from `cli`, or if you know in advance that your feature will have zero dependencies on `cli`, then you already stand to gain most of the benefits of modularity. In this case, you can add a thin module to `cli` containing an entrypoint to your feature imported from your package, so that your feature is loaded only when needed.
-
-**How do I hot reload a module?**
-
-Modules are part of `cli` so you can use the usual `watch` command.
-
-**Are backend modules meant for use by external contributors?**
-
-No, they are meant for features developed by the core team.
-
-**Does all new functionality need to be added as a module?**
-
-If your feature relies heavily on internals, e.g. workflow archival, then a module may not be a good fit. Consider a module backend first, but use your best judgment. 
-
-**How do modules interoperate with each other?**
-
-This is not supported at this time. Please reach out if you need this.
-
-**I have a use case that is not accounted for by modules. What should I do?**
-
-Modules live in `cli` so any imports from `cli` remain available, i.e. decoupling is desirable but not a blocker for progress. Reach out if you have a use case where the module system needs expanding.
+- **What is a good example of a backend module?** Our first backend module is the `insights` module at `packages/@n8n/modules/insights`.
+- **My feature is already a separate _package_ at `packages/@n8n/{feature}`. How does this work with modules?** If your feature is already fully decoupled from `cli`, or if you know in advance that your feature will have zero dependencies on `cli`, then you already stand to gain most of the benefits of modularity. In this case, you can add a thin module to `cli` containing an entrypoint to your feature imported from your package, so that your feature is loaded only when needed.
+- **Does all new functionality need to be added as a module?** If your feature relies heavily on internals, e.g. workflow archival, then a module may not be a good fit. Consider a module first, but use your best judgment. Reach out if unsure.
+- **Are backend modules meant for use by external contributors?** No, they are meant for features developed by the core team.
+- **How do I hot reload a module?** Modules are part of `cli` so you can use the usual `watch` command.
+- **How do modules interoperate with each other?** This is not supported at this time. Reach out if you need this.
+- **I have a use case that is not covered by modules. What should I do?** Modules live in `cli` so any imports from `cli` remain available, i.e. aim for decoupling but do not consider it a blocker for progress. Reach out if you think the module system needs expanding.
