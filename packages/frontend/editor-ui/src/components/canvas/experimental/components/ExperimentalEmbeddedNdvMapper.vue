@@ -74,6 +74,7 @@ onBeforeUnmount(() => {
 		:popper-class="$style.component"
 		:width="360"
 		:offset="8"
+		:append-to="vf.viewportRef?.value"
 	>
 		<template #reference>
 			<slot />
@@ -107,6 +108,7 @@ onBeforeUnmount(() => {
 	background-color: transparent !important;
 	padding: 0 !important;
 	border: none !important;
+	margin-top: -2px;
 }
 
 .inputPanel {
