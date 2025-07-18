@@ -1,13 +1,12 @@
-import {
+import type {
 	ILoadOptionsFunctions,
-	NodeOperationError,
 	ResourceMapperFields,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import { getAuthHeaders } from '../shared/utils';
-import { connectMcpClient } from '../shared/utils';
-import { getAllTools } from '../shared/utils';
+import { NodeOperationError } from 'n8n-workflow';
+
+import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
+import { getAuthHeaders, connectMcpClient, getAllTools } from '../shared/utils';
 
 export async function getToolParameters(
 	this: ILoadOptionsFunctions,

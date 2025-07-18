@@ -11,10 +11,10 @@ import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getTools } from './loadOptions';
-import type { McpServerTransport, McpAuthenticationOption } from '../shared/types';
 import type { McpToolIncludeMode } from './types';
-import { getAllTools, connectMcpClient, getAuthHeaders } from '../shared/utils';
 import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } from './utils';
+import type { McpServerTransport, McpAuthenticationOption } from '../shared/types';
+import { getAllTools, connectMcpClient, getAuthHeaders } from '../shared/utils';
 
 export class McpClientTool implements INodeType {
 	description: INodeTypeDescription = {

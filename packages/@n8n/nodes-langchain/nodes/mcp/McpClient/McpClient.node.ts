@@ -1,11 +1,11 @@
-import {
+import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeConnectionTypes,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as listSearch from './listSearch';
 import * as resourceMapping from './resourceMapping';
@@ -26,6 +26,7 @@ export class McpClient implements INodeType {
 		},
 		credentials: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpBearerAuth',
 				required: true,
 				displayOptions: {

@@ -1,8 +1,5 @@
-import {
-	type ILoadOptionsFunctions,
-	type INodeListSearchResult,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import { connectMcpClient, getAuthHeaders } from '../shared/utils';
@@ -19,7 +16,7 @@ export async function getTools(
 	const { headers } = await getAuthHeaders(this, authentication);
 	const client = await connectMcpClient({
 		serverTransport,
-		endpointUrl: endpointUrl,
+		endpointUrl,
 		headers,
 		name: node.type,
 		version: node.typeVersion,
