@@ -565,7 +565,7 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 	}
 
 	// Paths where the response message might be located
-	const paths = ['output', 'text', 'response.text'];
+	const paths = ['output', 'text', 'response.text', 'message'];
 	const matchedPath = paths.find((path) => get(responseData, path));
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
@@ -597,6 +597,32 @@ export function restoreChatHistory(
 	);
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
+}
+
+export async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
 }
 
 export function isSubNodeLog(logEntry: LogEntry): boolean {

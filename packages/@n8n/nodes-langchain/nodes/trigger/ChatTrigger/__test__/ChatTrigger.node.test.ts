@@ -150,8 +150,7 @@ describe('ChatTrigger Node', () => {
 				): boolean | string | object | undefined => {
 					if (paramName === 'public') return true;
 					if (paramName === 'mode') return 'hostedChat';
-					if (paramName === 'options') return {};
-					if (paramName === 'options.responseMode') return 'streaming';
+					if (paramName === 'options') return { responseMode: 'streaming' };
 					return defaultValue;
 				},
 			);
@@ -184,8 +183,7 @@ describe('ChatTrigger Node', () => {
 				): boolean | string | object | undefined => {
 					if (paramName === 'public') return true;
 					if (paramName === 'mode') return 'hostedChat';
-					if (paramName === 'options') return {};
-					if (paramName === 'options.responseMode') return 'lastNode';
+					if (paramName === 'options') return { responseMode: 'lastNode' };
 					return defaultValue;
 				},
 			);
@@ -220,8 +218,7 @@ describe('ChatTrigger Node', () => {
 				): boolean | string | object | undefined => {
 					if (paramName === 'public') return true;
 					if (paramName === 'mode') return 'hostedChat';
-					if (paramName === 'options') return {};
-					if (paramName === 'options.responseMode') return 'streaming';
+					if (paramName === 'options') return { responseMode: 'streaming' };
 					return defaultValue;
 				},
 			);
