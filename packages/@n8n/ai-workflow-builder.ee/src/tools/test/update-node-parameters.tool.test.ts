@@ -608,14 +608,30 @@ describe('UpdateNodeParametersTool', () => {
 
 			expect(mockChain.invoke).toHaveBeenCalledWith(
 				expect.objectContaining({
+					execution_data: 'NO EXECUTION DATA YET',
+					execution_schema: 'NO SCHEMA',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					workflow_json: expect.stringContaining('test-node'),
-					execution_data_schema: JSON.stringify({ test: 'data' }, null, 2),
+					workflow_json: expect.objectContaining({
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						nodes: expect.arrayContaining([
+							expect.objectContaining({
+								id: 'test-node',
+							}),
+						]),
+					}),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					node_definition: expect.any(String),
 					node_id: 'test-node',
 					node_name: 'My HTTP Request',
 					node_type: 'n8n-nodes-base.httpRequest',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					current_parameters: expect.stringContaining('GET'),
+					current_parameters: JSON.stringify(
+						{
+							method: 'GET',
+							url: 'https://old.example.com',
+						},
+						null,
+						2,
+					),
 					changes: '1. Update URL',
 				}),
 			);
