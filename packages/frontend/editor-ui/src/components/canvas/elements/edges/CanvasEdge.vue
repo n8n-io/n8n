@@ -75,7 +75,6 @@ const edgeColor = computed(() => {
 const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
-	strokeWidth: 2,
 	stroke: delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
 
@@ -84,13 +83,6 @@ const edgeClasses = computed(() => ({
 	hovered: delayedHovered.value,
 	'bring-to-front': props.bringToFront,
 }));
-
-const edgeLabelStyle = computed(() => ({
-	transform: `translate(0, ${isConnectorStraight.value ? '-100%' : '0%'})`,
-	color: 'var(--color-text-base)',
-}));
-
-const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);
 
 const edgeToolbarStyle = computed(() => ({
 	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
@@ -101,6 +93,7 @@ const edgeToolbarClasses = computed(() => ({
 	[$style.edgeLabelWrapper]: true,
 	'vue-flow__edge-label': true,
 	selected: props.selected,
+	[$style.straight]: renderData.value.isConnectorStraight,
 }));
 
 const renderData = computed(() =>
@@ -172,7 +165,7 @@ function onEdgeLabelMouseLeave() {
 				@add="onAdd"
 				@delete="onDelete"
 			/>
-			<div v-else :style="edgeLabelStyle" :class="$style.edgeLabel">{{ label }}</div>
+			<div v-else :class="$style.edgeLabel">{{ label }}</div>
 		</div>
 	</EdgeLabelRenderer>
 </template>
@@ -182,14 +175,24 @@ function onEdgeLabelMouseLeave() {
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
+	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1));
+	stroke-linecap: square;
 }
 
 .edgeLabelWrapper {
 	transform: translateY(calc(var(--spacing-xs) * -1));
 	position: absolute;
+
+	--label-translate-y: 0;
+
+	&.straight {
+		--label-translate-y: -100%;
+	}
 }
 
 .edgeLabel {
+	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
+	color: var(--color-text-base);
 	font-size: var(--font-size-xs);
 	background-color: hsla(
 		var(--color-canvas-background-h),

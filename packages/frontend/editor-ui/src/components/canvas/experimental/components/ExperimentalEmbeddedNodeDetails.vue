@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import InputPanel from '@/components/InputPanel.vue';
-import NodeTitle from '@/components/NodeTitle.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement, watchOnce } from '@vueuse/core';
-import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
+import { watchOnce } from '@vueuse/core';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
+import { useI18n } from '@n8n/i18n';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
+import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -20,6 +22,7 @@ const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	isConfigurable: boolean;
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
@@ -61,12 +64,14 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
-const shouldShowInputPanel = ref(false);
 
 const containerRef = useTemplateRef('container');
-const inputPanelContainerRef = useTemplateRef('inputPanelContainer');
-const activeElement = useActiveElement();
 
+const subTitle = computed(() =>
+	node.value && nodeType.value
+		? getNodeSubTitleText(node.value, nodeType.value, !isExpanded.value, i18n)
+		: undefined,
+);
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) {
 		return undefined;
@@ -118,38 +123,42 @@ function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
 }
 
+function handleOpenNdv() {
+	if (node.value) {
+		ndvStore.setActiveNodeName(node.value.name);
+	}
+}
+
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
-});
-
-watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
-	if (active && containerRef.value?.contains(active)) {
-		// TODO: find a way to implement this without depending on test ID
-		shouldShowInputPanel.value =
-			!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-			!!inputPanelContainerRef.value?.contains(active);
-	}
-
-	if (selected.every((sel) => sel.id !== node.value?.id)) {
-		shouldShowInputPanel.value = false;
-	}
 });
 </script>
 
 <template>
 	<div
 		ref="container"
-		:class="[$style.component, isExpanded ? $style.expanded : $style.collapsed]"
+		:class="[
+			$style.component,
+			isExpanded ? $style.expanded : $style.collapsed,
+			node?.disabled ? $style.disabled : '',
+			isExpanded ? 'nodrag' : '',
+		]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
 		}"
 	>
-		<template v-if="isOnceVisible">
+		<template v-if="!node || !isOnceVisible" />
+		<ExperimentalEmbeddedNdvMapper
+			v-else-if="isExpanded"
+			:workflow="workflow"
+			:node="node"
+			:input-node-name="expressionResolveCtx?.inputNode?.name"
+			:container="containerRef"
+		>
 			<ExperimentalCanvasNodeSettings
-				v-if="isExpanded"
 				tabindex="-1"
 				:node-id="nodeId"
 				:class="$style.settingsView"
@@ -157,58 +166,33 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
 				"
 				:is-read-only="isReadOnly"
+				:sub-title="subTitle"
 			>
 				<template #actions>
-					<N8nIconButton
-						icon="minimize-2"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Toggle expand"
-						@click="handleToggleExpand"
+					<ExperimentalEmbeddedNdvActions
+						:is-expanded="isExpanded"
+						@open-ndv="handleOpenNdv"
+						@toggle-expand="handleToggleExpand"
 					/>
 				</template>
 			</ExperimentalCanvasNodeSettings>
-			<div v-else role="button " :class="$style.collapsedContent" @click="handleToggleExpand">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:node-type="nodeType"
-					read-only
-				/>
-				<N8nIcon icon="maximize-2" size="large" />
+		</ExperimentalEmbeddedNdvMapper>
+		<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
+			<NodeIcon :node-type="nodeType" :size="18" />
+			<div :class="$style.collapsedNodeName">
+				<N8nText bold>
+					{{ node.name }}
+				</N8nText>
+				<N8nText bold size="small" color="text-light">
+					{{ subTitle }}
+				</N8nText>
 			</div>
-			<Transition name="input">
-				<div
-					v-if="shouldShowInputPanel && node"
-					ref="inputPanelContainer"
-					:class="$style.inputPanelContainer"
-					:tabindex="-1"
-				>
-					<InputPanel
-						:class="$style.inputPanel"
-						:workflow="workflow"
-						:run-index="0"
-						compact
-						push-ref=""
-						display-mode="schema"
-						disable-display-mode-selection
-						:active-node-name="node.name"
-						:current-node-name="expressionResolveCtx?.inputNode?.name"
-						:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-						:focused-mappable-input="ndvStore.focusedMappableInput"
-					>
-						<template #header>
-							<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
-								Input
-							</N8nText>
-						</template>
-					</InputPanel>
-				</div>
-			</Transition>
-		</template>
+			<ExperimentalEmbeddedNdvActions
+				:is-expanded="isExpanded"
+				@open-ndv="handleOpenNdv"
+				@toggle-expand="handleToggleExpand"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -220,16 +204,20 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
 	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
+	overflow: hidden;
+
+	--canvas-node--border-color: var(--color-text-lighter);
 
 	&.expanded {
-		cursor: default;
+		user-select: text;
+		cursor: auto;
 		height: auto;
 		max-height: min(calc(var(--canvas-node--height) * 2), 300px);
 		min-height: var(--spacing-3xl);
 	}
 	&.collapsed {
 		overflow: hidden;
-		height: var(--spacing-3xl);
+		height: var(--spacing-2xl);
 	}
 }
 
@@ -245,27 +233,44 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 :root .settingsView {
 	z-index: 1000;
 	width: 100%;
-	border-radius: var(--border-radius-base);
 
 	height: auto;
 	max-height: calc(min(calc(var(--canvas-node--height) * 2), 300px) - var(--border-width-base) * 2);
-	min-height: var(--spacing-3xl); // should be multiple of GRID_SIZE
+	min-height: var(--spacing-2xl); // should be multiple of GRID_SIZE
 }
 
 .collapsedContent {
 	height: 100%;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing-s);
+	gap: var(--spacing-4xs);
 	background-color: white;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-4xs) var(--spacing-2xs) var(--spacing-2xs);
 	background-color: var(--color-background-xlight);
-	color: var(--color-text-base);
 	cursor: pointer;
 
+	.disabled & {
+		background-color: var(--color-foreground-light);
+	}
+
 	& > * {
-		zoom: calc(var(--zoom) * 1.25);
+		zoom: var(--zoom);
+		flex-grow: 0;
+		flex-shrink: 0;
+	}
+}
+
+.collapsedNodeName {
+	width: 0;
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-5xs);
+
+	& > * {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 
@@ -273,44 +278,5 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	& > * {
 		zoom: var(--zoom);
 	}
-}
-
-.inputPanelContainer {
-	position: absolute;
-	right: 100%;
-	top: 0;
-	padding-right: var(--spacing-4xs);
-	margin-top: calc(-1 * var(--border-width-base));
-	width: 180px;
-	z-index: 2000;
-	max-height: 80vh;
-}
-
-.inputPanel {
-	border: var(--border-base);
-	border-width: 1px;
-	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	zoom: var(--zoom);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
-	padding: var(--spacing-2xs);
-	height: 100%;
-}
-
-.inputPanelTitle {
-	text-transform: uppercase;
-	letter-spacing: 3px;
-}
-</style>
-
-<style lang="scss" scoped>
-.input-enter-active,
-.input-leave-active {
-	transition: opacity 0.3s ease;
-}
-
-.input-enter-from,
-.input-leave-to {
-	opacity: 0;
 }
 </style>

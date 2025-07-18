@@ -163,6 +163,7 @@ export interface CanvasInjectionData {
 	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 	viewport: Ref<ViewportTransform>;
+	isExperimentalNdvActive: ComputedRef<boolean>;
 }
 
 export type CanvasNodeEventBusEvents = {

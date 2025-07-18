@@ -23,7 +23,7 @@ const props = defineProps<{
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { isExecuting } = useCanvas();
+const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
 const workflowsStore = useWorkflowsStore();
@@ -44,6 +44,7 @@ const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
 	[$style.readOnly]: props.readOnly,
 	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
+	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
 const isExecuteNodeVisible = computed(() => {
@@ -185,6 +186,10 @@ function onFocusNode() {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+
+	&.isExperimentalNdvActive {
+		justify-content: center;
+	}
 }
 
 .canvasNodeToolbarItems {

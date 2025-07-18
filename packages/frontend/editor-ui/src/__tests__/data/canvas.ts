@@ -138,6 +138,7 @@ export function createCanvasProvide({
 			isExecuting: ref(isExecuting),
 			connectingHandle: ref(connectingHandle),
 			viewport: ref(viewport),
+			isExperimentalNdvActive: computed(() => false),
 		} satisfies CanvasInjectionData,
 	};
 }

@@ -185,9 +185,9 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		const label = container.querySelector('.vue-flow__edge-label')?.childNodes[0];
+		const labelWrapper = container.querySelector('.vue-flow__edge-label');
 
-		expect(label).toHaveAttribute('style', 'transform: translate(0, -100%);');
+		expect(labelWrapper).toHaveClass('straight');
 	});
 
 	it("should render a label in the middle of the connector when it isn't straight", () => {
@@ -199,8 +199,8 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		const label = container.querySelector('.vue-flow__edge-label')?.childNodes[0];
+		const labelWrapper = container.querySelector('.vue-flow__edge-label');
 
-		expect(label).toHaveAttribute('style', 'transform: translate(0, 0%);');
+		expect(labelWrapper).not.toHaveClass('straight');
 	});
 });

@@ -34,6 +34,7 @@ const emit = defineEmits<{
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:class="$style.tabs"
+			tabs-variant="modern"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
 		<NodeExecuteButton
@@ -54,10 +55,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--spacing-bottom-tab: calc(var(--spacing-xs));
-	--font-size-tab: var(--font-size-2xs);
 	--color-tabs-arrow-buttons: var(--color-background-xlight);
-	--font-weight-tab: var(--font-weight-bold);
 
 	display: flex;
 	align-items: center;
@@ -68,7 +66,6 @@ const emit = defineEmits<{
 }
 
 .tabs {
-	padding-top: calc(var(--spacing-xs) + 1px);
-	height: 100%;
+	align-self: flex-end;
 }
 </style>
