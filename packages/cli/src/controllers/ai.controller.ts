@@ -11,12 +11,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
-import {
-	IRunData,
-	IRunExecutionData,
-	NodeExecutionSchema,
-	OPEN_AI_API_CREDENTIAL_TYPE,
-} from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
