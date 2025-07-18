@@ -5,24 +5,29 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 	User,
+	WorkflowEntity,
 } from '@n8n/db';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
 import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	ExecutionCancelledError,
+} from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
+import { TestRunnerService } from '../test-runner.service.ee';
+
 import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import { TestRunError, TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -1679,7 +1684,7 @@ describe('TestRunnerService', () => {
 			email: 'test@example.com',
 		});
 
-		const mockWorkflow = mock<IWorkflowBase>({
+		const mockWorkflow = mock<WorkflowEntity>({
 			id: 'workflow-123',
 			name: 'Test Workflow',
 			nodes: [
@@ -1832,12 +1837,8 @@ describe('TestRunnerService', () => {
 			jest.clearAllMocks();
 
 			// Setup common mocks
-			workflowRepository.findById.mockResolvedValue(mockWorkflow as any);
+			workflowRepository.findById.mockResolvedValue(mockWorkflow);
 			testRunRepository.createTestRun.mockResolvedValue(mockTestRun);
-			testRunRepository.markAsRunning.mockResolvedValue(undefined as any);
-			testRunRepository.markAsCompleted.mockResolvedValue(undefined as any);
-			testRunRepository.markAsError.mockResolvedValue(undefined as any);
-			testRunRepository.markAsCancelled.mockResolvedValue(undefined as any);
 
 			// Mock the database manager
 			const mockDbManager = {
@@ -1852,10 +1853,8 @@ describe('TestRunnerService', () => {
 
 			// Mock test case execution repository
 			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(mock());
-			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as any);
 
 			// Mock workflow runner and active executions
-			activeExecutions.stopExecution.mockReturnValue(undefined as any);
 			workflowRunner.run.mockImplementation(async (data) => {
 				if (data.destinationNode === 'Dataset Trigger') {
 					return dataSetExecutionId;
@@ -1870,9 +1869,6 @@ describe('TestRunnerService', () => {
 
 				return await Promise.resolve(mockTestCaseExecution);
 			});
-
-			// Mock telemetry
-			telemetry.track.mockReturnValue(undefined as any);
 		});
 
 		it('should successfully run a test with valid workflow and test cases', async () => {
@@ -1935,6 +1931,457 @@ describe('TestRunnerService', () => {
 				status: 'success',
 				test_case_count: 2,
 				test_type: 'evaluation',
+			});
+		});
+
+		it('should handle workflow not found error', async () => {
+			workflowRepository.findById.mockResolvedValue(null);
+
+			await expect(testRunnerService.runTest(mockUser, 'non-existent-workflow')).rejects.toThrow(
+				'Workflow not found',
+			);
+
+			expect(workflowRepository.findById).toHaveBeenCalledWith('non-existent-workflow');
+		});
+
+		it('should handle test run creation failure', async () => {
+			testRunRepository.createTestRun.mockResolvedValue(null);
+
+			await expect(testRunnerService.runTest(mockUser, mockWorkflow.id)).rejects.toThrow(
+				'Unable to create a test run',
+			);
+
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
+		it('should handle workflow validation errors', async () => {
+			const invalidWorkflow = mock<WorkflowEntity>({
+				...mockWorkflow,
+				nodes: [
+					{
+						id: 'invalid-node',
+						name: 'Invalid Node',
+						type: 'some-other-type',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			});
+
+			workflowRepository.findById.mockResolvedValue(invalidWorkflow);
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testRunRepository.markAsError).toHaveBeenCalledWith(
+				mockTestRun.id,
+				'EVALUATION_TRIGGER_NOT_FOUND',
+				{},
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'fail',
+					error_message: 'EVALUATION_TRIGGER_NOT_FOUND',
+				}),
+			);
+		});
+
+		it('should handle dataset trigger execution failure', async () => {
+			const errorExecution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							'Dataset Trigger': [
+								{
+									data: undefined,
+									error: {
+										message: 'Failed to fetch dataset',
+									} as ExecutionError,
+								},
+							],
+						},
+					},
+				},
+			});
+
+			workflowRunner.run.mockImplementation(async (data) => {
+				if (data.destinationNode === 'Dataset Trigger') {
+					return dataSetExecutionId;
+				}
+				return fullWorkflowExecutionId;
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId: string) => {
+				if (executionId === dataSetExecutionId) {
+					return errorExecution;
+				}
+				return mockTestCaseExecution;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testRunRepository.markAsError).toHaveBeenCalledWith(
+				mockTestRun.id,
+				'CANT_FETCH_TEST_CASES',
+				{ message: 'Failed to fetch dataset' },
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'fail',
+					error_message: 'CANT_FETCH_TEST_CASES: Failed to fetch dataset',
+				}),
+			);
+		});
+
+		it('should handle empty test cases', async () => {
+			const emptyDatasetExecution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							'Dataset Trigger': [
+								{
+									data: {
+										main: [[]],
+									},
+									error: undefined,
+								},
+							],
+						},
+					},
+				},
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId: string) => {
+				if (executionId === dataSetExecutionId) {
+					return emptyDatasetExecution;
+				}
+				return mockTestCaseExecution;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testRunRepository.markAsError).toHaveBeenCalledWith(
+				mockTestRun.id,
+				'TEST_CASES_NOT_FOUND',
+				{},
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'fail',
+					error_message: 'TEST_CASES_NOT_FOUND',
+				}),
+			);
+		});
+
+		it('should handle test case execution failure', async () => {
+			const failedTestCaseExecution = mock<IRun>({
+				data: {
+					resultData: {
+						error: {
+							message: 'Workflow execution failed',
+						} as ExecutionError,
+						runData: {},
+					},
+				},
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId: string) => {
+				if (executionId === dataSetExecutionId) {
+					return mockDatasetExecution;
+				}
+				return failedTestCaseExecution;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+					metrics: {},
+				}),
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'success',
+					errored_test_case_count: 2,
+				}),
+			);
+		});
+
+		it('should handle test case with no metrics collected', async () => {
+			const noMetricsExecution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							'Set Metrics': [
+								{
+									data: {
+										main: [
+											[
+												{
+													json: {},
+												},
+											],
+										],
+									},
+									error: undefined,
+								},
+							],
+							'Set Inputs': [
+								{
+									data: {
+										main: [
+											[
+												{
+													json: {},
+													evaluationData: {},
+												},
+											],
+										],
+									},
+								},
+							],
+							'Set Outputs': [
+								{
+									data: {
+										main: [
+											[
+												{
+													json: {},
+													evaluationData: {},
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+						error: undefined,
+					},
+				},
+				startedAt: new Date('2023-01-01T10:00:00Z'),
+				stoppedAt: new Date('2023-01-01T10:00:05Z'),
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId: string) => {
+				if (executionId === dataSetExecutionId) {
+					return mockDatasetExecution;
+				}
+				return noMetricsExecution;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'NO_METRICS_COLLECTED',
+				}),
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'success',
+					errored_test_case_count: 2,
+				}),
+			);
+		});
+
+		it('should handle ExecutionCancelledError', async () => {
+			const cancelledError = new ExecutionCancelledError('execution-123');
+
+			workflowRunner.run.mockImplementation(async (data) => {
+				if (data.destinationNode === 'Dataset Trigger') {
+					throw cancelledError;
+				}
+				return fullWorkflowExecutionId;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			const mockDbManager = testRunRepository.manager;
+			expect(mockDbManager.transaction).toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(mockTestRun.id, {});
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				mockTestRun.id,
+				{},
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'cancelled',
+				}),
+			);
+		});
+
+		it('should handle TestCaseExecutionError during test case execution', async () => {
+			const testCaseError = new TestCaseExecutionError('FAILED_TO_EXECUTE_WORKFLOW', {
+				details: 'Test case failed',
+			});
+
+			workflowRunner.run.mockImplementation(async (data) => {
+				if (data.destinationNode === 'Dataset Trigger') {
+					return dataSetExecutionId;
+				}
+				throw testCaseError;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+					errorDetails: { details: 'Test case failed' },
+				}),
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'success',
+					errored_test_case_count: 2,
+				}),
+			);
+		});
+
+		it('should handle unexpected errors during test case execution', async () => {
+			const unexpectedError = new Error('Unexpected error occurred');
+
+			workflowRunner.run.mockImplementation(async (data) => {
+				if (data.destinationNode === 'Dataset Trigger') {
+					return dataSetExecutionId;
+				}
+				throw unexpectedError;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'UNKNOWN_ERROR',
+				}),
+			);
+
+			expect(errorReporter.error).toHaveBeenCalledWith(unexpectedError);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'success',
+					errored_test_case_count: 2,
+				}),
+			);
+		});
+
+		it('should handle unexpected error in main try-catch block', async () => {
+			const unexpectedError = new Error('Critical system error');
+
+			// Mock findById to throw error after test run is created
+			let callCount = 0;
+			workflowRepository.findById.mockImplementation(async () => {
+				callCount++;
+				if (callCount === 1) {
+					return mockWorkflow;
+				}
+				throw unexpectedError;
+			});
+
+			// Mock validateWorkflowConfiguration to throw the error
+			jest
+				.spyOn(testRunnerService as any, 'validateWorkflowConfiguration')
+				.mockImplementation(() => {
+					throw unexpectedError;
+				});
+
+			await expect(testRunnerService.runTest(mockUser, mockWorkflow.id)).rejects.toThrow(
+				'Critical system error',
+			);
+
+			expect(testRunRepository.markAsError).toHaveBeenCalledWith(mockTestRun.id, 'UNKNOWN_ERROR');
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'fail',
+					error_message: 'Critical system error',
+				}),
+			);
+		});
+
+		it('should handle test case returning undefined (abort signal triggered)', async () => {
+			// Mock runTestCase to return undefined (simulating abort)
+			jest.spyOn(testRunnerService as any, 'runTestCase').mockResolvedValue(undefined);
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			// The service will still try to assert testCaseResult and fail with unknown error
+			// This is the current behavior - when runTestCase returns undefined due to abort,
+			// the assertion fails and creates error test case executions
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledTimes(2);
+			expect(testCaseExecutionRepository.createTestCaseExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'UNKNOWN_ERROR',
+				}),
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Test run finished',
+				expect.objectContaining({
+					status: 'success',
+					test_case_count: 2,
+					errored_test_case_count: 2,
+				}),
+			);
+		});
+
+		it('should properly clean up abort controllers', async () => {
+			const abortControllersMap = new Map();
+			Object.defineProperty(testRunnerService, 'abortControllers', {
+				value: abortControllersMap,
+				writable: true,
+				configurable: true,
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			// Verify abort controller was cleaned up
+			expect(abortControllersMap.has(mockTestRun.id)).toBe(false);
+		});
+
+		it('should track telemetry with correct payload structure for failure', async () => {
+			const testRunError = new TestRunError('TEST_CASES_NOT_FOUND');
+
+			jest.spyOn(testRunnerService as any, 'extractDatasetTriggerOutput').mockImplementation(() => {
+				throw testRunError;
+			});
+
+			await testRunnerService.runTest(mockUser, mockWorkflow.id);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Test run finished', {
+				run_id: mockTestRun.id,
+				workflow_id: mockWorkflow.id,
+				duration: expect.any(Number),
+				error_message: 'TEST_CASES_NOT_FOUND',
+				start: expect.any(Number),
+				status: 'fail',
+				test_type: 'evaluation',
+				test_case_count: 0,
+				errored_test_case_count: 0,
+				metric_count: 0,
 			});
 		});
 	});
