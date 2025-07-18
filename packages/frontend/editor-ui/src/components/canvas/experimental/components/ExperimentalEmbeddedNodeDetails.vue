@@ -143,6 +143,7 @@ watchOnce(isVisible, (visible) => {
 			$style.component,
 			isExpanded ? $style.expanded : $style.collapsed,
 			node?.disabled ? $style.disabled : '',
+			isExpanded ? 'nodrag' : '',
 		]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
@@ -208,7 +209,8 @@ watchOnce(isVisible, (visible) => {
 	--canvas-node--border-color: var(--color-text-lighter);
 
 	&.expanded {
-		cursor: default;
+		user-select: text;
+		cursor: auto;
 		height: auto;
 		max-height: min(calc(var(--canvas-node--height) * 2), 300px);
 		min-height: var(--spacing-3xl);
