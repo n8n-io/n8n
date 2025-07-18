@@ -196,13 +196,13 @@ watch(
 					</div>
 				</div>
 				<div v-else-if="showFeedback" :class="$style.feedback">
-					<div :class="$style.input">
+					<div :class="$style.input" data-test-id="nps-survey-feedback">
 						<n8n-input
 							v-model="form.feedback"
 							:placeholder="FEEDBACK_PLACEHOLDER"
 							@update:model-value="onFeedbackInput"
 							type="textarea"
-							autosize="{ minRows: 1, maxRows: 2 }"
+							:rows="1"
 							:class="$style.feedbackInput"
 						/>
 						<div :class="$style.button">
@@ -322,7 +322,7 @@ watch(
 
 .feedbackInput textarea {
 	resize: none;
-	max-height: 56px;
+	font-family: var(--font-family);
 }
 
 .npsSurvey {
@@ -356,13 +356,5 @@ watch(
 			}
 		}
 	}
-}
-
-.input input::placeholder,
-.input textarea::placeholder {
-	font-family: inherit;
-	font-size: 1rem;
-	color: var(--color-text-light);
-	opacity: 1;
 }
 </style>
