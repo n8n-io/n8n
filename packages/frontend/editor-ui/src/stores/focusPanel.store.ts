@@ -165,6 +165,15 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
+	const focusedNodeParametersInTelemetryFormat = computed<
+		Array<{ parameterPath: string; nodeType: string }>
+	>(() =>
+		focusedNodeParameters.value.map((x) => ({
+			parameterPath: x.parameterPath,
+			nodeType: isRichParameter(x) ? x.node.type : 'unresolved',
+		})),
+	);
+
 	// Ensure lastFocusTimestamp is set on initial load if panel is already active (e.g. after reload)
 	watchOnce(
 		() => currentFocusPanelData.value,
@@ -178,6 +187,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
+		focusedNodeParametersInTelemetryFormat,
 		lastFocusTimestamp,
 		focusPanelHidden,
 		focusPanelWidth,

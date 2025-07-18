@@ -28,6 +28,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
 
 defineOptions({ name: 'FocusPanel' });
@@ -49,6 +50,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
@@ -252,6 +254,22 @@ function optionSelected(command: string) {
 	}
 }
 
+function closeFocusPanel() {
+	telemetry.track('User closed focus panel', {
+		source: 'closeIcon',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
+
+	focusPanelStore.closeFocusPanel();
+}
+
+function onExecute() {
+	telemetry.track(
+		'User executed node from focus panel',
+		focusPanelStore.focusedNodeParametersInTelemetryFormat[0],
+	);
+}
+
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 
 // Wait for editor to mount before focusing
@@ -333,13 +351,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:square="true"
 								:hide-label="true"
 								telemetry-source="focus"
-							></NodeExecuteButton>
+								@execute="onExecute"
+							/>
 							<N8nIcon
 								:class="$style.closeButton"
 								icon="x"
 								color="text-base"
 								size="xlarge"
-								@click="focusPanelStore.closeFocusPanel"
+								@click="closeFocusPanel"
 							/>
 						</div>
 					</div>
