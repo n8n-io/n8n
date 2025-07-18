@@ -160,10 +160,9 @@ const onViewSelected = (selected: string) => {
 		<div v-else :class="$style.controlsContainer">
 			<N8nTooltip v-if="canBeOpenedInFocusPanel">
 				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
-				<N8nIconButton
-					type="tertiary"
-					text
-					:icon="'fullscreen'"
+				<N8nIcon
+					size="medium"
+					:icon="'panel-right'"
 					:class="$style.focusButton"
 					@click="$emit('update:modelValue', 'focus')"
 				/>
@@ -231,16 +230,8 @@ $container-height: 22px;
 }
 
 .focusButton {
-	max-height: $container-height;
-	padding-top: 0;
-	padding-bottom: 0;
-
-	:global(.n8n-icon) {
-		color: var(--color-text-base);
-
-		&:hover {
-			color: var(--color-primary);
-		}
+	&:hover {
+		color: var(--color-primary);
 	}
 }
 </style>

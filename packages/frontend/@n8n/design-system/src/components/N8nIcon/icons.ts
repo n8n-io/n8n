@@ -16,7 +16,6 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
-
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
@@ -88,7 +87,6 @@ import IconLucideFlaskConical from '~icons/lucide/flask-conical';
 import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
-import IconLucideFullscreen from '~icons/lucide/fullscreen';
 import IconLucideFunnel from '~icons/lucide/funnel';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGift from '~icons/lucide/gift';
@@ -130,6 +128,7 @@ import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
+import IconLucidePanelRight from '~icons/lucide/panel-right';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
@@ -484,7 +483,6 @@ export const updatedIconSet = {
 	folder: IconLucideFolder,
 	'folder-open': IconLucideFolderOpen,
 	'folder-plus': IconLucideFolderPlus,
-	fullscreen: IconLucideFullscreen,
 	funnel: IconLucideFunnel,
 	gem: IconLucideGem,
 	gift: IconLucideGift,
@@ -526,6 +524,7 @@ export const updatedIconSet = {
 	network: IconLucideNetwork,
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
+	'panel-right': IconLucidePanelRight,
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
