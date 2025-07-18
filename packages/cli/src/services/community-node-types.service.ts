@@ -33,7 +33,11 @@ export class CommunityNodeTypesService {
 			) {
 				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
 				const environment =
-					inProduction || process.env.ENVIRONMENT === 'production' ? 'production' : 'staging';
+					process.env.ENVIRONMENT === 'staging'
+						? 'staging'
+						: inProduction || process.env.ENVIRONMENT === 'production'
+							? 'production'
+							: 'staging';
 				data = await getCommunityNodeTypes(environment);
 			}
 
