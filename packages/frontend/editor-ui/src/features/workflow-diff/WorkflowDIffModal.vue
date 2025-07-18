@@ -471,7 +471,11 @@ onNodeClick((nodeId) => {
 						<template v-if="topWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 								<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
-								{{ topWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
+								{{
+									topWorkFlow.state.value.remote
+										? `Remote (${sourceControlStore.preferences.branchName})`
+										: 'Local'
+								}}
 							</N8nText>
 							<template v-if="topWorkFlow.state.value.workflow">
 								<SyncedWorkflowCanvas
@@ -534,7 +538,11 @@ onNodeClick((nodeId) => {
 						<template v-if="bottomWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 								<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
-								{{ bottomWorkFlow.state.value.remote ? 'Remote' : 'Local' }}
+								{{
+									bottomWorkFlow.state.value.remote
+										? `Remote (${sourceControlStore.preferences.branchName})`
+										: 'Local'
+								}}
 							</N8nText>
 							<template v-if="bottomWorkFlow.state.value.workflow">
 								<SyncedWorkflowCanvas
