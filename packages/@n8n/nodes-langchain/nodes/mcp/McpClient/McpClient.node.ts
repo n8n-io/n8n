@@ -1,13 +1,24 @@
-import { INodeType, INodeTypeDescription, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	NodeConnectionTypes,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 
 import * as listSearch from './listSearch';
+import * as resourceMapping from './resourceMapping';
 
 export class McpClient implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MCP Client',
 		description: 'Standalone MCP Client',
 		name: 'mcpClient',
-		icon: 'file:mcp.svg',
+		icon: {
+			light: 'file:../mcp.svg',
+			dark: 'file:../mcp.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		defaults: {
@@ -53,8 +64,8 @@ export class McpClient implements INodeType {
 				default: 'httpStreamable',
 			},
 			{
-				displayName: 'MCP Server URL',
-				name: 'mcpServerUrl',
+				displayName: 'MCP Endpoint URL',
+				name: 'endpointUrl',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. https://some.server.com/mcp',
@@ -93,10 +104,66 @@ export class McpClient implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Tool',
+				name: 'tool',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				description: 'The tool to use',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'getTools',
+							searchable: true,
+							skipCredentialsCheckInRLC: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
+			},
+			{
+				displayName: 'Parameters',
+				name: 'parameters',
+				type: 'resourceMapper',
+				default: {
+					mappingMode: 'defineBelow',
+					value: null,
+				},
+				noDataExpression: true,
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['tool.value'],
+					resourceMapper: {
+						resourceMapperMethod: 'getToolParameters',
+						mode: 'add',
+						fieldWords: {
+							singular: 'parameter',
+							plural: 'parameters',
+						},
+						addAllFields: true,
+						multiKeyMatch: true,
+					},
+				},
+			},
 		],
 	};
 
 	methods = {
 		listSearch,
+		resourceMapping,
 	};
+
+	async execute(
+		this: IExecuteFunctions,
+	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
+		return [];
+	}
 }

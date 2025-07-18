@@ -4,8 +4,8 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { McpAuthenticationOption, McpServerTransport } from './types';
-import { connectMcpClient, getAuthHeaders } from './utils';
+import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
+import { connectMcpClient, getAuthHeaders } from '../shared/utils';
 
 export async function getTools(
 	this: ILoadOptionsFunctions,
@@ -14,12 +14,12 @@ export async function getTools(
 ): Promise<INodeListSearchResult> {
 	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
 	const serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
-	const mcpServerUrl = this.getNodeParameter('mcpServerUrl') as string;
+	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);
 	const client = await connectMcpClient({
 		serverTransport,
-		mcpServerUrl,
+		endpointUrl: endpointUrl,
 		headers,
 		name: node.type,
 		version: node.typeVersion,
