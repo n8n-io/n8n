@@ -15,7 +15,6 @@ import {
 	NodeDiffStatus,
 } from '@/features/workflow-diff/useWorkflowDiff';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -29,6 +28,7 @@ import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
+import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
@@ -38,7 +38,6 @@ const { selectedDetailId, onNodeClick } = useProvideViewportSync();
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
-const credentialsStore = useCredentialsStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 
@@ -133,10 +132,7 @@ const local = useAsyncState<WorkflowDiff | undefined, [], false>(
 );
 
 useAsyncState(async () => {
-	await Promise.all([
-		nodeTypesStore.loadNodeTypesIfNotLoaded(),
-		credentialsStore.fetchCredentialTypes(false),
-	]);
+	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded()]);
 	await Promise.all([remote.execute(), local.execute()]);
 	return true;
 }, false);
@@ -295,18 +291,13 @@ function setActiveTab(active: boolean) {
 	activeTab.value = value;
 }
 
-const detailsPanelData = computed(() => {
+const selectedNode = computed(() => {
 	if (!selectedDetailId.value) return undefined;
 
 	const node = diff.value.get(selectedDetailId.value)?.node;
 	if (!node) return undefined;
 
-	const type = nodeTypesStore.getNodeType(node?.type, node?.typeVersion);
-
-	return {
-		node,
-		type,
-	};
+	return node;
 });
 
 const nodeDiffs = computed(() => {
@@ -327,16 +318,6 @@ const nodeDiffs = computed(() => {
 		newString: JSON.stringify(targetNode, null, 2) ?? '',
 	};
 });
-
-const outputFormat = ref<'side-by-side' | 'line-by-line'>('line-by-line');
-function toggleOutputFormat() {
-	outputFormat.value = outputFormat.value === 'line-by-line' ? 'side-by-side' : 'line-by-line';
-}
-
-const panelWidth = ref(350);
-function onResize({ width }: { width: number }) {
-	panelWidth.value = width;
-}
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
@@ -602,51 +583,15 @@ onNodeClick((nodeId) => {
 						</template>
 					</div>
 				</div>
-				<N8nResizeWrapper
-					v-if="detailsPanelData"
-					:width="panelWidth"
-					:min-width="260"
-					:supported-directions="['left']"
-					:grid-size="8"
-					:style="{
-						width: `${panelWidth}px`,
-						display: 'flex',
-						flexDirection: 'column',
-						height: '100%',
-						borderLeft: '1px solid var(--color-foreground-base)',
-						borderTop: '1px solid var(--color-foreground-base)',
-					}"
-					outset
-					@resize="onResize"
+				<WorkflowDiffAside
+					v-if="selectedNode"
+					:node="selectedNode"
+					@close="selectedDetailId = undefined"
 				>
-					<div
-						style="
-							display: flex;
-							flex-direction: row;
-							align-items: center;
-							gap: 8px;
-							padding: 12px 10px;
-						"
-					>
-						<NodeIcon class="ml-xs" :node-type="detailsPanelData.type" :size="16" />
-						<N8nHeading size="small" color="text-dark" bold>
-							{{ detailsPanelData.node.name }}
-						</N8nHeading>
-						<N8nIconButton
-							icon="file-diff"
-							type="secondary"
-							class="ml-auto"
-							@click="toggleOutputFormat"
-						></N8nIconButton>
-						<N8nIconButton
-							icon="x"
-							type="secondary"
-							text
-							@click="selectedDetailId = undefined"
-						></N8nIconButton>
-					</div>
-					<NodeDiff v-bind="nodeDiffs" :output-format style="flex: 1" />
-				</N8nResizeWrapper>
+					<template #default="{ outputFormat }">
+						<NodeDiff v-bind="nodeDiffs" :output-format="outputFormat" />
+					</template>
+				</WorkflowDiffAside>
 			</div>
 		</template>
 	</Modal>
