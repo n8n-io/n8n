@@ -74,7 +74,7 @@ describe('useGlobalEntityCreation', () => {
 			expect.objectContaining({
 				route: {
 					name: VIEWS.CREDENTIALS,
-					params: { projectId: personalProjectId, credentialId: 'create' },
+					params: { credentialId: 'create' },
 				},
 			}),
 		);

@@ -121,6 +121,10 @@ const plugins: UserConfig['plugins'] = [
 		modernPolyfills: true,
 		renderLegacyChunks: false,
 	}),
+	// For sanitize-html
+	nodePolyfills({
+		include: ['fs', 'path', 'url', 'util', 'timers'],
+	}),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {

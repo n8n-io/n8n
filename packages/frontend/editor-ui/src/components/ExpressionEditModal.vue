@@ -25,13 +25,14 @@ import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import { N8nInput, N8nText } from '@n8n/design-system';
 import { N8nResizeWrapper, type ResizeData } from '@n8n/design-system';
 import { useThrottleFn } from '@vueuse/core';
+import type { Basic } from '@/Interface';
 
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
 	parameter: INodeProperties;
 	path: string;
-	modelValue: string;
+	modelValue: Basic | undefined;
 	dialogVisible?: boolean;
 	eventSource?: string;
 	redactValues?: boolean;
@@ -84,14 +85,14 @@ watch(
 		void externalHooks.run('expressionEdit.dialogVisibleChanged', {
 			dialogVisible: newValue,
 			parameter: props.parameter,
-			value: props.modelValue.toString(),
+			value: props.modelValue?.toString() ?? '',
 			resolvedExpressionValue,
 		});
 
 		if (!newValue) {
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
-				props.modelValue.toString(),
+				props.modelValue?.toString() ?? '',
 				workflowsStore.workflowId,
 				ndvStore.pushRef,
 				ndvStore.activeNode?.type ?? '',

@@ -77,7 +77,6 @@ export const useGlobalEntityCreation = () => {
 					route: {
 						name: VIEWS.CREDENTIALS,
 						params: {
-							projectId: projectsStore.personalProject?.id,
 							credentialId: 'create',
 						},
 					},

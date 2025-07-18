@@ -54,7 +54,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		getSelectedNodes,
 		edges: allEdges,
 		nodes: allNodes,
-	} = useVueFlow({ id: canvasId });
+	} = useVueFlow(canvasId);
 
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
 		if (target === 'selection') {

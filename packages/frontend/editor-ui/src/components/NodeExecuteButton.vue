@@ -52,11 +52,13 @@ const props = withDefaults(
 		hideLabel?: boolean;
 		tooltip?: string;
 		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
+		tooltipVisible?: boolean;
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
 		square: false,
+		tooltipVisible: undefined,
 	},
 );
 
@@ -65,6 +67,8 @@ const emit = defineEmits<{
 	execute: [];
 	valueChanged: [value: IUpdateInformation];
 }>();
+
+const slots = defineSlots<{ tooltipContent?: {} }>();
 
 defineOptions({
 	inheritAttrs: false,
@@ -390,9 +394,14 @@ async function onClick() {
 <template>
 	<N8nTooltip
 		:placement="tooltipPlacement ?? 'right'"
-		:disabled="!tooltipText"
-		:content="tooltipText"
+		:disabled="!tooltipText && !slots.tooltipContent"
+		:visible="tooltipVisible"
 	>
+		<template #content>
+			<slot name="tooltipContent">
+				{{ tooltipText }}
+			</slot>
+		</template>
 		<N8nButton
 			v-bind="$attrs"
 			:loading="isLoading"

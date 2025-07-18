@@ -19,7 +19,7 @@ import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT, ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 
-import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
+import type { Basic, TargetItem, TargetNodeParameterContext } from '@/Interface';
 import { type ResolveParameterOptions, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
@@ -54,7 +54,7 @@ export const useExpressionEditor = ({
 	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
-	editorValue?: MaybeRefOrGetter<string>;
+	editorValue?: MaybeRefOrGetter<Basic | undefined>;
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
@@ -204,7 +204,7 @@ export const useExpressionEditor = ({
 		if (!parent) return;
 
 		const state = EditorState.create({
-			doc: toValue(editorValue),
+			doc: toValue(editorValue) as string | undefined,
 			extensions: [
 				TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
 				customExtensions.value.of(toValue(extensions)),
@@ -257,7 +257,7 @@ export const useExpressionEditor = ({
 	watchEffect(() => {
 		if (!editor.value) return;
 
-		const newValue = toValue(editorValue);
+		const newValue = toValue(editorValue) as string | undefined;
 		const currentValue = readEditorValue();
 		if (newValue === undefined || newValue === currentValue) return;
 

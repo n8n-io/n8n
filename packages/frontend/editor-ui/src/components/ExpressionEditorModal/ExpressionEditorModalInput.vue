@@ -15,10 +15,10 @@ import { removeExpressionPrefix } from '@/utils/expressions';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { Basic, TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
-	modelValue: string;
+	modelValue: Basic | undefined;
 	path: string;
 	targetNodeParameterContext?: TargetNodeParameterContext;
 	isReadOnly?: boolean;
@@ -49,7 +49,7 @@ const extensions = computed(() => [
 	EditorView.domEventHandlers({ scroll: (_, view) => forceParse(view) }),
 	infoBoxTooltips(),
 ]);
-const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+const editorValue = ref<Basic | undefined>(removeExpressionPrefix(props.modelValue));
 const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEditor({
 	editorRef: root,
 	editorValue,
