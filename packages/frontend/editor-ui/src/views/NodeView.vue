@@ -973,10 +973,6 @@ function onUpdateNodeOutputs(id: string) {
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
-	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-		focusPanelStore.hideFocusPanel();
-	}
-
 	nodeCreatorStore.openNodeCreatorForConnectingNode({
 		connection: {
 			source,
@@ -1205,10 +1201,6 @@ function onOpenSelectiveNodeCreator(
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
-	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-		focusPanelStore.hideFocusPanel(options.createNodeActive);
-	}
-
 	if (!options.createNodeActive && !options.hasAddedNodes) {
 		uiStore.resetLastInteractedWith();
 	}
@@ -1233,10 +1225,6 @@ function onToggleFocusPanel() {
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
-
-		if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-			focusPanelStore.hideFocusPanel(false);
-		}
 	}
 }
 

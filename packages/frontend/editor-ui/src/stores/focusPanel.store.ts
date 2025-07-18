@@ -59,7 +59,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const lastFocusTimestamp = ref(0);
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
-	const focusPanelHidden = ref(false);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
@@ -109,11 +108,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		if (isActive) {
 			lastFocusTimestamp.value = Date.now();
 		}
-
-		// Unhide the focus panel if it was hidden
-		if (focusPanelHidden.value && focusPanelActive.value) {
-			focusPanelHidden.value = false;
-		}
 	}
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
@@ -141,14 +135,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 
 	function closeFocusPanel() {
 		_setOptions({ isActive: false });
-	}
-
-	function hideFocusPanel(hide: boolean = true) {
-		if (focusPanelHidden.value === hide) {
-			return;
-		}
-
-		focusPanelHidden.value = hide;
 	}
 
 	function toggleFocusPanel() {
@@ -179,11 +165,9 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusPanelActive,
 		focusedNodeParameters,
 		lastFocusTimestamp,
-		focusPanelHidden,
 		focusPanelWidth,
 		openWithFocusedNodeParameter,
 		isRichParameter,
-		hideFocusPanel,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
