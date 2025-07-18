@@ -44,7 +44,7 @@ export class AiController {
 		try {
 			const aiResponse = this.workflowBuilderService.chat(
 				{
-					question: payload.payload.question ?? '',
+					question: payload.payload.text ?? '',
 				},
 				req.user,
 			);

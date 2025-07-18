@@ -29,6 +29,7 @@ component_management:
     - component_id: backend_packages
       name: Backend
       paths:
+        - packages/@n8n/ai-workflow-builder.ee/**
         - packages/@n8n/api-types/**
         - packages/@n8n/config/**
         - packages/@n8n/client-oauth2/**
