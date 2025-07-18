@@ -139,7 +139,7 @@ async function handleClickExecute() {
 	}
 
 	&.isExperimentalNdvActive {
-		height: var(--spacing-3xl);
+		height: var(--spacing-2xl);
 	}
 }
 
