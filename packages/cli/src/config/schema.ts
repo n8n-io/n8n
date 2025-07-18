@@ -102,25 +102,6 @@ export const schema = {
 		},
 	},
 
-	ssl_key: {
-		format: String,
-		default: '',
-		env: 'N8N_SSL_KEY',
-		doc: 'SSL Key for HTTPS Protocol',
-	},
-	ssl_cert: {
-		format: String,
-		default: '',
-		env: 'N8N_SSL_CERT',
-		doc: 'SSL Cert for HTTPS Protocol',
-	},
-	editorBaseUrl: {
-		format: String,
-		default: '',
-		env: 'N8N_EDITOR_BASE_URL',
-		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
-	},
-
 	userManagement: {
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
@@ -165,89 +146,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	deployment: {
-		type: {
-			format: String,
-			default: 'default',
-			env: 'N8N_DEPLOYMENT_TYPE',
-		},
-	},
-
-	mfa: {
-		enabled: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to enable MFA feature in instance.',
-			env: 'N8N_MFA_ENABLED',
-		},
-	},
-
-	sso: {
-		justInTimeProvisioning: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to automatically create users when they login via SSO.',
-		},
-		redirectLoginToSso: {
-			format: Boolean,
-			default: true,
-			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
-		},
-		saml: {
-			loginEnabled: {
-				format: Boolean,
-				default: false,
-				doc: 'Whether to enable SAML SSO.',
-			},
-			loginLabel: {
-				format: String,
-				default: '',
-			},
-		},
-		ldap: {
-			loginEnabled: {
-				format: Boolean,
-				default: false,
-			},
-			loginLabel: {
-				format: String,
-				default: '',
-			},
-		},
-	},
-
-	hiringBanner: {
-		enabled: {
-			doc: 'Whether hiring banner in browser console is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_HIRING_BANNER_ENABLED',
-		},
-	},
-
-	personalization: {
-		enabled: {
-			doc: 'Whether personalization is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_PERSONALIZATION_ENABLED',
-		},
-	},
-
-	defaultLocale: {
-		doc: 'Default locale for the UI',
-		format: String,
-		default: 'en',
-		env: 'N8N_DEFAULT_LOCALE',
-	},
-
-	hideUsagePage: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_HIDE_USAGE_PAGE',
-		doc: 'Hide or show the usage page',
-	},
-
 	redis: {
 		prefix: {
 			doc: 'Prefix for all n8n related keys',
@@ -276,22 +174,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
-		},
-	},
-
-	proxy_hops: {
-		format: Number,
-		default: 0,
-		env: 'N8N_PROXY_HOPS',
-		doc: 'Number of reverse-proxies n8n is running behind',
-	},
-
-	logs_view: {
-		enabled: {
-			format: Boolean,
-			default: true,
-			env: 'N8N_ENABLE_LOGS_VIEW',
-			doc: 'Temporary env variable to enable logs view',
 		},
 	},
 };

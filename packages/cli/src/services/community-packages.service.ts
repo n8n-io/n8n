@@ -28,7 +28,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
-import { verifyIntegrity } from '../utils/npm-utils';
+import { isVersionExists, verifyIntegrity } from '../utils/npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -349,8 +349,10 @@ export class CommunityPackagesService {
 	async updatePackage(
 		packageName: string,
 		installedPackage: InstalledPackages,
+		version?: string,
+		checksum?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage });
+		return await this.installOrUpdatePackage(packageName, { installedPackage, version, checksum });
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -376,9 +378,7 @@ export class CommunityPackagesService {
 		);
 	}
 
-	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
-		if (isUpdate) return;
-
+	private checkInstallPermissions(checksumProvided: boolean) {
 		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
@@ -386,17 +386,21 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
+		options:
+			| { version?: string; checksum?: string }
+			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
+		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
+		this.checkInstallPermissions(shouldValidateChecksum);
 
-		if (!isUpdate && options.checksum) {
+		if (options.checksum) {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
+
+		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);

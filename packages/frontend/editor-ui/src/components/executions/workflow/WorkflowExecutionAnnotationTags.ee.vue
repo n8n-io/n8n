@@ -103,9 +103,9 @@ const onTagsEditEsc = () => {
 					size="mini"
 					:outline="false"
 					:text="true"
-					@click="onTagsEditEnable"
 					data-test-id="new-tag-link"
 					icon="plus"
+					@click="onTagsEditEnable"
 				/>
 			</div>
 
@@ -130,9 +130,9 @@ const onTagsEditEsc = () => {
 						size="mini"
 						:outline="false"
 						:text="true"
-						@click="onTagsEditEnable"
 						data-test-id="new-tag-link"
 						icon="plus"
+						@click="onTagsEditEnable"
 					/>
 				</span>
 			</span>
@@ -174,8 +174,8 @@ const onTagsEditEsc = () => {
 }
 
 .addTagButtonIconOnly {
-	height: 22px;
-	width: 22px;
+	height: 20px;
+	width: 20px;
 }
 
 .tagsContainer {

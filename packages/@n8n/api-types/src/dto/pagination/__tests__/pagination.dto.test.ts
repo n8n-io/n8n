@@ -1,4 +1,4 @@
-import { PaginationDto, MAX_ITEMS_PER_PAGE } from '../pagination.dto';
+import { PaginationDto, MAX_ITEMS_PER_PAGE, createTakeValidator } from '../pagination.dto';
 
 describe('PaginationDto', () => {
 	describe('valid inputs', () => {
@@ -130,6 +130,19 @@ describe('PaginationDto', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.take).toBe(10);
+			}
+		});
+	});
+
+	describe('createTakeValidator', () => {
+		test('should create a take validator with custom maxItems', () => {
+			const customMaxItems = 100;
+			const customTakeValidator = createTakeValidator(customMaxItems);
+			const result = customTakeValidator.safeParse('150');
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data).toBe(customMaxItems);
 			}
 		});
 	});

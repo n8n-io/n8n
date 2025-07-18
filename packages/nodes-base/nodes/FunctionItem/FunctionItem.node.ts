@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
 import type { NodeVMOptions } from '@n8n/vm2';
 import { NodeVM } from '@n8n/vm2';
 import type {

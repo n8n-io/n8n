@@ -1,17 +1,12 @@
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { Folder } from '@n8n/db';
+import { getPersonalProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import type { Project, User, Folder } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { createFolder } from '@test-integration/db/folders';
-import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../../../../test/integration/shared/test-db';
 
 describe('FolderRepository', () => {
 	let folderRepository: FolderRepository;

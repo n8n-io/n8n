@@ -19,7 +19,7 @@ on:
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

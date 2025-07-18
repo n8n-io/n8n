@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type {
+	IconFile,
 	ICredentialType,
 	INodeType,
 	INodeTypeDescription,
@@ -13,6 +14,7 @@ jest.mock('node:fs');
 jest.mock('node:fs/promises');
 const mockFs = mock<typeof fs>();
 const mockFsPromises = mock<typeof fsPromises>();
+fs.realpathSync = mockFs.realpathSync;
 fs.readFileSync = mockFs.readFileSync;
 fsPromises.readFile = mockFsPromises.readFile;
 
@@ -64,6 +66,7 @@ describe('DirectoryLoader', () => {
 	let mockCredential1: ICredentialType, mockNode1: INodeType, mockNode2: INodeType;
 
 	beforeEach(() => {
+		mockFs.realpathSync.mockImplementation((path) => String(path));
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
@@ -129,6 +132,20 @@ describe('DirectoryLoader', () => {
 			expect(mockCredential1.iconUrl).toBe('icons/n8n-nodes-testing/dist/credential1.svg');
 			expect(mockNode1.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node1/node1.svg');
 			expect(mockNode2.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node2/node2.svg');
+		});
+
+		it('should throw error if node has icon not contained within the package directory', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockNode2.description.icon = {
+				light: 'file:../../../../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			await expect(loader.loadAll()).rejects.toThrow(
+				'Icon path "../../../../evil" is not contained within',
+			);
 		});
 
 		it('should throw error when package.json is missing', async () => {
@@ -327,6 +344,19 @@ describe('DirectoryLoader', () => {
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('node2');
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('constructor', () => {
+		it('should resolve symlinks to real paths when directory is a symlink', () => {
+			const symlinkPath = '/symlink/path';
+			const realPath = '/real/path';
+			mockFs.realpathSync.mockReturnValueOnce(realPath);
+
+			const loader = new CustomDirectoryLoader(symlinkPath);
+
+			expect(mockFs.realpathSync).toHaveBeenCalledWith(symlinkPath);
+			expect(loader.directory).toBe(realPath);
 		});
 	});
 
@@ -553,6 +583,18 @@ describe('DirectoryLoader', () => {
 
 			expect(() => loader.loadCredentialFromFile(filePath)).toThrow('Class could not be found');
 		});
+
+		it('should not push credential to types array when lazy loaded', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			loader.isLazyLoaded = true;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			expect(loader.credentialTypes).toEqual({
+				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+			});
+			expect(loader.types.credentials).toEqual([]);
+		});
 	});
 
 	describe('getCredential', () => {
@@ -644,6 +686,23 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should error if icon path is not contained within the package directory', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			const nodeWithIcon = createNode('nodeWithIcon');
+			nodeWithIcon.description.icon = {
+				light: 'file:../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+
+			expect(() => loader.loadNodeFromFile(filePath)).toThrow(
+				'Icon path "../evil" is not contained within',
+			);
 		});
 
 		it('should skip node if not in includeNodes', () => {

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -63,14 +62,26 @@ export class DocumentGithubLoader implements INodeType {
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		inputNames: ['Text Splitter'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
+			{
+				displayName: 'Repository Link',
+				name: 'repository',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Branch',
+				name: 'branch',
+				type: 'string',
+				default: 'main',
+			},
 			{
 				displayName: 'Text Splitting',
 				name: 'textSplittingMode',
@@ -87,26 +98,14 @@ export class DocumentGithubLoader implements INodeType {
 					{
 						name: 'Simple',
 						value: 'simple',
-						description: 'Uses Recursive Character Text Splitter with default options',
+						description: 'Splits every 1000 characters with a 200 character overlap',
 					},
 					{
 						name: 'Custom',
 						value: 'custom',
-						description: 'Connect a text splitter of your choice',
+						description: 'Connect a custom text-splitting sub-node',
 					},
 				],
-			},
-			{
-				displayName: 'Repository Link',
-				name: 'repository',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Branch',
-				name: 'branch',
-				type: 'string',
-				default: 'main',
 			},
 			{
 				displayName: 'Options',

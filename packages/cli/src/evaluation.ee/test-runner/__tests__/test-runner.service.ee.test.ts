@@ -1,21 +1,24 @@
-import type { TestRun } from '@n8n/db';
-import type { TestCaseExecutionRepository } from '@n8n/db';
-import type { TestRunRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import type {
+	TestRun,
+	TestCaseExecutionRepository,
+	TestRunRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { readFileSync } from 'fs';
+import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { IWorkflowBase } from 'n8n-workflow';
-import type { IRun, ExecutionError } from 'n8n-workflow';
+import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
@@ -414,7 +417,7 @@ describe('TestRunnerService', () => {
 			}
 		});
 
-		test('should call workflowRunner.run with correct data', async () => {
+		test('should call workflowRunner.run with correct data in normal execution mode', async () => {
 			// Create workflow with a trigger node
 			const triggerNodeName = 'Dataset Trigger';
 			const workflow = mock<IWorkflowBase>({
@@ -458,13 +461,79 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
-			// Verify node execution stack contains the requestDataset flag
 			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
 			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
 			expect(nodeExecutionStack).toBeInstanceOf(Array);
 			expect(nodeExecutionStack).toHaveLength(1);
 			expect(nodeExecutionStack?.[0]).toHaveProperty('node.name', triggerNodeName);
-			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json.requestDataset', true);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('node.forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
+			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json', {});
+			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
+		});
+
+		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
+			config.set('executions.mode', 'queue');
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveDataErrorExecution: 'all',
+				},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Call the method
+			await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+
+			// Verify workflowRunner.run was called
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			// Get the argument passed to workflowRunner.run
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+			// Verify it has the correct structure
+			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('executionMode', 'manual');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
+			expect(runCallArg).toHaveProperty('userId', metadata.userId);
+			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
+
+			expect(runCallArg).not.toHaveProperty('executionData.executionData');
+			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
+				resource: 'dataset',
+				operation: 'getRows',
+			});
+
+			// after reset
+			config.set('executions.mode', 'regular');
+			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
 		test('should wait for execution to finish and return result', async () => {
@@ -616,7 +685,16 @@ describe('TestRunnerService', () => {
 					pinData: {
 						[triggerNodeName]: [testCase],
 					},
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							saveExecutionProgress: false,
+						},
+					},
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
 					triggerToStartFrom: {
@@ -679,6 +757,102 @@ describe('TestRunnerService', () => {
 				abortController.signal.addEventListener = originalAddEventListener;
 			}
 		});
+
+		describe('runTestCase - Queue Mode', () => {
+			beforeEach(() => {
+				// Mock config to return 'queue' mode
+				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+					if (key === 'executions.mode') {
+						return 'queue';
+					}
+					return undefined;
+				});
+			});
+
+			afterEach(() => {
+				(config.getEnv as unknown as Mock).mockRestore();
+			});
+
+			test('should call workflowRunner.run with correct data in queue mode', async () => {
+				// Setup test data
+				const triggerNodeName = 'TriggerNode';
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: triggerNodeName,
+							type: EVALUATION_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							forceCustomOperation: undefined,
+						},
+					],
+					connections: {},
+				});
+
+				const metadata = {
+					testRunId: 'test-run-id',
+					userId: 'user-id',
+				};
+
+				const testCase = { json: { id: 1, name: 'Test 1' } };
+				const abortController = new AbortController();
+
+				// Call the method
+				await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify workflowRunner.run was called with the correct data
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+				// Verify the expected structure for queue mode
+				expect(runCallArg).toEqual(
+					expect.objectContaining({
+						executionMode: 'evaluation',
+						pinData: {
+							[triggerNodeName]: [testCase],
+						},
+						workflowData: {
+							...workflow,
+							settings: {
+								...workflow.settings,
+								saveManualExecutions: true,
+								saveDataErrorExecution: 'all',
+								saveDataSuccessExecution: 'all',
+								saveExecutionProgress: false,
+							},
+						},
+						userId: metadata.userId,
+						partialExecutionVersion: 2,
+						triggerToStartFrom: {
+							name: triggerNodeName,
+						},
+						executionData: {
+							resultData: {
+								pinData: {
+									[triggerNodeName]: [testCase],
+								},
+								runData: {},
+							},
+							manualData: {
+								userId: metadata.userId,
+								partialExecutionVersion: 2,
+								triggerToStartFrom: {
+									name: triggerNodeName,
+								},
+							},
+						},
+					}),
+				);
+			});
+		});
 	});
 
 	describe('validateSetMetricsNodes', () => {
@@ -693,6 +867,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -756,6 +931,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: undefined,
 						},
 					},
@@ -787,6 +963,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [],
 							},
@@ -820,11 +997,52 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
 										id: '1',
 										name: '',
+										value: 0.95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			}).toThrow(TestRunError);
+
+			try {
+				(testRunnerService as any).validateSetMetricsNodes(workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+			}
+		});
+
+		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node is disabled', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Metrics',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: true,
+						parameters: {
+							operation: 'setMetrics',
+							metrics: {
+								assignments: [
+									{
+										id: '1',
+										name: 'assignment1',
 										value: 0.95,
 									},
 								],
@@ -859,6 +1077,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -898,6 +1117,7 @@ describe('TestRunnerService', () => {
 						position: [0, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -917,6 +1137,7 @@ describe('TestRunnerService', () => {
 						position: [100, 0],
 						parameters: {
 							operation: 'setMetrics',
+							metric: 'customMetrics',
 							metrics: {
 								assignments: [
 									{
@@ -935,6 +1156,250 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetMetricsNodes(workflow);
 			}).not.toThrow();
+		});
+
+		describe('Version-based validation', () => {
+			it('should pass for version < 4.7 with valid custom metrics (no metric parameter needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version < 4.7 with invalid custom metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter - this is expected for versions < 4.7
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should fail for version >= 4.7 with missing metric parameter', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				// Missing metric parameter - this should fail for versions >= 4.7
+				workflow.nodes[0].parameters.metric = undefined;
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should pass for version >= 4.7 with valid customMetrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should pass for version >= 4.7 with non-customMetrics metric (no metrics validation needed)', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'correctness',
+								// No metrics parameter needed for non-customMetrics
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
+
+			it('should fail for version >= 4.7 with customMetrics but invalid metrics configuration', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'customMetrics',
+								metrics: {
+									assignments: [], // Empty assignments should fail
+								},
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).toThrow(TestRunError);
+
+				try {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TestRunError);
+					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
+					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				}
+			});
+
+			it('should handle mixed versions correctly', () => {
+				const workflow = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Set Metrics Old',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.6,
+							position: [0, 0],
+							parameters: {
+								operation: 'setMetrics',
+								// No metric parameter for old version
+								metrics: {
+									assignments: [
+										{
+											id: '1',
+											name: 'accuracy',
+											value: 0.95,
+										},
+									],
+								},
+							},
+						},
+						{
+							id: 'node2',
+							name: 'Set Metrics New',
+							type: EVALUATION_NODE_TYPE,
+							typeVersion: 4.7,
+							position: [100, 0],
+							parameters: {
+								operation: 'setMetrics',
+								metric: 'correctness',
+								// No metrics parameter needed for non-customMetrics
+							},
+						},
+					],
+					connections: {},
+				});
+
+				expect(() => {
+					(testRunnerService as any).validateSetMetricsNodes(workflow);
+				}).not.toThrow();
+			});
 		});
 	});
 
@@ -1009,33 +1474,6 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetOutputsNodes(workflow);
 			}).not.toThrow();
-		});
-
-		it('should throw SET_OUTPUTS_NODE_NOT_FOUND when no outputs nodes exist', () => {
-			const workflow = mock<IWorkflowBase>({
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Regular Node',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			expect(() => {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			}).toThrow(TestRunError);
-
-			try {
-				(testRunnerService as any).validateSetOutputsNodes(workflow);
-			} catch (error) {
-				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_OUTPUTS_NODE_NOT_FOUND');
-			}
 		});
 
 		it('should throw SET_OUTPUTS_NODE_NOT_CONFIGURED when outputs node has no parameters', () => {

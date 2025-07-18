@@ -13,11 +13,11 @@ const { sessionStarted } = vi.hoisted(() => ({
 	sessionStarted: vi.fn(),
 }));
 
-vi.mock('@/api/settings', () => ({
+vi.mock('@n8n/rest-api-client/api/settings', () => ({
 	getSettings,
 }));
 
-vi.mock('@/api/events', () => ({
+vi.mock('@n8n/rest-api-client/api/events', () => ({
 	sessionStarted,
 }));
 
@@ -46,7 +46,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/stores/versions.store', () => ({
 	useVersionsStore: vi.fn(() => ({
-		setVersionNotificationSettings: vi.fn(),
+		initialize: vi.fn(),
 	})),
 }));
 

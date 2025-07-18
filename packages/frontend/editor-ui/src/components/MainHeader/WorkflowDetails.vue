@@ -36,7 +36,7 @@ import { saveAs } from 'file-saver';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -47,10 +47,10 @@ import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -59,6 +59,9 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { sanitizeFilename } from '@/utils/fileUtils';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -95,7 +98,8 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowSaving = useWorkflowSaving({ router });
+const workflowHelpers = useWorkflowHelpers();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
@@ -290,7 +294,7 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
-	const saved = await workflowHelpers.saveCurrentWorkflow({
+	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
 		tags,
@@ -347,7 +351,7 @@ async function onTagsBlur() {
 	}
 	tagsSaving.value = true;
 
-	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
+	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,
 		new_tag_count: tags.length,
@@ -390,7 +394,7 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId();
-	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
+	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
 		workflowHelpers.setDocumentTitle(newName, 'IDLE');
@@ -404,7 +408,7 @@ async function handleFileImport(): Promise<void> {
 	if (inputRef?.files && inputRef.files.length !== 0) {
 		const reader = new FileReader();
 		reader.onload = () => {
-			let workflowData: IWorkflowDataUpdate;
+			let workflowData: WorkflowDataUpdate;
 			try {
 				workflowData = JSON.parse(reader.result as string);
 			} catch (error) {
@@ -425,7 +429,8 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
+async function onWorkflowMenuSelect(value: string): Promise<void> {
+	const action = value as WORKFLOW_MENU_ACTIONS;
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
@@ -464,7 +469,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 
 			let name = props.name || 'unsaved_workflow';
-			name = name.replace(/[^a-z0-9]/gi, '_');
+			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');
@@ -794,12 +799,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							{{ i18n.baseText('workflowDetails.share') }}
 						</N8nButton>
 						<template #content>
-							<i18n-t
+							<I18nT
 								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 										.tooltip
 								"
 								tag="span"
+								scope="global"
 							>
 								<template #action>
 									<a @click="goToUpgrade">
@@ -811,7 +817,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 										}}
 									</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</N8nTooltip>
 				</template>

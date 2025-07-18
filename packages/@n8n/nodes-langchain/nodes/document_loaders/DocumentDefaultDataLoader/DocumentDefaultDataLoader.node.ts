@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { RecursiveCharacterTextSplitter, type TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionTypes,
@@ -64,9 +63,9 @@ export class DocumentDefaultDataLoader implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
@@ -76,31 +75,6 @@ export class DocumentDefaultDataLoader implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
-			},
-			{
-				displayName: 'Text Splitting',
-				name: 'textSplittingMode',
-				type: 'options',
-				default: 'simple',
-				required: true,
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						'@version': [1.1],
-					},
-				},
-				options: [
-					{
-						name: 'Simple',
-						value: 'simple',
-						description: 'Uses the Recursive Character Text Splitter with default options',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Connect a text splitter of your choice',
-					},
-				],
 			},
 			{
 				displayName: 'Type of Data',
@@ -253,6 +227,31 @@ export class DocumentDefaultDataLoader implements INodeType {
 						binaryMode: ['allInputData'],
 					},
 				},
+			},
+			{
+				displayName: 'Text Splitting',
+				name: 'textSplittingMode',
+				type: 'options',
+				default: 'simple',
+				required: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+						description: 'Splits every 1000 characters with a 200 character overlap',
+					},
+					{
+						name: 'Custom',
+						value: 'custom',
+						description: 'Connect a custom text-splitting sub-node',
+					},
+				],
 			},
 			{
 				displayName: 'Options',

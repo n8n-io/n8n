@@ -1,5 +1,5 @@
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
@@ -10,15 +10,11 @@ import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
 
+@Command({
+	name: 'webhook',
+	description: 'Starts n8n webhook process. Intercepts only production URLs.',
+})
 export class Webhook extends BaseCommand {
-	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
-
-	static examples = ['$ n8n webhook'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-	};
-
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
@@ -77,10 +73,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 
-		await this.loadModules();
+		await this.moduleRegistry.initModules();
 	}
 
 	async run() {

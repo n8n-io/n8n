@@ -42,6 +42,10 @@ export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
+export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
+export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
+export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -70,6 +74,11 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	FUNCTION_ITEM_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ]);
+export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
+export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
+	MAILGUN_NODE_TYPE,
+	HTML_NODE_TYPE,
+]);
 
 //@n8n/n8n-nodes-langchain
 export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
@@ -78,6 +87,7 @@ export const CHAIN_LLM_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm'
 export const OPENAI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
+export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';

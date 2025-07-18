@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker/locale/en';
+import type { ICredentialsResponse } from '@/Interface';
 import type {
-	ICredentialsResponse,
 	ITemplatesWorkflowFull,
 	IWorkflowTemplateNode,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/templates';
 
 export const newFullOneNodeTemplate = (node: IWorkflowTemplateNode): ITemplatesWorkflowFull => ({
 	full: true,

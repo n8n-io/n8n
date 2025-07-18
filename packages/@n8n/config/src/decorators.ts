@@ -3,7 +3,7 @@ import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
@@ -33,7 +33,6 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		);
 		const classMetadata = globalMetadata.get(ConfigClass);
 		if (!classMetadata) {
-			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
@@ -106,7 +105,6 @@ export const Env =
 		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
 		const isZodSchema = schema instanceof z.ZodType;
 		if (type === Object && !isZodSchema) {
-			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error(
 				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
 			);

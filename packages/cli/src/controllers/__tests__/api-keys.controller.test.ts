@@ -1,12 +1,10 @@
-import type { User } from '@n8n/db';
-import type { ApiKey } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
-import { mockInstance } from '@test/mocking';
 
 import { ApiKeysController } from '../api-keys.controller';
 

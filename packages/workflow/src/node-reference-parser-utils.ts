@@ -207,7 +207,7 @@ function parseExpressionMapping(
 			return {
 				nodeNameInExpression,
 				originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-				replacementPrefix: `$('${startNodeName}').${accessorPrefix}`, //  $('Start').first()
+				replacementPrefix: `$('${startNodeName}').${accessorPrefix}.json`, //  $('Start').first().json
 				replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(originalName)}`, // nodeName_firstItem, nodeName_itemMatching_20
 			};
 		} else {
@@ -266,7 +266,9 @@ function extractExpressionCandidate(expression: string, startIndex: number, endI
 
 	// Note that by choosing match 0 we use `itemMatching` matches over `item`
 	// matches by relying on the order in ITEM_TO_DATA_ACCESSORS
-	const after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1) + 1;
+	let after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1);
+	// skip `.` to continue, but halt before other symbols like `[` in `all()[0]`
+	if (expression[after_accessor_idx + 1] === '.') after_accessor_idx += 1;
 	const after_accessor = expression.slice(after_accessor_idx);
 	const firstInvalidCharMatch = INVALID_JS_DOT_PATH.exec(after_accessor);
 
@@ -296,6 +298,7 @@ function parseCandidateMatch(
 
 	const candidate = extractExpressionCandidate(expression, startIndex, endIndex);
 	if (candidate === null) return null;
+
 	return parseExpressionMapping(
 		candidate,
 		nodeNameInExpression,

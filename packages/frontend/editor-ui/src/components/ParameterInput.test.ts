@@ -14,12 +14,8 @@ import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 
-let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
-let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
-let mockCompletionResult: Partial<CompletionResult>;
-
-beforeEach(() => {
-	mockNdvState = {
+function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
+	return {
 		hasInputData: true,
 		activeNode: {
 			id: faker.string.uuid(),
@@ -32,9 +28,21 @@ beforeEach(() => {
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
 	};
-	mockNodeTypesState = {
+}
+
+function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
+	return {
 		allNodeTypes: [],
 	};
+}
+
+let mockNdvState = getNdvStateMock();
+let mockNodeTypesState = getNodeTypesStateMock();
+let mockCompletionResult: Partial<CompletionResult> = {};
+
+beforeEach(() => {
+	mockNdvState = getNdvStateMock();
+	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	createAppModals();
 });

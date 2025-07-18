@@ -327,6 +327,17 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeExecutionWaitingForNextById = computed(() =>
+		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
+			acc[node.id] =
+				node.name === workflowsStore.lastAddedExecutingNode &&
+				workflowsStore.executingNode.length === 0 &&
+				workflowsStore.isWorkflowRunning;
+
+			return acc;
+		}, {}),
+	);
+
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
@@ -589,6 +600,7 @@ export function useCanvasMapping({
 				execution: {
 					status: nodeExecutionStatusById.value[node.id],
 					waiting: nodeExecutionWaitingById.value[node.id],
+					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
 					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
@@ -704,6 +716,7 @@ export function useCanvasMapping({
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
+		nodeExecutionWaitingForNextById,
 		nodeIssuesById,
 		nodeHasIssuesById,
 		connections: mappedConnections,

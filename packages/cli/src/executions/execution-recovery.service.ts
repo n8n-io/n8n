@@ -72,7 +72,14 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || (execution.status === 'success' && execution.data)) return null;
+		/**
+		 * The event bus is unable to correctly identify unfinished executions in workers,
+		 * because execution lifecycle hooks cause worker event logs to be partitioned.
+		 * Hence we need to filter out finished executions here.
+		 * */
+		if (!execution || (['success', 'error'].includes(execution.status) && execution.data)) {
+			return null;
+		}
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 

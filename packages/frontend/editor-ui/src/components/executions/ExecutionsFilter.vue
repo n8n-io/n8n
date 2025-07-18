@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -157,6 +158,12 @@ const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
+const onExactMatchChange = (e: string | number | boolean) => {
+	if (typeof e === 'boolean') {
+		onFilterMetaChange(0, 'exactMatch', e);
+	}
+};
+
 onBeforeMount(() => {
 	isCustomDataFilterTracked.value = false;
 });
@@ -165,7 +172,7 @@ onBeforeMount(() => {
 	<n8n-popover trigger="click" :placement="popoverPlacement" width="440">
 		<template #reference>
 			<n8n-button
-				icon="filter"
+				icon="funnel"
 				type="tertiary"
 				size="medium"
 				square
@@ -297,11 +304,11 @@ onBeforeMount(() => {
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">
 					<template #content>
-						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip" />
+						<I18nT tag="span" keypath="executionsFilter.customData.docsTooltip" scope="global" />
 					</template>
-					<span :class="$style.label">
-						{{ locale.baseText('executionsFilter.savedData') }}
-						<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
+					<span :class="[$style.label, $style.savedDataLabel]">
+						<span>{{ locale.baseText('executionsFilter.savedData') }}</span>
+						<n8n-icon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
 					</span>
 				</n8n-tooltip>
 				<div :class="$style.subGroup">
@@ -310,7 +317,7 @@ onBeforeMount(() => {
 					}}</label>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
-							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -319,7 +326,7 @@ onBeforeMount(() => {
 										>{{ locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 									>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<n8n-input
 							id="execution-filter-saved-data-key"
@@ -335,20 +342,20 @@ onBeforeMount(() => {
 					<div :class="$style.checkboxWrapper">
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+								<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 									<template #link>
 										<a href="#" @click.prevent="goToUpgrade">{{
 											locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
-								</i18n-t>
+								</I18nT>
 							</template>
 							<n8n-checkbox
 								:label="locale.baseText('executionsFilter.savedDataExactMatch')"
 								:model-value="filter.metadata[0]?.exactMatch"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								data-test-id="execution-filter-saved-data-exact-match-checkbox"
-								@update:model-value="onFilterMetaChange(0, 'exactMatch', $event)"
+								@update:model-value="onExactMatchChange"
 							/>
 						</n8n-tooltip>
 					</div>
@@ -357,13 +364,13 @@ onBeforeMount(() => {
 					}}</label>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
-							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
+							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
 									<a href="#" @click.prevent="goToUpgrade">{{
 										locale.baseText('executionsFilter.customData.inputTooltip.link')
 									}}</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<n8n-input
 							id="execution-filter-saved-data-value"
@@ -399,6 +406,14 @@ onBeforeMount(() => {
 		font-size: var(--font-size-2xs);
 		margin: var(--spacing-s) 0 var(--spacing-3xs);
 		color: var(--color-text-dark);
+	}
+}
+
+.label.savedDataLabel {
+	display: flex;
+	align-items: center;
+	span {
+		margin-right: var(--spacing-3xs);
 	}
 }
 

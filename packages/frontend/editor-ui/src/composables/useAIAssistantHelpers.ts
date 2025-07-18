@@ -8,7 +8,6 @@ import type {
 	INode,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { executionDataToJson, getMainAuthField, getNodeAuthOptions } from '@/utils/nodeTypesUtils';
@@ -30,7 +29,7 @@ export const useAIAssistantHelpers = () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+	const workflowHelpers = useWorkflowHelpers();
 	const locale = useI18n();
 
 	/**

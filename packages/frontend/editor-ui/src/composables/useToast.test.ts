@@ -4,10 +4,10 @@ import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useLogsStore } from '@/stores/logs.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/constants';
+import { useLogsStore } from '@/stores/logs.store';
 
 describe('useToast', () => {
 	let toast: ReturnType<typeof useToast>;

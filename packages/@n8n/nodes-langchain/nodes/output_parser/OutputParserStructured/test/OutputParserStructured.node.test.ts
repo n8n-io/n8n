@@ -472,6 +472,272 @@ describe('OutputParserStructured', () => {
 				expect(parsersOutput).toEqual(outputObject);
 			});
 		});
+
+		describe('Version 1.3', () => {
+			beforeEach(() => {
+				thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.3 }));
+			});
+
+			describe('schema from JSON example', () => {
+				it('should make all fields required when generating schema from JSON example', async () => {
+					const jsonExample = `{
+            "user": {
+              "name": "Alice",
+              "email": "alice@example.com",
+              "profile": {
+                "age": 30,
+                "city": "New York"
+              }
+            },
+            "tags": ["work", "important"]
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const outputObject = {
+						output: {
+							user: {
+								name: 'Bob',
+								email: 'bob@example.com',
+								profile: {
+									age: 25,
+									city: 'San Francisco',
+								},
+							},
+							tags: ['personal'],
+						},
+					};
+
+					const parsersOutput = await response.parse(`Here's the user data:
+            \`\`\`json
+            ${JSON.stringify(outputObject)}
+            \`\`\`
+          `);
+
+					expect(parsersOutput).toEqual(outputObject);
+				});
+
+				it('should reject output missing required fields from JSON example', async () => {
+					const jsonExample = `{
+            "name": "Alice",
+            "age": 30,
+            "email": "alice@example.com"
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const incompleteOutput = {
+						output: {
+							name: 'Bob',
+							age: 25,
+							// Missing email field
+						},
+					};
+
+					await expect(
+						response.parse(
+							`Here's the incomplete output:
+              \`\`\`json
+              ${JSON.stringify(incompleteOutput)}
+              \`\`\`
+            `,
+							undefined,
+							(e) => e,
+						),
+					).rejects.toThrow('Required');
+				});
+
+				it('should require all fields in array items from JSON example', async () => {
+					const jsonExample = `{
+            "users": [
+              {
+                "id": 1,
+                "name": "Alice",
+                "metadata": {
+                  "department": "Engineering",
+                  "role": "Developer"
+                }
+              }
+            ]
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const incompleteArrayOutput = {
+						output: {
+							users: [
+								{
+									id: 2,
+									name: 'Bob',
+									metadata: {
+										department: 'Marketing',
+										// Missing role field
+									},
+								},
+							],
+						},
+					};
+
+					await expect(
+						response.parse(
+							`Here's the incomplete array output:
+              \`\`\`json
+              ${JSON.stringify(incompleteArrayOutput)}
+              \`\`\`
+            `,
+							undefined,
+							(e) => e,
+						),
+					).rejects.toThrow('Required');
+				});
+			});
+
+			describe('manual schema mode', () => {
+				it('should work with manually defined schema in version 1.3', async () => {
+					const inputSchema = `{
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string" },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "number" },
+                        "value": { "type": "string" }
+                      },
+                      "required": ["id", "value"]
+                    }
+                  }
+                },
+                "required": ["status", "data"]
+              }
+            },
+            "required": ["result"]
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('manual');
+					thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(inputSchema);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const outputObject = {
+						output: {
+							result: {
+								status: 'success',
+								data: [
+									{ id: 1, value: 'first' },
+									{ id: 2, value: 'second' },
+								],
+							},
+						},
+					};
+
+					const parsersOutput = await response.parse(`Here's the result:
+            \`\`\`json
+            ${JSON.stringify(outputObject)}
+            \`\`\`
+          `);
+
+					expect(parsersOutput).toEqual(outputObject);
+				});
+			});
+
+			describe('complex nested structures', () => {
+				it('should handle deeply nested objects with required fields', async () => {
+					const jsonExample = `{
+            "company": {
+              "name": "TechCorp",
+              "departments": [
+                {
+                  "name": "Engineering",
+                  "teams": [
+                    {
+                      "name": "Backend",
+                      "members": [
+                        {
+                          "id": 1,
+                          "name": "Alice",
+                          "skills": ["Python", "Docker"]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const complexOutput = {
+						output: {
+							company: {
+								name: 'StartupCorp',
+								departments: [
+									{
+										name: 'Product',
+										teams: [
+											{
+												name: 'Frontend',
+												members: [
+													{
+														id: 2,
+														name: 'Bob',
+														skills: ['React', 'TypeScript'],
+													},
+													{
+														id: 3,
+														name: 'Carol',
+														skills: ['Vue', 'CSS'],
+													},
+												],
+											},
+										],
+									},
+								],
+							},
+						},
+					};
+
+					const parsersOutput = await response.parse(`Here's the complex company data:
+            \`\`\`json
+            ${JSON.stringify(complexOutput)}
+            \`\`\`
+          `);
+
+					expect(parsersOutput).toEqual(complexOutput);
+				});
+			});
+		});
 	});
 
 	describe('Auto-Fix', () => {

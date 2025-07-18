@@ -3,13 +3,13 @@ import * as workflowsApi from '@/api/workflows';
 import {
 	DUPLICATE_POSTFFIX,
 	FORM_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
@@ -27,11 +27,12 @@ import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import * as apiUtils from '@/utils/apiUtils';
+import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -179,11 +180,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('workflowTriggerNodes', () => {
 		it('should return only nodes that are triggers', () => {
-			vi.mocked(useNodeTypesStore).mockReturnValueOnce({
-				getNodeType: vi.fn(() => ({
-					group: ['trigger'],
-				})),
-			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			getNodeType.mockReturnValueOnce({ group: ['trigger'] });
 
 			workflowsStore.workflow.nodes = [
 				{ type: 'triggerNode', typeVersion: '1' },
@@ -480,6 +477,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', () => {
+			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
@@ -488,6 +486,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should not modify active workflows when workflow is already active', () => {
@@ -500,6 +499,15 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+		});
+
+		it('should not set current workflow as active when it is not the target', () => {
+			uiStore.stateIsDirty = true;
+			workflowsStore.workflow.id = '1';
+			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsStore.setWorkflowActive('2');
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
 
@@ -650,20 +658,14 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
-			expect(track).toHaveBeenCalledWith(
-				'Manual exec errored',
-				{
-					error_title: 'invalid syntax',
-					node_type: 'n8n-nodes-base.set',
-					node_type_version: 3.4,
-					node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-					node_graph_string:
-						'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
-				},
-				{
-					withPostHog: true,
-				},
-			);
+			expect(track).toHaveBeenCalledWith('Manual exec errored', {
+				error_title: 'invalid syntax',
+				node_type: 'n8n-nodes-base.set',
+				node_type_version: 3.4,
+				node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				node_graph_string:
+					'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+			});
 		});
 
 		it('sets workflow pin data', () => {
@@ -740,11 +742,6 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 		it('should replace existing placeholder task data in new log view', () => {
-			settingsStore.settings = {
-				logsView: {
-					enabled: true,
-				},
-			} as FrontendSettings;
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -1268,6 +1265,31 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			]);
+		});
+	});
+
+	describe('selectedTriggerNode', () => {
+		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
+		const n1 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n1' });
+		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
+
+		beforeEach(() => {
+			workflowsStore.setNodes([n0, n1]);
+			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
+		});
+
+		it('should select newly added trigger node automatically', async () => {
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			workflowsStore.addNode(n2);
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
+		});
+
+		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			workflowsStore.removeNode(n0);
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
+			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
+			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
 });

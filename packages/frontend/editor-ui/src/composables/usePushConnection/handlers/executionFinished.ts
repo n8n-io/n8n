@@ -26,6 +26,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -42,6 +43,8 @@ export async function executionFinished(
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
+	workflowsStore.lastAddedExecutingNode = null;
+
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
 		return;
@@ -56,13 +59,9 @@ export async function executionFinished(
 		const easyAiWorkflowJson = getEasyAiWorkflowJson();
 		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 		if (isEasyAIWorkflow) {
-			telemetry.track(
-				'User executed test AI workflow',
-				{
-					status: data.status,
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('User executed test AI workflow', {
+				status: data.status,
+			});
 		}
 	}
 
@@ -84,7 +83,7 @@ export async function executionFinished(
 		};
 	} else {
 		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId, options);
+			handleExecutionFinishedSuccessfully(data.workflowId);
 			successToastAlreadyShown = true;
 		}
 
@@ -101,9 +100,9 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown, options);
+		handleExecutionFinishedWithOther(successToastAlreadyShown);
 	}
 
 	setRunExecutionData(execution, runExecutionData);
@@ -234,7 +233,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 }) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowSaving = useWorkflowSaving(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	const workflowSettings = workflowsStore.workflowSettings;
@@ -247,7 +247,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowHelpers.saveAsNewWorkflow();
+				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});
@@ -263,13 +263,12 @@ export function handleExecutionFinishedWithWaitTill(options: {
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	options: { router: ReturnType<typeof useRouter> },
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
@@ -310,9 +309,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				}
 			}
 
-			telemetry.track('Instance FE emitted paired item error', eventData, {
-				withPostHog: true,
-			});
+			telemetry.track('Instance FE emitted paired item error', eventData);
 		});
 	}
 
@@ -339,12 +336,9 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(
-	workflowId: string,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedSuccessfully(workflowId: string) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 	const i18n = useI18n();
 
@@ -359,14 +353,11 @@ export function handleExecutionFinishedSuccessfully(
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(
-	successToastAlreadyShown: boolean,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 

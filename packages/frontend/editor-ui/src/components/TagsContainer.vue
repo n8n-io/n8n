@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { ComponentInstance } from 'vue';
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';

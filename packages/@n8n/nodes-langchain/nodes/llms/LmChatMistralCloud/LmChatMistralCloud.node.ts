@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import {
@@ -18,7 +16,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mistral Cloud Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatMistralCloud',
 		icon: 'file:mistral.svg',
 		group: ['transform'],
@@ -41,9 +39,9 @@ export class LmChatMistralCloud implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -190,7 +188,7 @@ export class LmChatMistralCloud implements INodeType {
 
 		const model = new ChatMistralAI({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
