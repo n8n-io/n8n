@@ -32,9 +32,14 @@ const workflowContextPrompt = `
 {workflow_json}
 </current_workflow_json>
 
-<current_execution_data_schema>
-{execution_data_schema}
-</current_execution_data_schema>
+<current_simplified_execution_data>
+{execution_data}
+</current_simplified_execution_data>
+
+<current_execution_nodes_schemas>
+{execution_schema}
+</current_execution_nodes_schemas>
+
 
 <selected_node>
 Name: {node_name}
@@ -57,8 +62,10 @@ export const createParameterUpdaterChain = (
 	options: ParameterUpdaterOptions,
 	logger?: Logger,
 ) => {
-	if (!llm.bindTools) {
-		throw new LLMServiceError("LLM doesn't support binding tools", { llmModel: llm._llmType() });
+	if (typeof llm.withStructuredOutput !== 'function') {
+		throw new LLMServiceError("LLM doesn't support withStructuredOutput", {
+			llmModel: llm._llmType(),
+		});
 	}
 
 	// Build dynamic system prompt based on context

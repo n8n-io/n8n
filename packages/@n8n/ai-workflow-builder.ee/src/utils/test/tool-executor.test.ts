@@ -3,7 +3,6 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { ToolInputParsingException } from '@langchain/core/tools';
 import type { Command as CommandType } from '@langchain/langgraph';
-import type { IRunExecutionData } from 'n8n-workflow';
 
 import { createWorkflow, createNode } from '../../../test/test-utils';
 import type { ToolExecutorOptions } from '../../types/config';
@@ -48,11 +47,7 @@ describe('tool-executor', () => {
 			workflowJSON: createWorkflow([]),
 			workflowOperations: null,
 			messages,
-			prompt: '',
-			isWorkflowPrompt: true,
-			executionData: {
-				runData: {},
-			} as IRunExecutionData['resultData'],
+			workflowContext: {},
 		});
 
 		// Helper to create mock tool
@@ -336,7 +331,7 @@ describe('tool-executor', () => {
 				);
 			});
 
-			it('should throw when tool is not found in toolMap', async () => {
+			it('should return error message when tool is not found in toolMap', async () => {
 				const aiMessage = new AIMessage('');
 				aiMessage.tool_calls = [
 					{
@@ -352,9 +347,16 @@ describe('tool-executor', () => {
 
 				const options: ToolExecutorOptions = { state, toolMap };
 
-				await expect(executeToolsInParallel(options)).rejects.toThrow(
-					'Tool non_existent_tool not found',
+				const result = await executeToolsInParallel(options);
+
+				expect(result.messages).toHaveLength(1);
+				const message = result.messages![0] as ToolMessage;
+				expect(message).toBeInstanceOf(ToolMessage);
+				expect(message.content).toBe(
+					'Tool non_existent_tool failed: Tool non_existent_tool not found',
 				);
+				expect(message.tool_call_id).toBe('call-1');
+				expect(message.additional_kwargs.error).toBe(true);
 			});
 
 			it('should wrap schema validation errors as ValidationError', async () => {

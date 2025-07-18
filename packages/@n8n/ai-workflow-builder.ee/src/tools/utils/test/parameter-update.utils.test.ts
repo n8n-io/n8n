@@ -1,10 +1,9 @@
 /* eslint-disable id-denylist */
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import {
 	extractNodeParameters,
 	mergeParameters,
-	validateParameters,
 	updateNodeWithParameters,
 	formatChangesForPrompt,
 	fixExpressionPrefixes,
@@ -23,78 +22,6 @@ describe('parameter-update.utils', () => {
 			method: 'GET',
 			authentication: 'none',
 		},
-	};
-
-	// Mock node type description
-	const mockNodeType: INodeTypeDescription = {
-		displayName: 'HTTP Request',
-		name: 'n8n-nodes-base.httpRequest',
-		group: ['input'],
-		version: 1,
-		description: 'Makes HTTP requests',
-		inputs: ['main'],
-		outputs: ['main'],
-		properties: [
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'The URL to make the request to',
-			},
-			{
-				displayName: 'Method',
-				name: 'method',
-				type: 'options',
-				options: [
-					{ name: 'GET', value: 'GET' },
-					{ name: 'POST', value: 'POST' },
-					{ name: 'PUT', value: 'PUT' },
-					{ name: 'DELETE', value: 'DELETE' },
-				],
-				default: 'GET',
-				required: false,
-			},
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{ name: 'None', value: 'none' },
-					{ name: 'Basic Auth', value: 'basicAuth' },
-					{ name: 'Header Auth', value: 'headerAuth' },
-				],
-				default: 'none',
-			},
-			{
-				displayName: 'Headers',
-				name: 'headers',
-				type: 'fixedCollection',
-				default: {},
-				options: [
-					{
-						name: 'parameter',
-						displayName: 'Header',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-			},
-		],
-		defaults: { name: 'HTTP Request' },
 	};
 
 	describe('extractNodeParameters', () => {
@@ -261,100 +188,6 @@ describe('parameter-update.utils', () => {
 						newLevel: 'added',
 					},
 				},
-			});
-		});
-	});
-
-	describe('validateParameters', () => {
-		it('should validate required parameters are present', () => {
-			const params = { url: 'https://example.com' };
-			const result = validateParameters(params, mockNodeType);
-
-			expect(result).toEqual({
-				valid: true,
-				missingRequired: [],
-			});
-		});
-
-		it('should detect missing required parameters', () => {
-			const params = { method: 'POST' };
-			const result = validateParameters(params, mockNodeType);
-
-			expect(result).toEqual({
-				valid: false,
-				missingRequired: ['url'],
-			});
-		});
-
-		it('should handle parameters with default values', () => {
-			const nodeTypeWithDefaults: INodeTypeDescription = {
-				...mockNodeType,
-				properties: [
-					{
-						displayName: 'URL',
-						name: 'url',
-						type: 'string',
-						default: 'https://default.com',
-						required: true,
-					},
-				],
-			};
-
-			const params = {};
-			const result = validateParameters(params, nodeTypeWithDefaults);
-
-			expect(result).toEqual({
-				valid: true,
-				missingRequired: [],
-			});
-		});
-
-		it('should handle node types without properties', () => {
-			const nodeTypeNoProps: INodeTypeDescription = {
-				...mockNodeType,
-				// @ts-expect-error Testing ivalid parameters
-				properties: undefined,
-			};
-
-			const result = validateParameters({}, nodeTypeNoProps);
-			expect(result).toEqual({
-				valid: true,
-				missingRequired: [],
-			});
-		});
-
-		it('should handle multiple missing required parameters', () => {
-			const nodeTypeMultiRequired: INodeTypeDescription = {
-				...mockNodeType,
-				properties: [
-					{
-						displayName: 'Field 1',
-						default: '',
-						name: 'field1',
-						type: 'string',
-						required: true,
-					},
-					{
-						displayName: 'Field 2',
-						default: '',
-						name: 'field2',
-						type: 'string',
-						required: true,
-					},
-					{
-						displayName: 'Field 3',
-						default: '',
-						name: 'field3',
-						type: 'string',
-						required: false,
-					},
-				],
-			};
-
-			const result = validateParameters({ field3: 'value' }, nodeTypeMultiRequired);
-			expect(result).toEqual({
-				valid: false,
-				missingRequired: ['field1', 'field2'],
 			});
 		});
 	});

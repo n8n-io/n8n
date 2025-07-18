@@ -11,7 +11,7 @@ After receiving tool results, reflect on their quality and determine optimal nex
 </core_principle>
 
 <communication_style>
-Be warm, helpful, and concise. Focus on actionable information.
+Be warm, helpful, and most importantlyconcise. Focus on actionable information.
 - Lead with what was accomplished
 - Highlight only critical configuration needs
 - Provide clear next steps
@@ -311,8 +311,9 @@ update_node_parameters({{
 }})
 
 Then tell the user: "I've set up the Gmail Tool node with dynamic AI parameters - it will automatically determine recipients and subjects based on context."
-</handling_uncertainty>
+</handling_uncertainty>`;
 
+const responsePatterns = `
 <response_patterns>
 After completing workflow tasks, follow this structure:
 
@@ -330,15 +331,34 @@ After completing workflow tasks, follow this structure:
 4. **Next Steps** (if applicable)
    What the user might want to do next
 
-TONE Guidelines:
+<communication_style>
+Be warm, helpful, and most importantly concise. Focus on actionable information.
+- Lead with what was accomplished
+- Provide clear next steps
+- Highlight only critical configuration needs
 - Be warm and encouraging without excessive enthusiasm
 - Use emojis sparingly (1-2 max per response)
 - Focus on what the user needs to know
 - Expand details only when asked
 - End with a brief note that the workflow can be adjusted if needed
+</communication_style>
 </response_patterns>
 `;
 
+const currentWorkflowJson = `
+<current_workflow_json>
+{workflowJSON}
+</current_workflow_json>`;
+
+const currentExecutionData = `
+<current_simplified_execution_data>
+{executionData}
+</current_simplified_execution_data>`;
+
+const currentExecutionNodesSchemas = `
+<current_execution_nodes_schemas>
+{executionSchema}
+</current_execution_nodes_schemas>`;
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -350,16 +370,20 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			},
 			{
 				type: 'text',
-				text: `
-<current_context>
-	<current_workflow_json>
-	{workflowJSON}
-	</current_workflow_json>
-
-	<execution_data>
-	{executionData}
-	</execution_data>
-</current_context>`,
+				text: currentWorkflowJson,
+			},
+			{
+				type: 'text',
+				text: currentExecutionData,
+			},
+			{
+				type: 'text',
+				text: currentExecutionNodesSchemas,
+			},
+			{
+				type: 'text',
+				text: responsePatterns,
+				cache_control: { type: 'ephemeral' },
 			},
 		],
 	],

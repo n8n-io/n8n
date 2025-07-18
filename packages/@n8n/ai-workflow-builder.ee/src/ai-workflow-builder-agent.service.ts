@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { Client } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
-import type { IUser, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from './errors';
 import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
@@ -59,6 +59,7 @@ export class AiWorkflowBuilderService {
 					apiKey: '-',
 					headers: {
 						Authorization: authHeaders.apiKey,
+						'anthropic-beta': 'prompt-caching-2024-07-31',
 					},
 				});
 
@@ -80,9 +81,6 @@ export class AiWorkflowBuilderService {
 				apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 			});
 
-			// this.llmComplexTask = await gpt41({
-			// 	apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-			// });
 			this.llmComplexTask = await anthropicClaudeSonnet4({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 				headers: {
@@ -156,6 +154,7 @@ export class AiWorkflowBuilderService {
 
 		this.agent ??= new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
+			// We use Sonnet both for simple and complex tasks
 			llmSimpleTask: this.llmComplexTask,
 			llmComplexTask: this.llmComplexTask,
 			logger: this.logger,
@@ -168,25 +167,10 @@ export class AiWorkflowBuilderService {
 		return this.agent;
 	}
 
-	async *chat(
-		payload: {
-			question: string;
-			currentWorkflowJSON?: string;
-			workflowId?: string;
-			executionData?: IRunExecutionData['resultData'];
-		},
-		user?: IUser,
-	) {
+	async *chat(payload: ChatPayload, user?: IUser) {
 		const agent = await this.getAgent(user);
 
-		const chatPayload: ChatPayload = {
-			question: payload.question,
-			currentWorkflowJSON: payload.currentWorkflowJSON,
-			workflowId: payload.workflowId,
-			executionData: payload.executionData,
-		};
-
-		for await (const output of agent.chat(chatPayload, user?.id?.toString())) {
+		for await (const output of agent.chat(payload, user?.id?.toString())) {
 			yield output;
 		}
 	}

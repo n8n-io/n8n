@@ -5,7 +5,7 @@ import {
 } from 'n8n-workflow';
 
 import { createNodeType } from '../../../../test/test-utils';
-import { NodeSearchEngine, SCORE_WEIGHTS } from '../../engines/node-search-engine';
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../node-search-engine';
 
 describe('NodeSearchEngine', () => {
 	let searchEngine: NodeSearchEngine;

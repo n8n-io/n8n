@@ -1,4 +1,4 @@
-import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 
 /**
  * Extract current parameters from a node
@@ -55,33 +55,6 @@ function deepMerge(target: INodeParameters, source: INodeParameters): INodeParam
  */
 function isObject(item: unknown): item is Record<string, unknown> {
 	return item !== null && typeof item === 'object' && !Array.isArray(item);
-}
-
-/**
- * Validate that required parameters are present
- */
-export function validateParameters(
-	parameters: INodeParameters,
-	nodeType: INodeTypeDescription,
-): { valid: boolean; missingRequired: string[] } {
-	const missingRequired: string[] = [];
-
-	// Check required properties
-	if (nodeType.properties) {
-		for (const prop of nodeType.properties) {
-			if (prop.required && !(prop.name in parameters)) {
-				// Check if it has a default value
-				if (!prop.default) {
-					missingRequired.push(prop.name);
-				}
-			}
-		}
-	}
-
-	return {
-		valid: missingRequired.length === 0,
-		missingRequired,
-	};
 }
 
 /**
