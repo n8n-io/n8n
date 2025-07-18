@@ -1,4 +1,4 @@
-import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
+import type { TestCaseExecutionRecord } from '../../api/evaluation.ee';
 
 export function getTestCasesColumns(cases: TestCaseExecutionRecord[], key: 'inputs' | 'outputs') {
 	const inputColumnNames = cases.reduce(
@@ -14,7 +14,7 @@ export function getTestCasesColumns(cases: TestCaseExecutionRecord[], key: 'inpu
 		return set;
 	}, inputColumnNames);
 
-	return [...allColumnNames.keys()].map((column) => ({
+	return Array.from(allColumnNames.keys()).map((column) => ({
 		prop: `${key}.${column}`,
 		label: column,
 		sortable: true,

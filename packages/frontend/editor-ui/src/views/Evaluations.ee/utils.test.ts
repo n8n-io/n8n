@@ -1,15 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { getTestCasesColumns } from './utils';
-import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
+import type { TestCaseExecutionRecord } from '../../api/evaluation.ee';
+import { mock } from 'vitest-mock-extended';
 
 describe('utils', () => {
 	describe('getTestCasesColumns', () => {
 		const mockTestCases: TestCaseExecutionRecord[] = [
-			{
+			mock<TestCaseExecutionRecord>({
 				id: 'test-case-1',
-				runId: 'run-1',
-				testDefinitionId: 'test-def-1',
+				testRunId: 'test-run-1',
+				executionId: 'execution-1',
 				status: 'completed',
+				createdAt: '2023-10-01T10:00:00Z',
+				updatedAt: '2023-10-01T10:00:00Z',
 				runAt: '2023-10-01T10:00:00Z',
 				inputs: {
 					query: 'test query',
@@ -23,12 +26,14 @@ describe('utils', () => {
 				metrics: {
 					accuracy: 0.95,
 				},
-			},
-			{
+			}),
+			mock<TestCaseExecutionRecord>({
 				id: 'test-case-2',
-				runId: 'run-1',
-				testDefinitionId: 'test-def-2',
+				testRunId: 'test-run-1',
+				executionId: 'execution-2',
 				status: 'completed',
+				createdAt: '2023-10-01T10:01:00Z',
+				updatedAt: '2023-10-01T10:01:00Z',
 				runAt: '2023-10-01T10:01:00Z',
 				inputs: {
 					query: 'another query',
@@ -42,12 +47,14 @@ describe('utils', () => {
 				metrics: {
 					accuracy: 0.88,
 				},
-			},
-			{
+			}),
+			mock<TestCaseExecutionRecord>({
 				id: 'test-case-3',
-				runId: 'run-1',
-				testDefinitionId: 'test-def-3',
+				testRunId: 'test-run-1',
+				executionId: 'execution-3',
 				status: 'error',
+				createdAt: '2023-10-01T10:02:00Z',
+				updatedAt: '2023-10-01T10:02:00Z',
 				runAt: '2023-10-01T10:02:00Z',
 				inputs: {
 					query: 'error query',
@@ -59,7 +66,7 @@ describe('utils', () => {
 				metrics: {
 					accuracy: 0.0,
 				},
-			},
+			}),
 		];
 
 		it('should extract input columns from test cases', () => {
@@ -113,11 +120,13 @@ describe('utils', () => {
 
 		it('should handle test cases with no inputs', () => {
 			const testCasesWithoutInputs: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {},
 					outputs: {
@@ -126,7 +135,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
+				}),
 			];
 
 			const columns = getTestCasesColumns(testCasesWithoutInputs, 'inputs');
@@ -136,11 +145,13 @@ describe('utils', () => {
 
 		it('should handle test cases with no outputs', () => {
 			const testCasesWithoutOutputs: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						query: 'test',
@@ -149,7 +160,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
+				}),
 			];
 
 			const columns = getTestCasesColumns(testCasesWithoutOutputs, 'outputs');
@@ -161,9 +172,11 @@ describe('utils', () => {
 			const testCasesWithUndefinedInputs: TestCaseExecutionRecord[] = [
 				{
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					outputs: {
 						result: 'success',
@@ -171,7 +184,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				} as TestCaseExecutionRecord,
+				},
 			];
 
 			const columns = getTestCasesColumns(testCasesWithUndefinedInputs, 'inputs');
@@ -183,9 +196,11 @@ describe('utils', () => {
 			const testCasesWithUndefinedOutputs: TestCaseExecutionRecord[] = [
 				{
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						query: 'test',
@@ -193,7 +208,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				} as TestCaseExecutionRecord,
+				},
 			];
 
 			const columns = getTestCasesColumns(testCasesWithUndefinedOutputs, 'outputs');
@@ -203,11 +218,13 @@ describe('utils', () => {
 
 		it('should handle mixed test cases with some having empty inputs/outputs', () => {
 			const mixedTestCases: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						query: 'test query',
@@ -219,12 +236,14 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
-				{
+				}),
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-2',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-2',
+					testRunId: 'test-run-1',
+					executionId: 'execution-2',
 					status: 'completed',
+					createdAt: '2023-10-01T10:01:00Z',
+					updatedAt: '2023-10-01T10:01:00Z',
 					runAt: '2023-10-01T10:01:00Z',
 					inputs: {},
 					outputs: {
@@ -234,12 +253,14 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.88,
 					},
-				},
-				{
+				}),
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-3',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-3',
+					testRunId: 'test-run-1',
+					executionId: 'execution-3',
 					status: 'completed',
+					createdAt: '2023-10-01T10:02:00Z',
+					updatedAt: '2023-10-01T10:02:00Z',
 					runAt: '2023-10-01T10:02:00Z',
 					inputs: {
 						filter: 'active',
@@ -248,7 +269,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.92,
 					},
-				},
+				}),
 			];
 
 			const inputColumns = getTestCasesColumns(mixedTestCases, 'inputs');
@@ -269,11 +290,13 @@ describe('utils', () => {
 
 		it('should remove duplicate columns from multiple test cases', () => {
 			const testCasesWithDuplicates: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						query: 'test query 1',
@@ -285,12 +308,14 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
-				{
+				}),
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-2',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-2',
+					testRunId: 'test-run-1',
+					executionId: 'execution-2',
 					status: 'completed',
+					createdAt: '2023-10-01T10:01:00Z',
+					updatedAt: '2023-10-01T10:01:00Z',
 					runAt: '2023-10-01T10:01:00Z',
 					inputs: {
 						query: 'test query 2',
@@ -302,7 +327,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.88,
 					},
-				},
+				}),
 			];
 
 			const inputColumns = getTestCasesColumns(testCasesWithDuplicates, 'inputs');
@@ -314,11 +339,13 @@ describe('utils', () => {
 
 		it('should handle complex nested object keys', () => {
 			const testCasesWithComplexKeys: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						'user.name': 'John Doe',
@@ -333,7 +360,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
+				}),
 			];
 
 			const inputColumns = getTestCasesColumns(testCasesWithComplexKeys, 'inputs');
@@ -362,11 +389,13 @@ describe('utils', () => {
 
 		it('should handle single test case', () => {
 			const singleTestCase: TestCaseExecutionRecord[] = [
-				{
+				mock<TestCaseExecutionRecord>({
 					id: 'test-case-1',
-					runId: 'run-1',
-					testDefinitionId: 'test-def-1',
+					testRunId: 'test-run-1',
+					executionId: 'execution-1',
 					status: 'completed',
+					createdAt: '2023-10-01T10:00:00Z',
+					updatedAt: '2023-10-01T10:00:00Z',
 					runAt: '2023-10-01T10:00:00Z',
 					inputs: {
 						query: 'single test',
@@ -377,7 +406,7 @@ describe('utils', () => {
 					metrics: {
 						accuracy: 0.95,
 					},
-				},
+				}),
 			];
 
 			const inputColumns = getTestCasesColumns(singleTestCase, 'inputs');

@@ -3,7 +3,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import TestRunDetailView from './TestRunDetailView.vue';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import type { IWorkflowDb } from '@/Interface';
@@ -108,7 +107,6 @@ const mockWorkflow = mock<IWorkflowDb>({
 
 describe('TestRunDetailView', () => {
 	let evaluationStore: ReturnType<typeof useEvaluationStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	const renderComponent = createComponentRenderer(TestRunDetailView, {
 		pinia: createTestingPinia({
@@ -130,7 +128,6 @@ describe('TestRunDetailView', () => {
 
 	beforeEach(() => {
 		evaluationStore = useEvaluationStore();
-		workflowsStore = useWorkflowsStore();
 
 		// Mock store methods
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(mockTestRun);

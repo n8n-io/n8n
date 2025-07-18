@@ -1914,7 +1914,7 @@ describe('TestRunnerService', () => {
 				},
 			});
 
-			// // Should mark test run as completed
+			// Should mark test run as completed
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith(
 				mockTestRun.id,
 				aggregatedMetrics,
