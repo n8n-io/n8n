@@ -159,6 +159,7 @@ function onAskAssistantButtonClick() {
 	</div>
 	<Suspense>
 		<LazyNodeCreator
+			ref="nodeCreator"
 			:active="createNodeActive"
 			@node-type-selected="nodeTypeSelected"
 			@close-node-creator="closeNodeCreator"
