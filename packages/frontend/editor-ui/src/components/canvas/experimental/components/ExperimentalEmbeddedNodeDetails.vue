@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import InputPanel from '@/components/InputPanel.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -8,14 +7,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement, watchOnce } from '@vueuse/core';
-import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
+import { watchOnce } from '@vueuse/core';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
-import { ElPopover } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -42,23 +41,15 @@ const isMoving = ref(false);
 
 const moveStartListener = vf.onMoveStart(() => {
 	isMoving.value = true;
-	shouldShowInputPanel.value = false;
 });
 
 const moveEndListener = vf.onMoveEnd(() => {
 	isMoving.value = false;
-	shouldShowInputPanel.value = getShouldShowInputPanel();
-});
-
-const viewportChangeListener = vf.onViewportChange(() => {
-	isMoving.value = false;
-	shouldShowInputPanel.value = false;
 });
 
 onBeforeUnmount(() => {
 	moveStartListener.off();
 	moveEndListener.off();
-	viewportChangeListener.off();
 });
 
 const isVisible = computed(() =>
@@ -73,36 +64,14 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
-const shouldShowInputPanel = ref(false);
 
 const containerRef = useTemplateRef('container');
-const inputPanelRef = useTemplateRef('inputPanel');
-const activeElement = useActiveElement();
 
-const subTitle = computed(() => {
-	if (node.value?.disabled) {
-		return `(${i18n.baseText('node.disabled')})`;
-	}
-
-	const displayName = nodeType.value?.displayName ?? '';
-
-	if (isExpanded.value) {
-		return displayName;
-	}
-
-	const selectedOperation = node.value?.parameters.operation;
-	const selectedOperationDisplayName =
-		selectedOperation &&
-		nodeType.value?.properties
-			.find((p) => p.name === 'operation')
-			?.options?.find((o) => 'value' in o && o.value === selectedOperation)?.name;
-
-	if (!selectedOperationDisplayName) {
-		return displayName;
-	}
-
-	return `${displayName}: ${selectedOperationDisplayName}`;
-});
+const subTitle = computed(() =>
+	node.value && nodeType.value
+		? getNodeSubTitleText(node.value, nodeType.value, !isExpanded.value, i18n)
+		: undefined,
+);
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) {
 		return undefined;
@@ -160,34 +129,10 @@ function handleOpenNdv() {
 	}
 }
 
-function getShouldShowInputPanel() {
-	const active = activeElement.value;
-
-	if (!active || !containerRef.value || !containerRef.value.contains(active)) {
-		return false;
-	}
-
-	// TODO: find a way to implement this without depending on test ID
-	return (
-		!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-		!!inputPanelRef.value?.$el.contains(active)
-	);
-}
-
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
-});
-
-watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
-	if (active && containerRef.value?.contains(active)) {
-		shouldShowInputPanel.value = getShouldShowInputPanel();
-	}
-
-	if (selected.every((sel) => sel.id !== node.value?.id)) {
-		shouldShowInputPanel.value = false;
-	}
 });
 </script>
 
@@ -204,103 +149,77 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
 		}"
 	>
-		<template v-if="node && isOnceVisible">
-			<ElPopover
-				v-if="isExpanded"
-				:visible="shouldShowInputPanel"
-				placement="left-start"
-				:show-arrow="false"
-				:popper-class="$style.inputPanelContainer"
-				:width="360"
-				:offset="8"
+		<template v-if="!node || !isOnceVisible" />
+		<ExperimentalEmbeddedNdvMapper
+			v-else-if="isExpanded"
+			:workflow="workflow"
+			:node="node"
+			:input-node-name="expressionResolveCtx?.inputNode?.name"
+			:container="containerRef"
+		>
+			<ExperimentalCanvasNodeSettings
+				tabindex="-1"
+				:node-id="nodeId"
+				:class="$style.settingsView"
+				:no-wheel="
+					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
+				"
+				:is-read-only="isReadOnly"
+				:sub-title="subTitle"
 			>
-				<template #reference>
-					<ExperimentalCanvasNodeSettings
-						tabindex="-1"
-						:node-id="nodeId"
-						:class="$style.settingsView"
-						:no-wheel="
-							!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
-						"
-						:is-read-only="isReadOnly"
-						:sub-title="subTitle"
-					>
-						<template #actions>
-							<div :class="$style.actions">
-								<div :class="$style.icon">
-									<CanvasNodeStatusIcons size="small" spinner-scrim />
-								</div>
-								<N8nIconButton
-									icon="maximize-2"
-									type="secondary"
-									text
-									size="mini"
-									icon-size="small"
-									aria-label="Open..."
-									@click="handleOpenNdv"
-								/>
-								<N8nIconButton
-									icon="chevron-down"
-									type="secondary"
-									text
-									size="mini"
-									icon-size="medium"
-									aria-label="Toggle expand"
-									@click="handleToggleExpand"
-								/>
-							</div>
-						</template>
-					</ExperimentalCanvasNodeSettings>
-				</template>
-				<InputPanel
-					ref="inputPanel"
-					:tabindex="-1"
-					:class="$style.inputPanel"
-					:workflow="workflow"
-					:run-index="0"
-					compact
-					push-ref=""
-					display-mode="schema"
-					disable-display-mode-selection
-					:active-node-name="node.name"
-					:current-node-name="expressionResolveCtx?.inputNode?.name"
-					:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-					:focused-mappable-input="ndvStore.focusedMappableInput"
-				>
-					<template #header>
-						<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
-							Input
-						</N8nText>
-					</template>
-				</InputPanel>
-			</ElPopover>
-			<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
-				<NodeIcon :node-type="nodeType" :size="18" />
-				<div :class="$style.collapsedNodeName">
-					<N8nText bold>
-						{{ node.name }}
-					</N8nText>
-					<N8nText bold size="small" color="text-light">
-						{{ subTitle }}
-					</N8nText>
-				</div>
-				<div :class="$style.actions">
-					<div :class="$style.icon">
-						<CanvasNodeStatusIcons size="small" spinner-scrim />
+				<template #actions>
+					<div :class="$style.actions">
+						<div :class="$style.icon">
+							<CanvasNodeStatusIcons size="small" spinner-scrim />
+						</div>
+						<N8nIconButton
+							icon="maximize-2"
+							type="secondary"
+							text
+							size="mini"
+							icon-size="small"
+							aria-label="Open..."
+							@click="handleOpenNdv"
+						/>
+						<N8nIconButton
+							icon="chevron-down"
+							type="secondary"
+							text
+							size="mini"
+							icon-size="medium"
+							aria-label="Toggle expand"
+							@click="handleToggleExpand"
+						/>
 					</div>
-					<N8nIconButton
-						icon="maximize-2"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="small"
-						aria-label="Open..."
-						@click.stop="handleOpenNdv"
-					/>
-					<N8nIcon icon="chevron-up" size="medium" :class="$style.icon" />
-				</div>
+				</template>
+			</ExperimentalCanvasNodeSettings>
+		</ExperimentalEmbeddedNdvMapper>
+		<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
+			<NodeIcon :node-type="nodeType" :size="18" />
+			<div :class="$style.collapsedNodeName">
+				<N8nText bold>
+					{{ node.name }}
+				</N8nText>
+				<N8nText bold size="small" color="text-light">
+					{{ subTitle }}
+				</N8nText>
 			</div>
-		</template>
+			<div :class="$style.actions">
+				<div :class="$style.icon">
+					<CanvasNodeStatusIcons size="small" spinner-scrim />
+				</div>
+				<N8nIconButton
+					icon="maximize-2"
+					type="secondary"
+					text
+					size="mini"
+					icon-size="small"
+					aria-label="Open..."
+					@click.stop="handleOpenNdv"
+				/>
+				<N8nIcon icon="chevron-up" size="medium" :class="$style.icon" />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -399,27 +318,5 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 
 .icon {
 	margin-inline: var(--spacing-2xs);
-}
-
-.inputPanelContainer {
-	background-color: transparent !important;
-	padding: 0 !important;
-	border: none !important;
-}
-
-.inputPanel {
-	border: var(--border-base);
-	border-width: 1px;
-	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	zoom: var(--zoom);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
-	padding: var(--spacing-2xs);
-	height: 100%;
-}
-
-.inputPanelTitle {
-	text-transform: uppercase;
-	letter-spacing: 3px;
 }
 </style>

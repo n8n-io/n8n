@@ -12,6 +12,7 @@ type Props = {
 };
 
 withDefaults(defineProps<Props>(), {
+	modelValue: '',
 	nodeType: undefined,
 	readOnly: false,
 });
@@ -50,18 +51,15 @@ const { width } = useElementSize(wrapperRef);
 .container {
 	font-weight: var(--font-weight-medium);
 	display: flex;
-	align-items: center;
 	font-size: var(--font-size-m);
+	margin-right: var(--spacing-s);
 	color: var(--color-text-dark);
 	width: 100%;
 }
 
 .textWrapper {
-	flex-grow: 1;
-	flex-shrink: 1;
 	display: flex;
-	flex-direction: row;
-	gap: var(--spacing-4xs);
+	flex-grow: 1;
 }
 
 .iconWrapper {

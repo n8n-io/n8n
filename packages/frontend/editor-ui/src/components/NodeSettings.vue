@@ -847,7 +847,7 @@ function handleWheelEvent(event: WheelEvent) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNDVV2" class="header">
+		<div v-else-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -1065,6 +1065,10 @@ function handleWheelEvent(event: WheelEvent) {
 </template>
 
 <style lang="scss" module>
+.header {
+	background-color: var(--color-background-base);
+}
+
 .warningIcon {
 	color: var(--color-text-lighter);
 	font-size: var(--font-size-2xl);
@@ -1093,10 +1097,6 @@ function handleWheelEvent(event: WheelEvent) {
 </style>
 
 <style lang="scss" scoped>
-.header {
-	background-color: var(--color-background-base);
-}
-
 .node-settings {
 	display: flex;
 	flex-direction: column;
