@@ -50,6 +50,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
 			getConnectedToolsMock.mockResolvedValue([]);
 			apiRequestMock.mockResolvedValue({
 				content: [{ type: 'text', text: 'Hello! How can I help you today?' }],
@@ -126,6 +127,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
 			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('abcdefgh'),
@@ -210,6 +212,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
 			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			executeFunctionsMock.helpers.httpRequest.mockResolvedValue({
 				headers: {
