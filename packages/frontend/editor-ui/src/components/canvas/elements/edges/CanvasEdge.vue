@@ -144,6 +144,8 @@ function onEdgeLabelMouseLeave() {
 		:data-target-node-name="data.target?.node"
 		v-bind="$attrs"
 	>
+		<slot name="highlight" v-bind="{ segments }" />
+
 		<BaseEdge
 			v-for="(segment, index) in segments"
 			:id="`${id}-${index}`"
