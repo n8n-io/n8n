@@ -54,6 +54,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
+const styles = useStyles();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -311,7 +312,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px`, zIndex: useStyles().APP_Z_INDEXES.NDV }"
+			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
