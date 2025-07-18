@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ElDialog } from 'element-plus';
-import { computed, onMounted, onBeforeUnmount } from 'vue';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { useUIStore } from '@/stores/ui.store';
 import type { ModalKey } from '@/Interface';
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import { useStyles } from '@/composables/useStyles';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { ElDialog } from 'element-plus';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -160,7 +160,7 @@ function getCustomClass() {
 		@opened="onOpened"
 	>
 		<template v-if="$slots.header" #header>
-			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
 		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
