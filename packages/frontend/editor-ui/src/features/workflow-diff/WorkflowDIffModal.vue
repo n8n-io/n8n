@@ -718,49 +718,37 @@ onNodeClick((nodeId) => {
 	}
 }
 
-.deleted {
-	--canvas-node--background: transparent;
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(74, 44, 46, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+.deleted,
+.added,
+.modified {
 	position: relative;
-	&::after {
-		content: '';
-		position: absolute;
-		background-image: linear-gradient(
-			45deg,
-			rgba(234, 31, 48, 1) 10%,
-			rgba(234, 31, 48, 0.15) 10%,
-			rgba(234, 31, 48, 0.15) 50%,
-			rgba(234, 31, 48, 1) 50%,
-			rgba(234, 31, 48, 1) 60%,
-			rgba(234, 31, 48, 0.15) 60%,
-			rgba(234, 31, 48, 0.15) 100%
-		);
-		background-size: 7.07px 7.07px;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		z-index: -1;
-		border-radius: 8px;
-	}
 	&::before {
-		content: 'D';
 		position: absolute;
 		bottom: 0px;
 		left: 0px;
-		background-color: var(--color-node-icon-red);
 		border-bottom-left-radius: 6px;
 		border-top-right-radius: 2px;
 		color: var(--color-text-xlight);
-		text-align: center;
 		font-family: var(--font-family-monospace);
-		font-size: 6px;
-		font-style: normal;
+		font-size: 8px;
 		font-weight: 700;
-		line-height: 120%;
-		padding: 2px 2px 2px 4px;
 		z-index: 1;
+		width: 16px;
+		height: 16px;
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+	}
+}
+
+.deleted {
+	--canvas-node--background: rgba(234, 31, 48, 0.2);
+	--canvas-node--border-color: var(--color-node-icon-red);
+	--color-sticky-background: rgba(234, 31, 48, 0.2);
+	--color-sticky-border: var(--color-node-icon-red);
+	&::before {
+		content: 'D';
+		background-color: var(--color-node-icon-red);
 	}
 	:global(.canvas-node-handle-main-output > div) {
 		background-color: var(--color-node-icon-red);
@@ -771,39 +759,13 @@ onNodeClick((nodeId) => {
 }
 .added {
 	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: transparent;
+	--canvas-node--background: rgba(14, 171, 84, 0.2);
 	--color-sticky-background: rgba(14, 171, 84, 0.2);
 	--color-sticky-border: var(--color-node-icon-green);
 	position: relative;
-	&::after {
-		content: '';
-		position: absolute;
-		background-color: var(--color-node-icon-green);
-		background-size: 7.07px 7.07px;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		z-index: -1;
-		border-radius: 8px;
-		opacity: 0.2;
-	}
 	&::before {
 		content: 'A';
-		position: absolute;
-		bottom: 0px;
-		left: 0px;
 		background-color: var(--color-node-icon-green);
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
-		color: var(--color-text-xlight);
-		text-align: center;
-		font-family: var(--font-family-monospace);
-		font-size: 6px;
-		font-style: normal;
-		font-weight: 700;
-		line-height: 120%;
-		padding: 2px 2px 2px 4px;
-		z-index: 1;
 	}
 	:global(.canvas-node-handle-main-output > div) {
 		background-color: var(--color-node-icon-green);
@@ -821,24 +783,7 @@ onNodeClick((nodeId) => {
 	pointer-events: none;
 	cursor: default;
 	--color-sticky-background: rgba(126, 129, 134, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
-
-	--color-node-icon-blue: var(--color-foreground-xdark);
-	--color-node-icon-gray: var(--color-foreground-xdark);
-	--color-node-icon-black: var(--color-foreground-xdark);
-	--color-node-icon-blue: var(--color-foreground-xdark);
-	--color-node-icon-light-blue: var(--color-foreground-xdark);
-	--color-node-icon-dark-blue: var(--color-foreground-xdark);
-	--color-node-icon-orange: var(--color-foreground-xdark);
-	--color-node-icon-orange-red: var(--color-foreground-xdark);
-	--color-node-icon-pink-red: var(--color-foreground-xdark);
-	--color-node-icon-red: var(--color-foreground-xdark);
-	--color-node-icon-light-green: var(--color-foreground-xdark);
-	--color-node-icon-green: var(--color-foreground-xdark);
-	--color-node-icon-dark-green: var(--color-foreground-xdark);
-	--color-node-icon-azure: var(--color-foreground-xdark);
-	--color-node-icon-purple: var(--color-foreground-xdark);
-	--color-node-icon-crimson: var(--color-foreground-xdark);
+	--canvas-node-icon-color: var(--color-foreground-xdark);
 	--color-sticky-border: var(--color-foreground-xdark);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
@@ -846,39 +791,13 @@ onNodeClick((nodeId) => {
 }
 .modified {
 	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: transparent;
+	--canvas-node--background: rgba(255, 150, 90, 0.2);
 	--color-sticky-background: rgba(255, 150, 90, 0.2);
 	--color-sticky-border: var(--color-node-icon-orange);
 	position: relative;
 	&::before {
 		content: 'M';
-		position: absolute;
-		bottom: 0px;
-		left: 0px;
 		background-color: var(--color-node-icon-orange);
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
-		color: var(--color-text-xlight);
-		text-align: center;
-		font-family: var(--font-family-monospace);
-		font-size: 6px;
-		font-style: normal;
-		font-weight: 700;
-		line-height: 120%;
-		padding: 2px 2px 2px 4px;
-		z-index: 1;
-	}
-	&::after {
-		content: '';
-		position: absolute;
-		background-color: var(--color-node-icon-orange);
-		background-size: 7.07px 7.07px;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		z-index: -1;
-		border-radius: 8px;
-		opacity: 0.2;
 	}
 	:global(.canvas-node-handle-main-output .source) {
 		--color-foreground-xdark: var(--color-node-icon-orange);
