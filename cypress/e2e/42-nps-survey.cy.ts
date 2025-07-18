@@ -4,6 +4,7 @@ import {
 	getNpsSurvey,
 	getNpsSurveyClose,
 	getNpsSurveyEmail,
+	getNpsSurveyFeedback,
 	getNpsSurveyRatings,
 } from '../pages/npsSurvey';
 import { WorkflowPage } from '../pages/workflow';
@@ -53,6 +54,9 @@ describe('NpsSurvey', () => {
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyRatings().find('button').should('have.length', 11);
 		getNpsSurveyRatings().find('button').first().click();
+
+		getNpsSurveyFeedback().find('textarea').type('n8n is the best');
+		getNpsSurveyFeedback().find('button').click();
 
 		getNpsSurveyEmail().find('input').type('test@n8n.io');
 		getNpsSurveyEmail().find('button').click();
