@@ -1,3 +1,7 @@
+## [1.99.2](https://github.com/n8n-io/n8n/compare/n8n@1.99.1...n8n@1.99.2) (2025-07-18)
+
+
+
 ## [1.99.1](https://github.com/n8n-io/n8n/compare/n8n@1.99.0...n8n@1.99.1) (2025-06-19)
 
 
