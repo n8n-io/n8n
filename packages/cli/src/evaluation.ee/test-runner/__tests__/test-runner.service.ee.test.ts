@@ -1721,6 +1721,26 @@ describe('TestRunnerService', () => {
 						},
 					},
 				},
+				{
+					id: 'inputs-node',
+					name: 'Set Inputs',
+					type: EVALUATION_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {
+						operation: 'setInputs',
+					},
+				},
+				{
+					id: 'outputs-node',
+					name: 'Set Outputs',
+					type: EVALUATION_NODE_TYPE,
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {
+						operation: 'setOutputs',
+					},
+				},
 			],
 			connections: {},
 		});
@@ -1769,6 +1789,34 @@ describe('TestRunnerService', () => {
 									],
 								},
 								error: undefined,
+							},
+						],
+						'Set Inputs': [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: { inputA: 'foo', inputB: 123 },
+												evaluationData: { inputA: 'foo', inputB: 123 },
+											},
+										],
+									],
+								},
+							},
+						],
+						'Set Outputs': [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: { outputA: 'bar', outputB: 456 },
+												evaluationData: { outputA: 'bar', outputB: 456 },
+											},
+										],
+									],
+								},
 							},
 						],
 					},
@@ -1861,9 +1909,9 @@ describe('TestRunnerService', () => {
 				completedAt: expect.any(Date),
 				runAt: expect.any(Date),
 				executionId: fullWorkflowExecutionId,
-				inputs: {},
 				metrics: aggregatedMetrics,
-				outputs: {},
+				inputs: { inputA: 'foo', inputB: 123 },
+				outputs: { outputA: 'bar', outputB: 456 },
 				status: 'success',
 				testRun: {
 					id: mockTestRun.id,
