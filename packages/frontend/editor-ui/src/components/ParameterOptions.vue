@@ -183,6 +183,7 @@ const onViewSelected = (selected: string) => {
 					type="tertiary"
 					text
 					:icon="'fullscreen'"
+					:class="$style.focusButton"
 					@click="$emit('update:modelValue', 'focus')"
 				/>
 			</N8nTooltip>
@@ -219,9 +220,12 @@ const onViewSelected = (selected: string) => {
 </template>
 
 <style lang="scss" module>
+$container-height: 22px;
+
 .container {
 	display: flex;
-	min-height: 22px;
+	min-height: $container-height;
+	max-height: $container-height;
 }
 
 .loader {
@@ -242,6 +246,20 @@ const onViewSelected = (selected: string) => {
 
 	span {
 		padding-right: 0 !important;
+	}
+}
+
+.focusButton {
+	max-height: $container-height;
+	padding-top: 0;
+	padding-bottom: 0;
+
+	:global(.n8n-icon) {
+		color: var(--color-text-base);
+
+		&:hover {
+			color: var(--color-primary);
+		}
 	}
 }
 </style>
