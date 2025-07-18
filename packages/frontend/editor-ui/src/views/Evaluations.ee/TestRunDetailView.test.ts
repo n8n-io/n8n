@@ -131,7 +131,7 @@ describe('TestRunDetailView', () => {
 
 		// Mock store methods
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(mockTestRun);
-		vi.mocked(evaluationStore.fetchTestCaseExecutions).mockResolvedValue(mockTestCases);
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(mockTestCases);
 
 		vi.clearAllMocks();
 	});
@@ -225,7 +225,7 @@ describe('TestRunDetailView', () => {
 
 	it('should handle partial failures', async () => {
 		// Test with cases that have errors
-		vi.mocked(evaluationStore.fetchTestCaseExecutions).mockResolvedValue(mockTestCases);
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(mockTestCases);
 
 		const { container } = renderComponent();
 
@@ -254,7 +254,7 @@ describe('TestRunDetailView', () => {
 	});
 
 	it('should handle empty test cases', async () => {
-		vi.mocked(evaluationStore.fetchTestCaseExecutions).mockResolvedValue([]);
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue([]);
 
 		const { container } = renderComponent();
 
@@ -290,7 +290,7 @@ describe('TestRunDetailView', () => {
 			inputs: {},
 		}));
 
-		vi.mocked(evaluationStore.fetchTestCaseExecutions).mockResolvedValue(testCasesWithoutInputs);
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(testCasesWithoutInputs);
 
 		const { container } = renderComponent();
 
