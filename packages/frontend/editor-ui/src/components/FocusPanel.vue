@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -30,6 +30,8 @@ import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
 import { useStyles } from '@/composables/useStyles';
+import { useExecutionData } from '@/composables/useExecutionData';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -49,6 +51,7 @@ const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
@@ -109,6 +112,10 @@ const isExecutable = computed(() => {
 		foreignCredentials,
 	);
 });
+
+const node = computed(() => resolvedParameter.value?.node);
+
+const { hasNodeRun } = useExecutionData({ node });
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -173,6 +180,8 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 		parameterPath: resolvedParameter.value.parameterPath,
 	};
 });
+
+const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
@@ -347,7 +356,15 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
 						<div :class="$style.parameterOptionsWrapper">
-							<div></div>
+							<div :class="$style.noExecutionDataTip">
+								<N8nInfoTip
+									v-if="!hasNodeRun && !isNodeExecuting"
+									:class="$style.delayedShow"
+									:bold="true"
+								>
+									{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
+								</N8nInfoTip>
+							</div>
 							<ParameterOptions
 								v-if="isDisplayed"
 								:parameter="resolvedParameter.parameter"
@@ -577,6 +594,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			justify-content: space-between;
 		}
 
+		.noExecutionDataTip {
+			align-content: center;
+		}
+
 		.editorContainer {
 			height: 100%;
 			overflow-y: auto;
@@ -593,6 +614,20 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				}
 			}
 		}
+	}
+}
+
+// We have this animation here to hide the short time between no longer
+// executing the node and having runData available
+.delayedShow {
+	opacity: 0;
+	transition: opacity 0.1s none;
+	animation: triggerShow 0.1s normal 0.1s forwards;
+}
+
+@keyframes triggerShow {
+	to {
+		opacity: 1;
 	}
 }
 
