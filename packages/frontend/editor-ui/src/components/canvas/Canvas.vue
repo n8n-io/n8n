@@ -909,7 +909,7 @@ provide(CanvasKey, {
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
-			<slot name="edge" v-bind="{ edgeProps }">
+			<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }">
 				<Edge
 					v-bind="edgeProps"
 					:marker-end="`url(#${arrowHeadMarkerId})`"

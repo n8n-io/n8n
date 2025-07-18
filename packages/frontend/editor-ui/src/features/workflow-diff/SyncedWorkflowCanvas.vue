@@ -64,8 +64,8 @@ watch(selectedDetailId, (id) => {
 			<template #node="{ nodeProps }">
 				<slot name="node" v-bind="{ nodeProps }" />
 			</template>
-			<template #edge="{ edgeProps }">
-				<slot name="edge" v-bind="{ edgeProps }" />
+			<template #edge="{ edgeProps, arrowHeadMarkerId }">
+				<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }" />
 			</template>
 			<template #canvas-background="{ viewport }">
 				<CanvasBackground :striped="false" :viewport="viewport" />

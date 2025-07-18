@@ -76,8 +76,11 @@ const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
+
+const edgeStroke = computed(() =>
+	delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
+);
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
@@ -185,6 +188,7 @@ function onEdgeLabelMouseLeave() {
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
+	stroke: var(--canvas-edge-color, v-bind(edgeStroke));
 }
 
 .edgeLabelWrapper {

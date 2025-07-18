@@ -232,7 +232,6 @@ function getNodeStatusClass(id: string) {
 }
 
 function getEdgeStatusClass(id: string) {
-	if (!connectionsDiff.value) return 'edge-equal';
 	const status = connectionsDiff.value.get(id)?.status ?? NodeDiffStatus.Eq;
 	return $style[`edge-${status}`];
 }
@@ -485,11 +484,12 @@ onNodeClick((nodeId) => {
 											<template #toolbar />
 										</Node>
 									</template>
-									<template #edge="{ edgeProps }">
+									<template #edge="{ edgeProps, arrowHeadMarkerId }">
 										<Edge
 											v-bind="edgeProps"
 											read-only
 											:selected="false"
+											:marker-end="`url(#${arrowHeadMarkerId})`"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
 										>
 											<template #highlight="{ segments }">
@@ -497,7 +497,7 @@ onNodeClick((nodeId) => {
 													v-for="segment in segments"
 													:key="segment[0]"
 													:style="{
-														strokeWidth: 10,
+														strokeWidth: 15,
 														stroke: 'var(--edge-highlight-color)',
 													}"
 													:path="segment[0]"
@@ -541,16 +541,18 @@ onNodeClick((nodeId) => {
 									id="bottom"
 									:nodes="bottomWorkFlow.state.value.nodes"
 									:connections="bottomWorkFlow.state.value.connections"
-									><template #node="{ nodeProps }">
+								>
+									<template #node="{ nodeProps }">
 										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
 											<template #toolbar />
 										</Node>
 									</template>
-									<template #edge="{ edgeProps }">
+									<template #edge="{ edgeProps, arrowHeadMarkerId }">
 										<Edge
 											v-bind="edgeProps"
 											read-only
 											:selected="false"
+											:marker-end="`url(#${arrowHeadMarkerId})`"
 											:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
 										>
 											<template #highlight="{ segments }">
@@ -558,7 +560,7 @@ onNodeClick((nodeId) => {
 													v-for="segment in segments"
 													:key="segment[0]"
 													:style="{
-														strokeWidth: 10,
+														strokeWidth: 15,
 														stroke: 'var(--edge-highlight-color)',
 													}"
 													:path="segment[0]"
@@ -739,6 +741,18 @@ onNodeClick((nodeId) => {
 		justify-content: center;
 		align-items: center;
 	}
+
+	&[data-node-type='n8n-nodes-base.stickyNote'],
+	&[data-node-type='n8n-nodes-base.manualTrigger'] {
+		&::before {
+			left: auto;
+			right: 0px;
+			border-top-right-radius: 0;
+			border-top-left-radius: 2px;
+			border-bottom-left-radius: 0;
+			border-bottom-right-radius: 6px;
+		}
+	}
 }
 
 .deleted {
@@ -764,7 +778,7 @@ onNodeClick((nodeId) => {
 	--color-sticky-border: var(--color-node-icon-green);
 	position: relative;
 	&::before {
-		content: 'A';
+		content: 'N';
 		background-color: var(--color-node-icon-green);
 	}
 	:global(.canvas-node-handle-main-output > div) {
@@ -808,11 +822,13 @@ onNodeClick((nodeId) => {
 }
 
 .edge-deleted {
-	--color-foreground-xdark: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(255, 150, 90, 0.2);
+	--canvas-edge-color: var(--color-node-icon-red);
+	/* --color-foreground-xdark: var(--color-node-icon-red); */
+	--edge-highlight-color: rgba(234, 31, 48, 0.2);
 }
 .edge-added {
-	--color-foreground-xdark: var(--color-node-icon-green);
+	--canvas-edge-color: var(--color-node-icon-green);
+	/* --color-foreground-xdark: var(--color-node-icon-green); */
 	--edge-highlight-color: rgba(14, 171, 84, 0.2);
 }
 .edge-equal {
