@@ -23,25 +23,36 @@ const { APP_Z_INDEXES } = useStyles();
 const DEFAULT_TITLE = i18n.baseText('prompts.npsSurvey.recommendationQuestion');
 const GREAT_FEEDBACK_TITLE = i18n.baseText('prompts.npsSurvey.greatFeedbackTitle');
 const DEFAULT_FEEDBACK_TITLE = i18n.baseText('prompts.npsSurvey.defaultFeedbackTitle');
+const FEEDBACK_QUESTION_TITLE = i18n.baseText('prompts.npsSurvey.feedbackQuestionTitle');
 const PRODUCT_TEAM_MESSAGE = i18n.baseText('prompts.productTeamMessage');
 const VERY_LIKELY_OPTION = i18n.baseText('prompts.npsSurvey.veryLikely');
 const NOT_LIKELY_OPTION = i18n.baseText('prompts.npsSurvey.notLikely');
 const SEND = i18n.baseText('prompts.npsSurvey.send');
+const NEXT = i18n.baseText('prompts.npsSurvey.next');
 const YOUR_EMAIL_ADDRESS = i18n.baseText('prompts.npsSurvey.yourEmailAddress');
+const FEEDBACK_PLACEHOLDER = i18n.baseText('prompts.npsSurvey.feedbackPlaceholder');
 
-const form = ref<{ value: string; email: string }>({ value: '', email: '' });
+const form = ref<{ value: string; feedback: string; email: string }>({
+	value: '',
+	feedback: '',
+	email: '',
+});
 const showButtons = ref(true);
+const showFeedback = ref(false);
+const showEmail = ref(false);
 const modalBus = createEventBus();
 
 const modalTitle = computed(() => {
+	if (showFeedback.value) {
+		return FEEDBACK_QUESTION_TITLE;
+	}
 	if (form?.value?.value !== '') {
-		if (Number(form.value) > 7) {
+		if (Number(form.value.value) > 7) {
 			return GREAT_FEEDBACK_TITLE;
 		} else {
 			return DEFAULT_FEEDBACK_TITLE;
 		}
 	}
-
 	return DEFAULT_TITLE;
 });
 
@@ -65,6 +76,13 @@ async function closeDialog(): Promise<void> {
 			nps: form.value.value,
 		});
 	}
+	if (form.value.value !== '' && form.value.feedback.trim() !== '') {
+		telemetry.track('User responded value survey feedback', {
+			instance_id: rootStore.instanceId,
+			nps: form.value.value,
+			feedback: form.value.feedback,
+		});
+	}
 }
 
 function onInputChange(value: string) {
@@ -74,6 +92,7 @@ function onInputChange(value: string) {
 async function selectSurveyValue(value: string) {
 	form.value.value = value;
 	showButtons.value = false;
+	showFeedback.value = true;
 
 	telemetry.track('User responded value survey score', {
 		instance_id: rootStore.instanceId,
@@ -83,7 +102,23 @@ async function selectSurveyValue(value: string) {
 	await useNpsSurveyStore().respondNpsSurvey();
 }
 
+function onFeedbackInput(value: string) {
+	form.value.feedback = value;
+}
+
+function goToEmailStep() {
+	showFeedback.value = false;
+	showEmail.value = true;
+}
+
 async function send() {
+	if (form.value.feedback.trim() !== '') {
+		telemetry.track('User responded value survey feedback', {
+			instance_id: rootStore.instanceId,
+			nps: form.value.value,
+			feedback: form.value.feedback,
+		});
+	}
 	if (isEmailValid.value) {
 		telemetry.track('User responded value survey email', {
 			instance_id: rootStore.instanceId,
@@ -100,8 +135,11 @@ async function send() {
 
 		setTimeout(() => {
 			form.value.value = '';
+			form.value.feedback = '';
 			form.value.email = '';
 			showButtons.value = true;
+			showFeedback.value = false;
+			showEmail.value = false;
 		}, 1000);
 		modalBus.emit('close');
 	}
@@ -157,7 +195,27 @@ watch(
 						<n8n-text size="small" color="text-xlight">{{ VERY_LIKELY_OPTION }}</n8n-text>
 					</div>
 				</div>
-				<div v-else :class="$style.email">
+				<div v-else-if="showFeedback" :class="$style.feedback">
+					<div :class="$style.input">
+						<n8n-input
+							v-model="form.feedback"
+							:placeholder="FEEDBACK_PLACEHOLDER"
+							@update:model-value="onFeedbackInput"
+							type="textarea"
+							autosize="{ minRows: 1, maxRows: 2 }"
+							:class="$style.feedbackInput"
+						/>
+						<div :class="$style.button">
+							<n8n-button
+								:label="NEXT"
+								float="right"
+								:disabled="!form.feedback.trim()"
+								@click="goToEmailStep"
+							/>
+						</div>
+					</div>
+				</div>
+				<div v-else-if="showEmail" :class="$style.email">
 					<div :class="$style.input" data-test-id="nps-survey-email" @keyup.enter="send">
 						<n8n-input
 							v-model="form.email"
@@ -250,6 +308,23 @@ watch(
 	margin-top: var(--spacing-4xs);
 }
 
+.feedback {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-top: 2px;
+}
+
+.feedbackInput {
+	width: 350px;
+	max-width: 100%;
+}
+
+.feedbackInput textarea {
+	resize: none;
+	max-height: 56px;
+}
+
 .npsSurvey {
 	background: var(--color-nps-survey-background);
 	height: 120px;
@@ -281,5 +356,13 @@ watch(
 			}
 		}
 	}
+}
+
+.input input::placeholder,
+.input textarea::placeholder {
+	font-family: inherit;
+	font-size: 1rem;
+	color: var(--color-text-light);
+	opacity: 1;
 }
 </style>
