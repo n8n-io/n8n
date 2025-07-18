@@ -26,5 +26,15 @@ onMounted(() => {
 </script>
 
 <template>
-	<div />
+	<div
+		class="auth-theme-bg"
+		style="
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--color-background);
+			background-image: var(--gradient-glow);
+		"
+	></div>
 </template>
