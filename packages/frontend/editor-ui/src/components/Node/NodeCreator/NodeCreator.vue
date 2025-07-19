@@ -12,7 +12,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 import { useAssistantStore } from '@/stores/assistant.store';
-import N8nIconButton from '@n8n/design-system/components/N8nIconButton/IconButton.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 
@@ -137,33 +136,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
-		<N8nIconButton
-			v-if="active"
-			:class="$style.close"
-			type="secondary"
-			icon="x"
-			aria-label="Close Node Creator"
-			@click="emit('closeNodeCreator')"
-		/>
-		<div
-			v-if="active"
-			ref="nodeCreator"
-			:class="{ [$style.nodeCreator]: true }"
-			data-test-id="node-creator"
-			@dragover="onDragOver"
-			@drop="onDrop"
-			@mousedown="onMouseDown"
-			@mouseup="onMouseUp"
-		>
-			<NodesListPanel @node-type-selected="onNodeTypeSelected" />
-		</div>
+	<div
+		v-if="active"
+		ref="nodeCreator"
+		:class="{ [$style.nodeCreator]: true }"
+		data-test-id="node-creator"
+		@dragover="onDragOver"
+		@drop="onDrop"
+		@mousedown="onMouseDown"
+		@mouseup="onMouseUp"
+	>
+		<NodesListPanel @node-type-selected="onNodeTypeSelected" />
 	</div>
 </template>
 
@@ -171,13 +154,18 @@ onBeforeUnmount(() => {
 :global(strong) {
 	font-weight: var(--font-weight-bold);
 }
+
+.wrapper {
+	position: relative;
+}
+
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
 	--node-icon-color: var(--color-text-base);
-	position: fixed;
-	bottom: 44px;
+	position: absolute;
+	bottom: 40px;
 	right: 50%;
-	transform: translateX(50%);
+	transform: translate(50%);
 	z-index: var(--z-index-node-creator);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;

@@ -85,6 +85,15 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 </script>
 
 <template>
+	<div :class="$style.fillControls">
+		<Suspense>
+			<LazyNodeCreator
+				:active="createNodeActive"
+				@node-type-selected="nodeTypeSelected"
+				@close-node-creator="closeNodeCreator"
+			/>
+		</Suspense>
+	</div>
 	<KeyboardShortcutTooltip
 		:label="i18n.baseText('nodeView.openNodesPanel')"
 		:shortcut="{ keys: ['Tab'] }"
@@ -98,6 +107,7 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			@click="openNodeCreator"
 		/>
 	</KeyboardShortcutTooltip>
+
 	<KeyboardShortcutTooltip
 		:label="i18n.baseText('nodeView.addStickyHint')"
 		:shortcut="{ keys: ['s'], shiftKey: true }"
@@ -111,12 +121,16 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			@click="addStickyNote"
 		/>
 	</KeyboardShortcutTooltip>
-
-	<Suspense>
-		<LazyNodeCreator
-			:active="createNodeActive"
-			@node-type-selected="nodeTypeSelected"
-			@close-node-creator="closeNodeCreator"
-		/>
-	</Suspense>
 </template>
+
+<style module>
+.fillControls {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: var(--z-index-node-creator);
+	pointer-events: none;
+}
+</style>
