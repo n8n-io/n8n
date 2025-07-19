@@ -16,11 +16,13 @@ describe('Wordpress > Post Workflows', () => {
 				content: 'This is my content',
 				slug: 'new-post',
 				status: 'future',
+				date: '2025-03-27T18:30:04',
 				comment_status: 'closed',
 				ping_status: 'closed',
 				sticky: true,
 				categories: [1],
 				format: 'standard',
+				excerpt: 'This is an excerpt',
 			})
 			.reply(200, postCreate);
 		mock
@@ -29,6 +31,7 @@ describe('Wordpress > Post Workflows', () => {
 				title: 'New Title',
 				content: 'Some new content',
 				status: 'publish',
+				featured_media: 10,
 			})
 			.reply(200, postUpdate);
 	});

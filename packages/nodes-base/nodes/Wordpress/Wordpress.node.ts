@@ -125,6 +125,28 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available images to display them to user so that they can
+			// select them easily
+			async getImages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const media = await wordpressApiRequestAllItems.call(
+					this,
+					'GET',
+					'/media',
+					{},
+					{ media_type: 'image' },
+				);
+				for (const mediaItem of media) {
+					const mediaName = mediaItem.title.rendered;
+					const mediaId = mediaItem.id;
+
+					returnData.push({
+						name: mediaName,
+						value: mediaId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -144,6 +166,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const statusCollection = additionalFields.status as IDataObject;
 						const body: IPost = {
 							title,
 						};
@@ -153,14 +176,28 @@ export class Wordpress implements INodeType {
 						if (additionalFields.content) {
 							body.content = additionalFields.content as string;
 						}
+						if (additionalFields.excerpt) {
+							body.excerpt = additionalFields.excerpt as string;
+						}
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (additionalFields.status) {
-							body.status = additionalFields.status as string;
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
+							const { postStatus, postDateTime } = statusCollection.status as {
+								postStatus: string;
+								postDateTime?: string;
+							};
+							body.status = postStatus;
+							if (postDateTime && postStatus === 'future') {
+								body.date = postDateTime;
+							}
 						}
 						if (additionalFields.commentStatus) {
 							body.comment_status = additionalFields.commentStatus as string;
@@ -187,12 +224,16 @@ export class Wordpress implements INodeType {
 						if (additionalFields.format) {
 							body.format = additionalFields.format as string;
 						}
+						if (additionalFields.featuredMediaId) {
+							body.featured_media = additionalFields.featuredMediaId as number;
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const statusCollection = updateFields.status as IDataObject;
 						const body: IPost = {
 							id: parseInt(postId, 10),
 						};
@@ -205,14 +246,28 @@ export class Wordpress implements INodeType {
 						if (updateFields.content) {
 							body.content = updateFields.content as string;
 						}
+						if (updateFields.excerpt) {
+							body.excerpt = updateFields.excerpt as string;
+						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
 						if (updateFields.password) {
 							body.password = updateFields.password as string;
 						}
-						if (updateFields.status) {
-							body.status = updateFields.status as string;
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
+							const { postStatus, postDateTime } = statusCollection.status as {
+								postStatus: string;
+								postDateTime?: string;
+							};
+							body.status = postStatus;
+							if (postDateTime && postStatus === 'future') {
+								body.date = postDateTime;
+							}
 						}
 						if (updateFields.commentStatus) {
 							body.comment_status = updateFields.commentStatus as string;
@@ -238,6 +293,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
+						}
+						if (updateFields.featuredMediaId) {
+							body.featured_media = updateFields.featuredMediaId as number;
 						}
 						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 					}
@@ -321,6 +379,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const statusCollection = additionalFields.status as IDataObject;
 						const body: IPage = {
 							title,
 						};
@@ -330,14 +389,28 @@ export class Wordpress implements INodeType {
 						if (additionalFields.content) {
 							body.content = additionalFields.content as string;
 						}
+						if (additionalFields.excerpt) {
+							body.excerpt = additionalFields.excerpt as string;
+						}
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
 						if (additionalFields.password) {
 							body.password = additionalFields.password as string;
 						}
-						if (additionalFields.status) {
-							body.status = additionalFields.status as string;
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
+							const { pageStatus, pageDateTime } = statusCollection.status as {
+								pageStatus: string;
+								pageDateTime?: string;
+							};
+							body.status = pageStatus;
+							if (pageDateTime && pageStatus === 'future') {
+								body.date = pageDateTime;
+							}
 						}
 						if (additionalFields.commentStatus) {
 							body.comment_status = additionalFields.commentStatus as string;
@@ -367,6 +440,7 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const pageId = this.getNodeParameter('pageId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const statusCollection = updateFields.status as IDataObject;
 						const body: IPage = {
 							id: parseInt(pageId, 10),
 						};
@@ -379,6 +453,9 @@ export class Wordpress implements INodeType {
 						if (updateFields.content) {
 							body.content = updateFields.content as string;
 						}
+						if (updateFields.excerpt) {
+							body.excerpt = updateFields.excerpt as string;
+						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
@@ -388,8 +465,19 @@ export class Wordpress implements INodeType {
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
 						}
-						if (updateFields.commentStatus) {
-							body.comment_status = updateFields.commentStatus as string;
+						if (
+							statusCollection &&
+							statusCollection.status &&
+							typeof statusCollection.status === 'object'
+						) {
+							const { pageStatus, pageDateTime } = statusCollection.status as {
+								pageStatus: string;
+								pageDateTime?: string;
+							};
+							body.status = pageStatus;
+							if (pageDateTime && pageStatus === 'future') {
+								body.date = pageDateTime;
+							}
 						}
 						if (updateFields.pingStatus) {
 							body.ping_status = updateFields.pingStatus as string;
