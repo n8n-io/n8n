@@ -99,17 +99,6 @@ onMounted(() => {
 	}
 });
 
-onUnmounted(() => {
-	chatEventBus.off('focusInput', focusChatInput);
-	chatEventBus.off('blurInput', blurChatInput);
-	chatEventBus.off('setInputValue', setInputValue);
-
-	if (resizeObserver.value) {
-		resizeObserver.value.disconnect();
-		resizeObserver.value = null;
-	}
-});
-
 function blurChatInput() {
 	if (chatTextArea.value) {
 		chatTextArea.value.blur();
@@ -121,6 +110,19 @@ function focusChatInput() {
 		chatTextArea.value.focus();
 	}
 }
+
+onUnmounted(() => {
+	chatEventBus.off('focusInput', focusChatInput);
+	chatEventBus.off('blurInput', blurChatInput);
+	chatEventBus.off('setInputValue', setInputValue);
+
+	if (resizeObserver.value) {
+		resizeObserver.value.disconnect();
+		resizeObserver.value = null;
+	}
+
+	focusChatInput();
+});
 
 function setInputValue(value: string) {
 	input.value = value;
@@ -201,6 +203,7 @@ function adjustTextAreaHeight() {
 			<textarea
 				ref="chatTextArea"
 				v-model="input"
+				autofocus
 				data-test-id="chat-input"
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"

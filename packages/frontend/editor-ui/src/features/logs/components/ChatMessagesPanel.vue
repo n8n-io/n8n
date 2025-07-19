@@ -253,7 +253,7 @@ async function copySessionId() {
 
 <style lang="scss" module>
 .chat {
-	--chat--spacing: var(--spacing-xs);
+	--chat--spacing: var(--spacing-3xs);
 	--chat--message--padding: var(--spacing-2xs);
 	--chat--message--font-size: var(--font-size-2xs);
 	--chat--input--font-size: var(--font-size-s);
@@ -277,7 +277,9 @@ async function copySessionId() {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color-background-light);
+	background-color: var(--color-foreground-light);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
 }
 
 .chatHeader {
@@ -287,7 +289,7 @@ async function copySessionId() {
 	text-align: left;
 	border-bottom: 1px solid var(--color-foreground-base);
 	padding: var(--chat--spacing);
-	background-color: var(--color-foreground-xlight);
+	background-color: var(--color-foreground-light);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -373,7 +375,7 @@ async function copySessionId() {
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
 	display: flex;
-	background: var(--color-lm-chat-bot-background);
+	background: var(--color-foreground-xlight);
 	border-radius: var(--chat--input--border-radius);
 	transition: border-color 200ms ease-in-out;
 	border: var(--input-border-color, var(--border-color-base))

@@ -133,6 +133,8 @@ import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useChatState } from '@/features/logs/composables/useChatState';
+import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
 
 defineOptions({
 	name: 'NodeView',
@@ -2008,6 +2010,20 @@ onBeforeUnmount(() => {
 		pushConnectionStore.pushDisconnect();
 	}
 });
+
+const {
+	currentSessionId,
+	messages,
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(false);
+
+const isOpen = ref(true);
+function onToggleOpen(value?: boolean) {
+	isOpen.value = value ?? !isOpen.value;
+}
 </script>
 
 <template>
@@ -2082,7 +2098,7 @@ onBeforeUnmount(() => {
 					v-if="isLogsPanelOpen"
 					type="tertiary"
 					:label="i18n.baseText('chat.hide')"
-					@click="logsStore.toggleOpen(false)"
+					@click="onToggleOpen()"
 				/>
 				<KeyboardShortcutTooltip
 					v-else
@@ -2092,7 +2108,7 @@ onBeforeUnmount(() => {
 					<CanvasChatButton
 						:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
 						:label="i18n.baseText('chat.open')"
-						@click="onOpenChat"
+						@click="onToggleOpen()"
 					/>
 				</KeyboardShortcutTooltip>
 			</template>
@@ -2157,6 +2173,24 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
+		<div v-if="isOpen" :class="$style.chatContainer">
+			<ChatMessagesPanel
+				:key="`canvas-chat-${currentSessionId}`"
+				data-test-id="canvas-chat"
+				:is-open="isOpen"
+				:is-read-only="false"
+				:messages="messages"
+				:session-id="currentSessionId"
+				:past-chat-messages="previousChatMessages"
+				:show-close-button="false"
+				:is-new-logs-enabled="true"
+				@close="onToggleOpen"
+				@refresh-session="refreshSession"
+				@display-execution="displayExecution"
+				@send-message="sendMessage"
+				@click-header="onToggleOpen(true)"
+			/>
+		</div>
 		<FocusPanel
 			v-if="isFocusPanelFeatureEnabled"
 			:is-canvas-read-only="isCanvasReadOnly"
@@ -2223,5 +2257,18 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.chatContainer {
+	position: absolute;
+	bottom: 54px;
+	left: 12px;
+	height: 600px;
+	max-height: calc(100% - 64px);
+	max-width: 300px;
+	z-index: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 </style>
