@@ -8,7 +8,6 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
 import { loadLanguage } from '@n8n/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -134,7 +133,6 @@ watch(
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="showAssistantFloatingButton" />
 		</div>
-		<AssistantsHub />
 	</div>
 </template>
 

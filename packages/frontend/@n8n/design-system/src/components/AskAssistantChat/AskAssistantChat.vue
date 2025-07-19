@@ -119,13 +119,13 @@ function onSubmitFeedback(feedback: string) {
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
-					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="title" />
+					<AssistantIcon size="medium" />
+					<AssistantText size="medium" :text="title" />
 				</div>
 				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<N8nIcon icon="arrow-right" color="text-base" />
+				<N8nIcon icon="x" color="text-base" />
 			</div>
 		</div>
 		<div :class="$style.body">
@@ -310,13 +310,17 @@ function onSubmitFeedback(feedback: string) {
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-foreground-light);
 }
 
 .header {
-	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing-l);
-	background-color: var(--color-background-xlight);
-	border: var(--border-base);
+	padding-inline-start: var(--spacing-s);
+	padding-inline-end: var(--spacing-2xs);
+	padding-block: var(--spacing-2xs);
+	background-color: var(--color-foreground-xlight);
+	border-bottom: var(--border-base);
 	border-top: 0;
 	display: flex;
 
@@ -331,8 +335,8 @@ function onSubmitFeedback(feedback: string) {
 }
 
 .body {
-	background-color: var(--color-background-light);
-	border: var(--border-base);
+	background-color: var(--color-foreground-light);
+
 	border-top: 0;
 	position: relative;
 
@@ -413,9 +417,9 @@ function onSubmitFeedback(feedback: string) {
 .inputWrapper {
 	display: flex;
 	background-color: var(--color-foreground-xlight);
+	margin: var(--spacing-xs);
+	border-radius: var(--border-radius-base);
 	border: var(--border-base);
-	width: 100%;
-	border-top: 0;
 
 	textarea {
 		border: none;

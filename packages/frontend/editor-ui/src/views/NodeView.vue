@@ -135,6 +135,8 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import ChatMessagesPanel from '@/features/logs/components/ChatMessagesPanel.vue';
+import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -2020,10 +2022,12 @@ const {
 	displayExecution,
 } = useChatState(false);
 
-const isOpen = ref(true);
+const isOpen = ref(false);
 function onToggleOpen(value?: boolean) {
 	isOpen.value = value ?? !isOpen.value;
 }
+
+const assistantStore = useAssistantStore();
 </script>
 
 <template>
@@ -2196,6 +2200,9 @@ function onToggleOpen(value?: boolean) {
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 		/>
+		<div v-if="assistantStore.isAssistantEnabled" :class="$style.assistantContainer">
+			<AssistantsHub />
+		</div>
 	</div>
 </template>
 
@@ -2259,7 +2266,8 @@ function onToggleOpen(value?: boolean) {
 	transform: translateX(-50%);
 }
 
-.chatContainer {
+.chatContainer,
+.assistantContainer {
 	position: absolute;
 	bottom: 54px;
 	left: 12px;
@@ -2270,5 +2278,10 @@ function onToggleOpen(value?: boolean) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+.assistantContainer {
+	left: auto;
+	right: 40px;
 }
 </style>

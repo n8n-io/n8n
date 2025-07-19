@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { nextTick, computed, useTemplateRef, ref } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
-import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
 import LogsDetailsPanel from '@/features/logs/components/LogDetailsPanel.vue';
 import LogsPanelActions from '@/features/logs/components/LogsPanelActions.vue';
@@ -45,15 +44,6 @@ const {
 	onOverviewPanelResize,
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
-
-const {
-	currentSessionId,
-	messages,
-	previousChatMessages,
-	sendMessage,
-	refreshSession,
-	displayExecution,
-} = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData();

@@ -3,7 +3,6 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 
@@ -62,31 +61,29 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition>
-		<N8nResizeWrapper
-			v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
-			:supported-directions="['left']"
-			:width="chatWidth"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
-		>
-			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
-				<div :class="$style.assistantContent">
-					<AskAssistantBuild v-if="isBuildMode" @close="onClose">
-						<template #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantBuild>
-					<AskAssistantChat v-else @close="onClose">
-						<!-- Header switcher is only visible when AIBuilder is enabled -->
-						<template v-if="builderStore.isAIBuilderEnabled" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantChat>
-				</div>
+	<N8nResizeWrapper
+		v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
+		:supported-directions="['left']"
+		:width="chatWidth"
+		data-test-id="ask-assistant-sidebar"
+		@resize="onResizeDebounced"
+	>
+		<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
+			<div :class="$style.assistantContent">
+				<AskAssistantBuild v-if="isBuildMode" @close="onClose">
+					<template #header>
+						<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+					</template>
+				</AskAssistantBuild>
+				<AskAssistantChat v-else @close="onClose">
+					<!-- Header switcher is only visible when AIBuilder is enabled -->
+					<template v-if="builderStore.isAIBuilderEnabled" #header>
+						<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+					</template>
+				</AskAssistantChat>
 			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+		</div>
+	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
