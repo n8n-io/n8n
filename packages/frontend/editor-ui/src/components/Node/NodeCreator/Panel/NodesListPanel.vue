@@ -236,7 +236,7 @@ function onBackButton() {
 
 .nodesListPanel {
 	background: var(--color-foreground-light);
-	height: 600px;
+	max-height: calc(100vh - 176px);
 	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;

@@ -157,6 +157,7 @@ onBeforeUnmount(() => {
 
 .wrapper {
 	position: relative;
+	pointer-events: auto;
 }
 
 .nodeCreator {
@@ -169,6 +170,7 @@ onBeforeUnmount(() => {
 	z-index: var(--z-index-node-creator);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;
+	pointer-events: auto;
 }
 
 .nodeCreatorScrim {

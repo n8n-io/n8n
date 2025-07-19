@@ -35,11 +35,11 @@ const { t } = useI18n();
 		}"
 		v-bind="$attrs"
 	>
-		<div :class="$style.nodeIcon">
-			<slot name="icon" />
-		</div>
 		<div>
 			<div :class="$style.details">
+				<div :class="$style.nodeIcon">
+					<slot name="icon" />
+				</div>
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<ElTag v-if="tag" :class="$style.tag" size="small" round :type="tag.type ?? 'success'">
 					{{ tag.text }}
@@ -54,12 +54,6 @@ const { t } = useI18n();
 
 				<slot name="extraDetails" />
 			</div>
-			<p
-				v-if="description"
-				data-test-id="node-creator-item-description"
-				:class="$style.description"
-				v-text="description"
-			/>
 		</div>
 		<slot name="dragContent" />
 		<button v-if="showActionArrow" :class="$style.panelIcon">
@@ -74,15 +68,14 @@ const { t } = useI18n();
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: var(--spacing-5xs) var(--spacing-2xs) var(--spacing-xs) 0;
+	padding: var(--spacing-3xs) var(--spacing-4xs);
+	border-radius: var(--radius-base);
 
 	&.hasAction {
 		user-select: none;
 	}
 }
-.creatorNode:hover .panelIcon {
-	color: var(--action-arrow-color-hover, var(--color-text-light));
-}
+
 :root .tag {
 	margin-left: var(--spacing-2xs);
 	line-height: var(--font-size-3xs);
@@ -113,12 +106,18 @@ const { t } = useI18n();
 .details {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-xs);
 }
 .nodeIcon {
 	display: flex;
-	margin-right: var(--node-icon-margin-right, var(--spacing-s));
 }
+
+.nodeIcon svg,
+.nodeIcon img {
+	width: 14px;
+	height: 14px;
+}
+
 .name {
 	font-weight: var(--node-creator-name-weight, var(--font-weight-medium));
 	font-size: var(--node-creator-name-size, var(--font-size-s));
