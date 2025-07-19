@@ -2,7 +2,7 @@
 	"name": "n8n",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "n8n",
-	"workspaceFolder": "/workspaces",
+	"workspaceFolder": "/workspaces/n8n",
 	"mounts": [
 		"type=bind,source=${localWorkspaceFolder},target=/workspaces,consistency=cached",
 		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,consistency=cached",
