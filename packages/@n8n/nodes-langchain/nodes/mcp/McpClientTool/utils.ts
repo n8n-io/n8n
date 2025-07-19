@@ -9,7 +9,9 @@ import {
 	createResultOk,
 	type IDataObject,
 	type IExecuteFunctions,
+	type IRequestOptionsSimplified,
 	type Result,
+	jsonParse,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -225,6 +227,18 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'customAuth': {
+			const httpCustomAuth = await ctx
+				.getCredentials<{ json: string }>('httpCustomAuth')
+				.catch(() => null);
+			if (!httpCustomAuth) return {};
+
+			const customAuth = jsonParse<Pick<IRequestOptionsSimplified, 'headers'>>(
+				(httpCustomAuth.json as string) || '{}',
+				{ errorMessage: 'Invalid Custom Auth JSON' },
+			);
+			return { headers: (customAuth.headers as Record<string, string>) ?? {} };
 		}
 		case 'none':
 		default: {
