@@ -2813,6 +2813,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      ws:
+        specifier: '>=8.17.1'
+        version: 8.18.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -2892,6 +2895,9 @@ importers:
       '@types/uuid':
         specifier: 'catalog:'
         version: 10.0.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -18628,14 +18634,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.3))
+      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.3))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -18663,14 +18669,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3))
+      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -18695,7 +18701,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       jest-mock: 29.6.2
 
   '@jest/expect-utils@29.6.2':
@@ -18713,7 +18719,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@sinonjs/fake-timers': 10.0.2
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       jest-message-util: 29.6.2
       jest-mock: 29.6.2
       jest-util: 29.6.2
@@ -18813,7 +18819,7 @@ snapshots:
       '@jest/schemas': 29.6.0
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       '@types/yargs': 17.0.19
       chalk: 4.1.2
 
@@ -20870,7 +20876,7 @@ snapshots:
       recast: 0.23.6
       semver: 7.7.2
       util: 0.12.5
-      ws: 8.17.1
+      ws: 8.18.2
     optionalDependencies:
       prettier: 3.3.3
     transitivePeerDependencies:
@@ -21259,7 +21265,7 @@ snapshots:
   '@types/fs-extra@11.0.4':
     dependencies:
       '@types/jsonfile': 6.1.4
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
     optional: true
 
   '@types/ftp@0.3.33':
@@ -21319,7 +21325,7 @@ snapshots:
 
   '@types/jsdom@20.0.1':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       '@types/tough-cookie': 4.0.2
       parse5: 7.1.2
 
@@ -21621,7 +21627,7 @@ snapshots:
 
   '@types/ws@8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
 
   '@types/xml2js@0.4.14':
     dependencies:
@@ -26478,7 +26484,7 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-config@29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.19.1)(typescript@5.8.3)):
+  jest-config@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.8.3)):
     dependencies:
       '@babel/core': 7.26.10
       '@jest/test-sequencer': 29.6.2
@@ -26503,8 +26509,8 @@ snapshots:
       slash: 3.0.0
       strip-json-comments: 3.1.1
     optionalDependencies:
-      '@types/node': 20.17.57
-      ts-node: 10.9.2(@types/node@20.19.1)(typescript@5.8.3)
+      '@types/node': 20.19.1
+      ts-node: 10.9.2(@types/node@20.17.57)(typescript@5.8.3)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -26784,7 +26790,7 @@ snapshots:
   jest-util@29.5.0:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -26793,7 +26799,7 @@ snapshots:
   jest-util@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.1
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -26943,7 +26949,7 @@ snapshots:
       whatwg-encoding: 2.0.0
       whatwg-mimetype: 3.0.0
       whatwg-url: 11.0.0
-      ws: 8.17.1
+      ws: 8.18.2
       xml-name-validator: 4.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -28111,7 +28117,7 @@ snapshots:
       rfdc: 1.3.0
       split2: 4.2.0
       worker-timers: 7.1.8
-      ws: 8.17.1
+      ws: 8.18.2
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -29321,7 +29327,7 @@ snapshots:
 
   pyodide@0.27.5:
     dependencies:
-      ws: 8.17.1
+      ws: 8.18.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -30188,7 +30194,7 @@ snapshots:
       queue-microtask: 1.2.3
       randombytes: 2.1.0
       readable-stream: 3.6.0
-      ws: 8.17.1
+      ws: 8.18.2
     transitivePeerDependencies:
       - bufferutil
       - supports-color
