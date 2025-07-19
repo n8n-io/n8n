@@ -43,3 +43,6 @@ jobs:
 
       - name: Lint Frontend
         run: pnpm lint:frontend
+
+      - name: Lint Testing
+        run: pnpm lint:testing
