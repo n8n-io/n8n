@@ -164,19 +164,23 @@ export class LmChatCerebras implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('cerebrasApi');
 
-		const modelName = this.getNodeParameter('model.value', itemIndex) as string;
+		const modelName = this.getNodeParameter<string>('model.value', itemIndex);
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
+		const options = this.getNodeParameter<{
 			maxTokens?: number;
 			maxRetries?: number;
 			timeout?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
-		};
+		}>('options', itemIndex, {});
+
+		if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
+			throw new Error('Cerebras API key is required and must be a string');
+		}
 
 		const configuration: ChatCerebrasInput = {
-			apiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
@@ -190,8 +194,8 @@ export class LmChatCerebras implements INodeType {
 		}
 
 		// Set base URL if provided in credentials
-		if (credentials.baseURL) {
-			configuration.baseURL = credentials.baseURL as string;
+		if (credentials.baseURL && typeof credentials.baseURL === 'string') {
+			configuration.baseURL = credentials.baseURL;
 		}
 
 		const model = new ChatCerebras(configuration);
