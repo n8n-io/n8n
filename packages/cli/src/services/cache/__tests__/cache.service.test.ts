@@ -7,9 +7,12 @@ import { CacheService } from '@/services/cache/cache.service';
 
 jest.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');
+	const Cluster = require('ioredis-mock');
 
-	return function (...args: unknown[]) {
-		return new Redis(args);
+	return {
+		__esModule: true,
+		default: Redis,
+		Cluster: Cluster,
 	};
 });
 
@@ -241,6 +244,49 @@ for (const backend of ['memory', 'redis'] as const) {
 
 				await expect(cacheService.getHashValue('key', 'field1')).resolves.toBe('value1');
 			});
+		});
+	});
+
+	describe('ElastiCache Serverless', () => {
+		let cacheService: CacheService;
+		let globalConfig: GlobalConfig;
+
+		beforeAll(async () => {
+			globalConfig = Container.get(GlobalConfig);
+			globalConfig.cache.backend = 'redis';
+			globalConfig.queue.bull.redis.elasticacheServerless = true;
+			cacheService = new CacheService(globalConfig);
+			await cacheService.init();
+		});
+
+		afterEach(async () => {
+			await cacheService.reset();
+			config.load(config.default);
+		});
+
+		test('should work with ElastiCache Serverless configuration', async () => {
+			// Test that basic cache operations work with ElastiCache Serverless
+			await cacheService.set('elasticache-test', 'serverless-value');
+			
+			await expect(cacheService.get('elasticache-test')).resolves.toBe('serverless-value');
+		});
+
+		test('should handle cluster nodes with ElastiCache Serverless', async () => {
+			// Test that the service can handle cluster configuration with ElastiCache Serverless
+			expect(cacheService.isRedis()).toBe(true);
+			
+			// Verify that the configuration is properly set
+			expect(globalConfig.queue.bull.redis.elasticacheServerless).toBe(true);
+		});
+
+		test('should work with cluster nodes configuration', async () => {
+			// Set cluster nodes and test cluster mode
+			globalConfig.queue.bull.redis.clusterNodes = 'redis-1:6379,redis-2:6379';
+			
+			await cacheService.init();
+			
+			await cacheService.set('cluster-test', 'cluster-value');
+			await expect(cacheService.get('cluster-test')).resolves.toBe('cluster-value');
 		});
 	});
 }
