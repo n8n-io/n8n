@@ -5,6 +5,8 @@ import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useLogsStore } from '@/stores/logs.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -52,6 +54,8 @@ function onTidyUp() {
 }
 
 const assistantStore = useAssistantStore();
+const logsStore = useLogsStore();
+const focusPanelStore = useFocusPanelStore();
 
 function onAskAssistantButtonClick() {
 	if (!assistantStore.chatWindowOpen)
@@ -128,30 +132,24 @@ function onAskAssistantButtonClick() {
 				</KeyboardShortcutTooltip>
 			</div>
 			<div :class="$style.controlSurface">
-				<KeyboardShortcutTooltip
-					:label="i18n.baseText('nodeView.zoomIn')"
-					:shortcut="{ keys: ['+'] }"
-				>
+				<KeyboardShortcutTooltip label="View logs" :shortcut="{ keys: ['l'] }">
 					<N8nIconButton
 						type="tertiary"
 						size="medium"
 						icon="panel-bottom"
 						text
 						data-test-id="zoom-in-button"
-						@click="onZoomIn"
+						@click="logsStore.toggleOpen()"
 					/>
 				</KeyboardShortcutTooltip>
-				<KeyboardShortcutTooltip
-					:label="i18n.baseText('nodeView.zoomIn')"
-					:shortcut="{ keys: ['+'] }"
-				>
+				<KeyboardShortcutTooltip label="Open Focus Panel" :shortcut="{ keys: ['shift', 'f'] }">
 					<N8nIconButton
 						type="tertiary"
 						size="medium"
 						icon="panel-right"
 						text
 						data-test-id="zoom-in-button"
-						@click="onZoomIn"
+						@click="focusPanelStore.toggleFocusPanel()"
 					/>
 				</KeyboardShortcutTooltip>
 			</div>
