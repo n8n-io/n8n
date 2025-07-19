@@ -43,16 +43,54 @@ export const prepareQueryAndReplacements = (rawQuery: string, replacements?: Que
 	let query: string = rawQuery;
 	const values: QueryValues = [];
 
+	// Parse the query to find parameter placeholders while avoiding those inside quoted strings
 	const regex = /\$(\d+)(?::name)?/g;
-	const matches = rawQuery.match(regex) || [];
+	const matches: Array<{ match: string; index: number; paramNumber: string; isName: boolean }> = [];
+	let match: RegExpExecArray | null;
 
-	for (const match of matches) {
-		if (match.includes(':name')) {
-			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
-		} else {
-			const matchIndex = Number(match.replace('$', '')) - 1;
-			query = query.replace(match, '?');
+	// Find all potential matches
+	while ((match = regex.exec(rawQuery)) !== null) {
+		matches.push({
+			match: match[0],
+			index: match.index,
+			paramNumber: match[1],
+			isName: match[0].includes(':name'),
+		});
+	}
+
+	// Filter out matches that are inside quoted strings
+	const validMatches = matches.filter(({ index }) => {
+		// Check if the match is inside a quoted string
+		const beforeMatch = rawQuery.substring(0, index);
+		const singleQuoteCount = (beforeMatch.match(/'/g) || []).length;
+		const doubleQuoteCount = (beforeMatch.match(/"/g) || []).length;
+
+		// If we're inside quotes (odd number of quotes before this position), skip this match
+		return singleQuoteCount % 2 === 0 && doubleQuoteCount % 2 === 0;
+	});
+
+	// Collect non-name parameters in order for the values array
+	const nonNameMatches = validMatches.filter((match) => !match.isName);
+	nonNameMatches.sort((a, b) => Number(a.paramNumber) - Number(b.paramNumber));
+
+	// Process matches in reverse order to avoid index shifting issues
+	for (const { match: matchStr, paramNumber, isName } of validMatches.reverse()) {
+		const matchIndex = Number(paramNumber) - 1;
+
+		// Only process if the parameter index is valid
+		if (matchIndex >= 0 && matchIndex < replacements.length) {
+			if (isName) {
+				query = query.replace(matchStr, escapeSqlIdentifier(replacements[matchIndex].toString()));
+			} else {
+				query = query.replace(matchStr, '?');
+			}
+		}
+	}
+
+	// Add values in parameter order
+	for (const { paramNumber } of nonNameMatches) {
+		const matchIndex = Number(paramNumber) - 1;
+		if (matchIndex >= 0 && matchIndex < replacements.length) {
 			values.push(replacements[matchIndex]);
 		}
 	}
