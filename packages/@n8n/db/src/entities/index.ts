@@ -3,6 +3,7 @@ import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
+import { BaseRole } from './base-role';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -11,12 +12,15 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import { GlobalRole } from './global-role';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectRole } from './project-role';
+import { Scope } from './scope';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -46,6 +50,10 @@ export {
 	Folder,
 	Project,
 	ProjectRelation,
+	BaseRole,
+	// ProjectRole,
+	GlobalRole,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -78,9 +86,11 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	BaseRole,
 	Folder,
 	Project,
 	ProjectRelation,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -99,4 +109,6 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectRole,
+	GlobalRole,
 };
