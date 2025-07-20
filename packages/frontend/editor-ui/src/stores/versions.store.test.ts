@@ -543,13 +543,13 @@ describe('shouldShowWhatsNewCallout', () => {
 		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(true);
 	});
 
-	// it('returns false if all articles are dismissed', () => {
-	// 	vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
-	// 	localStorage.setItem('n8n_whats_new_callout_dismissed', '[1]');
-	// 	versionsStore = useVersionsStore();
-	// 	versionsStore.whatsNew.items = [makeArticle()];
-	// 	expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
-	// });
+	it('returns false if all articles are dismissed', () => {
+		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		versionsStore = useVersionsStore();
+		versionsStore.whatsNew.items = [makeArticle()];
+		versionsStore.dismissWhatsNewCallout();
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+	});
 
 	it('returns true if user createdAt is before article updatedAt', () => {
 		const now = Date.now();

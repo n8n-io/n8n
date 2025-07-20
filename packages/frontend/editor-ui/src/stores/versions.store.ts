@@ -289,5 +289,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		setWhatsNewArticleRead,
 		closeWhatsNewCallout,
 		shouldShowWhatsNewCallout,
+		dismissWhatsNewCallout,
 	};
 });
