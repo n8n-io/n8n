@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@n8n/i18n';
-import SettingIcon from '@/components/canvas/elements/nodes/render-types/parts/SettingIcon.vue';
+import { N8nIcon } from '@n8n/design-system';
+import { IconSize } from '../../../../../../../../@n8n/design-system/src/types/icon';
 
 const { name } = useCanvasNode();
 const i18n = useI18n();
@@ -14,55 +15,55 @@ const node = computed(() => workflow.value.getNode(name.value));
 </script>
 
 <template>
-	<div :class="$style.settingIcons">
+	<div :class="$style.settingsIcons">
 		<N8nTooltip v-if="node?.alwaysOutputData">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<SettingIcon setting="alwaysOutputData" />
+					<N8nIcon icon="always-output-data" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.alwaysOutputData.displayName')
 					}}</strong>
 				</div>
-				<div :class="$style.tooltipText">
+				<div>
 					{{ i18n.baseText('node.settings.alwaysOutputData') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-always-output-data" :class="$style.settingIcon">
-				<SettingIcon setting="alwaysOutputData" />
+			<div data-test-id="canvas-node-status-always-output-data">
+				<N8nIcon icon="always-output-data" />
 			</div>
 		</N8nTooltip>
 
 		<N8nTooltip v-if="node?.executeOnce">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<SettingIcon setting="executeOnce" />
+					<N8nIcon icon="execute-once" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.executeOnce.displayName')
 					}}</strong>
 				</div>
-				<div :class="$style.tooltipText">
+				<div>
 					{{ i18n.baseText('node.settings.executeOnce') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-execute-once" :class="$style.settingIcon">
-				<SettingIcon setting="executeOnce" />
+			<div data-test-id="canvas-node-status-execute-once">
+				<N8nIcon icon="execute-once" />
 			</div>
 		</N8nTooltip>
 
 		<N8nTooltip v-if="node?.retryOnFail">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<SettingIcon setting="retryOnFail" />
+					<N8nIcon icon="retry-on-fail" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.retryOnFail.displayName')
 					}}</strong>
 				</div>
-				<div :class="$style.tooltipText">
+				<div>
 					{{ i18n.baseText('node.settings.retriesOnFailure') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-retry-on-fail" :class="$style.settingIcon">
-				<SettingIcon setting="retryOnFail" />
+			<div data-test-id="canvas-node-status-retry-on-fail">
+				<N8nIcon icon="retry-on-fail" />
 			</div>
 		</N8nTooltip>
 
@@ -71,54 +72,37 @@ const node = computed(() => workflow.value.getNode(name.value));
 		>
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<SettingIcon setting="continueOnError" />
+					<N8nIcon icon="continue-on-error" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('node.settings.continuesOnError.title')
 					}}</strong>
 				</div>
-				<div :class="$style.tooltipText">
+				<div>
 					{{ i18n.baseText('node.settings.continuesOnError') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-continue-on-error" :class="$style.settingIcon">
-				<SettingIcon setting="continueOnError" />
+			<div data-test-id="canvas-node-status-continue-on-error">
+				<N8nIcon icon="continue-on-error" />
 			</div>
 		</N8nTooltip>
 	</div>
 </template>
 
 <style lang="scss" module>
-.settingIcons {
+.settingsIcons {
+	position: absolute;
+	top: var(--canvas-node--status-icons-offset);
+	right: var(--canvas-node--status-icons-offset);
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-m);
 }
-
-.settingIcon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color-text-light);
-}
-
 .tooltipHeader {
 	display: flex;
-	align-items: baseline;
-	gap: 6px;
-	margin-bottom: 1px;
-}
-
-.tooltipHeader svg {
-	transform: translateY(-1px);
+	gap: 2px;
 }
 
 .tooltipTitle {
 	font-weight: 600;
-	font-size: inherit;
-	line-height: inherit;
-}
-
-.tooltipText {
 	font-size: inherit;
 	line-height: inherit;
 }

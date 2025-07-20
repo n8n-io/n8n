@@ -6,6 +6,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   data-test-id="canvas-configurable-node"
   style="--canvas-node--width: 272px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
+  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -26,7 +27,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     </div>
   </div>
   <div
-    class="settingIcons"
+    class="settingsIcons"
   >
     <!--v-if-->
     <!--v-if-->
@@ -50,6 +51,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
     </div>
   </div>
   <!--v-if-->
+  
 </div>
 `;
 
@@ -59,6 +61,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   data-test-id="canvas-configurable-node"
   style="--canvas-node--width: 272px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
+  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -96,6 +99,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
     </div>
   </div>
   <!--v-if-->
+  
 </div>
 `;
 
@@ -105,6 +109,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   data-test-id="canvas-configuration-node"
   style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
+  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -142,6 +147,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
     </div>
   </div>
   <!--v-if-->
+  
 </div>
 `;
 
@@ -151,6 +157,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   data-test-id="canvas-default-node"
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
+  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -171,7 +178,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     </div>
   </div>
   <div
-    class="settingIcons"
+    class="settingsIcons"
   >
     <!--v-if-->
     <!--v-if-->
@@ -195,6 +202,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
     </div>
   </div>
   <!--v-if-->
+  
 </div>
 `;
 
@@ -204,6 +212,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   data-test-id="canvas-trigger-node"
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
+  
   <!--v-if-->
   <div
     class="n8n-node-icon icon icon"
@@ -224,7 +233,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     </div>
   </div>
   <div
-    class="settingIcons"
+    class="settingsIcons"
   >
     <!--v-if-->
     <!--v-if-->
@@ -248,5 +257,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
     </div>
   </div>
   <!--v-if-->
+  
 </div>
 `;

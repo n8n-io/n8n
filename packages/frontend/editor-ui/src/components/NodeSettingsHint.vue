@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import SettingIcon from '@/components/canvas/elements/nodes/render-types/parts/SettingIcon.vue';
 import type { INodeUi } from '@/Interface';
 
 interface Props {
@@ -30,7 +29,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'alwaysOutputData',
 			message: i18n.baseText('ndv.nodeHints.alwaysOutputData'),
-			icon: 'alwaysOutputData',
+			icon: 'always-output-data',
 		});
 	}
 
@@ -38,7 +37,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'executeOnce',
 			message: i18n.baseText('ndv.nodeHints.executeOnce'),
-			icon: 'executeOnce',
+			icon: 'execute-once',
 		});
 	}
 
@@ -46,7 +45,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'retryOnFail',
 			message: i18n.baseText('ndv.nodeHints.retryOnFail'),
-			icon: 'retryOnFail',
+			icon: 'retry-on-fail',
 		});
 	}
 
@@ -57,7 +56,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'continueOnError',
 			message: i18n.baseText('ndv.nodeHints.continueOnError'),
-			icon: 'continueOnError',
+			icon: 'continue-on-error',
 		});
 	}
 
@@ -74,7 +73,7 @@ const activeSettings = computed(() => {
 					icon="power-off"
 					:class="$style.icon"
 				/>
-				<SettingIcon v-else :setting="setting.icon" :class="$style.icon" />
+				<N8nIcon v-else :icon="setting.icon" :class="$style.icon" />
 			</div>
 			<N8nText size="small" :class="$style.message">
 				{{ setting.message }}
@@ -111,7 +110,7 @@ const activeSettings = computed(() => {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	margin-top: 1px; /* Small adjustment to align with text baseline */
+	margin-top: 1px;
 }
 
 .icon {

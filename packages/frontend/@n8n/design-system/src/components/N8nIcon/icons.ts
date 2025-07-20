@@ -16,6 +16,10 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
+import Continue from './custom/Continue.svg';
+import EmptyOutput from './custom/EmptyOutput.svg';
+import Retry from './custom/Retry.svg';
+import RunOnce from './custom/RunOnce.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -405,6 +409,10 @@ export const updatedIconSet = {
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
+	'continue-on-error': Continue,
+	'always-output-data': EmptyOutput,
+	'retry-on-fail': Retry,
+	'execute-once': RunOnce,
 	schema: Schema,
 	json: Json,
 	binary: Binary,
