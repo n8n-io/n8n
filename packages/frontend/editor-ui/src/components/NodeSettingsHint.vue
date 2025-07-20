@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 interface Props {
 	node: INodeUi | null;
@@ -17,7 +18,7 @@ const activeSettings = computed(() => {
 					{
 						key: 'disabled',
 						message: i18n.baseText('ndv.nodeHints.disabled'),
-						icon: 'power-off',
+						icon: 'power-off' as IconName,
 					},
 				]
 			: [];
@@ -29,7 +30,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'alwaysOutputData',
 			message: i18n.baseText('ndv.nodeHints.alwaysOutputData'),
-			icon: 'always-output-data',
+			icon: 'always-output-data' as IconName,
 		});
 	}
 
@@ -37,7 +38,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'executeOnce',
 			message: i18n.baseText('ndv.nodeHints.executeOnce'),
-			icon: 'execute-once',
+			icon: 'execute-once' as IconName,
 		});
 	}
 
@@ -45,7 +46,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'retryOnFail',
 			message: i18n.baseText('ndv.nodeHints.retryOnFail'),
-			icon: 'retry-on-fail',
+			icon: 'retry-on-fail' as IconName,
 		});
 	}
 
@@ -56,7 +57,7 @@ const activeSettings = computed(() => {
 		settings.push({
 			key: 'continueOnError',
 			message: i18n.baseText('ndv.nodeHints.continueOnError'),
-			icon: 'continue-on-error',
+			icon: 'continue-on-error' as IconName,
 		});
 	}
 
@@ -68,11 +69,7 @@ const activeSettings = computed(() => {
 	<div v-if="activeSettings.length > 0" :class="$style.settingsHint">
 		<div v-for="setting in activeSettings" :key="setting.key" :class="$style.settingItem">
 			<div :class="$style.iconWrapper">
-				<FontAwesomeIcon
-					v-if="setting.icon === 'power-off'"
-					icon="power-off"
-					:class="$style.icon"
-				/>
+				<FontAwesomeIcon v-if="setting.icon === 'power'" icon="power" :class="$style.icon" />
 				<N8nIcon v-else :icon="setting.icon" :class="$style.icon" />
 			</div>
 			<N8nText size="small" :class="$style.message">

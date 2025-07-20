@@ -151,35 +151,32 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<ExperimentalCanvasNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
-		<template v-else>
-			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-			<NodeIcon
-				:icon-source="iconSource"
-				:size="iconSize"
-				:shrink="false"
-				:disabled="isDisabled"
-				:class="$style.icon"
-			/>
-			<CanvasNodeSettingsIcons
-				v-if="
-					!renderOptions.configuration &&
-					!isDisabled &&
-					!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
-				"
-			/>
-			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-			<div :class="$style.description">
-				<div v-if="label" :class="$style.label">
-					{{ label }}
-				</div>
-				<div v-if="isDisabled" :class="$style.disabledLabel">
-					({{ i18n.baseText('node.disabled') }})
-				</div>
-				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+		<NodeIcon
+			:icon-source="iconSource"
+			:size="iconSize"
+			:shrink="false"
+			:disabled="isDisabled"
+			:class="$style.icon"
+		/>
+		<CanvasNodeSettingsIcons
+			v-if="
+				!renderOptions.configuration &&
+				!isDisabled &&
+				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+			"
+		/>
+		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+		<div :class="$style.description">
+			<div v-if="label" :class="$style.label">
+				{{ label }}
 			</div>
-			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
-		</template>
+			<div v-if="isDisabled" :class="$style.disabledLabel">
+				({{ i18n.baseText('node.disabled') }})
+			</div>
+			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		</div>
+		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>
 </template>
 

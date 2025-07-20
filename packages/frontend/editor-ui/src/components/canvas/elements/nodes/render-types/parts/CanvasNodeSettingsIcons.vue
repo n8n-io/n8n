@@ -4,7 +4,6 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
-import { IconSize } from '../../../../../../../../@n8n/design-system/src/types/icon';
 
 const { name } = useCanvasNode();
 const i18n = useI18n();
