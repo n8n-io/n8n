@@ -185,6 +185,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		const allArticlesDismissed = whatsNewArticles.value.every((item) =>
 			lastDismissedWhatsNewCallout.value.includes(item.id),
 		);
+
 		return hasNewArticle && !allArticlesDismissed;
 	};
 
@@ -287,5 +288,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		isWhatsNewArticleRead,
 		setWhatsNewArticleRead,
 		closeWhatsNewCallout,
+		shouldShowWhatsNewCallout,
 	};
 });
