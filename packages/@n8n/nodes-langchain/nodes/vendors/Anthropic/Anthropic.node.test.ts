@@ -538,7 +538,7 @@ describe('Anthropic Node', () => {
 				id: 'file_123',
 			});
 
-			const result = await file.delete.execute.call(executeFunctionsMock, 0);
+			const result = await file.deleteFile.execute.call(executeFunctionsMock, 0);
 
 			expect(result).toEqual([{ json: { id: 'file_123' }, pairedItem: { item: 0 } }]);
 			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', '/v1/files/file_123');
