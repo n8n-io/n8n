@@ -3,23 +3,20 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 
-export type SuggestedWorkflow = {
+type SuggestedWorkflow = {
 	id: number;
 	name: string;
 };
 
-const props = withDefaults(
-	defineProps<{
-		data: SuggestedWorkflow;
-	}>(),
-	{},
-);
+const props = defineProps<{
+	data: SuggestedWorkflow;
+}>();
 const { data } = props;
 
 const templatesStore = useTemplatesStore();
+const locale = useI18n();
 
 const isVisible = ref(true);
-const locale = useI18n();
 
 const dismissCallout = () => {
 	templatesStore.experimentalDismissSuggestedWorkflow(data.id);

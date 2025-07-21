@@ -6,7 +6,6 @@ import {
 import type { INodeUi } from '@/Interface';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import {
-	getPersonalizedTemplatesForUser,
 	getPredefinedFromSelected,
 	getSimpleTemplates,
 	getTemplatePathByRole,
