@@ -72,7 +72,7 @@ const mockTestCases = [
 		status: 'error',
 		runAt: '2023-10-01T10:01:00Z',
 		executionId: 'execution-2',
-		errorCode: 'TIMEOUT',
+		errorCode: 'INTERRUPTED',
 		metrics: {
 			accuracy: 0.85,
 			precision: 0.88,
@@ -198,20 +198,13 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('should handle back navigation', async () => {
+	it('should display back navigation', async () => {
 		const { container } = renderComponent();
 
 		await waitFor(() => {
 			const backButton = container.querySelector('.backButton');
 			expect(backButton).toBeTruthy();
 		});
-	});
-
-	it('should display loading state initially', async () => {
-		const { container } = renderComponent();
-
-		// Component should render the container
-		expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
 	});
 
 	it('should display test table when data is loaded', async () => {
@@ -230,25 +223,6 @@ describe('TestRunDetailView', () => {
 		const { container } = renderComponent();
 
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
-		});
-	});
-
-	it('should format dates correctly', async () => {
-		const { container } = renderComponent();
-
-		await waitFor(() => {
-			const summaryCards = container.querySelectorAll('.summaryCard');
-			// Should have at least the date card
-			expect(summaryCards.length).toBeGreaterThan(1);
-		});
-	});
-
-	it('should handle workflow name display', async () => {
-		const { container } = renderComponent();
-
-		await waitFor(() => {
-			// Should render the component with workflow data
 			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
 		});
 	});
@@ -297,6 +271,175 @@ describe('TestRunDetailView', () => {
 		await waitFor(() => {
 			// Should render the component
 			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+		});
+	});
+
+	it('should display inputs correctly in test table', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that inputs are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Inputs should be rendered in the table
+			expect(container.textContent).toContain('value1');
+			expect(container.textContent).toContain('value2');
+		});
+	});
+
+	it('should display outputs correctly in test table', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that outputs are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Outputs should be rendered in the table
+			expect(container.textContent).toContain('result1');
+			expect(container.textContent).toContain('result2');
+		});
+	});
+
+	it('should display metrics correctly for individual test cases', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that metrics are displayed in the table
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Individual test case metrics should be shown
+			expect(container.textContent).toContain('0.98'); // accuracy for test-case-1
+			expect(container.textContent).toContain('0.95'); // precision for test-case-1
+			expect(container.textContent).toContain('0.85'); // accuracy for test-case-2
+			expect(container.textContent).toContain('0.88'); // precision for test-case-2
+		});
+	});
+
+	it('should display overall run metrics in summary cards', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			// Check that overall metrics are displayed in summary
+			const summaryCards = container.querySelectorAll('.summaryCard');
+			expect(summaryCards.length).toBeGreaterThan(0);
+			// Overall run metrics should be shown
+			expect(container.textContent).toContain('0.95'); // overall accuracy
+			expect(container.textContent).toContain('0.92'); // overall precision
+		});
+	});
+
+	it('should handle test cases with missing metrics gracefully', async () => {
+		const testCasesWithMissingMetrics = [
+			mock<TestCaseExecutionRecord>({
+				id: 'test-case-3',
+				status: 'completed',
+				runAt: '2023-10-01T10:02:00Z',
+				executionId: 'execution-3',
+				inputs: { input1: 'value3' },
+				outputs: { output1: 'result3' },
+				// No metrics property
+			}),
+		];
+
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(
+			testCasesWithMissingMetrics,
+		);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+			// Should still display inputs and outputs
+			expect(container.textContent).toContain('value3');
+			expect(container.textContent).toContain('result3');
+		});
+	});
+
+	it('should display error status for failed test cases', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(evaluationStore.fetchTestCaseExecutions).toHaveBeenCalledWith({
+				workflowId: 'test-workflow-id',
+				runId: 'test-run-id',
+			});
+		});
+
+		await waitFor(() => {
+			// Check that error status and error code are displayed
+			const testTable = container.querySelector('[data-test-id="test-definition-run-detail"]');
+			expect(testTable).toBeTruthy();
+			// Error status should be shown for test-case-2
+			expect(container.textContent).toContain('error');
+			expect(container.textContent).toContain('run was interrupted');
+		});
+	});
+
+	it('should handle complex input and output objects', async () => {
+		const testCasesWithComplexData = [
+			mock<TestCaseExecutionRecord>({
+				id: 'test-case-complex',
+				status: 'completed',
+				runAt: '2023-10-01T10:03:00Z',
+				executionId: 'execution-complex',
+				inputs: {
+					complexInput: {
+						nested: {
+							value: 'nested-value',
+							array: [1, 2, 3],
+						},
+					},
+				},
+				outputs: {
+					complexOutput: {
+						result: 'complex-result',
+						metadata: {
+							processed: true,
+							timestamp: '2023-10-01T10:03:00Z',
+						},
+					},
+				},
+				metrics: {
+					accuracy: 0.97,
+					precision: 0.94,
+				},
+			}),
+		];
+
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(
+			testCasesWithComplexData,
+		);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
+			// Complex data should be handled and displayed
+			expect(container.textContent).toContain('0.97');
+			expect(container.textContent).toContain('0.94');
+			expect(container.textContent).toContain('complexInput');
+			expect(container.textContent).toContain('complexOutput');
 		});
 	});
 });
