@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 
 interface Props {
@@ -16,11 +16,19 @@ interface Props {
 }
 
 defineProps<Props>();
+const emit = defineEmits<{
+	feedback: [RatingFeedback];
+}>();
 const { renderMarkdown } = useMarkdown();
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
+	>
 		<div :class="$style.block">
 			<div :class="$style.blockTitle">
 				{{ message.title }}
