@@ -5,6 +5,7 @@ import {
 	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
+	AiSessionRetrievalRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
@@ -35,32 +36,69 @@ export class AiController {
 		private readonly userService: UserService,
 	) {}
 
-	@Post('/build', { rateLimit: { limit: 100 } })
+	// Use usesTemplates flag to bypass the send() wrapper which would cause
+	// "Cannot set headers after they are sent" error for streaming responses.
+	// This ensures errors during streaming are handled within the stream itself.
+	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Body payload: AiBuilderChatRequestDto,
 	) {
 		try {
+			const { text, workflowContext } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
-					question: payload.payload.question ?? '',
+					message: text,
+					workflowContext: {
+						currentWorkflow: workflowContext.currentWorkflow,
+						executionData: workflowContext.executionData,
+						executionSchema: workflowContext.executionSchema,
+					},
 				},
 				req.user,
 			);
 
 			res.header('Content-type', 'application/json-lines').flush();
 
-			// Handle the stream
-			for await (const chunk of aiResponse) {
-				res.flush();
-				res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			try {
+				// Handle the stream
+				for await (const chunk of aiResponse) {
+					res.flush();
+					res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+				}
+			} catch (streamError) {
+				// If an error occurs during streaming, send it as part of the stream
+				// This prevents "Cannot set headers after they are sent" error
+				assert(streamError instanceof Error);
+
+				// Send error as proper error type now that frontend supports it
+				const errorChunk = {
+					messages: [
+						{
+							role: 'assistant',
+							type: 'error',
+							content: streamError.message,
+						},
+					],
+				};
+				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
 			}
 
 			res.end();
 		} catch (e) {
+			// This catch block handles errors that occur before streaming starts
+			// Since headers haven't been sent yet, we can still send a proper error response
 			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			if (!res.headersSent) {
+				res.status(500).json({
+					code: 500,
+					message: e.message,
+				});
+			} else {
+				// If headers were already sent dont't send a second error response
+				res.end();
+			}
 		}
 	}
 
@@ -152,6 +190,21 @@ export class AiController {
 			});
 
 			return newCredential;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Post('/sessions', { rateLimit: { limit: 100 } })
+	async getSessions(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiSessionRetrievalRequestDto,
+	) {
+		try {
+			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
