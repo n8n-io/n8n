@@ -362,13 +362,17 @@ export class TestRunnerService {
 	/**
 	 * Get the evaluation set metrics nodes from a workflow.
 	 */
-	static getEvaluationNodes(workflow: IWorkflowBase, operation: string, defaultOption = false) {
+	static getEvaluationNodes(
+		workflow: IWorkflowBase,
+		operation: string,
+		isDefaultOperation = false,
+	) {
 		return workflow.nodes.filter(
 			(node) =>
 				node.type === EVALUATION_NODE_TYPE &&
 				node.disabled !== true &&
 				(node.parameters.operation === operation ||
-					(defaultOption && node.parameters.operation === undefined)),
+					(isDefaultOperation && node.parameters.operation === undefined)),
 		);
 	}
 

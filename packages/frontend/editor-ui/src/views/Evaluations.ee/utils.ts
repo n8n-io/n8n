@@ -3,24 +3,24 @@ import type { TestCaseExecutionRecord } from '../../api/evaluation.ee';
 
 export function getTestCasesColumns(
 	cases: TestCaseExecutionRecord[],
-	key: 'inputs' | 'outputs',
+	columnType: 'inputs' | 'outputs',
 ): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> {
 	const inputColumnNames = cases.reduce(
 		(set, testCase) => {
-			Object.keys(testCase[key] ?? {}).forEach((key) => set.add(key));
+			Object.keys(testCase[columnType] ?? {}).forEach((key) => set.add(key));
 			return set;
 		},
 		new Set([] as string[]),
 	);
 
 	return Array.from(inputColumnNames.keys()).map((column) => ({
-		prop: `${key}.${column}`,
+		prop: `${columnType}.${column}`,
 		label: column,
 		sortable: true,
 		filter: true,
 		showHeaderTooltip: true,
 		formatter: (row: TestCaseExecutionRecord) => {
-			const value = row[key]?.[column];
+			const value = row[columnType]?.[column];
 			if (typeof value === 'object' && value !== null) {
 				return JSON.stringify(value, null, 2);
 			}
