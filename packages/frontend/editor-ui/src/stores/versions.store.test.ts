@@ -528,6 +528,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns false if there are no articles', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
@@ -536,6 +537,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns true if user has no createdAt and not all articles are dismissed', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
@@ -544,6 +546,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	});
 
 	it('returns false if all articles are dismissed', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
 		versionsStore = useVersionsStore();
 		versionsStore.whatsNew.items = [makeArticle()];
@@ -555,7 +558,8 @@ describe('shouldShowWhatsNewCallout', () => {
 		const now = Date.now();
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date(now - 10000).toISOString() },
-		});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: new Date(now).toISOString() })];
@@ -566,7 +570,8 @@ describe('shouldShowWhatsNewCallout', () => {
 		const now = Date.now();
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date(now).toISOString() },
-		});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [
@@ -578,7 +583,8 @@ describe('shouldShowWhatsNewCallout', () => {
 	it('handles missing updatedAt on article', () => {
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date().toISOString() },
-		});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: undefined })];
