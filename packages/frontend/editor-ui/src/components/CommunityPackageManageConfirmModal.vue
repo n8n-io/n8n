@@ -13,8 +13,16 @@ import { useSettingsStore } from '@/stores/settings.store';
 import semver from 'semver';
 import { N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
+
+type WorkflowData = Array<{
+	id: string;
+	name: string;
+	owner: string[];
+	active: string;
+}>;
 
 interface Props {
 	modalName: string;
@@ -27,6 +35,7 @@ const props = defineProps<Props>();
 const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
+const workflowsStore = useWorkflowsStore();
 
 const modalBus = createEventBus();
 
@@ -35,6 +44,8 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const loading = ref(false);
+
+const workflowsWithPackageNodes = ref<WorkflowData>([]);
 
 const isUsingVerifiedAndUnverifiedPackages =
 	settingsStore.isCommunityNodesFeatureEnabled && settingsStore.isUnverifiedPackagesEnabled;
@@ -68,7 +79,9 @@ const getModalContent = computed(() => {
 					nodes: includedNodes.value,
 				},
 			}),
-			description: i18n.baseText('settings.communityNodes.confirmModal.uninstall.description'),
+			description: workflowsWithPackageNodes.value.length
+				? i18n.baseText('settings.communityNodes.confirmModal.uninstall.description')
+				: i18n.baseText('settings.communityNodes.confirmModal.noWorkflowsUsingNodes'),
 			buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
 			buttonLoadingLabel: i18n.baseText(
 				'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
@@ -82,7 +95,9 @@ const getModalContent = computed(() => {
 				nodes: includedNodes.value,
 			},
 		}),
-		description: i18n.baseText('settings.communityNodes.confirmModal.update.description'),
+		description: workflowsWithPackageNodes.value.length
+			? i18n.baseText('settings.communityNodes.confirmModal.update.description')
+			: i18n.baseText('settings.communityNodes.confirmModal.noWorkflowsUsingNodes'),
 		warning: i18n.baseText('settings.communityNodes.confirmModal.update.warning'),
 		buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
 		buttonLoadingLabel: i18n.baseText(
@@ -90,24 +105,6 @@ const getModalContent = computed(() => {
 		),
 	};
 });
-
-const nodesInWorkflows = [
-	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
-	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
-	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
-	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
-	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
-	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
-	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
-	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
-	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
-	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
-	{ name: 'Workflow 1', owner: ['John Doe'], status: 'Active' },
-	{ name: 'Workflow 2', owner: ['Anna Smith'], status: 'Active' },
-	{ name: 'Workflow 3', owner: ['Mark Smith'], status: 'Inactive' },
-	{ name: 'Workflow 4', owner: ['Oliver Differ'], status: 'Active' },
-	{ name: 'Workflow 5', owner: ['Colleen Anderson'], status: 'Inactive' },
-];
 
 const onModalClose = () => {
 	return !loading.value;
@@ -229,6 +226,16 @@ onMounted(async () => {
 		await fetchPackageInfo(props.activePackageName);
 	}
 
+	if (communityStorePackage.value?.installedNodes.length) {
+		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
+		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
+		const workflows = (response.data ?? []).map((wf) => {
+			wf.owner = ['me'];
+			return wf as WorkflowData[number];
+		});
+		workflowsWithPackageNodes.value = workflows;
+	}
+
 	setIsVerifiedLatestPackage();
 	setPackageVersion();
 });
@@ -257,7 +264,10 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 
-			<NodesInWorkflowTable v-if="nodesInWorkflows?.length" :data="nodesInWorkflows" />
+			<NodesInWorkflowTable
+				v-if="workflowsWithPackageNodes?.length"
+				:data="workflowsWithPackageNodes"
+			/>
 		</template>
 		<template #footer>
 			<n8n-button

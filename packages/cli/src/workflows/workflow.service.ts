@@ -557,4 +557,8 @@ export class WorkflowService {
 			})),
 		);
 	}
+
+	async getWorkflowsWithNodesIncluded(nodeTypes: string[]) {
+		return await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+	}
 }

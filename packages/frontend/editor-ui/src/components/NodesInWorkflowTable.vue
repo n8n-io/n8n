@@ -2,18 +2,43 @@
 import { ref, computed } from 'vue';
 
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { RouteLocationRaw } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 type WorkflowData = Array<{
+	id: string;
 	name: string;
 	owner: string[];
-	status: string;
+	active: string;
 }>;
+
+type WorkflowDataItem = WorkflowData[number];
+
+type WorkflowDataKeys = keyof WorkflowDataItem;
 
 const props = defineProps<{
 	data: WorkflowData;
 }>();
 
-const sortBy = defineModel<Array<{ id: 'name' | 'owner' | 'status'; desc: boolean }>>('sortBy');
+const sortBy = defineModel<Array<{ id: WorkflowDataKeys; desc: boolean }>>('sortBy');
+
+const headers = ref<Array<TableHeader<WorkflowDataItem>>>([
+	{
+		title: 'Workflow',
+		key: 'name',
+		width: 250,
+	},
+	{
+		title: 'Owner',
+		key: 'owner',
+		width: 100,
+	},
+	{
+		title: 'Status',
+		key: 'active',
+		width: 30,
+	},
+]);
 
 const sortedItems = computed(() => {
 	if (!sortBy?.value?.length) return props.data;
@@ -27,23 +52,12 @@ const sortedItems = computed(() => {
 	});
 });
 
-const headers = ref<Array<TableHeader<{ name: string; owner: string[]; status: string }>>>([
-	{
-		title: 'Workflow',
-		key: 'name',
-		width: 250,
+const getWorkflowLink = (workflowId: string): RouteLocationRaw => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: workflowId,
 	},
-	{
-		title: 'Owner',
-		key: 'owner',
-		width: 100,
-	},
-	{
-		title: 'Status',
-		key: 'status',
-		width: 30,
-	},
-]);
+});
 </script>
 
 <template>
@@ -57,13 +71,15 @@ const headers = ref<Array<TableHeader<{ name: string; owner: string[]; status: s
 			:page-sizes="[sortedItems.length + 1]"
 		>
 			<template #[`item.name`]="{ item }">
-				<N8nText>{{ item.name }}</N8nText>
+				<router-link :to="getWorkflowLink(item.id)" target="_blank">
+					<N8nText class="ellipsis" style="color: var(--color-text-base)">{{ item.name }}</N8nText>
+				</router-link>
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<N8nText>{{ item.owner.join(', ') }}</N8nText>
 			</template>
-			<template #[`item.status`]="{ item }">
-				<span v-if="item.status === 'Active'" class="status active">Active</span>
+			<template #[`item.active`]="{ item }">
+				<span v-if="item.active" class="status active">Active</span>
 				<span v-else class="status inactive">Inactive</span>
 			</template>
 		</N8nDataTableServer>
@@ -91,5 +107,14 @@ const headers = ref<Array<TableHeader<{ name: string; owner: string[]; status: s
 
 .inactive {
 	color: var(--color-text-light);
+}
+
+.ellipsis {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+	width: fit-content;
+	max-width: 100%;
 }
 </style>

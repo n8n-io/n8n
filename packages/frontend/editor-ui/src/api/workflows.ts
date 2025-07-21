@@ -43,6 +43,12 @@ export async function getWorkflows(context: IRestApiContext, filter?: object, op
 	});
 }
 
+export async function getWorkflowsWithNodesIncluded(context: IRestApiContext, nodeTypes: string[]) {
+	return await getFullApiResponse<IDataObject[]>(context, 'POST', '/workflows/with-node-types', {
+		nodeTypes,
+	});
+}
+
 export async function getWorkflowsAndFolders(
 	context: IRestApiContext,
 	filter?: object,
