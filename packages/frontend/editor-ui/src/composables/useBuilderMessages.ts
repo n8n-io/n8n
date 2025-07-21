@@ -92,85 +92,99 @@ export function useBuilderMessages() {
 		});
 	}
 
-	function processAssistantMessages(
-		currentMessages: ChatUI.AssistantMessage[],
-		newMessages: ChatRequest.MessageResponse[],
-		baseId: string,
-	): MessageProcessingResult {
-		const mutableMessages = [...currentMessages];
-		let thinkingMessage: string | undefined;
+	/**
+	 * Process a single message and add it to the messages array
+	 */
+	function processSingleMessage(
+		messages: ChatUI.AssistantMessage[],
+		msg: ChatRequest.MessageResponse,
+		messageId: string,
+	): boolean {
 		let shouldClearThinking = false;
 
-		newMessages.forEach((msg, index) => {
-			// Generate unique ID for each message in the batch
-			const messageId = `${baseId}-${index}`;
+		if (isTextMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'text',
+				content: msg.text,
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isWorkflowUpdatedMessage(msg)) {
+			messages.push({
+				...msg,
+				id: messageId,
+				read: false,
+			} as ChatUI.AssistantMessage);
+			// Don't clear thinking for workflow updates - they're just state changes
+		} else if (isToolMessage(msg)) {
+			processToolMessage(messages, msg, messageId);
+		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
+			// Handle error messages from the API
+			// API sends error messages with type: 'error' and content field
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'error',
+				content: msg.content,
+				read: false,
+			});
+			shouldClearThinking = true;
+		}
 
-			if (isTextMessage(msg)) {
-				mutableMessages.push({
-					id: messageId,
-					role: 'assistant',
-					type: 'text',
-					content: msg.text,
-					read: false,
-				} as ChatUI.AssistantMessage);
-				shouldClearThinking = true;
-			} else if (isWorkflowUpdatedMessage(msg)) {
-				mutableMessages.push({
-					...msg,
-					id: messageId,
-					read: false,
-				} as ChatUI.AssistantMessage);
-				// Don't clear thinking for workflow updates - they're just state changes
-			} else if (isToolMessage(msg)) {
-				// Use toolCallId as the message ID for consistency across updates
-				const toolMessageId = msg.toolCallId || messageId;
+		return shouldClearThinking;
+	}
 
-				// Check if we already have this tool message
-				const existingIndex = msg.toolCallId
-					? mutableMessages.findIndex(
-							(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).toolCallId === msg.toolCallId,
-						)
-					: -1;
+	/**
+	 * Process a tool message - either update existing or add new
+	 */
+	function processToolMessage(
+		messages: ChatUI.AssistantMessage[],
+		msg: ChatRequest.ToolMessage,
+		messageId: string,
+	): void {
+		// Use toolCallId as the message ID for consistency across updates
+		const toolMessageId = msg.toolCallId || messageId;
 
-				if (existingIndex !== -1) {
-					// Update existing tool message - merge updates array
-					const existing = mutableMessages[existingIndex] as ChatUI.ToolMessage;
-					const toolMessage: ChatUI.ToolMessage = {
-						...existing,
-						status: msg.status,
-						updates: [...(existing.updates || []), ...(msg.updates || [])],
-					};
-					mutableMessages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
-				} else {
-					// Add new tool message
-					const toolMessage: ChatUI.AssistantMessage = {
-						id: toolMessageId,
-						role: 'assistant',
-						type: 'tool',
-						toolName: msg.toolName,
-						toolCallId: msg.toolCallId,
-						status: msg.status,
-						updates: msg.updates || [],
-						read: false,
-					};
-					mutableMessages.push(toolMessage);
-				}
-			} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
-				// Handle error messages from the API
-				// API sends error messages with type: 'error' and content field
-				mutableMessages.push({
-					id: messageId,
-					role: 'assistant',
-					type: 'error',
-					content: msg.content,
-					read: false,
-				});
-				shouldClearThinking = true;
-			}
-		});
+		// Check if we already have this tool message
+		const existingIndex = msg.toolCallId
+			? messages.findIndex(
+					(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).toolCallId === msg.toolCallId,
+				)
+			: -1;
 
+		if (existingIndex !== -1) {
+			// Update existing tool message - merge updates array
+			const existing = messages[existingIndex] as ChatUI.ToolMessage;
+			const toolMessage: ChatUI.ToolMessage = {
+				...existing,
+				status: msg.status,
+				updates: [...(existing.updates || []), ...(msg.updates || [])],
+			};
+			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
+		} else {
+			// Add new tool message
+			const toolMessage: ChatUI.AssistantMessage = {
+				id: toolMessageId,
+				role: 'assistant',
+				type: 'tool',
+				toolName: msg.toolName,
+				toolCallId: msg.toolCallId,
+				status: msg.status,
+				updates: msg.updates || [],
+				read: false,
+			};
+			messages.push(toolMessage);
+		}
+	}
+
+	/**
+	 * Determine the thinking message based on tool states
+	 */
+	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		// Check ALL messages to determine state
-		const allToolMessages = mutableMessages.filter(
+		const allToolMessages = messages.filter(
 			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
 		);
 		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
@@ -178,8 +192,8 @@ export function useBuilderMessages() {
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
-		for (let i = mutableMessages.length - 1; i >= 0; i--) {
-			const msg = mutableMessages[i];
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
 			if (msg.type === 'tool' && (msg as ChatUI.ToolMessage).status === 'completed') {
 				lastCompletedToolIndex = i;
 				break;
@@ -190,8 +204,8 @@ export function useBuilderMessages() {
 		// Note: workflow-updated messages shouldn't count as they're just canvas state updates
 		let hasTextAfterTools = false;
 		if (lastCompletedToolIndex !== -1) {
-			for (let i = lastCompletedToolIndex + 1; i < mutableMessages.length; i++) {
-				const msg = mutableMessages[i];
+			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
+				const msg = messages[i];
 				if (msg.type === 'text') {
 					hasTextAfterTools = true;
 					break;
@@ -203,10 +217,30 @@ export function useBuilderMessages() {
 		// - If all tools are done and no text response yet, show "Processing results..."
 		// - Otherwise, clear the thinking message
 		if (hasAnyRunningTools) {
-			thinkingMessage = locale.baseText('aiAssistant.thinkingSteps.runningTools');
+			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
 		} else if (hasCompletedTools && !hasTextAfterTools) {
-			thinkingMessage = locale.baseText('aiAssistant.thinkingSteps.processingResults');
+			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
 		}
+
+		return undefined;
+	}
+
+	function processAssistantMessages(
+		currentMessages: ChatUI.AssistantMessage[],
+		newMessages: ChatRequest.MessageResponse[],
+		baseId: string,
+	): MessageProcessingResult {
+		const mutableMessages = [...currentMessages];
+		let shouldClearThinking = false;
+
+		newMessages.forEach((msg, index) => {
+			// Generate unique ID for each message in the batch
+			const messageId = `${baseId}-${index}`;
+			const clearThinking = processSingleMessage(mutableMessages, msg, messageId);
+			shouldClearThinking = shouldClearThinking || clearThinking;
+		});
+
+		const thinkingMessage = determineThinkingMessage(mutableMessages);
 
 		// Apply rating logic only to messages after workflow-updated
 		const finalMessages = applyRatingLogic(mutableMessages);
