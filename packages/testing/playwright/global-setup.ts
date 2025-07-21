@@ -1,7 +1,7 @@
 import { request } from '@playwright/test';
+import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 
 import { ApiHelpers } from './services/api-helper';
-import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 
 async function pullImagesForCI() {
 	console.log(`🔄 Pulling images for ${process.env.N8N_DOCKER_IMAGE}...`);
