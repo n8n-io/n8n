@@ -29,6 +29,7 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
+import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -56,6 +57,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
+const styles = useStyles();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -319,7 +321,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px` }"
+			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
