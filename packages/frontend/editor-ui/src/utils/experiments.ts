@@ -1,5 +1,5 @@
 import { useTelemetry } from '@/composables/useTelemetry';
-import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/constants';
+import { EXTRA_TEMPLATE_LINKS_EXPERIMENT, TEMPLATE_ONBOARDING_EXPERIMENT } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -66,17 +66,9 @@ export const trackTemplatesClick = (source: TemplateClickSource) => {
  */
 
 export const isPersonalizedTemplatesExperimentEnabled = () => {
-	// TODO: replace with correct
-	const TEMPLATE_ONBOARDING_EXPERIMENT = {
-		name: '',
-		variant: '',
-	};
 	return (
-		(usePostHog().getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
-			TEMPLATE_ONBOARDING_EXPERIMENT.variant &&
-			useCloudPlanStore().userIsTrialing) ||
-		// TODO: remove before merge
-		true
+		usePostHog().getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
+			TEMPLATE_ONBOARDING_EXPERIMENT.variantSuggestedTemplates && useCloudPlanStore().userIsTrialing
 	);
 };
 
