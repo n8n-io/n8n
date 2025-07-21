@@ -2176,9 +2176,8 @@ const assistantStore = useAssistantStore();
 					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
-			<div v-if="assistantStore.isAssistantEnabled" :class="$style.assistantContainer">
-				<AssistantsHub />
-			</div>
+
+			<AssistantsHub />
 		</WorkflowCanvas>
 		<div v-if="isOpen" :class="$style.chatContainer">
 			<ChatMessagesPanel
@@ -2274,7 +2273,6 @@ const assistantStore = useAssistantStore();
 	left: 12px;
 	height: 600px;
 	max-height: calc(100% - 64px);
-	max-width: 300px;
 	z-index: 1;
 	display: flex;
 	justify-content: center;
@@ -2283,6 +2281,7 @@ const assistantStore = useAssistantStore();
 
 .assistantContainer {
 	left: auto;
-	right: 40px;
+	width: fit-content;
+	right: 12px;
 }
 </style>

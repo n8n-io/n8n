@@ -94,6 +94,7 @@ const activeTriggerNode = computed(() =>
 			<N8nButton
 				square
 				:loading="executing"
+				:class="$style.button"
 				:disabled="disabled"
 				size="medium"
 				type="primary"
@@ -102,9 +103,8 @@ const activeTriggerNode = computed(() =>
 				@mouseleave="$emit('mouseleave', $event)"
 				@click="emit('execute')"
 			>
-				<div :class="$style.center">
+				<div v-if="!executing || !waitingForWebhook" :class="$style.center">
 					<NodeIcon
-						v-if="!executing"
 						:class="$style.menuIcon"
 						:size="14"
 						:node-type="getNodeTypeByName(activeTriggerNode!.name)"
@@ -152,6 +152,15 @@ const activeTriggerNode = computed(() =>
 	position: relative;
 	display: flex;
 	align-items: stretch;
+	padding-left: 32px;
+}
+
+.button {
+	width: 32px !important;
+	height: 32px !important;
+	position: absolute;
+	top: -1px;
+	left: -1px;
 }
 
 .chevron {
@@ -174,13 +183,16 @@ const activeTriggerNode = computed(() =>
 	position: relative;
 	width: 100%;
 	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.center > div {
+/* .center > div {
 	position: absolute;
 	left: -5px;
 	top: -2px;
-}
+} */
 
 .menuItem.disabled .menuIcon {
 	opacity: 0.2;

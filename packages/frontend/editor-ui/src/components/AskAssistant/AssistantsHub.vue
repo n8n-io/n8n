@@ -15,12 +15,25 @@ const chatWidth = computed(() => {
 	return isBuildMode.value ? builderStore.chatWidth : assistantStore.chatWidth;
 });
 
-function onResize(data: { direction: string; x: number; width: number }) {
+const chatHeight = ref(600);
+
+function onResize(data: {
+	direction: string;
+	x: number;
+	width: number;
+	y: number;
+	height: number;
+}) {
+	if (data.direction === 'top') {
+		chatHeight.value = data.height;
+		return;
+	}
+
 	builderStore.updateWindowWidth(data.width);
 	assistantStore.updateWindowWidth(data.width);
 }
 
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
+function onResizeDebounced(data: { direction: string; x: number; width: number; y: number }) {
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 }
 
@@ -63,12 +76,15 @@ onBeforeUnmount(() => {
 <template>
 	<N8nResizeWrapper
 		v-show="builderStore.isAssistantOpen || assistantStore.isAssistantOpen"
-		:supported-directions="['left']"
+		:supported-directions="['left', 'top']"
 		:width="chatWidth"
+		:height="chatHeight"
+		:style="{ width: `${chatWidth}px`, height: `${chatHeight}px` }"
+		:class="$style.container"
 		data-test-id="ask-assistant-sidebar"
 		@resize="onResizeDebounced"
 	>
-		<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
+		<div :style="{ width: `${chatWidth}px`, height: `${chatHeight}px` }" :class="$style.wrapper">
 			<div :class="$style.assistantContent">
 				<AskAssistantBuild v-if="isBuildMode" @close="onClose">
 					<template #header>
@@ -87,11 +103,19 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+.container {
+	position: absolute;
+	bottom: 54px;
+	max-height: calc(100% - 64px);
+	z-index: 1;
+	right: 12px;
+}
+
 .wrapper {
-	height: 100%;
 	display: flex;
 	flex-direction: column;
 }
+
 .assistantContent {
 	flex: 1;
 	overflow: hidden;
