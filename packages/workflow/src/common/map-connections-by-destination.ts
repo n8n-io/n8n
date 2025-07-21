@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-for-in-array */
 
-import type { IConnections, NodeConnectionType } from '@/interfaces';
+import type { IConnections, NodeConnectionType } from '../interfaces';
 
 export function mapConnectionsByDestination(connections: IConnections) {
 	const returnConnection: IConnections = {};

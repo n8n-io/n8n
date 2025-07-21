@@ -1,4 +1,4 @@
-import type { INodes } from '@/interfaces';
+import type { INodes } from '../interfaces';
 
 /**
  * Returns the node with the given name if it exists else null
