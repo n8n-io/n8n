@@ -80,6 +80,7 @@ import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentMo
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import ImportWorkflowUrlModal from '@/components/ImportWorkflowUrlModal.vue';
+import WorkflowDIffModal from '@/features/workflow-diff/WorkflowDIffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 </script>
 
