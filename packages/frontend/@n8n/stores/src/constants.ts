@@ -31,4 +31,5 @@ export const STORES = {
 	FOLDERS: 'folders',
 	MODULES: 'modules',
 	FOCUS_PANEL: 'focusPanel',
+	AI_TEMPLATES_STARTER_COLLECTION: 'aiTemplatesStarterCollection',
 } as const;

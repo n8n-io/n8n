@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
-import BlockMessage from './messages/BlockMessage.vue';
-import CodeDiffMessage from './messages/CodeDiffMessage.vue';
-import ErrorMessage from './messages/ErrorMessage.vue';
-import EventMessage from './messages/EventMessage.vue';
-import TextMessage from './messages/TextMessage.vue';
-import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
-import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
-import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
-import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
-import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
+import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
-import type { ChatUI } from '../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
@@ -36,6 +27,7 @@ interface Props {
 	sessionId?: string;
 	title?: string;
 	placeholder?: string;
+	scrollOnNewMessage?: boolean;
 }
 
 const emit = defineEmits<{
@@ -43,9 +35,7 @@ const emit = defineEmits<{
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
-	thumbsUp: [];
-	thumbsDown: [];
-	submitFeedback: [string];
+	feedback: [RatingFeedback];
 }>();
 
 const onClose = () => emit('close');
@@ -59,11 +49,22 @@ const props = withDefaults(defineProps<Props>(), {
 	messages: () => [],
 	loadingMessage: undefined,
 	sessionId: undefined,
+	scrollOnNewMessage: false,
+});
+
+// Ensure all messages have required id and read properties
+const normalizedMessages = computed(() => {
+	return props.messages.map((msg, index) => ({
+		...msg,
+		id: msg.id || `msg-${index}`,
+		read: msg.read ?? true,
+	}));
 });
 
 const textInputValue = ref<string>('');
 
 const chatInput = ref<HTMLTextAreaElement | null>(null);
+const messagesRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
@@ -101,17 +102,36 @@ function growInput() {
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
-function onThumbsUp() {
-	emit('thumbsUp');
+function onRateMessage(feedback: RatingFeedback) {
+	emit('feedback', feedback);
 }
 
-function onThumbsDown() {
-	emit('thumbsDown');
+function scrollToBottom() {
+	if (messagesRef.value) {
+		messagesRef.value?.scrollTo({
+			top: messagesRef.value.scrollHeight,
+			behavior: 'smooth',
+		});
+	}
 }
-
-function onSubmitFeedback(feedback: string) {
-	emit('submitFeedback', feedback);
-}
+watch(sendDisabled, () => {
+	chatInput.value?.focus();
+});
+watch(
+	() => props.messages,
+	async (messages) => {
+		// Check if the last message is user and scroll to bottom of the chat
+		if (props.scrollOnNewMessage && messages.length > 0) {
+			// Wait for DOM updates before scrolling
+			await nextTick();
+			// Check if messagesRef is available after nextTick
+			if (messagesRef.value) {
+				scrollToBottom();
+			}
+		}
+	},
+	{ immediate: true, deep: true },
+);
 </script>
 
 <template>
@@ -129,85 +149,28 @@ function onSubmitFeedback(feedback: string) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
-				<div v-if="messages?.length">
+			<div
+				v-if="normalizedMessages?.length || loadingMessage"
+				ref="messagesRef"
+				:class="$style.messages"
+			>
+				<div v-if="normalizedMessages?.length">
 					<data
-						v-for="(message, i) in messages"
-						:key="i"
+						v-for="(message, i) in normalizedMessages"
+						:key="message.id"
 						:data-test-id="
 							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 						"
 					>
-						<TextMessage
-							v-if="message.type === 'text'"
+						<MessageWrapper
 							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 							:user="user"
 							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
-						/>
-						<BlockMessage
-							v-else-if="message.type === 'block'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
-						/>
-						<ErrorMessage
-							v-else-if="message.type === 'error'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<EventMessage
-							v-else-if="message.type === 'event'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<CodeDiffMessage
-							v-else-if="message.type === 'code-diff'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-							:streaming="streaming"
-							:is-last-message="i === messages.length - 1"
+							:is-last-message="i === normalizedMessages.length - 1"
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
-						/>
-						<WorkflowStepsMessage
-							v-else-if="message.type === 'workflow-step'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<WorkflowNodesMessage
-							v-else-if="message.type === 'workflow-node'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<ComposedNodesMessage
-							v-else-if="message.type === 'workflow-composed'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<WorkflowGeneratedMessage
-							v-else-if="message.type === 'workflow-generated'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
-						<RateWorkflowMessage
-							v-else-if="message.type === 'rate-workflow'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-							@thumbs-up="onThumbsUp"
-							@thumbs-down="onThumbsDown"
-							@submit-feedback="onSubmitFeedback"
+							@feedback="onRateMessage"
 						/>
 
 						<div
@@ -215,7 +178,7 @@ function onSubmitFeedback(feedback: string) {
 								!streaming &&
 								'quickReplies' in message &&
 								message.quickReplies?.length &&
-								i === messages.length - 1
+								i === normalizedMessages.length - 1
 							"
 							:class="$style.quickReplies"
 						>
@@ -237,7 +200,7 @@ function onSubmitFeedback(feedback: string) {
 				</div>
 				<div
 					v-if="loadingMessage"
-					:class="{ [$style.message]: true, [$style.loading]: messages?.length }"
+					:class="{ [$style.message]: true, [$style.loading]: normalizedMessages?.length }"
 				>
 					<AssistantLoadingMessage :message="loadingMessage" />
 				</div>
@@ -354,6 +317,20 @@ function onSubmitFeedback(feedback: string) {
 	height: 100%;
 	padding: var(--spacing-xs);
 	overflow-y: auto;
+
+	@supports not (selector(::-webkit-scrollbar)) {
+		scrollbar-width: thin;
+	}
+	@supports selector(::-webkit-scrollbar) {
+		&::-webkit-scrollbar {
+			width: var(--spacing-2xs);
+		}
+		&::-webkit-scrollbar-thumb {
+			border-radius: var(--spacing-xs);
+			background: var(--color-foreground-dark);
+			border: var(--spacing-5xs) solid white;
+		}
+	}
 
 	& + & {
 		padding-top: 0;
