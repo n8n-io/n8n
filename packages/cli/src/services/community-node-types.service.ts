@@ -32,8 +32,7 @@ export class CommunityNodeTypesService {
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
 				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
-				const environment =
-					inProduction || process.env.ENVIRONMENT === 'production' ? 'production' : 'staging';
+				const environment = this.detectEnvironment();
 				data = await getCommunityNodeTypes(environment);
 			}
 
@@ -41,6 +40,14 @@ export class CommunityNodeTypesService {
 		} catch (error) {
 			this.logger.error('Failed to fetch community node types', { error: ensureError(error) });
 		}
+	}
+
+	private detectEnvironment() {
+		const environment = process.env.ENVIRONMENT;
+		if (environment === 'staging') return 'staging';
+		if (inProduction) return 'production';
+		if (environment === 'production') return 'production';
+		return 'staging';
 	}
 
 	private updateCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {
