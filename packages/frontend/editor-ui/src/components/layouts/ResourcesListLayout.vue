@@ -10,7 +10,6 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
-import SuggestedWorkflowCard from '@/components/SuggestedWorkflowCard.vue';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
