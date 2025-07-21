@@ -141,14 +141,3 @@ A: Credentials are encrypted with AES-256 using the `N8N_ENCRYPTION_KEY` before 
 - Structured logging with Winston
 - Event bus for audit trails
 
-## 🔄 Future Architecture
-
-Planned improvements include:
-- Enhanced plugin system
-- Improved workflow compilation
-- Better resource isolation
-- Multi-region support
-
----
-
-For more detailed information about specific components or patterns, explore the individual documentation files or check the [n8n documentation](https://docs.n8n.io).
