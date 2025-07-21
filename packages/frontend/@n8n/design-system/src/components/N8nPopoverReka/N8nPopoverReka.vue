@@ -17,32 +17,31 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 
 <style lang="scss" module>
 .popoverContent {
-	border-radius: 4px;
-	padding: 20px;
+	border-radius: var(--border-radius-base);
+	padding: 16px;
 	width: 260px;
-	background-color: white;
+	background-color: var(--color-foreground-xlight);
+	border: var(--border-base);
 	box-shadow:
-		hsl(206 22% 7% / 35%) 0px 10px 38px -10px,
-		hsl(206 22% 7% / 20%) 0px 10px 20px -15px;
+		rgba(0, 0, 0, 0.1) 0px 10px 15px -3px,
+		rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
 }
-.popoverContent:focus {
-	box-shadow:
-		hsl(206 22% 7% / 35%) 0px 10px 38px -10px,
-		hsl(206 22% 7% / 20%) 0px 10px 20px -15px,
-		0 0 0 2px var(--grass-7);
-}
+
 .popoverContent[data-state='open'][data-side='top'] {
 	animation-name: slideDownAndFade;
 }
+
 .popoverContent[data-state='open'][data-side='right'] {
 	animation-name: slideLeftAndFade;
 }
+
 .popoverContent[data-state='open'][data-side='bottom'] {
 	animation-name: slideUpAndFade;
 }
+
 .popoverContent[data-state='open'][data-side='left'] {
 	animation-name: slideRightAndFade;
 }
