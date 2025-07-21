@@ -69,7 +69,8 @@ describe('AI Builder store', () => {
 	});
 
 	afterEach(() => {
-		// Ensure fake timers are always reset after each test
+		vi.clearAllMocks();
+		vi.clearAllTimers();
 		vi.useRealTimers();
 	});
 
