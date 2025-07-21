@@ -1,4 +1,3 @@
-import { chatWithBuilder } from '@/api/ai';
 import type { VIEWS } from '@/constants';
 import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
@@ -6,12 +5,10 @@ import {
 	WORKFLOW_BUILDER_EXPERIMENT,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
-import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from './users.store';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
@@ -19,8 +16,16 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
-import { useNodeTypesStore } from './nodeTypes.store';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import { useWorkflowsStore } from './workflows.store';
+import { useBuilderMessages } from '@/composables/useBuilderMessages';
+import { chatWithBuilder, getAiSessions } from '@/api/ai';
+import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import pick from 'lodash/pick';
+import { jsonParse } from 'n8n-workflow';
+import { useToast } from '@/composables/useToast';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -30,19 +35,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
-	const currentSessionId = ref<string | undefined>();
 	const assistantThinkingMessage = ref<string | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
-	const usersStore = useUsersStore();
+	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
-	const nodeTypesStore = useNodeTypesStore();
+
+	// Composables
+	const {
+		processAssistantMessages,
+		createUserMessage,
+		createErrorMessage,
+		clearMessages,
+		mapAssistantMessageToUI,
+	} = useBuilderMessages();
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
@@ -71,25 +83,40 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		);
 	});
 
-	// No need to track unread messages in the AI Builder
-	const unreadCount = computed(() => 0);
+	const toolMessages = computed(() => chatMessages.value.filter(isToolMessage));
+
+	const workflowMessages = computed(() => chatMessages.value.filter(isWorkflowUpdatedMessage));
 
 	// Chat management functions
+	/**
+	 * Resets the entire chat session to initial state.
+	 * Called when user navigates away from workflow or explicitly requests a new workflow.
+	 * Note: Does not persist the cleared state - sessions can still be reloaded via loadSessions().
+	 */
 	function resetBuilderChat() {
-		clearMessages();
-		currentSessionId.value = undefined;
+		chatMessages.value = clearMessages();
 		assistantThinkingMessage.value = undefined;
 	}
 
-	function openChat() {
+	/**
+	 * Opens the chat panel and adjusts the canvas viewport to make room.
+	 */
+	async function openChat() {
 		chatWindowOpen.value = true;
-		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
+		chatMessages.value = [];
 		uiStore.appGridDimensions = {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
+		await loadSessions();
 	}
 
+	/**
+	 * Closes the chat panel with a delayed viewport restoration.
+	 * The delay (ASK_AI_SLIDE_OUT_DURATION_MS + 50ms) ensures the slide-out animation
+	 * completes before expanding the canvas, preventing visual jarring.
+	 * Messages remain in memory.
+	 */
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
@@ -106,112 +133,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
-	function clearMessages() {
-		chatMessages.value = [];
-	}
-
+	/**
+	 * Updates chat panel width with enforced boundaries.
+	 * Width is clamped between MIN_CHAT_WIDTH (330px) and MAX_CHAT_WIDTH (650px)
+	 * to ensure usability on various screen sizes.
+	 */
 	function updateWindowWidth(width: number) {
 		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
 	}
 
 	// Message handling functions
-	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
-		const read = true; // Always mark as read in builder
-		const messages = [...chatMessages.value].filter(
-			(msg) => !(msg.id === id && msg.role === 'assistant'),
-		);
-		assistantThinkingMessage.value = undefined;
-
-		newMessages.forEach((msg) => {
-			if (msg.type === 'message') {
-				messages.push({
-					id,
-					type: 'text',
-					role: 'assistant',
-					content: msg.text,
-					quickReplies: msg.quickReplies,
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'workflow-step' && 'steps' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-step',
-					role: 'assistant',
-					steps: msg.steps,
-					read,
-				});
-			} else if (msg.type === 'prompt-validation' && !msg.isWorkflowPrompt) {
-				messages.push({
-					id,
-					role: 'assistant',
-					type: 'error',
-					content: locale.baseText('aiAssistant.builder.invalidPrompt'),
-					read: true,
-				});
-			} else if (msg.type === 'workflow-node' && 'nodes' in msg) {
-				const mappedNodes = msg.nodes.map(
-					(node) => nodeTypesStore.getNodeType(node)?.displayName ?? node,
-				);
-				messages.push({
-					id,
-					type: 'workflow-node',
-					role: 'assistant',
-					nodes: mappedNodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-composed' && 'nodes' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-composed',
-					role: 'assistant',
-					nodes: msg.nodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-generated' && 'codeSnippet' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-generated',
-					role: 'assistant',
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'rate-workflow') {
-				messages.push({
-					id,
-					type: 'rate-workflow',
-					role: 'assistant',
-					content: msg.content,
-					read,
-				});
-			}
-		});
-		chatMessages.value = messages;
-	}
-
-	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'error',
-			content,
-			read: true,
-			retry,
-		});
-	}
-
 	function addLoadingAssistantMessage(message: string) {
 		assistantThinkingMessage.value = message;
-	}
-
-	function addUserMessage(content: string, id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'user',
-			type: 'text',
-			content,
-			read: true,
-		});
 	}
 
 	function stopStreaming() {
@@ -219,123 +152,225 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	// Error handling
+	/**
+	 * Handles streaming errors by creating an error message with optional retry capability.
+	 * Cleans up streaming state and removes the thinking indicator.
+	 * The retry function, if provided, will remove the error message before retrying.
+	 * Tracks error telemetry
+	 */
 	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
+
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
-		addAssistantError(
+
+		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
+		chatMessages.value = [...chatMessages.value, errorMessage];
+
 		telemetry.track('Workflow generation errored', {
 			error: e.message,
-			prompt: workflowPrompt.value,
+			workflow_id: workflowsStore.workflowId,
 		});
 	}
 
-	// API interaction
-	function getRandomId() {
-		return `${Math.floor(Math.random() * 100000000)}`;
+	// Helper functions
+	/**
+	 * Prepares UI for incoming streaming response.
+	 * Adds user message immediately for visual feedback, shows thinking indicator,
+	 * and ensures chat is open. Called before initiating API request to minimize
+	 * perceived latency.
+	 */
+	function prepareForStreaming(userMessage: string, messageId: string) {
+		const userMsg = createUserMessage(userMessage, messageId);
+		chatMessages.value = [...chatMessages.value, userMsg];
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		streaming.value = true;
 	}
 
-	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
-		if (response.sessionId && !currentSessionId.value) {
-			currentSessionId.value = response.sessionId;
-			telemetry.track('Assistant session started', {
-				chat_session_id: currentSessionId.value,
-				task: 'workflow-generation',
-			});
-		} else if (currentSessionId.value !== response.sessionId) {
-			// Ignore messages from other sessions
-			return;
-		}
-		addAssistantMessages(response.messages, id);
-	}
-
-	function onDoneStreaming() {
-		stopStreaming();
+	/**
+	 * Creates a retry function that removes the associated error message before retrying.
+	 * This ensures the chat doesn't accumulate multiple error messages for the same failure.
+	 * The messageId parameter refers to the error message to remove, not the original user message.
+	 */
+	function createRetryHandler(messageId: string, retryFn: () => Promise<void>) {
+		return async () => {
+			// Remove the error message before retrying
+			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== messageId);
+			await retryFn();
+		};
 	}
 
 	// Core API functions
-	async function initBuilderChat(userMessage: string, source: 'chat' | 'canvas') {
-		telemetry.track('User submitted workflow prompt', {
-			source,
-			prompt: userMessage,
-		});
-		resetBuilderChat();
-		const id = getRandomId();
-
-		addUserMessage(userMessage, id);
-		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
-		openChat();
-		streaming.value = true;
-
-		const payload: ChatRequest.InitBuilderChat = {
-			role: 'user',
-			type: 'init-builder-chat',
-			user: {
-				firstName: usersStore.currentUser?.firstName ?? '',
-			},
-			question: userMessage,
-		};
-
-		chatWithBuilder(
-			rootStore.restApiContext,
-			{
-				payload,
-			},
-			(msg) => onEachStreamingMessage(msg, id),
-			() => onDoneStreaming(),
-			(e) => handleServiceError(e, id, async () => await initBuilderChat(userMessage, 'chat')),
-		);
-	}
-
-	async function sendMessage(
-		chatMessage: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
-	) {
+	/**
+	 * Sends a message to the AI builder service and handles the streaming response.
+	 * Prevents concurrent requests by checking streaming state.
+	 * Captures workflow state before sending for comparison in telemetry.
+	 * Creates a retry handler that preserves the original message context.
+	 * Note: This function is NOT async - streaming happens via callbacks.
+	 */
+	function sendChatMessage(options: {
+		text: string;
+		source?: 'chat' | 'canvas';
+		quickReplyType?: string;
+	}) {
 		if (streaming.value) {
 			return;
 		}
 
-		const id = getRandomId();
+		const { text, source = 'chat', quickReplyType } = options;
+		const messageId = generateMessageId();
 
-		const retry = async () => {
-			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
-			await sendMessage(chatMessage);
-		};
+		const currentWorkflowJson = getWorkflowSnapshot();
+		telemetry.track('User submitted builder message', {
+			source,
+			message: text,
+			start_workflow_json: currentWorkflowJson,
+			workflow_id: workflowsStore.workflowId,
+		});
+
+		prepareForStreaming(text, messageId);
+
+		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const payload = createBuilderPayload(text, {
+			quickReplyType,
+			workflow: workflowsStore.workflow,
+			executionData: executionResult,
+			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+		});
+		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
 		try {
-			addUserMessage(chatMessage.text, id);
-			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
-
-			streaming.value = true;
-			assert(currentSessionId.value);
-
 			chatWithBuilder(
 				rootStore.restApiContext,
-				{
-					payload: {
-						role: 'user',
-						type: 'message',
-						text: chatMessage.text,
-						quickReplyType: chatMessage.quickReplyType,
-					},
-					sessionId: currentSessionId.value,
+				{ payload },
+				(response) => {
+					const result = processAssistantMessages(
+						chatMessages.value,
+						response.messages,
+						generateMessageId(),
+					);
+					chatMessages.value = result.messages;
+
+					if (result.shouldClearThinking) {
+						assistantThinkingMessage.value = undefined;
+					}
+
+					if (result.thinkingMessage) {
+						assistantThinkingMessage.value = result.thinkingMessage;
+					}
 				},
-				(msg) => onEachStreamingMessage(msg, id),
-				() => onDoneStreaming(),
-				(e) => handleServiceError(e, id, retry),
+				() => stopStreaming(),
+				(e) => handleServiceError(e, messageId, retry),
 			);
 		} catch (e: unknown) {
-			// in case of assert
-			handleServiceError(e, id, retry);
+			handleServiceError(e, messageId, retry);
 		}
 	}
-	// Reset on route change
-	watch(route, () => {
-		resetBuilderChat();
-	});
+
+	/**
+	 * Loads the most recent chat session for the current workflow.
+	 * Only loads if a workflow ID exists (not for new unsaved workflows).
+	 * Replaces current chat messages entirely - does NOT merge with existing messages.
+	 * Sessions are ordered by recency, so sessions[0] is always the latest.
+	 * Silently fails and returns empty array on error to prevent UI disruption.
+	 */
+	async function loadSessions() {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) {
+			return [];
+		}
+
+		try {
+			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			const sessions = response.sessions || [];
+
+			// Load the most recent session if available
+			if (sessions.length > 0) {
+				const latestSession = sessions[0];
+
+				// Clear existing messages
+				chatMessages.value = clearMessages();
+
+				// Convert and add messages from the session
+				const convertedMessages = latestSession.messages
+					.map((msg) => {
+						const id = generateMessageId();
+						return mapAssistantMessageToUI(msg, id);
+					})
+					// Do not include wf updated messages from session
+					.filter((msg) => msg.type !== 'workflow-updated');
+
+				chatMessages.value = convertedMessages;
+			}
+
+			return sessions;
+		} catch (error) {
+			console.error('Failed to load AI sessions:', error);
+			return [];
+		}
+	}
+
+	function captureCurrentWorkflowState() {
+		const nodePositions = new Map<string, [number, number]>();
+		const existingNodeIds = new Set<string>();
+
+		workflowsStore.allNodes.forEach((node) => {
+			nodePositions.set(node.id, [...node.position]);
+			existingNodeIds.add(node.id);
+		});
+
+		return {
+			nodePositions,
+			existingNodeIds,
+			currentWorkflowJson: JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections'])),
+		};
+	}
+
+	function applyWorkflowUpdate(workflowJson: string) {
+		let workflowData: WorkflowDataUpdate;
+		try {
+			workflowData = jsonParse<WorkflowDataUpdate>(workflowJson);
+		} catch (error) {
+			useToast().showMessage({
+				type: 'error',
+				title: locale.baseText('aiAssistant.builder.workflowParsingError.title'),
+				message: locale.baseText('aiAssistant.builder.workflowParsingError.content'),
+			});
+			return { success: false, error };
+		}
+
+		// Capture current state before clearing
+		const { nodePositions } = captureCurrentWorkflowState();
+
+		// Clear existing workflow
+		workflowsStore.removeAllConnections({ setStateDirty: false });
+		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+		// Restore positions for nodes that still exist and identify new nodes
+		const nodesIdsToTidyUp: string[] = [];
+		if (workflowData.nodes) {
+			workflowData.nodes = workflowData.nodes.map((node) => {
+				const savedPosition = nodePositions.get(node.id);
+				if (savedPosition) {
+					return { ...node, position: savedPosition };
+				} else {
+					// This is a new node, add it to the tidy up list
+					nodesIdsToTidyUp.push(node.id);
+				}
+				return node;
+			});
+		}
+
+		return { success: true, workflowData, newNodeIds: nodesIdsToTidyUp };
+	}
+
+	function getWorkflowSnapshot() {
+		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+	}
 
 	// Public API
 	return {
@@ -344,24 +379,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		canShowAssistantButtonsOnCanvas,
 		chatWidth,
 		chatMessages,
-		unreadCount,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
-		currentSessionId,
 		assistantThinkingMessage,
 		chatWindowOpen,
 		isAIBuilderEnabled,
 		workflowPrompt,
+		toolMessages,
+		workflowMessages,
 
 		// Methods
 		updateWindowWidth,
 		closeChat,
 		openChat,
 		resetBuilderChat,
-		initBuilderChat,
-		sendMessage,
-		addAssistantMessages,
-		handleServiceError,
+		sendChatMessage,
+		loadSessions,
+		applyWorkflowUpdate,
+		getWorkflowSnapshot,
 	};
 });
