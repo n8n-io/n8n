@@ -199,7 +199,6 @@ export function useBuilderMessages() {
 			}
 		}
 
-		// Simple logic:
 		// - If any tools are running, show "Running tools..."
 		// - If all tools are done and no text response yet, show "Processing results..."
 		// - Otherwise, clear the thinking message

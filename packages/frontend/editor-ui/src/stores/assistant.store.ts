@@ -187,7 +187,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-		newMessages.forEach((msg) => {
+		(newMessages ?? []).forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
 					id,

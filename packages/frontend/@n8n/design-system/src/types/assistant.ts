@@ -113,6 +113,8 @@ export namespace ChatUI {
 	};
 }
 
+export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
+
 // Type guards for ChatUI messages
 export function isTextMessage(
 	msg: ChatUI.AssistantMessage,

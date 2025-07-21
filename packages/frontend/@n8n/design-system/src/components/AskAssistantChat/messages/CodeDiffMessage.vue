@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BaseMessage from './BaseMessage.vue';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import CodeDiff from '../../CodeDiff/CodeDiff.vue';
 
 interface Props {
@@ -19,7 +19,7 @@ defineProps<Props>();
 const emit = defineEmits<{
 	codeReplace: [];
 	codeUndo: [];
-	rate: [rating: 'up' | 'down', feedback?: string];
+	feedback: [RatingFeedback];
 }>();
 </script>
 
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 		:message="message"
 		:is-first-of-role="isFirstOfRole"
 		:user="user"
-		@rate="(rating, feedback) => emit('rate', rating, feedback)"
+		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
 	>
 		<CodeDiff
 			:title="message.description"

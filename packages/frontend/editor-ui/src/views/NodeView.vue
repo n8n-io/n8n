@@ -1083,7 +1083,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
-		regenerateIds: [true, undefined].includes(data.regenerateIds as boolean | undefined),
+		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 	});
 
 	fitView();

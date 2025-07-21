@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { RatingFeedback } from '@n8n/design-system/types';
+import { ref } from 'vue';
 
 import N8nButton from '../../N8nButton';
 import N8nIconButton from '../../N8nIconButton';
@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	rate: [rating: 'up' | 'down', feedback?: string];
+	feedback: [RatingFeedback];
 }>();
 
 const { t } = useI18n();
@@ -32,7 +32,7 @@ function onRateButton(rating: 'up' | 'down') {
 	selectedRating.value = rating;
 	showRatingButtons.value = false;
 
-	emit('rate', rating);
+	emit('feedback', { rating });
 	if (props.showFeedback) {
 		showFeedbackArea.value = true;
 	} else {
@@ -42,7 +42,7 @@ function onRateButton(rating: 'up' | 'down') {
 
 function onSubmitFeedback() {
 	if (selectedRating.value) {
-		emit('rate', selectedRating.value, feedback.value);
+		emit('feedback', { feedback: feedback.value });
 		showFeedbackArea.value = false;
 		showSuccess.value = true;
 	}

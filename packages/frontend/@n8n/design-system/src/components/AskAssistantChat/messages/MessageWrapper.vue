@@ -9,7 +9,7 @@ import ErrorMessage from './ErrorMessage.vue';
 import EventMessage from './EventMessage.vue';
 import TextMessage from './TextMessage.vue';
 import ToolMessage from './ToolMessage.vue';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 
 interface Props {
 	message: ChatUI.AssistantMessage;
@@ -27,7 +27,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	codeReplace: [];
 	codeUndo: [];
-	rate: [rating: 'up' | 'down', feedback?: string];
+	feedback: [RatingFeedback];
 }>();
 
 const messageComponent = computed<Component | null>(() => {
@@ -64,6 +64,6 @@ const messageComponent = computed<Component | null>(() => {
 		:is-last-message="isLastMessage"
 		@code-replace="emit('codeReplace')"
 		@code-undo="emit('codeUndo')"
-		@rate="(rating: 'up' | 'down', feedback?: string) => emit('rate', rating, feedback)"
+		@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
 	/>
 </template>

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import MessageRating from './MessageRating.vue';
 import { useI18n } from '../../../composables/useI18n';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import AssistantAvatar from '../../AskAssistantAvatar/AssistantAvatar.vue';
 import N8nAvatar from '../../N8nAvatar';
 
@@ -19,15 +19,15 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	rate: [rating: 'up' | 'down', feedback?: string];
+	feedback: [RatingFeedback];
 }>();
 
 const { t } = useI18n();
 
 const isUserMessage = computed(() => props.message.role === 'user');
 
-function onRate(rating: 'up' | 'down', feedback?: string) {
-	emit('rate', rating, feedback);
+function onRate(rating: RatingFeedback) {
+	emit('feedback', rating);
 }
 </script>
 
@@ -51,7 +51,7 @@ function onRate(rating: 'up' | 'down', feedback?: string) {
 			v-if="message.showRating && !isUserMessage"
 			:style="message.ratingStyle"
 			:show-feedback="message.showFeedback"
-			@rate="onRate"
+			@feedback="onRate"
 		/>
 	</div>
 </template>

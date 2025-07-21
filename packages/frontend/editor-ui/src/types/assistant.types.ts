@@ -264,6 +264,5 @@ export function isToolMessage(msg: ChatRequest.MessageResponse): msg is ChatRequ
 export function isEndSessionMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.EndSessionMessage {
-	// @ts-expect-error API type mismatch, do we still need this?
-	return 'type' in msg && msg.type === 'end-session';
+	return 'type' in msg && msg.type === 'event' && msg.eventName === 'end-session';
 }

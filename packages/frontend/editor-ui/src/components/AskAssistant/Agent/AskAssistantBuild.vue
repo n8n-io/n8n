@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 
@@ -98,26 +99,19 @@ function onNewWorkflow() {
 	trackedTools.value.clear();
 }
 
-function onThumbsUp() {
-	telemetry.track('User rated workflow generation', {
-		helpful: true,
-		workflow_id: workflowsStore.workflowId,
-	});
-}
-
-function onThumbsDown() {
-	telemetry.track('User rated workflow generation', {
-		helpful: false,
-		workflow_id: workflowsStore.workflowId,
-	});
-}
-
-function onSubmitFeedback({ feedback, rating }: { feedback: string; rating: 'up' | 'down' }) {
-	telemetry.track('User submitted workflow generation feedback', {
-		helpful: rating === 'up',
-		feedback,
-		workflow_id: workflowsStore.workflowId,
-	});
+function onFeedback(feedback: RatingFeedback) {
+	if (feedback.rating) {
+		telemetry.track('User rated workflow generation', {
+			helpful: feedback.rating === 'up',
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
+	if (feedback.feedback) {
+		telemetry.track('User submitted workflow generation feedback', {
+			feedback: feedback.feedback,
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
 }
 
 // Reset on route change
@@ -139,9 +133,7 @@ watch(currentRoute, () => {
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
-			@thumbs-up="onThumbsUp"
-			@thumbs-down="onThumbsDown"
-			@submit-feedback="onSubmitFeedback"
+			@feedback="onFeedback"
 		>
 			<template #header>
 				<slot name="header" />

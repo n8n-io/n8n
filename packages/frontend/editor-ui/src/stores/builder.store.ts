@@ -25,6 +25,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
+import { useToast } from '@/composables/useToast';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -334,7 +335,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		try {
 			workflowData = jsonParse<WorkflowDataUpdate>(workflowJson);
 		} catch (error) {
-			console.error('Error parsing workflow data', error);
+			useToast().showMessage({
+				type: 'error',
+				title: locale.baseText('aiAssistant.builder.workflowParsingError.title'),
+				message: locale.baseText('aiAssistant.builder.workflowParsingError.content'),
+			});
 			return { success: false, error };
 		}
 

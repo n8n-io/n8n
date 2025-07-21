@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
-import type { ChatUI } from '../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
@@ -35,9 +35,7 @@ const emit = defineEmits<{
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
-	thumbsUp: [];
-	thumbsDown: [];
-	submitFeedback: [{ feedback: string; rating: 'up' | 'down' }];
+	feedback: [RatingFeedback];
 }>();
 
 const onClose = () => emit('close');
@@ -104,15 +102,8 @@ function growInput() {
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
-function onRateMessage(rating: 'up' | 'down', feedback?: string) {
-	if (rating === 'up') {
-		emit('thumbsUp');
-	} else {
-		emit('thumbsDown');
-	}
-	if (feedback) {
-		emit('submitFeedback', { feedback, rating });
-	}
+function onRateMessage(feedback: RatingFeedback) {
+	emit('feedback', feedback);
 }
 
 function scrollToBottom() {
@@ -179,7 +170,7 @@ watch(
 							:is-last-message="i === normalizedMessages.length - 1"
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
-							@rate="onRateMessage"
+							@feedback="onRateMessage"
 						/>
 
 						<div
