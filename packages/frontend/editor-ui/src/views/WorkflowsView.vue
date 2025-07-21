@@ -376,7 +376,6 @@ const experimentalShowSuggestedWorkflows = computed(() =>
 	isPersonalizedTemplatesExperimentEnabled(),
 );
 
-
 const showAIStarterCollectionCallout = computed(() => {
 	return (
 		!loading.value &&

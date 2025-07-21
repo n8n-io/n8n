@@ -483,7 +483,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			const codingSkill = cloudPlanStore.codingSkill;
 			const selectedApps = cloudPlanStore.selectedApps;
 
-			debugger;
 			if (codingSkill === 1) {
 				const predefinedSelected = getSuggestedTemplatesForLowCodingSkill(selectedApps);
 
