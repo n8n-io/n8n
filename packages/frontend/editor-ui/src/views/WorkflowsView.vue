@@ -847,7 +847,7 @@ const openAIWorkflow = async (source: string) => {
 };
 
 const dismissStarterCollectionCallout = () => {
-	aiStarterTemplatesStore.setCalloutDismissed(true);
+	aiStarterTemplatesStore.dismissCallout();
 };
 
 const dismissEasyAICallout = () => {

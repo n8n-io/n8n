@@ -1,6 +1,6 @@
 import { useFoldersStore } from '@/stores/folders.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { WorkflowDataCreate } from '@n8n/rest-api-client';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -10,6 +10,9 @@ import { AGENT_WITH_KNOWLEDGE } from '../workflows/3_agent_with_knowledge';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from '@/stores/posthog.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/constants';
+import { useLocalStorage } from '@vueuse/core';
+
+const LOCAL_STORAGE_SETTING_KEY = 'N8N_AI_TEMPLATES_STARTER_COLLECTION_CALL_OUT_DISMISSED';
 
 export const useAITemplatesStarterCollectionStore = defineStore(
 	STORES.AI_TEMPLATES_STARTER_COLLECTION,
@@ -20,13 +23,8 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 		const workflowsStore = useWorkflowsStore();
 		const posthogStore = usePostHog();
 
-		// TODO: Save this to local storage
-		const calloutDismissed = ref(false);
-
-		// TODO: Save this to local storage
-		const setCalloutDismissed = (dismissed: boolean) => {
-			calloutDismissed.value = dismissed;
-		};
+		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
+		const calloutDismissed = computed(() => calloutDismissedRef.value);
 
 		const isFeatureEnabled = computed(() => {
 			return (
@@ -34,6 +32,11 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 				TEMPLATE_ONBOARDING_EXPERIMENT.variantStarterPack
 			);
 		});
+
+		const dismissCallout = () => {
+			calloutDismissedRef.value = true;
+			telemetry.track('ai_templates_starter_collection_callout_dismissed');
+		};
 
 		const createStarterWorkflows = async (projectId: string, parentFolderId?: string) => {
 			const collectionFolder = await foldersStore.createFolder(
@@ -56,14 +59,14 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 			await workflowsStore.createNewWorkflow(agentWithKnowledge);
 			await workflowsStore.createNewWorkflow(agentWithTools);
 			await workflowsStore.createNewWorkflow(agentWitheMemory);
-			calloutDismissed.value = true;
+			dismissCallout();
 			return collectionFolder;
 		};
 
 		return {
 			isFeatureEnabled,
 			calloutDismissed,
-			setCalloutDismissed,
+			dismissCallout,
 			createStarterWorkflows,
 		};
 	},
