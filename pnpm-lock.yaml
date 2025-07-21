@@ -1004,6 +1004,9 @@ importers:
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
+      ignore:
+        specifier: ^5.2.0
+        version: 5.2.4
       js-tiktoken:
         specifier: ^1.0.12
         version: 1.0.12
@@ -15465,8 +15468,8 @@ packages:
   vue-component-type-helpers@2.2.10:
     resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
-  vue-component-type-helpers@3.0.2:
-    resolution: {integrity: sha512-pbzPt5TlLZijRXt+/uhYRxTkIQkY09Ylx9t9lSk2ZjCv+bqyDRWH0RDUso7kOYQhG7m6SHXPhXEjD27LxKFryA==}
+  vue-component-type-helpers@3.0.3:
+    resolution: {integrity: sha512-koiBu7lO8e6w/UlbZAAIW11qcFQocYIl7Nh/SVwGZ804ej5KrncU32bRxi2zfU2Kyf6HWuk1CeeVP2rhIL+vyQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -20952,7 +20955,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.3)
-      vue-component-type-helpers: 3.0.2
+      vue-component-type-helpers: 3.0.3
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -31677,7 +31680,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.10: {}
 
-  vue-component-type-helpers@3.0.2: {}
+  vue-component-type-helpers@3.0.3: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.3)):
     dependencies:
