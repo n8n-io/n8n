@@ -2,29 +2,22 @@
 import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflow-diff/useViewportSync';
-import {
-	compareWorkflowsNodes,
-	mapConnections,
-	NodeDiffStatus,
-} from '@/features/workflow-diff/useWorkflowDiff';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflow-diff/useWorkflowDiff';
+import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasConnection, CanvasNode } from '@/types';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
@@ -48,90 +41,28 @@ const manualAsyncConfiguration = {
 	immediate: false,
 } as const;
 
-type WorkflowDiff = {
-	workflow?: IWorkflowDb;
-	workflowObject: ReturnType<typeof workflowsStore.getWorkflow>;
-	nodes: CanvasNode[];
-	connections: CanvasConnection[];
-	remote: boolean;
-};
-
-const defaultWorkflowDiff = (remote: boolean) => ({
-	workflow: undefined,
-	workflowObject: workflowsStore.getWorkflow([], {}),
-	nodes: [],
-	connections: [],
-	remote,
-});
-
-const remote = useAsyncState<WorkflowDiff | undefined, [], false>(
+const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		try {
 			const { workflowId } = props.data;
 			const { content: workflow } = await sourceControlStore.getRemoteWorkflow(workflowId);
-			const workflowObject = workflowsStore.getWorkflow(workflow.nodes, workflow.connections);
-			const { nodes, connections } = useCanvasMapping({
-				nodes: ref(workflow.nodes),
-				connections: ref(workflow.connections),
-				// @ts-expect-error it expects expressions but they are not needed
-				workflowObject: ref(workflowObject),
-			});
-
-			return {
-				workflow,
-				workflowObject,
-				nodes: nodes.value.map((node) => {
-					node.draggable = false;
-					node.selectable = false;
-					node.focusable = false;
-					return node;
-				}),
-				connections: connections.value.map((connection) => {
-					connection.selectable = false;
-					connection.focusable = false;
-					return connection;
-				}),
-				remote: true,
-			};
+			return { workflow, remote: true };
 		} catch {
-			return defaultWorkflowDiff(true);
+			return { workflow: undefined, remote: true };
 		}
 	},
 	undefined,
 	manualAsyncConfiguration,
 );
 
-const local = useAsyncState<WorkflowDiff | undefined, [], false>(
+const local = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		try {
 			const { workflowId } = props.data;
 			const workflow = await workflowsStore.fetchWorkflow(workflowId);
-			const workflowObject = workflowsStore.getWorkflow(workflow.nodes, workflow.connections);
-			const { nodes, connections } = useCanvasMapping({
-				nodes: ref(workflow.nodes),
-				connections: ref(workflow.connections),
-				// @ts-expect-error it expects expressions but they are not needed
-				workflowObject: ref(workflowObject),
-			});
-
-			return {
-				workflow,
-				workflowObject,
-				nodes: nodes.value.map((node) => {
-					node.draggable = false;
-					node.selectable = false;
-					node.focusable = false;
-					return node;
-				}),
-				connections: connections.value.map((connection) => {
-					connection.selectable = false;
-					connection.focusable = false;
-					return connection;
-				}),
-				remote: false,
-			};
+			return { workflow, remote: false };
 		} catch {
-			return defaultWorkflowDiff(false);
+			return { workflow: undefined, remote: false };
 		}
 	},
 	undefined,
@@ -144,64 +75,14 @@ useAsyncState(async () => {
 	return true;
 }, false);
 
-const topWorkFlow = computed(() => (props.data.direction === 'push' ? remote : local));
+const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote : local));
 
-const bottomWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
+const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
-const diff = computed(() => {
-	return compareWorkflowsNodes(
-		topWorkFlow.value.state.value?.workflow?.nodes ?? [],
-		bottomWorkFlow.value.state.value?.workflow?.nodes ?? [],
-	);
-});
-
-type Connection = {
-	id: string;
-	source: INodeUi;
-	target: INodeUi;
-	sourceType: INodeTypeDescription | null;
-	targetType: INodeTypeDescription | null;
-};
-
-function formatConnectionDiff(
-	id: string,
-	status: NodeDiffStatus,
-	collection: Map<string, CanvasConnection>,
-	accumulator: Map<string, { status: NodeDiffStatus; connection: Connection }>,
-) {
-	const connection = collection.get(id);
-	if (!connection) return;
-
-	const sourceNode = diff.value.get(connection.source)?.node as INodeUi;
-	const targetNode = diff.value.get(connection.target)?.node as INodeUi;
-
-	accumulator.set(id, {
-		status,
-		connection: {
-			id,
-			source: sourceNode,
-			target: targetNode,
-			sourceType: nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion),
-			targetType: nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion),
-		},
-	});
-}
-
-const connectionsDiff = computed(() => {
-	const source = mapConnections(topWorkFlow.value.state.value?.connections ?? []);
-	const target = mapConnections(bottomWorkFlow.value.state.value?.connections ?? []);
-
-	const added = target.set.difference(source.set);
-	const removed = source.set.difference(target.set);
-
-	const acc = new Map<string, { status: NodeDiffStatus; connection: Connection }>();
-
-	added.values().forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Added, target.map, acc));
-	removed
-		.values()
-		.forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Deleted, source.map, acc));
-	return acc;
-});
+const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
+	computed(() => sourceWorkFlow.value.state.value?.workflow),
+	computed(() => targetWorkFlow.value.state.value?.workflow),
+);
 
 type SettingsChange = {
 	name: string;
@@ -209,8 +90,8 @@ type SettingsChange = {
 	after: string;
 };
 const settingsDiff = computed(() => {
-	const topSettings = topWorkFlow.value.state.value?.workflow?.settings ?? {};
-	const bottomSettings = bottomWorkFlow.value.state.value?.workflow?.settings ?? {};
+	const topSettings = sourceWorkFlow.value.state.value?.workflow?.settings ?? {};
+	const bottomSettings = targetWorkFlow.value.state.value?.workflow?.settings ?? {};
 
 	const allKeys = new Set([...Object.keys(topSettings), ...Object.keys(bottomSettings)]);
 
@@ -230,7 +111,7 @@ const settingsDiff = computed(() => {
 });
 
 function getNodeStatusClass(id: string) {
-	const status = diff.value?.get(id)?.status ?? 'equal';
+	const status = nodesDiff.value?.get(id)?.status ?? 'equal';
 	return $style[status];
 }
 
@@ -240,8 +121,8 @@ function getEdgeStatusClass(id: string) {
 }
 
 const nodeChanges = computed(() => {
-	if (!diff.value) return [];
-	return [...diff.value.values()]
+	if (!nodesDiff.value) return [];
+	return [...nodesDiff.value.values()]
 		.filter((change) => change.status !== NodeDiffStatus.Eq)
 		.map((change) => ({
 			...change,
@@ -309,7 +190,7 @@ function setActiveTab(active: boolean) {
 const selectedNode = computed(() => {
 	if (!selectedDetailId.value) return undefined;
 
-	const node = diff.value.get(selectedDetailId.value)?.node;
+	const node = nodesDiff.value.get(selectedDetailId.value)?.node;
 	if (!node) return undefined;
 
 	return node;
@@ -322,10 +203,10 @@ const nodeDiffs = computed(() => {
 			newString: '',
 		};
 	}
-	const sourceNode = topWorkFlow.value?.state.value?.workflow?.nodes.find(
+	const sourceNode = sourceWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
-	const targetNode = bottomWorkFlow.value?.state.value?.workflow?.nodes.find(
+	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
 	return {
@@ -343,7 +224,7 @@ const changesCount = computed(
 );
 
 onNodeClick((nodeId) => {
-	const status = diff.value.get(nodeId)?.status;
+	const status = nodesDiff.value.get(nodeId)?.status;
 
 	if (status && status !== NodeDiffStatus.Eq) {
 		selectedDetailId.value = nodeId;
@@ -389,7 +270,8 @@ const modifiers = [
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
 						{{
-							topWorkFlow.state.value?.workflow?.name || bottomWorkFlow.state.value?.workflow?.name
+							sourceWorkFlow.state.value?.workflow?.name ||
+							targetWorkFlow.state.value?.workflow?.name
 						}}
 					</N8nHeading>
 				</div>
@@ -513,20 +395,21 @@ const modifiers = [
 			<div :class="$style.workflowDiffContent">
 				<div :class="$style.workflowDiff">
 					<div :class="$style.workflowDiffPanel">
-						<template v-if="topWorkFlow.state.value">
+						<template v-if="sourceWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-								<N8nIcon v-if="topWorkFlow.state.value.remote" icon="git-branch" />
+								<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
 								{{
-									topWorkFlow.state.value.remote
+									sourceWorkFlow.state.value.remote
 										? `Remote (${sourceControlStore.preferences.branchName})`
 										: 'Local'
 								}}
 							</N8nText>
-							<template v-if="topWorkFlow.state.value.workflow">
+							<template v-if="sourceWorkFlow.state.value.workflow">
+								<pre>{{ source.nodes.length }} | {{ source.connections.length }}</pre>
 								<SyncedWorkflowCanvas
 									id="top"
-									:nodes="topWorkFlow.state.value.nodes"
-									:connections="topWorkFlow.state.value.connections"
+									:nodes="source.nodes"
+									:connections="source.connections"
 								>
 									<template #node="{ nodeProps }">
 										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
@@ -544,7 +427,7 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="bottomWorkFlow.state.value?.remote">
+									<template v-if="targetWorkFlow.state.value?.remote">
 										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
 										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
 									</template>
@@ -557,20 +440,21 @@ const modifiers = [
 						</template>
 					</div>
 					<div :class="$style.workflowDiffPanel">
-						<template v-if="bottomWorkFlow.state.value">
+						<template v-if="targetWorkFlow.state.value">
 							<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-								<N8nIcon v-if="bottomWorkFlow.state.value.remote" icon="git-branch" />
+								<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
 								{{
-									bottomWorkFlow.state.value.remote
+									targetWorkFlow.state.value.remote
 										? `Remote (${sourceControlStore.preferences.branchName})`
 										: 'Local'
 								}}
 							</N8nText>
-							<template v-if="bottomWorkFlow.state.value.workflow">
+							<template v-if="targetWorkFlow.state.value.workflow">
+								<pre>{{ target.nodes.length }} | {{ target.connections.length }}</pre>
 								<SyncedWorkflowCanvas
 									id="bottom"
-									:nodes="bottomWorkFlow.state.value.nodes"
-									:connections="bottomWorkFlow.state.value.connections"
+									:nodes="target.nodes"
+									:connections="target.connections"
 								>
 									<template #node="{ nodeProps }">
 										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
@@ -588,7 +472,7 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="bottomWorkFlow.state.value?.remote">
+									<template v-if="targetWorkFlow.state.value?.remote">
 										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
