@@ -1,6 +1,6 @@
 import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -55,7 +55,6 @@ export class InsightsService {
 		this.pruningService.stopPruningTimer();
 	}
 
-	@OnShutdown()
 	async shutdown() {
 		await this.collectionService.shutdown();
 		this.stopCompactionAndPruningTimers();

@@ -137,6 +137,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -197,6 +198,7 @@ const foldersStore = useFoldersStore();
 const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
+const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -498,6 +500,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
+		}
+
+		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
+			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+				workflowData.meta.templateId.split('-').pop() ?? '',
+			);
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
@@ -973,6 +981,10 @@ function onUpdateNodeOutputs(id: string) {
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+		focusPanelStore.hideFocusPanel();
+	}
+
 	nodeCreatorStore.openNodeCreatorForConnectingNode({
 		connection: {
 			source,
@@ -1079,13 +1091,18 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
+		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
+		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
 		setTimeout(() => {
-			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+			canvasEventBus.emit('tidyUp', {
+				source: 'import-workflow-data',
+				nodeIdsFilter: nodesIdsToTidyUp,
+			});
 		}, 0);
 	}
 }
@@ -1182,7 +1199,7 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 	await revertAddNode(node.name);
 }
 
-async function onSwitchActiveNode(nodeName: string) {
+function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
@@ -1190,7 +1207,7 @@ async function onSwitchActiveNode(nodeName: string) {
 	selectNodes([node.id]);
 }
 
-async function onOpenSelectiveNodeCreator(
+function onOpenSelectiveNodeCreator(
 	node: string,
 	connectionType: NodeConnectionType,
 	connectionIndex: number = 0,
@@ -1198,24 +1215,24 @@ async function onOpenSelectiveNodeCreator(
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, connectionIndex });
 }
 
-function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
+function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+	nodeCreatorStore.setNodeCreatorState(options);
+
+	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+		focusPanelStore.hideFocusPanel(options.createNodeActive);
+	}
+
+	if (!options.createNodeActive && !options.hasAddedNodes) {
+		uiStore.resetLastInteractedWith();
+	}
 }
 
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
 	onToggleNodeCreator({ createNodeActive: true, source });
 }
 
-function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
-	nodeCreatorStore.setNodeCreatorState(options);
-
-	if (options.createNodeActive) {
-		focusPanelStore.closeFocusPanel();
-	}
-
-	if (!options.createNodeActive && !options.hasAddedNodes) {
-		uiStore.resetLastInteractedWith();
-	}
+function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
 function onToggleFocusPanel() {
@@ -1229,6 +1246,10 @@ function onToggleFocusPanel() {
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
+
+		if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
+			focusPanelStore.hideFocusPanel(false);
+		}
 	}
 }
 

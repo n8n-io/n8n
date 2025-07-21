@@ -29,6 +29,7 @@ import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
+import { I18nT } from 'vue-i18n';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -463,7 +464,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<N8nIcon icon="arrow-right-to-line" size="xlarge" />
 						</template>
 						<template #description>
-							<i18n-t tag="span" keypath="ndv.input.noOutputData.v2.description">
+							<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
 								<template #link>
 									<NodeExecuteButton
 										hide-icon
@@ -479,7 +480,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									/>
 									<br />
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
@@ -493,7 +494,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</template>
 
 						<template #description>
-							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -503,7 +504,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 										{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}
 									</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</NDVEmptyState>
 				</template>
@@ -519,7 +520,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							i18n.baseText('ndv.input.rootNodeHasNotRun.title')
 						}}</N8nText>
 						<N8nText tag="div" color="text-dark" size="medium">
-							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -528,7 +529,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 										>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
 									>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</N8nText>
 					</template>
 					<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
@@ -554,7 +555,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						/>
 					</N8nTooltip>
 					<N8nText v-if="!readOnly" tag="div" size="small">
-						<i18n-t keypath="ndv.input.noOutputData.hint">
+						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
 							<template #info>
 								<N8nTooltip placement="bottom">
 									<template #content>
@@ -563,7 +564,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									<N8nIcon icon="circle-help" />
 								</N8nTooltip>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</N8nText>
 				</template>
 			</div>
@@ -573,7 +574,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<WireMeUp />
 					</template>
 					<template #description>
-						<i18n-t tag="span" keypath="ndv.input.notConnected.v2.description">
+						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
 							<template #link>
 								<a
 									href="https://docs.n8n.io/workflows/connections/"
@@ -583,7 +584,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
 								</a>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 				</NDVEmptyState>
 
