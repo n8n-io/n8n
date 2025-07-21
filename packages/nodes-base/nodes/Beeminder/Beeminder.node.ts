@@ -473,6 +473,7 @@ export class Beeminder implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
+						resource: ['datapoint'],
 						operation: ['update', 'delete', 'get'],
 					},
 				},
@@ -662,9 +663,17 @@ export class Beeminder implements INodeType {
 					{
 						displayName: 'Associations',
 						name: 'associations',
-						type: 'string',
-						default: '',
+						type: 'boolean',
+						default: false,
 						description: 'Include associations in the response',
+					},
+					{
+						displayName: 'Diff since',
+						name: 'diff_since',
+						type: 'dateTime',
+						default: null,
+						description:
+							'Only goals and datapoints that have been created or updated since the timestamp will be returned.',
 					},
 					{
 						displayName: 'Skinny',
@@ -674,10 +683,18 @@ export class Beeminder implements INodeType {
 						description: 'Return minimal user data',
 					},
 					{
+						displayName: 'Emaciated',
+						name: 'emaciated',
+						type: 'boolean',
+						default: false,
+						description:
+							'If included the goal attributes called road, roadall, and fullroad will be stripped from any goal objects returned with the user.',
+					},
+					{
 						displayName: 'Datapoints Count',
 						name: 'datapoints_count',
 						type: 'number',
-						default: 0,
+						default: null,
 						description: 'Number of datapoints to include',
 					},
 				],
