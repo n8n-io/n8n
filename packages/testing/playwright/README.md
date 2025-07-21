@@ -39,3 +39,6 @@ test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 - **services**: API helpers for E2E controller, REST calls, etc.
 - **utils**: Utility functions (string manipulation, helpers, etc.)
 - **workflows**: Test workflow JSON files for import/reuse
+
+## Writing Tests
+For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).
