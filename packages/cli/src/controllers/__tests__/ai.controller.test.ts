@@ -144,10 +144,12 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 				{
-					question: 'Create a workflow',
-					currentWorkflowJSON: JSON.stringify({ id: 'workflow123' }),
-					workflowId: 'workflow123',
-					executionData: { runData: {} },
+					message: 'Create a workflow',
+					workflowContext: {
+						currentWorkflow: { id: 'workflow123' },
+						executionData: undefined,
+						executionSchema: undefined,
+					},
 				},
 				request.user,
 			);
