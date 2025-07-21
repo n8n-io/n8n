@@ -336,24 +336,24 @@ const modifiers = [
 															:class="{
 																[$style.clickableChange]: true,
 																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.source.id,
+																	selectedDetailId === change[1].connection.source?.id,
 															}"
-															@click.prevent="selectedDetailId = change[1].connection.source.id"
+															@click.prevent="selectedDetailId = change[1].connection.source?.id"
 														>
 															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
-															{{ change[1].connection.source.name }}
+															{{ change[1].connection.source?.name }}
 														</ElDropdownItem>
 														<div :class="$style.separator"></div>
 														<ElDropdownItem
 															:class="{
 																[$style.clickableChange]: true,
 																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.target.id,
+																	selectedDetailId === change[1].connection.target?.id,
 															}"
-															@click.prevent="selectedDetailId = change[1].connection.target.id"
+															@click.prevent="selectedDetailId = change[1].connection.target?.id"
 														>
 															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
-															{{ change[1].connection.target.name }}
+															{{ change[1].connection.target?.name }}
 														</ElDropdownItem>
 													</ul>
 												</div>
