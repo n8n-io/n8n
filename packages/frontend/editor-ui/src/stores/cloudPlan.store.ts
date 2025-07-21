@@ -41,6 +41,10 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const currentUsageData = computed(() => state.usage);
 
+	const currentSelectedApps = computed(
+		() => currentUserCloudInfo.value?.selectedApps?.split(',') ?? [],
+	);
+
 	const trialExpired = computed(
 		() =>
 			state.data?.metadata?.group === 'trial' &&
@@ -195,5 +199,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
+		currentSelectedApps,
 	};
 });

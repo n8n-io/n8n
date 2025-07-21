@@ -31,6 +31,7 @@ export declare namespace Cloud {
 		email: string;
 		hasEarlyAccess?: boolean;
 		role?: string;
+		selectedApps?: string;
 	};
 }
 

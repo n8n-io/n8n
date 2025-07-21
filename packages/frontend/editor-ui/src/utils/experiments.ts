@@ -3,6 +3,11 @@ import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
+
+/*
+ * Extra template links
+ */
 
 export const isExtraTemplateLinksExperimentEnabled = () => {
 	return (
@@ -55,3 +60,66 @@ export const trackTemplatesClick = (source: TemplateClickSource) => {
 		source,
 	});
 };
+
+/*
+ * Personalized templates
+ */
+
+export const isPersonalizedTemplatesExperimentEnabled = () => {
+	// TODO: replace with correct
+	const TEMPLATE_ONBOARDING_EXPERIMENT = {
+		name: '',
+		variant: '',
+	};
+	return (
+		(usePostHog().getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
+			TEMPLATE_ONBOARDING_EXPERIMENT.variant &&
+			useCloudPlanStore().userIsTrialing) ||
+		// TODO: remove before merge
+		true
+	);
+};
+
+export const getUserSkillCount = () => {
+	return 1;
+};
+
+const SIMPLE_TEMPLATES = [6035, 1960, 2178];
+
+const PREDEFINED_TEMPLATES_BY_NODE = {
+	googleSheets: [5694, 5690, 5906],
+	gmail: [5678, 4722, 5694],
+	telegram: [5626, 5784, 4875],
+	openAi: [2462, 2722, 2178],
+	googleGemini: [5993, 6035, 5677],
+	googleCalendar: [2328, 3393, 3657],
+	youTube: [3188, 4846, 4506],
+	airtable: [3053, 2700, 2579],
+};
+
+export function getPredefinedFromSelected(selectedApps: string[]) {
+	const predefinedNodes = Object.keys(PREDEFINED_TEMPLATES_BY_NODE);
+	const predefinedSelected = predefinedNodes.filter((node) => selectedApps.includes(node));
+
+	return predefinedSelected.reduce<number[]>(
+		(acc, app) => [
+			...acc,
+			...PREDEFINED_TEMPLATES_BY_NODE[app as keyof typeof PREDEFINED_TEMPLATES_BY_NODE],
+		],
+		[],
+	);
+}
+
+export function getSimpleTemplates() {
+	return SIMPLE_TEMPLATES;
+}
+
+export function getTop3Templates(templates: ITemplatesWorkflowFull[]) {
+	if (templates.length <= 3) {
+		return templates;
+	}
+
+	return Array.from(new Map(templates.map((t) => [t.id, t])).values())
+		.sort((a, b) => a.totalViews - b.totalViews)
+		.slice(0, 3);
+}
