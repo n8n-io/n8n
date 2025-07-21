@@ -132,8 +132,8 @@ onMounted(async () => {
 			if (button) {
 				const wrapper = button.closest('.highlight');
 				if (wrapper) {
-					const blockId = wrapper.getAttribute('data-block-id') || '';
-					const code = decodeURIComponent(wrapper.getAttribute('data-code') || '');
+					const blockId = wrapper.getAttribute('data-block-id') ?? '';
+					const code = decodeURIComponent(wrapper.getAttribute('data-code') ?? '');
 
 					// Prevent duplicate clicks: return if button is already in copied state
 					if (wrapper.classList.contains('copied')) {
@@ -161,8 +161,8 @@ onMounted(async () => {
 
 						// Store timer ID
 						copyTimers.value.set(blockId, timerId);
-					} catch (err) {
-						console.error('Failed to copy code:', err);
+					} catch (error) {
+						console.error('Failed to copy code:', error);
 					}
 				}
 			}
