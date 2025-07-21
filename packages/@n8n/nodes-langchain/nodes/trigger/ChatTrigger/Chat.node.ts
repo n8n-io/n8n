@@ -145,7 +145,7 @@ export class Chat implements INodeType {
 		properties: [
 			{
 				displayName:
-					"Verify that the 'Chat Trigger' node's 'Response Mode' option is set to 'Respond Nodes'",
+					"Verify you're using a chat trigger with the 'Response Mode' option set to 'Using Response Nodes'",
 				name: 'generalNotice',
 				type: 'notice',
 				default: '',
