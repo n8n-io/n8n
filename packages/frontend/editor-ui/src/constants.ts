@@ -761,10 +761,18 @@ export const FOCUS_PANEL_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const TEMPLATE_ONBOARDING_EXPERIMENT = {
+	name: '035_template_onboarding',
+	control: 'control',
+	variantStarterPack: 'variant-starter-pack',
+	variantSuggestedTemplates: 'variant-suggested-templates',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
+	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
