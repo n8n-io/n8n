@@ -1108,7 +1108,13 @@ export class WorkflowDataProxy {
 								property === PAIRED_ITEM_METHOD.ITEM
 							) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
-								// graph before the current one
+								// graph before the current one or exists in the workflow
+								const referencedNode = that.workflow.getNode(nodeName);
+								if (!referencedNode) {
+									// Node doesn't exist in the workflow (could be trimmed manual execution)
+									throw createNoConnectionError(nodeName);
+								}
+
 								const activeNode = that.workflow.getNode(that.activeNodeName);
 
 								let contextNode = that.contextNodeName;
