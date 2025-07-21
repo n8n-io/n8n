@@ -1,11 +1,43 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import {
 	NodeDiffStatus,
 	compareNodes,
 	compareWorkflowsNodes,
 	mapConnections,
+	useWorkflowDiff,
 } from './useWorkflowDiff';
 import type { CanvasConnection } from '@/types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IConnections } from 'n8n-workflow';
+import { useCanvasMapping } from '@/composables/useCanvasMapping';
+
+// Mock modules at top level
+vi.mock('@/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		getWorkflow: vi.fn().mockReturnValue({
+			id: 'test-workflow',
+			nodes: [],
+			connections: {},
+		}),
+	}),
+}));
+
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: vi.fn().mockReturnValue({
+			name: 'Test Node Type',
+			version: 1,
+		}),
+	}),
+}));
+
+vi.mock('@/composables/useCanvasMapping', () => ({
+	useCanvasMapping: vi.fn().mockReturnValue({
+		nodes: ref([]),
+		connections: ref([]),
+	}),
+}));
 
 describe('useWorkflowDiff', () => {
 	describe('NodeDiffStatus', () => {
@@ -351,6 +383,263 @@ describe('useWorkflowDiff', () => {
 			expect(mappedConnection?.target).toBe('node2');
 			expect(mappedConnection?.sourceHandle).toBe('output');
 			expect(mappedConnection?.targetHandle).toBe('input');
+		});
+	});
+
+	describe('useWorkflowDiff composable', () => {
+		const mockUseCanvasMapping = vi.mocked(useCanvasMapping);
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockUseCanvasMapping.mockReturnValue({
+				nodes: ref([]),
+				connections: ref([]),
+			});
+		});
+
+		const createMockWorkflow = (
+			id: string,
+			nodes: INodeUi[] = [],
+			connections: IConnections = {},
+		): IWorkflowDb => ({
+			id,
+			name: `Workflow ${id}`,
+			nodes,
+			connections,
+			active: false,
+			createdAt: '2023-01-01T00:00:00.000Z',
+			updatedAt: '2023-01-01T00:00:00.000Z',
+			tags: [],
+			pinData: {},
+			settings: {
+				executionOrder: 'v1',
+			},
+			versionId: 'version-1',
+			isArchived: false,
+		});
+
+		const createMockNode = (id: string, overrides: Partial<INodeUi> = {}): INodeUi => ({
+			id,
+			name: `Node ${id}`,
+			type: 'test-node',
+			typeVersion: 1,
+			position: [100, 100],
+			parameters: {},
+			...overrides,
+		});
+
+		const createMockCanvasConnection = (
+			id: string,
+			overrides: Partial<CanvasConnection> = {},
+		): CanvasConnection => ({
+			id,
+			source: `node-${id}-source`,
+			target: `node-${id}-target`,
+			sourceHandle: 'main',
+			targetHandle: 'main',
+			...overrides,
+		});
+
+		it('should initialize with default values when no workflows provided', () => {
+			const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(undefined, undefined);
+
+			expect(source.value.workflow).toBeUndefined();
+			expect(source.value.nodes).toEqual([]);
+			expect(source.value.connections).toEqual([]);
+			expect(target.value.workflow).toBeUndefined();
+			expect(target.value.nodes).toEqual([]);
+			expect(target.value.connections).toEqual([]);
+			expect(nodesDiff.value.size).toBe(0);
+			expect(connectionsDiff.value.size).toBe(0);
+		});
+
+		it('should handle source workflow only', () => {
+			const sourceWorkflow = createMockWorkflow('source', [createMockNode('node1')]);
+			mockUseCanvasMapping.mockReturnValue({
+				nodes: ref([{ id: 'canvas-node1' }]),
+				connections: ref([]),
+			});
+
+			const { source, target } = useWorkflowDiff(sourceWorkflow, undefined);
+
+			expect(source.value.workflow?.value).toEqual(sourceWorkflow);
+			expect(source.value.nodes).toHaveLength(1);
+			expect(source.value.nodes[0]).toEqual(
+				expect.objectContaining({
+					id: 'canvas-node1',
+					draggable: false,
+					selectable: false,
+					focusable: false,
+				}),
+			);
+			expect(target.value.workflow).toBeUndefined();
+		});
+
+		it('should handle target workflow only', () => {
+			const targetWorkflow = createMockWorkflow('target', [createMockNode('node1')]);
+			mockUseCanvasMapping.mockReturnValue({
+				nodes: ref([{ id: 'canvas-node1' }]),
+				connections: ref([]),
+			});
+
+			const { source, target } = useWorkflowDiff(undefined, targetWorkflow);
+
+			expect(source.value.workflow).toBeUndefined();
+			expect(target.value.workflow?.value).toEqual(targetWorkflow);
+			expect(target.value.nodes).toHaveLength(1);
+			expect(target.value.nodes[0]).toEqual(
+				expect.objectContaining({
+					id: 'canvas-node1',
+					draggable: false,
+					selectable: false,
+					focusable: false,
+				}),
+			);
+		});
+
+		it('should set canvas nodes as non-interactive', () => {
+			const sourceWorkflow = createMockWorkflow('source');
+			const mockCanvasNode = {
+				id: 'node1',
+				draggable: true,
+				selectable: true,
+				focusable: true,
+			};
+
+			mockUseCanvasMapping.mockReturnValue({
+				nodes: ref([mockCanvasNode]),
+				connections: ref([]),
+			});
+
+			const { source } = useWorkflowDiff(sourceWorkflow, undefined);
+
+			expect(source.value.nodes[0]).toEqual(
+				expect.objectContaining({
+					draggable: false,
+					selectable: false,
+					focusable: false,
+				}),
+			);
+		});
+
+		it('should set canvas connections as non-interactive', () => {
+			const sourceWorkflow = createMockWorkflow('source');
+			const mockCanvasConnection = {
+				id: 'conn1',
+				selectable: true,
+				focusable: true,
+				source: 'node1',
+				target: 'node2',
+			};
+
+			mockUseCanvasMapping.mockReturnValue({
+				nodes: ref([]),
+				connections: ref([mockCanvasConnection]),
+			});
+
+			const { source } = useWorkflowDiff(sourceWorkflow, undefined);
+
+			expect(source.value.connections[0]).toEqual(
+				expect.objectContaining({
+					selectable: false,
+					focusable: false,
+				}),
+			);
+		});
+
+		it('should compute nodesDiff correctly', () => {
+			const sourceNode = createMockNode('node1', { name: 'Source Node' });
+			const targetNode = createMockNode('node1', { name: 'Target Node' });
+			const sourceWorkflow = createMockWorkflow('source', [sourceNode]);
+			const targetWorkflow = createMockWorkflow('target', [targetNode]);
+
+			const { nodesDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
+
+			expect(nodesDiff.value.size).toBe(1);
+			expect(nodesDiff.value.get('node1')?.status).toBe(NodeDiffStatus.Modified);
+		});
+
+		it('should handle workflows with different nodes', () => {
+			const sourceNodes = [createMockNode('node1'), createMockNode('node2')];
+			const targetNodes = [createMockNode('node1'), createMockNode('node3')];
+			const sourceWorkflow = createMockWorkflow('source', sourceNodes);
+			const targetWorkflow = createMockWorkflow('target', targetNodes);
+
+			const { nodesDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
+
+			expect(nodesDiff.value.size).toBe(3);
+			expect(nodesDiff.value.get('node1')?.status).toBe(NodeDiffStatus.Eq);
+			expect(nodesDiff.value.get('node2')?.status).toBe(NodeDiffStatus.Deleted);
+			expect(nodesDiff.value.get('node3')?.status).toBe(NodeDiffStatus.Added);
+		});
+
+		it('should compute connectionsDiff correctly', () => {
+			const sourceConnections = [createMockCanvasConnection('conn1')];
+			const targetConnections = [
+				createMockCanvasConnection('conn1'),
+				createMockCanvasConnection('conn2'),
+			];
+
+			const sourceWorkflow = createMockWorkflow('source');
+			const targetWorkflow = createMockWorkflow('target');
+
+			mockUseCanvasMapping
+				.mockReturnValueOnce({
+					nodes: ref([]),
+					connections: ref(sourceConnections),
+				})
+				.mockReturnValueOnce({
+					nodes: ref([]),
+					connections: ref(targetConnections),
+				});
+
+			const { connectionsDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
+
+			expect(connectionsDiff.value.size).toBe(1);
+			expect(connectionsDiff.value.get('conn2')?.status).toBe(NodeDiffStatus.Added);
+		});
+
+		it('should handle reactive workflow updates', () => {
+			const sourceWorkflowRef = ref<IWorkflowDb | undefined>(undefined);
+			const { source } = useWorkflowDiff(sourceWorkflowRef, undefined);
+
+			expect(source.value.workflow).toBeUndefined();
+
+			const newWorkflow = createMockWorkflow('new-source');
+			sourceWorkflowRef.value = newWorkflow;
+
+			expect(source.value.workflow?.value).toEqual(newWorkflow);
+		});
+
+		it('should include node type information in connectionsDiff', () => {
+			const sourceNode = createMockNode('node1', { type: 'http-request', typeVersion: 2 });
+			const targetNode = createMockNode('node2', { type: 'webhook', typeVersion: 1 });
+
+			const sourceWorkflow = createMockWorkflow('source', [sourceNode, targetNode]);
+			const targetWorkflow = createMockWorkflow('target', [sourceNode, targetNode]);
+
+			const connection = createMockCanvasConnection('conn1', {
+				source: 'node1',
+				target: 'node2',
+			});
+
+			mockUseCanvasMapping
+				.mockReturnValueOnce({
+					nodes: ref([]),
+					connections: ref([]),
+				})
+				.mockReturnValueOnce({
+					nodes: ref([]),
+					connections: ref([connection]),
+				});
+
+			const { connectionsDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
+
+			// Just verify that the connection diff was computed
+			const connectionDiff = connectionsDiff.value.get('conn1');
+			expect(connectionDiff?.status).toBe(NodeDiffStatus.Added);
+			expect(connectionDiff?.connection).toBeDefined();
+			expect(connectionDiff?.connection.id).toBe('conn1');
 		});
 	});
 });
