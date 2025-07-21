@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -29,6 +29,8 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useThrottleFn } from '@vueuse/core';
+import { useExecutionData } from '@/composables/useExecutionData';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -48,6 +50,7 @@ const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
@@ -107,6 +110,10 @@ const isExecutable = computed(() => {
 		foreignCredentials,
 	);
 });
+
+const node = computed(() => resolvedParameter.value?.node);
+
+const { hasNodeRun } = useExecutionData({ node });
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -171,6 +178,8 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 		parameterPath: resolvedParameter.value.parameterPath,
 	};
 });
+
+const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
@@ -314,14 +323,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div :class="$style.header">
-					<N8nText size="small" :bold="true">
-						{{ locale.baseText('nodeView.focusPanel.title') }}
-					</N8nText>
-					<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
-						<n8n-icon icon="arrow-right" color="text-base" />
-					</div>
-				</div>
 				<div v-if="resolvedParameter" :class="$style.content">
 					<div :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
@@ -330,21 +331,38 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							</N8nText>
 							<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 						</div>
-						<NodeExecuteButton
-							data-test-id="node-execute-button"
-							:node-name="resolvedParameter.node.name"
-							:tooltip="`Execute ${resolvedParameter.node.name}`"
-							:disabled="!isExecutable"
-							size="small"
-							icon="play"
-							:square="true"
-							:hide-label="true"
-							telemetry-source="focus"
-						></NodeExecuteButton>
+						<div :class="$style.buttonWrapper">
+							<NodeExecuteButton
+								data-test-id="node-execute-button"
+								:node-name="resolvedParameter.node.name"
+								:tooltip="`Execute ${resolvedParameter.node.name}`"
+								:disabled="!isExecutable"
+								size="small"
+								icon="play"
+								:square="true"
+								:hide-label="true"
+								telemetry-source="focus"
+							></NodeExecuteButton>
+							<N8nIcon
+								:class="$style.closeButton"
+								icon="x"
+								color="text-base"
+								size="xlarge"
+								@click="focusPanelStore.closeFocusPanel"
+							/>
+						</div>
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
 						<div :class="$style.parameterOptionsWrapper">
-							<div></div>
+							<div :class="$style.noExecutionDataTip">
+								<N8nInfoTip
+									v-if="!hasNodeRun && !isNodeExecuting"
+									:class="$style.delayedShow"
+									:bold="true"
+								>
+									{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
+								</N8nInfoTip>
+							</div>
 							<ParameterOptions
 								v-if="isDisplayed"
 								:parameter="resolvedParameter.parameter"
@@ -448,8 +466,32 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 				<div v-else :class="[$style.content, $style.emptyContent]">
 					<div :class="$style.emptyText">
-						<N8nText color="text-base">
-							{{ locale.baseText('nodeView.focusPanel.noParameters') }}
+						<div :class="$style.focusParameterWrapper">
+							<div :class="$style.iconWrapper">
+								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+								<N8nIcon
+									:class="$style.pointerIcon"
+									icon="mouse-pointer"
+									color="text-dark"
+									size="large"
+								/>
+							</div>
+							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+							<N8nRadioButtons
+								size="small"
+								:model-value="'expression'"
+								:disabled="true"
+								:options="[
+									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+								]"
+							/>
+						</div>
+						<N8nText color="text-base" size="medium" :bold="true">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.title') }}
+						</N8nText>
+						<N8nText color="text-base" size="small">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.subtitle') }}
 						</N8nText>
 					</div>
 				</div>
@@ -463,7 +505,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex-direction: row nowrap;
 	border-left: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-light);
+	background: var(--color-background-xlight);
 	overflow-y: hidden;
 	height: 100%;
 }
@@ -472,18 +514,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-}
-
-.closeButton:hover {
-	cursor: pointer;
-}
-
-.header {
-	display: flex;
-	padding: var(--spacing-2xs);
-	justify-content: space-between;
-	border-bottom: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-xlight);
 }
 
 .content {
@@ -498,7 +528,35 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		align-items: center;
 
 		.emptyText {
-			max-width: 300px;
+			margin: 0 var(--spacing-xl);
+			display: flex;
+			flex-direction: column;
+			gap: var(--spacing-2xs);
+
+			.focusParameterWrapper {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--spacing-2xs);
+				margin-bottom: var(--spacing-m);
+
+				.iconWrapper {
+					position: relative;
+					display: inline-block;
+				}
+
+				.pointerIcon {
+					position: absolute;
+					top: 100%;
+					left: 50%;
+					transform: translate(-20%, -30%);
+					pointer-events: none;
+				}
+
+				:global([class*='_disabled_']) {
+					cursor: default !important;
+				}
+			}
 		}
 	}
 
@@ -517,8 +575,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 		.buttonWrapper {
 			display: flex;
-			padding: 6px 8px 6px 34px;
-			justify-content: flex-end;
+			gap: var(--spacing-2xs);
+			align-items: center;
 		}
 	}
 
@@ -534,6 +592,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			justify-content: space-between;
 		}
 
+		.noExecutionDataTip {
+			align-content: center;
+		}
+
 		.editorContainer {
 			height: 100%;
 			overflow-y: auto;
@@ -545,6 +607,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				font-size: var(--font-size-2xs);
 
 				:global(.cm-editor) {
+					background-color: var(--color-code-background);
 					width: 100%;
 				}
 			}
@@ -552,7 +615,31 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	}
 }
 
+// We have this animation here to hide the short time between no longer
+// executing the node and having runData available
+.delayedShow {
+	opacity: 0;
+	transition: opacity 0.1s none;
+	animation: triggerShow 0.1s normal 0.1s forwards;
+}
+
+@keyframes triggerShow {
+	to {
+		opacity: 1;
+	}
+}
+
+.closeButton {
+	cursor: pointer;
+}
+
 .heightFull {
 	height: 100%;
+}
+
+.forceHover {
+	color: var(--color-button-secondary-hover-active-focus-font);
+	border-color: var(--color-button-secondary-hover-active-focus-border);
+	background-color: var(--color-button-secondary-hover-active-focus-background);
 }
 </style>
