@@ -2677,6 +2677,7 @@
 	"workflows.deactivated": "Workflow deactivated",
 	"workflows.ai.starter.collection.callout": "Learn how to build AI Agents in n8n",
 	"workflows.ai.starter.collection.card": "Learn how to build AI Agents",
+	"workflows.ai.starter.collection.folder.name": "🎁 n8n basics: Learn how to build Agents in n8n",
 	"workflows.ai.starter.collection.error": "Error loading AI Agent starter collection. Please try again later.",
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"importCurlModal.title": "Import cURL command",

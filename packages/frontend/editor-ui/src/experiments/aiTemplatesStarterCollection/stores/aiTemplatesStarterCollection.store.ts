@@ -11,6 +11,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { usePostHog } from '@/stores/posthog.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/constants';
 import { useLocalStorage } from '@vueuse/core';
+import { useI18n } from '@n8n/i18n';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_AI_TEMPLATES_STARTER_COLLECTION_CALL_OUT_DISMISSED';
 
@@ -18,6 +19,7 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 	STORES.AI_TEMPLATES_STARTER_COLLECTION,
 	() => {
 		const telemetry = useTelemetry();
+		const i18n = useI18n();
 
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
@@ -39,7 +41,7 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 
 		const createStarterWorkflows = async (projectId: string, parentFolderId?: string) => {
 			const collectionFolder = await foldersStore.createFolder(
-				'🎁 n8n basics: Learn how to build Agents in n8n',
+				i18n.baseText('workflows.ai.starter.collection.folder.name'),
 				projectId,
 				parentFolderId,
 			);

@@ -128,6 +128,7 @@ export const AGENT_WITH_TOOLS: WorkflowDataCreate = {
 				columns: {
 					mappingMode: 'defineBelow',
 					value: {
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						ID: "={{ `${Math.random()}`.replace('0.', '') }}",
 						Name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
 					},
