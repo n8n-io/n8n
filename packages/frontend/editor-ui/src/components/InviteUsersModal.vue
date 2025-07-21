@@ -308,7 +308,7 @@ function getEmail(email: string): string {
 				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
 						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
+							{{ i18n.baseText('generic.upgrade') }}
 						</n8n-link>
 					</template>
 				</I18nT>

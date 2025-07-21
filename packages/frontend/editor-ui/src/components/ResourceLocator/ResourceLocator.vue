@@ -186,8 +186,9 @@ const hasCredentialError = computed(() => {
 	);
 });
 
-const credentialsNotSet = computed(() => {
+const credentialsRequiredAndNotSet = computed(() => {
 	if (!props.node) return false;
+	if (skipCredentialsCheckInRLC.value) return false;
 	const nodeType = nodeTypesStore.getNodeType(props.node.type);
 	if (nodeType) {
 		const usesCredentials = nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -314,6 +315,10 @@ const currentQueryError = computed(() => {
 });
 
 const isSearchable = computed(() => !!getPropertyArgument(currentMode.value, 'searchable'));
+
+const skipCredentialsCheckInRLC = computed(
+	() => !!getPropertyArgument(currentMode.value, 'skipCredentialsCheckInRLC'),
+);
 
 const requiresSearchFilter = computed(
 	() => !!getPropertyArgument(currentMode.value, 'searchFilterRequired'),
@@ -666,7 +671,7 @@ async function loadResources() {
 	const paramsKey = currentRequestKey.value;
 	const cachedResponse = cachedResponses.value[paramsKey];
 
-	if (credentialsNotSet.value) {
+	if (credentialsRequiredAndNotSet.value) {
 		setResponse(paramsKey, { error: true });
 		return;
 	}
@@ -922,7 +927,7 @@ function removeOverride() {
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
 					<n8n-text
-						v-if="credentialsNotSet || currentResponse.errorDetails"
+						v-if="credentialsRequiredAndNotSet || currentResponse.errorDetails"
 						color="text-dark"
 						align="center"
 						tag="div"
@@ -946,9 +951,12 @@ function removeOverride() {
 							{{ currentResponse.errorDetails.description }}
 						</N8nNotice>
 					</div>
-					<div v-if="hasCredentialError || credentialsNotSet" data-test-id="permission-error-link">
+					<div
+						v-if="hasCredentialError || credentialsRequiredAndNotSet"
+						data-test-id="permission-error-link"
+					>
 						<a
-							v-if="credentialsNotSet"
+							v-if="credentialsRequiredAndNotSet"
 							:class="$style['credential-link']"
 							@click="createNewCredential"
 						>

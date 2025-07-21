@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {
 	DeleteObjectCommand,
 	DeleteObjectsCommand,
@@ -175,6 +176,33 @@ describe('ObjectStoreService', () => {
 				ContentMD5: 'yh6gLBC3w39CW5t92G1eEQ==',
 				ContentType: 'text/plain',
 				Metadata: { filename: 'file.txt' },
+			});
+		});
+
+		it('should encode filename with non-ASCII characters in metadata', async () => {
+			const metadata = {
+				fileName: 'Order Form - Gunes Ekspres Havacılık A.Ş.',
+				mimeType: 'text/plain',
+			};
+
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.put(fileId, mockBuffer, metadata);
+
+			const commandCaptor = captor<PutObjectCommand>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(PutObjectCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Key: fileId,
+				Body: mockBuffer,
+				ContentLength: mockBuffer.length,
+				ContentMD5: 'yh6gLBC3w39CW5t92G1eEQ==',
+				ContentType: 'text/plain',
+				Metadata: {
+					filename: 'Order%20Form%20-%20Gunes%20Ekspres%20Havac%C4%B1l%C4%B1k%20A.%C5%9E.',
+				},
 			});
 		});
 
