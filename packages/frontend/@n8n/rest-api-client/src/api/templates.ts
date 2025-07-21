@@ -168,9 +168,10 @@ export async function getWorkflows(
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
 }> {
-	const { apps, sort, combineWith, ...restQuery } = query;
+	const { apps, sort, combineWith, categories, ...restQuery } = query;
 	const finalQuery = {
 		...restQuery,
+		categories: stringifyArray(categories),
 		...(apps && { app: stringifyArray(apps) }),
 		...(sort && { sort }),
 		...(combineWith && { combineWith }),
