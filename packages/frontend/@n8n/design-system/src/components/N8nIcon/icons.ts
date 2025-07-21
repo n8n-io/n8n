@@ -1,8 +1,12 @@
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
+import Continue from './custom/Continue.svg';
+import EmptyOutput from './custom/EmptyOutput.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Json from './custom/json.svg';
 import PopOut from './custom/pop-out.svg';
+import Retry from './custom/Retry.svg';
+import RunOnce from './custom/RunOnce.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
 import StatusCanceled from './custom/status-canceled.svg';
@@ -16,10 +20,6 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
-import Continue from './custom/Continue.svg';
-import EmptyOutput from './custom/EmptyOutput.svg';
-import Retry from './custom/Retry.svg';
-import RunOnce from './custom/RunOnce.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
