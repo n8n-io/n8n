@@ -54,6 +54,9 @@ const usersTableState = ref<TableOptions>({
 	],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
+const isEnforceMFAEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -350,11 +353,19 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 <template>
 	<div :class="$style.container">
-		<n8n-heading tag="h1" size="2xlarge" class="mb-xl">
+		<N8nHeading tag="h1" size="2xlarge" class="mb-xl">
 			{{ i18n.baseText('settings.users') }}
-		</n8n-heading>
+			<N8nText v-if="!showUMSetupWarning" :class="$style.userCount" color="text-light">{{
+				i18n.baseText('settings.users.count', {
+					interpolate: {
+						count: usersStore.usersList.state.count,
+					},
+					adjustToNumber: usersStore.usersList.state.count,
+				})
+			}}</N8nText>
+		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<n8n-action-box
+			<N8nActionBox
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"
@@ -367,25 +378,30 @@ async function onUpdateMfaEnforced(value: boolean) {
 				@click:button="goToUpgrade"
 			/>
 		</div>
-		<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+		<N8nNotice v-if="!isAdvancedPermissionsEnabled">
 			<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 				<template #link>
-					<n8n-link
+					<N8nLink
 						data-test-id="upgrade-permissions-link"
 						size="small"
 						@click="goToUpgradeAdvancedPermissions"
 					>
-						{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
-					</n8n-link>
+						{{ i18n.baseText('generic.upgrade') }}
+					</N8nLink>
 				</template>
 			</I18nT>
-		</n8n-notice>
+		</N8nNotice>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
-				<n8n-text :bold="true">{{ i18n.baseText('settings.personal.mfa.enforce.title') }}</n8n-text>
-				<n8n-text size="small" color="text-light">{{
+				<N8nText :bold="true"
+					>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
+					<N8nBadge v-if="!isEnforceMFAEnabled" class="ml-4xs">{{
+						i18n.baseText('generic.upgrade')
+					}}</N8nBadge>
+				</N8nText>
+				<N8nText size="small" color="text-light">{{
 					i18n.baseText('settings.personal.mfa.enforce.message')
-				}}</n8n-text>
+				}}</N8nText>
 			</div>
 			<div :class="$style.settingsContainerAction">
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
@@ -397,12 +413,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					/>
 					<template #fallback>
 						<N8nTooltip>
-							<el-switch
-								:model-value="settingsStore.isMFAEnforced"
-								size="large"
-								:disabled="true"
-								@update:model-value="onUpdateMfaEnforced"
-							/>
+							<el-switch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
 							<template #content>
 								<I18nT :keypath="tooltipKey" tag="span" scope="global">
 									<template #action>
@@ -418,7 +429,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			</div>
 		</div>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
-			<n8n-input
+			<N8nInput
 				:class="$style.search"
 				:model-value="search"
 				:placeholder="i18n.baseText('settings.users.search.placeholder')"
@@ -427,15 +438,15 @@ async function onUpdateMfaEnforced(value: boolean) {
 				@update:model-value="onSearch"
 			>
 				<template #prefix>
-					<n8n-icon icon="search" />
+					<N8nIcon icon="search" />
 				</template>
-			</n8n-input>
-			<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+			</N8nInput>
+			<N8nTooltip :disabled="!ssoStore.isSamlLoginEnabled">
 				<template #content>
 					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
 				</template>
 				<div>
-					<n8n-button
+					<N8nButton
 						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
@@ -443,7 +454,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 						@click="onInvite"
 					/>
 				</div>
-			</n8n-tooltip>
+			</N8nTooltip>
 		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
@@ -466,6 +477,11 @@ async function onUpdateMfaEnforced(value: boolean) {
 </template>
 
 <style lang="scss" module>
+.userCount {
+	display: block;
+	padding: var(--spacing-3xs) 0 0;
+}
+
 .buttonContainer {
 	display: flex;
 	justify-content: space-between;
