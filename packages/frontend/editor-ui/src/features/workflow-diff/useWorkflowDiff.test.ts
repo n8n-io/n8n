@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import {
 	NodeDiffStatus,
 	compareNodes,
@@ -7,7 +7,7 @@ import {
 	mapConnections,
 	useWorkflowDiff,
 } from './useWorkflowDiff';
-import type { CanvasConnection } from '@/types';
+import type { CanvasConnection, CanvasNode, ExecutionOutputMap } from '@/types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
@@ -34,8 +34,13 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 
 vi.mock('@/composables/useCanvasMapping', () => ({
 	useCanvasMapping: vi.fn().mockReturnValue({
-		nodes: ref([]),
-		connections: ref([]),
+		additionalNodePropertiesById: computed(() => ({})),
+		nodeExecutionRunDataOutputMapById: computed(() => ({})),
+		nodeExecutionWaitingForNextById: computed(() => ({})),
+		nodeIssuesById: computed(() => ({})),
+		nodeHasIssuesById: computed(() => ({})),
+		nodes: computed(() => []),
+		connections: computed(() => []),
 	}),
 }));
 
@@ -389,12 +394,22 @@ describe('useWorkflowDiff', () => {
 	describe('useWorkflowDiff composable', () => {
 		const mockUseCanvasMapping = vi.mocked(useCanvasMapping);
 
+		const createMockCanvasMappingReturn = (
+			nodes: Array<Partial<CanvasNode>> = [],
+			connections: Array<Partial<CanvasConnection>> = [],
+		) => ({
+			additionalNodePropertiesById: computed(() => ({}) as Record<string, Partial<CanvasNode>>),
+			nodeExecutionRunDataOutputMapById: computed(() => ({}) as Record<string, ExecutionOutputMap>),
+			nodeExecutionWaitingForNextById: computed(() => ({}) as Record<string, boolean>),
+			nodeIssuesById: computed(() => ({}) as Record<string, string[]>),
+			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
+			nodes: computed(() => nodes as CanvasNode[]),
+			connections: computed(() => connections as CanvasConnection[]),
+		});
+
 		beforeEach(() => {
 			vi.clearAllMocks();
-			mockUseCanvasMapping.mockReturnValue({
-				nodes: ref([]),
-				connections: ref([]),
-			});
+			mockUseCanvasMapping.mockReturnValue(createMockCanvasMappingReturn());
 		});
 
 		const createMockWorkflow = (
@@ -455,10 +470,7 @@ describe('useWorkflowDiff', () => {
 
 		it('should handle source workflow only', () => {
 			const sourceWorkflow = createMockWorkflow('source', [createMockNode('node1')]);
-			mockUseCanvasMapping.mockReturnValue({
-				nodes: ref([{ id: 'canvas-node1' }]),
-				connections: ref([]),
-			});
+			mockUseCanvasMapping.mockReturnValue(createMockCanvasMappingReturn([{ id: 'canvas-node1' }]));
 
 			const { source, target } = useWorkflowDiff(sourceWorkflow, undefined);
 
@@ -477,10 +489,7 @@ describe('useWorkflowDiff', () => {
 
 		it('should handle target workflow only', () => {
 			const targetWorkflow = createMockWorkflow('target', [createMockNode('node1')]);
-			mockUseCanvasMapping.mockReturnValue({
-				nodes: ref([{ id: 'canvas-node1' }]),
-				connections: ref([]),
-			});
+			mockUseCanvasMapping.mockReturnValue(createMockCanvasMappingReturn([{ id: 'canvas-node1' }]));
 
 			const { source, target } = useWorkflowDiff(undefined, targetWorkflow);
 
@@ -506,10 +515,7 @@ describe('useWorkflowDiff', () => {
 				focusable: true,
 			};
 
-			mockUseCanvasMapping.mockReturnValue({
-				nodes: ref([mockCanvasNode]),
-				connections: ref([]),
-			});
+			mockUseCanvasMapping.mockReturnValue(createMockCanvasMappingReturn([mockCanvasNode]));
 
 			const { source } = useWorkflowDiff(sourceWorkflow, undefined);
 
@@ -532,10 +538,9 @@ describe('useWorkflowDiff', () => {
 				target: 'node2',
 			};
 
-			mockUseCanvasMapping.mockReturnValue({
-				nodes: ref([]),
-				connections: ref([mockCanvasConnection]),
-			});
+			mockUseCanvasMapping.mockReturnValue(
+				createMockCanvasMappingReturn([], [mockCanvasConnection]),
+			);
 
 			const { source } = useWorkflowDiff(sourceWorkflow, undefined);
 
@@ -584,14 +589,8 @@ describe('useWorkflowDiff', () => {
 			const targetWorkflow = createMockWorkflow('target');
 
 			mockUseCanvasMapping
-				.mockReturnValueOnce({
-					nodes: ref([]),
-					connections: ref(sourceConnections),
-				})
-				.mockReturnValueOnce({
-					nodes: ref([]),
-					connections: ref(targetConnections),
-				});
+				.mockReturnValueOnce(createMockCanvasMappingReturn([], sourceConnections))
+				.mockReturnValueOnce(createMockCanvasMappingReturn([], targetConnections));
 
 			const { connectionsDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
 
@@ -624,14 +623,8 @@ describe('useWorkflowDiff', () => {
 			});
 
 			mockUseCanvasMapping
-				.mockReturnValueOnce({
-					nodes: ref([]),
-					connections: ref([]),
-				})
-				.mockReturnValueOnce({
-					nodes: ref([]),
-					connections: ref([connection]),
-				});
+				.mockReturnValueOnce(createMockCanvasMappingReturn())
+				.mockReturnValueOnce(createMockCanvasMappingReturn([], [connection]));
 
 			const { connectionsDiff } = useWorkflowDiff(sourceWorkflow, targetWorkflow);
 
