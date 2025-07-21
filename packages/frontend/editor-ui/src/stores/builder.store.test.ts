@@ -68,6 +68,11 @@ describe('AI Builder store', () => {
 		track.mockReset();
 	});
 
+	afterEach(() => {
+		// Ensure fake timers are always reset after each test
+		vi.useRealTimers();
+	});
+
 	it('initializes with default values', () => {
 		const builderStore = useBuilderStore();
 
