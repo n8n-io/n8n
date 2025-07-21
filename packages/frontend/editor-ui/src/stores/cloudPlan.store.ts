@@ -41,7 +41,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const currentUsageData = computed(() => state.usage);
 
-	const selectedApps = computed(() => currentUserCloudInfo.value?.selectedApps?.split(',') ?? []);
+	const selectedApps = computed(() => currentUserCloudInfo.value?.selectedApps?.split(',').filter(Boolean) ?? []);
 	const codingSkill = computed(() => {
 		const information = currentUserCloudInfo.value?.information;
 		if (!information) {
