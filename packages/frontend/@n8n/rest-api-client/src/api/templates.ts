@@ -171,7 +171,7 @@ export async function getWorkflows(
 	const { apps, sort, combineWith, categories, ...restQuery } = query;
 	const finalQuery = {
 		...restQuery,
-		categories: stringifyArray(categories),
+		category: stringifyArray(categories),
 		...(apps && { app: stringifyArray(apps) }),
 		...(sort && { sort }),
 		...(combineWith && { combineWith }),
