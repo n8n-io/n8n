@@ -99,12 +99,6 @@ export class Beeminder implements INodeType {
 						description: 'Create a charge',
 						action: 'Create a charge',
 					},
-					{
-						name: 'Uncle',
-						value: 'uncle',
-						description: 'Derail a goal and charge the pledge amount',
-						action: 'Derail a goal and charge the pledge amount',
-					},
 				],
 				default: 'create',
 				required: true,
@@ -225,6 +219,12 @@ export class Beeminder implements INodeType {
 						description: 'Cancel step down',
 						action: 'Cancel step down',
 					},
+					{
+						name: 'Uncle',
+						value: 'uncle',
+						description: 'Derail a goal and charge the pledge amount',
+						action: 'Derail a goal and charge the pledge amount',
+					},
 				],
 				default: 'get',
 				required: true,
@@ -276,7 +276,7 @@ export class Beeminder implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['charge'],
+						resource: ['goal'],
 						operation: ['uncle'],
 					},
 				},
@@ -403,7 +403,8 @@ export class Beeminder implements INodeType {
 					},
 				],
 				default: 'hustler',
-				description: 'Type of goal',
+				description:
+					'Type of goal. <a href="https://api.beeminder.com/#attributes-2">More info here.</a>',
 				required: true,
 			},
 			{
@@ -563,22 +564,83 @@ export class Beeminder implements INodeType {
 						displayName: 'Goal Date',
 						name: 'goaldate',
 						type: 'dateTime',
-						default: '',
+						default: null,
 						description: 'Target date for the goal',
 					},
 					{
 						displayName: 'Goal Value',
 						name: 'goalval',
 						type: 'number',
-						default: 0,
+						default: null,
 						description: 'Target value for the goal',
 					},
 					{
 						displayName: 'Rate',
 						name: 'rate',
 						type: 'number',
-						default: 0,
+						default: null,
 						description: 'Rate of progress (units per day)',
+					},
+					{
+						displayName: 'Initial Value',
+						name: 'initval',
+						type: 'number',
+						default: 0,
+						description: "Initial value for today's date",
+					},
+					{
+						displayName: 'Secret',
+						name: 'secret',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the goal is secret',
+					},
+					{
+						displayName: 'Data Public',
+						name: 'datapublic',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the data is public',
+					},
+					{
+						displayName: 'Data Source',
+						name: 'datasource',
+						type: 'options',
+						options: [
+							{
+								name: 'API',
+								value: 'api',
+							},
+							{
+								name: 'IFTTT',
+								value: 'ifttt',
+							},
+							{
+								name: 'Zapier',
+								value: 'zapier',
+							},
+							{
+								name: 'Manual',
+								value: 'manual',
+							},
+						],
+						default: 'manual',
+						description: 'Data source for the goal',
+					},
+					{
+						displayName: 'Dry Run',
+						name: 'dryrun',
+						type: 'boolean',
+						default: false,
+						description: 'Test the endpoint without actually creating a goal',
+					},
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						type: 'json',
+						default: '[]',
+						description: 'Array of alphanumeric tags for the goal. Replaces existing tags.',
+						placeholder: '["tag1", "tag2"]',
 					},
 				],
 			},
@@ -600,28 +662,86 @@ export class Beeminder implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'Goal title',
+						description: 'Human-readable title for the goal',
 					},
 					{
-						displayName: 'Goal Date',
-						name: 'goaldate',
-						type: 'dateTime',
+						displayName: 'Y-Axis',
+						name: 'yaxis',
+						type: 'string',
 						default: '',
-						description: 'Target date for the goal',
+						description: 'Y-axis label for the goal graph',
 					},
 					{
-						displayName: 'Goal Value',
-						name: 'goalval',
-						type: 'number',
-						default: 0,
-						description: 'Target value for the goal',
+						displayName: 'Tmin',
+						name: 'tmin',
+						type: 'string',
+						default: '',
+						placeholder: 'yyyy-mm-dd',
+						description: 'Minimum date for the goal in format yyyy-mm-dd',
 					},
 					{
-						displayName: 'Rate',
-						name: 'rate',
-						type: 'number',
-						default: 0,
-						description: 'Rate of progress (units per day)',
+						displayName: 'Tmax',
+						name: 'tmax',
+						type: 'string',
+						default: '',
+						placeholder: 'yyyy-mm-dd',
+						description: 'Maximum date for the goal in format yyyy-mm-dd',
+					},
+					{
+						displayName: 'Secret',
+						name: 'secret',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the goal is secret',
+					},
+					{
+						displayName: 'Data Public',
+						name: 'datapublic',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the data is public',
+					},
+					{
+						displayName: 'Road All',
+						name: 'roadall',
+						type: 'json',
+						default: '[]',
+						description:
+							'Array of arrays defining the bright red line. Each sub-array contains [date, value, rate] with exactly one field null.',
+						placeholder: '[["2023-01-01", 0, null], [null, 100, 1]]',
+					},
+					{
+						displayName: 'Data Source',
+						name: 'datasource',
+						type: 'options',
+						options: [
+							{
+								name: 'API',
+								value: 'api',
+							},
+							{
+								name: 'IFTTT',
+								value: 'ifttt',
+							},
+							{
+								name: 'Zapier',
+								value: 'zapier',
+							},
+							{
+								name: 'Manual',
+								value: '',
+							},
+						],
+						default: '',
+						description: 'Data source for the goal. Use empty string for manual entry.',
+					},
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						type: 'json',
+						default: '[]',
+						description: 'Array of alphanumeric tags for the goal. Replaces existing tags.',
+						placeholder: '["tag1", "tag2"]',
 					},
 				],
 			},
@@ -958,18 +1078,6 @@ export class Beeminder implements INodeType {
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-					} else if (operation === 'uncle') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
-							goalName,
-						};
-
-						results = await uncleGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
 					}
 				} else if (resource === 'goal') {
 					if (operation === 'create') {
@@ -1087,6 +1195,18 @@ export class Beeminder implements INodeType {
 							goalName,
 						};
 						results = await cancelStepDownGoal.call(this, data);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'uncle') {
+						const goalName = this.getNodeParameter('goalName', i) as string;
+						const data: IDataObject = {
+							goalName,
+						};
+
+						results = await uncleGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
