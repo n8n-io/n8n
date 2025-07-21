@@ -1694,7 +1694,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 			</N8nCallout>
 			<N8nCallout
-				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
+				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				icon="bot"
 				:class="$style['easy-ai-workflow-callout']"
@@ -1888,7 +1888,26 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 					<N8nCard
-						v-if="showEasyAIWorkflowCallout"
+						v-if="showAIStarterCollectionCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="easy-ai-workflow-card"
+						@click="createAIStarterWorkflows"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="gift"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.ai.starter.collection.card') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-else-if="showEasyAIWorkflowCallout"
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="easy-ai-workflow-card"
