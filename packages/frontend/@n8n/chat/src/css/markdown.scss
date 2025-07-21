@@ -69,7 +69,7 @@ $highlight-tool-bar-border-dark: #3d444d;
 			background: $markdown-hr-color-dark;
 		}
 
-		.code {
+		code {
 			background: $markdown-code-bg-dark;
 			color: $markdown-code-color-dark;
 		}
@@ -92,13 +92,13 @@ $highlight-tool-bar-border-dark: #3d444d;
 			td {
 				border-top-color: $markdown-table-border-dark;
 				border-right-color: $markdown-table-border-dark;
-				padding: 8px 12px;
-				height: 40px;
+				padding: toRem(8) toRem(12);
+				height: toRem(40);
 			}
 		}
 
 		.highlight {
-			border: 1px solid $highlight-border-color-dark;
+			border: toRem(1) solid $highlight-border-color-dark;
 			background-color: $highlight-background-color-dark;
 			&-tool-bar {
 				background: $highlight-tool-bar-background-dark;
@@ -223,11 +223,18 @@ body {
 	}
 
 	hr {
-		height: 1px;
+		height: toRem(1);
 		margin: toRem(13) 0;
 		background: $markdown-hr-color-light;
 		border: none;
 		display: block;
+	}
+
+	code {
+		background: $markdown-code-bg-light;
+		color: $markdown-code-color-light;
+		padding: toRem(4) toRem(8);
+		border-radius: toRem(8);
 	}
 
 	code,
@@ -239,17 +246,17 @@ body {
 	}
 
 	pre {
-		border-radius: 4px;
+		border-radius: toRem(8);
 	}
 
 	img {
-		max-width: 400px;
-		max-height: 240px;
+		max-width: toRem(400);
+		max-height: toRem(240);
 		max-width: 100%;
 		object-fit: contain;
 	}
 	video {
-		max-height: 240px;
+		max-height: toRem(240);
 		max-width: 100%;
 		object-fit: cover;
 	}
@@ -276,8 +283,8 @@ body {
 		max-width: 100%;
 		overflow-x: auto;
 		overflow-y: hidden;
-		border-left: toRem(1) solid $markdown-table-border-light;
-		border-bottom: toRem(1) solid $markdown-table-border-light;
+		border-left: 1px solid $markdown-table-border-light;
+		border-bottom: 1px solid $markdown-table-border-light;
 		background-color: $markdown-table-bg-light;
 
 		thead tr {
@@ -287,8 +294,8 @@ body {
 		th,
 		td {
 			padding: toRem(6) toRem(13);
-			border-top: toRem(1) solid $markdown-table-border-light;
-			border-right: toRem(1) solid $markdown-table-border-light;
+			border-top: 1px solid $markdown-table-border-light;
+			border-right: 1px solid $markdown-table-border-light;
 		}
 	}
 	// MathJax 数学公式样式
@@ -299,7 +306,7 @@ body {
 
 	.MathJax_Display {
 		text-align: center;
-		margin: 1em 0;
+		margin: toRem(21.3) 0;
 	}
 
 	mjx-container {
@@ -309,57 +316,58 @@ body {
 		&[display='block'] {
 			display: block;
 			text-align: center;
-			margin: 1em 0;
+			margin: toRem(21.3) 0;
 		}
 	}
 	.highlight {
-		margin: 8px 0;
-		min-width: 300px;
+		margin: toRem(8) 0;
+		min-width: toRem(300);
 		min-height: 100%;
 		display: block;
-		border-radius: 4px;
+		border-radius: toRem(8);
 		overflow: hidden;
 		border: 1px solid $highlight-border-color-light;
 		background-color: $highlight-background-color-light;
-		&-language {
-			text-transform: lowercase;
-		}
+		overflow: hidden;
+
 		&-tool-bar {
 			color: $highlight-tool-bar-color-light;
 			background: $highlight-tool-bar-background-light;
-			font-size: 12px;
-			padding: 6px 12px;
+			font-size: toRem(16);
+			padding: toRem(8) toRem(12);
 			border-bottom: 1px solid #d1d9e0;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 		}
-
+		&-language {
+			text-transform: lowercase;
+		}
 		&-code-box {
-			padding: 8px;
+			background: #fff;
+			padding: toRem(8);
 			border-radius: 0;
 			overflow-x: auto;
 		}
 		&-copy-btn {
 			display: flex;
 			align-items: center;
-			font-size: 0.75rem;
 			cursor: pointer;
-			padding: 4px 8px;
+			padding: toRem(4) toRem(8);
 			border: 1px solid transparent;
-			border-radius: 4px;
+			border-radius: toRem(8);
 			background: $highlight-background-color-light;
 			border-color: $highlight-tool-bar-border-light;
 			color: inherit;
 			transition: all 0.2s ease;
-
+			font-size: toRem(16);
 			&:hover {
 				background: rgba(0, 0, 0, 0.1);
 				border-color: rgba(0, 0, 0, 0.15);
 			}
 		}
 		&-copied-text {
-			margin-left: 4px;
+			margin-left: toRem(4);
 			display: none;
 		}
 		&.copied {
@@ -376,7 +384,7 @@ body {
 			}
 		}
 		&-copy-text {
-			margin-left: 4px;
+			margin-left: toRem(4);
 		}
 
 		.task-list-item {
