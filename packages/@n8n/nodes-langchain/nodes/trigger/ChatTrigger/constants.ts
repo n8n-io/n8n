@@ -120,5 +120,3 @@ export const cssVariables = `
   --chat--footer--color: var(--chat--color-dark);
 }
 `;
-
-export const RESPONSE_NODES_MODE = 'responseNodes';
