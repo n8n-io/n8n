@@ -1502,6 +1502,7 @@
 	"nodeView.couldntImportWorkflow": "Could not import workflow",
 	"nodeView.couldntLoadWorkflow.invalidWorkflowObject": "Invalid workflow object",
 	"nodeView.deletesTheCurrentExecutionData": "Deletes the current execution data",
+	"nodeView.focusPanel.noExecutionData": "Execute previous node for autocomplete",
 	"nodeView.focusPanel.noParameters.title": "Show a node parameter here, to iterate easily",
 	"nodeView.focusPanel.noParameters.subtitle": "For example, keep your prompt always visible so you can run the workflow while tweaking it",
 	"nodeView.focusPanel.missingParameter": "This parameter is no longer visible on the node. A related parameter was likely changed, removing this one.",
