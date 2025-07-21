@@ -1078,6 +1078,7 @@ export interface ITab<Value extends string | number = string | number> {
 	icon?: IconName;
 	align?: 'right';
 	tooltip?: string;
+	notification?: boolean;
 }
 
 export interface ITabBarItem {

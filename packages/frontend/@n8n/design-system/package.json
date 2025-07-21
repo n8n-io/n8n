@@ -37,7 +37,7 @@
     "@vitest/coverage-v8": "catalog:",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
-    "sass": "^1.64.1",
+    "sass": "^1.71.1",
     "tailwindcss": "^3.4.3",
     "unplugin-icons": "catalog:frontend",
     "unplugin-vue-components": "catalog:frontend",
