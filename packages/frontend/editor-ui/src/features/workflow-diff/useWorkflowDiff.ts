@@ -2,7 +2,7 @@ import _pick from 'lodash-es/pick';
 import _isEqual from 'lodash-es/isEqual';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { MaybeRefOrGetter, Ref } from 'vue';
+import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { toValue, computed, ref, watchEffect } from 'vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
@@ -82,6 +82,70 @@ export function mapConnections(connections: CanvasConnection[]) {
 	);
 }
 
+function createWorkflowRefs(
+	workflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
+	getWorkflow: (nodes: INodeUi[], connections: IConnections) => Workflow,
+) {
+	const workflowRef = computed(() => toValue(workflow));
+	const workflowNodes = ref<INodeUi[]>([]);
+	const workflowConnections = ref<IConnections>({});
+	const workflowObjectRef = ref<Workflow>();
+
+	watchEffect(() => {
+		const workflowValue = workflowRef.value;
+		if (workflowValue) {
+			workflowObjectRef.value = getWorkflow(workflowValue.nodes, workflowValue.connections);
+			workflowNodes.value = workflowValue.nodes;
+			workflowConnections.value = workflowValue.connections;
+		}
+	});
+
+	return {
+		workflowRef,
+		workflowNodes,
+		workflowConnections,
+		workflowObjectRef,
+	};
+}
+
+function createWorkflowDiff(
+	workflowRef: ComputedRef<IWorkflowDb | undefined>,
+	workflowNodes: Ref<INodeUi[]>,
+	workflowConnections: Ref<IConnections>,
+	workflowObjectRef: Ref<Workflow | undefined>,
+) {
+	return computed(() => {
+		if (!workflowRef.value) {
+			return {
+				workflow: undefined,
+				nodes: [],
+				connections: [],
+			};
+		}
+
+		const { nodes, connections } = useCanvasMapping({
+			nodes: workflowNodes,
+			connections: workflowConnections,
+			workflowObject: workflowObjectRef as Ref<Workflow>,
+		});
+
+		return {
+			workflow: workflowRef,
+			nodes: nodes.value.map((node) => {
+				node.draggable = false;
+				node.selectable = false;
+				node.focusable = false;
+				return node;
+			}),
+			connections: connections.value.map((connection) => {
+				connection.selectable = false;
+				connection.focusable = false;
+				return connection;
+			}),
+		};
+	});
+}
+
 export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
@@ -89,93 +153,22 @@ export const useWorkflowDiff = (
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceWorkflowRef = computed(() => toValue(sourceWorkflow));
-	const sourceWorkflowNodes = ref<INodeUi[]>([]);
-	const sourceWorkflowConnections = ref<IConnections>({});
-	const sourceWorkflowObjectRef = ref<Workflow>();
-	watchEffect(() => {
-		const workflow = sourceWorkflowRef.value;
-		if (workflow) {
-			sourceWorkflowObjectRef.value = workflowsStore.getWorkflow(
-				workflow.nodes,
-				workflow.connections,
-			);
-			sourceWorkflowNodes.value = workflow.nodes;
-			sourceWorkflowConnections.value = workflow.connections;
-		}
-	});
+	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.getWorkflow);
+	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.getWorkflow);
 
-	const targetWorkflowRef = computed(() => toValue(targetWorkflow));
-	const targetWorkflowNodes = ref<INodeUi[]>([]);
-	const targetWorkflowConnections = ref<IConnections>({});
-	const targetWorkflowObjectRef = ref<Workflow>();
-	watchEffect(() => {
-		const workflow = targetWorkflowRef.value;
-		if (workflow) {
-			targetWorkflowObjectRef.value = workflowsStore.getWorkflow(
-				workflow.nodes,
-				workflow.connections,
-			);
-			targetWorkflowNodes.value = workflow.nodes;
-			targetWorkflowConnections.value = workflow.connections;
-		}
-	});
+	const source = createWorkflowDiff(
+		sourceRefs.workflowRef,
+		sourceRefs.workflowNodes,
+		sourceRefs.workflowConnections,
+		sourceRefs.workflowObjectRef,
+	);
 
-	const defaultWorkflowDiff = () => ({
-		workflow: undefined,
-		nodes: [],
-		connections: [],
-	});
-
-	const source = computed(() => {
-		if (!sourceWorkflowRef.value) return defaultWorkflowDiff();
-
-		const { nodes, connections } = useCanvasMapping({
-			nodes: sourceWorkflowNodes,
-			connections: sourceWorkflowConnections,
-			workflowObject: sourceWorkflowObjectRef as Ref<Workflow>,
-		});
-
-		return {
-			workflow: sourceWorkflowRef,
-			nodes: nodes.value.map((node) => {
-				node.draggable = false;
-				node.selectable = false;
-				node.focusable = false;
-				return node;
-			}),
-			connections: connections.value.map((connection) => {
-				connection.selectable = false;
-				connection.focusable = false;
-				return connection;
-			}),
-		};
-	});
-
-	const target = computed(() => {
-		if (!targetWorkflowRef.value) return defaultWorkflowDiff();
-
-		const { nodes, connections } = useCanvasMapping({
-			nodes: targetWorkflowNodes,
-			connections: targetWorkflowConnections,
-			workflowObject: targetWorkflowObjectRef as Ref<Workflow>,
-		});
-
-		return {
-			workflow: targetWorkflowRef,
-			nodes: nodes.value.map((node) => {
-				node.draggable = false;
-				node.selectable = false;
-				node.focusable = false;
-				return node;
-			}),
-			connections: connections.value.map((connection) => {
-				connection.selectable = false;
-				connection.focusable = false;
-				return connection;
-			}),
-		};
-	});
+	const target = createWorkflowDiff(
+		targetRefs.workflowRef,
+		targetRefs.workflowNodes,
+		targetRefs.workflowConnections,
+		targetRefs.workflowObjectRef,
+	);
 
 	const nodesDiff = computed(() =>
 		compareWorkflowsNodes(
