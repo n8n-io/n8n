@@ -555,7 +555,7 @@ describe('shouldShowWhatsNewCallout', () => {
 		const now = Date.now();
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date(now - 10000).toISOString() },
-		} as any);
+		});
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: new Date(now).toISOString() })];
@@ -566,7 +566,7 @@ describe('shouldShowWhatsNewCallout', () => {
 		const now = Date.now();
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date(now).toISOString() },
-		} as any);
+		});
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [
@@ -578,7 +578,7 @@ describe('shouldShowWhatsNewCallout', () => {
 	it('handles missing updatedAt on article', () => {
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { createdAt: new Date().toISOString() },
-		} as any);
+		});
 		versionsStore = useVersionsStore();
 		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [makeArticle({ updatedAt: undefined })];
