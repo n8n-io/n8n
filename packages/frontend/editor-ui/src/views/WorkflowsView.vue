@@ -793,7 +793,7 @@ function isValidProjectId(projectId: string) {
 	return projectsStore.availableProjects.some((project) => project.id === projectId);
 }
 
-const createAIStarterWorkflows = async () => {
+const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
 	try {
 		const projectId = projectPages.isOverviewSubPage
 			? personalProject.value?.id
@@ -825,6 +825,7 @@ const createAIStarterWorkflows = async () => {
 				parentFolder: newFolder.parentFolder,
 			});
 		}
+		aiStarterTemplatesStore.trackUserCreatedStarterCollection(source);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.ai.starter.collection.error'));
 		return;
@@ -848,6 +849,7 @@ const openAIWorkflow = async (source: string) => {
 
 const dismissStarterCollectionCallout = () => {
 	aiStarterTemplatesStore.dismissCallout();
+	aiStarterTemplatesStore.trackUserDismissedCallout();
 };
 
 const dismissEasyAICallout = () => {
@@ -1679,7 +1681,7 @@ const onNameSubmit = async (name: string) => {
 							data-test-id="easy-ai-button"
 							size="small"
 							type="secondary"
-							@click="createAIStarterWorkflows"
+							@click="createAIStarterWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}
 						</N8nButton>
@@ -1892,7 +1894,7 @@ const onNameSubmit = async (name: string) => {
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="easy-ai-workflow-card"
-						@click="createAIStarterWorkflows"
+						@click="createAIStarterWorkflows('card')"
 					>
 						<div :class="$style.emptyStateCardContent">
 							<N8nIcon

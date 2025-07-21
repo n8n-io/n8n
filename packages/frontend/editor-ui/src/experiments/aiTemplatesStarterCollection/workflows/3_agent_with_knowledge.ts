@@ -1,7 +1,9 @@
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
-// TODO: Add metadata to workflows
 export const AGENT_WITH_KNOWLEDGE: WorkflowDataCreate = {
+	meta: {
+		templateId: '035_template_onboarding-agent_with_knowledge',
+	},
 	name: '3. Agent with knowledge',
 	nodes: [
 		{
@@ -245,8 +247,4 @@ export const AGENT_WITH_KNOWLEDGE: WorkflowDataCreate = {
 		},
 	},
 	pinData: {},
-	meta: {
-		templateCredsSetupCompleted: true,
-		instanceId: 'cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7',
-	},
 };

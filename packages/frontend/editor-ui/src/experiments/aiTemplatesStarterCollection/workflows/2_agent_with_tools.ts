@@ -1,7 +1,9 @@
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
-// TODO: Add metadata to workflows
 export const AGENT_WITH_TOOLS: WorkflowDataCreate = {
+	meta: {
+		templateId: '035_template_onboarding-agent_with_tools',
+	},
 	name: '2. Agent with tools',
 	nodes: [
 		{

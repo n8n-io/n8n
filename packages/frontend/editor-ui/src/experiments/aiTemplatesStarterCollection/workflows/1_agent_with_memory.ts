@@ -1,7 +1,9 @@
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
-// TODO: Add metadata to workflows
 export const AGENT_WITH_MEMORY: WorkflowDataCreate = {
+	meta: {
+		templateId: '035_template_onboarding-agent_with_memory',
+	},
 	name: '1. Agent with memory',
 	nodes: [
 		{
@@ -29,7 +31,7 @@ export const AGENT_WITH_MEMORY: WorkflowDataCreate = {
 		},
 		{
 			id: '658eb127-5a9d-4404-9270-72ef1da36ea3',
-			name: 'Sticky Note"',
+			name: 'Sticky Note',
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
 			position: [-464, -32],

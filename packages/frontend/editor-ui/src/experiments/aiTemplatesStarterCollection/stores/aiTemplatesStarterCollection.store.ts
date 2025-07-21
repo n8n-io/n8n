@@ -3,7 +3,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { AGENT_WITH_MEMORY } from '../workflows/1_agent_with_memory';
 import { AGENT_WITH_TOOLS } from '../workflows/2_agent_with_tools';
 import { AGENT_WITH_KNOWLEDGE } from '../workflows/3_agent_with_knowledge';
@@ -35,7 +35,6 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 
 		const dismissCallout = () => {
 			calloutDismissedRef.value = true;
-			telemetry.track('ai_templates_starter_collection_callout_dismissed');
 		};
 
 		const createStarterWorkflows = async (projectId: string, parentFolderId?: string) => {
@@ -63,11 +62,37 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 			return collectionFolder;
 		};
 
+		const trackUserCreatedStarterCollection = (source: 'card' | 'callout') => {
+			telemetry.track('User created AI templates starter collection', {
+				source,
+			});
+		};
+
+		const trackUserDismissedCallout = () => {
+			telemetry.track('User dismissed AI templates starter collection callout');
+		};
+
+		const trackUserOpenedWorkflow = (template: string) => {
+			telemetry.track('User opened AI template workflow', {
+				template,
+			});
+		};
+
+		const trackUserExecutedWorkflow = (template: string, status: string) => {
+			telemetry.track('User executed AI template', {
+				template,
+				status,
+			});
+		};
 		return {
 			isFeatureEnabled,
 			calloutDismissed,
 			dismissCallout,
 			createStarterWorkflows,
+			trackUserCreatedStarterCollection,
+			trackUserDismissedCallout,
+			trackUserOpenedWorkflow,
+			trackUserExecutedWorkflow,
 		};
 	},
 );
