@@ -144,7 +144,14 @@ function onClick(event: MouseEvent) {
 .wrapper {
 	position: relative;
 	transform: scale(var(--canvas-zoom-compensation-factor, 1));
-	transform-origin: center left;
+
+	&.right {
+		transform-origin: center left;
+	}
+
+	&.bottom {
+		transform-origin: top center;
+	}
 
 	&.secondary {
 		.line {
