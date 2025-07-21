@@ -1,4 +1,5 @@
-import { IConnections, NodeConnectionType, NodeConnectionTypes } from '../interfaces';
+import { NodeConnectionTypes } from '../interfaces';
+import type { IConnections, NodeConnectionType } from '../interfaces';
 
 /**
  * Gets all the nodes which are connected nodes starting from

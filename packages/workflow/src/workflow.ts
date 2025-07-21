@@ -7,7 +7,7 @@ import {
 	getChildNodes,
 	getParentNodes,
 	mapConnectionsByDestination,
-} from '@/common';
+} from './common';
 
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
