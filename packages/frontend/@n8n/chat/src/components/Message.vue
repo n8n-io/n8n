@@ -1,26 +1,31 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import markdownIt from 'markdown-it';
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
 import mathjax3 from 'markdown-it-mathjax3';
-import { computed, ref, toRefs, onMounted } from 'vue';
+import { computed, ref, toRefs, onMounted, onBeforeUnmount } from 'vue';
+import VueMarkdown from 'vue-markdown-render';
 
 import { useOptions } from '@n8n/chat/composables';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import ChatFile from './ChatFile.vue';
-import HtmlParse from './HtmlParse.vue';
-
-const md = markdownIt({
-	html: false,
-	breaks: true,
-	linkify: true,
-	typographer: true,
-});
-md.use(mathjax3);
 
 const props = defineProps<{
 	message: ChatMessage;
 }>();
+
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('bash', bash);
 
 defineSlots<{
 	beforeMessage(props: { message: ChatMessage }): ChatMessage;
@@ -31,6 +36,8 @@ const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
 const fileSources = ref<Record<string, string>>({});
+// Store timer IDs for each code block to clear duplicate click timers
+const copyTimers = ref<Map<string, number>>(new Map());
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -44,6 +51,52 @@ const classes = computed(() => {
 	};
 });
 
+const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(markdownLink, {
+		attrs: {
+			target: '_blank',
+			rel: 'noopener',
+		},
+	});
+};
+
+const mathPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(mathjax3);
+};
+
+// Custom code block plugin
+const codeBlockPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	// Override fence rules to directly output our custom structure
+	vueMarkdownItInstance.renderer.rules.fence = (tokens, idx, _options, _env, _renderer) => {
+		const token = tokens[idx];
+		const info = token.info ? vueMarkdownItInstance.utils.unescapeAll(token.info).trim() : '';
+		const langName = info ? info.split(/\s+/g)[0] : '';
+		const content = token.content;
+
+		const blockId = `code-block-${Date.now()}-${++codeBlockCounter}`;
+
+		let highlighted = content;
+		if (hljs.getLanguage(langName)) {
+			highlighted = hljs.highlight(content, { language: langName }).value;
+		} else {
+			highlighted = hljs.highlightAuto(content).value;
+		}
+
+		return `<div class="highlight" data-block-id="${blockId}" data-code="${encodeURIComponent(content)}">
+			<div class="highlight-tool-bar">
+				<span class="highlight-language">${langName || 'text'}</span>
+				<button class="highlight-copy-btn" type="button">
+					<span class="highlight-copy-text">Copy</span>
+					<span class="highlight-copied-text">Copy Successfully</span>
+				</button>
+			</div>
+			<pre><code class="highlight-code-box hljs${langName ? ` language-${langName}` : ''}">${highlighted}</code></pre>
+		</div>`;
+	};
+};
+
+const markdownPlugins = computed(() => [linksNewTabPlugin, mathPlugin, codeBlockPlugin]);
+
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
@@ -51,6 +104,14 @@ const scrollToView = () => {
 		});
 	}
 };
+
+// Generate unique code block ID
+let codeBlockCounter = 0;
+
+const markdownOptions = {
+	// Remove highlight function as we now use custom plugin
+};
+
 const messageComponents = { ...(options?.messageComponents ?? {}) };
 
 defineExpose({ scrollToView });
@@ -64,6 +125,50 @@ const readFileAsDataURL = async (file: File): Promise<string> =>
 	});
 
 onMounted(async () => {
+	// Use event delegation to handle copy button clicks
+	if (messageContainer.value) {
+		messageContainer.value.addEventListener('click', async (event) => {
+			const button = (event.target as HTMLElement)?.closest('.highlight-copy-btn');
+			if (button) {
+				const wrapper = button.closest('.highlight');
+				if (wrapper) {
+					const blockId = wrapper.getAttribute('data-block-id') || '';
+					const code = decodeURIComponent(wrapper.getAttribute('data-code') || '');
+
+					// Prevent duplicate clicks: return if button is already in copied state
+					if (wrapper.classList.contains('copied')) {
+						return;
+					}
+
+					try {
+						await navigator.clipboard.writeText(code);
+
+						// Clear previous timer for this code block (if exists)
+						const existingTimer = copyTimers.value.get(blockId);
+						if (existingTimer) {
+							clearTimeout(existingTimer);
+						}
+
+						// Update container state (add copied class to .highlight, not the button)
+						wrapper.classList.add('copied');
+
+						// Set new timer to restore after 1500ms
+						const timerId = window.setTimeout(() => {
+							wrapper.classList.remove('copied');
+							// Clear completed timer reference
+							copyTimers.value.delete(blockId);
+						}, 1500);
+
+						// Store timer ID
+						copyTimers.value.set(blockId, timerId);
+					} catch (err) {
+						console.error('Failed to copy code:', err);
+					}
+				}
+			}
+		});
+	}
+
 	if (message.value.files) {
 		for (const file of message.value.files) {
 			try {
@@ -76,9 +181,11 @@ onMounted(async () => {
 	}
 });
 
-const onMessageRender = (value: string) => {
-	return md.render(value);
-};
+// Clean up all timers when component unmounts
+onBeforeUnmount(() => {
+	copyTimers.value.forEach((timerId) => clearTimeout(timerId));
+	copyTimers.value.clear();
+});
 </script>
 
 <template>
@@ -90,9 +197,13 @@ const onMessageRender = (value: string) => {
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
 			</template>
-			<div v-else class="chat-message-markdown">
-				<HtmlParse :html="onMessageRender(messageText)" />
-			</div>
+			<VueMarkdown
+				v-else
+				class="chat-message-markdown"
+				:source="messageText"
+				:options="markdownOptions"
+				:plugins="markdownPlugins"
+			/>
 			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
 				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
 					<ChatFile :file="file" :is-removable="false" :is-previewable="true" />
@@ -101,6 +212,7 @@ const onMessageRender = (value: string) => {
 		</slot>
 	</div>
 </template>
+
 <style lang="scss">
 .chat-message {
 	display: block;

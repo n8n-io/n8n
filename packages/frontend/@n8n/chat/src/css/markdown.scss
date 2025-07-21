@@ -1,4 +1,11 @@
 @use 'sass:math';
+@use 'sass:meta';
+
+@include meta.load-css('highlight.js/styles/github.css');
+
+@mixin hljs-dark-theme {
+	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
+}
 
 @function toRem($px) {
 	@return math.div(math.round(math.div($px, 21.3) * 1000), 1000) + rem;
@@ -31,6 +38,18 @@ $markdown-hr-color-dark: #444546;
 $markdown-table-border-dark: #525455;
 $markdown-table-header-bg-dark: rgba(255, 255, 255, 0.25);
 $markdown-table-bg-dark: transparent;
+
+// highlight.js colors
+$highlight-border-color-light: #d1d9e0;
+$highlight-background-color-light: #fff;
+$highlight-tool-bar-background-light: #e0e6eb;
+$highlight-tool-bar-color-light: #000;
+$highlight-tool-bar-border-light: #d1d9e0;
+$highlight-border-color-dark: #3d444d;
+$highlight-background-color-dark: #151619;
+$highlight-tool-bar-background-dark: #151b23;
+$highlight-tool-bar-color-dark: #fff;
+$highlight-tool-bar-border-dark: #3d444d;
 
 @mixin markdown-dark-theme {
 	.chat-message-markdown {
@@ -77,6 +96,33 @@ $markdown-table-bg-dark: transparent;
 				height: 40px;
 			}
 		}
+
+		.highlight {
+			border: 1px solid $highlight-border-color-dark;
+			background-color: $highlight-background-color-dark;
+			&-tool-bar {
+				background: $highlight-tool-bar-background-dark;
+				color: $highlight-tool-bar-color-dark;
+				border-bottom: 1px solid $highlight-tool-bar-border-dark;
+			}
+
+			&-copy-btn {
+				background: $highlight-background-color-dark;
+				border-color: $highlight-tool-bar-border-dark;
+				&:hover {
+					background: rgba(255, 255, 255, 0.1);
+					border-color: rgba(255, 255, 255, 0.3);
+				}
+			}
+
+			&.copied {
+				.highlight-copy-btn {
+					background: rgba(255, 255, 255, 0.1);
+					border-color: rgba(255, 255, 255, 0.3);
+					color: white;
+				}
+			}
+		}
 	}
 }
 
@@ -84,10 +130,12 @@ $markdown-table-bg-dark: transparent;
 body {
 	&[data-theme='dark'] {
 		@include markdown-dark-theme;
+		@include hljs-dark-theme;
 	}
 
 	@media (prefers-color-scheme: dark) {
 		@include markdown-dark-theme;
+		@include hljs-dark-theme;
 	}
 }
 
@@ -194,15 +242,6 @@ body {
 		border-radius: 4px;
 	}
 
-	.code {
-		background: $markdown-code-bg-light;
-		color: $markdown-code-color-light;
-		border-radius: var(--chat--border-radius, 4px);
-		font-size: 12px;
-		padding: 2px 4px;
-		margin: 0 2px;
-	}
-
 	img {
 		max-width: 400px;
 		max-height: 240px;
@@ -252,46 +291,134 @@ body {
 			border-right: toRem(1) solid $markdown-table-border-light;
 		}
 	}
-
-	.task-list-item {
-		list-style-type: none;
-
-		label {
-			font-weight: 400;
-		}
-
-		&.enabled label {
-			cursor: pointer;
-		}
-
-		& + .task-list-item {
-			margin-top: toRem(4);
-		}
-
-		.handle {
-			display: none;
-		}
-
-		.task-list-item-checkbox {
-			margin: 0 toRem(3.2) toRem(4) toRem(-22.4);
-			vertical-align: middle;
-		}
+	// MathJax 数学公式样式
+	.MathJax {
+		display: inline-block !important;
+		font-size: inherit !important;
 	}
 
-	.contains-task-list {
-		position: relative;
+	.MathJax_Display {
+		text-align: center;
+		margin: 1em 0;
+	}
 
-		&:dir(rtl) .task-list-item-checkbox {
-			margin: 0 toRem(-25.6) toRem(4) toRem(3.2);
+	mjx-container {
+		display: inline-block;
+		margin: auto;
+
+		&[display='block'] {
+			display: block;
+			text-align: center;
+			margin: 1em 0;
+		}
+	}
+	.highlight {
+		margin: 8px 0;
+		min-width: 300px;
+		min-height: 100%;
+		display: block;
+		border-radius: 4px;
+		overflow: hidden;
+		border: 1px solid $highlight-border-color-light;
+		background-color: $highlight-background-color-light;
+		&-language {
+			text-transform: lowercase;
+		}
+		&-tool-bar {
+			color: $highlight-tool-bar-color-light;
+			background: $highlight-tool-bar-background-light;
+			font-size: 12px;
+			padding: 6px 12px;
+			border-bottom: 1px solid #d1d9e0;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
 		}
 
-		&:hover .task-list-item-convert-container,
-		&:focus-within .task-list-item-convert-container {
-			display: block;
-			width: auto;
-			height: toRem(24);
-			overflow: visible;
-			clip: auto;
+		&-code-box {
+			padding: 8px;
+			border-radius: 0;
+			overflow-x: auto;
+		}
+		&-copy-btn {
+			display: flex;
+			align-items: center;
+			font-size: 0.75rem;
+			cursor: pointer;
+			padding: 4px 8px;
+			border: 1px solid transparent;
+			border-radius: 4px;
+			background: $highlight-background-color-light;
+			border-color: $highlight-tool-bar-border-light;
+			color: inherit;
+			transition: all 0.2s ease;
+
+			&:hover {
+				background: rgba(0, 0, 0, 0.1);
+				border-color: rgba(0, 0, 0, 0.15);
+			}
+		}
+		&-copied-text {
+			margin-left: 4px;
+			display: none;
+		}
+		&.copied {
+			.highlight-copy-btn {
+				background: rgba(0, 0, 0, 0.1);
+				border-color: rgba(0, 0, 0, 0.15);
+			}
+
+			.highlight-copy-text {
+				display: none;
+			}
+			.highlight-copied-text {
+				display: flex;
+			}
+		}
+		&-copy-text {
+			margin-left: 4px;
+		}
+
+		.task-list-item {
+			list-style-type: none;
+
+			label {
+				font-weight: 400;
+			}
+
+			&.enabled label {
+				cursor: pointer;
+			}
+
+			& + .task-list-item {
+				margin-top: toRem(4);
+			}
+
+			.handle {
+				display: none;
+			}
+
+			.task-list-item-checkbox {
+				margin: 0 toRem(3.2) toRem(4) toRem(-22.4);
+				vertical-align: middle;
+			}
+		}
+
+		.contains-task-list {
+			position: relative;
+
+			&:dir(rtl) .task-list-item-checkbox {
+				margin: 0 toRem(-25.6) toRem(4) toRem(3.2);
+			}
+
+			&:hover .task-list-item-convert-container,
+			&:focus-within .task-list-item-convert-container {
+				display: block;
+				width: auto;
+				height: toRem(24);
+				overflow: visible;
+				clip: auto;
+			}
 		}
 	}
 }
