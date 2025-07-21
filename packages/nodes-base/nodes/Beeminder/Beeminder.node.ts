@@ -645,6 +645,14 @@ export class Beeminder implements INodeType {
 						default: false,
 						description: 'Include datapoints in the response',
 					},
+					{
+						displayName: 'Emaciated',
+						name: 'emaciated',
+						type: 'boolean',
+						default: false,
+						description:
+							'If included the goal attributes called road, roadall, and fullroad will be stripped from the goal object.',
+					},
 				],
 			},
 			{
