@@ -28,6 +28,18 @@ describe('isJsonCompatible', () => {
 			errorMessage: 'has non-plain prototype (Date)',
 		},
 		{
+			name: 'a RegExp',
+			value: { regexp: new RegExp('') },
+			errorPath: 'value.regexp',
+			errorMessage: 'has non-plain prototype (RegExp)',
+		},
+		{
+			name: 'a Buffer',
+			value: { buffer: Buffer.from('') },
+			errorPath: 'value.buffer',
+			errorMessage: 'has non-plain prototype (Buffer)',
+		},
+		{
 			name: 'a function',
 			value: { fn: () => {} },
 			errorPath: 'value.fn',
