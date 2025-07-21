@@ -71,4 +71,5 @@ export default {
 	'iconPicker.tabs.emojis': 'Emojis',
 	'selectableList.addDefault': '+ Add a',
 	'auth.changePassword.passwordsMustMatchError': 'Passwords must match',
+	'tableControlsButton.display': 'Display',
 } as N8nLocale;
