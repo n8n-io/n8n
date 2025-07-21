@@ -3,7 +3,6 @@ import { N8nNotice } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { computed } from 'vue';
-
 const noticeStyles = computed(() => {
 	const isDark = useUIStore().appliedTheme === 'dark';
 	if (isDark) {
