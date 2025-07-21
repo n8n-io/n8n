@@ -467,7 +467,6 @@ export class ActiveWorkflowManager {
 			this.logger.error(
 				`Issue on initial workflow activation try of ${formatWorkflow(dbWorkflow)} (startup)`,
 				{
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					error,
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
@@ -778,7 +777,6 @@ export class ActiveWorkflowManager {
 						error.message as string
 					}" | retry in ${Math.floor(lastTimeout / 1000)} seconds`,
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						error,
 						workflowId,
 						workflowName,

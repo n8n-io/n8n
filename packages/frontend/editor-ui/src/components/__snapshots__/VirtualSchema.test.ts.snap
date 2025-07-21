@@ -37,27 +37,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -150,27 +134,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -187,28 +155,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -261,28 +213,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-v-0f5e7239=""
             data-value="{{ $json.account.id }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -315,34 +251,13 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         
-        <span
-          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
+        <n8n-icon-stub
+          class="icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
-        >
-          
-          <font-awesome-icon-stub
-            beat="false"
-            beatfade="false"
-            border="false"
-            bounce="false"
-            class="14"
-            fade="false"
-            fixedwidth="false"
-            flash="false"
-            flip="false"
-            icon="ellipsis-h"
-            inverse="false"
-            listitem="false"
-            pulse="false"
-            shake="false"
-            spin="false"
-            spinpulse="false"
-            spinreverse="false"
-            swapopacity="false"
-            symbol="false"
-          />
-          
-        </span>
+          icon="ellipsis"
+          size="small"
+          spin="false"
+        />
         <!--teleport start-->
         <!--teleport end-->
         
@@ -366,27 +281,11 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon collapsed"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <!--v-if-->
@@ -424,27 +323,11 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
     class="toggle"
     data-v-882a318e=""
   >
-    <font-awesome-icon-stub
-      beat="false"
-      beatfade="false"
-      border="false"
-      bounce="false"
+    <n8n-icon-stub
       class="collapse-icon"
       data-v-882a318e=""
-      fade="false"
-      fixedwidth="false"
-      flash="false"
-      flip="false"
-      icon="angle-down"
-      inverse="false"
-      listitem="false"
-      pulse="false"
-      shake="false"
+      icon="chevron-down"
       spin="false"
-      spinpulse="false"
-      spinreverse="false"
-      swapopacity="false"
-      symbol="false"
     />
   </div>
   <div
@@ -524,27 +407,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -576,28 +443,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               Manual Trigger 
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
+              icon="bolt-filled"
+              size="xsmall"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <div
               class="extra-info"
@@ -628,27 +479,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -665,28 +500,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.empty }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -728,27 +547,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -765,28 +568,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.emptyArray }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
               icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -828,27 +615,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -865,28 +636,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
               icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -928,27 +683,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -965,28 +704,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1028,27 +751,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -1065,28 +772,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].empty }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1128,27 +819,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -1165,28 +840,12 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.nested[0].emptyArray }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
               icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1229,27 +888,11 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon collapsed"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <!--v-if-->
@@ -1322,28 +965,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ name }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1399,28 +1026,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ age }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="hashtag"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="hash"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1467,27 +1078,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -1502,28 +1097,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
               icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1574,28 +1153,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[0] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1651,28 +1214,12 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-v-0f5e7239=""
             data-value="{{ hobbies[1] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1749,27 +1296,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -1801,28 +1332,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               Manual Trigger 
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
+              icon="bolt-filled"
+              size="xsmall"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <div
               class="extra-info"
@@ -1853,27 +1368,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -1890,28 +1389,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
               icon="list"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -1953,27 +1436,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -1990,28 +1457,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2053,27 +1504,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -2090,28 +1525,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2164,28 +1583,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0].test['more to think about'] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="hashtag"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="hash"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2243,28 +1646,12 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json['hello world'][0]['test.how'] }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2312,27 +1699,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon collapsed"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -2389,27 +1760,11 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon collapsed"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <!--v-if-->
@@ -2474,27 +1829,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon collapsed"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -2526,28 +1865,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               Manual Trigger 
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
+              icon="bolt-filled"
+              size="xsmall"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <!--v-if-->
           </div>
@@ -2573,27 +1896,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <!--v-if-->
@@ -2637,28 +1944,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $now }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2714,28 +2005,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $today }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2791,28 +2066,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $vars }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2827,34 +2086,13 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
           </div>
           
-          <span
-            class="n8n-text compact size-small regular n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger"
+          <n8n-icon-stub
+            class="locked-icon el-tooltip__trigger el-tooltip__trigger"
             data-v-0f5e7239=""
-          >
-            
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="small"
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="lock"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-            
-          </span>
+            icon="lock"
+            size="small"
+            spin="false"
+          />
           <!--teleport start-->
           <!--teleport end-->
           
@@ -2885,27 +2123,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -2920,28 +2142,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -2992,28 +2198,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.id }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3069,28 +2259,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.mode }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3146,28 +2320,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $execution.resumeUrl }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3214,27 +2372,11 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               class="toggle"
               data-v-0f5e7239=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-0f5e7239=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
           </div>
@@ -3249,28 +2391,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="cube"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="box"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3321,28 +2447,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.id }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3398,28 +2508,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.name }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3475,28 +2569,12 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $workflow.active }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="check-square"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="square-check"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="content title"
@@ -3573,27 +2651,11 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -3625,28 +2687,12 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               Manual Trigger 
               <!--v-if-->
             </div>
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="trigger-icon"
               data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="bolt"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="xs"
+              icon="bolt-filled"
+              size="xsmall"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <div
               class="extra-info"
@@ -3688,28 +2734,12 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $json.name }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="title"
@@ -3732,15 +2762,9 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           >
             
             
-            <!--v-if-->
-            
-            
             <mark>
               John
             </mark>
-            
-            
-            <!--v-if-->
             
             
           </span>
@@ -3765,27 +2789,11 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
               class="toggle"
               data-v-882a318e=""
             >
-              <font-awesome-icon-stub
-                beat="false"
-                beatfade="false"
-                border="false"
-                bounce="false"
+              <n8n-icon-stub
                 class="collapse-icon"
                 data-v-882a318e=""
-                fade="false"
-                fixedwidth="false"
-                flash="false"
-                flip="false"
-                icon="angle-down"
-                inverse="false"
-                listitem="false"
-                pulse="false"
-                shake="false"
+                icon="chevron-down"
                 spin="false"
-                spinpulse="false"
-                spinreverse="false"
-                swapopacity="false"
-                symbol="false"
               />
             </div>
             <div
@@ -3858,28 +2866,12 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             data-v-0f5e7239=""
             data-value="{{ $('Set2').item.json.name }}"
           >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
+            <n8n-icon-stub
               class="type-icon"
               data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="font"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
+              icon="case-upper"
+              size="small"
               spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
             />
             <span
               class="title"
@@ -3902,15 +2894,9 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
           >
             
             
-            <!--v-if-->
-            
-            
             <mark>
               John
             </mark>
-            
-            
-            <!--v-if-->
             
             
           </span>

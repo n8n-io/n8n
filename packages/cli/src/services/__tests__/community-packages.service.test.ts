@@ -1,10 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
+import { randomName, mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { InstalledNodes } from '@n8n/db';
-import { InstalledPackages } from '@n8n/db';
-import { InstalledNodesRepository } from '@n8n/db';
-import { InstalledPackagesRepository } from '@n8n/db';
+import {
+	InstalledNodes,
+	InstalledPackages,
+	InstalledNodesRepository,
+	InstalledPackagesRepository,
+} from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { mkdir, readFile, writeFile, rm, access, constants } from 'fs/promises';
@@ -26,9 +29,7 @@ import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
-import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
-import { randomName } from '@test-integration/random';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
 jest.mock('fs/promises');

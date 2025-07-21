@@ -30,4 +30,5 @@ export const STORES = {
 	EVALUATION: 'evaluation',
 	FOLDERS: 'folders',
 	MODULES: 'modules',
+	FOCUS_PANEL: 'focusPanel',
 } as const;

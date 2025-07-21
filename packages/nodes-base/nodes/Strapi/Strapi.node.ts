@@ -14,11 +14,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { entryFields, entryOperations } from './EntryDescription';
 import {
 	getToken,
-	removeTrailingSlash,
 	strapiApiRequest,
 	strapiApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+import { removeTrailingSlash } from '../../utils/utilities';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {

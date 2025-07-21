@@ -1,5 +1,5 @@
 import { type INodeTypeDescription } from 'n8n-workflow';
-import type { IVersionNode } from '../Interface';
+import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
@@ -20,7 +20,7 @@ type IconNodeTypeDescription = Pick<
 	INodeTypeDescription,
 	'icon' | 'iconUrl' | 'iconColor' | 'defaults' | 'badgeIconUrl' | 'name'
 >;
-type IconVersionNode = Pick<IVersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
+type IconVersionNode = Pick<VersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
 export const getNodeIcon = (nodeType: IconNodeType): string | null => {

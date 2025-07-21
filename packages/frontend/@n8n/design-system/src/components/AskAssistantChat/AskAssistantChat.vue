@@ -16,8 +16,10 @@ import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
-import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 
 const { t } = useI18n();
 
@@ -120,11 +122,10 @@ function onSubmitFeedback(feedback: string) {
 					<AssistantIcon size="large" />
 					<AssistantText size="large" :text="title" />
 				</div>
-				<BetaTag />
 				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<n8n-icon icon="arrow-right" color="text-base" />
+				<N8nIcon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
 		<div :class="$style.body">
@@ -222,14 +223,14 @@ function onSubmitFeedback(feedback: string) {
 								{{ t('assistantChat.quickRepliesTitle') }}
 							</div>
 							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
-								<n8n-button
+								<N8nButton
 									v-if="opt.text"
 									type="secondary"
 									size="mini"
 									@click="() => onQuickReply(opt)"
 								>
 									{{ opt.text }}
-								</n8n-button>
+								</N8nButton>
 							</div>
 						</div>
 					</data>
@@ -289,10 +290,10 @@ function onSubmitFeedback(feedback: string) {
 					@input.prevent="growInput"
 					@keydown.stop
 				/>
-				<n8n-icon-button
+				<N8nIconButton
 					:class="{ [$style.sendButton]: true }"
-					icon="paper-plane"
-					type="text"
+					icon="send"
+					:text="true"
 					size="large"
 					data-test-id="send-message-button"
 					:disabled="sendDisabled"

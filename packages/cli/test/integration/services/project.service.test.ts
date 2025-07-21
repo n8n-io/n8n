@@ -1,12 +1,11 @@
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { testDb } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole, Scope } from '@n8n/permissions';
 
 import { ProjectService } from '@/services/project.service.ee';
 
 import { createMember } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;

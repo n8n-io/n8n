@@ -1,5 +1,6 @@
 import { inTest, inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
@@ -11,7 +12,6 @@ import isbot from 'isbot';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { DbConnection } from '@/databases/db-connection';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
@@ -72,11 +72,11 @@ export abstract class AbstractServer {
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
-		const proxyHops = config.getEnv('proxy_hops');
+		const proxyHops = this.globalConfig.proxy_hops;
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
-		this.sslKey = config.getEnv('ssl_key');
-		this.sslCert = config.getEnv('ssl_cert');
+		this.sslKey = this.globalConfig.ssl_key;
+		this.sslCert = this.globalConfig.ssl_cert;
 
 		const { endpoints } = this.globalConfig;
 		this.restEndpoint = endpoints.rest;
@@ -260,7 +260,7 @@ export abstract class AbstractServer {
 		if (!inTest) {
 			this.logger.info(`Version: ${N8N_VERSION}`);
 
-			const defaultLocale = config.getEnv('defaultLocale');
+			const { defaultLocale } = this.globalConfig;
 			if (defaultLocale !== 'en') {
 				this.logger.info(`Locale: ${defaultLocale}`);
 			}

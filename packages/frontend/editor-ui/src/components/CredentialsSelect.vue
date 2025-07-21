@@ -70,8 +70,7 @@ function isSupported(name: string): boolean {
 	}
 
 	if (
-		checkedCredType.extends &&
-		checkedCredType.extends.some((parentType: string) => supported.extends.includes(parentType))
+		checkedCredType.extends?.some((parentType: string) => supported.extends.includes(parentType))
 	) {
 		return true;
 	}

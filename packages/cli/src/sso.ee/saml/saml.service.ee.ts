@@ -269,7 +269,7 @@ export class SamlService {
 				// database.
 				this.logger.error(
 					'SAML initialization detected an invalid metadata URL in database. Trying to initialize from metadata in database if available.',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					{ error },
 				);
 			}

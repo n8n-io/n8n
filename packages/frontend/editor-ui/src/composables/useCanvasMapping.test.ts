@@ -112,6 +112,7 @@ describe('useCanvasMapping', () => {
 							status: 'new',
 							running: false,
 							waiting: undefined,
+							waitingForNext: false,
 						},
 						issues: {
 							items: [],
@@ -1199,6 +1200,98 @@ describe('useCanvasMapping', () => {
 
 				expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Last run was successful
 			});
+		});
+	});
+
+	describe('nodeExecutionWaitingForNextById', () => {
+		it('should be true when already executed node is waiting for next', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const node1 = createTestNode({
+				name: 'Node 1',
+			});
+			const node2 = createTestNode({
+				name: 'Node 2',
+			});
+			const nodes = [node1, node2];
+			const connections = {};
+
+			const workflowObject = createTestWorkflowObject({
+				nodes,
+				connections,
+			});
+
+			workflowsStore.executingNode = [];
+			workflowsStore.lastAddedExecutingNode = node1.name;
+			workflowsStore.isWorkflowRunning = true;
+
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(true);
+			expect(nodeExecutionWaitingForNextById.value[node2.id]).toBe(false);
+		});
+
+		it('should be false when workflow is not executing', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const node1 = createTestNode({
+				name: 'Node 1',
+			});
+			const node2 = createTestNode({
+				name: 'Node 2',
+			});
+			const nodes = [node1, node2];
+			const connections = {};
+
+			const workflowObject = createTestWorkflowObject({
+				nodes,
+				connections,
+			});
+
+			workflowsStore.executingNode = [];
+			workflowsStore.lastAddedExecutingNode = node1.name;
+			workflowsStore.isWorkflowRunning = false;
+
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(false);
+			expect(nodeExecutionWaitingForNextById.value[node2.id]).toBe(false);
+		});
+
+		it('should be false when there are nodes that are executing', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const node1 = createTestNode({
+				name: 'Node 1',
+			});
+			const node2 = createTestNode({
+				name: 'Node 2',
+			});
+			const nodes = [node1, node2];
+			const connections = {};
+
+			const workflowObject = createTestWorkflowObject({
+				nodes,
+				connections,
+			});
+
+			workflowsStore.executingNode = [node2.name];
+			workflowsStore.lastAddedExecutingNode = node1.name;
+			workflowsStore.isWorkflowRunning = false;
+
+			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(false);
+			expect(nodeExecutionWaitingForNextById.value[node2.id]).toBe(false);
 		});
 	});
 

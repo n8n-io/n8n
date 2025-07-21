@@ -40,7 +40,7 @@ export async function getSharedWorkflowIds(
 
 export async function getSharedWorkflow(
 	user: User,
-	workflowId?: string | undefined,
+	workflowId?: string,
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
@@ -104,6 +104,7 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 }
 
 export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
+	// @ts-ignore CAT-957
 	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 

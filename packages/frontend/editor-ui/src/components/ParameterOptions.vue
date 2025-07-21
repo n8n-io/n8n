@@ -8,7 +8,9 @@ import {
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
+import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -37,13 +39,31 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const ndvStore = useNDVStore();
+const posthogStore = usePostHog();
 
+const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
+const isHtmlEditor = computed(
+	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
+);
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+
+const isFocusPanelFeatureEnabled = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
+const hasFocusAction = computed(
+	() =>
+		isFocusPanelFeatureEnabled.value &&
+		!props.parameter.isNodeSetting &&
+		!props.isReadOnly &&
+		activeNode.value && // checking that it's inside ndv
+		(props.parameter.type === 'string' || props.parameter.type === 'json'),
+);
+
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
 		return false;
@@ -51,6 +71,10 @@ const shouldShowOptions = computed(() => {
 
 	if (props.parameter.type === 'collection' || props.parameter.type === 'credentialsSelect') {
 		return false;
+	}
+
+	if (hasFocusAction.value) {
+		return true;
 	}
 
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
@@ -64,7 +88,6 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
-const activeNode = computed(() => useNDVStore().activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -82,22 +105,37 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
+	const focusAction = {
+		label: i18n.baseText('parameterInput.focusParameter'),
+		value: 'focus',
+		disabled: false,
+	};
+
 	if (isHtmlEditor.value && !isValueAnExpression.value) {
-		return [
-			{
-				label: i18n.baseText('parameterInput.formatHtml'),
-				value: 'formatHtml',
-			},
-		];
+		const formatHtmlAction = {
+			label: i18n.baseText('parameterInput.formatHtml'),
+			value: 'formatHtml',
+		};
+
+		return hasFocusAction.value ? [formatHtmlAction, focusAction] : [formatHtmlAction];
 	}
 
+	const resetAction = {
+		label: resetValueLabel.value,
+		value: 'resetValue',
+		disabled: isDefault.value,
+	};
+
+	// The reset value action is not working correctly for these
+	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
+		props.parameter.typeOptions?.editor ?? '',
+	);
+
+	// Conditionally build actions array without nulls to ensure correct typing
 	const parameterActions = [
-		{
-			label: resetValueLabel.value,
-			value: 'resetValue',
-			disabled: isDefault.value,
-		},
-	];
+		hasResetAction ? [resetAction] : [],
+		hasFocusAction.value ? [focusAction] : [],
+	].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -127,24 +165,13 @@ const onViewSelected = (selected: string) => {
 		emit('update:modelValue', 'removeExpression');
 	}
 };
-const getArgument = (argumentName: string) => {
-	if (props.parameter.typeOptions === undefined) {
-		return undefined;
-	}
-
-	if (props.parameter.typeOptions[argumentName] === undefined) {
-		return undefined;
-	}
-
-	return props.parameter.typeOptions[argumentName];
-};
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
 			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				<n8n-icon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
 			</n8n-text>
 		</div>

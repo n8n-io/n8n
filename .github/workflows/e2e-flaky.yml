@@ -61,8 +61,10 @@ jobs:
         run: pnpm cypress:install
 
       - name: Run Flaky Debug Command
-        run: pnpm run debug:flaky:e2e "${{ github.event.inputs.test_name }}" ${{ github.event.inputs.burn_count }}
         env:
+          TEST_NAME: ${{ github.event.inputs.test_name }}
+          BURN_COUNT: ${{ github.event.inputs.burn_count }}
           NODE_OPTIONS: --dns-result-order=ipv4first
           E2E_TESTS: true
           SHELL: /bin/sh
+        run: pnpm run debug:flaky:e2e "${{ env.TEST_NAME }}" "${{ env.BURN_COUNT }}"

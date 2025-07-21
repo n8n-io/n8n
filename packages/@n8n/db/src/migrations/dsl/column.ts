@@ -124,7 +124,6 @@ export class Column {
 		return this;
 	}
 
-	// eslint-disable-next-line complexity
 	toOptions(driver: Driver): TableColumnOptions {
 		const {
 			name,

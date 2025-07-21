@@ -12,8 +12,10 @@ export * from './interfaces';
 export * from './message-event-bus';
 export * from './execution-status';
 export * from './expression';
+export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
@@ -27,9 +29,11 @@ export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
+	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
 	sleep,
+	sleepWithAbort,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,

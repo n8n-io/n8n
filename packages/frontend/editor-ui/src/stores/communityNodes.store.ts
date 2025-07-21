@@ -1,5 +1,4 @@
 import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
-import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -29,7 +28,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const fetchAvailableCommunityPackageCount = async (): Promise<void> => {
 		if (availablePackageCount.value === -1) {
-			availablePackageCount.value = await getAvailableCommunityPackageCount();
+			availablePackageCount.value = await communityNodesApi.getAvailableCommunityPackageCount();
 		}
 	};
 
@@ -82,17 +81,32 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		installedPackages.value[newPackage.packageName] = newPackage;
 	};
 
-	const updatePackage = async (packageName: string): Promise<void> => {
+	const updatePackage = async (
+		packageName: string,
+		version?: string,
+		checksum?: string,
+	): Promise<void> => {
 		const packageToUpdate = installedPackages.value[packageName];
 		const updatedPackage = await communityNodesApi.updatePackage(
 			rootStore.restApiContext,
 			packageToUpdate.packageName,
+			version,
+			checksum,
 		);
 		updatePackageObject(updatedPackage);
 	};
 
+	const getInstalledPackage = async (packageName: string) => {
+		if (!getInstalledPackages.value.length) {
+			await fetchInstalledPackages();
+		}
+
+		return getInstalledPackages.value.find((p) => p.packageName === packageName);
+	};
+
 	return {
 		installedPackages,
+		getInstalledPackage,
 		getInstalledPackages,
 		availablePackageCount,
 		fetchAvailableCommunityPackageCount,
@@ -100,5 +114,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		installPackage,
 		uninstallPackage,
 		updatePackage,
+		setInstalledPackages,
 	};
 });

@@ -11,8 +11,8 @@ export const createMockExecuteFunction = <T = IExecuteFunctions>(
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);

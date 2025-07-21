@@ -55,7 +55,7 @@ global.IntersectionObserver = IntersectionObserver;
 // Mocks for useDeviceSupport
 Object.defineProperty(window, 'matchMedia', {
 	writable: true,
-	value: vi.fn().mockImplementation((query) => ({
+	value: vi.fn((query) => ({
 		matches: true,
 		media: query,
 		onchange: null,

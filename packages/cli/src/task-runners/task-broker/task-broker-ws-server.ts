@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { Time, WsStatusCodes } from '@/constants';
+import { WsStatusCodes } from '@/constants';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,

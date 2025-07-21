@@ -1,3 +1,5 @@
+import { LicenseState } from '@n8n/backend-common';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -21,7 +23,6 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
-import { mockInstance, mockLogger } from '../../shared/mocking';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
@@ -31,10 +32,14 @@ let authMemberAgent: SuperAgentTest;
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
 
 const testServer = setupTestServer({
 	endpointGroups: ['externalSecrets'],
 	enabledFeatures: ['feat:externalSecrets'],
+	modules: ['external-secrets'],
 });
 
 const connectedDate = '2023-08-01T12:32:29.000Z';

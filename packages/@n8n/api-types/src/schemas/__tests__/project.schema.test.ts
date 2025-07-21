@@ -2,6 +2,7 @@ import {
 	projectNameSchema,
 	projectTypeSchema,
 	projectIconSchema,
+	projectDescriptionSchema,
 	projectRelationSchema,
 } from '../project.schema';
 
@@ -52,6 +53,17 @@ describe('project.schema', () => {
 			},
 		])('should validate $name', ({ value, expected }) => {
 			const result = projectIconSchema.safeParse(value);
+			expect(result.success).toBe(expected);
+		});
+	});
+
+	describe('projectDescriptionSchema', () => {
+		test.each([
+			{ description: 'valid description', value: 'Nice Description', expected: true },
+			{ description: 'empty description', value: '', expected: true },
+			{ description: 'name too long', value: 'a'.repeat(513), expected: false },
+		])('should validate $description', ({ value, expected }) => {
+			const result = projectDescriptionSchema.safeParse(value);
 			expect(result.success).toBe(expected);
 		});
 	});

@@ -4,6 +4,7 @@ import TidyUpIcon from '@/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
+import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -25,6 +26,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
@@ -57,7 +60,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="expand"
+				icon="maximize"
 				data-test-id="zoom-to-fit"
 				@click="onZoomToFit"
 			/>
@@ -66,7 +69,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-plus"
+				icon="zoom-in"
 				data-test-id="zoom-in-button"
 				@click="onZoomIn"
 			/>
@@ -75,7 +78,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="search-minus"
+				icon="zoom-out"
 				data-test-id="zoom-out-button"
 				@click="onZoomOut"
 			/>
@@ -88,7 +91,7 @@ function onTidyUp() {
 			<N8nIconButton
 				type="tertiary"
 				size="large"
-				icon="undo"
+				icon="undo-2"
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
@@ -109,6 +112,30 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip
+			v-if="experimentalNdvStore.isActive(props.zoom)"
+			placement="top"
+			:content="i18n.baseText('nodeView.expandAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="maximize-2"
+				@click="experimentalNdvStore.expandAllNodes"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
+			v-if="experimentalNdvStore.isActive(props.zoom)"
+			placement="top"
+			:content="i18n.baseText('nodeView.collapseAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="minimize-2"
+				@click="experimentalNdvStore.collapseAllNodes"
+			/>
+		</N8nTooltip>
 	</Controls>
 </template>
 

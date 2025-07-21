@@ -23,16 +23,18 @@ import type {
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
-	WorkflowMetadata,
 	IExecutionFlattedResponse,
-	IWorkflowTemplateNode,
-	IWorkflowDataCreate,
 	WorkflowListResource,
 } from '@/Interface';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
+import type {
+	WorkflowMetadata,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
 	IConnection,
@@ -78,7 +80,12 @@ import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
-import { unflattenExecutionData } from '@/utils/executionUtils';
+import {
+	unflattenExecutionData,
+	clearPopupWindowState,
+	findTriggerNodeToAutoSelect,
+	openFormPopupWindow,
+} from '@/utils/executionUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
@@ -91,18 +98,13 @@ import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
-import {
-	clearPopupWindowState,
-	findTriggerNodeToAutoSelect,
-	openFormPopupWindow,
-} from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import { useLogsStore } from './logs.store';
-import { isChatNode } from '@/components/CanvasChat/utils';
+import { isChatNode } from '@/utils/aiUtils';
+import { snapPositionToGrid } from '@/utils/nodeViewUtils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -137,7 +139,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
-	const logsStore = useLogsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
@@ -165,6 +166,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const {
 		executingNode,
+		lastAddedExecutingNode,
 		addExecutingNode,
 		removeExecutingNode,
 		isNodeExecuting,
@@ -857,7 +859,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowActive(targetWorkflowId: string) {
-		uiStore.stateIsDirty = false;
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -866,6 +867,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[targetWorkflowId].active = true;
 		}
 		if (targetWorkflowId === workflow.value.id) {
+			uiStore.stateIsDirty = false;
 			setActive(true);
 		}
 	}
@@ -1319,6 +1321,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
 			}
 
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
+			}
+
 			if (!nodeMetadata.value[node.name]) {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
@@ -1402,12 +1408,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
-		// If chat trigger node is removed, close chat
-		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
-			logsStore.toggleOpen(false);
-		}
-
-		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
+		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
 			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
 			workflow.value = {
 				...workflow.value,
@@ -1545,25 +1546,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (pushData.data.error) {
 			const node = getNodeByName(nodeName);
-			telemetry.track(
-				'Manual exec errored',
-				{
-					error_title: pushData.data.error.message,
-					node_type: node?.type,
-					node_type_version: node?.typeVersion,
-					node_id: node?.id,
-					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(
-							await workflowHelpers.getWorkflowDataToSave(),
-							workflowHelpers.getNodeTypes(),
-							{
-								isCloudDeployment: settingsStore.isCloudDeployment,
-							},
-						).nodeGraph,
-					),
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('Manual exec errored', {
+				error_title: pushData.data.error.message,
+				node_type: node?.type,
+				node_type_version: node?.typeVersion,
+				node_id: node?.id,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						await workflowHelpers.getWorkflowDataToSave(),
+						workflowHelpers.getNodeTypes(),
+						{
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				),
+			});
 		}
 	}
 
@@ -1640,7 +1637,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
 			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
-			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
+			if ('waiting' === status || 'running' === status) {
 				tasksData.splice(index, 1, data);
 			} else {
 				tasksData.push(data);
@@ -1717,7 +1714,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * Ensures that the new workflow is not active upon creation.
 	 * If the project ID is not provided in the data, it assigns the current project ID from the project store.
 	 */
-	async function createNewWorkflow(sendData: IWorkflowDataCreate): Promise<IWorkflowDb> {
+	async function createNewWorkflow(sendData: WorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
@@ -1750,7 +1747,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function updateWorkflow(
 		id: string,
-		data: IWorkflowDataUpdate,
+		data: WorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
 		if (data.settings === null) {
@@ -1968,6 +1965,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
+		lastAddedExecutingNode,
 		workflowsById,
 		nodeMetadata,
 		isInDebugMode,

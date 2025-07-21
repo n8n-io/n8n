@@ -1,16 +1,15 @@
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { InsightsConfig } from '@/modules/insights/insights.config';
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
+		await testModules.loadModules(['insights']);
 		await testDb.init();
 	});
 
@@ -51,6 +50,7 @@ describe('InsightsByPeriodRepository', () => {
 				const result = await insightsByPeriodRepository.getInsightsByTime({
 					maxAgeInDays: 1,
 					periodUnit: 'day',
+					insightTypes: ['success', 'failure', 'time_saved_min'],
 				});
 
 				// ASSERT

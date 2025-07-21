@@ -6,11 +6,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import { nodeTypes } from '@/components/CanvasChat/__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const modalConfirmSpy = vi.fn();
@@ -23,7 +22,7 @@ vi.mock('@/composables/useMessage', () => {
 	};
 });
 
-const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
+const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
 	nodes: [
@@ -82,7 +81,13 @@ describe('useWorkflowSaving', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		nodeTypesStore.setNodeTypes(nodeTypes);
+		nodeTypesStore.setNodeTypes([
+			mockNodeTypeDescription({
+				name: CHAT_TRIGGER_NODE_TYPE,
+				version: 1,
+				group: ['trigger'],
+			}),
+		]);
 	});
 
 	describe('promptSaveUnsavedWorkflowChanges', () => {
