@@ -1116,8 +1116,9 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
+
+								// Use bidirectional path checking to handle AI/tool nodes properly
+								if (!that.workflow.hasPath(nodeName, contextNode)) {
 									throw createNoConnectionError(nodeName);
 								}
 
