@@ -125,12 +125,13 @@ export async function getGoal(
 
 export async function getAllGoals(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	data?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('beeminderApi');
 
 	const endpoint = `/users/${credentials.user}/goals.json`;
 
-	return await beeminderApiRequest.call(this, 'GET', endpoint);
+	return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data || {});
 }
 
 export async function getArchivedGoals(

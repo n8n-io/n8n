@@ -708,6 +708,29 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['goal'],
+						operation: ['getAll'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Emaciated',
+						name: 'emaciated',
+						type: 'boolean',
+						default: false,
+						description:
+							'If included the goal attributes called road, roadall, and fullroad will be stripped from the goal objects.',
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -964,7 +987,11 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
-						results = await getAllGoals.call(this);
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {};
+						Object.assign(data, options);
+
+						results = await getAllGoals.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
