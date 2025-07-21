@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput } from '@n8n/design-system';
-import { computed, nextTick, ref } from 'vue';
+import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
+import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -14,6 +14,7 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	type CodeExecutionMode,
@@ -26,7 +27,8 @@ import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useThrottleFn } from '@vueuse/core';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -36,6 +38,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	focus: [];
+	saveKeyboardShortcut: [event: KeyboardEvent];
 }>();
 
 // ESLint: false positive
@@ -48,6 +51,7 @@ const focusPanelStore = useFocusPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
+const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
@@ -58,6 +62,8 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
+const focusPanelHidden = computed(() => focusPanelStore.focusPanelHidden);
+const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
 	if (!resolvedParameter.value) return false;
@@ -69,7 +75,7 @@ const isDisabled = computed(() => {
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
-			'',
+			resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
 			'disabledOptions',
 		)
 	);
@@ -82,7 +88,7 @@ const isDisplayed = computed(() => {
 		resolvedParameter.value.node.parameters,
 		resolvedParameter.value.node,
 		resolvedParameter.value.parameter,
-		'',
+		resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
 		'displayOptions',
 	);
 });
@@ -179,6 +185,7 @@ function valueChanged(value: string) {
 	}
 
 	nodeSettingsParameters.updateNodeParameter(
+		toRef(resolvedParameter.value.node.parameters),
 		{ value, name: resolvedParameter.value.parameterPath as `parameters.${string}` },
 		value,
 		resolvedParameter.value.node,
@@ -204,11 +211,13 @@ function optionSelected(command: string) {
 	if (!resolvedParameter.value) return;
 
 	switch (command) {
-		case 'resetValue':
-			return (
-				typeof resolvedParameter.value.parameter.default === 'string' &&
-				valueChanged(resolvedParameter.value.parameter.default)
-			);
+		case 'resetValue': {
+			if (typeof resolvedParameter.value.parameter.default === 'string') {
+				valueChanged(resolvedParameter.value.parameter.default);
+			}
+			void setFocus();
+			break;
+		}
 
 		case 'addExpression': {
 			const newValue = formatAsExpression(
@@ -239,170 +248,255 @@ function optionSelected(command: string) {
 
 		case 'formatHtml':
 			htmlEditorEventBus.emit('format-html');
-			return;
+			break;
 	}
 }
 
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+
+// Wait for editor to mount before focusing
+function focusWithDelay() {
+	setTimeout(() => {
+		void setFocus();
+	}, 50);
+}
+
+function handleKeydown(event: KeyboardEvent) {
+	if (event.key === 's' && deviceSupport.isCtrlKeyPressed(event)) {
+		event.stopPropagation();
+		event.preventDefault();
+		if (isReadOnly.value) return;
+
+		emit('saveKeyboardShortcut', event);
+	}
+}
+
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', handleKeydown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', handleKeydown, true);
+};
+
+watch([() => focusPanelStore.lastFocusTimestamp, () => expressionModeEnabled.value], () =>
+	focusWithDelay(),
+);
+
+watch(
+	() => focusPanelStore.focusPanelActive,
+	(newValue) => {
+		if (newValue) {
+			registerKeyboardListener();
+		} else {
+			unregisterKeyboardListener();
+		}
+	},
+	{ immediate: true },
+);
+
+function onResize(event: ResizeData) {
+	focusPanelStore.updateWidth(event.width);
+}
+
+const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.container" @keydown.stop>
-		<div :class="$style.header">
-			<N8nText size="small" :bold="true">
-				{{ locale.baseText('nodeView.focusPanel.title') }}
-			</N8nText>
-			<div :class="$style.closeButton" @click="focusPanelStore.closeFocusPanel">
-				<n8n-icon icon="arrow-right" color="text-base" />
-			</div>
-		</div>
-		<div v-if="resolvedParameter" :class="$style.content">
-			<div :class="$style.tabHeader">
-				<div :class="$style.tabHeaderText">
-					<N8nText color="text-dark" size="small">
-						{{ resolvedParameter.parameter.displayName }}
-					</N8nText>
-					<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
-				</div>
-				<NodeExecuteButton
-					data-test-id="node-execute-button"
-					:node-name="resolvedParameter.node.name"
-					:tooltip="`Execute ${resolvedParameter.node.name}`"
-					:disabled="!isExecutable"
-					size="small"
-					icon="play"
-					:square="true"
-					:hide-label="true"
-					telemetry-source="focus"
-				></NodeExecuteButton>
-			</div>
-			<div :class="$style.parameterDetailsWrapper">
-				<div :class="$style.parameterOptionsWrapper">
-					<div></div>
-					<ParameterOptions
-						v-if="isDisplayed"
-						:parameter="resolvedParameter.parameter"
-						:value="resolvedParameter.value"
-						:is-read-only="isReadOnly"
-						@update:model-value="optionSelected"
-					/>
-				</div>
-				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
-					<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
-						<div :class="$style.emptyText">
-							<N8nText color="text-base">
-								{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+	<div v-if="focusPanelActive" v-show="!focusPanelHidden" :class="$style.wrapper" @keydown.stop>
+		<N8nResizeWrapper
+			:width="focusPanelWidth"
+			:supported-directions="['left']"
+			:min-width="300"
+			:max-width="1000"
+			:grid-size="8"
+			:style="{ width: `${focusPanelWidth}px` }"
+			@resize="onResizeThrottle"
+		>
+			<div :class="$style.container">
+				<div v-if="resolvedParameter" :class="$style.content">
+					<div :class="$style.tabHeader">
+						<div :class="$style.tabHeaderText">
+							<N8nText color="text-dark" size="small">
+								{{ resolvedParameter.parameter.displayName }}
 							</N8nText>
+							<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
+						</div>
+						<div :class="$style.buttonWrapper">
+							<NodeExecuteButton
+								data-test-id="node-execute-button"
+								:node-name="resolvedParameter.node.name"
+								:tooltip="`Execute ${resolvedParameter.node.name}`"
+								:disabled="!isExecutable"
+								size="small"
+								icon="play"
+								:square="true"
+								:hide-label="true"
+								telemetry-source="focus"
+							></NodeExecuteButton>
+							<N8nIcon
+								:class="$style.closeButton"
+								icon="x"
+								color="text-base"
+								size="xlarge"
+								@click="focusPanelStore.closeFocusPanel"
+							/>
 						</div>
 					</div>
-					<ExpressionEditorModalInput
-						v-else-if="expressionModeEnabled"
-						ref="inputField"
-						:model-value="resolvedParameter.value"
-						:class="$style.editor"
-						:is-read-only="isReadOnly"
-						:path="resolvedParameter.parameterPath"
-						data-test-id="expression-modal-input"
-						:target-node-parameter-context="targetNodeParameterContext"
-						@change="valueChangedDebounced($event.value)"
-					/>
-					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
-						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor'"
-							:id="resolvedParameter.parameterPath"
-							:mode="codeEditorMode"
-							:model-value="resolvedParameter.value"
-							:default-value="resolvedParameter.parameter.default"
-							:language="editorLanguage"
-							:is-read-only="isReadOnly"
-							:target-node-parameter-context="targetNodeParameterContext"
-							fill-parent
-							:disable-ask-ai="true"
-							@update:model-value="valueChangedDebounced" />
-						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:disable-expression-coloring="!isHtmlNode"
-							:disable-expression-completions="!isHtmlNode"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<CssEditor
-							v-else-if="editorType === 'cssEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<SqlEditor
-							v-else-if="editorType === 'sqlEditor'"
-							:model-value="resolvedParameter.value"
-							:dialect="getTypeOption('sqlDialect')"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced" />
-						<JsEditor
-							v-else-if="editorType === 'jsEditor'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:posthog-capture="shouldCaptureForPosthog"
-							fill-parent
-							@update:model-value="valueChangedDebounced" />
-						<JsonEditor
-							v-else-if="resolvedParameter.parameter.type === 'json'"
-							:model-value="resolvedParameter.value"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							fill-parent
-							@update:model-value="valueChangedDebounced" />
-						<N8nInput
-							v-else
-							ref="inputField"
-							:model-value="resolvedParameter.value"
-							:class="$style.editor"
-							:readonly="isReadOnly"
-							type="textarea"
-							resize="none"
-							@update:model-value="valueChangedDebounced"
-						></N8nInput
-					></template>
+					<div :class="$style.parameterDetailsWrapper">
+						<div :class="$style.parameterOptionsWrapper">
+							<div></div>
+							<ParameterOptions
+								v-if="isDisplayed"
+								:parameter="resolvedParameter.parameter"
+								:value="resolvedParameter.value"
+								:is-read-only="isReadOnly"
+								@update:model-value="optionSelected"
+							/>
+						</div>
+						<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
+							<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
+								<div :class="$style.emptyText">
+									<N8nText color="text-base">
+										{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+									</N8nText>
+								</div>
+							</div>
+							<ExpressionEditorModalInput
+								v-else-if="expressionModeEnabled"
+								ref="inputField"
+								:model-value="resolvedParameter.value"
+								:class="$style.editor"
+								:is-read-only="isReadOnly"
+								:path="resolvedParameter.parameterPath"
+								data-test-id="expression-modal-input"
+								:target-node-parameter-context="targetNodeParameterContext"
+								@change="valueChangedDebounced($event.value)"
+							/>
+							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
+								<CodeNodeEditor
+									v-if="editorType === 'codeNodeEditor'"
+									:id="resolvedParameter.parameterPath"
+									ref="inputField"
+									:class="$style.heightFull"
+									:mode="codeEditorMode"
+									:model-value="resolvedParameter.value"
+									:default-value="resolvedParameter.parameter.default"
+									:language="editorLanguage"
+									:is-read-only="isReadOnly"
+									:target-node-parameter-context="targetNodeParameterContext"
+									fill-parent
+									:disable-ask-ai="true"
+									@update:model-value="valueChangedDebounced" />
+								<HtmlEditor
+									v-else-if="editorType === 'htmlEditor'"
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									:disable-expression-coloring="!isHtmlNode"
+									:disable-expression-completions="!isHtmlNode"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<CssEditor
+									v-else-if="editorType === 'cssEditor'"
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<SqlEditor
+									v-else-if="editorType === 'sqlEditor'"
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:dialect="getTypeOption('sqlDialect')"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									@update:model-value="valueChangedDebounced" />
+								<JsEditor
+									v-else-if="editorType === 'jsEditor'"
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									:posthog-capture="shouldCaptureForPosthog"
+									fill-parent
+									@update:model-value="valueChangedDebounced" />
+								<JsonEditor
+									v-else-if="resolvedParameter.parameter.type === 'json'"
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									:rows="editorRows"
+									fullscreen
+									fill-parent
+									@update:model-value="valueChangedDebounced" />
+								<N8nInput
+									v-else
+									ref="inputField"
+									:model-value="resolvedParameter.value"
+									:class="$style.editor"
+									:readonly="isReadOnly"
+									type="textarea"
+									resize="none"
+									@update:model-value="valueChangedDebounced"
+								></N8nInput
+							></template>
+						</div>
+					</div>
+				</div>
+				<div v-else :class="[$style.content, $style.emptyContent]">
+					<div :class="$style.emptyText">
+						<div :class="$style.focusParameterWrapper">
+							<div :class="$style.iconWrapper">
+								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+								<N8nIcon
+									:class="$style.pointerIcon"
+									icon="mouse-pointer"
+									color="text-dark"
+									size="large"
+								/>
+							</div>
+							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+							<N8nRadioButtons
+								size="small"
+								:model-value="'expression'"
+								:disabled="true"
+								:options="[
+									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+								]"
+							/>
+						</div>
+						<N8nText color="text-base" size="medium" :bold="true">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.title') }}
+						</N8nText>
+						<N8nText color="text-base" size="small">
+							{{ locale.baseText('nodeView.focusPanel.noParameters.subtitle') }}
+						</N8nText>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div v-else :class="[$style.content, $style.emptyContent]">
-			<div :class="$style.emptyText">
-				<N8nText color="text-base">
-					{{ locale.baseText('nodeView.focusPanel.noParameters') }}
-				</N8nText>
-			</div>
-		</div>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
 <style lang="scss" module>
+.wrapper {
+	display: flex;
+	flex-direction: row nowrap;
+	border-left: 1px solid var(--color-foreground-base);
+	background: var(--color-background-xlight);
+	overflow-y: hidden;
+	height: 100%;
+}
+
 .container {
 	display: flex;
 	flex-direction: column;
-	width: 528px;
-	border-left: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-light);
-	overflow-y: hidden;
-}
-
-.closeButton:hover {
-	cursor: pointer;
-}
-
-.header {
-	display: flex;
-	padding: var(--spacing-2xs);
-	justify-content: space-between;
-	border-bottom: 1px solid var(--color-foreground-base);
-	background: var(--color-foreground-xlight);
+	height: 100%;
 }
 
 .content {
@@ -417,7 +511,35 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 		align-items: center;
 
 		.emptyText {
-			max-width: 300px;
+			margin: 0 var(--spacing-xl);
+			display: flex;
+			flex-direction: column;
+			gap: var(--spacing-2xs);
+
+			.focusParameterWrapper {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--spacing-2xs);
+				margin-bottom: var(--spacing-m);
+
+				.iconWrapper {
+					position: relative;
+					display: inline-block;
+				}
+
+				.pointerIcon {
+					position: absolute;
+					top: 100%;
+					left: 50%;
+					transform: translate(-20%, -30%);
+					pointer-events: none;
+				}
+
+				:global([class*='_disabled_']) {
+					cursor: default !important;
+				}
+			}
 		}
 	}
 
@@ -436,8 +558,8 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 
 		.buttonWrapper {
 			display: flex;
-			padding: 6px 8px 6px 34px;
-			justify-content: flex-end;
+			gap: var(--spacing-2xs);
+			align-items: center;
 		}
 	}
 
@@ -464,10 +586,25 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 				font-size: var(--font-size-2xs);
 
 				:global(.cm-editor) {
+					background-color: var(--color-code-background);
 					width: 100%;
 				}
 			}
 		}
 	}
+}
+
+.closeButton {
+	cursor: pointer;
+}
+
+.heightFull {
+	height: 100%;
+}
+
+.forceHover {
+	color: var(--color-button-secondary-hover-active-focus-font);
+	border-color: var(--color-button-secondary-hover-active-focus-border);
+	background-color: var(--color-button-secondary-hover-active-focus-background);
 }
 </style>

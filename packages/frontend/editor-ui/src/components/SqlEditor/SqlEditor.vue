@@ -117,6 +117,7 @@ const {
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
+	focus,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue: () => props.modelValue,
@@ -128,8 +129,8 @@ const {
 	},
 });
 
-watch(editorHasFocus, (focus) => {
-	if (focus) {
+watch(editorHasFocus, (hasFocus) => {
+	if (hasFocus) {
 		isFocused.value = true;
 	}
 });
@@ -191,6 +192,10 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editor.value), event, value);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>

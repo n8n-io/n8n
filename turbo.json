@@ -12,7 +12,7 @@
 			"cache": false
 		},
 		"build:playwright": {
-			"dependsOn": ["install-browsers", "build"]
+			"dependsOn": ["install-browsers:ci", "build"]
 		},
 		"build:backend": {
 			"dependsOn": ["n8n#build"]

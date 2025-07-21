@@ -148,21 +148,22 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isCloudDeployment) {
-		try {
-			await cloudPlanStore.initialize();
-
-			if (cloudPlanStore.userIsTrialing) {
-				if (cloudPlanStore.trialExpired) {
-					uiStore.pushBannerToStack('TRIAL_OVER');
-				} else {
-					uiStore.pushBannerToStack('TRIAL');
+		void cloudPlanStore
+			.initialize()
+			.then(() => {
+				if (cloudPlanStore.userIsTrialing) {
+					if (cloudPlanStore.trialExpired) {
+						uiStore.pushBannerToStack('TRIAL_OVER');
+					} else {
+						uiStore.pushBannerToStack('TRIAL');
+					}
+				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
+					uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
 				}
-			} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
-				uiStore.pushBannerToStack('EMAIL_CONFIRMATION');
-			}
-		} catch (e) {
-			console.error('Failed to initialize cloud plan store:', e);
-		}
+			})
+			.catch((error) => {
+				console.error('Failed to initialize cloud plan store:', error);
+			});
 	}
 
 	if (insightsStore.isSummaryEnabled) {
