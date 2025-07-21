@@ -12,10 +12,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { cssVariables } from './constants';
+import { cssVariables, RESPONSE_NODES_MODE } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
+import { checkResponseModeConfig } from './util';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 const allowFileUploadsOption: INodeProperties = {
@@ -55,7 +56,7 @@ const streamingResponseMode = {
 
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
-	value: 'responseNodes',
+	value: RESPONSE_NODES_MODE,
 	description:
 		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
 };
@@ -600,6 +601,8 @@ export class ChatTrigger extends Node {
 			customCss?: string;
 			responseMode?: string;
 		};
+
+		checkResponseModeConfig(ctx, options.responseMode);
 
 		const enableStreaming = options.responseMode === 'streaming';
 
