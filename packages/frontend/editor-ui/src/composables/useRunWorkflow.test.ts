@@ -87,8 +87,10 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
+const i18n = { baseText: vi.fn().mockImplementation((key) => key) };
 vi.mock('@n8n/i18n', () => ({
-	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
+	i18n,
+	useI18n: vi.fn().mockReturnValue(i18n),
 }));
 
 vi.mock('@/composables/useExternalHooks', () => ({
