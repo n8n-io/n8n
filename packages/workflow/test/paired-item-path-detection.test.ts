@@ -279,7 +279,7 @@ describe('Paired Item Path Detection', () => {
 
 			// Should throw error when trying to access non-existent node D
 			expect(() => proxy.$('D')).toThrowError(ExpressionError);
-			expect(() => proxy.$('D')).toThrow(/Referenced node doesn't exist/);
+			expect(() => proxy.$('D')).toThrow(/Error finding the referenced node/);
 		});
 
 		test('should throw "No path back to referenced node" when node exists but has no path', () => {
@@ -494,6 +494,264 @@ describe('Paired Item Path Detection', () => {
 			expect(wf.hasPath('A', 'C')).toBe(true);
 			expect(wf.hasPath('B', 'A')).toBe(true);
 			expect(wf.hasPath('C', 'B')).toBe(true);
+		});
+	});
+
+	describe('Actual workflow', () => {
+		test('should show correct error message for disconnected nodes', () => {
+			// Recreate the exact scenario from the user's workflow
+			const nodes: INode[] = [
+				{
+					id: 'afc0fc26-d521-4464-9f90-3327559bd4a6',
+					name: 'On form submission',
+					type: 'n8n-nodes-base.formTrigger',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {
+						formTitle: 'Submit BBS application',
+					},
+				},
+				{
+					id: 'c5861385-d513-4d74-8fe3-e5acbe08a90a',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [288, 432],
+					parameters: {
+						jsCode: "\nreturn $('On form submission').all();",
+					},
+				},
+				{
+					id: '523b019b-e456-4784-a50a-18558c858c3b',
+					name: "When clicking 'Test workflow'",
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 288],
+					parameters: {},
+				},
+				{
+					id: '3057aebb-d87a-4142-8354-f298e41ab919',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [288, 128],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: '9c260756-a7ce-41ba-ad9b-0eb1ceeaf02b',
+									name: 'test',
+									value: "={{ $('On form submission').item.json }}",
+									type: 'string',
+								},
+							],
+						},
+					},
+				},
+			];
+
+			const connections = {
+				'On form submission': {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+				"When clicking 'Test workflow'": {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'Code', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Edit Fields', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+
+			const workflow = createWorkflow(nodes, connections);
+			const proxy = createProxy(workflow, 'Code');
+
+			// Should throw the correct error when trying to access disconnected node
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('On form submission').all();
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.context.type).toBe('paired_item_no_connection');
+			expect(error!.context.descriptionKey).toBe('pairedItemNoConnection');
+			expect(error!.message).toBe('Error finding the referenced node');
+			expect(error!.context.messageTemplate).toBe(
+				'Make sure the node you referenced is spelled correctly and is a parent of this node',
+			);
+		});
+
+		test('should also show correct error for Edit Fields node', () => {
+			// Test the Edit Fields node as well
+			const nodes: INode[] = [
+				{
+					id: 'afc0fc26-d521-4464-9f90-3327559bd4a6',
+					name: 'On form submission',
+					type: 'n8n-nodes-base.formTrigger',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {
+						formTitle: 'Submit BBS application',
+					},
+				},
+				{
+					id: 'c5861385-d513-4d74-8fe3-e5acbe08a90a',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [288, 432],
+					parameters: {
+						jsCode: "\nreturn $('On form submission').all();",
+					},
+				},
+				{
+					id: '523b019b-e456-4784-a50a-18558c858c3b',
+					name: "When clicking 'Test workflow'",
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 288],
+					parameters: {},
+				},
+				{
+					id: '3057aebb-d87a-4142-8354-f298e41ab919',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [288, 128],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: '9c260756-a7ce-41ba-ad9b-0eb1ceeaf02b',
+									name: 'test',
+									value: "={{ $('On form submission').item.json }}",
+									type: 'string',
+								},
+							],
+						},
+					},
+				},
+			];
+
+			const connections = {
+				'On form submission': {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+				"When clicking 'Test workflow'": {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'Code', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Edit Fields', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+
+			const workflow = createWorkflow(nodes, connections);
+			const proxy = createProxy(workflow, 'Edit Fields');
+
+			// Should throw the correct error when trying to access disconnected node
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('On form submission').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.context.type).toBe('paired_item_no_connection');
+			expect(error!.context.descriptionKey).toBe('pairedItemNoConnection');
+			expect(error!.message).toBe('Error finding the referenced node');
+			expect(error!.context.messageTemplate).toBe(
+				'Make sure the node you referenced is spelled correctly and is a parent of this node',
+			);
+		});
+
+		test('should show correct error in runtime execution context', () => {
+			// Test with execution data to simulate real runtime
+			const nodes: INode[] = [
+				{
+					id: 'afc0fc26-d521-4464-9f90-3327559bd4a6',
+					name: 'On form submission',
+					type: 'n8n-nodes-base.formTrigger',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {
+						formTitle: 'Submit BBS application',
+					},
+				},
+				{
+					id: 'c5861385-d513-4d74-8fe3-e5acbe08a90a',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [288, 432],
+					parameters: {
+						jsCode: "\nreturn $('On form submission').all();",
+					},
+				},
+				{
+					id: '523b019b-e456-4784-a50a-18558c858c3b',
+					name: "When clicking 'Test workflow'",
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 288],
+					parameters: {},
+				},
+			];
+
+			const connections = {
+				'On form submission': {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+				"When clicking 'Test workflow'": {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Code', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const workflow = createWorkflow(nodes, connections);
+
+			// Create execution data to simulate real workflow execution
+			const executeData: IExecuteData = {
+				data: {
+					main: [[]],
+				},
+				node: nodes.find((n) => n.name === 'Code')!,
+				source: {
+					main: [
+						{
+							previousNode: "When clicking 'Test workflow'",
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			};
+
+			const proxy = createProxy(workflow, 'Code', null, executeData);
+
+			// Should throw the correct error when trying to access disconnected node during execution
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('On form submission').all();
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.context.type).toBe('paired_item_no_connection');
+			expect(error!.message).toBe('Error finding the referenced node');
+			expect(error!.context.messageTemplate).toBe(
+				'Make sure the node you referenced is spelled correctly and is a parent of this node',
+			);
 		});
 	});
 });

@@ -390,11 +390,14 @@ export class WorkflowDataProxy {
 			}
 
 			if (!that.workflow.getNode(nodeName)) {
-				throw new ExpressionError("Referenced node doesn't exist", {
+				throw new ExpressionError('Error finding the referenced node', {
+					messageTemplate:
+						'Make sure the node you referenced is spelled correctly and is a parent of this node',
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 					nodeCause: nodeName,
 					descriptionKey: 'nodeNotFound',
+					type: 'paired_item_no_connection',
 				});
 			}
 
@@ -402,10 +405,12 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError('Referenced node is unexecuted', {
+				throw new ExpressionError('Error finding the referenced node', {
+					messageTemplate:
+						'Make sure the node you referenced is spelled correctly and is a parent of this node',
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
-					type: 'no_node_execution_data',
+					type: 'paired_item_no_connection',
 					descriptionKey: 'noNodeExecutionData',
 					nodeCause: nodeName,
 				});
@@ -496,11 +501,17 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (!node) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError('Error finding the referenced node', {
+							messageTemplate:
+								'Make sure the node you referenced is spelled correctly and is a parent of this node',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'paired_item_no_connection',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -693,11 +704,17 @@ export class WorkflowDataProxy {
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError('Error finding the referenced node', {
+							messageTemplate:
+								'Make sure the node you referenced is spelled correctly and is a parent of this node',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'paired_item_no_connection',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -814,9 +831,10 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createNoConnectionError = (nodeCause: string) => {
-			return createExpressionError('Invalid expression', {
-				messageTemplate: 'No path back to referenced node',
+		const createNodeReferenceError = (nodeCause: string) => {
+			return createExpressionError('Error finding the referenced node', {
+				messageTemplate:
+					'Make sure the node you referenced is spelled correctly and is a parent of this node',
 				functionality: 'pairedItem',
 				descriptionKey: isScriptingNode(nodeCause, that.workflow)
 					? 'pairedItemNoConnectionCodeNode'
@@ -826,6 +844,8 @@ export class WorkflowDataProxy {
 				nodeCause,
 			});
 		};
+
+		const createNoConnectionError = createNodeReferenceError;
 
 		function createBranchNotFoundError(node: string, item: number, cause?: string) {
 			return createExpressionError('Branch not found', {
@@ -1053,12 +1073,7 @@ export class WorkflowDataProxy {
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError("Referenced node doesn't exist", {
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-						nodeCause: nodeName,
-						descriptionKey: 'nodeNotFound',
-					});
+					throw createNodeReferenceError(nodeName);
 				}
 
 				const ensureNodeExecutionData = () => {
@@ -1066,13 +1081,26 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							type: 'no_node_execution_data',
-							descriptionKey: 'noNodeExecutionData',
-							nodeCause: nodeName,
-						});
+						throw createNodeReferenceError(nodeName);
+					}
+				};
+
+				const ensureValidPath = () => {
+					// Check path before execution data
+					const referencedNode = that.workflow.getNode(nodeName);
+					if (!referencedNode) {
+						throw createNoConnectionError(nodeName);
+					}
+
+					const activeNode = that.workflow.getNode(that.activeNodeName);
+					let contextNode = that.contextNodeName;
+					if (activeNode) {
+						const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+						contextNode = parentMainInputNode.name ?? contextNode;
+					}
+
+					if (!that.workflow.hasPath(nodeName, contextNode)) {
+						throw createNoConnectionError(nodeName);
 					}
 				};
 
@@ -1206,6 +1234,7 @@ export class WorkflowDataProxy {
 							}
 
 							if (property === 'first') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1224,6 +1253,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'last') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1245,6 +1275,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'all') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
