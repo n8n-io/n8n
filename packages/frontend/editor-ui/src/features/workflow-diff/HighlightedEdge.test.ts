@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import HighlightedEdge from '@/features/workflow-diff/HighlightedEdge.vue';
 import type { CanvasEdgeProps } from '@/components/canvas/elements/edges/CanvasEdge.vue';
+import { Position } from '@vue-flow/core';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 // Mock the Edge component
 vi.mock('@/components/canvas/elements/edges/CanvasEdge.vue', () => ({
@@ -23,6 +25,12 @@ vi.mock('@vue-flow/core', () => ({
 		name: 'BaseEdge',
 		props: ['style', 'path', 'interactionWidth'],
 		template: '<path class="base-edge" :d="path" />',
+	},
+	Position: {
+		Left: 'left',
+		Top: 'top',
+		Right: 'right',
+		Bottom: 'bottom',
 	},
 }));
 
@@ -48,22 +56,25 @@ const renderComponent = createComponentRenderer(HighlightedEdge, {
 });
 
 describe('HighlightedEdge', () => {
-	const mockProps: CanvasEdgeProps = {
+	const mockProps: Partial<CanvasEdgeProps> = {
 		id: 'edge-1',
 		source: 'node-1',
 		target: 'node-2',
-		sourceHandleId: 'output',
-		targetHandleId: 'input',
+		sourceX: 0,
+		sourceY: 0,
+		sourcePosition: Position.Right,
+		targetX: 100,
+		targetY: 100,
+		targetPosition: Position.Left,
 		data: {
+			status: undefined,
 			source: {
-				node: 'node-1',
-				type: 'main',
 				index: 0,
+				type: NodeConnectionTypes.Main,
 			},
 			target: {
-				node: 'node-2',
-				type: 'main',
 				index: 0,
+				type: NodeConnectionTypes.Main,
 			},
 		},
 	};
@@ -104,7 +115,7 @@ describe('HighlightedEdge', () => {
 	});
 
 	it('should handle edge props correctly', () => {
-		const customProps: CanvasEdgeProps = {
+		const customProps: Partial<CanvasEdgeProps> = {
 			...mockProps,
 			id: 'custom-edge',
 			source: 'custom-source',
@@ -126,7 +137,7 @@ describe('HighlightedEdge', () => {
 		};
 
 		const { container } = renderComponent({
-			props: minimalProps as CanvasEdgeProps,
+			props: minimalProps,
 		});
 
 		expect(container.querySelector('.canvas-edge')).toBeInTheDocument();
