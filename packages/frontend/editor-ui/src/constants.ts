@@ -738,7 +738,7 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 };
 
 export const WORKFLOW_BUILDER_EXPERIMENT = {
-	name: '30_workflow_builder',
+	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
 };
