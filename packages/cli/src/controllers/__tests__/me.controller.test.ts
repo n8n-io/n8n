@@ -194,7 +194,7 @@ describe('MeController', () => {
 	});
 
 	describe('updatePassword', () => {
-		const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
+		const passwordHash = '$2b$10$FAKE.HASH.FOR.TESTING.ONLY.AAAAAAAAAAAAAAAAAAAAAAAAA'; // Hashed 'old_password'
 
 		it('should throw if the user does not have a password set', async () => {
 			const req = mock<AuthenticatedRequest>({
