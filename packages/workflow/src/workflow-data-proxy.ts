@@ -845,8 +845,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createNoConnectionError = createNodeReferenceError;
-
 		function createBranchNotFoundError(node: string, item: number, cause?: string) {
 			return createExpressionError('Branch not found', {
 				messageTemplate: 'Paired item references non-existent branch',
@@ -1010,7 +1008,7 @@ export class WorkflowDataProxy {
 			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
 			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+				if (sourceArray.length === 0) throw createNodeReferenceError(destinationNodeName);
 				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
 			}
 
@@ -1089,7 +1087,7 @@ export class WorkflowDataProxy {
 					// Check path before execution data
 					const referencedNode = that.workflow.getNode(nodeName);
 					if (!referencedNode) {
-						throw createNoConnectionError(nodeName);
+						throw createNodeReferenceError(nodeName);
 					}
 
 					const activeNode = that.workflow.getNode(that.activeNodeName);
@@ -1100,7 +1098,7 @@ export class WorkflowDataProxy {
 					}
 
 					if (!that.workflow.hasPath(nodeName, contextNode)) {
-						throw createNoConnectionError(nodeName);
+						throw createNodeReferenceError(nodeName);
 					}
 				};
 
@@ -1140,7 +1138,7 @@ export class WorkflowDataProxy {
 								const referencedNode = that.workflow.getNode(nodeName);
 								if (!referencedNode) {
 									// Node doesn't exist in the workflow (could be trimmed manual execution)
-									throw createNoConnectionError(nodeName);
+									throw createNodeReferenceError(nodeName);
 								}
 
 								const activeNode = that.workflow.getNode(that.activeNodeName);
@@ -1153,7 +1151,7 @@ export class WorkflowDataProxy {
 
 								// Use bidirectional path checking to handle AI/tool nodes properly
 								if (!that.workflow.hasPath(nodeName, contextNode)) {
-									throw createNoConnectionError(nodeName);
+									throw createNodeReferenceError(nodeName);
 								}
 
 								ensureNodeExecutionData();
