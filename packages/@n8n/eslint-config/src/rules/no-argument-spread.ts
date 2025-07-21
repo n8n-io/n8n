@@ -11,8 +11,7 @@ export const NoArgumentSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 		messages: {
 			noUnboundedSpread:
 				'Avoid spreading an array in function or constructor calls unless known to be small.',
-			replaceWithApply:
-				'Replace spread with `.apply()` to avoid potential stack overflows and preserve `this` context.',
+			replaceWithApply: 'Replace spread with `.apply()` to avoid potential stack overflows.',
 			replaceWithReflect:
 				'Replace `new Constructor(...args)` with `Reflect.construct(Constructor, args)` to avoid potential stack overflows.',
 		},
