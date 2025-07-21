@@ -110,13 +110,18 @@ const actions = computed(() => {
 		];
 	}
 
-	const parameterActions = [
-		{
-			label: resetValueLabel.value,
-			value: 'resetValue',
-			disabled: isDefault.value,
-		},
-	];
+	const resetAction = {
+		label: resetValueLabel.value,
+		value: 'resetValue',
+		disabled: isDefault.value,
+	};
+
+	// The reset value action is not working correctly for these
+	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
+		props.parameter.typeOptions?.editor ?? '',
+	);
+
+	const parameterActions = [hasResetAction ? resetAction : []].flat();
 
 	if (
 		hasRemoteMethod.value ||
