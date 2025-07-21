@@ -45,6 +45,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { I18nT } from 'vue-i18n';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -417,13 +418,13 @@ const onDragEnd = (el: HTMLElement) => {
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
-				<i18n-t keypath="ndv.search.noMatchSchema.description" tag="span">
+				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
 							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nText>
 		</div>
 
@@ -488,10 +489,11 @@ const onDragEnd = (el: HTMLElement) => {
 							:style="{ '--schema-level': item.level }"
 						>
 							<N8nText tag="div" size="small">
-								<i18n-t
+								<I18nT
 									v-if="item.key === 'executeSchema'"
 									tag="span"
 									keypath="dataMapping.schemaView.executeSchema"
+									scope="global"
 								>
 									<template #link>
 										<NodeExecuteButton
@@ -505,8 +507,13 @@ const onDragEnd = (el: HTMLElement) => {
 											:class="$style.executeButton"
 										/>
 									</template>
-								</i18n-t>
-								<i18n-t v-else tag="span" :keypath="`dataMapping.schemaView.${item.key}`" />
+								</I18nT>
+								<I18nT
+									v-else
+									tag="span"
+									:keypath="`dataMapping.schemaView.${item.key}`"
+									scope="global"
+								/>
 							</N8nText>
 						</div>
 					</DynamicScrollerItem>

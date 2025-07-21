@@ -1,6 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
+import {
+	isHtmlRenderedContentType,
+	sandboxHtmlResponse,
+	createHtmlSandboxTransformStream,
+} from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
@@ -121,8 +126,13 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		stream.pipe(res, { end: false });
-		await finished(stream);
+		const contentType = res.getHeader('content-type') as string | undefined;
+		const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
+
+		const streamToSend = needsSandbox ? stream.pipe(createHtmlSandboxTransformStream()) : stream;
+		streamToSend.pipe(res, { end: false });
+		await finished(streamToSend);
+
 		process.nextTick(() => res.end());
 	}
 
@@ -132,10 +142,19 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
+		const contentType = res.getHeader('content-type') as string | undefined;
+
 		if (typeof body === 'string') {
-			res.send(body);
+			const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
+			const bodyToSend = needsSandbox ? sandboxHtmlResponse(body) : body;
+			res.send(bodyToSend);
 		} else {
-			res.json(body);
+			const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
+			if (needsSandbox) {
+				res.send(sandboxHtmlResponse(JSON.stringify(body)));
+			} else {
+				res.json(body);
+			}
 		}
 	}
 

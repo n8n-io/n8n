@@ -27,6 +27,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -42,6 +43,7 @@ export async function executionFinished(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 
 	workflowsStore.lastAddedExecutingNode = null;
 
@@ -62,6 +64,12 @@ export async function executionFinished(
 			telemetry.track('User executed test AI workflow', {
 				status: data.status,
 			});
+		}
+		if (workflow.meta.templateId.startsWith('035_template_onboarding')) {
+			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
+				workflow.meta.templateId.split('-').pop() ?? '',
+				data.status,
+			);
 		}
 	}
 
