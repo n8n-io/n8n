@@ -125,6 +125,7 @@
     "unplugin-icons": "catalog:frontend",
     "unplugin-vue-components": "catalog:frontend",
     "vite": "catalog:",
+    "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-static-copy": "2.2.0",
     "vite-svg-loader": "5.1.0",
     "vitest": "catalog:",

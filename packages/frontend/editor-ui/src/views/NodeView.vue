@@ -1083,13 +1083,18 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
+		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
+		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
 		setTimeout(() => {
-			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+			canvasEventBus.emit('tidyUp', {
+				source: 'import-workflow-data',
+				nodeIdsFilter: nodesIdsToTidyUp,
+			});
 		}, 0);
 	}
 }
