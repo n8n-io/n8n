@@ -6,10 +6,10 @@ import {
 import type { INodeUi } from '@/Interface';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import {
-	getPredefinedFromSelected,
-	getSimpleTemplates,
+	getSuggestedTemplatesForLowCodingSkill,
 	getTemplatePathByRole,
 	getTop3Templates,
+	isPersonalizedTemplatesExperimentEnabled,
 } from '@/utils/experiments';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import type {
@@ -475,23 +475,18 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	};
 
 	const experimentalFetchSuggestedWorkflows = async () => {
+		if (!isPersonalizedTemplatesExperimentEnabled()) {
+			return;
+		}
+
 		try {
-			// TODO: read the data from the user
-			const codingSkill = 1;
-			const selectedApps: string[] = [];
+			const codingSkill = cloudPlanStore.codingSkill;
+			const selectedApps = cloudPlanStore.selectedApps;
 
+			debugger;
 			if (codingSkill === 1) {
-				if (selectedApps.length === 0) {
-					const suggestedWorkflowsPromises = getSimpleTemplates().map(
-						async (id) => await fetchTemplateById(id.toString()),
-					);
+				const predefinedSelected = getSuggestedTemplatesForLowCodingSkill(selectedApps);
 
-					const suggestedWorkflows = await Promise.all(suggestedWorkflowsPromises);
-					experimentalAllSuggestedWorkflows.value = getTop3Templates(suggestedWorkflows);
-					return;
-				}
-
-				const predefinedSelected = getPredefinedFromSelected(selectedApps);
 				if (predefinedSelected.length > 0) {
 					const suggestedWorkflowsPromises = predefinedSelected.map(
 						async (id) => await fetchTemplateById(id.toString()),

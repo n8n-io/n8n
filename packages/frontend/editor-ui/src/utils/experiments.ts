@@ -110,8 +110,17 @@ export function getPredefinedFromSelected(selectedApps: string[]) {
 	);
 }
 
-export function getSimpleTemplates() {
-	return SIMPLE_TEMPLATES;
+export function getSuggestedTemplatesForLowCodingSkill(selectedApps: string[]) {
+	if (selectedApps.length === 0) {
+		return SIMPLE_TEMPLATES;
+	}
+
+	const predefinedSelected = getPredefinedFromSelected(selectedApps);
+	if (predefinedSelected.length > 0) {
+		return predefinedSelected;
+	}
+
+	return [];
 }
 
 export function getTop3Templates(templates: ITemplatesWorkflowFull[]) {

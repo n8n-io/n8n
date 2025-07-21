@@ -32,6 +32,9 @@ export declare namespace Cloud {
 		hasEarlyAccess?: boolean;
 		role?: string;
 		selectedApps?: string;
+		information?: {
+			[key: string]: string | string[];
+		};
 	};
 }
 

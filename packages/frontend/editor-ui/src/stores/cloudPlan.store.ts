@@ -41,9 +41,25 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const currentUsageData = computed(() => state.usage);
 
-	const currentSelectedApps = computed(
-		() => currentUserCloudInfo.value?.selectedApps?.split(',') ?? [],
-	);
+	const selectedApps = computed(() => currentUserCloudInfo.value?.selectedApps?.split(',') ?? []);
+	const codingSkill = computed(() => {
+		const information = currentUserCloudInfo.value?.information;
+		if (!information) {
+			return 0;
+		}
+
+		if (
+			!(
+				'which_of_these_do_you_feel_comfortable_doing' in information &&
+				information.which_of_these_do_you_feel_comfortable_doing &&
+				Array.isArray(information.which_of_these_do_you_feel_comfortable_doing)
+			)
+		) {
+			return 0;
+		}
+
+		return information.which_of_these_do_you_feel_comfortable_doing.length;
+	});
 
 	const trialExpired = computed(
 		() =>
@@ -199,6 +215,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
-		currentSelectedApps,
+		selectedApps,
+		codingSkill,
 	};
 });
