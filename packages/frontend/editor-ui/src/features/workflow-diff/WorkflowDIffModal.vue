@@ -273,20 +273,26 @@ const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
 		label: 'Nodes',
-		count: nodeChanges.value.length,
 		disabled: nodeChanges.value.length === 0,
+		data: {
+			count: nodeChanges.value.length,
+		},
 	},
 	{
 		value: 'connectors' as const,
 		label: 'Connectors',
-		count: connectionsDiff.value.size,
 		disabled: connectionsDiff.value.size === 0,
+		data: {
+			count: connectionsDiff.value.size,
+		},
 	},
 	{
 		value: 'settings' as const,
 		label: 'Settings',
-		count: settingsDiff.value.length,
 		disabled: settingsDiff.value.length === 0,
+		data: {
+			count: settingsDiff.value.length,
+		},
 	},
 ]);
 
@@ -414,9 +420,9 @@ const modifiers = [
 										:class="$style.tabs"
 										class="mb-xs"
 									>
-										<template #option="{ label, count }">
-											<span v-if="count" class="mr-3xs">
-												{{ count }}
+										<template #option="{ label, data: optionData }">
+											<span v-if="optionData?.count" class="mr-3xs">
+												{{ optionData.count }}
 											</span>
 											{{ label }}
 										</template>

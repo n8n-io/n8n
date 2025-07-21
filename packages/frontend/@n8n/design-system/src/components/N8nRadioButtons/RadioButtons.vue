@@ -1,12 +1,12 @@
-<script
-	lang="ts"
-	setup
-	generic="
-		Value extends string | boolean,
-		RadioOption extends { label: string; value: Value; disabled?: boolean }
-	"
->
+<script lang="ts" setup generic="Value extends string | boolean">
 import RadioButton from './RadioButton.vue';
+
+interface RadioOption {
+	label: string;
+	value: Value;
+	disabled?: boolean;
+	data?: Record<string, string | number | boolean | undefined>;
+}
 
 interface RadioButtonsProps {
 	modelValue?: Value;
