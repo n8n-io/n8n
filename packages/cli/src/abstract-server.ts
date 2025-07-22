@@ -168,11 +168,24 @@ export abstract class AbstractServer {
 
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
+				// EADDRINUSE is thrown when the port is already in use
 				this.logger.info(
 					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
-				process.exit(1);
+			} else if (error.code === 'EACCES') {
+				// EACCES is thrown when the process is not allowed to use the port
+				// This can happen if the port is below 1024 and the process is not run as root
+				// or when the port is reserved by the system, for example Windows reserves random ports
+				// for NAT for Hyper-V and other virtualization software.
+				this.logger.info(
+					`n8n does not have permission to use port ${port}. Please run n8n with a different port.`,
+				);
+			} else {
+				// Other errors are unexpected and should be logged
+				this.logger.error('n8n webserver failed, exiting', { error });
 			}
+			// we always exit on error, so that n8n does not run in an inconsistent state
+			process.exit(1);
 		});
 
 		await new Promise<void>((resolve) => this.server.listen(port, address, () => resolve()));
