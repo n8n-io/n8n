@@ -80,7 +80,6 @@ const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	placeholder,
 	extensions,
 	isReadOnly: () => props.isReadOnly,
-
 	theme: {
 		maxHeight: props.fillParent ? '100%' : '40vh',
 		minHeight: '20vh',
