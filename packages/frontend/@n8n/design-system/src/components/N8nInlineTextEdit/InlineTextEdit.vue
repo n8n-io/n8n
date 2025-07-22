@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -25,6 +25,9 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
+const newValue = ref(props.modelValue);
+const temp = ref(props.modelValue || props.placeholder);
+
 const editableRoot = useTemplateRef('editableRoot');
 
 function forceFocus() {
@@ -40,19 +43,22 @@ function forceCancel() {
 	}
 }
 
-defineExpose({ forceFocus, forceCancel });
-
 function onSubmit() {
 	if (newValue.value === '') {
 		newValue.value = props.modelValue;
 		temp.value = props.modelValue;
 		return;
 	}
-	emit('update:model-value', newValue.value);
+
+	if (newValue.value !== props.modelValue) {
+		emit('update:model-value', newValue.value);
+	}
 }
 
 function onInput(value: string) {
 	newValue.value = value;
+	const processedValue = value.replace(/\s/g, '.');
+	temp.value = processedValue.trim() !== '' ? processedValue : props.placeholder;
 }
 
 function onStateChange(state: string) {
@@ -61,22 +67,12 @@ function onStateChange(state: string) {
 	}
 }
 
-// Resize logic
-const newValue = ref(props.modelValue);
-const temp = ref(props.modelValue || props.placeholder);
-
 const measureSpan = useTemplateRef('measureSpan');
 const { width: measuredWidth } = useElementSize(measureSpan);
 
 const inputWidth = computed(() => {
 	return Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth));
 });
-
-function onChange(event: Event) {
-	const { value } = event.target as HTMLInputElement;
-	const processedValue = value.replace(/\s/g, '.');
-	temp.value = processedValue.trim() !== '' ? processedValue : props.placeholder;
-}
 
 const computedInlineStyles = computed(() => {
 	return {
@@ -85,6 +81,16 @@ const computedInlineStyles = computed(() => {
 		zIndex: 1,
 	};
 });
+
+watch(
+	() => props.modelValue,
+	(newModelValue) => {
+		newValue.value = newModelValue;
+		temp.value = newModelValue || props.placeholder;
+	},
+);
+
+defineExpose({ forceFocus, forceCancel });
 </script>
 
 <template>
@@ -122,7 +128,6 @@ const computedInlineStyles = computed(() => {
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
 				:style="computedInlineStyles"
-				@input="onChange"
 			/>
 		</EditableArea>
 	</EditableRoot>
