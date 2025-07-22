@@ -160,6 +160,7 @@ const {
 	nodesSelectionActive,
 	userSelectionRect,
 	setViewport,
+	setCenter,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -286,13 +287,15 @@ function selectUpstreamNodes(id: string) {
 }
 
 function onToggleZoomMode() {
-	experimentalNdvStore.toggleZoomMode(
-		viewport.value,
-		selectedNodes.value,
+	experimentalNdvStore.toggleZoomMode({
+		canvasViewport: viewport.value,
+		canvasDimensions: dimensions.value,
+		selectedNodes: selectedNodes.value,
 		setViewport,
 		fitView,
 		zoomTo,
-	);
+		setCenter,
+	});
 }
 
 const keyMap = computed(() => {
@@ -464,6 +467,18 @@ function onUpdateNodeInputs(id: string) {
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+}
+
+function onFocusNode(id: string) {
+	const node = vueFlow.nodeLookup.value.get(id);
+
+	if (node) {
+		experimentalNdvStore.focusNode(node, {
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	}
 }
 
 /**
@@ -919,6 +934,7 @@ provide(CanvasKey, {
 					@update:outputs="onUpdateNodeOutputs"
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
+					@focus="onFocusNode"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />

@@ -3,14 +3,14 @@ import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import {
-	useVueFlow,
+	type Dimensions,
 	type FitView,
 	type GraphNode,
+	type SetCenter,
 	type SetViewport,
 	type ViewportTransform,
 	type ZoomTo,
 } from '@vue-flow/core';
-import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
@@ -53,39 +53,31 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
-	function focusNode(nodeId: string, { collapseOthers = true }: { collapseOthers?: boolean } = {}) {
-		const nodeToFocus = workflowStore.getNodeById(nodeId);
+	interface FocusNodeOptions {
+		collapseOthers?: boolean;
+		canvasViewport: ViewportTransform;
+		canvasDimensions: Dimensions;
+		setCenter: SetCenter;
+	}
 
-		if (!nodeToFocus) {
-			return;
-		}
-
-		// Call useVueFlow() here because having it in setup fn scope seem to cause initialization problem
-		const vueFlow = useVueFlow(workflowStore.workflow.id);
-
+	function focusNode(
+		node: GraphNode<CanvasNodeData>,
+		{ collapseOthers = true, canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
+	) {
 		collapsedNodes.value = collapseOthers
-			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, node) => {
-					acc[node.id] = node.id !== nodeId;
+			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, n) => {
+					acc[n.id] = n.id !== node.id;
 					return acc;
 				}, {})
-			: { ...collapsedNodes.value, [nodeId]: false };
-
-		const workflow = workflowStore.getCurrentWorkflow();
-		const nodeSize = calculateNodeSize(
-			workflow.getChildNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
-			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
-			workflow.getParentNodes(nodeToFocus.name, 'main').length,
-			workflow.getChildNodes(nodeToFocus.name, 'main').length,
-			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length,
-		);
+			: { ...collapsedNodes.value, [node.id]: false };
 
 		const topMargin = 80; // pixels
+		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
 
 		// Move the node to top center of the canvas
-		void vueFlow.setCenter(
-			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
-			nodeToFocus.position[1] +
-				(vueFlow.dimensions.value.height * (1 / 2) - topMargin) / maxCanvasZoom.value,
+		void setCenter(
+			node.position.x + nodeWidth / 2,
+			node.position.y + (canvasDimensions.height * (1 / 2) - topMargin) / maxCanvasZoom.value,
 			{
 				duration: 200,
 				zoom: maxCanvasZoom.value,
@@ -94,37 +86,41 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		);
 	}
 
-	function toggleZoomMode(
-		viewport: ViewportTransform,
-		selectedNodes: Array<GraphNode<CanvasNodeData>>,
-		setViewport: SetViewport,
-		fitViewport: FitView,
-		zoomTo: ZoomTo,
-	) {
-		if (isActive(viewport.zoom)) {
+	interface ToggleZoomModeOptions {
+		canvasViewport: ViewportTransform;
+		canvasDimensions: Dimensions;
+		selectedNodes: Array<GraphNode<CanvasNodeData>>;
+		setViewport: SetViewport;
+		fitView: FitView;
+		zoomTo: ZoomTo;
+		setCenter: SetCenter;
+	}
+
+	function toggleZoomMode(options: ToggleZoomModeOptions) {
+		if (isActive(options.canvasViewport.zoom)) {
 			if (previousViewport.value === undefined) {
-				void fitViewport({ duration: 200, interpolate: 'linear' });
+				void options.fitView({ duration: 200, interpolate: 'linear' });
 				return;
 			}
 
-			void setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
+			void options.setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
 			return;
 		}
 
-		previousViewport.value = viewport;
+		previousViewport.value = options.canvasViewport;
 
-		const toFocus = selectedNodes
+		const toFocus = options.selectedNodes
 			.filter((node) => node.data.render.type === CanvasNodeRenderType.Default)
 			.toSorted((a, b) =>
 				a.position.y === b.position.y ? a.position.x - b.position.x : a.position.y - b.position.y,
 			)[0];
 
 		if (toFocus) {
-			focusNode(toFocus.id, { collapseOthers: false });
+			focusNode(toFocus, { ...options, collapseOthers: false });
 			return;
 		}
 
-		void zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
+		void options.zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
 	}
 
 	return {
