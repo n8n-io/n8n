@@ -235,6 +235,7 @@ $container-height: 22px;
 
 .focusButton {
 	&:hover {
+		cursor: pointer;
 		color: var(--color-primary);
 	}
 }
