@@ -15,8 +15,8 @@ describe('useViewportSync', () => {
 	});
 
 	afterEach(() => {
-		vi.useRealTimers();
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	const createProviderWrapper = (): ViewportSyncReturn => {
