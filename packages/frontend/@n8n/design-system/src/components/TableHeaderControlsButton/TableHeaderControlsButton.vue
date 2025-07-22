@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { ButtonSize, IconSize } from '@n8n/design-system/types';
 
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
@@ -15,6 +16,8 @@ interface ColumnHeader {
 
 interface Props {
 	columns: ColumnHeader[];
+	buttonSize?: ButtonSize;
+	iconSize?: IconSize;
 }
 
 const props = defineProps<Props>();
@@ -105,7 +108,12 @@ const handleDragEnd = () => {
 <template>
 	<N8nPopoverReka>
 		<template #trigger>
-			<N8nButton icon="sliders-horizontal" type="secondary">
+			<N8nButton
+				icon="sliders-horizontal"
+				type="secondary"
+				:icon-size="iconSize"
+				:size="buttonSize"
+			>
 				{{ t('tableControlsButton.display') }}
 			</N8nButton>
 		</template>

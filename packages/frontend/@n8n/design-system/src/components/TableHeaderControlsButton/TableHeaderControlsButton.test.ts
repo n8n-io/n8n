@@ -590,4 +590,30 @@ describe('TableHeaderControlsButton', () => {
 			expect(hiddenToggles.length).toBeGreaterThan(0);
 		});
 	});
+
+	it('should accept different button sizes', () => {
+		const sizes = ['mini', 'small', 'medium', 'large'] as const;
+
+		sizes.forEach((size) => {
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: createTestColumns(),
+					buttonSize: size,
+				},
+				global: {
+					stubs: {
+						...defaultStubs,
+						N8nButton: {
+							template: '<mock-button :size="size"><slot /></mock-button>',
+							props: ['size', 'icon', 'type'],
+						},
+					},
+				},
+			});
+
+			const button = wrapper.container.querySelector('mock-button');
+			expect(button).toBeTruthy();
+			expect(button).toHaveAttribute('size', size);
+		});
+	});
 });

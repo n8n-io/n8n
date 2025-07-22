@@ -9,7 +9,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
+import { N8nText, N8nTooltip, N8nIcon, N8nTableHeaderControlsButton } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
@@ -226,6 +226,24 @@ onMounted(async () => {
 			</div>
 		</el-scrollbar>
 
+		<div :class="['mb-s', $style.runsHeader]">
+			<div>
+				<n8n-heading size="large" :bold="true"
+					>{{
+						locale.baseText('evaluation.listRuns.allTestCases', {
+							interpolate: {
+								count: 33,
+							},
+						})
+					}}
+				</n8n-heading>
+			</div>
+			<div :class="$style.runsHeaderButtons">
+				<n8n-icon-button icon="unfold-vertical" type="secondary" size="medium" />
+				<N8nTableHeaderControlsButton size="medium" icon-size="small" :columns="[]" />
+			</div>
+		</div>
+
 		<n8n-callout
 			v-if="
 				!isLoading &&
@@ -352,6 +370,19 @@ onMounted(async () => {
 
 .downloadButton {
 	margin-bottom: var(--spacing-s);
+}
+
+.runsHeader {
+	display: flex;
+
+	> div:first-child {
+		flex: 1;
+	}
+}
+
+.runsHeaderButtons {
+	display: flex;
+	gap: 12px;
 }
 
 .loading {

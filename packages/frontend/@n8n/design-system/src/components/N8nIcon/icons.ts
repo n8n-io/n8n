@@ -168,6 +168,7 @@ import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
+import IconLucideUnfoldVertical from '~icons/lucide/unfold-vertical';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
@@ -569,6 +570,7 @@ export const updatedIconSet = {
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
 	'user-round': IconLucideUserRound,
+	'unfold-vertical': IconLucideUnfoldVertical,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
