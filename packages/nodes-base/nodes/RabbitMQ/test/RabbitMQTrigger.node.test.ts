@@ -1,7 +1,7 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { ITriggerFunctions } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
-import { Channel, GetMessage } from 'amqplib';
+import type { Channel, GetMessage } from 'amqplib';
 import { RabbitMQTrigger } from '../RabbitMQTrigger.node';
 
 describe('RabbitMQTrigger node', () => {
