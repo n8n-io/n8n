@@ -1,15 +1,29 @@
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
+
+interface Props {
+	open?: boolean;
+}
+
+interface Emits {
+	(event: 'update:open', value: boolean): void;
+}
+
+withDefaults(defineProps<Props>(), {
+	open: undefined,
+});
+
+const emit = defineEmits<Emits>();
 </script>
 
 <template>
-	<PopoverRoot>
+	<PopoverRoot :open="open" @update:open="emit('update:open', $event)">
 		<PopoverTrigger :as-child="true">
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
 			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
-				<slot name="content" />
+				<slot name="content" :close="() => emit('update:open', false)" />
 			</PopoverContent>
 		</PopoverPortal>
 	</PopoverRoot>

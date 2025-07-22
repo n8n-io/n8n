@@ -14,8 +14,9 @@ const Template: StoryFn = (args) => ({
 	setup() {
 		const username = ref('');
 		const email = ref('');
+		const isOpen = ref(false);
 
-		return { args, username, email };
+		return { args, username, email, isOpen };
 	},
 	components: {
 		N8nPopoverReka,
@@ -24,11 +25,11 @@ const Template: StoryFn = (args) => ({
 	},
 	template: `
 		<div style="padding: 50px;">
-			<N8nPopoverReka v-bind="args">
+			<N8nPopoverReka v-model:open="isOpen" v-bind="args">
 				<template #trigger>
 					<N8nButton type="primary">Open Form</N8nButton>
 				</template>
-				<template #content>
+				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 12px;">
 						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">User Information</h3>
 						<N8nInput
@@ -44,7 +45,7 @@ const Template: StoryFn = (args) => ({
 						/>
 						<div style="display: flex; gap: 8px; margin-top: 8px;">
 							<N8nButton size="small" type="primary">Save</N8nButton>
-							<N8nButton size="small" type="secondary">Cancel</N8nButton>
+							<N8nButton size="small" type="secondary" @click="close">Cancel</N8nButton>
 						</div>
 					</div>
 				</template>
