@@ -160,7 +160,7 @@ function getCustomClass() {
 		@opened="onOpened"
 	>
 		<template v-if="$slots.header" #header>
-			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
 		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
