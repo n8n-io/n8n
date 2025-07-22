@@ -25,6 +25,11 @@ interface Column {
 	visible: boolean;
 }
 
+interface UserPreferences {
+	order: string[];
+	visibility: Record<string, boolean>;
+}
+
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
@@ -39,7 +44,7 @@ const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
-const cachedUserPreferences = ref<{ order: Column[] } | undefined>();
+const cachedUserPreferences = ref<UserPreferences | undefined>();
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
@@ -108,29 +113,46 @@ const columns = computed(
 	},
 );
 
-function getMergedSortOrder(newColumnOrder: Column[], cachedColumnOrder: Column[]): Column[] {
-	const firstColumns = cachedColumnOrder.filter((col) =>
-		newColumnOrder.find((newCol) => newCol.key === col.key),
-	);
+function getMergedSortOrder(
+	newColumnOrder: Column[],
+	cachedOrder: string[],
+	cachedVisibility: Record<string, boolean>,
+): Column[] {
+	// Start with cached order
+	const orderedColumns = cachedOrder
+		.map((columnKey) => {
+			const columnFromNew = newColumnOrder.find((col) => col.key === columnKey);
+			if (columnFromNew) {
+				return {
+					...columnFromNew,
+					visible: cachedVisibility[columnKey] ?? columnFromNew.visible,
+				};
+			}
+			return null;
+		})
+		.filter((col): col is Column => col !== null);
 
-	const newColumns = cachedColumnOrder.filter((newCol) =>
-		firstColumns.find((firstCol) => firstCol.key !== newCol.key),
-	);
+	// Add any new columns that aren't in the cached order
+	const newColumns = newColumnOrder.filter((col) => !cachedOrder.includes(col.key));
 
-	return [...firstColumns, ...newColumns];
+	return [...orderedColumns, ...newColumns];
 }
 
 const columnsSate = computed(() => {
 	const defaultNewOrder = columns.value
 		.map((col) => ({
-			key: col.prop,
-			label: col.label,
+			key: (col as { prop: string; label: string }).prop,
+			label: (col as { prop: string; label: string }).label,
 			visible: true,
 		}))
 		.filter((col) => ['status', 'index'].find((key) => key !== col.key));
 
 	if (cachedUserPreferences.value?.order?.length) {
-		return getMergedSortOrder(defaultNewOrder, cachedUserPreferences.value.order);
+		return getMergedSortOrder(
+			defaultNewOrder,
+			cachedUserPreferences.value.order,
+			cachedUserPreferences.value.visibility,
+		);
 	}
 
 	return defaultNewOrder;
@@ -169,6 +191,41 @@ async function loadCachedUserPreferences() {
 	cachedUserPreferences.value = jsonParse(cache.getItem(workflowId.value) ?? '', {
 		fallbackValue: undefined,
 	});
+}
+
+async function saveCachedUserPreferences() {
+	const cache = await indexedDbCache('workflows', 'evaluations');
+	cache.setItem(workflowId.value, JSON.stringify(cachedUserPreferences.value));
+}
+
+async function handleColumnVisibilityUpdate(columnKey: string, visibility: boolean) {
+	cachedUserPreferences.value ??= { order: [], visibility: {} };
+
+	// Update visibility
+	cachedUserPreferences.value.visibility[columnKey] = visibility;
+
+	// Add to order if not already present
+	if (!cachedUserPreferences.value.order.includes(columnKey)) {
+		cachedUserPreferences.value.order.push(columnKey);
+	}
+
+	await saveCachedUserPreferences();
+}
+
+async function handleColumnOrderUpdate(newOrder: string[]) {
+	cachedUserPreferences.value ??= { order: [], visibility: {} };
+
+	// Update order
+	cachedUserPreferences.value.order = newOrder;
+
+	// Ensure all ordered columns have visibility set (default to true if not set)
+	newOrder.forEach((columnKey) => {
+		if (cachedUserPreferences.value && !(columnKey in cachedUserPreferences.value.visibility)) {
+			cachedUserPreferences.value.visibility[columnKey] = true;
+		}
+	});
+
+	await saveCachedUserPreferences();
 }
 
 onMounted(async () => {
@@ -286,7 +343,15 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.runsHeaderButtons">
 				<n8n-icon-button icon="unfold-vertical" type="secondary" size="medium" />
-				<N8nTableHeaderControlsButton size="medium" icon-size="small" :columns="columnsSate" />
+				<!-- eslint-disable vue/v-on-event-hyphenation -->
+				<N8nTableHeaderControlsButton
+					size="medium"
+					icon-size="small"
+					:columns="columnsSate"
+					@update:columnVisibility="handleColumnVisibilityUpdate"
+					@update:columnOrder="handleColumnOrderUpdate"
+				/>
+				<!-- eslint-enable vue/v-on-event-hyphenation -->
 			</div>
 		</div>
 
