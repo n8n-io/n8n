@@ -50,7 +50,7 @@
     "@typescript/vfs": "^1.6.0",
     "@vue-flow/background": "^1.3.2",
     "@vue-flow/controls": "^1.1.2",
-    "@vue-flow/core": "^1.42.1",
+    "@vue-flow/core": "^1.45.0",
     "@vue-flow/minimap": "^1.5.2",
     "@vue-flow/node-resizer": "^1.4.0",
     "@vueuse/components": "^10.11.0",
