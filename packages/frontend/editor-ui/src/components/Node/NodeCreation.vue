@@ -109,26 +109,6 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 				@click="() => openNodeCreator('Regular')"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip label="AI nodes">
-			<n8n-icon-button
-				text
-				square
-				size="large"
-				type="tertiary"
-				icon="robot"
-				@click="() => openNodeCreator('AI')"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip label="Action nodes">
-			<n8n-icon-button
-				text
-				square
-				size="large"
-				type="tertiary"
-				icon="globe"
-				@click="() => openNodeCreator('Actions')"
-			/>
-		</KeyboardShortcutTooltip>
 	</div>
 
 	<KeyboardShortcutTooltip
