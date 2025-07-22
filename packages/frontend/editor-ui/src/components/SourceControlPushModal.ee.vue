@@ -4,6 +4,7 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -818,12 +819,14 @@ function openDiffModal(id: string) {
 												<N8nBadge :theme="getStatusTheme(file.status)">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
-												<N8nIconButton
-													v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-													icon="git-branch"
-													type="secondary"
-													@click="openDiffModal(file.id)"
-												/>
+												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+													<N8nIconButton
+														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+														icon="git-branch"
+														type="secondary"
+														@click="openDiffModal(file.id)"
+													/>
+												</EnvFeatureFlag>
 											</span>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
