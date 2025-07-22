@@ -3,7 +3,8 @@ import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -36,6 +37,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
@@ -560,6 +562,15 @@ function castType(type: string): ResourceType {
 function castProject(project: ProjectListItem) {
 	return { homeProject: project } as unknown as WorkflowResource;
 }
+
+const workflowDiffEventBus = createEventBus();
+
+function openDiffModal(id: string) {
+	uiStore.openModalWithData({
+		name: WORKFLOW_DIFF_MODAL_KEY,
+		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'push' },
+	});
+}
 </script>
 
 <template>
@@ -623,8 +634,7 @@ function castProject(project: ProjectListItem) {
 								:key="option.label"
 								data-test-id="source-control-status-filter-option"
 								v-bind="option"
-							>
-							</N8nOption>
+							/>
 						</N8nSelect>
 						<N8nInputLabel
 							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
@@ -681,8 +691,8 @@ function castProject(project: ProjectListItem) {
 						>
 							<div>{{ tab.label }}</div>
 							<N8nText tag="div" color="text-light">
-								{{ tab.selected }} / {{ tab.total }} selected</N8nText
-							>
+								{{ tab.selected }} / {{ tab.total }} selected
+							</N8nText>
 						</button>
 					</template>
 				</div>
@@ -809,6 +819,14 @@ function castProject(project: ProjectListItem) {
 												<N8nBadge :theme="getStatusTheme(file.status)">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
+												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+													<N8nIconButton
+														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+														icon="git-branch"
+														type="secondary"
+														@click="openDiffModal(file.id)"
+													/>
+												</EnvFeatureFlag>
 											</span>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
@@ -825,8 +843,8 @@ function castProject(project: ProjectListItem) {
 				<N8nText bold size="medium">Changes to variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
-					<N8nText bold size="small">{{ title }}</N8nText>
-					<N8nText size="small">: {{ content }}. </N8nText>
+					<N8nText bold size="small"> {{ title }}</N8nText>
+					<N8nText size="small"> : {{ content }}. </N8nText>
 				</template>
 			</N8nNotice>
 

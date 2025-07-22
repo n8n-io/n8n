@@ -7,7 +7,6 @@ import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -17,7 +16,7 @@ const emit = defineEmits<{
 	activate: [id: string, event: MouseEvent];
 }>();
 
-const { initialized, viewport } = useCanvas();
+const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
 const {
 	id,
 	label,
@@ -45,8 +44,6 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 	});
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-
-const experimentalNdvStore = useExperimentalNdvStore();
 
 const classes = computed(() => {
 	return {
@@ -133,7 +130,7 @@ function onActivate(event: MouseEvent) {
 
 <template>
 	<ExperimentalInPlaceNodeSettings
-		v-if="experimentalNdvStore.isActive(viewport.zoom)"
+		v-if="isExperimentalNdvActive"
 		:node-id="id"
 		:class="classes"
 		:style="styles"
@@ -260,7 +257,8 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		box-shadow: 0 0 0 8px var(--color-canvas-selected-transparent);
+		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
+			var(--color-canvas-selected-transparent);
 	}
 
 	&.success {
