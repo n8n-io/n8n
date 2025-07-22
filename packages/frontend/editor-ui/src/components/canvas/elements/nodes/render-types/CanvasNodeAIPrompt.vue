@@ -283,7 +283,7 @@ function onAddNodeClick() {
 .startManually {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing-xs);
 }
 
 .startManuallyLabel {
@@ -293,11 +293,11 @@ function onAddNodeClick() {
 
 .addButton {
 	background: var(--color-foreground-xlight);
-	border: 2px dashed var(--color-foreground-xdark);
-	border-radius: 8px;
+	border: 1px dashed var(--color-foreground-xdark);
+	border-radius: var(--border-radius-small);
 	padding: 0;
-	min-width: 100px;
-	min-height: 100px;
+	min-width: 69px;
+	min-height: 69px;
 	cursor: pointer;
 	transition: all 0.2s ease;
 
@@ -307,12 +307,14 @@ function onAddNodeClick() {
 }
 
 .startManuallyText {
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 }
 
 .startManuallySubtitle {
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-base);
