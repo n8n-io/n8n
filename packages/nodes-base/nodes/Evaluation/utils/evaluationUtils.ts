@@ -12,7 +12,10 @@ import { metricHandlers } from './metricHandlers';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
 import assert from 'node:assert';
 
-function withEvaluationData(this: IExecuteFunctions, data: IDataObject): INodeExecutionData[] {
+function withEvaluationData(
+	this: IExecuteFunctions,
+	data: Record<string, GenericValue>,
+): INodeExecutionData[] {
 	const inputData = this.getInputData();
 	if (!inputData.length) {
 		return inputData;
