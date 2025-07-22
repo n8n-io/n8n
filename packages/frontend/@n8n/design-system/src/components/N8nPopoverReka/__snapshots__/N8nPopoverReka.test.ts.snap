@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nPopoverReka > should render correctly 1`] = `
+"<mock-popover-root>
+  <mock-popover-trigger as-child="true"><button></button></mock-popover-trigger>
+  <mock-popover-portal>
+    <mock-popover-content side="bottom" side-offset="5" class="popoverContent">
+      <content></content>
+    </mock-popover-content>
+  </mock-popover-portal>
+</mock-popover-root>"
+`;
