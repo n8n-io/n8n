@@ -1,19 +1,58 @@
 import type { StoryFn } from '@storybook/vue3';
+import { ref } from 'vue';
 
 import TableHeaderControlsButton from './TableHeaderControlsButton.vue';
+
+interface ColumnHeader {
+	key: string;
+	label: string;
+	visible: boolean;
+}
+
+interface StoryArgs {
+	columns: ColumnHeader[];
+}
 
 export default {
 	title: 'Atoms/TableHeaderControlsButton',
 	component: TableHeaderControlsButton,
 };
 
-const Template: StoryFn = (args) => ({
-	setup: () => ({ args }),
-	props: args,
+const Template: StoryFn<StoryArgs> = (args) => ({
+	setup: () => {
+		const columns = ref<ColumnHeader[]>([...args.columns]);
+
+		const handleColumnVisibilityUpdate = (key: string, visibility: boolean) => {
+			const column = columns.value.find((col: ColumnHeader) => col.key === key);
+			if (column) {
+				column.visible = visibility;
+			}
+		};
+
+		const handleColumnOrderUpdate = (newOrder: string[]) => {
+			const reorderedColumns = newOrder.map(
+				(key: string) => columns.value.find((col: ColumnHeader) => col.key === key)!,
+			);
+			const hiddenColumns = columns.value.filter((col: ColumnHeader) => !col.visible);
+			columns.value = [...reorderedColumns, ...hiddenColumns];
+		};
+
+		return {
+			columns,
+			handleColumnVisibilityUpdate,
+			handleColumnOrderUpdate,
+		};
+	},
 	components: {
 		TableHeaderControlsButton,
 	},
-	template: '<table-header-controls-button v-bind="args" />',
+	template: `
+		<table-header-controls-button
+			:columns="columns"
+			@update:columnVisibility="handleColumnVisibilityUpdate"
+			@update:columnOrder="handleColumnOrderUpdate"
+		/>
+	`,
 });
 
 export const AllColumnsShown = Template.bind({});

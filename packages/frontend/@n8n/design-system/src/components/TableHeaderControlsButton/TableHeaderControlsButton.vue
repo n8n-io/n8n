@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
@@ -24,9 +24,82 @@ const hiddenColumns = computed(() => props.columns.filter((column) => !column.vi
 
 const { t } = useI18n();
 
+const draggedItem = ref<string | null>(null);
+const dragOverItem = ref<string | null>(null);
+
 const emit = defineEmits<{
 	'update:columnVisibility': [key: string, visibility: boolean];
+	'update:columnOrder': [newOrder: string[]];
 }>();
+
+const resetDragState = () => {
+	draggedItem.value = null;
+	dragOverItem.value = null;
+};
+
+const handleDragStart = (event: DragEvent, columnKey: string) => {
+	if (!event.dataTransfer) return;
+	draggedItem.value = columnKey;
+	event.dataTransfer.effectAllowed = 'move';
+	event.dataTransfer.setData('text/plain', columnKey);
+};
+
+const handleDragOver = (event: DragEvent, columnKey: string) => {
+	event.preventDefault();
+	if (!event.dataTransfer) return;
+	event.dataTransfer.dropEffect = 'move';
+	dragOverItem.value = columnKey;
+};
+
+const handleDragLeave = () => {
+	dragOverItem.value = null;
+};
+
+const handleDrop = (event: DragEvent, targetColumnKey: string) => {
+	event.preventDefault();
+
+	const draggedColumnKey = draggedItem.value;
+	if (!draggedColumnKey || draggedColumnKey === targetColumnKey) {
+		resetDragState();
+		return;
+	}
+
+	const visibleColumnKeys = visibleColumns.value.map((col) => col.key);
+	const draggedIndex = visibleColumnKeys.indexOf(draggedColumnKey);
+
+	if (draggedIndex === -1) {
+		resetDragState();
+		return;
+	}
+
+	let newOrder: string[];
+
+	if (targetColumnKey === 'END') {
+		// Move to end
+		newOrder = [...visibleColumnKeys];
+		newOrder.splice(draggedIndex, 1);
+		newOrder.push(draggedColumnKey);
+	} else {
+		// Move to specific position
+		const targetIndex = visibleColumnKeys.indexOf(targetColumnKey);
+
+		if (targetIndex === -1) {
+			resetDragState();
+			return;
+		}
+
+		newOrder = [...visibleColumnKeys];
+		newOrder.splice(draggedIndex, 1);
+		newOrder.splice(targetIndex, 0, draggedColumnKey);
+	}
+
+	emit('update:columnOrder', newOrder);
+	resetDragState();
+};
+
+const handleDragEnd = () => {
+	resetDragState();
+};
 </script>
 
 <template>
@@ -38,21 +111,45 @@ const emit = defineEmits<{
 		</template>
 		<template #content>
 			<div
-				:class="$style.shownSection"
+				v-if="visibleColumns.length"
 				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
 			>
 				<h4 :class="$style.header">
 					{{ t('tableControlsButton.shown') }}
 				</h4>
-				<fieldset v-for="column in visibleColumns" :key="column.key" :class="$style.column">
-					<N8nIcon icon="grip-vertical" :class="$style.grip" />
-					<label>{{ column.label }}</label>
-					<N8nIcon
-						:class="$style.visibilityToggle"
-						icon="eye"
-						@click="() => emit('update:columnVisibility', column.key, false)"
-					/>
-				</fieldset>
+				<div v-for="column in visibleColumns" :key="column.key" :class="$style.columnWrapper">
+					<div v-if="dragOverItem === column.key" :class="$style.dropIndicator"></div>
+					<fieldset
+						:class="[
+							$style.column,
+							$style.draggable,
+							{ [$style.dragging]: draggedItem === column.key },
+						]"
+						draggable="true"
+						@dragstart="(event) => handleDragStart(event, column.key)"
+						@dragover="(event) => handleDragOver(event, column.key)"
+						@dragleave="handleDragLeave"
+						@drop="(event) => handleDrop(event, column.key)"
+						@dragend="handleDragEnd"
+					>
+						<N8nIcon icon="grip-vertical" :class="$style.grip" />
+						<label>{{ column.label }}</label>
+						<N8nIcon
+							:class="$style.visibilityToggle"
+							icon="eye"
+							@click="() => emit('update:columnVisibility', column.key, false)"
+						/>
+					</fieldset>
+				</div>
+				<!-- Drop zone at the end -->
+				<div
+					:class="$style.endDropZone"
+					@dragover="(event) => handleDragOver(event, 'END')"
+					@dragleave="handleDragLeave"
+					@drop="(event) => handleDrop(event, 'END')"
+				>
+					<div v-if="dragOverItem === 'END'" :class="$style.dropIndicator"></div>
+				</div>
 			</div>
 			<div
 				v-if="hiddenColumns.length"
@@ -86,10 +183,6 @@ const emit = defineEmits<{
 	margin-bottom: var(--spacing-xs);
 }
 
-.shownSection {
-	margin-bottom: var(--spacing-l);
-}
-
 .grip {
 	color: var(--color-text-light);
 }
@@ -105,6 +198,41 @@ const emit = defineEmits<{
 		font-size: var(--font-size-xs);
 		flex-grow: 1;
 	}
+}
+
+.draggable {
+	cursor: grab;
+	transition: all 0.2s ease;
+
+	&:active {
+		cursor: grabbing;
+	}
+}
+
+.dragging {
+	opacity: 0.5;
+	transform: scale(0.95);
+}
+
+.columnWrapper {
+	position: relative;
+}
+
+.dropIndicator {
+	position: absolute;
+	top: -2px;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background-color: var(--prim-color-secondary);
+	border-radius: 2px;
+	z-index: 10;
+}
+
+.endDropZone {
+	position: relative;
+	height: 8px;
+	width: 100%;
 }
 
 .hidden {
