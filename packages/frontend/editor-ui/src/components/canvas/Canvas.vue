@@ -285,6 +285,16 @@ function selectUpstreamNodes(id: string) {
 	onSelectNodes({ ids: [...upstreamNodes.map((node) => node.id), id] });
 }
 
+function onToggleZoomMode() {
+	experimentalNdvStore.toggleZoomMode(
+		viewport.value,
+		selectedNodes.value,
+		setViewport,
+		fitView,
+		zoomTo,
+	);
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -308,6 +318,7 @@ const keyMap = computed(() => {
 		l: () => emit('update:logs-open'),
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
+		z: onToggleZoomMode,
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -896,7 +907,6 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
-					:is-experimental-ndv-active="isExperimentalNdvActive"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -968,6 +978,7 @@ provide(CanvasKey, {
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@toggle-zoom-mode="onToggleZoomMode"
 		/>
 
 		<Suspense>
