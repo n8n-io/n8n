@@ -41,7 +41,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
+		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
 	function focusNode(nodeId: string) {
@@ -71,11 +71,11 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length,
 		);
 
-		void vueFlow.setCenter(
-			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
-			nodeToFocus.position[1] + 80,
-			{ duration: 200, zoom: maxCanvasZoom.value },
-		);
+		void vueFlow.setCenter(nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2, {
+			duration: 200,
+			zoom: maxCanvasZoom.value,
+			interpolate: 'linear',
+		});
 	}
 
 	return {

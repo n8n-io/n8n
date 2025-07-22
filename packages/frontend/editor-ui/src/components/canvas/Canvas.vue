@@ -431,7 +431,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, { duration: 200 });
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
