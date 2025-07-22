@@ -113,12 +113,17 @@ const handleDragEnd = () => {
 			<div
 				v-if="visibleColumns.length"
 				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
+				data-testid="visible-columns-section"
 			>
 				<h4 :class="$style.header">
 					{{ t('tableControlsButton.shown') }}
 				</h4>
 				<div v-for="column in visibleColumns" :key="column.key" :class="$style.columnWrapper">
-					<div v-if="dragOverItem === column.key" :class="$style.dropIndicator"></div>
+					<div
+						v-if="dragOverItem === column.key"
+						:class="$style.dropIndicator"
+						data-testid="drop-indicator"
+					></div>
 					<fieldset
 						:class="[
 							$style.column,
@@ -126,6 +131,8 @@ const handleDragEnd = () => {
 							{ [$style.dragging]: draggedItem === column.key },
 						]"
 						draggable="true"
+						data-testid="visible-column"
+						:data-column-key="column.key"
 						@dragstart="(event) => handleDragStart(event, column.key)"
 						@dragover="(event) => handleDragOver(event, column.key)"
 						@dragleave="handleDragLeave"
@@ -137,6 +144,7 @@ const handleDragEnd = () => {
 						<N8nIcon
 							:class="$style.visibilityToggle"
 							icon="eye"
+							data-testid="visibility-toggle-visible"
 							@click="() => emit('update:columnVisibility', column.key, false)"
 						/>
 					</fieldset>
@@ -144,16 +152,22 @@ const handleDragEnd = () => {
 				<!-- Drop zone at the end -->
 				<div
 					:class="$style.endDropZone"
+					data-testid="end-drop-zone"
 					@dragover="(event) => handleDragOver(event, 'END')"
 					@dragleave="handleDragLeave"
 					@drop="(event) => handleDrop(event, 'END')"
 				>
-					<div v-if="dragOverItem === 'END'" :class="$style.dropIndicator"></div>
+					<div
+						v-if="dragOverItem === 'END'"
+						:class="$style.dropIndicator"
+						data-testid="drop-indicator"
+					></div>
 				</div>
 			</div>
 			<div
 				v-if="hiddenColumns.length"
 				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
+				data-testid="hidden-columns-section"
 			>
 				<p :class="$style.header">
 					{{ t('tableControlsButton.hidden') }}
@@ -162,12 +176,14 @@ const handleDragEnd = () => {
 					v-for="column in hiddenColumns"
 					:key="column.key"
 					:class="[$style.column, $style.hidden]"
+					data-testid="hidden-column"
 				>
 					<N8nIcon icon="grip-vertical" :class="[$style.grip, $style.hidden]" />
 					<label>{{ column.label }}</label>
 					<N8nIcon
 						:class="$style.visibilityToggle"
 						icon="eye-off"
+						data-testid="visibility-toggle-hidden"
 						@click="() => emit('update:columnVisibility', column.key, true)"
 					/>
 				</fieldset>
