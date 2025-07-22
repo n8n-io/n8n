@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.103.0",
+  "version": "1.104.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -37,6 +37,7 @@
     "lint:backend": "turbo run lint:backend",
     "lint:nodes": "turbo run lint:nodes",
     "lint:frontend": "turbo run lint:frontend",
+    "lint:testing": "turbo run lint:testing",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
