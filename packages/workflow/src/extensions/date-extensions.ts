@@ -449,11 +449,11 @@ minus.doc = {
 	examples: [
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(7, 'days')",
-			evaluated: '[DateTime: 2024-04-23T18:49:00.000Z]',
+			evaluated: '[DateTime: 2024-03-23T18:49:00.000Z]',
 		},
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(4, 'years')",
-			evaluated: '[DateTime: 2020-04-30T18:49:00.000Z]',
+			evaluated: '[DateTime: 2020-03-30T18:49:00.000Z]',
 		},
 	],
 	section: 'edit',
