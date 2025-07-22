@@ -284,7 +284,7 @@ onNodeClick((nodeId) => {
 	}
 });
 
-function setSelectedDetailId(nodeId: string | undefined, context: 'nodes' | 'connectors') {
+function setSelectedDetailId(nodeId: string | undefined, context: 'nodes' | 'connectors' | 'settings') {
 	if (!nodeId) {
 		selectedDetailId.value = undefined;
 		return;
