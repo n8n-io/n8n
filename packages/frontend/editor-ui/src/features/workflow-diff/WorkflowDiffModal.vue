@@ -2,6 +2,7 @@
 import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
@@ -29,6 +30,7 @@ const props = defineProps<{
 
 const { selectedDetailId, onNodeClick } = useProvideViewportSync();
 
+const telemetry = useTelemetry();
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
@@ -155,6 +157,10 @@ const nodeChanges = computed(() => {
 });
 
 function nextNodeChange() {
+	telemetry.track('User iterated over changes', {
+		workflow_id: props.data.workflowId,
+		context: 'next',
+	});
 	const currentIndex = nodeChanges.value.findIndex(
 		(change) => change.node.id === selectedDetailId.value,
 	);
@@ -164,6 +170,10 @@ function nextNodeChange() {
 }
 
 function previousNodeChange() {
+	telemetry.track('User iterated over changes', {
+		workflow_id: props.data.workflowId,
+		context: 'previous',
+	});
 	const currentIndex = nodeChanges.value.findIndex(
 		(change) => change.node.id === selectedDetailId.value,
 	);
@@ -207,8 +217,18 @@ function setActiveTab(active: boolean) {
 		return;
 	}
 
+	telemetry.track('User clicked workflow diff changes button', {
+		workflow_id: props.data.workflowId,
+	});
 	const value = tabs.value.find((tab) => !tab.disabled)?.value ?? 'nodes';
 	activeTab.value = value;
+}
+
+function trackTabChange(value: 'nodes' | 'connectors' | 'settings') {
+	telemetry.track('User clicked changes tabs', {
+		workflow_id: props.data.workflowId,
+		context: `${value}_tab`,
+	});
 }
 
 const selectedNode = computed(() => {
@@ -248,12 +268,43 @@ const changesCount = computed(
 );
 
 onNodeClick((nodeId) => {
-	const status = nodesDiff.value.get(nodeId)?.status;
+	const node = nodesDiff.value.get(nodeId);
+	if (!node) {
+		return;
+	}
 
-	if (status && status !== NodeDiffStatus.Eq) {
+	telemetry.track('User clicked to view node changes', {
+		workflow_id: props.data.workflowId,
+		node_type: node.node.type,
+		context: 'canvas',
+	});
+
+	if (node.status !== NodeDiffStatus.Eq) {
 		selectedDetailId.value = nodeId;
 	}
 });
+
+function setSelectedDetailId(
+	nodeId: string | undefined,
+	context: 'nodes' | 'connectors' | 'settings',
+) {
+	if (!nodeId) {
+		selectedDetailId.value = undefined;
+		return;
+	}
+
+	selectedDetailId.value = nodeId;
+	const node = nodesDiff.value.get(nodeId);
+	if (!node) {
+		return;
+	}
+
+	telemetry.track('User clicked to view node changes', {
+		workflow_id: props.data.workflowId,
+		node_type: node.node.type,
+		context: `${context}_list`,
+	});
+}
 
 const modifiers = [
 	{
@@ -325,6 +376,7 @@ const modifiers = [
 										:options="tabs"
 										:class="$style.tabs"
 										class="mb-xs"
+										@update:model-value="trackTabChange"
 									>
 										<template #option="{ label, data: optionData }">
 											{{ label }}
@@ -342,7 +394,7 @@ const modifiers = [
 													[$style.clickableChange]: true,
 													[$style.clickableChangeActive]: selectedDetailId === change.node.id,
 												}"
-												@click.prevent="selectedDetailId = change.node.id"
+												@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
 											>
 												<DiffBadge :type="change.status" />
 												<NodeIcon :node-type="change.type" :size="16" />
@@ -362,7 +414,9 @@ const modifiers = [
 																[$style.clickableChangeActive]:
 																	selectedDetailId === change[1].connection.source?.id,
 															}"
-															@click.prevent="selectedDetailId = change[1].connection.source?.id"
+															@click.prevent="
+																setSelectedDetailId(change[1].connection.source?.id, activeTab)
+															"
 														>
 															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
 															{{ change[1].connection.source?.name }}
@@ -374,7 +428,9 @@ const modifiers = [
 																[$style.clickableChangeActive]:
 																	selectedDetailId === change[1].connection.target?.id,
 															}"
-															@click.prevent="selectedDetailId = change[1].connection.target?.id"
+															@click.prevent="
+																setSelectedDetailId(change[1].connection.target?.id, activeTab)
+															"
 														>
 															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
 															{{ change[1].connection.target?.name }}
