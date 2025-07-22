@@ -81,14 +81,22 @@ export const createCallTool =
 	(name: string, client: Client, onError: (error: string | undefined) => void) =>
 	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
+
+		function handleError(error: unknown) {
+			const errorDescription =
+				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
+			onError(errorDescription);
+			return errorDescription;
+		}
+
 		try {
 			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
 		} catch (error) {
-			return onError(getErrorDescriptionFromToolCall(error));
+			return handleError(error);
 		}
 
 		if (result.isError) {
-			return onError(getErrorDescriptionFromToolCall(result));
+			return handleError(result);
 		}
 
 		if (result.toolResult !== undefined) {

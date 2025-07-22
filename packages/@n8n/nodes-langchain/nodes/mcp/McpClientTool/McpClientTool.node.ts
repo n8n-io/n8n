@@ -296,9 +296,6 @@ export class McpClientTool implements INodeType {
 					tool,
 					createCallTool(tool.name, client.result, (error) => {
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
-							description: error,
-						});
 					}),
 				),
 				this,
