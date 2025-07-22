@@ -1,22 +1,24 @@
-import { UserError, NodeOperationError } from 'n8n-workflow';
+import { UserError, NodeOperationError, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	INodeParameters,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	GenericValue,
 } from 'n8n-workflow';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { metricHandlers } from './metricHandlers';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
+import assert from 'node:assert';
 
 function withEvaluationData(this: IExecuteFunctions, data: IDataObject): INodeExecutionData[] {
-	const isEvaluationMode = this.getMode() === 'evaluation';
 	const inputData = this.getInputData();
 	if (!inputData.length) {
 		return inputData;
 	}
 
+	const isEvaluationMode = this.getMode() === 'evaluation';
 	return [
 		{
 			...inputData[0],
@@ -27,16 +29,32 @@ function withEvaluationData(this: IExecuteFunctions, data: IDataObject): INodeEx
 	];
 }
 
+function isOutputsArray(
+	value: unknown,
+): value is Array<{ outputName: string; outputValue: GenericValue }> {
+	return (
+		Array.isArray(value) &&
+		value.every(
+			(item) =>
+				typeof item === 'object' &&
+				item !== null &&
+				'outputName' in item &&
+				'outputValue' in item &&
+				typeof item.outputName === 'string',
+		)
+	);
+}
+
 export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
 	const parentNodes = this.getParentNodes(evaluationNode.name);
 
-	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
-	const evalTriggerOutput = evalTrigger
+	const evalTrigger = parentNodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+	const isEvalTriggerExecuted = evalTrigger
 		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
-		: undefined;
+		: false;
 
-	if (!evalTrigger || !evalTriggerOutput) {
+	if (!evalTrigger || !isEvalTriggerExecuted) {
 		this.addExecutionHints({
 			message: "No outputs were set since the execution didn't start from an evaluation trigger",
 			location: 'outputPane',
@@ -44,10 +62,11 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		return [this.getInputData()];
 	}
 
-	const outputFields = this.getNodeParameter('outputs.values', 0, []) as Array<{
-		outputName: string;
-		outputValue: string;
-	}>;
+	const outputFields = this.getNodeParameter('outputs.values', 0, []);
+	assert(
+		isOutputsArray(outputFields),
+		'Invalid output fields format. Expected an array of objects with outputName and outputValue properties.',
+	);
 
 	if (outputFields.length === 0) {
 		throw new UserError('No outputs to set', {
@@ -107,16 +126,32 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 	return [withEvaluationData.call(this, outputs)];
 }
 
+function isInputsArray(
+	value: unknown,
+): value is Array<{ inputName: string; inputValue: GenericValue }> {
+	return (
+		Array.isArray(value) &&
+		value.every(
+			(item) =>
+				typeof item === 'object' &&
+				item !== null &&
+				'inputName' in item &&
+				'inputValue' in item &&
+				typeof item.inputName === 'string',
+		)
+	);
+}
+
 export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 	const evaluationNode = this.getNode();
 	const parentNodes = this.getParentNodes(evaluationNode.name);
 
 	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
-	const evalTriggerOutput = evalTrigger
+	const isEvalTriggerExecuted = evalTrigger
 		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
-		: undefined;
+		: false;
 
-	if (!evalTrigger || !evalTriggerOutput) {
+	if (!evalTrigger || !isEvalTriggerExecuted) {
 		this.addExecutionHints({
 			message: "No inputs were set since the execution didn't start from an evaluation trigger",
 			location: 'outputPane',
@@ -124,10 +159,11 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 		return [this.getInputData()];
 	}
 
-	const inputFields = this.getNodeParameter('inputs.values', 0, []) as Array<{
-		inputName: string;
-		inputValue: string;
-	}>;
+	const inputFields = this.getNodeParameter('inputs.values', 0, []);
+	assert(
+		isInputsArray(inputFields),
+		'Invalid input fields format. Expected an array of objects with inputName and inputValue properties.',
+	);
 
 	if (inputFields.length === 0) {
 		throw new UserError('No inputs to set', {
@@ -181,11 +217,11 @@ export async function checkIfEvaluating(this: IExecuteFunctions): Promise<INodeE
 	const parentNodes = this.getParentNodes(evaluationNode.name);
 
 	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
-	const evalTriggerOutput = evalTrigger
+	const isEvalTriggerExecuted = evalTrigger
 		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
-		: undefined;
+		: false;
 
-	if (evalTriggerOutput) {
+	if (isEvalTriggerExecuted) {
 		return [this.getInputData(), normalExecutionResult];
 	} else {
 		return [evaluationExecutionResult, this.getInputData()];

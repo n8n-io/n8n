@@ -1,3 +1,5 @@
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from 'migrations/common/1752669793000-AddInputsOutputsToTestCaseExecution';
+
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -43,7 +45,6 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
-import { AddInputsOutputsToTestCaseExecution1752669793000 } from './1752669793000-AddInputsOutputsToTestCaseExecution';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';

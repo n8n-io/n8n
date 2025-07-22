@@ -364,7 +364,7 @@ export class TestRunnerService {
 	 */
 	static getEvaluationNodes(
 		workflow: IWorkflowBase,
-		operation: string,
+		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
 		isDefaultOperation = false,
 	) {
 		return workflow.nodes.filter(
