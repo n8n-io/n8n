@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useLoadingService } from '@/composables/useLoadingService';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
@@ -31,6 +32,7 @@ const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
 
+const telemetry = useTelemetry();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
@@ -108,6 +110,10 @@ async function pullWorkfolder() {
 const workflowDiffEventBus = createEventBus();
 
 function openDiffModal(id: string) {
+	telemetry.track('User clicks compare workflows', {
+		workflow_id: id,
+		context: 'source_control_pull',
+	});
 	uiStore.openModalWithData({
 		name: WORKFLOW_DIFF_MODAL_KEY,
 		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'pull' },
