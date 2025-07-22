@@ -180,7 +180,7 @@ export const useAIAssistantHelpers = () => {
 	 * @param nodeNames The names of the nodes to get the schema for
 	 * @returns An array of NodeExecutionSchema objects
 	 */
-	function getNodesSchemas(nodeNames: string[]) {
+	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		for (const name of nodeNames) {
 			const node = workflowsStore.getNodeByName(name);
@@ -188,7 +188,10 @@ export const useAIAssistantHelpers = () => {
 				continue;
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
-			const schema = getSchemaForExecutionData(executionDataToJson(getInputDataWithPinned(node)));
+			const schema = getSchemaForExecutionData(
+				executionDataToJson(getInputDataWithPinned(node)),
+				excludeValues,
+			);
 			schemas.push({
 				nodeName: node.name,
 				schema,
@@ -262,7 +265,10 @@ export const useAIAssistantHelpers = () => {
 		payload: ChatRequest.RequestPayload,
 		size = AI_ASSISTANT_MAX_CONTENT_LENGTH,
 	): void => {
-		const requestPayload = payload.payload;
+		// Create a deep copy to avoid mutating the original payload
+		const payloadCopy = deepCopy(payload);
+		const requestPayload = payloadCopy.payload;
+
 		// For support chat, remove parameters from the active node object and all nodes in the workflow
 		if (requestPayload.type === 'init-support-chat') {
 			if (requestPayload.context?.activeNodeInfo?.node) {
@@ -285,7 +291,7 @@ export const useAIAssistantHelpers = () => {
 				}
 			}
 			// If the payload is still too big, remove the whole context object
-			if (getRequestPayloadSize(payload) > size) {
+			if (getRequestPayloadSize(payloadCopy) > size) {
 				requestPayload.context = undefined;
 			}
 			// For error helper, remove parameters from the active node object
@@ -294,9 +300,12 @@ export const useAIAssistantHelpers = () => {
 			requestPayload.node.parameters = {};
 		}
 		// If the payload is still too big, throw an error that will be shown to the user
-		if (getRequestPayloadSize(payload) > size) {
+		if (getRequestPayloadSize(payloadCopy) > size) {
 			throw new Error(locale.baseText('aiAssistant.payloadTooBig.message'));
 		}
+
+		// Apply the trimmed payload back to the original object
+		payload.payload = payloadCopy.payload;
 	};
 
 	/**
