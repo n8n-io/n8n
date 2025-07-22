@@ -75,8 +75,11 @@ const edgeColor = computed(() => {
 const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
-	stroke: delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
+
+const edgeStroke = computed(() =>
+	delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
+);
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
@@ -135,7 +138,10 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		v-bind="$attrs"
 	>
+		<slot name="highlight" v-bind="{ segments }" />
+
 		<BaseEdge
 			v-for="(segment, index) in segments"
 			:id="`${id}-${index}`"
@@ -175,6 +181,7 @@ function onEdgeLabelMouseLeave() {
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
+	stroke: var(--canvas-edge-color, v-bind(edgeStroke));
 	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1));
 	stroke-linecap: square;
 }

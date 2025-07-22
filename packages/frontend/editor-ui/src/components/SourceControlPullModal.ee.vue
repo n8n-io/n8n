@@ -1,27 +1,29 @@
 <script lang="ts" setup>
-import Modal from './Modal.vue';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@n8n/i18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { sourceControlEventBus } from '@/event-bus/source-control';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { computed } from 'vue';
-import { sourceControlEventBus } from '@/event-bus/source-control';
-import groupBy from 'lodash/groupBy';
-import orderBy from 'lodash/orderBy';
-import { N8nBadge, N8nText, N8nLink, N8nButton } from '@n8n/design-system';
-import { RouterLink } from 'vue-router';
 import {
+	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
-	getPullPriorityByStatus,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '@/utils/sourceControlUtils';
+import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+import { N8nBadge, N8nButton, N8nLink, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
+import groupBy from 'lodash/groupBy';
+import orderBy from 'lodash/orderBy';
+import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+import Modal from './Modal.vue';
 
 type SourceControlledFileType = SourceControlledFile['type'];
 
@@ -102,6 +104,15 @@ async function pullWorkfolder() {
 		loadingService.stopLoading();
 	}
 }
+
+const workflowDiffEventBus = createEventBus();
+
+function openDiffModal(id: string) {
+	uiStore.openModalWithData({
+		name: WORKFLOW_DIFF_MODAL_KEY,
+		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'pull' },
+	});
+}
 </script>
 
 <template>
@@ -161,6 +172,14 @@ async function pullWorkfolder() {
 								<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
 									{{ getStatusText(item.status) }}
 								</N8nBadge>
+								<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+									<N8nIconButton
+										v-if="item.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+										icon="git-branch"
+										type="secondary"
+										@click="openDiffModal(item.id)"
+									/>
+								</EnvFeatureFlag>
 							</div>
 						</DynamicScrollerItem>
 					</template>
