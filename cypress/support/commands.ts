@@ -149,7 +149,7 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 });
 
 Cypress.Commands.add('readClipboard', () =>
-	cy.window().then((win) => win.navigator.clipboard.readText()),
+	cy.window().then(async (win) => await win.navigator.clipboard.readText()),
 );
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
