@@ -148,6 +148,7 @@ watchOnce(isVisible, (visible) => {
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
+			pointerEvents: isMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
 		<template v-if="!node || !isOnceVisible" />
@@ -162,9 +163,6 @@ watchOnce(isVisible, (visible) => {
 				tabindex="-1"
 				:node-id="nodeId"
 				:class="$style.settingsView"
-				:no-wheel="
-					!isMoving /* to not interrupt panning while allowing scroll of the settings pane, allow wheel event while panning */
-				"
 				:is-read-only="isReadOnly"
 				:sub-title="subTitle"
 			>
