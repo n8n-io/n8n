@@ -30,6 +30,7 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { useBuilderStore } from './builder.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 300;
@@ -62,6 +63,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
+	const builderStore = useBuilderStore();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -170,6 +172,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		if (chatWindowOpen.value) {
 			closeChat();
 		} else {
+			if (builderStore.isAIBuilderEnabled) {
+				// If builder is enabled, open it instead of assistant
+				void builderStore.openChat();
+				return;
+			}
 			openChat();
 		}
 	}
@@ -180,7 +187,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-		newMessages.forEach((msg) => {
+		(newMessages ?? []).forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
 					id,

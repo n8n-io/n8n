@@ -181,7 +181,7 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource };
+	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[] };
 };
 
 export interface CanvasNodeInjectionData {
