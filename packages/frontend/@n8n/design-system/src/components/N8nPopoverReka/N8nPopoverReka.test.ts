@@ -1,19 +1,28 @@
 import { render } from '@testing-library/vue';
+import { vi } from 'vitest';
 
 import N8nPopoverReka from './N8nPopoverReka.vue';
 
 const defaultStubs = {
 	PopoverContent: {
-		template: '<mock-popover-content><slot /></mock-popover-content>',
-		props: ['open'],
+		template: '<mock-popover-content v-bind="$attrs"><slot /></mock-popover-content>',
+		props: ['open', 'side', 'sideOffset', 'class'],
 	},
 	PopoverPortal: { template: '<mock-popover-portal><slot /></mock-popover-portal>' },
-	PopoverRoot: { template: '<mock-popover-root><slot /></mock-popover-root>' },
-	PopoverTrigger: { template: '<mock-popover-trigger><slot /></mock-popover-trigger>' },
+	PopoverRoot: {
+		template:
+			'<mock-popover-root v-bind="$attrs" @update:open="$emit(\'update:open\', $event)"><slot /></mock-popover-root>',
+		props: ['open'],
+		emits: ['update:open'],
+	},
+	PopoverTrigger: {
+		template: '<mock-popover-trigger v-bind="$attrs"><slot /></mock-popover-trigger>',
+		props: ['asChild'],
+	},
 };
 
 describe('N8nPopoverReka', () => {
-	it('should render correctly', () => {
+	it('should render correctly with default props', () => {
 		const wrapper = render(N8nPopoverReka, {
 			props: {},
 			global: {
@@ -26,5 +35,48 @@ describe('N8nPopoverReka', () => {
 		});
 
 		expect(wrapper.html()).toMatchSnapshot();
+		expect(wrapper.html()).toContain('<button></button>');
+		expect(wrapper.html()).toContain('<content></content>');
+	});
+
+	it('should emit update:open with false when close function is called', () => {
+		let closeFunction: (() => void) | undefined;
+
+		const wrapper = render(N8nPopoverReka, {
+			props: {},
+			global: {
+				stubs: {
+					...defaultStubs,
+					PopoverContent: {
+						template:
+							'<mock-popover-content v-bind="$attrs"><slot :close="mockClose" /></mock-popover-content>',
+						props: ['side', 'sideOffset', 'class'],
+						setup() {
+							const mockClose = vi.fn(() => {
+								if (closeFunction) {
+									closeFunction();
+								}
+							});
+							return { mockClose };
+						},
+					},
+				},
+			},
+			slots: {
+				trigger: '<button />',
+				content: ({ close }: { close: () => void }) => {
+					closeFunction = close;
+					return '<button>Close</button>';
+				},
+			},
+		});
+
+		// Call the close function
+		if (closeFunction) {
+			closeFunction();
+		}
+
+		expect(wrapper.emitted()).toHaveProperty('update:open');
+		expect(wrapper.emitted()['update:open']).toContainEqual([false]);
 	});
 });

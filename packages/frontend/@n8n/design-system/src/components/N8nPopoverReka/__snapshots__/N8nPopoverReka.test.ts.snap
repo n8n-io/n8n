@@ -10,3 +10,25 @@ exports[`N8nPopoverReka > should render correctly 1`] = `
   </mock-popover-portal>
 </mock-popover-root>"
 `;
+
+exports[`N8nPopoverReka > should render correctly with default props 1`] = `
+"<mock-popover-root>
+  <mock-popover-trigger><button></button></mock-popover-trigger>
+  <mock-popover-portal>
+    <mock-popover-content>
+      <content></content>
+    </mock-popover-content>
+  </mock-popover-portal>
+</mock-popover-root>"
+`;
+
+exports[`N8nPopoverReka > should render with open prop set to true 1`] = `
+"<mock-popover-root>
+  <mock-popover-trigger><button>Open Popover</button></mock-popover-trigger>
+  <mock-popover-portal>
+    <mock-popover-content>
+      <div>Popover Content</div>
+    </mock-popover-content>
+  </mock-popover-portal>
+</mock-popover-root>"
+`;
