@@ -2207,6 +2207,24 @@ export interface IRunExecutionData {
 		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+
+export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+
+export interface NodeExecutionSchema {
+	nodeName: string;
+	schema: Schema;
+}
 
 export interface IRunData {
 	// node-name: result-data
