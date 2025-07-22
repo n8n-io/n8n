@@ -77,6 +77,10 @@ export class Gitlab implements INodeType {
 						value: 'issue',
 					},
 					{
+						name: 'Merge Request',
+						value: 'mergeRequest',
+					}
+					{
 						name: 'Release',
 						value: 'release',
 					},
@@ -276,6 +280,33 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'create',
+			},
+			
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['mergeRequest'],
+					},
+				},
+				options: [
+					{
+						name: 'Approve',
+						value: 'approve',
+						description: 'Approve a merge request',
+						action: 'Approve a merge request',
+					},
+					{
+						name: 'Unapprove',
+						value: 'unapprove',
+						description: 'Unapprove a merge request',
+						action: 'Unapprove a merge request',
+					},
+				],
+				default: 'approve',
 			},
 
 			// ----------------------------------
@@ -1320,6 +1351,27 @@ export class Gitlab implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         mergeRequest
+			// ----------------------------------
+
+			// ----------------------------------
+			//         mergeRequest:approve/unapprove
+			// ----------------------------------
+			{
+				displayName: 'Merge Request IID',
+				name: 'merge_request_iid',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['approve', 'unapprove'],
+						resource: ['mergeRequest'],
+					},
+				},
+				description: 'The IID of a merge request',
+			},
 		],
 	};
 
@@ -1706,6 +1758,18 @@ export class Gitlab implements INodeType {
 							qs.path = filePath;
 						}
 						endpoint = `${baseEndpoint}/repository/tree`;
+					}
+				} else if (resource === 'mergeRequest') {
+					const merge_request_iid = this.getNodeParameter('merge_request_iid', i) as string;
+					
+					if (operation === 'approve') {
+						requestMethod = 'POST';
+
+						endpoint = `${baseEndpoint}/merge_requests/${merge_request_iid}/approve`;
+					} else if (operation === 'unapprove') {
+						requestMethod = 'POST';
+
+						endpoint = `${baseEndpoint}/merge_requests/${merge_request_iid}/unapprove`;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
