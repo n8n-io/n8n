@@ -235,7 +235,14 @@ export class RabbitMQTrigger implements INodeType {
 
 				const processMessage = async (message: Message | null) => {
 					if (message !== null) {
-						handleMessage.call(this, message, channel, messageTracker, acknowledgeMode, options);
+						void handleMessage.call(
+							this,
+							message,
+							channel,
+							messageTracker,
+							acknowledgeMode,
+							options,
+						);
 					} else {
 						this.emitError(new Error('Connection got closed unexpectedly'));
 					}
@@ -283,7 +290,7 @@ export class RabbitMQTrigger implements INodeType {
 
 		const consumerInfo = await channel.consume(queue, async (message) => {
 			if (message !== null) {
-				handleMessage.call(this, message, channel, messageTracker, acknowledgeMode, options);
+				void handleMessage.call(this, message, channel, messageTracker, acknowledgeMode, options);
 			}
 		});
 		consumerTag = consumerInfo.consumerTag;
