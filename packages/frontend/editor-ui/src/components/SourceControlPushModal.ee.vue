@@ -837,12 +837,10 @@ function openDiffModal(id: string) {
 
 		<template #footer>
 			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
-				<N8nText bold size="medium"> Changes to variables, tags and folders </N8nText>
+				<N8nText bold size="medium">Changes to variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
-					<N8nText bold size="small">
-						{{ title }}
-					</N8nText>
+					<N8nText bold size="small"> {{ title }}</N8nText>
 					<N8nText size="small"> : {{ content }}. </N8nText>
 				</template>
 			</N8nNotice>
