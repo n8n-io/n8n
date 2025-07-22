@@ -13,6 +13,7 @@ import { useWorkflowsStore } from './workflows.store';
 import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
+import { isFromAIOverrideValue } from '@/utils/fromAIOverrideUtils';
 
 // matches NodeCreator to ensure they fully overlap by default when both are open
 const DEFAULT_PANEL_WIDTH = 385;
@@ -63,17 +64,25 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
-	// An unenriched parameter indicates a missing nodeId
+	// An unenriched parameter indicates a missing nodeId or an otherwise unfocusable parameter
 	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
 		() =>
 			_focusedNodeParameters.value.map((x) => {
 				const node = workflowsStore.getNodeById(x.nodeId);
 				if (!node) return x;
 
+				const value = get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, ''));
+
+				// For overridden parameters we pretend they are gone
+				// To avoid situations where we show the raw value of a newly overridden, previously focused parameter
+				if (typeof value === 'string' && isFromAIOverrideValue(value)) {
+					return x;
+				}
+
 				return {
 					...x,
 					node,
-					value: get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, '')),
+					value,
 				} satisfies RichFocusedNodeParameter;
 			}),
 	);
