@@ -80,6 +80,7 @@ const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	placeholder,
 	extensions,
 	isReadOnly: () => props.isReadOnly,
+
 	theme: {
 		maxHeight: props.fillParent ? '100%' : '40vh',
 		minHeight: '20vh',
@@ -263,6 +264,7 @@ defineExpose({
 				<AskAI
 					:key="activeTab"
 					:has-changes="hasManualChanges"
+					:is-read-only="props.isReadOnly"
 					@replace-code="onAiReplaceCode"
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"
