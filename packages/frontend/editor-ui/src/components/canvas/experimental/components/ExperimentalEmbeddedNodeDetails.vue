@@ -58,8 +58,8 @@ const isVisible = computed(() =>
 		{
 			x: -vf.viewport.value.x / vf.viewport.value.zoom,
 			y: -vf.viewport.value.y / vf.viewport.value.zoom,
-			width: vf.viewportRef.value?.offsetWidth ?? 0,
-			height: vf.viewportRef.value?.offsetHeight ?? 0,
+			width: vf.dimensions.value.width,
+			height: vf.dimensions.value.height,
 		},
 	),
 );
