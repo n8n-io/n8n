@@ -137,6 +137,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -197,6 +198,7 @@ const foldersStore = useFoldersStore();
 const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
+const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -498,6 +500,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
+		}
+
+		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
+			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+				workflowData.meta.templateId.split('-').pop() ?? '',
+			);
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);

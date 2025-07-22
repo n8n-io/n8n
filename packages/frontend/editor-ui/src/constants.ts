@@ -496,6 +496,8 @@ export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLE
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
 export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
 export const LOCAL_STORAGE_FOCUS_PANEL = 'N8N_FOCUS_PANEL';
+export const LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS =
+	'N8N_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS';
 
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
@@ -761,10 +763,18 @@ export const FOCUS_PANEL_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const TEMPLATE_ONBOARDING_EXPERIMENT = {
+	name: '035_template_onboarding',
+	control: 'control',
+	variantStarterPack: 'variant-starter-pack',
+	variantSuggestedTemplates: 'variant-suggested-templates',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
+	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
