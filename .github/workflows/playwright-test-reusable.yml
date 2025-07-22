@@ -1,0 +1,84 @@
+name: Playwright Tests - Reusable
+
+on:
+  workflow_call:
+    inputs:
+      test-mode:
+        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        required: false
+        default: 'local'
+        type: string
+      shards:
+        description: 'Shards for parallel execution'
+        required: false
+        default: '[1]'
+        type: string
+      docker-image:
+        description: 'Docker image to use (for docker-pull mode)'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+
+    secrets:
+      CURRENTS_RECORD_KEY:
+        required: true
+
+env:
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+  NODE_OPTIONS: --max-old-space-size=4096
+  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
+  TESTCONTAINERS_RYUK_DISABLED: true
+
+jobs:
+  test:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards || '[1]') }}
+    name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
+          enable-docker-cache: ${{ inputs.test-mode != 'local' }}
+
+      - name: Install Browsers (Docker Build)
+        if: inputs.test-mode == 'docker-build'
+        run: pnpm turbo install-browsers:ci
+
+      - name: Start Local Server
+        if: inputs.test-mode == 'local'
+        env:
+          E2E_TESTS: true
+        run: |
+          pnpm start &
+          npx wait-on http://localhost:5678 --timeout 15000
+
+      - name: Run Tests (Local)
+        if: inputs.test-mode == 'local'
+        run: |
+          pnpm --filter=n8n-playwright test \
+            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
+            --workers=2
+        env:
+          N8N_BASE_URL: http://localhost:5678
+          RESET_E2E_DB: true
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+
+      - name: Run Tests (Docker)
+        if: inputs.test-mode != 'local'
+        run: |
+          pnpm --filter=n8n-playwright run test:standard \
+            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
+            --workers=2
+        env:
+          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}

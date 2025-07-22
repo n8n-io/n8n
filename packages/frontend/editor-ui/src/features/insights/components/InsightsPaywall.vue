@@ -20,7 +20,7 @@ const goToUpgrade = async () => {
 			{{ i18n.baseText('insights.dashboard.paywall.description') }}
 		</N8nText>
 		<N8nButton type="primary" native-type="button" size="large" @click="goToUpgrade">
-			{{ i18n.baseText('insights.dashboard.paywall.cta') }}
+			{{ i18n.baseText('generic.upgrade') }}
 		</N8nButton>
 	</div>
 </template>

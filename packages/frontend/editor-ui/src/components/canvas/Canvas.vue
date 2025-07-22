@@ -179,9 +179,12 @@ const experimentalNdvStore = useExperimentalNdvStore();
 
 const isPaneReady = ref(false);
 
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
+	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
 /**
@@ -714,7 +717,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 	}
 }
 
-async function onTidyUp(payload: { source: CanvasLayoutSource }) {
+async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
+	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
+		clearSelectedNodes();
+		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
+	}
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
@@ -840,6 +847,7 @@ provide(CanvasKey, {
 	isExecuting,
 	initialized,
 	viewport,
+	isExperimentalNdvActive,
 });
 </script>
 
@@ -888,6 +896,7 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					:is-experimental-ndv-active="isExperimentalNdvActive"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -953,6 +962,7 @@ provide(CanvasKey, {
 			:show-interactive="false"
 			:zoom="viewport.zoom"
 			:read-only="readOnly"
+			:is-experimental-ndv-active="isExperimentalNdvActive"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
@@ -987,6 +997,10 @@ provide(CanvasKey, {
 		&:global(.dragging) {
 			cursor: grabbing;
 		}
+	}
+
+	&.isExperimentalNdvActive {
+		--canvas-zoom-compensation-factor: 0.67;
 	}
 }
 </style>

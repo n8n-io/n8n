@@ -10,6 +10,7 @@ const props = withDefaults(
 	defineProps<{
 		zoom?: number;
 		readOnly?: boolean;
+		isExperimentalNdvActive: boolean;
 	}>(),
 	{
 		zoom: 1,
@@ -113,7 +114,7 @@ function onTidyUp() {
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 		<N8nTooltip
-			v-if="experimentalNdvStore.isActive(props.zoom)"
+			v-if="isExperimentalNdvActive"
 			placement="top"
 			:content="i18n.baseText('nodeView.expandAllNodes')"
 		>
@@ -125,7 +126,7 @@ function onTidyUp() {
 			/>
 		</N8nTooltip>
 		<N8nTooltip
-			v-if="experimentalNdvStore.isActive(props.zoom)"
+			v-if="isExperimentalNdvActive"
 			placement="top"
 			:content="i18n.baseText('nodeView.collapseAllNodes')"
 		>

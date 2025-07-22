@@ -61,6 +61,10 @@ export class NodesConfig {
 	@Env('NODES_ERROR_TRIGGER_TYPE')
 	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
+	/** Whether to enable Python execution on the Code node. */
+	@Env('N8N_PYTHON_ENABLED')
+	pythonEnabled: boolean = true;
+
 	@Nested
 	communityPackages: CommunityPackagesConfig;
 }

@@ -18,6 +18,7 @@ export type StrapiCommunityNodeType = {
 	isOfficialNode: boolean;
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
+	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 };
 
 const N8N_VETTED_NODE_TYPES_STAGING_URL = 'https://api-staging.n8n.io/api/community-nodes';

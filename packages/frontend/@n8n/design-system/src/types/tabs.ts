@@ -10,4 +10,5 @@ export interface TabOptions<Value extends string | number> {
 	tooltip?: string;
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
+	notification?: boolean;
 }
