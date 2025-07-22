@@ -1,3 +1,14 @@
+## [1.103.2](https://github.com/n8n-io/n8n/compare/n8n@1.103.1...n8n@1.103.2) (2025-07-22)
+
+
+### Bug Fixes
+
+* **editor:** Fix trimPayloadToSize mutating original objects in AI assistant ([#17498](https://github.com/n8n-io/n8n/issues/17498)) ([7724343](https://github.com/n8n-io/n8n/commit/7724343a8d306def69655783b00562bae23f6adf))
+* **GitHub Document Loader Node:** Fix node loading issue ([#17494](https://github.com/n8n-io/n8n/issues/17494)) ([2e75ddf](https://github.com/n8n-io/n8n/commit/2e75ddfcbb6762fddec7fbcfdf7737bdd58391e7))
+* **OpenAi Node:** optional chaining for error handling in router ([#17412](https://github.com/n8n-io/n8n/issues/17412)) ([952f869](https://github.com/n8n-io/n8n/commit/952f8697b0dbdbc18557676adc6687fa05739500))
+
+
+
 ## [1.103.1](https://github.com/n8n-io/n8n/compare/n8n@1.103.0...n8n@1.103.1) (2025-07-16)
 
 
