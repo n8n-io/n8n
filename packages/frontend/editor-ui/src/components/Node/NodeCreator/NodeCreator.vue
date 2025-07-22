@@ -158,13 +158,14 @@ onBeforeUnmount(() => {
 .wrapper {
 	position: relative;
 	pointer-events: auto;
+	overflow: hidden;
 }
 
 .nodeCreator {
 	--node-creator-width: #{$node-creator-width};
 	--node-icon-color: var(--color-text-base);
 	position: absolute;
-	bottom: 40px;
+	bottom: -13px;
 	right: 50%;
 	transform: translate(50%);
 	z-index: var(--z-index-node-creator);

@@ -82,8 +82,8 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				v-bind="$attrs"
 			>
 				<template #nodes><slot name="nodes" /></template>
-				<template #chat><slot name="chat" /></template>
-				<template #trigger><slot name="trigger" /></template>
+				<template v-if="$slots.chat" #chat><slot name="chat" /></template>
+				<template v-if="$slots.trigger" #trigger><slot name="trigger" /></template>
 			</Canvas>
 		</div>
 		<slot />

@@ -96,7 +96,7 @@ const activeTriggerNode = computed(() =>
 				:loading="executing"
 				:class="$style.button"
 				:disabled="disabled"
-				size="medium"
+				size="large"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
@@ -106,7 +106,7 @@ const activeTriggerNode = computed(() =>
 				<div v-if="!executing || !waitingForWebhook" :class="$style.center">
 					<NodeIcon
 						:class="$style.menuIcon"
-						:size="14"
+						:size="16"
 						:node-type="getNodeTypeByName(activeTriggerNode!.name)"
 					/>
 				</div>
@@ -152,15 +152,6 @@ const activeTriggerNode = computed(() =>
 	position: relative;
 	display: flex;
 	align-items: stretch;
-	padding-left: 32px;
-}
-
-.button {
-	width: 32px !important;
-	height: 32px !important;
-	position: absolute;
-	top: -1px;
-	left: -1px;
 }
 
 .chevron {

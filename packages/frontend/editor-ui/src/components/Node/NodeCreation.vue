@@ -14,6 +14,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { usePostHog } from '@/stores/posthog.store';
 import type {
 	AddedNodesAndConnections,
+	NodeFilterType,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
@@ -51,10 +52,11 @@ const isOpenFocusPanelButtonVisible = computed(() => {
 	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
 });
 
-function openNodeCreator() {
+function openNodeCreator(nodeCreatorView?: NodeFilterType) {
 	emit('toggleNodeCreator', {
 		source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 		createNodeActive: true,
+		nodeCreatorView,
 	});
 }
 
@@ -93,20 +95,41 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 				@close-node-creator="closeNodeCreator"
 			/>
 		</Suspense>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.openNodesPanel')"
+			:shortcut="{ keys: ['Tab'] }"
+		>
+			<n8n-icon-button
+				text
+				square
+				size="large"
+				type="tertiary"
+				icon="square-plus"
+				data-test-id="node-creator-plus-button"
+				@click="() => openNodeCreator('Regular')"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip label="AI nodes">
+			<n8n-icon-button
+				text
+				square
+				size="large"
+				type="tertiary"
+				icon="robot"
+				@click="() => openNodeCreator('AI')"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip label="Action nodes">
+			<n8n-icon-button
+				text
+				square
+				size="large"
+				type="tertiary"
+				icon="globe"
+				@click="() => openNodeCreator('Actions')"
+			/>
+		</KeyboardShortcutTooltip>
 	</div>
-	<KeyboardShortcutTooltip
-		:label="i18n.baseText('nodeView.openNodesPanel')"
-		:shortcut="{ keys: ['Tab'] }"
-	>
-		<n8n-icon-button
-			text
-			size="medium"
-			type="tertiary"
-			icon="plus"
-			data-test-id="node-creator-plus-button"
-			@click="openNodeCreator"
-		/>
-	</KeyboardShortcutTooltip>
 
 	<KeyboardShortcutTooltip
 		:label="i18n.baseText('nodeView.addStickyHint')"
@@ -114,7 +137,8 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	>
 		<n8n-icon-button
 			text
-			size="medium"
+			square
+			size="large"
 			type="tertiary"
 			icon="sticky-note"
 			data-test-id="add-sticky-button"
@@ -125,12 +149,8 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 
 <style module>
 .fillControls {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: var(--z-index-node-creator);
-	pointer-events: none;
+	position: relative;
+	width: fit-content;
+	height: fit-content;
 }
 </style>

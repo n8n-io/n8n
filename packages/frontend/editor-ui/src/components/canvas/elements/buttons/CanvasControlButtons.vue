@@ -107,12 +107,12 @@ function onAskAssistantButtonClick() {
 					/>
 				</KeyboardShortcutTooltip>
 			</div>
-			<div :class="$style.controlSurface">
+			<div v-if="$slots.chat" :class="$style.controlSurface">
 				<slot name="chat"></slot>
 			</div>
 		</div>
 		<div :class="$style.controlGroup">
-			<div :class="$style.controlSurface">
+			<div v-if="$slots.trigger" :class="$style.controlSurface">
 				<slot name="trigger"></slot>
 			</div>
 			<div :class="$style.controlSurface">
@@ -169,7 +169,7 @@ function onAskAssistantButtonClick() {
 
 .controlGroup {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-xs);
 }
 
 .iconButton {
@@ -187,6 +187,7 @@ function onAskAssistantButtonClick() {
 .vue-flow__controls {
 	display: flex;
 	justify-content: space-between;
+	align-items: flex-end;
 	box-shadow: none;
 	margin: 12px;
 	padding: 0;
