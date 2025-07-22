@@ -538,18 +538,16 @@ describe('useWorkflowHelpers', () => {
 			const jsonData = {
 				name: 'Test',
 			};
-			workflowsStore.getCurrentWorkflow.mockReturnValue({
-				connectionsByDestinationNode: {
-					Set: {
-						main: [
-							[
-								{ node: 'Start', index: 0, type: 'main' },
-								{ node: 'Set', index: 0, type: 'main' },
-							],
+			workflowsStore.connectionsByDestinationNode = {
+				Set: {
+					main: [
+						[
+							{ node: 'Start', index: 0, type: 'main' },
+							{ node: 'Set', index: 0, type: 'main' },
 						],
-					},
+					],
 				},
-			} as never);
+			};
 
 			workflowsStore.workflowExecutionData = {
 				data: {
@@ -609,18 +607,16 @@ describe('useWorkflowHelpers', () => {
 			const jsonData = {
 				name: 'Test',
 			};
-			workflowsStore.getCurrentWorkflow.mockReturnValue({
-				connectionsByDestinationNode: {
-					Set: {
-						main: [
-							[
-								{ node: 'Start', index: 0, type: 'main' },
-								{ node: 'Set', index: 0, type: 'main' },
-							],
+			workflowsStore.connectionsByDestinationNode = {
+				Set: {
+					main: [
+						[
+							{ node: 'Start', index: 0, type: 'main' },
+							{ node: 'Set', index: 0, type: 'main' },
 						],
-					},
+					],
 				},
-			} as never);
+			};
 
 			workflowsStore.workflowExecutionData = {
 				data: {
@@ -686,22 +682,20 @@ describe('useWorkflowHelpers', () => {
 				name: 'Test B',
 			};
 
-			workflowsStore.getCurrentWorkflow.mockReturnValue({
-				connectionsByDestinationNode: {
-					Set: {
-						main: [
-							[
-								{ node: 'Parent A', index: 0, type: 'main' },
-								{ node: 'Set', index: 0, type: 'main' },
-							],
-							[
-								{ node: 'Parent B', index: 0, type: 'main' },
-								{ node: 'Set', index: 0, type: 'main' },
-							],
+			workflowsStore.connectionsByDestinationNode = {
+				Set: {
+					main: [
+						[
+							{ node: 'Parent A', index: 0, type: 'main' },
+							{ node: 'Set', index: 0, type: 'main' },
 						],
-					},
+						[
+							{ node: 'Parent B', index: 0, type: 'main' },
+							{ node: 'Set', index: 0, type: 'main' },
+						],
+					],
 				},
-			} as never);
+			};
 
 			workflowsStore.workflowExecutionData = {
 				data: {
@@ -802,18 +796,16 @@ describe('useWorkflowHelpers', () => {
 					} as never,
 				],
 			};
-			workflowsStore.getCurrentWorkflow.mockReturnValue({
-				connectionsByDestinationNode: {
-					CurrentNode: {
-						main: [
-							[
-								{ node: 'ParentNode', index: 0, type: 'main' },
-								{ node: 'CurrentNode', index: 0, type: 'main' },
-							],
+			workflowsStore.connectionsByDestinationNode = {
+				CurrentNode: {
+					main: [
+						[
+							{ node: 'ParentNode', index: 0, type: 'main' },
+							{ node: 'CurrentNode', index: 0, type: 'main' },
 						],
-					},
+					],
 				},
-			} as never);
+			};
 
 			const result = executeData(parentNodes, currentNode, inputName, runIndex);
 
@@ -841,18 +833,16 @@ describe('useWorkflowHelpers', () => {
 					} as never,
 				],
 			};
-			workflowsStore.getCurrentWorkflow.mockReturnValue({
-				connectionsByDestinationNode: {
-					CurrentNode: {
-						main: [
-							[
-								{ node: 'ParentNode', index: 1, type: 'main' },
-								{ node: 'CurrentNode', index: 0, type: 'main' },
-							],
+			workflowsStore.connectionsByDestinationNode = {
+				CurrentNode: {
+					main: [
+						[
+							{ node: 'ParentNode', index: 1, type: 'main' },
+							{ node: 'CurrentNode', index: 0, type: 'main' },
 						],
-					},
+					],
 				},
-			} as never);
+			};
 
 			const result = executeData(parentNodes, currentNode, inputName, runIndex, parentRunIndex);
 
