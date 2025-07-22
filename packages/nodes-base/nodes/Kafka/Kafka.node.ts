@@ -1,20 +1,21 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
-import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
+import { Kafka as apacheKafka, CompressionTypes } from 'kafkajs';
 import type {
-	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
+import { getSSLConfig } from './utils';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -220,16 +221,14 @@ export class Kafka implements INodeType {
 
 					const clientId = credentials.clientId as string;
 
-					const ssl = credentials.ssl as boolean;
-
 					const config: KafkaConfig = {
 						clientId,
 						brokers,
-						ssl,
+						ssl: getSSLConfig(credentials),
 					};
-					if (credentials.authentication === true) {
+					if (credentials.authentication) {
 						if (!(credentials.username && credentials.password)) {
-							throw new ApplicationError('Username and password are required for authentication', {
+							throw new UserError('Username and password are required for authentication', {
 								level: 'warning',
 							});
 						}
@@ -290,15 +289,13 @@ export class Kafka implements INodeType {
 
 			const clientId = credentials.clientId as string;
 
-			const ssl = credentials.ssl as boolean;
-
 			const config: KafkaConfig = {
 				clientId,
 				brokers,
-				ssl,
+				ssl: getSSLConfig(credentials),
 			};
 
-			if (credentials.authentication === true) {
+			if (credentials.authentication) {
 				if (!(credentials.username && credentials.password)) {
 					throw new NodeOperationError(
 						this.getNode(),

@@ -2,14 +2,15 @@ import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions } from 'kafkajs';
 import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 import type {
-	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
-	ITriggerResponse,
 	IRun,
+	ITriggerFunctions,
+	ITriggerResponse,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { getSSLConfig } from './utils';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -187,8 +188,6 @@ export class KafkaTrigger implements INodeType {
 
 		const clientId = credentials.clientId as string;
 
-		const ssl = credentials.ssl as boolean;
-
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		options.nodeVersion = this.getNode().typeVersion;
@@ -196,11 +195,11 @@ export class KafkaTrigger implements INodeType {
 		const config: KafkaConfig = {
 			clientId,
 			brokers,
-			ssl,
+			ssl: getSSLConfig(credentials),
 			logLevel: logLevel.ERROR,
 		};
 
-		if (credentials.authentication === true) {
+		if (credentials.authentication) {
 			if (!(credentials.username && credentials.password)) {
 				throw new NodeOperationError(
 					this.getNode(),
