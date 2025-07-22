@@ -14,7 +14,8 @@ import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/cons
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 
-const DEFAULT_PANEL_WIDTH = 528;
+// matches NodeCreator to ensure they fully overlap by default when both are open
+const DEFAULT_PANEL_WIDTH = 385;
 
 type FocusedNodeParameter = {
 	nodeId: string;
