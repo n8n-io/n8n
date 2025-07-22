@@ -232,7 +232,7 @@ onMounted(async () => {
 					>{{
 						locale.baseText('evaluation.listRuns.allTestCases', {
 							interpolate: {
-								count: 33,
+								count: filteredTestCases.length,
 							},
 						})
 					}}
