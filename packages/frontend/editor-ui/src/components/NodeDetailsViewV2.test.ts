@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, waitForElementToBeRemoved, fireEvent, queryByTestId } from '@testing-library/vue';
+import { waitFor, waitForElementToBeRemoved, fireEvent } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 import NodeDetailsViewV2 from '@/components/NodeDetailsViewV2.vue';
