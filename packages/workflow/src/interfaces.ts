@@ -1209,7 +1209,7 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
-	evaluationData?: IDataObject;
+	evaluationData?: Record<string, GenericValue>;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

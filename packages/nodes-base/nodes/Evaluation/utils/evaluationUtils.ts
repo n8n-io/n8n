@@ -102,10 +102,13 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		1, // header row
 	);
 
-	const outputs = outputFields.reduce((acc, { outputName, outputValue }) => {
-		acc[outputName] = outputValue;
-		return acc;
-	}, {} as IDataObject);
+	const outputs = outputFields.reduce<Record<string, GenericValue>>(
+		(acc, { outputName, outputValue }) => {
+			acc[outputName] = outputValue;
+			return acc;
+		},
+		{},
+	);
 
 	const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
 		[
@@ -171,10 +174,13 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 		});
 	}
 
-	const inputs = inputFields.reduce((acc, { inputName, inputValue }) => {
-		acc[inputName] = inputValue;
-		return acc;
-	}, {} as IDataObject);
+	const inputs = inputFields.reduce<Record<string, GenericValue>>(
+		(acc, { inputName, inputValue }) => {
+			acc[inputName] = inputValue;
+			return acc;
+		},
+		{},
+	);
 
 	return [withEvaluationData.call(this, inputs)];
 }

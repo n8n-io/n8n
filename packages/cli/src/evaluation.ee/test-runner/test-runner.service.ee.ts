@@ -421,15 +421,13 @@ export class TestRunnerService {
 	): IDataObject {
 		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
 
-		return evalNodes.reduce((accu: IDataObject, node: INode) => {
+		return evalNodes.reduce<Record<string, GenericValue>>((accu, node) => {
 			const runs = execution.data.resultData.runData[node.name];
 			const data = runs?.[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
 
-			return {
-				...accu,
-				...data,
-			};
-		}, {} as IDataObject);
+			Object.assign(accu, data);
+			return accu;
+		}, {});
 	}
 
 	/**
