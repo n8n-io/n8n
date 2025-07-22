@@ -33,6 +33,8 @@ describe('N8nInlineTextEdit', () => {
 		await userEvent.type(input, 'Updated Value');
 		await userEvent.keyboard('{Enter}');
 
+		expect(preview).toHaveTextContent('Updated Value');
+
 		const emittedEvents = wrapper.emitted('update:model-value');
 		expect(emittedEvents).toBeDefined();
 		expect(emittedEvents?.[0]).toEqual(['Updated Value']);
