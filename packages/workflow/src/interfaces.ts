@@ -2144,7 +2144,7 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
  *
  * hostedChat: Special response with executionId sent to the hosted chat trigger node
  *
- * streaming: Response added to ruData to httpResponse and streamingEnabled set to true
+ * streaming: Response added to runData to httpResponse and streamingEnabled set to true
  */
 export type WebhookResponseMode =
 	| 'onReceived'
