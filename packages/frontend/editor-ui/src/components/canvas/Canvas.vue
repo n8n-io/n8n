@@ -14,12 +14,13 @@ import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
 	CanvasNode,
+	CanvasNodeData,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
-	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { isOutsideSelected } from '@/utils/htmlUtils';
+import { getMousePosition, GRID_SIZE, updateViewportToContainNodes } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -49,12 +50,11 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
-import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
-import { isOutsideSelected } from '@/utils/htmlUtils';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 
 const $style = useCssModule();
@@ -918,16 +918,18 @@ provide(CanvasKey, {
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
-			<Edge
-				v-bind="edgeProps"
-				:marker-end="`url(#${arrowHeadMarkerId})`"
-				:read-only="readOnly"
-				:hovered="edgesHoveredById[edgeProps.id]"
-				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
-				@add="onClickConnectionAdd"
-				@delete="onDeleteConnection"
-				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
-			/>
+			<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }">
+				<Edge
+					v-bind="edgeProps"
+					:marker-end="`url(#${arrowHeadMarkerId})`"
+					:read-only="readOnly"
+					:hovered="edgesHoveredById[edgeProps.id]"
+					:bring-to-front="edgesBringToFrontById[edgeProps.id]"
+					@add="onClickConnectionAdd"
+					@delete="onDeleteConnection"
+					@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
+				/>
+			</slot>
 		</template>
 
 		<template #connection-line="connectionLineProps">
@@ -936,7 +938,9 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<CanvasBackground :viewport="viewport" :striped="readOnly" />
+		<slot name="canvas-background" v-bind="{ viewport }">
+			<CanvasBackground :viewport="viewport" :striped="readOnly" />
+		</slot>
 
 		<Transition name="minimap">
 			<MiniMap
