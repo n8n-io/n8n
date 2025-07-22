@@ -164,6 +164,7 @@ export class Beeminder implements INodeType {
 						resource: ['goal'],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Create',
@@ -178,10 +179,10 @@ export class Beeminder implements INodeType {
 						action: 'Get a specific goal',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all goals',
-						action: 'Get all goals',
+						description: 'Get many goals',
+						action: 'Get many goals',
 					},
 					{
 						name: 'Get Archived',
@@ -216,7 +217,6 @@ export class Beeminder implements INodeType {
 					{
 						name: 'Cancel Step Down',
 						value: 'cancelStepDown',
-						description: 'Cancel step down',
 						action: 'Cancel step down',
 					},
 					{
@@ -372,6 +372,7 @@ export class Beeminder implements INodeType {
 						operation: ['create'],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Hustler',
@@ -404,7 +405,7 @@ export class Beeminder implements INodeType {
 				],
 				default: 'hustler',
 				description:
-					'Type of goal. <a href="https://api.beeminder.com/#attributes-2">More info here.</a>',
+					'Type of goal. <a href="https://api.beeminder.com/#attributes-2">More info here.</a>.',
 				required: true,
 			},
 			{
@@ -541,9 +542,9 @@ export class Beeminder implements INodeType {
 					{
 						displayName: 'Dry Run',
 						name: 'dryrun',
-						type: 'string',
-						default: '',
-						description: 'Test charge creation without actually charging',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to test charge creation without actually charging',
 					},
 				],
 			},
@@ -632,7 +633,7 @@ export class Beeminder implements INodeType {
 						name: 'dryrun',
 						type: 'boolean',
 						default: false,
-						description: 'Test the endpoint without actually creating a goal',
+						description: 'Whether to test the endpoint without actually creating a goal',
 					},
 					{
 						displayName: 'Tags',
@@ -763,7 +764,7 @@ export class Beeminder implements INodeType {
 						name: 'datapoints',
 						type: 'boolean',
 						default: false,
-						description: 'Include datapoints in the response',
+						description: 'Whether to include datapoints in the response',
 					},
 					{
 						displayName: 'Emaciated',
@@ -771,7 +772,7 @@ export class Beeminder implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If included the goal attributes called road, roadall, and fullroad will be stripped from the goal object.',
+							'Whether to include the goal attributes called road, roadall, and fullroad will be stripped from the goal object',
 					},
 				],
 			},
@@ -793,22 +794,22 @@ export class Beeminder implements INodeType {
 						name: 'associations',
 						type: 'boolean',
 						default: false,
-						description: 'Include associations in the response',
+						description: 'Whether to include associations in the response',
 					},
 					{
-						displayName: 'Diff since',
+						displayName: 'Diff Since',
 						name: 'diff_since',
 						type: 'dateTime',
 						default: null,
 						description:
-							'Only goals and datapoints that have been created or updated since the timestamp will be returned.',
+							'Only goals and datapoints that have been created or updated since the timestamp will be returned',
 					},
 					{
 						displayName: 'Skinny',
 						name: 'skinny',
 						type: 'boolean',
 						default: false,
-						description: 'Return minimal user data',
+						description: 'Whether to return minimal user data',
 					},
 					{
 						displayName: 'Emaciated',
@@ -816,7 +817,7 @@ export class Beeminder implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If included the goal attributes called road, roadall, and fullroad will be stripped from any goal objects returned with the user.',
+							'Whether to include the goal attributes called road, roadall, and fullroad will be stripped from any goal objects returned with the user',
 					},
 					{
 						displayName: 'Datapoints Count',
@@ -846,7 +847,7 @@ export class Beeminder implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If included the goal attributes called road, roadall, and fullroad will be stripped from the goal objects.',
+							'Whether to include the goal attributes called road, roadall, and fullroad will be stripped from the goal objects',
 					},
 				],
 			},
@@ -869,7 +870,7 @@ export class Beeminder implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If included the goal attributes called road, roadall, and fullroad will be stripped from the goal objects.',
+							'Whether to include the goal attributes called road, roadall, and fullroad will be stripped from the goal objects',
 					},
 				],
 			},
@@ -893,6 +894,37 @@ export class Beeminder implements INodeType {
 						default: 'id',
 						placeholder: '',
 						description: 'Attribute to sort on',
+					},
+					{
+						displayName: 'Page',
+						name: 'page',
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/returnAll': [false],
+							},
+						},
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
+						description: 'Used to paginate results, 1-indexed, meaning page 1 is the first page',
+					},
+					{
+						displayName: 'Per Page',
+						name: 'per',
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/returnAll': [false],
+							},
+						},
+						default: 25,
+						typeOptions: {
+							minValue: 0,
+						},
+						description:
+							'Number of results per page. Default 25. Ignored without page parameter. Must be non-negative',
 					},
 				],
 			},
