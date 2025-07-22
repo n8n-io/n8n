@@ -58,7 +58,8 @@ export class ModuleRegistry {
 			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
-			modulesDir = path.resolve(__dirname, '../../../../cli/dist/modules');
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
