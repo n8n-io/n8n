@@ -28,6 +28,18 @@ describe('isJsonCompatible', () => {
 			errorMessage: 'has non-plain prototype (Date)',
 		},
 		{
+			name: 'a RegExp',
+			value: { regexp: new RegExp('') },
+			errorPath: 'value.regexp',
+			errorMessage: 'has non-plain prototype (RegExp)',
+		},
+		{
+			name: 'a Buffer',
+			value: { buffer: Buffer.from('') },
+			errorPath: 'value.buffer',
+			errorMessage: 'has non-plain prototype (Buffer)',
+		},
+		{
 			name: 'a function',
 			value: { fn: () => {} },
 			errorPath: 'value.fn',
@@ -128,6 +140,16 @@ describe('isJsonCompatible', () => {
 		},
 	])('returns valid for "$name"', ({ value }) => {
 		const result = isJsonCompatible(value);
+
+		expect(result.isValid).toBe(true);
+	});
+
+	test('skip keys that are in the keysToIgnore set', () => {
+		const value = {
+			invalidObject: { invalidBecauseUndefined: undefined },
+			validObject: { key: 'value' },
+		};
+		const result = isJsonCompatible(value, new Set(['invalidObject']));
 
 		expect(result.isValid).toBe(true);
 	});
