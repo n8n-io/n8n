@@ -460,7 +460,9 @@ export class RespondToWebhook implements INodeType {
 				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
 				const rawBody = this.getNodeParameter('responseBody', 0) as string;
 				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(rawBody);
+					// Due to missing type checks existing use cases may be providing objects here instead of strings
+					const stringBody = JSON.stringify(rawBody);
+					responseBody = sandboxHtmlResponse(stringBody);
 				} else {
 					responseBody = rawBody;
 				}
