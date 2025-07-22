@@ -25,7 +25,7 @@ export class TelemetryController {
 		});
 	}
 
-	@Post('/proxy/:version/track', { skipAuth: true, rateLimit: true })
+	@Post('/proxy/:version/track', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
 	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
@@ -35,7 +35,7 @@ export class TelemetryController {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: true })
+	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
