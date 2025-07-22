@@ -79,12 +79,13 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length,
 		);
 
-		const topMargin = 0; // pixels
+		const topMargin = 80; // pixels
 
+		// Move the node to top center of the canvas
 		void vueFlow.setCenter(
 			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
 			nodeToFocus.position[1] +
-				((vueFlow.dimensions.value.height * (1 / 2)) / vueFlow.viewport.value.zoom - topMargin),
+				(vueFlow.dimensions.value.height * (1 / 2) - topMargin) / maxCanvasZoom.value,
 			{
 				duration: 200,
 				zoom: maxCanvasZoom.value,

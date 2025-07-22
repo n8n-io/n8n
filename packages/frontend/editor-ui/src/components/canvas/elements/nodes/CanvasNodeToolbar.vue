@@ -189,6 +189,7 @@ function onFocusNode() {
 
 	&.isExperimentalNdvActive {
 		justify-content: center;
+		padding-bottom: var(--spacing-3xs);
 	}
 }
 
