@@ -405,7 +405,6 @@ const modifiers = [
 								}}
 							</N8nText>
 							<template v-if="sourceWorkFlow.state.value.workflow">
-								<pre>{{ source.nodes.length }} | {{ source.connections.length }}</pre>
 								<SyncedWorkflowCanvas
 									id="top"
 									:nodes="source.nodes"
@@ -450,7 +449,6 @@ const modifiers = [
 								}}
 							</N8nText>
 							<template v-if="targetWorkFlow.state.value.workflow">
-								<pre>{{ target.nodes.length }} | {{ target.connections.length }}</pre>
 								<SyncedWorkflowCanvas
 									id="bottom"
 									:nodes="target.nodes"
