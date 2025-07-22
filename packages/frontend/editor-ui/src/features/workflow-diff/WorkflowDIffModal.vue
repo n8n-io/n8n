@@ -18,6 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
@@ -90,14 +91,20 @@ type SettingsChange = {
 	after: string;
 };
 const settingsDiff = computed(() => {
-	const topSettings = sourceWorkFlow.value.state.value?.workflow?.settings ?? {};
-	const bottomSettings = targetWorkFlow.value.state.value?.workflow?.settings ?? {};
+	const sourceSettings: IWorkflowSettings =
+		sourceWorkFlow.value.state.value?.workflow?.settings ?? {};
+	const targetSettings: IWorkflowSettings =
+		targetWorkFlow.value.state.value?.workflow?.settings ?? {};
 
-	const allKeys = new Set([...Object.keys(topSettings), ...Object.keys(bottomSettings)]);
+	const allKeys = new Set<keyof IWorkflowSettings>(
+		[...Object.keys(sourceSettings), ...Object.keys(targetSettings)].filter(
+			(key): key is keyof IWorkflowSettings => key in sourceSettings || key in targetSettings,
+		),
+	);
 
-	return [...allKeys].reduce<SettingsChange[]>((acc, key) => {
-		const val1 = topSettings[key as keyof typeof topSettings];
-		const val2 = bottomSettings[key as keyof typeof bottomSettings];
+	const settings = Array.from(allKeys).reduce<SettingsChange[]>((acc, key) => {
+		const val1 = sourceSettings[key];
+		const val2 = targetSettings[key];
 
 		if (val1 !== val2) {
 			acc.push({
@@ -108,6 +115,23 @@ const settingsDiff = computed(() => {
 		}
 		return acc;
 	}, []);
+
+	const sourceTags = (sourceWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
+		typeof tag === 'string' ? tag : tag.name,
+	);
+	const targetTags = (targetWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
+		typeof tag === 'string' ? tag : tag.name,
+	);
+
+	if (sourceTags.join('') !== targetTags.join('')) {
+		settings.push({
+			name: 'tags',
+			before: JSON.stringify(sourceTags, null, 2),
+			after: JSON.stringify(targetTags, null, 2),
+		});
+	}
+
+	return settings;
 });
 
 function getNodeStatusClass(id: string) {
@@ -303,10 +327,10 @@ const modifiers = [
 										class="mb-xs"
 									>
 										<template #option="{ label, data: optionData }">
-											<span v-if="optionData?.count" class="mr-3xs">
-												{{ optionData.count }}
-											</span>
 											{{ label }}
+											<span v-if="optionData?.count" class="ml-4xs">
+												({{ optionData.count }})
+											</span>
 										</template>
 									</N8nRadioButtons>
 									<div>

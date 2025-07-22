@@ -1,7 +1,7 @@
 import { waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDIffModal.vue';
+import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
