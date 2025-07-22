@@ -4,7 +4,7 @@ import type { CanvasConnection } from '@/types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { toValue, computed, ref, watchEffect } from 'vue';
+import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -89,7 +89,7 @@ function createWorkflowRefs(
 	const workflowRef = computed(() => toValue(workflow));
 	const workflowNodes = ref<INodeUi[]>([]);
 	const workflowConnections = ref<IConnections>({});
-	const workflowObjectRef = ref<Workflow>();
+	const workflowObjectRef = shallowRef<Workflow>(getWorkflow([], {}));
 
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
@@ -112,7 +112,7 @@ function createWorkflowDiff(
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
-	workflowObjectRef: Ref<Workflow | undefined>,
+	workflowObjectRef: Ref<Workflow>,
 ) {
 	return computed(() => {
 		if (!workflowRef.value) {
@@ -126,7 +126,7 @@ function createWorkflowDiff(
 		const { nodes, connections } = useCanvasMapping({
 			nodes: workflowNodes,
 			connections: workflowConnections,
-			workflowObject: workflowObjectRef as Ref<Workflow>,
+			workflowObject: workflowObjectRef,
 		});
 
 		return {
