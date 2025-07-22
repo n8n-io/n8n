@@ -1761,7 +1761,7 @@ export class Gitlab implements INodeType {
 					}
 				} else if (resource === 'mergeRequest') {
 					
-					const mergeRequestIID = this.getNodeParameter('mergeRequestIID', 0) as string;
+					const mergeRequestIID = this.getNodeParameter('mergeRequestIID', i) as string;
 					
 					if (operation === 'approve') {
 						requestMethod = 'POST';
