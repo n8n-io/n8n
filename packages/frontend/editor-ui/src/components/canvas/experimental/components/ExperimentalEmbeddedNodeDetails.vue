@@ -148,6 +148,7 @@ watchOnce(isVisible, (visible) => {
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
+			'--max-height-on-focus': `${(vf.dimensions.value.height * 0.8) / experimentalNdvStore.maxCanvasZoom}px`,
 			pointerEvents: isMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
@@ -195,23 +196,31 @@ watchOnce(isVisible, (visible) => {
 </template>
 
 <style lang="scss" module>
-:root .component {
-	position: relative;
+.component {
 	align-items: flex-start;
 	justify-content: stretch;
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
-	width: calc(var(--canvas-node--width) * var(--node-width-scaler));
+	width: calc(var(--canvas-node--width) * var(--node-width-scaler)) !important;
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color-text-lighter);
+	--expanded-max-height: min(
+		calc(var(--canvas-node--height) * 2),
+		var(--max-height-on-focus),
+		300px
+	);
 
 	&.expanded {
 		user-select: text;
 		cursor: auto;
 		height: auto;
-		max-height: min(calc(var(--canvas-node--height) * 2), 300px);
+		max-height: var(--expanded-max-height);
 		min-height: var(--spacing-3xl);
+
+		:global(.selected) & {
+			max-height: var(--max-height-on-focus);
+		}
 	}
 	&.collapsed {
 		overflow: hidden;
@@ -227,14 +236,18 @@ watchOnce(isVisible, (visible) => {
 	}
 }
 
-:root .collapsedContent,
-:root .settingsView {
+.collapsedContent,
+.settingsView {
 	z-index: 1000;
 	width: 100%;
 
 	height: auto;
-	max-height: calc(min(calc(var(--canvas-node--height) * 2), 300px) - var(--border-width-base) * 2);
+	max-height: calc(var(--expanded-max-height) - var(--border-width-base) * 2);
 	min-height: var(--spacing-2xl); // should be multiple of GRID_SIZE
+
+	:global(.selected) & {
+		max-height: calc(var(--max-height-on-focus) - var(--border-width-base) * 2);
+	}
 }
 
 .collapsedContent {
