@@ -1360,8 +1360,8 @@ export class Gitlab implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Merge Request IID',
-				name: 'merge_request_iid',
-				type: 'string',
+				name: 'mergeRequestIID',
+				type: 'number',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -1760,16 +1760,17 @@ export class Gitlab implements INodeType {
 						endpoint = `${baseEndpoint}/repository/tree`;
 					}
 				} else if (resource === 'mergeRequest') {
-					const merge_request_iid = this.getNodeParameter('merge_request_iid', i) as string;
+					
+					const mergeRequestIID = this.getNodeParameter('mergeRequestIID', 0) as string;
 					
 					if (operation === 'approve') {
 						requestMethod = 'POST';
 
-						endpoint = `${baseEndpoint}/merge_requests/${merge_request_iid}/approve`;
+						endpoint = `${baseEndpoint}/merge_requests/${mergeRequestIID}/approve`;
 					} else if (operation === 'unapprove') {
 						requestMethod = 'POST';
 
-						endpoint = `${baseEndpoint}/merge_requests/${merge_request_iid}/unapprove`;
+						endpoint = `${baseEndpoint}/merge_requests/${mergeRequestIID}/unapprove`;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
