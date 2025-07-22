@@ -19,6 +19,12 @@ import { getTestCasesColumns, mapToNumericColumns } from './utils';
 import { indexedDbCache } from '@/plugins/codemirror/typescript/worker/cache';
 import { jsonParse } from 'n8n-workflow';
 
+interface Column {
+	key: string;
+	label: string;
+	visible: boolean;
+}
+
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
@@ -33,7 +39,7 @@ const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
-// const cache = await indexedDbCache('workflows', 'evaluations');
+const cachedUserPreferences = ref<{ order: Column[] } | undefined>();
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
@@ -102,39 +108,16 @@ const columns = computed(
 	},
 );
 
-interface Column {
-	key: string;
-	label: string;
-	visible: boolean;
-}
-
 function getMergedSortOrder(newColumnOrder: Column[], cachedColumnOrder: Column[]): Column[] {
-	// Create a map of cached columns for quick lookup
-	const cachedColumnMap = new Map(cachedColumnOrder.map((col) => [col.key, col]));
+	const firstColumns = cachedColumnOrder.filter((col) =>
+		newColumnOrder.find((newCol) => newCol.key === col.key),
+	);
 
-	// Start with cached columns that still exist in the new order
-	const mergedColumns: Column[] = [];
+	const newColumns = cachedColumnOrder.filter((newCol) =>
+		firstColumns.find((firstCol) => firstCol.key !== newCol.key),
+	);
 
-	// First, add all cached columns that still exist in newColumnOrder
-	cachedColumnOrder.forEach((cachedCol) => {
-		const newCol = newColumnOrder.find((col) => col.key === cachedCol.key);
-		if (newCol) {
-			// Use cached preferences but update the label from new order
-			mergedColumns.push({
-				...cachedCol,
-				label: newCol.label,
-			});
-		}
-	});
-
-	// Then, add any new columns that weren't in the cached order
-	newColumnOrder.forEach((newCol) => {
-		if (!cachedColumnMap.has(newCol.key)) {
-			mergedColumns.push(newCol);
-		}
-	});
-
-	return mergedColumns;
+	return [...firstColumns, ...newColumns];
 }
 
 const columnsSate = computed(() => {
@@ -146,10 +129,8 @@ const columnsSate = computed(() => {
 		}))
 		.filter((col) => ['status', 'index'].find((key) => key !== col.key));
 
-	const item = ''; //cache.getItem(run.value.workflowId) ?? '';
-	const cachedUserPreferences = jsonParse(item, { fallbackValue: [] });
-	if (cachedUserPreferences?.length) {
-		return getMergedSortOrder(defaultNewOrder, cachedUserPreferences);
+	if (cachedUserPreferences.value?.order?.length) {
+		return getMergedSortOrder(defaultNewOrder, cachedUserPreferences.value.order);
 	}
 
 	return defaultNewOrder;
@@ -183,8 +164,16 @@ const fetchExecutionTestCases = async () => {
 	}
 };
 
+async function loadCachedUserPreferences() {
+	const cache = await indexedDbCache('workflows', 'evaluations');
+	cachedUserPreferences.value = jsonParse(cache.getItem(workflowId.value) ?? '', {
+		fallbackValue: undefined,
+	});
+}
+
 onMounted(async () => {
 	await fetchExecutionTestCases();
+	await loadCachedUserPreferences();
 });
 </script>
 
