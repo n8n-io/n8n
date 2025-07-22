@@ -45,7 +45,13 @@ export class VercelAiGatewayApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.url }}',
-			url: '/models',
+			url: '/chat/completions',
+			method: 'POST',
+			body: {
+				model: 'openai/gpt-4.1-nano',
+				messages: [{ role: 'user', content: 'test' }],
+				max_tokens: 1,
+			},
 		},
 	};
 }
