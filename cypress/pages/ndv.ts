@@ -305,7 +305,7 @@ export class NDV extends BasePage {
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
 			});
-			this.actions.validateExpressionPreview(fieldName, "No path back to node");
+			this.actions.validateExpressionPreview(fieldName, 'No path back to node');
 		},
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
