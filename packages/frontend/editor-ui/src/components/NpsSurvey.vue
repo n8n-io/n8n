@@ -30,7 +30,6 @@ const NOT_LIKELY_OPTION = i18n.baseText('prompts.npsSurvey.notLikely');
 const SEND = i18n.baseText('prompts.npsSurvey.send');
 const NEXT = i18n.baseText('prompts.npsSurvey.next');
 const YOUR_EMAIL_ADDRESS = i18n.baseText('prompts.npsSurvey.yourEmailAddress');
-const FEEDBACK_PLACEHOLDER = i18n.baseText('prompts.npsSurvey.feedbackPlaceholder');
 
 const form = ref<{ value: string; feedback: string; email: string }>({
 	value: '',
@@ -169,7 +168,7 @@ watch(
 		:modal="true"
 		:wrapper-closable="false"
 		direction="btt"
-		width="120px"
+		width="130px"
 		class="nps-survey"
 		:class="$style.npsSurvey"
 		:close-on-click-modal="false"
@@ -203,20 +202,19 @@ watch(
 					<div :class="$style.input" data-test-id="nps-survey-feedback">
 						<n8n-input
 							v-model="form.feedback"
-							:placeholder="FEEDBACK_PLACEHOLDER"
-							@update:model-value="onFeedbackInput"
 							type="textarea"
-							:rows="1"
+							:rows="2"
 							:class="$style.feedbackInput"
+							@update:model-value="onFeedbackInput"
 						/>
-						<div :class="$style.button">
-							<n8n-button
-								:label="NEXT"
-								float="right"
-								:disabled="!form.feedback.trim()"
-								@click="goToEmailStep"
-							/>
-						</div>
+					</div>
+					<div :class="$style.button">
+						<n8n-button
+							:label="NEXT"
+							float="right"
+							:disabled="!form.feedback.trim()"
+							@click="goToEmailStep"
+						/>
 					</div>
 				</div>
 				<div v-else-if="showEmail" :class="$style.email">
@@ -314,9 +312,11 @@ watch(
 
 .feedback {
 	display: flex;
-	flex-direction: column;
-	align-items: center;
+	flex-direction: row;
+	align-items: flex-start;
 	margin-top: 2px;
+	position: relative;
+	left: 2em;
 }
 
 .feedbackInput {
