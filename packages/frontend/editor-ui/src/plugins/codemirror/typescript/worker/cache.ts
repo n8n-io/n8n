@@ -122,6 +122,7 @@ export async function indexedDbCache(dbName: string, storeName: string) {
 
 	async function clearIndexedDB() {
 		await transaction('readwrite', (store) => {
+			// todo does this get called?
 			store.clear();
 		});
 	}

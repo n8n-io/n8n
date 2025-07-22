@@ -16,6 +16,8 @@ import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
 import { getTestCasesColumns, mapToNumericColumns } from './utils';
+import { indexedDbCache } from '@/plugins/codemirror/typescript/worker/cache';
+import { jsonParse } from 'n8n-workflow';
 
 const router = useRouter();
 const toast = useToast();
@@ -30,6 +32,8 @@ const hasFailedTestCases = ref<boolean>(false);
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
+
+// const cache = await indexedDbCache('workflows', 'evaluations');
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
@@ -97,6 +101,59 @@ const columns = computed(
 		];
 	},
 );
+
+interface Column {
+	key: string;
+	label: string;
+	visible: boolean;
+}
+
+function getMergedSortOrder(newColumnOrder: Column[], cachedColumnOrder: Column[]): Column[] {
+	// Create a map of cached columns for quick lookup
+	const cachedColumnMap = new Map(cachedColumnOrder.map((col) => [col.key, col]));
+
+	// Start with cached columns that still exist in the new order
+	const mergedColumns: Column[] = [];
+
+	// First, add all cached columns that still exist in newColumnOrder
+	cachedColumnOrder.forEach((cachedCol) => {
+		const newCol = newColumnOrder.find((col) => col.key === cachedCol.key);
+		if (newCol) {
+			// Use cached preferences but update the label from new order
+			mergedColumns.push({
+				...cachedCol,
+				label: newCol.label,
+			});
+		}
+	});
+
+	// Then, add any new columns that weren't in the cached order
+	newColumnOrder.forEach((newCol) => {
+		if (!cachedColumnMap.has(newCol.key)) {
+			mergedColumns.push(newCol);
+		}
+	});
+
+	return mergedColumns;
+}
+
+const columnsSate = computed(() => {
+	const defaultNewOrder = columns.value
+		.map((col) => ({
+			key: col.prop,
+			label: col.label,
+			visible: true,
+		}))
+		.filter((col) => ['status', 'index'].find((key) => key !== col.key));
+
+	const item = ''; //cache.getItem(run.value.workflowId) ?? '';
+	const cachedUserPreferences = jsonParse(item, { fallbackValue: [] });
+	if (cachedUserPreferences?.length) {
+		return getMergedSortOrder(defaultNewOrder, cachedUserPreferences);
+	}
+
+	return defaultNewOrder;
+});
 
 const metrics = computed(() => run.value?.metrics ?? {});
 
@@ -240,7 +297,7 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.runsHeaderButtons">
 				<n8n-icon-button icon="unfold-vertical" type="secondary" size="medium" />
-				<N8nTableHeaderControlsButton size="medium" icon-size="small" :columns="[]" />
+				<N8nTableHeaderControlsButton size="medium" icon-size="small" :columns="columnsSate" />
 			</div>
 		</div>
 
