@@ -1,6 +1,6 @@
-import type { IConnections, IConnection } from '@/interfaces';
-import { NodeConnectionTypes } from '@/interfaces';
-import { mapConnectionsByDestination } from '@/common';
+import type { IConnections, IConnection } from '../src/interfaces';
+import { NodeConnectionTypes } from '../src/interfaces';
+import { mapConnectionsByDestination } from '../src/common';
 
 describe('getConnectionsByDestination', () => {
 	it('should return empty object when there are no connections', () => {
