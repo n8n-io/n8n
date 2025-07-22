@@ -1031,6 +1031,9 @@ importers:
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
+      ignore:
+        specifier: ^5.2.0
+        version: 5.2.4
       js-tiktoken:
         specifier: ^1.0.12
         version: 1.0.12
