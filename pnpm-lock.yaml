@@ -204,6 +204,9 @@ overrides:
   date-fns-tz: 2.0.0
 
 patchedDependencies:
+  '@lezer/highlight':
+    hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
+    path: patches/@lezer__highlight.patch
   '@types/express-serve-static-core@5.0.6':
     hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
     path: patches/@types__express-serve-static-core@5.0.6.patch
@@ -560,7 +563,7 @@ importers:
         version: 6.9.3
       '@lezer/highlight':
         specifier: '*'
-        version: 1.1.1
+        version: 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr':
         specifier: ^1.4.0
         version: 1.4.0
@@ -15465,8 +15468,8 @@ packages:
   vue-component-type-helpers@2.2.10:
     resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
-  vue-component-type-helpers@3.0.2:
-    resolution: {integrity: sha512-pbzPt5TlLZijRXt+/uhYRxTkIQkY09Ylx9t9lSk2ZjCv+bqyDRWH0RDUso7kOYQhG7m6SHXPhXEjD27LxKFryA==}
+  vue-component-type-helpers@3.0.3:
+    resolution: {integrity: sha512-koiBu7lO8e6w/UlbZAAIW11qcFQocYIl7Nh/SVwGZ804ej5KrncU32bRxi2zfU2Kyf6HWuk1CeeVP2rhIL+vyQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -17965,7 +17968,7 @@ snapshots:
       '@codemirror/state': 6.4.1
       '@codemirror/view': 6.26.3
       '@lezer/common': 1.1.0
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
       style-mod: 4.1.0
 
@@ -17974,7 +17977,7 @@ snapshots:
       '@codemirror/state': 6.3.3
       '@codemirror/view': 6.22.3
       '@lezer/common': 1.1.0
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
       style-mod: 4.1.0
 
@@ -19132,7 +19135,7 @@ snapshots:
 
   '@lezer/css@1.1.1':
     dependencies:
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
 
   '@lezer/generator@1.7.0':
@@ -19140,24 +19143,24 @@ snapshots:
       '@lezer/common': 1.1.0
       '@lezer/lr': 1.4.0
 
-  '@lezer/highlight@1.1.1':
+  '@lezer/highlight@1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)':
     dependencies:
       '@lezer/common': 1.1.0
 
   '@lezer/html@1.3.0':
     dependencies:
       '@lezer/common': 1.1.0
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
 
   '@lezer/javascript@1.0.2':
     dependencies:
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
 
   '@lezer/json@1.0.0':
     dependencies:
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
 
   '@lezer/lr@1.4.0':
@@ -19166,7 +19169,7 @@ snapshots:
 
   '@lezer/python@1.1.5':
     dependencies:
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
 
   '@mdx-js/react@3.0.1(@types/react@18.0.27)(react@18.2.0)':
@@ -19270,7 +19273,7 @@ snapshots:
       '@codemirror/autocomplete': 6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/lr': 1.4.0
     transitivePeerDependencies:
       - '@codemirror/view'
@@ -20952,7 +20955,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.3)
-      vue-component-type-helpers: 3.0.2
+      vue-component-type-helpers: 3.0.3
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -23354,7 +23357,7 @@ snapshots:
       '@codemirror/view': 6.26.3
       '@lezer/common': 1.1.0
       '@lezer/css': 1.1.1
-      '@lezer/highlight': 1.1.1
+      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
       '@lezer/html': 1.3.0
       '@lezer/lr': 1.4.0
 
@@ -31677,7 +31680,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.10: {}
 
-  vue-component-type-helpers@3.0.2: {}
+  vue-component-type-helpers@3.0.3: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.3)):
     dependencies:
