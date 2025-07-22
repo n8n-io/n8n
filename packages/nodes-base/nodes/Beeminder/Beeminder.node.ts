@@ -53,9 +53,39 @@ export class Beeminder implements INodeType {
 			{
 				name: 'beeminderApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
+				name: 'beeminderOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -974,9 +1004,7 @@ export class Beeminder implements INodeType {
 			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('beeminderApi');
-
-				const endpoint = `/users/${credentials.user}/goals.json`;
+				const endpoint = '/users/me/goals.json';
 
 				const returnData: INodePropertyOptions[] = [];
 				const goals = await beeminderApiRequest.call(this, 'GET', endpoint);
