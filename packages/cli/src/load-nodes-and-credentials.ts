@@ -610,6 +610,7 @@ export class LoadNodesAndCredentials {
 					credentialType.extends.includes('googleOAuth2Api')))
 		);
 	}
+
 	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
 		// Check if fields already exist to avoid duplicates
 		if (properties.some((prop) => prop.name === 'restrictHttpRequestDomains')) {
