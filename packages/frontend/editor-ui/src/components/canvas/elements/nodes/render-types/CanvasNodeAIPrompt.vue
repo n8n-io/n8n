@@ -227,6 +227,20 @@ function onAddNodeClick() {
 		resize: none;
 		font-family: var(--font-family);
 		padding: 0;
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid white;
+			}
+		}
 	}
 }
 
