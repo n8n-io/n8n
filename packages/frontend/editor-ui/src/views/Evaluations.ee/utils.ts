@@ -103,6 +103,7 @@ export function getHeaders(columnNames: Column[]): Header[] {
 			sortable: true,
 			filter: true,
 			showHeaderTooltip: true,
+			expandable: column.columnType === 'inputs' || column.columnType === 'outputs',
 			formatter: (row: TestCaseExecutionRecord) => {
 				const value = row[column.columnType]?.[column.label];
 				if (column.numeric && typeof value === 'number') {

@@ -64,6 +64,7 @@ const workflowId = computed(() => router.currentRoute.value.params.name as strin
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
 const cachedUserPreferences = ref<UserPreferences | undefined>();
+const expandedRows = ref<Set<string>>(new Set());
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
@@ -75,6 +76,8 @@ const filteredTestCases = computed(() =>
 		Object.assign(record, { index: index + 1 }),
 	),
 );
+
+const isAllExpanded = computed(() => expandedRows.value.size === filteredTestCases.value.length);
 
 const testRunIndex = computed(() =>
 	Object.values(
@@ -173,6 +176,24 @@ async function handleColumnOrderUpdate(newOrder: string[]) {
 	cachedUserPreferences.value ??= { order: [], visibility: {} };
 	cachedUserPreferences.value.order = newOrder;
 	await saveCachedUserPreferences();
+}
+
+function toggleRowExpansion(rowId: string) {
+	if (expandedRows.value.has(rowId)) {
+		expandedRows.value.delete(rowId);
+	} else {
+		expandedRows.value.add(rowId);
+	}
+}
+
+function toggleAllExpansion() {
+	if (isAllExpanded.value) {
+		// Collapse all
+		expandedRows.value.clear();
+	} else {
+		// Expand all
+		expandedRows.value = new Set(filteredTestCases.value.map((row) => row.id));
+	}
 }
 
 onMounted(async () => {
@@ -289,7 +310,12 @@ onMounted(async () => {
 				</n8n-heading>
 			</div>
 			<div :class="$style.runsHeaderButtons">
-				<n8n-icon-button icon="unfold-vertical" type="secondary" size="medium" />
+				<n8n-icon-button
+					:icon="isAllExpanded ? 'fold-vertical' : 'unfold-vertical'"
+					type="secondary"
+					size="medium"
+					@click="toggleAllExpansion"
+				/>
 				<N8nTableHeaderControlsButton
 					size="medium"
 					icon-size="small"
@@ -325,6 +351,8 @@ onMounted(async () => {
 			:data="filteredTestCases"
 			:columns="columns"
 			:default-sort="{ prop: 'id', order: 'descending' }"
+			:expanded-rows="expandedRows"
+			@row-click="toggleRowExpansion"
 		>
 			<template #index="{ row }">
 				<div :class="$style.indexCell">

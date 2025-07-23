@@ -28,6 +28,7 @@ export type TestTableColumn<TRow> = {
 	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
+	expandable?: boolean;
 };
 
 type TableRow = T & { id: string };
@@ -39,11 +40,13 @@ const props = withDefaults(
 		defaultSort?: { prop: string; order: 'ascending' | 'descending' };
 		selectable?: boolean;
 		selectableFilter?: (row: TableRow) => boolean;
+		expandedRows?: Set<string>;
 	}>(),
 	{
 		defaultSort: () => ({ prop: 'date', order: 'descending' }),
 		selectable: false,
 		selectableFilter: () => true,
+		expandedRows: () => new Set(),
 	},
 );
 
@@ -51,7 +54,7 @@ const tableRef = ref<TableInstance>();
 const selectedRows = ref<TableRow[]>([]);
 const localData = ref<TableRow[]>([]);
 const emit = defineEmits<{
-	rowClick: [row: TableRow];
+	rowClick: [rowId: string];
 	selectionChange: [rows: TableRow[]];
 }>();
 
@@ -111,14 +114,27 @@ defineSlots<{
 		:default-sort="defaultSort"
 		:data="localData"
 		:border="true"
-		:cell-class-name="$style.customCell"
+		:cell-class-name="
+			({ row, column }) => {
+				const baseClass = $style.customCell;
+				const columnConfig = columns.find((col) => col.prop === column.property);
+				const isExpandable = columnConfig?.expandable || false;
+				const highlightedClass = expandedRows?.has(row.id) ? $style.highlightedCell : '';
+				const expandedClass = expandedRows?.has(row.id) && isExpandable ? $style.expandedCell : '';
+				return `${baseClass} ${highlightedClass} ${expandedClass}`.trim();
+			}
+		"
 		:row-class-name="
-			({ row }) => (row?.status === 'error' ? $style.customDisabledRow : $style.customRow)
+			({ row }) => {
+				const baseClass = row?.status === 'error' ? $style.customDisabledRow : $style.customRow;
+				const expandedClass = expandedRows?.has(row.id) ? $style.expandedRow : '';
+				return `${baseClass} ${expandedClass}`.trim();
+			}
 		"
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
-		@row-click="(row) => $emit('rowClick', row)"
+		@row-click="(row) => $emit('rowClick', row.id)"
 	>
 		<ElTableColumn
 			v-if="selectable"
@@ -179,9 +195,30 @@ defineSlots<{
 	}
 }
 
+.highlightedCell {
+	white-space: normal !important;
+	overflow: visible !important;
+	text-overflow: unset !important;
+	background: var(--color-background-base);
+}
+
+.expandedCell {
+	background: var(--color-background-base);
+	padding: 8px !important;
+
+	> div {
+		white-space: normal !important;
+		background: var(--color-foreground-xlight);
+		border: 1px solid var(--border-color-light) !important;
+		border-radius: 4px;
+		padding: 8px;
+		margin: 4px 0;
+	}
+}
+
 .customRow {
 	cursor: pointer;
-	--color-table-row-hover-background: var(--color-background-light);
+	--color-table-row-hover-background: var(--color-background-base);
 }
 
 .customDisabledRow {

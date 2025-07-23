@@ -86,6 +86,7 @@ import IconLucideFileText from '~icons/lucide/file-text';
 import IconLucideFiles from '~icons/lucide/files';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlaskConical from '~icons/lucide/flask-conical';
+import IconLucideFoldVertical from '~icons/lucide/fold-vertical';
 import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
@@ -573,6 +574,7 @@ export const updatedIconSet = {
 	'user-lock': IconLucideUserLock,
 	'user-round': IconLucideUserRound,
 	'unfold-vertical': IconLucideUnfoldVertical,
+	'fold-vertical': IconLucideFoldVertical,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
