@@ -1,8 +1,10 @@
 import type { INode } from 'n8n-workflow';
 
 import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
+import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
+	prepareQueryLegacy,
 	wrapData,
 	addWhereClauses,
 	addSortRules,
@@ -118,6 +120,24 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		expect(preparedQuery.query).toEqual(
 			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
 		);
+	});
+
+	it('should use legacy processing for versions < 2.5', () => {
+		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
+
+		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.4, ['users', 123]);
+
+		expect(legacySpy).toHaveBeenCalledWith('SELECT * FROM $1:name WHERE id = $2', ['users', 123]);
+
+		legacySpy.mockRestore();
+	});
+
+	it('should use new processing for versions >= 2.5', () => {
+		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
+
+		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.5, ['users', 123]);
+
+		expect(legacySpy).not.toHaveBeenCalled();
 	});
 });
 
