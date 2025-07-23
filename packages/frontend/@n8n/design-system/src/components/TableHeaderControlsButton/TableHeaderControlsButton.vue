@@ -223,6 +223,10 @@ const handleDragEnd = () => {
 .grip {
 	color: var(--color-text-light);
 	cursor: move;
+
+	&.hidden {
+		cursor: default;
+	}
 }
 
 .column {
