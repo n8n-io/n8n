@@ -196,11 +196,20 @@ export const useSSOStore = defineStore('sso', () => {
 		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
 	};
 
+	const initializeSelectedProtocol = () => {
+		if (selectedAuthProtocol.value) return;
+
+		selectedAuthProtocol.value = isDefaultAuthenticationOidc.value
+			? SupportedProtocols.OIDC
+			: SupportedProtocols.SAML;
+	};
+
 	return {
 		showSsoLoginButton,
 		getSSORedirectUrl,
 		initialize,
 		selectedAuthProtocol,
+		initializeSelectedProtocol,
 
 		saml,
 		samlConfig,
