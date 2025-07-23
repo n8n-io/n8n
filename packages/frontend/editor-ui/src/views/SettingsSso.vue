@@ -6,22 +6,15 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '@/stores/sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
-
-type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
 };
-
-const SupportedProtocols = {
-	SAML: 'saml',
-	OIDC: 'oidc',
-} as const;
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -67,8 +60,6 @@ const clientId = ref('');
 const clientSecret = ref('');
 
 const discoveryEndpoint = ref('');
-
-const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const ipsOptions = ref([
 	{
@@ -142,13 +133,13 @@ const trackUpdateSettings = () => {
 		identity_provider?: 'metadata' | 'xml';
 	} = {
 		instance_id: rootStore.instanceId,
-		authentication_method: authProtocol.value,
+		authentication_method: ssoStore.selectedAuthProtocol ?? SupportedProtocols.SAML,
 	};
 
-	if (authProtocol.value === SupportedProtocols.SAML) {
+	if (ssoStore.selectedAuthProtocol === SupportedProtocols.SAML) {
 		trackingMetadata.identity_provider = ipsType.value === 'url' ? 'metadata' : 'xml';
 		trackingMetadata.is_active = ssoStore.isSamlLoginEnabled;
-	} else if (authProtocol.value === SupportedProtocols.OIDC) {
+	} else if (ssoStore.selectedAuthProtocol === SupportedProtocols.OIDC) {
 		trackingMetadata.discovery_endpoint = discoveryEndpoint.value;
 		trackingMetadata.is_active = ssoStore.isOidcLoginEnabled;
 	}
@@ -236,10 +227,15 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	await Promise.all([loadSamlConfig(), loadOidcConfig()]);
 
-	if (ssoStore.isDefaultAuthenticationSaml) {
-		authProtocol.value = SupportedProtocols.SAML;
-	} else if (ssoStore.isDefaultAuthenticationOidc) {
-		authProtocol.value = SupportedProtocols.OIDC;
+	// Check if user has a saved protocol selection, otherwise use default authentication method
+	if (!ssoStore.selectedAuthProtocol) {
+		if (ssoStore.isDefaultAuthenticationSaml) {
+			ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
+		} else if (ssoStore.isDefaultAuthenticationOidc) {
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
+		} else {
+			ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
+		}
 	}
 });
 
@@ -263,7 +259,7 @@ async function loadOidcConfig() {
 }
 
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
-	authProtocol.value = value;
+	ssoStore.selectedAuthProtocol = value;
 }
 
 const cannotSaveOidcSettings = computed(() => {
@@ -320,7 +316,7 @@ async function onOidcSettingsSave() {
 			<div>
 				<N8nSelect
 					filterable
-					:model-value="authProtocol"
+					:model-value="ssoStore.selectedAuthProtocol"
 					:placeholder="i18n.baseText('parameterInput.select')"
 					@update:model-value="onAuthProtocolUpdated"
 					@keydown.stop
@@ -336,7 +332,7 @@ async function onOidcSettingsSave() {
 				</N8nSelect>
 			</div>
 		</div>
-		<div v-if="authProtocol === SupportedProtocols.SAML">
+		<div v-if="ssoStore.selectedAuthProtocol === SupportedProtocols.SAML">
 			<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 				<div :class="$style.group">
 					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
@@ -439,7 +435,7 @@ async function onOidcSettingsSave() {
 				</template>
 			</n8n-action-box>
 		</div>
-		<div v-if="authProtocol === SupportedProtocols.OIDC">
+		<div v-if="ssoStore.selectedAuthProtocol === SupportedProtocols.OIDC">
 			<div v-if="ssoStore.isEnterpriseOidcEnabled">
 				<div :class="$style.group">
 					<label>Redirect URL</label>
