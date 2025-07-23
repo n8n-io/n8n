@@ -32,6 +32,7 @@ export class WorkflowsPage extends BasePage {
 			this.clickByText('Import from File...'),
 		]);
 		await fileChooser.setFiles(resolveFromRoot('workflows', fixtureKey));
+		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(250);
 
 		await this.clickByTestId('inline-edit-preview');

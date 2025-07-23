@@ -60,7 +60,10 @@ export class ErrorReporter {
 					meta = e.extra;
 				}
 				const msg = [e.message + context, stack].join('');
-				this.logger.error(msg, meta);
+				// Default to logging the error if option is not specified
+				if (options?.shouldBeLogged ?? true) {
+					this.logger.error(msg, meta);
+				}
 				e = e.cause as Error;
 			} while (e);
 		}
