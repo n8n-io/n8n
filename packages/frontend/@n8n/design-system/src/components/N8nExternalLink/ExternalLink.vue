@@ -43,10 +43,19 @@ withDefaults(defineProps<ExternalLinkProps>(), {
 	padding: var(--spacing-4xs) var(--spacing-2xs);
 	cursor: pointer;
 	border-radius: var(--border-radius-base);
+	font-weight: var(--font-weight-regular);
+
+	svg {
+		color: var(--color-text-light);
+	}
 
 	&:hover {
 		color: var(--color-primary);
-		background: var(--color-foreground-dark);
+		background: var(--color-foreground-light);
+
+		svg {
+			color: var(--color-primary);
+		}
 	}
 
 	&:active {

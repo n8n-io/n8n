@@ -355,8 +355,10 @@ onMounted(async () => {
 			@row-click="toggleRowExpansion"
 		>
 			<template #index="{ row }">
-				<div :class="$style.indexCell">
-					<N8nExternalLink @click="openRelatedExecution(row)"> #{{ row.index }} </N8nExternalLink>
+				<div>
+					<N8nExternalLink @click.stop.prevent="openRelatedExecution(row)">
+						#{{ row.index }}
+					</N8nExternalLink>
 				</div>
 			</template>
 			<template #status="{ row }">
