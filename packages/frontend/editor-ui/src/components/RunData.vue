@@ -86,7 +86,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
@@ -266,7 +265,7 @@ const isWaitNodeWaiting = computed(() => {
 	);
 });
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => props.node ?? ndvStore.activeNode);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 
@@ -720,7 +719,6 @@ onMounted(() => {
 	});
 
 	if (props.paneType === 'output') {
-		setDisplayMode();
 		activatePane();
 	}
 
@@ -1230,6 +1228,10 @@ function init() {
 
 	if (isNDVV2.value) {
 		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
+	}
+
+	if (props.paneType === 'output') {
+		setDisplayMode();
 	}
 }
 

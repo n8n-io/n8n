@@ -21,6 +21,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CODE_NODE_TYPE,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
+	HTML_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
@@ -119,6 +120,7 @@ export const mockNodes = [
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
+	mockNode({ name: 'Html', type: HTML_NODE_TYPE }),
 ];
 
 export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
