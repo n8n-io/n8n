@@ -6,8 +6,6 @@ import { Transform } from 'stream';
  * response in an iframe to make sure the HTML has a different origin.
  */
 export const sandboxHtmlResponse = <T>(data: T) => {
-	if (!data || ['number', 'boolean', 'object'].includes(typeof data)) return data;
-
 	let text;
 	if (typeof data !== 'string') {
 		text = JSON.stringify(data);
