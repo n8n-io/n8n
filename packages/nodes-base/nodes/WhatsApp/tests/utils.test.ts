@@ -28,7 +28,7 @@ describe('createMessage', () => {
 	const mockSendAndWaitConfig: SendAndWaitConfig = {
 		title: '',
 		message: 'Please approve an option:',
-		url: 'https://example.com/approve',
+		url: 'https://example.com/approve?token=abc',
 		options: [
 			{ label: 'Yes', value: 'yes', style: 'primary' },
 			{ label: 'No', value: 'no', style: 'secondary' },
@@ -55,8 +55,8 @@ describe('createMessage', () => {
 				text: {
 					body:
 						'Please approve an option:\n\n' +
-						'*Yes:*\n_https://example.com/approve?approved=yes_\n\n' +
-						'*No:*\n_https://example.com/approve?approved=no_\n\n',
+						'*Yes:*\n_https://example.com/approve?token=abc&approved=yes_\n\n' +
+						'*No:*\n_https://example.com/approve?token=abc&approved=no_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,
@@ -68,7 +68,7 @@ describe('createMessage', () => {
 		const singleOptionConfig: SendAndWaitConfig = {
 			title: '',
 			message: 'Choose an option:',
-			url: 'https://example.com/approve',
+			url: 'https://example.com/approve?token=abc',
 			options: [
 				{
 					label: 'Confirm',
@@ -92,7 +92,7 @@ describe('createMessage', () => {
 			body: {
 				messaging_product: 'whatsapp',
 				text: {
-					body: 'Choose an option:\n\n*Confirm:*\n_https://example.com/approve?approved=confirm_\n\n',
+					body: 'Choose an option:\n\n*Confirm:*\n_https://example.com/approve?token=abc&approved=confirm_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,

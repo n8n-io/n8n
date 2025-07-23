@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import crypto from 'crypto';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -35,6 +36,7 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -176,6 +178,22 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
+	}
+
+	protected getExecutionWaitingToken() {
+		const token = crypto
+			.createHmac('sha256', this.instanceSettings.encryptionKey)
+			.update(this.getExecutionId())
+			.digest('hex');
+		return token;
+	}
+
+	getSignedResumeUrl() {
+		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+		if (typeof executionId !== 'string') {
+			throw new ApplicationError('Execution id is missing');
+		}
+		return `${webhookWaitingBaseUrl}/${executionId}/${this.node.id}?${WAITING_TOKEN_QUERY_PARAM}=${this.getExecutionWaitingToken()}`;
 	}
 
 	getTimezone() {

@@ -17,6 +17,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.validateExecutionWaitingToken.mockReturnValue(true);
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -62,14 +63,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
-
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
 			expect(config).toEqual({
@@ -102,13 +96,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
 
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
@@ -146,13 +134,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
 		});
 
 		it('should create a valid email object', () => {
