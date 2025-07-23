@@ -11,12 +11,14 @@ type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
 	pageType?: 'overview' | 'shared' | 'project';
+	additionalTabs?: Array<TabOptions<string>>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	showSettings: false,
 	showExecutions: true,
 	pageType: 'project',
+	additionalTabs: () => [],
 });
 
 const locale = useI18n();
@@ -99,6 +101,10 @@ const options = computed<Array<TabOptions<string>>>(() => {
 			value: VIEWS.PROJECT_SETTINGS as string,
 			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } },
 		});
+	}
+
+	if (props.additionalTabs.length) {
+		tabs.push(...props.additionalTabs);
 	}
 
 	return tabs;

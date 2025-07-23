@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { UserAction } from '@n8n/design-system';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
@@ -19,6 +19,7 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -81,6 +82,40 @@ const showFolders = computed(() => {
 		settingsStore.isFoldersFeatureEnabled &&
 		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
 	);
+});
+
+const isDataStoreModuleEnabled = computed(() => {
+	return settingsStore.activeModules.includes('data-store');
+});
+
+// Add data store tab if the module is enabled
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	if (!isDataStoreModuleEnabled.value || projectPages.isSharedSubPage) {
+		return [];
+	}
+	if (projectPages.isOverviewSubPage) {
+		return [
+			{
+				label: i18n.baseText('dataStore.tab.label'),
+				value: DATA_STORE_VIEW,
+				to: {
+					name: DATA_STORE_VIEW,
+				},
+			},
+		];
+	}
+	return [
+		{
+			label: i18n.baseText('dataStore.tab.label'),
+			value: PROJECT_DATA_STORES,
+			to: {
+				name: PROJECT_DATA_STORES,
+				params: {
+					projectId: homeProject.value?.id,
+				},
+			},
+		},
+	];
 });
 
 const ACTION_TYPES = {
@@ -278,6 +313,7 @@ const onSelect = (action: string) => {
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
 			/>
 		</div>
 	</div>
