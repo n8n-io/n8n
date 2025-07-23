@@ -4,7 +4,7 @@ import {
 	applyCachedVisibility,
 	getDefaultOrderedColumns,
 	getTestCasesColumns,
-	getHeaders,
+	getTestTableHeaders,
 } from './utils';
 
 describe('utils', () => {
@@ -779,7 +779,7 @@ describe('utils', () => {
 				{ key: 'metrics.disabled', disabled: true as const },
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].prop).toBe('inputs.query');
@@ -803,7 +803,7 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -833,7 +833,7 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -866,7 +866,7 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -898,7 +898,7 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -946,7 +946,7 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getHeaders(columns);
+			const result = getTestTableHeaders(columns);
 
 			expect(result).toHaveLength(2);
 			expect(result[0]?.prop).toBe('inputs.query');

@@ -28,7 +28,7 @@ export type TestTableColumn<TRow> = {
 	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
-	expandable?: boolean;
+	minWidth: string;
 };
 
 type TableRow = T & { id: string };
@@ -116,20 +116,17 @@ defineSlots<{
 		:data="localData"
 		:border="true"
 		:cell-class-name="
-			({ row, column }) => {
+			({ row }) => {
 				const baseClass = $style.customCell;
-				const columnConfig = columns.find((col) => col.prop === column.property);
-				const isExpandable = columnConfig?.expandable || false;
 				const highlightedClass = expandedRows?.has(row.id) ? $style.highlightedCell : '';
-				const expandedClass = expandedRows?.has(row.id) && isExpandable ? $style.expandedCell : '';
-				return `${baseClass} ${highlightedClass} ${expandedClass}`.trim();
+				return `${baseClass} ${highlightedClass}`;
 			}
 		"
 		:row-class-name="
 			({ row }) => {
 				const baseClass = row?.status === 'error' ? $style.customDisabledRow : $style.customRow;
 				const expandedClass = expandedRows?.has(row.id) ? $style.expandedRow : '';
-				return `${baseClass} ${expandedClass}`.trim();
+				return `${baseClass} ${expandedClass}`;
 			}
 		"
 		scrollbar-always-on
@@ -152,7 +149,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="column.expandable ? 225 : 125"
+			:min-width="column.minWidth"
 		>
 			<template #header="headerProps">
 				<N8nTooltip
@@ -202,10 +199,6 @@ defineSlots<{
 	white-space: normal !important;
 	overflow: visible !important;
 	text-overflow: unset !important;
-	background: var(--color-background-base);
-}
-
-.expandedCell {
 	background: var(--color-background-base);
 
 	> div {

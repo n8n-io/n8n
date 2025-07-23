@@ -94,27 +94,50 @@ function mapToColumns(
 	}));
 }
 
-export function getHeaders(columnNames: Column[]): Header[] {
+export function getTestTableHeaders(
+	columnNames: Column[],
+	testCases: TestCaseExecutionRecord[],
+): Header[] {
 	return columnNames
 		.filter((column): column is Column & { disabled: false } => !column.disabled && column.visible)
-		.map((column) => ({
-			prop: column.key,
-			label: column.disabled ? column.key : column.label,
-			sortable: true,
-			filter: true,
-			showHeaderTooltip: true,
-			expandable: column.columnType === 'inputs' || column.columnType === 'outputs',
-			formatter: (row: TestCaseExecutionRecord) => {
-				const value = row[column.columnType]?.[column.label];
-				if (column.numeric && typeof value === 'number') {
-					return value.toFixed(2) ?? '-';
-				}
+		.map((column) => {
+			// Check if any content exceeds 10 characters
+			const hasLongContent = Boolean(
+				testCases.find((row) => {
+					const value = row[column.columnType]?.[column.label];
+					let stringValue: string;
 
-				if (typeof value === 'object' && value !== null) {
-					return JSON.stringify(value, null, 2);
-				}
+					if (column.numeric && typeof value === 'number') {
+						stringValue = value.toFixed(2) ?? '-';
+					} else if (typeof value === 'object' && value !== null) {
+						stringValue = JSON.stringify(value, null, 2);
+					} else {
+						stringValue = `${value}`;
+					}
 
-				return `${value}`;
-			},
-		}));
+					return stringValue.length > 10;
+				}),
+			);
+
+			return {
+				prop: column.key,
+				label: column.disabled ? column.key : column.label,
+				sortable: true,
+				filter: true,
+				showHeaderTooltip: true,
+				minWidth: hasLongContent ? '250px' : '125px',
+				formatter: (row: TestCaseExecutionRecord) => {
+					const value = row[column.columnType]?.[column.label];
+					if (column.numeric && typeof value === 'number') {
+						return value.toFixed(2) ?? '-';
+					}
+
+					if (typeof value === 'object' && value !== null) {
+						return JSON.stringify(value, null, 2);
+					}
+
+					return `${value}`;
+				},
+			};
+		});
 }

@@ -26,7 +26,7 @@ import {
 	applyCachedVisibility,
 	getDefaultOrderedColumns,
 	getTestCasesColumns,
-	getHeaders,
+	getTestTableHeaders,
 } from './utils';
 import { indexedDbCache } from '@/plugins/codemirror/typescript/worker/cache';
 import { jsonParse } from 'n8n-workflow';
@@ -123,7 +123,7 @@ const columns = computed((): Header[] => [
 		prop: 'status',
 		label: locale.baseText('evaluation.listRuns.status'),
 	} as Header,
-	...getHeaders(orderedColumns.value),
+	...getTestTableHeaders(orderedColumns.value, filteredTestCases.value),
 ]);
 
 const metrics = computed(() => run.value?.metrics ?? {});
