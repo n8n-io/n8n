@@ -152,7 +152,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="column.expandable ? 200 : 125"
+			:min-width="column.expandable ? 225 : 125"
 		>
 			<template #header="headerProps">
 				<N8nTooltip
@@ -191,6 +191,7 @@ defineSlots<{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	border-bottom: 1px solid var(--border-color-light) !important;
+	vertical-align: top !important;
 
 	> div {
 		white-space: nowrap !important;
@@ -206,15 +207,9 @@ defineSlots<{
 
 .expandedCell {
 	background: var(--color-background-base);
-	padding: 8px !important;
 
 	> div {
 		white-space: normal !important;
-		background: var(--color-foreground-xlight);
-		border: 1px solid var(--border-color-light) !important;
-		border-radius: 4px;
-		padding: 8px;
-		margin: 4px 0;
 	}
 }
 
