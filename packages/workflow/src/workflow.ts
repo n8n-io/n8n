@@ -762,43 +762,25 @@ export class Workflow {
 	}
 
 	getParentMainInputNode(node: INode): INode {
-		if (node) {
-			const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!node) return node;
 
-			// Check if node has any non-main outputs by examining connections
-			if (nodeConnections) {
-				const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
-					(connectionType) => connectionType !== NodeConnectionTypes.Main,
-				);
+		const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!nodeConnections) return node;
 
-				if (nonMainConnectionTypes.length > 0) {
-					// Get connected nodes from non-main outputs
-					const nonMainConnectedNodes: string[] = [];
-					for (const connectionType of nonMainConnectionTypes) {
-						const connections = nodeConnections[connectionType];
-						if (connections) {
-							for (const connectionGroup of connections) {
-								if (connectionGroup) {
-									for (const connection of connectionGroup) {
-										if (connection?.node) {
-											nonMainConnectedNodes.push(connection.node);
-										}
-									}
-								}
-							}
+		// Get non-main connection types
+		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
+			(type) => type !== NodeConnectionTypes.Main,
+		);
+
+		for (const connectionType of nonMainConnectionTypes) {
+			const connections = nodeConnections[connectionType] || [];
+			for (const connectionGroup of connections) {
+				for (const connection of connectionGroup || []) {
+					if (connection?.node) {
+						const returnNode = this.getNode(connection.node);
+						if (!returnNode) {
+							throw new ApplicationError(`Node "${connection.node}" not found`);
 						}
-					}
-
-					if (nonMainConnectedNodes.length > 0) {
-						const returnNode = this.getNode(nonMainConnectedNodes[0]);
-						if (returnNode === null) {
-							// This should theoretically never happen as the node is connected
-							// but who knows and it makes TS happy
-							throw new ApplicationError(`Node "${nonMainConnectedNodes[0]}" not found`);
-						}
-
-						// The chain of non-main nodes is potentially not finished yet so
-						// keep on going
 						return this.getParentMainInputNode(returnNode);
 					}
 				}
