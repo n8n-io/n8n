@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
@@ -13,12 +14,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
-
 import type {
 	McpAuthenticationOption,
-	McpTool,
 	McpServerTransport,
+	McpTool,
 	McpToolIncludeMode,
 } from './types';
 
@@ -78,8 +77,7 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string | undefined) => void) =>
-	async (args: IDataObject) => {
+	(name: string, client: Client, onError: (error: string) => void) => async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
 		function handleError(error: unknown) {
@@ -113,7 +111,7 @@ export const createCallTool =
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
-): DynamicStructuredTool<z.ZodObject<any, any, any, any>> {
+): DynamicStructuredTool {
 	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
 
 	// Ensure we always have an object schema for structured tools
@@ -130,7 +128,7 @@ export function mcpToolToDynamicTool(
 }
 
 export class McpToolkit extends Toolkit {
-	constructor(public tools: Array<DynamicStructuredTool<z.ZodObject<any, any, any, any>>>) {
+	constructor(public tools: DynamicStructuredTool[]) {
 		super();
 	}
 }
