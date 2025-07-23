@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="ColumnType extends ColumnHeader">
 import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -8,22 +8,33 @@ import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';
 
-interface ColumnHeader {
-	key: string;
-	label: string;
-	visible: boolean;
-}
+export type ColumnHeader =
+	| {
+			key: string;
+			label: string;
+			visible: boolean;
+			disabled: false;
+	  }
+	| { key: string; disabled: true };
 
 interface Props {
-	columns: ColumnHeader[];
+	columns: ColumnType[];
 	buttonSize?: ButtonSize;
 	iconSize?: IconSize;
 }
 
 const props = defineProps<Props>();
 
-const visibleColumns = computed(() => props.columns.filter((column) => column.visible));
-const hiddenColumns = computed(() => props.columns.filter((column) => !column.visible));
+const visibleColumns = computed(() =>
+	props.columns.filter(
+		(column): column is ColumnType & { disabled: false } => !column.disabled && column.visible,
+	),
+);
+const hiddenColumns = computed(() =>
+	props.columns.filter(
+		(column): column is ColumnType & { disabled: false } => !column.disabled && !column.visible,
+	),
+);
 
 const { t } = useI18n();
 

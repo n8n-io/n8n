@@ -15,20 +15,33 @@ import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
-import { getTestCasesColumns, mapToNumericColumns } from './utils';
+import {
+	applyCachedSortOrder,
+	applyCachedVisibility,
+	getDefaultOrderedColumns,
+	getTestCasesColumns,
+	getHeaders,
+} from './utils';
 import { indexedDbCache } from '@/plugins/codemirror/typescript/worker/cache';
 import { jsonParse } from 'n8n-workflow';
 
-interface Column {
-	key: string;
-	label: string;
-	visible: boolean;
-}
+export type Column =
+	| {
+			key: string;
+			label: string;
+			visible: boolean;
+			numeric?: boolean;
+			disabled: false;
+			columnType: 'inputs' | 'outputs' | 'metrics';
+	  }
+	| { key: string; disabled: true };
 
 interface UserPreferences {
 	order: string[];
 	visibility: Record<string, boolean>;
 }
+
+export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
 
 const router = useRouter();
 const toast = useToast();
@@ -83,80 +96,27 @@ const handleRowClick = (row: TestCaseExecutionRecord) => {
 
 const inputColumns = computed(() => getTestCasesColumns(filteredTestCases.value, 'inputs'));
 
-const columns = computed(
-	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => {
-		const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
-		const metricColumns = Object.keys(run.value?.metrics ?? {}).filter(
-			(key) => !specialKeys.includes(key),
-		);
-		const specialColumns = specialKeys.filter((key) =>
-			run.value?.metrics ? key in run.value.metrics : false,
-		);
+const orderedColumns = computed((): Column[] => {
+	const defaultOrder = getDefaultOrderedColumns(run.value, filteredTestCases.value);
+	const appliedCachedOrder = applyCachedSortOrder(defaultOrder, cachedUserPreferences.value?.order);
 
-		return [
-			{
-				prop: 'index',
-				width: 100,
-				label: locale.baseText('evaluation.runDetail.testCase'),
-				sortable: true,
-				formatter: (row: TestCaseExecutionRecord & { index: number }) => `#${row.index}`,
-			},
-			{
-				prop: 'status',
-				label: locale.baseText('evaluation.listRuns.status'),
-			},
-			...inputColumns.value,
-			...getTestCasesColumns(filteredTestCases.value, 'outputs'),
-			...mapToNumericColumns(metricColumns),
-			...mapToNumericColumns(specialColumns),
-		];
-	},
-);
-
-function getMergedSortOrder(
-	newColumnOrder: Column[],
-	cachedOrder: string[],
-	cachedVisibility: Record<string, boolean>,
-): Column[] {
-	// Start with cached order
-	const orderedColumns = cachedOrder
-		.map((columnKey) => {
-			const columnFromNew = newColumnOrder.find((col) => col.key === columnKey);
-			if (columnFromNew) {
-				return {
-					...columnFromNew,
-					visible: cachedVisibility[columnKey] ?? columnFromNew.visible,
-				};
-			}
-			return null;
-		})
-		.filter((col): col is Column => col !== null);
-
-	// Add any new columns that aren't in the cached order
-	const newColumns = newColumnOrder.filter((col) => !cachedOrder.includes(col.key));
-
-	return [...orderedColumns, ...newColumns];
-}
-
-const columnsSate = computed(() => {
-	const defaultNewOrder = columns.value
-		.map((col) => ({
-			key: (col as { prop: string; label: string }).prop,
-			label: (col as { prop: string; label: string }).label,
-			visible: true,
-		}))
-		.filter((col) => ['status', 'index'].find((key) => key !== col.key));
-
-	if (cachedUserPreferences.value?.order?.length) {
-		return getMergedSortOrder(
-			defaultNewOrder,
-			cachedUserPreferences.value.order,
-			cachedUserPreferences.value.visibility,
-		);
-	}
-
-	return defaultNewOrder;
+	return applyCachedVisibility(appliedCachedOrder, cachedUserPreferences.value?.visibility);
 });
+
+const columns = computed((): Header[] => [
+	{
+		prop: 'index',
+		width: 100,
+		label: locale.baseText('evaluation.runDetail.testCase'),
+		sortable: true,
+		formatter: (row) => `#${row.index}`,
+	} as Header,
+	{
+		prop: 'status',
+		label: locale.baseText('evaluation.listRuns.status'),
+	} as Header,
+	...getHeaders(orderedColumns.value),
+]);
 
 const metrics = computed(() => run.value?.metrics ?? {});
 
@@ -200,31 +160,13 @@ async function saveCachedUserPreferences() {
 
 async function handleColumnVisibilityUpdate(columnKey: string, visibility: boolean) {
 	cachedUserPreferences.value ??= { order: [], visibility: {} };
-
-	// Update visibility
 	cachedUserPreferences.value.visibility[columnKey] = visibility;
-
-	// Add to order if not already present
-	if (!cachedUserPreferences.value.order.includes(columnKey)) {
-		cachedUserPreferences.value.order.push(columnKey);
-	}
-
 	await saveCachedUserPreferences();
 }
 
 async function handleColumnOrderUpdate(newOrder: string[]) {
 	cachedUserPreferences.value ??= { order: [], visibility: {} };
-
-	// Update order
 	cachedUserPreferences.value.order = newOrder;
-
-	// Ensure all ordered columns have visibility set (default to true if not set)
-	newOrder.forEach((columnKey) => {
-		if (cachedUserPreferences.value && !(columnKey in cachedUserPreferences.value.visibility)) {
-			cachedUserPreferences.value.visibility[columnKey] = true;
-		}
-	});
-
 	await saveCachedUserPreferences();
 }
 
@@ -343,15 +285,13 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.runsHeaderButtons">
 				<n8n-icon-button icon="unfold-vertical" type="secondary" size="medium" />
-				<!-- eslint-disable vue/v-on-event-hyphenation -->
 				<N8nTableHeaderControlsButton
 					size="medium"
 					icon-size="small"
-					:columns="columnsSate"
-					@update:columnVisibility="handleColumnVisibilityUpdate"
-					@update:columnOrder="handleColumnOrderUpdate"
+					:columns="orderedColumns"
+					@update:column-visibility="handleColumnVisibilityUpdate"
+					@update:column-order="handleColumnOrderUpdate"
 				/>
-				<!-- eslint-enable vue/v-on-event-hyphenation -->
 			</div>
 		</div>
 
