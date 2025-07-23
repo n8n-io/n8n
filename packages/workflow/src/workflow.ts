@@ -28,7 +28,6 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
-	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -764,38 +763,44 @@ export class Workflow {
 
 	getParentMainInputNode(node: INode): INode {
 		if (node) {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			const nodeConnections = this.connectionsBySourceNode[node.name];
 
-			if (
-				outputs.find(
-					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
-				)
-			) {
-				// Get the first node which is connected to a non-main output
-				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(
-						node.name,
-						(outputName as INodeOutputConfiguration)?.type ?? outputName,
-					);
-					if (parentNodes.length > 0) {
-						acc.push(...parentNodes);
-					}
-					return acc;
-				}, [] as string[]);
+			// Check if node has any non-main outputs by examining connections
+			if (nodeConnections) {
+				const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
+					(connectionType) => connectionType !== NodeConnectionTypes.Main,
+				);
 
-				if (nonMainNodesConnected.length) {
-					const returnNode = this.getNode(nonMainNodesConnected[0]);
-					if (returnNode === null) {
-						// This should theoretically never happen as the node is connected
-						// but who knows and it makes TS happy
-						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+				if (nonMainConnectionTypes.length > 0) {
+					// Get connected nodes from non-main outputs
+					const nonMainConnectedNodes: string[] = [];
+					for (const connectionType of nonMainConnectionTypes) {
+						const connections = nodeConnections[connectionType];
+						if (connections) {
+							for (const connectionGroup of connections) {
+								if (connectionGroup) {
+									for (const connection of connectionGroup) {
+										if (connection?.node) {
+											nonMainConnectedNodes.push(connection.node);
+										}
+									}
+								}
+							}
+						}
 					}
 
-					// The chain of non-main nodes is potentially not finished yet so
-					// keep on going
-					return this.getParentMainInputNode(returnNode);
+					if (nonMainConnectedNodes.length > 0) {
+						const returnNode = this.getNode(nonMainConnectedNodes[0]);
+						if (returnNode === null) {
+							// This should theoretically never happen as the node is connected
+							// but who knows and it makes TS happy
+							throw new ApplicationError(`Node "${nonMainConnectedNodes[0]}" not found`);
+						}
+
+						// The chain of non-main nodes is potentially not finished yet so
+						// keep on going
+						return this.getParentMainInputNode(returnNode);
+					}
 				}
 			}
 		}
