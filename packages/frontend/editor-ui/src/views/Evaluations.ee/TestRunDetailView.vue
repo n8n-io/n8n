@@ -9,7 +9,13 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { N8nText, N8nTooltip, N8nIcon, N8nTableHeaderControlsButton } from '@n8n/design-system';
+import {
+	N8nText,
+	N8nTooltip,
+	N8nIcon,
+	N8nTableHeaderControlsButton,
+	N8nExternalLink,
+} from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
@@ -80,7 +86,7 @@ const testRunIndex = computed(() =>
 
 const formattedTime = computed(() => convertToDisplayDate(new Date(run.value?.runAt).getTime()));
 
-const handleRowClick = (row: TestCaseExecutionRecord) => {
+const openRelatedExecution = (row: TestCaseExecutionRecord) => {
 	const executionId = row.executionId;
 	if (executionId) {
 		const { href } = router.resolve({
@@ -109,7 +115,6 @@ const columns = computed((): Header[] => [
 		width: 100,
 		label: locale.baseText('evaluation.runDetail.testCase'),
 		sortable: true,
-		formatter: (row) => `#${row.index}`,
 	} as Header,
 	{
 		prop: 'status',
@@ -320,11 +325,10 @@ onMounted(async () => {
 			:data="filteredTestCases"
 			:columns="columns"
 			:default-sort="{ prop: 'id', order: 'descending' }"
-			@row-click="handleRowClick"
 		>
-			<template #id="{ row }">
-				<div style="display: flex; justify-content: space-between; gap: 10px">
-					{{ row.id }}
+			<template #index="{ row }">
+				<div :class="$style.indexCell">
+					<N8nExternalLink @click="openRelatedExecution(row)"> #{{ row.index }} </N8nExternalLink>
 				</div>
 			</template>
 			<template #status="{ row }">

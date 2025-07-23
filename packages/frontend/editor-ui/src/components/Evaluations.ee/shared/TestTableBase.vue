@@ -99,7 +99,7 @@ const handleColumnResize = (
 };
 
 defineSlots<{
-	id(props: { row: TableRow }): unknown;
+	index(props: { row: TableRow }): unknown;
 	status(props: { row: TableRow }): unknown;
 }>();
 </script>
@@ -160,7 +160,7 @@ defineSlots<{
 				</N8nTooltip>
 			</template>
 			<template #default="{ row }">
-				<slot v-if="column.prop === 'id'" name="id" v-bind="{ row }"></slot>
+				<slot v-if="column.prop === 'index'" name="index" v-bind="{ row }"></slot>
 				<slot v-if="column.prop === 'status'" name="status" v-bind="{ row }"></slot>
 			</template>
 		</ElTableColumn>
@@ -175,14 +175,8 @@ defineSlots<{
 	border-bottom: 1px solid var(--border-color-light) !important;
 
 	> div {
-		max-height: 100px;
+		white-space: nowrap !important;
 	}
-}
-
-.cell {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .customRow {
