@@ -558,7 +558,24 @@ export class WorkflowService {
 		);
 	}
 
-	async getWorkflowsWithNodesIncluded(nodeTypes: string[]) {
-		return await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[]) {
+		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+
+		let { workflows } = await this.workflowRepository.getManyAndCount(
+			foundWorkflows.map((w) => w.id),
+		);
+
+		if (hasSharing(workflows)) {
+			workflows = await this.processSharedWorkflows(workflows);
+		}
+
+		workflows = await this.addUserScopes(workflows, user);
+
+		this.cleanupSharedField(workflows);
+
+		return workflows.map((workflow) => ({
+			resourceType: 'workflow',
+			...workflow,
+		}));
 	}
 }

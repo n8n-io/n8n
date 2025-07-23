@@ -14,15 +14,9 @@ import semver from 'semver';
 import { N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { WorkflowResource } from '@/Interface';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
-
-type WorkflowData = Array<{
-	id: string;
-	name: string;
-	owner: string[];
-	active: string;
-}>;
 
 interface Props {
 	modalName: string;
@@ -45,7 +39,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 
-const workflowsWithPackageNodes = ref<WorkflowData>([]);
+const workflowsWithPackageNodes = ref<WorkflowResource[]>([]);
 
 const isUsingVerifiedAndUnverifiedPackages =
 	settingsStore.isCommunityNodesFeatureEnabled && settingsStore.isUnverifiedPackagesEnabled;
@@ -229,11 +223,7 @@ onMounted(async () => {
 	if (communityStorePackage.value?.installedNodes.length) {
 		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
 		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
-		const workflows = (response.data ?? []).map((wf) => {
-			wf.owner = ['me'];
-			return wf as WorkflowData[number];
-		});
-		workflowsWithPackageNodes.value = workflows;
+		workflowsWithPackageNodes.value = response.data;
 	}
 
 	setIsVerifiedLatestPackage();

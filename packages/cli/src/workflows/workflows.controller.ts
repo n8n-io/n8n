@@ -1,6 +1,7 @@
 import {
 	ImportWorkflowFromUrlDto,
 	ManualRunQueryDto,
+	ROLE,
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -563,8 +564,17 @@ export class WorkflowsController {
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
+			if (req.user.role !== ROLE.Owner) {
+				res.json({
+					data: [],
+					count: 0,
+				});
+			}
 			const { nodeTypes } = req.body as { nodeTypes: string[] };
-			const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(nodeTypes);
+			const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+				req.user,
+				nodeTypes,
+			);
 
 			res.json({
 				data: workflows,
