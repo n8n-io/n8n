@@ -26,6 +26,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should transform query and values', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			'SELECT * FROM $1:name WHERE id = $2 AND name = $4 AND $3:name = 28',
+			2.5,
 			['table', 15, 'age', 'Name'],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -40,6 +41,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should not replace dollar amounts inside quoted strings', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			"INSERT INTO test_table(content) VALUES('This is for testing $60')",
+			2.5,
 			[],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -52,6 +54,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should handle mixed parameters and dollar amounts in quotes', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			"INSERT INTO $1:name(content, price) VALUES('Product costs $60', $2)",
+			2.5,
 			['products', 59.99],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -65,6 +68,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should handle parameters in double quotes', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			'INSERT INTO test_table(content) VALUES("Price is $100 and $200")',
+			2.5,
 			[],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -77,6 +81,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should process parameters in correct order despite reverse processing', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			'SELECT * FROM table WHERE col1 = $1 AND col2 = $2 AND col3 = $3 AND col4 = $4 AND col5 = $5',
+			2.5,
 			['value1', 'value2', 'value3', 'value4', 'value5'],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -94,6 +99,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should handle escaped single quotes correctly', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			"INSERT INTO test_table(content) VALUES('Don''t replace $1 here')",
+			2.5,
 			['should_not_appear', 123],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -105,6 +111,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should handle escaped double quotes correctly', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			2.5,
 			['should_not_appear', 123],
 		);
 		expect(preparedQuery).toBeDefined();
