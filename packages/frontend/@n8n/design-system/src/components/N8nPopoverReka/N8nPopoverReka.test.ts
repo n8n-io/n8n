@@ -1,12 +1,14 @@
 import { render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 
 import N8nPopoverReka from './N8nPopoverReka.vue';
 
 const defaultStubs = {
 	PopoverContent: {
-		template: '<mock-popover-content v-bind="$attrs"><slot /></mock-popover-content>',
-		props: ['open', 'side', 'sideOffset', 'class'],
+		template:
+			'<mock-popover-content v-bind="$attrs" :style="$attrs.style"><slot /></mock-popover-content>',
+		props: ['open', 'side', 'sideOffset', 'class', 'style'],
 	},
 	PopoverPortal: { template: '<mock-popover-portal><slot /></mock-popover-portal>' },
 	PopoverRoot: {
@@ -78,5 +80,37 @@ describe('N8nPopoverReka', () => {
 
 		expect(wrapper.emitted()).toHaveProperty('update:open');
 		expect(wrapper.emitted()['update:open']).toContainEqual([false]);
+	});
+
+	it('should apply maxHeight style when maxHeight prop is provided', () => {
+		const wrapper = mount(N8nPopoverReka, {
+			props: {
+				maxHeight: '200px',
+			},
+			global: {
+				stubs: defaultStubs,
+			},
+			slots: {
+				trigger: '<button />',
+				content: '<content />',
+			},
+		});
+
+		expect(wrapper.props('maxHeight')).toBe('200px');
+	});
+
+	it('should not apply maxHeight style when maxHeight prop is not provided', () => {
+		const wrapper = mount(N8nPopoverReka, {
+			props: {},
+			global: {
+				stubs: defaultStubs,
+			},
+			slots: {
+				trigger: '<button />',
+				content: '<content />',
+			},
+		});
+
+		expect(wrapper.props('maxHeight')).toBeUndefined();
 	});
 });

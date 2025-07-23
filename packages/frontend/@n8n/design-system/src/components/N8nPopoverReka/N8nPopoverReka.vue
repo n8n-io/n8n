@@ -3,14 +3,16 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 
 interface Props {
 	open?: boolean;
+	maxHeight?: string;
 }
 
 interface Emits {
 	(event: 'update:open', value: boolean): void;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	open: undefined,
+	maxHeight: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -22,7 +24,12 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent
+				side="bottom"
+				:side-offset="5"
+				:class="$style.popoverContent"
+				:style="props.maxHeight ? { maxHeight: props.maxHeight, overflowY: 'auto' } : undefined"
+			>
 				<slot name="content" :close="() => emit('update:open', false)" />
 			</PopoverContent>
 		</PopoverPortal>
