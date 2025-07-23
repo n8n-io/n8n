@@ -1032,16 +1032,24 @@ export class Workflow {
 
 			visited.add(nodeName);
 
-			// Check all connection types for this node
-			const allConnectionTypes = [
-				NodeConnectionTypes.Main,
-				NodeConnectionTypes.AiTool,
-				NodeConnectionTypes.AiMemory,
-				NodeConnectionTypes.AiDocument,
-				NodeConnectionTypes.AiVectorStore,
-			];
+			// Get connection types that actually exist in this workflow
+			const connectionTypes = new Set<NodeConnectionType>();
 
-			for (const connectionType of allConnectionTypes) {
+			// Collect connection types from source connections
+			for (const nodeConnections of Object.values(this.connectionsBySourceNode)) {
+				for (const connectionType of Object.keys(nodeConnections)) {
+					connectionTypes.add(connectionType as NodeConnectionType);
+				}
+			}
+
+			// Collect connection types from destination connections
+			for (const nodeConnections of Object.values(this.connectionsByDestinationNode)) {
+				for (const connectionType of Object.keys(nodeConnections)) {
+					connectionTypes.add(connectionType as NodeConnectionType);
+				}
+			}
+
+			for (const connectionType of connectionTypes) {
 				// Get children (forward direction)
 				const children = this.getChildNodes(nodeName, connectionType);
 				for (const childName of children) {
