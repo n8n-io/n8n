@@ -864,7 +864,7 @@ function openDiffModal(id: string) {
 					:placeholder="
 						i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 					"
-					@keydown.enter="onCommitKeyDownEnter"
+					@keydown.enter.stop="onCommitKeyDownEnter"
 				/>
 				<N8nButton
 					data-test-id="source-control-push-modal-submit"
