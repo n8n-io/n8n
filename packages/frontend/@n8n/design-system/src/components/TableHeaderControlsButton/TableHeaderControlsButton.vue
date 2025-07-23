@@ -222,6 +222,7 @@ const handleDragEnd = () => {
 
 .grip {
 	color: var(--color-text-light);
+	cursor: move;
 }
 
 .column {
