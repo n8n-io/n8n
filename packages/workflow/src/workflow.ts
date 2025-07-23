@@ -1018,6 +1018,21 @@ export class Workflow {
 	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
 		if (fromNodeName === toNodeName) return true;
 
+		// Get connection types that actually exist in this workflow
+		const allConnections = [
+			...Object.values(this.connectionsBySourceNode),
+			...Object.values(this.connectionsByDestinationNode),
+		];
+
+		const connectionTypes = new Set<NodeConnectionType>();
+		for (const nodeConnections of allConnections) {
+			Object.keys(nodeConnections).forEach((key) => {
+				if (Object.values(NodeConnectionTypes).includes(key as NodeConnectionType)) {
+					connectionTypes.add(key as NodeConnectionType);
+				}
+			});
+		}
+
 		const visited = new Set<string>();
 		const queue: Array<{ nodeName: string; depth: number }> = [
 			{ nodeName: fromNodeName, depth: 0 },
@@ -1031,23 +1046,6 @@ export class Workflow {
 			if (nodeName === toNodeName) return true;
 
 			visited.add(nodeName);
-
-			// Get connection types that actually exist in this workflow
-			const connectionTypes = new Set<NodeConnectionType>();
-
-			// Collect connection types from source connections
-			for (const nodeConnections of Object.values(this.connectionsBySourceNode)) {
-				for (const connectionType of Object.keys(nodeConnections)) {
-					connectionTypes.add(connectionType as NodeConnectionType);
-				}
-			}
-
-			// Collect connection types from destination connections
-			for (const nodeConnections of Object.values(this.connectionsByDestinationNode)) {
-				for (const connectionType of Object.keys(nodeConnections)) {
-					connectionTypes.add(connectionType as NodeConnectionType);
-				}
-			}
 
 			for (const connectionType of connectionTypes) {
 				// Get children (forward direction)
