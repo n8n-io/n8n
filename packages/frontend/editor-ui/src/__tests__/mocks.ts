@@ -75,7 +75,7 @@ export const mockNodeTypeDescription = ({
 	group?: INodeTypeDescription['group'];
 	hidden?: INodeTypeDescription['hidden'];
 	description?: INodeTypeDescription['description'];
-} = {}): INodeTypeDescription =>
+} = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
@@ -152,7 +152,7 @@ export function createTestWorkflowObject({
 	staticData = {},
 	settings = {},
 	pinData = {},
-	nodeTypes: mockNodeTypes = nodeTypes,
+	...rest
 }: {
 	id?: string;
 	name?: string;
@@ -173,7 +173,7 @@ export function createTestWorkflowObject({
 		staticData,
 		settings,
 		pinData,
-		nodeTypes: mockNodeTypes,
+		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
 
