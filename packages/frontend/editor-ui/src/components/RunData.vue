@@ -2,6 +2,7 @@
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
+import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -818,7 +819,6 @@ function getNodeHints(): NodeHint[] {
 
 	return [];
 }
-
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
 		emit('itemHover', null);
@@ -1575,7 +1575,7 @@ defineExpose({ enterEditMode });
 				</slot>
 			</N8nCallout>
 		</div>
-
+		<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
 		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
@@ -2345,6 +2345,42 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
+}
+
+.messageSection {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.singleIcon {
+	flex-direction: row;
+	align-items: center;
+}
+
+.multipleIcons {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing-2xs, 8px);
+}
+
+.multipleIcons .iconStack {
+	margin-right: 0;
+	margin-bottom: 0;
+}
+
+.iconStack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs, 4px);
+	flex-shrink: 0;
+	margin-right: var(--spacing-xs);
+}
+
+.icon {
+	color: var(--color-callout-info-icon);
+	line-height: 1;
+	font-size: var(--font-size-xs);
 }
 
 .executingMessage {
