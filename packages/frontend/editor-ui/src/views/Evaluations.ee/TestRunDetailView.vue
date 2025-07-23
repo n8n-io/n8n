@@ -178,11 +178,11 @@ async function handleColumnOrderUpdate(newOrder: string[]) {
 	await saveCachedUserPreferences();
 }
 
-function toggleRowExpansion(rowId: string) {
-	if (expandedRows.value.has(rowId)) {
-		expandedRows.value.delete(rowId);
+function toggleRowExpansion(row: { id: string }) {
+	if (expandedRows.value.has(row.id)) {
+		expandedRows.value.delete(row.id);
 	} else {
-		expandedRows.value.add(rowId);
+		expandedRows.value.add(row.id);
 	}
 }
 
@@ -354,6 +354,11 @@ onMounted(async () => {
 			:expanded-rows="expandedRows"
 			@row-click="toggleRowExpansion"
 		>
+			<template #id="{ row }">
+				<div style="display: flex; justify-content: space-between; gap: 10px">
+					{{ row.id }}
+				</div>
+			</template>
 			<template #index="{ row }">
 				<div>
 					<N8nExternalLink @click.stop.prevent="openRelatedExecution(row)">

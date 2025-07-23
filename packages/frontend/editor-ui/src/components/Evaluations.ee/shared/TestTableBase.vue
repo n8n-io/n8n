@@ -54,7 +54,7 @@ const tableRef = ref<TableInstance>();
 const selectedRows = ref<TableRow[]>([]);
 const localData = ref<TableRow[]>([]);
 const emit = defineEmits<{
-	rowClick: [rowId: string];
+	rowClick: [row: TableRow];
 	selectionChange: [rows: TableRow[]];
 }>();
 
@@ -102,6 +102,7 @@ const handleColumnResize = (
 };
 
 defineSlots<{
+	id(props: { row: TableRow }): unknown;
 	index(props: { row: TableRow }): unknown;
 	status(props: { row: TableRow }): unknown;
 }>();
@@ -134,7 +135,7 @@ defineSlots<{
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
-		@row-click="(row) => $emit('rowClick', row.id)"
+		@row-click="(row) => $emit('rowClick', row)"
 	>
 		<ElTableColumn
 			v-if="selectable"
@@ -176,6 +177,7 @@ defineSlots<{
 				</N8nTooltip>
 			</template>
 			<template #default="{ row }">
+				<slot v-if="column.prop === 'id'" name="id" v-bind="{ row }"></slot>
 				<slot v-if="column.prop === 'index'" name="index" v-bind="{ row }"></slot>
 				<slot v-if="column.prop === 'status'" name="status" v-bind="{ row }"></slot>
 			</template>
