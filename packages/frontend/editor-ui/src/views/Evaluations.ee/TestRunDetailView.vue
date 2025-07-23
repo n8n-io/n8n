@@ -363,11 +363,13 @@ onMounted(async () => {
 			<template #index="{ row }">
 				<div>
 					<N8nExternalLink
+						v-if="row.executionId"
 						class="open-execution-link"
 						@click.stop.prevent="openRelatedExecution(row)"
 					>
 						#{{ row.index }}
 					</N8nExternalLink>
+					<span v-else :class="$style.deletedExecutionRowIndex">#{{ row.index }}</span>
 				</div>
 			</template>
 			<template #status="{ row }">
@@ -562,5 +564,10 @@ onMounted(async () => {
 	color: var(--color-text-danger);
 	font-size: var(--font-size-2xs);
 	line-height: 1.25;
+}
+
+.deletedExecutionRowIndex {
+	color: var(--color-text-base);
+	font-weight: var(--font-weight-regular);
 }
 </style>
