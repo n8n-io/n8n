@@ -64,6 +64,7 @@ const emit = defineEmits<{
 	'update:inputs': [id: string];
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
+	focus: [id: string];
 }>();
 
 const style = useCssModule();
@@ -270,6 +271,10 @@ function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
 
+function onFocus(id: string) {
+	emit('focus', id);
+}
+
 function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
 	nodeClasses.value = add
 		? [...new Set([...nodeClasses.value, className])]
@@ -393,6 +398,7 @@ onBeforeUnmount(() => {
 			@run="onRun"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromToolbar"
+			@focus="onFocus"
 		/>
 
 		<CanvasNodeRenderer

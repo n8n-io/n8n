@@ -151,6 +151,10 @@ export class Server extends AbstractServer {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
 		}
 
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
+		}
+
 		// ----------------------------------------
 		// OIDC
 		// ----------------------------------------
