@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import { WithStringId, DateTimeColumn, JsonColumn } from './abstract-entity';
 import type { ExecutionEntity } from './execution-entity';
@@ -56,8 +56,8 @@ export class TestCaseExecution extends WithStringId {
 	metrics: TestCaseRunMetrics;
 
 	@JsonColumn({ nullable: true })
-	inputs: IDataObject;
+	inputs: Record<string, GenericValue> | null;
 
 	@JsonColumn({ nullable: true })
-	outputs: IDataObject;
+	outputs: Record<string, GenericValue> | null;
 }

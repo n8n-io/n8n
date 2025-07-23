@@ -1004,4 +1004,62 @@ export class Workflow {
 
 		return result;
 	}
+
+	/**
+	 * Checks if there's a bidirectional path between two nodes.
+	 * This handles AI/tool nodes that have complex connection patterns
+	 * where simple parent-child traversal doesn't work.
+	 *
+	 * @param fromNodeName The starting node name
+	 * @param toNodeName The target node name
+	 * @param maxDepth Maximum depth to search (default: 50)
+	 * @returns true if there's a path between the nodes
+	 */
+	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
+		if (fromNodeName === toNodeName) return true;
+
+		const visited = new Set<string>();
+		const queue: Array<{ nodeName: string; depth: number }> = [
+			{ nodeName: fromNodeName, depth: 0 },
+		];
+
+		while (queue.length > 0) {
+			const { nodeName, depth } = queue.shift()!;
+
+			if (depth > maxDepth) continue;
+			if (visited.has(nodeName)) continue;
+			if (nodeName === toNodeName) return true;
+
+			visited.add(nodeName);
+
+			// Check all connection types for this node
+			const allConnectionTypes = [
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiTool,
+				NodeConnectionTypes.AiMemory,
+				NodeConnectionTypes.AiDocument,
+				NodeConnectionTypes.AiVectorStore,
+			];
+
+			for (const connectionType of allConnectionTypes) {
+				// Get children (forward direction)
+				const children = this.getChildNodes(nodeName, connectionType);
+				for (const childName of children) {
+					if (!visited.has(childName)) {
+						queue.push({ nodeName: childName, depth: depth + 1 });
+					}
+				}
+
+				// Get parents (backward direction)
+				const parents = this.getParentNodes(nodeName, connectionType);
+				for (const parentName of parents) {
+					if (!visited.has(parentName)) {
+						queue.push({ nodeName: parentName, depth: depth + 1 });
+					}
+				}
+			}
+		}
+
+		return false;
+	}
 }

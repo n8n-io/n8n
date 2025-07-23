@@ -1,6 +1,6 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
-import type { IDataObject } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow';
 
 export interface TestRunRecord {
 	id: string;
@@ -37,8 +37,8 @@ export interface TestCaseExecutionRecord {
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
-	inputs?: IDataObject;
-	outputs?: IDataObject;
+	inputs?: Record<string, GenericValue>;
+	outputs?: Record<string, GenericValue>;
 }
 
 const getTestRunsEndpoint = (workflowId: string, runId?: string) =>

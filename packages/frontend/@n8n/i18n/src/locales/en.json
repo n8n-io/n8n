@@ -2560,6 +2560,8 @@
 	"workflowSettings.showMessage.saveSettings.title": "Workflow settings saved",
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
+	"workflowSettings.executionTimeout": "Timeout Workflow",
+	"workflowSettings.tags": "Tags",
 	"workflowSettings.timezone": "Timezone",
 	"workflowSettings.timeSavedPerExecution": "Estimated time saved",
 	"workflowSettings.timeSavedPerExecution.hint": "Minutes per production execution",

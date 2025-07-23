@@ -43,7 +43,6 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
-import { AddInputsOutputsToTestCaseExecution1752669793000 } from './1752669793000-AddInputsOutputsToTestCaseExecution';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -86,6 +85,7 @@ import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [

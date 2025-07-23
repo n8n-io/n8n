@@ -18,7 +18,6 @@ import type {
 	AssignmentCollectionValue,
 	GenericValue,
 	IExecuteData,
-	INode,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -364,7 +363,7 @@ export class TestRunnerService {
 	 */
 	static getEvaluationNodes(
 		workflow: IWorkflowBase,
-		operation: string,
+		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
 		isDefaultOperation = false,
 	) {
 		return workflow.nodes.filter(
@@ -418,18 +417,16 @@ export class TestRunnerService {
 		execution: IRun,
 		workflow: IWorkflowBase,
 		operation: 'setInputs' | 'setOutputs',
-	): IDataObject {
+	): Record<string, GenericValue> {
 		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
 
-		return evalNodes.reduce((accu: IDataObject, node: INode) => {
+		return evalNodes.reduce<Record<string, GenericValue>>((accu, node) => {
 			const runs = execution.data.resultData.runData[node.name];
 			const data = runs?.[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
 
-			return {
-				...accu,
-				...data,
-			};
-		}, {} as IDataObject);
+			Object.assign(accu, data);
+			return accu;
+		}, {});
 	}
 
 	/**
