@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
@@ -13,21 +12,17 @@ import { MODAL_CONFIRM, NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@/constants/workflowSuggestions';
 
-const emit = defineEmits<{
-	delete: [id: string];
-}>();
 const i18n = useI18n();
 const router = useRouter();
 const message = useMessage();
 const telemetry = useTelemetry();
 const nodeCreatorStore = useNodeCreatorStore();
 
-const { id } = useCanvasNode();
 const builderStore = useBuilderStore();
 const workflowsStore = useWorkflowsStore();
 
 const workflowSaver = useWorkflowSaving({ router });
-const isPromptVisible = ref(true);
+
 const isFocused = ref(false);
 
 const prompt = ref('');
@@ -46,10 +41,7 @@ async function onSubmit() {
 
 	// Here we need to await for chat to open and session to be loaded
 	await builderStore.openChat();
-	emit('delete', id.value);
-
 	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
-	isPromptVisible.value = false;
 }
 
 async function onSuggestionClick(suggestion: WorkflowSuggestion) {
@@ -88,7 +80,7 @@ function onAddNodeClick() {
 </script>
 
 <template>
-	<div v-if="isPromptVisible" :class="$style.container" data-test-id="canvas-ai-prompt">
+	<div :class="$style.container" data-test-id="canvas-ai-prompt">
 		<!-- Title -->
 		<h2 :class="$style.title">{{ i18n.baseText('aiAssistant.builder.title') }}</h2>
 
@@ -97,7 +89,7 @@ function onAddNodeClick() {
 			<form :class="$style.form" @submit.prevent="onSubmit">
 				<n8n-input
 					v-model="prompt"
-					:class="$style.form_textarea"
+					:class="$style.formTextarea"
 					type="textarea"
 					:disabled="builderStore.streaming"
 					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
@@ -108,7 +100,7 @@ function onAddNodeClick() {
 					@keydown.meta.enter.stop="onSubmit"
 					@input="userEditedPrompt = true"
 				/>
-				<div :class="$style.form_footer">
+				<div :class="$style.formFooter">
 					<n8n-button
 						native-type="submit"
 						:disabled="!hasContent || builderStore.streaming"
@@ -139,7 +131,7 @@ function onAddNodeClick() {
 		<!-- Start manually section -->
 		<div :class="$style.startManually" @click.stop="onAddNodeClick">
 			<button :class="$style.addButton">
-				<n8n-icon icon="plus" color="foreground-xdark" :size="40" />
+				<n8n-icon icon="plus" :size="40" />
 			</button>
 			<div :class="$style.startManuallyLabel">
 				<span :class="$style.startManuallyText">
@@ -163,8 +155,8 @@ function onAddNodeClick() {
 }
 
 .title {
-	font-size: var(--font-size-l);
-	font-weight: var(--font-weight-normal);
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-medium);
 	color: var(--color-text-dark);
 }
 
@@ -172,6 +164,7 @@ function onAddNodeClick() {
 	display: flex;
 	height: 128px;
 	padding: var(--spacing-xs);
+	padding-left: var(--spacing-s);
 	flex-direction: column;
 	justify-content: flex-end;
 	align-items: flex-end;
@@ -180,10 +173,9 @@ function onAddNodeClick() {
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-foreground-xdark);
 	background: var(--color-background-xlight);
-	box-shadow: 0px 0px 0px 3px rgba(0, 0, 0, 0.04);
 
 	&.focused {
-		border: 1px solid var(--color-primary);
+		border: 1px solid var(--prim-color-secondary);
 	}
 }
 
@@ -196,7 +188,7 @@ function onAddNodeClick() {
 	gap: var(--spacing-xs);
 }
 
-.form_textarea {
+.formTextarea {
 	display: flex;
 	flex: 1;
 	min-height: 0;
@@ -204,13 +196,6 @@ function onAddNodeClick() {
 	border: 0;
 
 	:global(.el-textarea__inner) {
-		display: flex;
-		padding: var(--spacing-2xs) var(--spacing-s);
-		align-items: flex-start;
-		gap: 75px;
-		flex: 1 0 0;
-		align-self: stretch;
-		border-radius: var(--border-radius-base);
 		height: 100%;
 		min-height: 0;
 		overflow-y: auto;
@@ -218,10 +203,11 @@ function onAddNodeClick() {
 		background: transparent;
 		resize: none;
 		font-family: var(--font-family);
+		padding: 0;
 	}
 }
 
-.form_footer {
+.formFooter {
 	display: flex;
 	justify-content: flex-end;
 }
@@ -252,6 +238,7 @@ function onAddNodeClick() {
 	font-weight: var(--font-weight-regular);
 
 	&:hover {
+		color: var(--color-primary);
 		border-color: var(--color-primary);
 		background: var(--color-background-light);
 	}
@@ -294,27 +281,42 @@ function onAddNodeClick() {
 .addButton {
 	background: var(--color-foreground-xlight);
 	border: 1px dashed var(--color-foreground-xdark);
-	border-radius: var(--border-radius-small);
-	padding: 0;
-	min-width: 69px;
-	min-height: 69px;
+	border-radius: var(--border-radius-base);
+	min-width: 80px;
+	min-height: 80px;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: all 0.3s ease;
+
+	&:hover {
+		background: var(--color-background-light);
+		border-color: var(--color-button-secondary-hover-active-focus-border);
+	}
+
+	svg {
+		width: 31px !important;
+		height: 40px;
+		path {
+			color: var(--color-foreground-xdark);
+			fill: var(--color-foreground-xdark);
+			transition: all 0.3s ease;
+		}
+	}
 
 	&:hover svg path {
+		color: var(--color-primary);
 		fill: var(--color-primary);
 	}
 }
 
 .startManuallyText {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-medium);
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 }
 
 .startManuallySubtitle {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-base);
