@@ -129,7 +129,6 @@ defineSlots<{
 				return `${baseClass} ${expandedClass}`;
 			}
 		"
-		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
 		@row-click="(row) => $emit('rowClick', row)"
@@ -238,10 +237,6 @@ defineSlots<{
 .table {
 	border-radius: 12px;
 
-	:global(.el-scrollbar__wrap) {
-		overflow: hidden;
-	}
-
 	:global(.el-table__column-resize-proxy) {
 		background-color: var(--color-primary);
 		width: 3px;
@@ -253,14 +248,6 @@ defineSlots<{
 
 	:global(.caret-wrapper) {
 		display: none;
-	}
-
-	:global(.el-scrollbar__thumb) {
-		background-color: var(--color-foreground-base);
-	}
-
-	:global(.el-scrollbar__bar) {
-		opacity: 1;
 	}
 }
 </style>
