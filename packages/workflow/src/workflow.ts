@@ -1019,19 +1019,14 @@ export class Workflow {
 		if (fromNodeName === toNodeName) return true;
 
 		// Get connection types that actually exist in this workflow
-		const allConnections = [
-			...Object.values(this.connectionsBySourceNode),
-			...Object.values(this.connectionsByDestinationNode),
-		];
-
-		const connectionTypes = new Set<NodeConnectionType>();
-		for (const nodeConnections of allConnections) {
-			Object.keys(nodeConnections).forEach((key) => {
-				if (Object.values(NodeConnectionTypes).includes(key as NodeConnectionType)) {
-					connectionTypes.add(key as NodeConnectionType);
-				}
-			});
-		}
+		const connectionTypes = new Set<NodeConnectionType>(
+			[
+				...Object.values(this.connectionsBySourceNode),
+				...Object.values(this.connectionsByDestinationNode),
+			].flatMap((nodeConnections) =>
+				Object.keys(nodeConnections).filter((key): key is NodeConnectionType => !!key),
+			),
+		);
 
 		const visited = new Set<string>();
 		const queue: Array<{ nodeName: string; depth: number }> = [
