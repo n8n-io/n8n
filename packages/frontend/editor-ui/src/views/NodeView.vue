@@ -1857,6 +1857,7 @@ watch(
 			typeVersion: 1,
 			position: [-690, -15],
 			parameters: {},
+			draggable: false,
 		};
 
 		fallbackNodes.value =

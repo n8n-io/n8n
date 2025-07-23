@@ -323,11 +323,6 @@ function onAddNodeClick() {
 	cursor: pointer;
 	transition: all 0.3s ease;
 
-	&:focus {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-
 	svg {
 		width: 31px !important;
 		height: 40px;
