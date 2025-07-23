@@ -1892,7 +1892,6 @@ defineExpose({ enterEditMode });
 
 			<RunDataBinary
 				v-else-if="displayMode === 'binary'"
-				:compact="compact"
 				:binary-data="binaryData"
 				@preview="displayBinaryData"
 			/>

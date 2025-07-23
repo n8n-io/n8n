@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
 import { N8nButton, N8nText } from '@n8n/design-system';
 
-const { binaryData, compact } = defineProps<{ binaryData: IBinaryKeyData[]; compact: boolean }>();
+const { binaryData } = defineProps<{ binaryData: IBinaryKeyData[] }>();
 
 const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
@@ -39,7 +39,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 </script>
 
 <template>
-	<div :class="[$style.component, compact ? $style.compact : '']">
+	<div :class="$style.component">
 		<N8nText v-if="binaryData.length === 0" align="center" tag="div">
 			{{ i18n.baseText('runData.noBinaryDataFound') }}
 		</N8nText>
@@ -136,10 +136,6 @@ async function downloadBinaryData(index: number, key: string | number) {
 	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
-
-	.compact & {
-		padding: 0 var(--spacing-2xs);
-	}
 }
 
 .binaryIndex {
