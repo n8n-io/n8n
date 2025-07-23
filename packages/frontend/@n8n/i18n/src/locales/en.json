@@ -1569,6 +1569,8 @@
 	"nodeView.setupTemplate": "Set up template",
 	"nodeView.expandAllNodes": "Expand all nodes",
 	"nodeView.collapseAllNodes": "Collapse all nodes",
+	"nodeView.enterZoomMode": "Enter zoom mode",
+	"nodeView.leaveZoomMode": "Leave zoom mode",
 	"nodeViewV2.showError.editingNotAllowed": "Editing is not allowed",
 	"nodeViewV2.showError.failedToCreateNode": "Failed to create node",
 	"contextMenu.node": "node | nodes",
