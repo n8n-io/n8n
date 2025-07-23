@@ -14,7 +14,6 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
-	INodes,
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
