@@ -187,7 +187,7 @@ const createEndpointMappingFn =
 		const offsetValue =
 			position === Position.Bottom
 				? `${CONFIGURATION_NODE_DIAMETER / 2 + GRID_SIZE * (3 * index)}px`
-				: isExperimentalNdvActive && endpoints.length === 1
+				: isExperimentalNdvActive.value && endpoints.length === 1
 					? `${(1 + index) * (GRID_SIZE * 1.5)}px`
 					: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
 
