@@ -106,16 +106,48 @@ function extractValuesFromMatches(
 	return values;
 }
 
-export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
+export const prepareQueryAndReplacements = (
+	rawQuery: string,
+	nodeVersion: number,
+	replacements?: QueryValues,
+) => {
 	if (replacements === undefined) {
 		return { query: rawQuery, values: [] };
 	}
 
+	if (nodeVersion >= 2.5) {
+		const regex = /\$(\d+)(?::name)?/g;
+		const matches = findParameterMatches(rawQuery, regex);
+		const validMatches = filterValidMatches(matches, rawQuery);
+		const query = processParameterReplacements(rawQuery, validMatches, replacements);
+		const values = extractValuesFromMatches(validMatches, replacements);
+
+		return { query, values };
+	}
+
+	return prepareQueryLegacy(rawQuery, replacements);
+};
+
+export const prepareQueryLegacy = (
+	rawQuery: string,
+	replacements: QueryValues,
+): QueryWithValues => {
+	let query: string = rawQuery;
+	const values: QueryValues = [];
+
 	const regex = /\$(\d+)(?::name)?/g;
-	const matches = findParameterMatches(rawQuery, regex);
-	const validMatches = filterValidMatches(matches, rawQuery);
-	const query = processParameterReplacements(rawQuery, validMatches, replacements);
-	const values = extractValuesFromMatches(validMatches, replacements);
+	const matches = rawQuery.match(regex) || [];
+
+	for (const match of matches) {
+		if (match.includes(':name')) {
+			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
+			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
+		} else {
+			const matchIndex = Number(match.replace('$', '')) - 1;
+			query = query.replace(match, '?');
+			values.push(replacements[matchIndex]);
+		}
+	}
 
 	return { query, values };
 };
