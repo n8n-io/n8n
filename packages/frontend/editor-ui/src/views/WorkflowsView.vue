@@ -20,11 +20,6 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import {
-	isExtraTemplateLinksExperimentEnabled,
-	TemplateClickSource,
-	trackTemplatesClick,
-} from '@/utils/experiments';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
@@ -50,6 +45,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import {
+	isExtraTemplateLinksExperimentEnabled,
+	isPersonalizedTemplatesExperimentEnabled,
+	TemplateClickSource,
+	trackTemplatesClick,
+} from '@/utils/experiments';
 import {
 	N8nButton,
 	N8nCard,
@@ -371,6 +372,10 @@ const showRegisteredCommunityCTA = computed(
 	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
 );
 
+const experimentalShowSuggestedWorkflows = computed(() =>
+	isPersonalizedTemplatesExperimentEnabled(),
+);
+
 const showAIStarterCollectionCallout = computed(() => {
 	return (
 		!loading.value &&
@@ -484,6 +489,7 @@ const initialize = async () => {
 		workflowsStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		templatesStore.experimentalFetchSuggestedWorkflows(),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -1722,6 +1728,17 @@ const onNameSubmit = async (name: string) => {
 					</div>
 				</template>
 			</N8nCallout>
+			<SuggestedWorkflows v-if="experimentalShowSuggestedWorkflows">
+				<SuggestedWorkflowCard
+					v-for="workflow in templatesStore.experimentalSuggestedWorkflows"
+					:key="workflow.id"
+					data-test-id="resource-list-item-suggested-workflow"
+					:data="{
+						id: workflow.id,
+						name: workflow.name,
+					}"
+				/>
+			</SuggestedWorkflows>
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
