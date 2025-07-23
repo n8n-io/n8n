@@ -21,7 +21,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CODE_NODE_TYPE,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
-	HTML_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
@@ -76,7 +75,7 @@ export const mockNodeTypeDescription = ({
 	group?: INodeTypeDescription['group'];
 	hidden?: INodeTypeDescription['hidden'];
 	description?: INodeTypeDescription['description'];
-} = {}) =>
+} = {}): INodeTypeDescription =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
@@ -120,7 +119,6 @@ export const mockNodes = [
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
-	mockNode({ name: 'Html', type: HTML_NODE_TYPE }),
 ];
 
 export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
@@ -132,14 +130,18 @@ export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
 	({ type }) => type.description,
 ) as INodeTypeDescription[];
 
-const nodeTypes = mock<INodeTypes>({
-	getByName(nodeType) {
-		return defaultNodeTypes[nodeType].type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
-	},
-});
+export function createMockNodeTypes(data: INodeTypeData) {
+	return mock<INodeTypes>({
+		getByName(nodeType) {
+			return data[nodeType].type;
+		},
+		getByNameAndVersion(nodeType: string, version?: number): INodeType {
+			return NodeHelpers.getVersionedNodeType(data[nodeType].type, version);
+		},
+	});
+}
+
+const nodeTypes = createMockNodeTypes(defaultNodeTypes);
 
 export function createTestWorkflowObject({
 	id = uuid(),
@@ -150,6 +152,7 @@ export function createTestWorkflowObject({
 	staticData = {},
 	settings = {},
 	pinData = {},
+	nodeTypes: mockNodeTypes = nodeTypes,
 }: {
 	id?: string;
 	name?: string;
@@ -159,6 +162,7 @@ export function createTestWorkflowObject({
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
+	nodeTypes?: INodeTypes;
 } = {}) {
 	return new Workflow({
 		id,
@@ -169,7 +173,7 @@ export function createTestWorkflowObject({
 		staticData,
 		settings,
 		pinData,
-		nodeTypes,
+		nodeTypes: mockNodeTypes,
 	});
 }
 

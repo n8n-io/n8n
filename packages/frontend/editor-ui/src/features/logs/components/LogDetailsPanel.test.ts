@@ -5,10 +5,13 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { h } from 'vue';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowObject,
+	defaultNodeTypes,
+	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
@@ -195,7 +198,13 @@ describe('LogDetailsPanel', () => {
 			data: { [NodeConnectionTypes.Main]: [[{ json: { html: '<h1>Hi!</h1>' } }]] },
 			source: [{ previousNode: 'A' }],
 		});
-		const workflow = createTestWorkflowObject({ nodes: [nodeA, nodeB] });
+		const workflow = createTestWorkflowObject({
+			nodes: [nodeA, nodeB],
+			nodeTypes: createMockNodeTypes({
+				...defaultNodeTypes,
+				[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
+			}),
+		});
 		const execution = { resultData: { runData: { A: [runDataA], B: [runDataB] } } };
 		const logA = createLogEntry({ node: nodeA, runData: runDataA, workflow, execution });
 		const logB = createLogEntry({ node: nodeB, runData: runDataB, workflow, execution });
