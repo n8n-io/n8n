@@ -12,25 +12,34 @@ import { MODAL_CONFIRM, NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@/constants/workflowSuggestions';
 
+// Composables
 const i18n = useI18n();
 const router = useRouter();
 const message = useMessage();
 const telemetry = useTelemetry();
-const nodeCreatorStore = useNodeCreatorStore();
 
+// Stores
+const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
 const workflowsStore = useWorkflowsStore();
 
+// Services
 const workflowSaver = useWorkflowSaving({ router });
 
-const isFocused = ref(false);
-
+// Component state
 const prompt = ref('');
 const userEditedPrompt = ref(false);
+const isFocused = ref(false);
 
+// Computed properties
 const hasContent = computed(() => prompt.value.trim().length > 0);
+
+// Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
 
+/**
+ * Handles form submission to build a workflow from the prompt
+ */
 async function onSubmit() {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 
@@ -44,6 +53,10 @@ async function onSubmit() {
 	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 }
 
+/**
+ * Handles clicking on a suggestion pill
+ * @param suggestion - The workflow suggestion that was clicked
+ */
 async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	// Track telemetry
 	telemetry.track('User clicked suggestion pill', {
@@ -51,7 +64,7 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 		suggestion: suggestion.id,
 	});
 
-	// Show confirmation if there's content AND the user has edited it
+	// Show confirmation if there's content AND the user has edited the prompt
 	if (hasContent.value && userEditedPrompt.value) {
 		const confirmed = await message.confirm(
 			i18n.baseText('aiAssistant.builder.suggestionPills.confirmMessage'),
@@ -72,6 +85,9 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	userEditedPrompt.value = false;
 }
 
+/**
+ * Opens the node creator for adding trigger nodes manually
+ */
 function onAddNodeClick() {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
@@ -80,12 +96,13 @@ function onAddNodeClick() {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="canvas-ai-prompt">
-		<!-- Title -->
-		<h2 :class="$style.title">{{ i18n.baseText('aiAssistant.builder.title') }}</h2>
+	<article :class="$style.container" data-test-id="canvas-ai-prompt">
+		<header>
+			<h2 :class="$style.title">{{ i18n.baseText('aiAssistant.builder.title') }}</h2>
+		</header>
 
-		<!-- Prompt input container -->
-		<div :class="[$style.promptContainer, { [$style.focused]: isFocused }]">
+		<!-- Prompt input section -->
+		<section :class="[$style.promptContainer, { [$style.focused]: isFocused }]">
 			<form :class="$style.form" @submit.prevent="onSubmit">
 				<n8n-input
 					v-model="prompt"
@@ -100,52 +117,55 @@ function onAddNodeClick() {
 					@keydown.meta.enter.stop="onSubmit"
 					@input="userEditedPrompt = true"
 				/>
-				<div :class="$style.formFooter">
+				<footer :class="$style.formFooter">
 					<n8n-button
 						native-type="submit"
 						:disabled="!hasContent || builderStore.streaming"
 						@keydown.enter="onSubmit"
-						>{{ i18n.baseText('aiAssistant.builder.buildWorkflow') }}</n8n-button
 					>
-				</div>
+						{{ i18n.baseText('aiAssistant.builder.buildWorkflow') }}
+					</n8n-button>
+				</footer>
 			</form>
-		</div>
+		</section>
 
-		<!-- Suggestion pills -->
-		<div :class="$style.pillsContainer">
+		<!-- Suggestion pills section -->
+		<section :class="$style.pillsContainer" role="group" aria-label="Workflow suggestions">
 			<button
 				v-for="suggestion in suggestions"
 				:key="suggestion.id"
 				:class="$style.suggestionPill"
+				type="button"
 				@click="onSuggestionClick(suggestion)"
 			>
 				{{ suggestion.summary }}
 			</button>
-		</div>
+		</section>
 
-		<!-- Or divider -->
-		<div :class="$style.orDivider">
+		<!-- Divider -->
+		<div :class="$style.orDivider" role="separator">
 			<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
 		</div>
 
-		<!-- Start manually section -->
-		<div :class="$style.startManually" @click.stop="onAddNodeClick">
-			<button :class="$style.addButton">
+		<!-- Manual node creation section -->
+		<section :class="$style.startManually" @click.stop="onAddNodeClick">
+			<button :class="$style.addButton" type="button" aria-label="Add node manually">
 				<n8n-icon icon="plus" :size="40" />
 			</button>
 			<div :class="$style.startManuallyLabel">
-				<span :class="$style.startManuallyText">
+				<strong :class="$style.startManuallyText">
 					{{ i18n.baseText('aiAssistant.builder.startManually.title') }}
-				</span>
+				</strong>
 				<span :class="$style.startManuallySubtitle">
 					{{ i18n.baseText('aiAssistant.builder.startManually.subTitle') }}
 				</span>
 			</div>
-		</div>
-	</div>
+		</section>
+	</article>
 </template>
 
 <style lang="scss" module>
+/* Layout */
 .container {
 	display: flex;
 	flex-direction: column;
@@ -154,12 +174,14 @@ function onAddNodeClick() {
 	max-width: 710px;
 }
 
+/* Header */
 .title {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-text-dark);
 }
 
+/* Prompt Input Section */
 .promptContainer {
 	display: flex;
 	height: 128px;
@@ -173,9 +195,10 @@ function onAddNodeClick() {
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-foreground-xdark);
 	background: var(--color-background-xlight);
+	transition: border-color 0.2s ease;
 
 	&.focused {
-		border: 1px solid var(--prim-color-secondary);
+		border-color: var(--prim-color-secondary);
 	}
 }
 
@@ -212,6 +235,7 @@ function onAddNodeClick() {
 	justify-content: flex-end;
 }
 
+/* Suggestion Pills Section */
 .pillsContainer {
 	display: flex;
 	justify-content: center;
@@ -240,10 +264,11 @@ function onAddNodeClick() {
 	&:hover {
 		color: var(--color-primary);
 		border-color: var(--color-primary);
-		background: var(--color-background-light);
+		background: var(--color-background-xlight);
 	}
 }
 
+/* Divider Section */
 .orDivider {
 	display: flex;
 	justify-content: center;
@@ -267,10 +292,21 @@ function onAddNodeClick() {
 	padding: 0 var(--spacing-s);
 }
 
+/* Manual Node Creation Section */
 .startManually {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-xs);
+	cursor: pointer;
+
+	&:hover .addButton {
+		border-color: var(--color-button-secondary-hover-active-focus-border);
+
+		svg path {
+			color: var(--color-primary);
+			fill: var(--color-primary);
+		}
+	}
 }
 
 .startManuallyLabel {
@@ -287,9 +323,9 @@ function onAddNodeClick() {
 	cursor: pointer;
 	transition: all 0.3s ease;
 
-	&:hover {
-		background: var(--color-background-light);
-		border-color: var(--color-button-secondary-hover-active-focus-border);
+	&:focus {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
 	}
 
 	svg {
@@ -300,11 +336,6 @@ function onAddNodeClick() {
 			fill: var(--color-foreground-xdark);
 			transition: all 0.3s ease;
 		}
-	}
-
-	&:hover svg path {
-		color: var(--color-primary);
-		fill: var(--color-primary);
 	}
 }
 
