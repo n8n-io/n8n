@@ -15,7 +15,7 @@
 		},
 		"lint:fix": {},
 		"test": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
 		"watch": { "cache": false, "persistent": true },
