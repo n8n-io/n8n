@@ -20,6 +20,9 @@ import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
+// Keywords to identify infrastructure errors in error messages
+const INFRA_ERROR_KEYWORDS = ['sqllite', 'out-of-memory'];
+
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
 interface IExecutionTrackData {
@@ -33,6 +36,8 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		manual_workflow_infra_error?: IExecutionTrackData;
+		prod_workflow_infra_error?: IExecutionTrackData;
 		user_id: string | undefined;
 	};
 }
@@ -115,6 +120,26 @@ export class Telemetry {
 			});
 		}
 
+		const workflowIdsWithInfraErrors = Object.keys(this.executionCountsBuffer).filter(
+			(workflowId) => {
+				const data = this.executionCountsBuffer[workflowId];
+				const infraSum =
+					(data.manual_workflow_infra_error?.count ?? 0) +
+					(data.prod_workflow_infra_error?.count ?? 0);
+				return infraSum > 0;
+			},
+		);
+
+		for (const workflowId of workflowIdsWithInfraErrors) {
+			this.track('Workflow failed due to infrastructure', {
+				event_version: '1',
+				workflow_id: workflowId,
+				manual_workflow_infra_error:
+					this.executionCountsBuffer[workflowId].manual_workflow_infra_error,
+				prod_workflow_infra_error: this.executionCountsBuffer[workflowId].prod_workflow_infra_error,
+			});
+		}
+
 		this.executionCountsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
@@ -138,6 +163,7 @@ export class Telemetry {
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
+		console.log(properties);
 		if (this.rudderStack) {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
@@ -159,6 +185,20 @@ export class Telemetry {
 				};
 			} else {
 				executionTrackDataKey.count++;
+			}
+
+			if (
+				properties.error_message &&
+				INFRA_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
+			) {
+				const infraKey = properties.is_manual
+					? 'manual_workflow_infra_error'
+					: 'prod_workflow_infra_error';
+				if (!this.executionCountsBuffer[workflowId][infraKey]) {
+					this.executionCountsBuffer[workflowId][infraKey] = { count: 1, first: execTime };
+				} else {
+					this.executionCountsBuffer[workflowId][infraKey].count++;
+				}
 			}
 
 			if (
