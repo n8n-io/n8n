@@ -61,6 +61,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -85,6 +87,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -122,6 +126,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -145,6 +151,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -168,6 +176,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -192,6 +202,8 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
+			nodes: [],
+			connections: {},
 		});
 
 		expect(hints).toEqual([

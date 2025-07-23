@@ -18,6 +18,7 @@ import {
 	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 	type AssignmentCollectionValue,
+	IConnections,
 } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
@@ -519,7 +520,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
 			expect(result).toEqual({
 				node: {},
@@ -538,14 +539,13 @@ describe('useWorkflowHelpers', () => {
 			const jsonData = {
 				name: 'Test',
 			};
-			workflowsStore.connectionsByDestinationNode = {
+
+			const connectionsBySourceNode: IConnections = {
+				Start: {
+					main: [[{ node: 'Set', index: 0, type: 'main' }]],
+				},
 				Set: {
-					main: [
-						[
-							{ node: 'Start', index: 0, type: 'main' },
-							{ node: 'Set', index: 0, type: 'main' },
-						],
-					],
+					main: [[{ node: 'Start', index: 0, type: 'main' }]],
 				},
 			};
 
@@ -573,7 +573,13 @@ describe('useWorkflowHelpers', () => {
 				},
 			} as unknown as IExecutionResponse;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData(
+				connectionsBySourceNode,
+				parentNodes,
+				currentNode,
+				inputName,
+				runIndex,
+			);
 
 			expect(result).toEqual({
 				node: {},
@@ -607,14 +613,13 @@ describe('useWorkflowHelpers', () => {
 			const jsonData = {
 				name: 'Test',
 			};
-			workflowsStore.connectionsByDestinationNode = {
+
+			const connectionsBySourceNode: IConnections = {
+				Start: {
+					main: [[{ node: 'Set', index: 0, type: 'main' }]],
+				},
 				Set: {
-					main: [
-						[
-							{ node: 'Start', index: 0, type: 'main' },
-							{ node: 'Set', index: 0, type: 'main' },
-						],
-					],
+					main: [[{ node: 'Start', index: 0, type: 'main' }]],
 				},
 			};
 
@@ -642,7 +647,13 @@ describe('useWorkflowHelpers', () => {
 				},
 			} as unknown as IExecutionResponse;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData(
+				connectionsBySourceNode,
+				parentNodes,
+				currentNode,
+				inputName,
+				runIndex,
+			);
 
 			expect(result).toEqual({
 				node: {},
@@ -682,17 +693,17 @@ describe('useWorkflowHelpers', () => {
 				name: 'Test B',
 			};
 
-			workflowsStore.connectionsByDestinationNode = {
+			const connectionsBySourceNode: IConnections = {
+				'Parent A': {
+					main: [[{ node: 'Set', type: 'main', index: 0 }]],
+				},
+				'Parent B': {
+					main: [[{ node: 'Set', type: 'main', index: 1 }]],
+				},
 				Set: {
 					main: [
-						[
-							{ node: 'Parent A', index: 0, type: 'main' },
-							{ node: 'Set', index: 0, type: 'main' },
-						],
-						[
-							{ node: 'Parent B', index: 0, type: 'main' },
-							{ node: 'Set', index: 0, type: 'main' },
-						],
+						[{ node: 'Set', type: 'main', index: 0 }],
+						[{ node: 'Set', type: 'main', index: 1 }],
 					],
 				},
 			};
@@ -736,7 +747,13 @@ describe('useWorkflowHelpers', () => {
 				},
 			} as unknown as IExecutionResponse;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData(
+				connectionsBySourceNode,
+				parentNodes,
+				currentNode,
+				inputName,
+				runIndex,
+			);
 
 			expect(result).toEqual({
 				node: {},
@@ -773,7 +790,7 @@ describe('useWorkflowHelpers', () => {
 			};
 			workflowsStore.shouldReplaceInputDataWithPinData = true;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
 			expect(result.data).toEqual({ main: [[{ json: { key: 'value' } }]] });
 			expect(result.source).toEqual({ main: [{ previousNode: 'ParentNode' }] });
@@ -796,18 +813,23 @@ describe('useWorkflowHelpers', () => {
 					} as never,
 				],
 			};
-			workflowsStore.connectionsByDestinationNode = {
+
+			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
-					main: [
-						[
-							{ node: 'ParentNode', index: 0, type: 'main' },
-							{ node: 'CurrentNode', index: 0, type: 'main' },
-						],
-					],
+					main: [[{ node: 'CurrentNode', index: 0, type: 'main' }]],
+				},
+				ParentNode: {
+					main: [[{ node: 'CurrentNode', index: 0, type: 'main' }]],
 				},
 			};
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData(
+				connectionsBySourceNode,
+				parentNodes,
+				currentNode,
+				inputName,
+				runIndex,
+			);
 
 			expect(result.data).toEqual({ main: [[{ json: { key: 'valueFromRunData' } }]] });
 			expect(result.source).toEqual({
@@ -833,18 +855,24 @@ describe('useWorkflowHelpers', () => {
 					} as never,
 				],
 			};
-			workflowsStore.connectionsByDestinationNode = {
+
+			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
-					main: [
-						[
-							{ node: 'ParentNode', index: 1, type: 'main' },
-							{ node: 'CurrentNode', index: 0, type: 'main' },
-						],
-					],
+					main: [[{ node: 'CurrentNode', index: 0, type: 'main' }]],
+				},
+				ParentNode: {
+					main: [[], [{ node: 'CurrentNode', index: 1, type: 'main' }]],
 				},
 			};
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex, parentRunIndex);
+			const result = executeData(
+				connectionsBySourceNode,
+				parentNodes,
+				currentNode,
+				inputName,
+				runIndex,
+				parentRunIndex,
+			);
 
 			expect(result.data).toEqual({ main: [[{ json: { key: 'valueFromRunData' } }]] });
 			expect(result.source).toEqual({
@@ -864,7 +892,7 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = null;
 
-			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();

@@ -804,6 +804,8 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
+					nodes: workflowsStore.allNodes,
+					connections: workflowsStore.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});

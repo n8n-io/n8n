@@ -57,7 +57,6 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 	ITaskStartedData,
-	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -304,27 +303,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const connectionsByDestinationNode = computed(() =>
 		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
 	);
-
-	function getChildNodes(
-		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
-		depth = -1,
-	): string[] {
-		return workflowUtils.getChildNodes(connectionsBySourceNode.value, nodeName, type, depth);
-	}
-
-	function getParentNodes(
-		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
-		depth = -1,
-	): string[] {
-		return workflowUtils.getConnectedNodes(
-			connectionsByDestinationNode.value,
-			nodeName,
-			type,
-			depth,
-		);
-	}
 
 	// End section
 
@@ -1987,8 +1965,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		allNodes,
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
-		getChildNodes,
-		getParentNodes,
 		isWaitingExecution,
 		isWorkflowRunning,
 		canvasNames,

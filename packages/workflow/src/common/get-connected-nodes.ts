@@ -15,7 +15,6 @@ export function getConnectedNodes(
 	depth = -1,
 	checkedNodesIncoming?: string[],
 ): string[] {
-	depth = depth === -1 ? -1 : depth;
 	const newDepth = depth === -1 ? depth : depth - 1;
 	if (depth === 0) {
 		// Reached max depth
