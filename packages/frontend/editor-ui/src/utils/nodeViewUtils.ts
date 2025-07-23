@@ -35,11 +35,11 @@ import {
 export const GRID_SIZE = 16;
 
 export const DEFAULT_NODE_SIZE: [number, number] = [GRID_SIZE * 6, GRID_SIZE * 6];
-export const CONFIGURATION_NODE_DIAMETER = GRID_SIZE * 5;
+export const CONFIGURATION_NODE_RADIUS = (GRID_SIZE * 5) / 2;
 export const CONFIGURATION_NODE_SIZE: [number, number] = [
-	CONFIGURATION_NODE_DIAMETER,
-	CONFIGURATION_NODE_DIAMETER,
-];
+	CONFIGURATION_NODE_RADIUS * 2,
+	CONFIGURATION_NODE_RADIUS * 2,
+]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
@@ -624,7 +624,8 @@ export function calculateNodeSize(
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
 			width:
-				CONFIGURATION_NODE_DIAMETER + GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3),
+				CONFIGURATION_NODE_RADIUS * 2 +
+				GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3),
 			height: isConfiguration ? CONFIGURATION_NODE_SIZE[1] : height,
 		};
 	}
