@@ -42,6 +42,7 @@ const emit = defineEmits<Emits>();
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
+	z-index: 1;
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

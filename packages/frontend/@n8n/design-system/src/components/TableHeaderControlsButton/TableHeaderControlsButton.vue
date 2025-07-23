@@ -78,8 +78,9 @@ const handleDrop = (event: DragEvent, targetColumnKey: string) => {
 		return;
 	}
 
-	const visibleColumnKeys = visibleColumns.value.map((col) => col.key);
-	const draggedIndex = visibleColumnKeys.indexOf(draggedColumnKey);
+	// Get all column keys in their original order, including hidden and disabled
+	const allColumnKeys = props.columns.map((col) => col.key);
+	const draggedIndex = allColumnKeys.indexOf(draggedColumnKey);
 
 	if (draggedIndex === -1) {
 		resetDragState();
@@ -90,19 +91,19 @@ const handleDrop = (event: DragEvent, targetColumnKey: string) => {
 
 	if (targetColumnKey === 'END') {
 		// Move to end
-		newOrder = [...visibleColumnKeys];
+		newOrder = [...allColumnKeys];
 		newOrder.splice(draggedIndex, 1);
 		newOrder.push(draggedColumnKey);
 	} else {
 		// Move to specific position
-		const targetIndex = visibleColumnKeys.indexOf(targetColumnKey);
+		const targetIndex = allColumnKeys.indexOf(targetColumnKey);
 
 		if (targetIndex === -1) {
 			resetDragState();
 			return;
 		}
 
-		newOrder = [...visibleColumnKeys];
+		newOrder = [...allColumnKeys];
 		newOrder.splice(draggedIndex, 1);
 		newOrder.splice(targetIndex, 0, draggedColumnKey);
 	}
@@ -196,6 +197,7 @@ const handleDragEnd = () => {
 					:key="column.key"
 					:class="[$style.column, $style.hidden]"
 					data-testid="hidden-column"
+					:data-column-key="column.key"
 				>
 					<N8nIcon icon="grip-vertical" :class="[$style.grip, $style.hidden]" />
 					<label>{{ column.label }}</label>

@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/vue';
 import { vi } from 'vitest';
 
+import type { ColumnHeader } from './TableHeaderControlsButton.vue';
 import TableHeaderControlsButton from './TableHeaderControlsButton.vue';
 
 // Mock the useI18n composable
@@ -18,12 +19,12 @@ vi.mock('@n8n/design-system/composables/useI18n', () => ({
 }));
 
 // Helper function to create test columns
-const createTestColumns = () => [
-	{ key: 'col1', label: 'Column 1', visible: true },
-	{ key: 'col2', label: 'Column 2', visible: true },
-	{ key: 'col3', label: 'Column 3', visible: false },
-	{ key: 'col4', label: 'Column 4', visible: true },
-	{ key: 'col5', label: 'Column 5', visible: false },
+const createTestColumns = (): ColumnHeader[] => [
+	{ key: 'col1', label: 'Column 1', disabled: false, visible: true },
+	{ key: 'col2', label: 'Column 2', disabled: false, visible: true },
+	{ key: 'col3', label: 'Column 3', disabled: false, visible: false },
+	{ key: 'col4', label: 'Column 4', disabled: false, visible: true },
+	{ key: 'col5', label: 'Column 5', disabled: false, visible: false },
 ];
 
 // Helper function to create drag event
@@ -295,8 +296,7 @@ describe('TableHeaderControlsButton', () => {
 
 			const emitted = wrapper.emitted('update:columnOrder');
 			expect(emitted).toBeTruthy();
-			// When dropping col1 on col2, the order should be [col2, col1, col4]
-			expect(emitted[0]).toEqual([['col2', 'col1', 'col4']]);
+			expect(emitted[0]).toEqual([['col2', 'col1', 'col3', 'col4', 'col5']]);
 		});
 
 		it('should emit update:columnOrder when dropping column at the end', async () => {
@@ -334,8 +334,7 @@ describe('TableHeaderControlsButton', () => {
 
 			const emitted = wrapper.emitted('update:columnOrder');
 			expect(emitted).toBeTruthy();
-			// When dropping col1 at the end, the order should be [col2, col4, col1]
-			expect(emitted[0]).toEqual([['col2', 'col4', 'col1']]);
+			expect(emitted[0]).toEqual([['col2', 'col3', 'col4', 'col5', 'col1']]);
 		});
 
 		it('should not emit update:columnOrder when dropping column on itself', async () => {
@@ -534,8 +533,8 @@ describe('TableHeaderControlsButton', () => {
 
 		it('should handle columns with same key gracefully', () => {
 			const duplicateColumns = [
-				{ key: 'col1', label: 'Column 1', visible: true },
-				{ key: 'col1', label: 'Column 1 Duplicate', visible: false },
+				{ key: 'col1', label: 'Column 1', disabled: false, visible: true },
+				{ key: 'col1', label: 'Column 1 Duplicate', disabled: false, visible: false },
 			];
 
 			const wrapper = render(TableHeaderControlsButton, {
@@ -614,6 +613,274 @@ describe('TableHeaderControlsButton', () => {
 			const button = wrapper.container.querySelector('mock-button');
 			expect(button).toBeTruthy();
 			expect(button).toHaveAttribute('size', size);
+		});
+	});
+
+	describe('Disabled columns', () => {
+		// Helper function to create test columns with disabled ones
+		const createColumnsWithDisabled = (): ColumnHeader[] => [
+			{ key: 'col1', label: 'Column 1', disabled: false, visible: true },
+			{ key: 'col2', disabled: true }, // Disabled column
+			{ key: 'col3', label: 'Column 3', disabled: false, visible: false },
+			{ key: 'col4', disabled: true }, // Another disabled column
+			{ key: 'col5', label: 'Column 5', disabled: false, visible: true },
+		];
+
+		it('should filter out disabled columns from visible columns', () => {
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: createColumnsWithDisabled(),
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const visibleColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+			const hiddenColumns = wrapper.container.querySelectorAll('[data-testid="hidden-column"]');
+
+			// Only non-disabled columns should appear in the UI
+			expect(visibleColumns).toHaveLength(2); // col1, col5 (both visible and not disabled)
+			expect(hiddenColumns).toHaveLength(1); // col3 (hidden but not disabled)
+
+			// Verify that disabled columns are not rendered at all
+			const allColumnKeys = Array.from(wrapper.container.querySelectorAll('[data-column-key]')).map(
+				(el) => el.getAttribute('data-column-key'),
+			);
+
+			expect(allColumnKeys).not.toContain('col2');
+			expect(allColumnKeys).not.toContain('col4');
+			expect(allColumnKeys).toContain('col1');
+			expect(allColumnKeys).toContain('col3');
+			expect(allColumnKeys).toContain('col5');
+		});
+
+		it('should filter out disabled columns from hidden columns', () => {
+			const columns: ColumnHeader[] = [
+				{ key: 'col1', label: 'Column 1', disabled: false, visible: true },
+				{ key: 'col2', disabled: true }, // Disabled column
+				{ key: 'col3', label: 'Column 3', disabled: false, visible: false },
+				{ key: 'col4', disabled: true }, // Another disabled column
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const hiddenColumns = wrapper.container.querySelectorAll('[data-testid="hidden-column"]');
+
+			// Only col3 should be in hidden columns (not disabled and visible: false)
+			expect(hiddenColumns).toHaveLength(1);
+
+			const hiddenColumnKey = hiddenColumns[0].getAttribute('data-column-key');
+			expect(hiddenColumnKey).toBe('col3');
+		});
+
+		it('should handle all disabled columns gracefully', () => {
+			const allDisabledColumns: ColumnHeader[] = [
+				{ key: 'col1', disabled: true },
+				{ key: 'col2', disabled: true },
+				{ key: 'col3', disabled: true },
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: allDisabledColumns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const visibleColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+			const hiddenColumns = wrapper.container.querySelectorAll('[data-testid="hidden-column"]');
+
+			// No columns should be rendered
+			expect(visibleColumns).toHaveLength(0);
+			expect(hiddenColumns).toHaveLength(0);
+
+			// Verify sections are not displayed when empty
+			const visibleSection = wrapper.container.querySelector(
+				'[data-testid="visible-columns-section"]',
+			);
+			const hiddenSection = wrapper.container.querySelector(
+				'[data-testid="hidden-columns-section"]',
+			);
+
+			expect(visibleSection).toBeFalsy();
+			expect(hiddenSection).toBeFalsy();
+		});
+
+		it('should handle mixed disabled and enabled columns correctly', () => {
+			const mixedColumns: ColumnHeader[] = [
+				{ key: 'enabled1', label: 'Enabled 1', disabled: false, visible: true },
+				{ key: 'disabled1', disabled: true },
+				{ key: 'enabled2', label: 'Enabled 2', disabled: false, visible: false },
+				{ key: 'disabled2', disabled: true },
+				{ key: 'enabled3', label: 'Enabled 3', disabled: false, visible: true },
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: mixedColumns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const visibleColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+			const hiddenColumns = wrapper.container.querySelectorAll('[data-testid="hidden-column"]');
+
+			expect(visibleColumns).toHaveLength(2); // enabled1, enabled3
+			expect(hiddenColumns).toHaveLength(1); // enabled2
+
+			// Verify correct columns are displayed
+			const visibleKeys = Array.from(visibleColumns).map((el) =>
+				el.getAttribute('data-column-key'),
+			);
+			const hiddenKeys = Array.from(hiddenColumns).map((el) => el.getAttribute('data-column-key'));
+
+			expect(visibleKeys).toEqual(expect.arrayContaining(['enabled1', 'enabled3']));
+			expect(hiddenKeys).toEqual(['enabled2']);
+		});
+
+		it('should include disabled and hidden columns in drag and drop operations', async () => {
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: createColumnsWithDisabled(),
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			// Get all draggable columns
+			const draggableColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+
+			// Verify only non-disabled columns are draggable
+			expect(draggableColumns).toHaveLength(2); // col1, col5
+
+			const draggableKeys = Array.from(draggableColumns).map((el) =>
+				el.getAttribute('data-column-key'),
+			);
+			expect(draggableKeys).toEqual(expect.arrayContaining(['col1', 'col5']));
+			expect(draggableKeys).not.toContain('col2');
+			expect(draggableKeys).not.toContain('col4');
+
+			// Test drag and drop functionality with only enabled columns
+			const firstColumn = draggableColumns[0];
+			const secondColumn = draggableColumns[1];
+
+			// Start dragging first column
+			const dragStartEvent = createDragEvent('dragstart', {
+				setData: vi.fn(),
+				effectAllowed: 'move',
+			});
+			await fireEvent(firstColumn, dragStartEvent);
+
+			// Drop it on second column
+			const dropEvent = createDragEvent('drop', {
+				getData: vi.fn().mockReturnValue('col1'),
+			});
+			await fireEvent(secondColumn, dropEvent);
+
+			const emitted = wrapper.emitted('update:columnOrder');
+			expect(emitted).toBeTruthy();
+			// Order should only contain enabled columns
+			expect(emitted[0]).toEqual([['col2', 'col3', 'col4', 'col5', 'col1']]);
+		});
+
+		it('should not affect visibility toggle functionality for enabled columns when disabled columns are present', async () => {
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: createColumnsWithDisabled(),
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			// Test hiding a visible enabled column
+			const visibleToggles = wrapper.container.querySelectorAll(
+				'[data-testid="visibility-toggle-visible"]',
+			);
+			expect(visibleToggles.length).toBeGreaterThan(0);
+
+			await fireEvent.click(visibleToggles[0]);
+
+			let emitted = wrapper.emitted('update:columnVisibility');
+			expect(emitted).toBeTruthy();
+			expect(emitted[0]).toEqual(['col1', false]);
+
+			// Test showing a hidden enabled column
+			const hiddenToggles = wrapper.container.querySelectorAll(
+				'[data-testid="visibility-toggle-hidden"]',
+			);
+			expect(hiddenToggles.length).toBeGreaterThan(0);
+
+			await fireEvent.click(hiddenToggles[0]);
+
+			emitted = wrapper.emitted('update:columnVisibility');
+			expect(emitted).toBeTruthy();
+			expect(emitted[1]).toEqual(['col3', true]);
+		});
+
+		it('should render correctly when only disabled columns exist', () => {
+			const onlyDisabledColumns: ColumnHeader[] = [
+				{ key: 'disabled1', disabled: true },
+				{ key: 'disabled2', disabled: true },
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: onlyDisabledColumns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			// Should render the component but with no visible or hidden columns
+			expect(wrapper.container).toBeTruthy();
+			expect(wrapper.container.querySelectorAll('[data-testid="visible-column"]')).toHaveLength(0);
+			expect(wrapper.container.querySelectorAll('[data-testid="hidden-column"]')).toHaveLength(0);
+
+			expect(wrapper.html()).toMatchSnapshot();
+		});
+
+		it('should maintain correct computed properties with disabled columns', () => {
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: createColumnsWithDisabled(),
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			// The component should correctly filter disabled columns in computed properties
+			// This is tested implicitly through the rendering behavior
+
+			const visibleSection = wrapper.container.querySelector(
+				'[data-testid="visible-columns-section"]',
+			);
+			const hiddenSection = wrapper.container.querySelector(
+				'[data-testid="hidden-columns-section"]',
+			);
+
+			// Both sections should exist because we have non-disabled columns
+			expect(visibleSection).toBeTruthy();
+			expect(hiddenSection).toBeTruthy();
+
+			// Verify section headers are present
+			expect(visibleSection?.textContent).toContain('Shown columns');
+			expect(hiddenSection?.textContent).toContain('Hidden columns');
 		});
 	});
 });
