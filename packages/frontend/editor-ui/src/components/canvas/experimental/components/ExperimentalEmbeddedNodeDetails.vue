@@ -114,6 +114,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 		nodeName,
 		additionalKeys: {},
 		inputNode: findInputNode(),
+		connections: workflowsStore.connectionsBySourceNode,
 	};
 });
 
