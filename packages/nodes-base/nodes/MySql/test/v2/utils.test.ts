@@ -90,6 +90,28 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		expect(preparedQuery.values[3]).toEqual('value4');
 		expect(preparedQuery.values[4]).toEqual('value5');
 	});
+
+	it('should handle escaped single quotes correctly', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('Don''t replace $1 here')",
+			['should_not_appear', 123],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('Don''t replace $1 here')",
+		);
+	});
+
+	it('should handle escaped double quotes correctly', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			['should_not_appear', 123],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+		);
+	});
 });
 
 describe('Test MySql V2, wrapData', () => {
