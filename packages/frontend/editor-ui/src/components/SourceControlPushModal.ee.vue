@@ -566,6 +566,10 @@ function castProject(project: ProjectListItem) {
 const workflowDiffEventBus = createEventBus();
 
 function openDiffModal(id: string) {
+	telemetry.track('User clicks compare workflows', {
+		workflow_id: id,
+		context: 'source_control_push',
+	});
 	uiStore.openModalWithData({
 		name: WORKFLOW_DIFF_MODAL_KEY,
 		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'push' },
