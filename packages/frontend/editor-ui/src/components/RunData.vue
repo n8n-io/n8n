@@ -2347,24 +2347,6 @@ defineExpose({ enterEditMode });
 	padding: 0 var(--ndv-spacing);
 }
 
-.customHint {
-	display: flex;
-	justify-content: space-between;
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs);
-	margin-top: var(--spacing-2xs);
-	margin-bottom: var(--spacing-xs);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	background-color: var(--color-callout-info-background);
-	border-radius: var(--border-radius-base);
-	line-height: var(--font-line-height-xloose);
-	border: var(--border-width-base) var(--border-style-base);
-	border-color: var(--color-callout-info-border);
-	color: var(--color-callout-info-font);
-	align-items: center;
-}
-
 .messageSection {
 	display: flex;
 	align-items: center;
