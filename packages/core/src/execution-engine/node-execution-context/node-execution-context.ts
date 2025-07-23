@@ -180,7 +180,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	protected getExecutionWaitingToken() {
+	getExecutionWaitingToken() {
 		const token = crypto
 			.createHmac('sha256', this.instanceSettings.encryptionKey)
 			.update(this.getExecutionId())

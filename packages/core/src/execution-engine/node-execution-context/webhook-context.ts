@@ -176,14 +176,18 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	validateExecutionWaitingToken() {
-		const req = this.getRequestObject();
-		const token = req.query[WAITING_TOKEN_QUERY_PARAM];
+		try {
+			const req = this.getRequestObject();
+			const token = req.query[WAITING_TOKEN_QUERY_PARAM];
 
-		if (typeof token !== 'string') return false;
+			if (typeof token !== 'string') return false;
 
-		const expectedToken = this.getExecutionWaitingToken();
+			const expectedToken = this.getExecutionWaitingToken();
 
-		const valid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
-		return valid;
+			const valid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
+			return valid;
+		} catch (error) {
+			return false;
+		}
 	}
 }
