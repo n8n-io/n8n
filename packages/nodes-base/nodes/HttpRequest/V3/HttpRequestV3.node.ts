@@ -12,6 +12,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -21,6 +22,7 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
+	isDomainAllowed,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -180,6 +182,49 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 				}
 
+				const url = this.getNodeParameter('url', itemIndex) as string;
+
+				const checkDomainRestrictions = async (
+					credentialData: ICredentialDataDecryptedObject,
+					url: string,
+					credentialType?: string,
+				) => {
+					if (credentialData.restrictHttpRequestDomains === true) {
+						const allowedDomains = credentialData.allowedDomains as string;
+						const validationMode =
+							(credentialData.domainValidationMode as 'strict' | 'subdomain') || 'strict';
+
+						if (!isDomainAllowed(url, { allowedDomains, validationMode })) {
+							const credentialInfo = credentialType ? ` (${credentialType})` : '';
+							throw new NodeOperationError(
+								this.getNode(),
+								`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
+									`Only the following domains are allowed: ${allowedDomains}`,
+							);
+						}
+					}
+				};
+
+				if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
+				if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
+				if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
+				if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
+				if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
+				if (httpCustomAuth) await checkDomainRestrictions(httpCustomAuth, url);
+				if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
+				if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
+
+				if (nodeCredentialType) {
+					try {
+						const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
+						await checkDomainRestrictions(credentialData, url, nodeCredentialType);
+					} catch (error) {
+						if (error.message?.includes('Domain not allowed')) {
+							throw error;
+						}
+					}
+				}
+
 				const provideSslCertificates = this.getNodeParameter(
 					'provideSslCertificates',
 					itemIndex,
@@ -256,8 +301,6 @@ export class HttpRequestV3 implements INodeType {
 				};
 
 				responseFileName = response?.response?.outputPropertyName;
-
-				const url = this.getNodeParameter('url', itemIndex) as string;
 
 				const responseFormat = response?.response?.responseFormat || 'autodetect';
 
