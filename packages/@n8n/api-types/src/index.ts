@@ -45,3 +45,5 @@ export {
 	type UsersList,
 	usersListSchema,
 } from './schemas/user.schema';
+
+export type { DataStore, DataStoreColumn } from './schemas/data-store.schema';

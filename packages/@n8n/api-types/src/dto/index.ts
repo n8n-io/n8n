@@ -79,3 +79,10 @@ export {
 } from './user/users-list-filter.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
+
+export { CreateDataStoreDto } from './datastore/create-data-store.dto';
+export { RenameDataStoreDto } from './datastore/rename-data-store.dto';
+export { CreateDataStoreColumnDto } from './datastore/create-data-store-column.dto';
+export { AddDatastoreRecordsDto } from './datastore/add-data-store-records.dto';
+export { AddDataStoreColumnDto } from './datastore/add-data-store-column.dto';
+export { DeleteDataStoreColumnDto } from './datastore/delete-data-store-column.dto';

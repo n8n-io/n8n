@@ -1,11 +1,10 @@
-import { WithTimestamps, WithTimestampsAndStringId } from '@n8n/db/src/entities/abstract-entity';
-import { BaseEntity, Column, Entity, OneToMany } from '@n8n/typeorm';
+import { WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
-import { DataStoreField } from './data-store-field.entity';
+import { DataStoreColumnEntity } from './data-store-column.entity';
 
 @Entity()
-// export class DataStore extends BaseEntity {
-export class DataStore extends WithTimestampsAndStringId {
+export class DataStoreEntity extends WithTimestampsAndStringId {
 	constructor() {
 		super();
 	}
@@ -14,11 +13,11 @@ export class DataStore extends WithTimestampsAndStringId {
 	name: string;
 
 	@OneToMany(
-		() => DataStoreField,
-		(dataStoreField) => dataStoreField.datastore,
+		() => DataStoreColumnEntity,
+		(dataStoreColumn) => dataStoreColumn.datastore,
 		{
 			cascade: true,
 		},
 	)
-	fields: DataStoreField[];
+	fields: DataStoreColumnEntity[];
 }

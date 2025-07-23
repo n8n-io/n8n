@@ -1,6 +1,7 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BaseEntity } from '@n8n/typeorm';
 
 @BackendModule({ name: 'data-store' })
 export class DataStoreModule implements ModuleInterface {
@@ -19,8 +20,9 @@ export class DataStoreModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { DataStore } = await import('./data-store.entity');
+		const { DataStoreEntity } = await import('./data-store.entity');
+		const { DataStoreColumnEntity } = await import('./data-store-column.entity');
 
-		return [DataStore];
+		return [DataStoreEntity, DataStoreColumnEntity] as unknown as Array<new () => BaseEntity>;
 	}
 }

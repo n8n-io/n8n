@@ -2,6 +2,8 @@ import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { DataStoreEntity } from './data-store.entity';
+import { DataStoreColumn, DataStoreUserTableName } from './data-store.types';
+import { createUserTableQuery } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStoreEntity> {
@@ -9,7 +11,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
-	async getSummary() {
-		return await Promise.resolve({});
+	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreColumn[]) {
+		await this.manager.query(...createUserTableQuery(tableName, columns));
 	}
 }
