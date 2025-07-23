@@ -4,7 +4,6 @@ import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
-	prepareQueryLegacy,
 	wrapData,
 	addWhereClauses,
 	addSortRules,
