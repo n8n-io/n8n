@@ -151,7 +151,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="125"
+			:min-width="column.expandable ? 200 : 125"
 		>
 			<template #header="headerProps">
 				<N8nTooltip
