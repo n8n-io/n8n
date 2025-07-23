@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
@@ -13,12 +14,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
-
 import type {
 	McpAuthenticationOption,
-	McpTool,
 	McpServerTransport,
+	McpTool,
 	McpToolIncludeMode,
 } from './types';
 
@@ -78,17 +77,24 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string | undefined) => void) =>
-	async (args: IDataObject) => {
+	(name: string, client: Client, onError: (error: string) => void) => async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
+
+		function handleError(error: unknown) {
+			const errorDescription =
+				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
+			onError(errorDescription);
+			return errorDescription;
+		}
+
 		try {
 			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
 		} catch (error) {
-			return onError(getErrorDescriptionFromToolCall(error));
+			return handleError(error);
 		}
 
 		if (result.isError) {
-			return onError(getErrorDescriptionFromToolCall(result));
+			return handleError(result);
 		}
 
 		if (result.toolResult !== undefined) {
@@ -105,7 +111,7 @@ export const createCallTool =
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
-): DynamicStructuredTool<z.ZodObject<any, any, any, any>> {
+): DynamicStructuredTool {
 	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
 
 	// Ensure we always have an object schema for structured tools
@@ -122,7 +128,7 @@ export function mcpToolToDynamicTool(
 }
 
 export class McpToolkit extends Toolkit {
-	constructor(public tools: Array<DynamicStructuredTool<z.ZodObject<any, any, any, any>>>) {
+	constructor(public tools: DynamicStructuredTool[]) {
 		super();
 	}
 }
