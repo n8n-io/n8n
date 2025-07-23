@@ -39,7 +39,7 @@ export class TelemetryController {
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
-	@Get('/rudderstack/sourceConfig', { skipAuth: true, rateLimit: true })
+	@Get('/rudderstack/sourceConfig', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
 	async sourceConfig() {
 		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
 			headers: {
