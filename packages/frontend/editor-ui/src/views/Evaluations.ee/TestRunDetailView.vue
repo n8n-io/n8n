@@ -362,7 +362,10 @@ onMounted(async () => {
 			</template>
 			<template #index="{ row }">
 				<div>
-					<N8nExternalLink @click.stop.prevent="openRelatedExecution(row)">
+					<N8nExternalLink
+						class="open-execution-link"
+						@click.stop.prevent="openRelatedExecution(row)"
+					>
 						#{{ row.index }}
 					</N8nExternalLink>
 				</div>
@@ -397,6 +400,12 @@ onMounted(async () => {
 		</TestTableBase>
 	</div>
 </template>
+
+<style lang="scss" scoped>
+:global(tr:hover:has(.open-execution-link:hover)) {
+	--color-table-row-hover-background: transparent !important;
+}
+</style>
 
 <style module lang="scss">
 .container {
