@@ -18,10 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import { insightsRoutes } from '@/features/insights/insights.router';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
-import { dataStoreRoutes } from './features/dataStore/dataStore.routes';
 import { getModuleRoutes } from './features/router.utils';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
