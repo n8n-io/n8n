@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -19,7 +20,10 @@ import { NodeExecutionContext } from '../node-execution-context';
 class TestContext extends NodeExecutionContext {}
 
 describe('NodeExecutionContext', () => {
-	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: 'abc123',
+		encryptionKey: 'testEncryptionKey',
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
@@ -336,6 +340,32 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
+		});
+	});
+
+	describe('getSignedResumeUrl', () => {
+		it('should return a signed resume URL', () => {
+			additionalData.webhookWaitingBaseUrl = 'https://example.com/webhook';
+			additionalData.executionId = 'execution123';
+			node.id = 'node456';
+
+			const result = testContext.getSignedResumeUrl();
+			const expectedToken = crypto
+				.createHmac('sha256', instanceSettings.encryptionKey)
+				.update(additionalData.executionId)
+				.digest('hex');
+
+			expect(result).toBe(
+				`https://example.com/webhook/execution123/node456?n8nwaitingtoken=${expectedToken}`,
+			);
+		});
+
+		it('should throw an error if executionId is missing', () => {
+			additionalData.webhookWaitingBaseUrl = 'https://example.com/webhook';
+			additionalData.executionId = undefined;
+			node.id = 'node456';
+
+			expect(() => testContext.getSignedResumeUrl()).toThrowError('Execution id is missing');
 		});
 	});
 });
