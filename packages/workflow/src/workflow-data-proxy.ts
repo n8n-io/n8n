@@ -8,7 +8,13 @@ import { DateTime, Duration, Interval, Settings } from 'luxon';
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
 import { ApplicationError } from './errors/application.error';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import {
+	ExpressionError,
+	type ExpressionErrorOptions,
+	EXPRESSION_ERROR_MESSAGES,
+	EXPRESSION_ERROR_TYPES,
+	EXPRESSION_DESCRIPTION_KEYS,
+} from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -390,11 +396,13 @@ export class WorkflowDataProxy {
 			}
 
 			if (!that.workflow.getNode(nodeName)) {
-				throw new ExpressionError("Referenced node doesn't exist", {
+				throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NODE_NOT_FOUND, {
+					messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 					nodeCause: nodeName,
-					descriptionKey: 'nodeNotFound',
+					descriptionKey: EXPRESSION_DESCRIPTION_KEYS.NODE_NOT_FOUND,
+					type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
 				});
 			}
 
@@ -402,11 +410,12 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError('Referenced node is unexecuted', {
+				throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NODE_NOT_FOUND, {
+					messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
-					type: 'no_node_execution_data',
-					descriptionKey: 'noNodeExecutionData',
+					type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
+					descriptionKey: EXPRESSION_DESCRIPTION_KEYS.NO_NODE_EXECUTION_DATA,
 					nodeCause: nodeName,
 				});
 			}
@@ -496,11 +505,16 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (!node) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NODE_NOT_FOUND, {
+							messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION_CODE_NODE
+								: EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION,
+							type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -516,7 +530,7 @@ export class WorkflowDataProxy {
 
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
-								throw new ExpressionError('No execution data available', {
+								throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
 									messageTemplate:
 										'No execution data available to expression under ‘%%PARAMETER%%’',
 									descriptionKey: 'noInputConnection',
@@ -527,7 +541,7 @@ export class WorkflowDataProxy {
 								});
 							}
 
-							throw new ExpressionError('No execution data available', {
+							throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
 								type: 'no_execution_data',
@@ -693,11 +707,16 @@ export class WorkflowDataProxy {
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NODE_NOT_FOUND, {
+							messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION_CODE_NODE
+								: EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION,
+							type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -814,14 +833,14 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createNoConnectionError = (nodeCause: string) => {
-			return createExpressionError('Invalid expression', {
-				messageTemplate: 'No path back to referenced node',
+		const createNodeReferenceError = (nodeCause: string) => {
+			return createExpressionError(EXPRESSION_ERROR_MESSAGES.NODE_NOT_FOUND, {
+				messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
 				functionality: 'pairedItem',
 				descriptionKey: isScriptingNode(nodeCause, that.workflow)
-					? 'pairedItemNoConnectionCodeNode'
-					: 'pairedItemNoConnection',
-				type: 'paired_item_no_connection',
+					? EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION_CODE_NODE
+					: EXPRESSION_DESCRIPTION_KEYS.PAIRED_ITEM_NO_CONNECTION,
+				type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
 				moreInfoLink: true,
 				nodeCause,
 			});
@@ -990,7 +1009,7 @@ export class WorkflowDataProxy {
 			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
 			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+				if (sourceArray.length === 0) throw createNodeReferenceError(destinationNodeName);
 				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
 			}
 
@@ -1031,7 +1050,7 @@ export class WorkflowDataProxy {
 				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
 
 			if (!placeholdersDataInputData) {
-				throw new ExpressionError('No execution data available', {
+				throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
 					runIndex,
 					itemIndex,
 					type: 'no_execution_data',
@@ -1053,12 +1072,7 @@ export class WorkflowDataProxy {
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError("Referenced node doesn't exist", {
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-						nodeCause: nodeName,
-						descriptionKey: 'nodeNotFound',
-					});
+					throw createNodeReferenceError(nodeName);
 				}
 
 				const ensureNodeExecutionData = () => {
@@ -1066,13 +1080,26 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							type: 'no_node_execution_data',
-							descriptionKey: 'noNodeExecutionData',
-							nodeCause: nodeName,
-						});
+						throw createNodeReferenceError(nodeName);
+					}
+				};
+
+				const ensureValidPath = () => {
+					// Check path before execution data
+					const referencedNode = that.workflow.getNode(nodeName);
+					if (!referencedNode) {
+						throw createNodeReferenceError(nodeName);
+					}
+
+					const activeNode = that.workflow.getNode(that.activeNodeName);
+					let contextNode = that.contextNodeName;
+					if (activeNode) {
+						const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+						contextNode = parentMainInputNode.name ?? contextNode;
+					}
+
+					if (!that.workflow.hasPath(nodeName, contextNode)) {
+						throw createNodeReferenceError(nodeName);
 					}
 				};
 
@@ -1108,7 +1135,13 @@ export class WorkflowDataProxy {
 								property === PAIRED_ITEM_METHOD.ITEM
 							) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
-								// graph before the current one
+								// graph before the current one or exists in the workflow
+								const referencedNode = that.workflow.getNode(nodeName);
+								if (!referencedNode) {
+									// Node doesn't exist in the workflow (could be trimmed manual execution)
+									throw createNodeReferenceError(nodeName);
+								}
+
 								const activeNode = that.workflow.getNode(that.activeNodeName);
 
 								let contextNode = that.contextNodeName;
@@ -1116,9 +1149,10 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+
+								// Use bidirectional path checking to handle AI/tool nodes properly
+								if (!that.workflow.hasPath(nodeName, contextNode)) {
+									throw createNodeReferenceError(nodeName);
 								}
 
 								ensureNodeExecutionData();
@@ -1199,6 +1233,7 @@ export class WorkflowDataProxy {
 							}
 
 							if (property === 'first') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1217,6 +1252,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'last') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1238,6 +1274,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'all') {
+								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1276,7 +1313,7 @@ export class WorkflowDataProxy {
 					if (property === 'isProxy') return true;
 
 					if (that.connectionInputData.length === 0) {
-						throw createExpressionError('No execution data available', {
+						throw createExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
 							type: 'no_execution_data',

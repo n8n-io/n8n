@@ -255,9 +255,15 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
-		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
-		expect(getByRole('alert').textContent).toContain('Folders: at least one new or modified.');
+
+		expect(getByRole('alert').textContent).toContain(
+			[
+				'Changes to variables, tags and folders',
+				'Variables : at least one new or modified.',
+				'Tags : at least one new or modified.',
+				'Folders : at least one new or modified. ',
+			].join(' '),
+		);
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
 

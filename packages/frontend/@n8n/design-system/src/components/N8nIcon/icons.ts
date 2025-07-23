@@ -78,6 +78,7 @@ import IconLucideEyeOff from '~icons/lucide/eye-off';
 import IconLucideFile from '~icons/lucide/file';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
 import IconLucideFileCode from '~icons/lucide/file-code';
+import IconLucideFileDiff from '~icons/lucide/file-diff';
 import IconLucideFileDown from '~icons/lucide/file-down';
 import IconLucideFileInput from '~icons/lucide/file-input';
 import IconLucideFileOutput from '~icons/lucide/file-output';
@@ -129,6 +130,7 @@ import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
+import IconLucidePanelRight from '~icons/lucide/panel-right';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
@@ -473,6 +475,7 @@ export const updatedIconSet = {
 	file: IconLucideFile,
 	'file-archive': IconLucideFileArchive,
 	'file-code': IconLucideFileCode,
+	'file-diff': IconLucideFileDiff,
 	'file-down': IconLucideFileDown,
 	'file-input': IconLucideFileInput,
 	'file-output': IconLucideFileOutput,
@@ -524,6 +527,7 @@ export const updatedIconSet = {
 	network: IconLucideNetwork,
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
+	'panel-right': IconLucidePanelRight,
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,

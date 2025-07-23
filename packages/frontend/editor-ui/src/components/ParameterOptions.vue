@@ -10,6 +10,7 @@ import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -41,12 +42,28 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const posthogStore = usePostHog();
 
+const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
+const isHtmlEditor = computed(
+	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
+);
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+
+const isFocusPanelFeatureEnabled = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
+const canBeOpenedInFocusPanel = computed(
+	() =>
+		isFocusPanelFeatureEnabled.value &&
+		!props.parameter.isNodeSetting &&
+		!props.isReadOnly &&
+		activeNode.value && // checking that it's inside ndv
+		(props.parameter.type === 'string' || props.parameter.type === 'json'),
+);
+
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
 		return false;
@@ -54,10 +71,6 @@ const shouldShowOptions = computed(() => {
 
 	if (props.parameter.type === 'collection' || props.parameter.type === 'credentialsSelect') {
 		return false;
-	}
-
-	if (hasFocusAction.value) {
-		return true;
 	}
 
 	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
@@ -71,7 +84,6 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
-const activeNode = computed(() => ndvStore.activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -84,35 +96,18 @@ const resetValueLabel = computed(() => {
 	return i18n.baseText('parameterInput.resetValue');
 });
 
-const isFocusPanelFeatureEnabled = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
-const hasFocusAction = computed(
-	() =>
-		isFocusPanelFeatureEnabled.value &&
-		!props.isReadOnly &&
-		activeNode.value &&
-		(props.parameter.type === 'string' || props.parameter.type === 'json'),
-);
-
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
 		return props.customActions;
 	}
 
-	const focusAction = {
-		label: i18n.baseText('parameterInput.focusParameter'),
-		value: 'focus',
-		disabled: false,
-	};
-
 	if (isHtmlEditor.value && !isValueAnExpression.value) {
-		const formatHtmlAction = {
-			label: i18n.baseText('parameterInput.formatHtml'),
-			value: 'formatHtml',
-		};
-
-		return hasFocusAction.value ? [formatHtmlAction, focusAction] : [formatHtmlAction];
+		return [
+			{
+				label: i18n.baseText('parameterInput.formatHtml'),
+				value: 'formatHtml',
+			},
+		];
 	}
 
 	const resetAction = {
@@ -126,11 +121,7 @@ const actions = computed(() => {
 		props.parameter.typeOptions?.editor ?? '',
 	);
 
-	// Conditionally build actions array without nulls to ensure correct typing
-	const parameterActions = [
-		hasResetAction ? [resetAction] : [],
-		hasFocusAction.value ? [focusAction] : [],
-	].flat();
+	const parameterActions = [hasResetAction ? resetAction : []].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -160,17 +151,6 @@ const onViewSelected = (selected: string) => {
 		emit('update:modelValue', 'removeExpression');
 	}
 };
-const getArgument = (argumentName: string) => {
-	if (props.parameter.typeOptions === undefined) {
-		return undefined;
-	}
-
-	if (props.parameter.typeOptions[argumentName] === undefined) {
-		return undefined;
-	}
-
-	return props.parameter.typeOptions[argumentName];
-};
 </script>
 
 <template>
@@ -182,6 +162,15 @@ const getArgument = (argumentName: string) => {
 			</n8n-text>
 		</div>
 		<div v-else :class="$style.controlsContainer">
+			<N8nTooltip v-if="canBeOpenedInFocusPanel">
+				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
+				<N8nIcon
+					size="medium"
+					:icon="'panel-right'"
+					:class="$style.focusButton"
+					@click="$emit('update:modelValue', 'focus')"
+				/>
+			</N8nTooltip>
 			<div
 				:class="{
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
@@ -215,9 +204,12 @@ const getArgument = (argumentName: string) => {
 </template>
 
 <style lang="scss" module>
+$container-height: 22px;
+
 .container {
 	display: flex;
-	min-height: 22px;
+	min-height: $container-height;
+	max-height: $container-height;
 }
 
 .loader {
@@ -238,6 +230,13 @@ const getArgument = (argumentName: string) => {
 
 	span {
 		padding-right: 0 !important;
+	}
+}
+
+.focusButton {
+	&:hover {
+		cursor: pointer;
+		color: var(--color-primary);
 	}
 }
 </style>

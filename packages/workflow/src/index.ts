@@ -15,6 +15,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
