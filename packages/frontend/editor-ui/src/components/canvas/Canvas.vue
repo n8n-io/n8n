@@ -1027,7 +1027,7 @@ provide(CanvasKey, {
 	}
 
 	&.isExperimentalNdvActive {
-		--canvas-zoom-compensation-factor: 0.67;
+		--canvas-zoom-compensation-factor: 0.5;
 	}
 }
 </style>
