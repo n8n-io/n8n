@@ -102,7 +102,14 @@ function onAddNodeClick() {
 		</header>
 
 		<!-- Prompt input section -->
-		<section :class="[$style.promptContainer, { [$style.focused]: isFocused }]">
+		<section
+			:class="[$style.promptContainer, { [$style.focused]: isFocused }]"
+			@click.stop
+			@dblclick.stop
+			@mousedown.stop
+			@scroll.stop
+			@wheel.stop
+		>
 			<form :class="$style.form" @submit.prevent="onSubmit">
 				<n8n-input
 					v-model="prompt"
