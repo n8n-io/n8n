@@ -105,7 +105,7 @@ export class ScheduledTaskManager {
 	}
 
 	deregisterAllCrons() {
-		for (const workflowId of Object.keys(this.cronMap)) {
+		for (const workflowId of this.cronMap.keys()) {
 			this.deregisterCrons(workflowId);
 		}
 
