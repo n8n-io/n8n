@@ -2167,7 +2167,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="isFocusPanelFeatureEnabled"
+			v-if="isFocusPanelFeatureEnabled && !isLoading"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 		/>
