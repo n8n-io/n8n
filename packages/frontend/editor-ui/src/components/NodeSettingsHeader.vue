@@ -71,4 +71,8 @@ const emit = defineEmits<{
 	padding-top: calc(var(--spacing-xs) + 1px);
 	height: 100%;
 }
+
+.tabs :global(#communityNode) {
+	padding-right: var(--spacing-2xs);
+}
 </style>
