@@ -8,7 +8,7 @@ import { InstanceSettings } from '@/instance-settings';
 
 @Service()
 export class ScheduledTaskManager {
-	private readonly cronMap = new Map<string, Array<{ job: CronJob; displayableCron: string }>>();
+	readonly cronMap = new Map<string, Array<{ job: CronJob; displayableCron: string }>>();
 
 	private readonly logInterval?: NodeJS.Timeout;
 
