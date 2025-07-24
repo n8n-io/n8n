@@ -64,15 +64,16 @@ function forceCancel() {
 	}
 }
 
-defineExpose({ forceFocus, forceCancel });
-
 function onSubmit() {
+	console.log('====test');
 	const trimmed = editingValue.value.trim();
 	if (!trimmed) {
 		editingValue.value = props.modelValue;
 		return;
 	}
-	emit('update:model-value', trimmed);
+	if (trimmed !== props.modelValue) {
+		emit('update:model-value', trimmed);
+	}
 }
 
 function onInput(value: string) {
@@ -84,6 +85,8 @@ function onStateChange(state: string) {
 		editingValue.value = props.modelValue;
 	}
 }
+
+defineExpose({ forceFocus, forceCancel });
 </script>
 
 <template>

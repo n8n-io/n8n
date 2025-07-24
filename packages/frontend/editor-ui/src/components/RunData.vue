@@ -2,6 +2,7 @@
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
+import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -720,7 +721,6 @@ onMounted(() => {
 	});
 
 	if (props.paneType === 'output') {
-		setDisplayMode();
 		activatePane();
 	}
 
@@ -818,7 +818,6 @@ function getNodeHints(): NodeHint[] {
 
 	return [];
 }
-
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
 		emit('itemHover', null);
@@ -1231,6 +1230,10 @@ function init() {
 	if (isNDVV2.value) {
 		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 	}
+
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	}
 }
 
 function closeBinaryDataDisplay() {
@@ -1337,14 +1340,14 @@ function enableNode() {
 	}
 }
 
+const shouldDisplayHtml = computed(
+	() =>
+		node.value?.type === HTML_NODE_TYPE &&
+		node.value.parameters.operation === 'generateHtmlTemplate',
+);
+
 function setDisplayMode() {
-	if (!activeNode.value) return;
-
-	const shouldDisplayHtml =
-		activeNode.value.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate';
-
-	if (shouldDisplayHtml) {
+	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
 	}
 }
@@ -1461,10 +1464,7 @@ defineExpose({ enterEditMode });
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
-					:node-generates-html="
-						activeNode?.type === HTML_NODE_TYPE &&
-						activeNode.parameters.operation === 'generateHtmlTemplate'
-					"
+					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
@@ -1575,7 +1575,7 @@ defineExpose({ enterEditMode });
 				</slot>
 			</N8nCallout>
 		</div>
-
+		<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
 		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
@@ -2345,6 +2345,42 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--ndv-spacing);
+}
+
+.messageSection {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.singleIcon {
+	flex-direction: row;
+	align-items: center;
+}
+
+.multipleIcons {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing-2xs, 8px);
+}
+
+.multipleIcons .iconStack {
+	margin-right: 0;
+	margin-bottom: 0;
+}
+
+.iconStack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs, 4px);
+	flex-shrink: 0;
+	margin-right: var(--spacing-xs);
+}
+
+.icon {
+	color: var(--color-callout-info-icon);
+	line-height: 1;
+	font-size: var(--font-size-xs);
 }
 
 .executingMessage {
