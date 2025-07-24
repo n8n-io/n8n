@@ -23,7 +23,7 @@ export class ScheduledTaskManager {
 
 		this.logInterval = setInterval(
 			() => this.logActiveCrons(),
-			this.config.activeInterval * 60 * 1000, // @TODO: Restore
+			this.config.activeInterval * 60 * 1000,
 		);
 	}
 
