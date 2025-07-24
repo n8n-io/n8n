@@ -1,16 +1,26 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { DataStore, DataStoreColumn } from '@n8n/api-types';
+import type { CreateDataStoreDto, DataStore } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { inferProjectIdFromRoute } from '@/utils/rbacUtils';
+import { getPersonalProject } from '@/api/projects.api';
 
 export const createDataStoreTable = async (
 	context: IRestApiContext,
-	data: Pick<DataStore, 'name' | 'columns'>,
-): Promise<DataStore> => await makeRestApiRequest(context, 'POST', '/data-store/create', data);
+	data: CreateDataStoreDto,
+): Promise<DataStore | string> =>
+	await makeRestApiRequest(context, 'POST', '/data-store/create', data);
 
 // dev util to run code
 export const playground = async () => {
-	await createDataStoreTable(useRootStore().restApiContext, { name: 'myFirstTable', columns: [] });
+	const context = useRootStore().restApiContext;
+	const project = await getPersonalProject(context);
+	const result = await createDataStoreTable(context, {
+		name: 'myFirstTable',
+		columns: [],
+		projectId: project.id,
+	});
+	console.log(result);
 };
 
 // export const fetchInsightsSummary = async (

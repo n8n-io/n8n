@@ -10,4 +10,4 @@ export interface DataStoreColumn {
 	type: DataStoreColumnType;
 }
 
-export type DataStoreUserTableName = `dataStore_userTable_${string}`;
+export type DataStoreUserTableName = `data_store_user_${string}`;

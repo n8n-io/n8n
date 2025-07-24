@@ -7,7 +7,7 @@ import { DataStoreColumnType } from './data-store.types';
 @Entity('DataStoreColumn')
 export class DataStoreColumnEntity extends WithTimestampsAndStringId {
 	@Column()
-	datastoreId: string;
+	dataStoreId: string;
 
 	@Column()
 	name: string;
@@ -15,6 +15,6 @@ export class DataStoreColumnEntity extends WithTimestampsAndStringId {
 	@Column()
 	type: DataStoreColumnType;
 
-	@ManyToOne('DataStoreEntity', 'fields')
-	datastore: DataStoreEntity;
+	@ManyToOne('DataStoreEntity', 'columns')
+	dataStore: DataStoreEntity;
 }

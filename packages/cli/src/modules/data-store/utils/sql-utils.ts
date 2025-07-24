@@ -1,5 +1,9 @@
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataStoreColumn, DataStoreColumnType } from '../data-store.types';
+import type {
+	DataStoreColumn,
+	DataStoreColumnType,
+	DataStoreUserTableName,
+} from '../data-store.types';
 import { z } from 'zod';
 
 function dataStoreColumnTypeToSql(type: DataStoreColumnType) {
@@ -32,14 +36,39 @@ function dataStoreColumnTypeToZod(fieldType: DataStoreColumnType) {
 	}
 }
 
+function columnToWildcardAndType(column: DataStoreColumn) {
+	return `\`?\` ${dataStoreColumnTypeToSql(column.type)}`;
+}
+
 export function createUserTableQuery(
-	tableName: string,
+	tableName: DataStoreUserTableName,
 	columns: DataStoreColumn[],
 ): [string, string[]] {
-	const columnSql = columns.map((column) => `\`?\` ${dataStoreColumnTypeToSql(column.type)}`);
+	const columnSql = columns.map(columnToWildcardAndType);
 	const columnsFieldQuery = columnSql.length > 0 ? `, ${columnSql.join(', ')}` : '';
+
+	// The tableName here is selected by us based on the automatically generated id, not user input
 	return [
-		`CREATE TABLE IF NOT EXISTS ? (id VARCHAR(36) PRIMARY KEY${columnsFieldQuery})`,
-		[tableName, ...columns.map((x) => x.name)],
+		`CREATE TABLE IF NOT EXISTS ${tableName} (id VARCHAR(36) PRIMARY KEY${columnsFieldQuery})`,
+		columns.map((x) => x.name),
 	];
+}
+
+export function addColumnQuery(
+	tableName: DataStoreUserTableName,
+	columns: [DataStoreColumn, ...DataStoreColumn[]],
+): [string, string[]] {
+	const columnSql = columns.map(columnToWildcardAndType);
+	const columnsFieldQuery = `, ${columnSql.join(', ')}`;
+
+	return [`ALTER TABLE ${tableName} ADD ${columnsFieldQuery}`, columns.map((x) => x.name)];
+}
+
+export function deleteColumnQuery(
+	tableName: DataStoreUserTableName,
+	columns: [string, ...string[]],
+): [string, string[]] {
+	const columnSql = columns.map((_) => 'DROP COLUMN ?').join(', ');
+
+	return [`ALTER TABLE ${tableName} ${columnSql}`, columns];
 }

@@ -80,9 +80,9 @@ export {
 
 export { OidcConfigDto } from './oidc/config.dto';
 
-export { CreateDataStoreDto } from './datastore/create-data-store.dto';
-export { RenameDataStoreDto } from './datastore/rename-data-store.dto';
-export { CreateDataStoreColumnDto } from './datastore/create-data-store-column.dto';
-export { AddDatastoreRecordsDto } from './datastore/add-data-store-records.dto';
-export { AddDataStoreColumnDto } from './datastore/add-data-store-column.dto';
-export { DeleteDataStoreColumnDto } from './datastore/delete-data-store-column.dto';
+export { CreateDataStoreDto } from './data-store/create-data-store.dto';
+export { RenameDataStoreDto } from './data-store/rename-data-store.dto';
+export { CreateDataStoreColumnDto } from './data-store/create-data-store-column.dto';
+export { AddDatastoreRecordsDto } from './data-store/add-data-store-records.dto';
+export { AddDataStoreColumnsDto } from './data-store/add-data-store-columns.dto';
+export { DeleteDataStoreColumnsDto } from './data-store/delete-data-store-column.dto';

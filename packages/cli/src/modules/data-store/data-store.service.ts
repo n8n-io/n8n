@@ -1,14 +1,23 @@
-import { AddDataStoreColumnDto, CreateDataStoreDto } from '@n8n/api-types';
-import { RenameDataStoreDto } from '@n8n/api-types/src/dto/datastore/rename-data-store.dto';
+import {
+	AddDataStoreColumnsDto,
+	CreateDataStoreDto,
+	DeleteDataStoreColumnsDto,
+} from '@n8n/api-types';
+import { RenameDataStoreDto } from '@n8n/api-types/src/dto/data-store/rename-data-store.dto';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { DataStoreConfig } from './data-store';
+import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRepository } from './data-store.repository';
 import type { DataStoreUserTableName } from './data-store.types';
 
-function toTableName(datastoreId: string): DataStoreUserTableName {
-	return `dataStore_userTable_${datastoreId}`;
+function toTableName(dataStoreId: string): DataStoreUserTableName {
+	return `data_store_user_${dataStoreId}`;
+}
+
+function isNonEmpty<T>(array: T[]): array is [T, ...T[]] {
+	return array.length > 0;
 }
 
 @Service()
@@ -17,6 +26,7 @@ export class DataStoreService {
 
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
+		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly logger: Logger,
 		private readonly config: DataStoreConfig,
 	) {
@@ -46,18 +56,119 @@ export class DataStoreService {
 
 	async createDataStore(dto: CreateDataStoreDto) {
 		const dataStore = this.dataStoreRepository.create(dto);
-		const result = await this.dataStoreRepository.save(dataStore);
+		const existingMatch = await this.dataStoreRepository.existsBy({
+			name: dto.name,
+			projectId: dto.projectId,
+		});
+		if (existingMatch) {
+			return 'duplicate data store name in project';
+		}
 
-		await this.dataStoreRepository.createUserTable(toTableName(result.id), dto.fields);
+		await this.dataStoreRepository.createUserTable(toTableName(dataStore.id), dto.columns);
+		await this.dataStoreRepository.insert(dataStore);
 
 		return dataStore;
 	}
 
-	async renameDataStore(dto: RenameDataStoreDto) {
-		await this.dataStoreRepository.update(dto.id, dto);
+	async getMetaData(dataStoreId: string) {
+		const existingMatch = await this.dataStoreRepository.findBy({
+			id: dataStoreId,
+		});
+
+		if (!existingMatch) {
+			return 'tried to rename non-existent table';
+		}
+
+		return existingMatch;
 	}
 
-	async addColumn(dto: AddDataStoreColumnDto) {
-		await this.dataStoreRepository.insert(dto);
+	async getMetaDataByProjectIds(projectIds: string[]) {
+		return await this.dataStoreRepository.findBy(projectIds.map((projectId) => ({ projectId })));
+	}
+
+	async getMetaDataAll() {
+		return await this.dataStoreRepository.find({});
+	}
+
+	async renameDataStore(dataStoreId: string, dto: RenameDataStoreDto) {
+		const existingMatch = await this.dataStoreRepository.existsBy({
+			id: dataStoreId,
+		});
+
+		if (!existingMatch) {
+			return 'tried to rename non-existent table';
+		}
+
+		await this.dataStoreRepository.update({ id: dataStoreId }, dto);
+
+		return true;
+	}
+
+	async deleteDataStore(dataStoreId: string, dto: RenameDataStoreDto) {
+		const existingMatch = await this.dataStoreRepository.existsBy({
+			id: dataStoreId,
+		});
+
+		if (!existingMatch) {
+			return 'tried to rename non-existent table';
+		}
+
+		await this.dataStoreRepository.update({ id: dataStoreId }, dto);
+
+		return true;
+	}
+
+	async addColumns(dataStoreId: string, dto: AddDataStoreColumnsDto) {
+		const existingTableMatch = await this.dataStoreRepository.existsBy({
+			id: dataStoreId,
+		});
+
+		if (!existingTableMatch) {
+			return 'tried to add columns to non-existent table';
+		}
+
+		const columns = dto.columns.map((x) => this.dataStoreColumnRepository.create(x));
+		if (!isNonEmpty(columns)) return;
+
+		const existingColumnMatch = await this.dataStoreColumnRepository.findBy(
+			columns.map((x) => ({ name: x.name, dataStoreId })),
+		);
+
+		if (isNonEmpty(existingColumnMatch)) {
+			return 'tried to add column with name already present in this data store';
+		}
+
+		await this.dataStoreColumnRepository.addColumn(toTableName(dataStoreId), columns);
+		await this.dataStoreColumnRepository.insert(columns);
+
+		return true;
+	}
+
+	async deleteColumns(dataStoreId: string, dto: DeleteDataStoreColumnsDto) {
+		const existingTableMatch = await this.dataStoreRepository.existsBy({
+			id: dataStoreId,
+		});
+
+		if (!existingTableMatch) {
+			return 'tried to delete columns from non-existent table';
+		}
+
+		const existingColumnMatch = await this.dataStoreColumnRepository.findBy(
+			dto.columnNames.map((name) => ({ name, dataStoreId })),
+		);
+
+		if (existingColumnMatch.length !== dto.columnNames.length) {
+			return 'tried to delete column with name not present in this data store';
+		}
+
+		if (!isNonEmpty(dto.columnNames)) {
+			return false;
+		}
+
+		await this.dataStoreColumnRepository.deleteColumn(toTableName(dataStoreId), dto.columnNames);
+		await this.dataStoreColumnRepository.remove(existingColumnMatch);
+		// should we update the main table entry's `updatedAt` field here?
+
+		return true;
 	}
 }

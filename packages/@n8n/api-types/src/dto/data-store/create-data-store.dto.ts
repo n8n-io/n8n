@@ -6,5 +6,6 @@ import { dataStoreNameSchema } from '../../schemas/data-store.schema';
 
 export class CreateDataStoreDto extends Z.class({
 	name: dataStoreNameSchema,
-	fields: z.array(CreateDataStoreColumnDto),
+	columns: z.array(CreateDataStoreColumnDto),
+	projectId: z.string(),
 }) {}

@@ -1,14 +1,22 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const dataStoreTableName = 'dataStore';
-const dataStoreColumnTableName = 'dataStore_column';
+const dataStoreTableName = 'data_store_entity';
+const dataStoreColumnTableName = 'data_store_column_entity';
 
 export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
-		await createTable(dataStoreTableName).withColumns(
-			column('id').varchar(36).primary.notNull,
-			column('name').varchar(128).notNull,
-		).withTimestamps;
+		await createTable(dataStoreTableName)
+			.withColumns(
+				column('id').varchar(36).primary.notNull,
+				column('name').varchar(128).notNull,
+				column('projectId').varchar(36).notNull,
+			)
+			.withForeignKey('projectId', {
+				tableName: 'project', // @Review: this hardcodes a dependency on the project table, is this cool?
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withIndexOn(['projectId', 'name'], true).withTimestamps; // @Review: The intention here is to ensure each name can only be used once per project, so [projectId, name] needs to be unique, right?...
 
 		await createTable(dataStoreColumnTableName)
 			.withColumns(
@@ -21,7 +29,8 @@ export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
 				tableName: dataStoreTableName,
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			}).withTimestamps;
+			})
+			.withIndexOn(['dataStoreId', 'name'], true).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

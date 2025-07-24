@@ -19,6 +19,7 @@ export const dataStoreColumnSchema = z.object({
 	type: dataStoreColumnTypeSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
+	dataStoreId: dataStoreIdSchema,
 });
 
 export const dataStoreSchema = z.object({
