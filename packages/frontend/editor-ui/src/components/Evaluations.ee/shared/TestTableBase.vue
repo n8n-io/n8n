@@ -117,9 +117,7 @@ defineSlots<{
 		:border="true"
 		:cell-class-name="
 			({ row }) => {
-				const baseClass = $style.customCell;
-				const highlightedClass = expandedRows?.has(row.id) ? $style.highlightedCell : '';
-				return `${baseClass} ${highlightedClass}`;
+				return `${expandedRows?.has(row.id) ? $style.expandedCell : $style.baseCell}`;
 			}
 		"
 		:row-class-name="
@@ -183,7 +181,7 @@ defineSlots<{
 </template>
 
 <style module lang="scss">
-.customCell {
+.baseCell {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -195,11 +193,11 @@ defineSlots<{
 	}
 }
 
-.highlightedCell {
-	white-space: normal !important;
-	overflow: visible !important;
-	text-overflow: unset !important;
+.expandedCell {
+	white-space: normal;
 	background: var(--color-background-base);
+	border-bottom: 1px solid var(--border-color-light) !important;
+	vertical-align: top !important;
 
 	> div {
 		white-space: normal !important;
