@@ -36,6 +36,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
+	const streamingAbortController = ref<AbortController | null>(null);
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -149,6 +150,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function stopStreaming() {
 		streaming.value = false;
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+			streamingAbortController.value = null;
+		}
 	}
 
 	// Error handling
@@ -243,6 +248,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
+		// Abort previous streaming request if any
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+
+		streamingAbortController.value = new AbortController();
 		try {
 			chatWithBuilder(
 				rootStore.restApiContext,
@@ -265,6 +276,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
+				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);
@@ -391,6 +403,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Methods
 		updateWindowWidth,
+		stopStreaming,
 		closeChat,
 		openChat,
 		resetBuilderChat,

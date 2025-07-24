@@ -28,10 +28,12 @@ interface Props {
 	title?: string;
 	placeholder?: string;
 	scrollOnNewMessage?: boolean;
+	showStop?: boolean;
 }
 
 const emit = defineEmits<{
 	close: [];
+	stop: [];
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
@@ -254,7 +256,17 @@ watch(
 					@keydown.stop
 				/>
 				<N8nIconButton
-					:class="{ [$style.sendButton]: true }"
+					v-if="showStop && sendDisabled"
+					:class="$style.stopButton"
+					icon="square"
+					size="large"
+					type="danger"
+					data-test-id="send-message-button"
+					@click="emit('stop')"
+				/>
+				<N8nIconButton
+					v-else
+					:class="$style.sendButton"
 					icon="send"
 					:text="true"
 					size="large"

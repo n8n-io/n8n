@@ -47,6 +47,9 @@ async function onUserMessage(content: string) {
 	builderStore.sendChatMessage({ text: content });
 }
 
+async function onStopStream() {
+	builderStore.stopStreaming();
+}
 // Watch for workflow updates and apply them
 watch(
 	() => builderStore.workflowMessages,
@@ -129,11 +132,13 @@ watch(currentRoute, () => {
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
+			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
+			@stop="onStopStream"
 		>
 			<template #header>
 				<slot name="header" />
