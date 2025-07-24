@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { CronLoggingConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
 import type { Cron, Workflow } from 'n8n-workflow';
@@ -23,7 +24,7 @@ export class ScheduledTaskManager {
 
 		this.logInterval = setInterval(
 			() => this.logActiveCrons(),
-			this.config.activeInterval * 60 * 1000,
+			this.config.activeInterval * Time.minutes.toMilliseconds,
 		);
 	}
 
