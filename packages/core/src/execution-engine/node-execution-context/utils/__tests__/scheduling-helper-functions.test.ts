@@ -23,7 +23,7 @@ describe('getSchedulingFunctions', () => {
 
 			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
 				workflow,
-				cronExpression,
+				{ expression: cronExpression },
 				onTick,
 			);
 		});
