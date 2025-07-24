@@ -365,7 +365,7 @@ export class TestRunnerService {
 	static getEvaluationNodes(
 		workflow: IWorkflowBase,
 		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
-		isDefaultOperation = false,
+		{ isDefaultOperation }: { isDefaultOperation: boolean } = { isDefaultOperation: false },
 	) {
 		return workflow.nodes.filter(
 			(node) =>
@@ -387,7 +387,7 @@ export class TestRunnerService {
 	 * Get the evaluation set outputs nodes from a workflow.
 	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
-		return this.getEvaluationNodes(workflow, 'setOutputs', true);
+		return this.getEvaluationNodes(workflow, 'setOutputs', { isDefaultOperation: true });
 	}
 
 	/**
