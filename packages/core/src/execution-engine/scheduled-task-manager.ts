@@ -23,8 +23,7 @@ export class ScheduledTaskManager {
 
 		this.logInterval = setInterval(
 			() => this.logActiveCrons(),
-			// this.config.activeInterval * 60 * 1000, // @TODO: Restore
-			10 * 1000, // 10 seconds
+			this.config.activeInterval * 60 * 1000, // @TODO: Restore
 		);
 	}
 
@@ -38,7 +37,7 @@ export class ScheduledTaskManager {
 
 		if (Object.keys(activeCrons).length === 0) return;
 
-		this.logger.info('Currently active crons', { activeCrons });
+		this.logger.debug('Currently active crons', { activeCrons });
 	}
 
 	registerCron(workflow: Workflow, { expression, recurrence }: Cron, onTick: () => void) {
@@ -52,7 +51,7 @@ export class ScheduledTaskManager {
 			expression,
 			() => {
 				if (this.instanceSettings.isLeader) {
-					this.logger.info('Executing cron for workflow', {
+					this.logger.debug('Executing cron for workflow', {
 						workflowId: workflow.id,
 						cron: displayableCron,
 						instanceRole: this.instanceSettings.instanceRole,
@@ -74,7 +73,7 @@ export class ScheduledTaskManager {
 			this.cronMap.set(workflow.id, [cronEntry]);
 		}
 
-		this.logger.info('Registered cron for workflow', {
+		this.logger.debug('Registered cron for workflow', {
 			workflowId: workflow.id,
 			cron: displayableCron,
 			instanceRole: this.instanceSettings.instanceRole,
