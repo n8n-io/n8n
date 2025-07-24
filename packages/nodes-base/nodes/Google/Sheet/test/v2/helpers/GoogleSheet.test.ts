@@ -137,6 +137,21 @@ describe('GoogleSheet', () => {
 				{ name: 'Jane', age: 0 },
 			]);
 		});
+
+		it('should handle nullish values correctly', () => {
+			const data = [
+				['name', 'age'],
+				['John', null as unknown as number],
+				['Jane', undefined as unknown as number],
+			];
+
+			const result = googleSheet.convertSheetDataArrayToObjectArray(data, 1, ['name', 'age']);
+
+			expect(result).toEqual([
+				{ name: 'John', age: '' },
+				{ name: 'Jane', age: '' },
+			]);
+		});
 	});
 
 	describe('lookupValues', () => {
