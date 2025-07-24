@@ -98,7 +98,7 @@ describe('ExecutionsFilter', () => {
 		['production', 'default', true, workflowsData],
 	])(
 		'renders in %s environment on %s deployment with advancedExecutionFilters %s',
-		async (environment, deployment, advancedExecutionFilters, workflows) => {
+		async (_, __, advancedExecutionFilters, workflows) => {
 			settingsStore.settings.enterprise.advancedExecutionFilters = advancedExecutionFilters;
 
 			const { getByTestId, queryByTestId } = renderComponent({
