@@ -139,6 +139,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 	}
 
+	async findInvalidExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+	): Promise<ExecutionEntity[]> {
+		if (!queryParams.relations) {
+			queryParams.relations = [];
+		}
+
+		if (Array.isArray(queryParams.relations)) {
+			queryParams.relations.push('executionData', 'metadata');
+		} else {
+			queryParams.relations.executionData = true;
+			queryParams.relations.metadata = true;
+		}
+
+		const executions = await this.find(queryParams);
+
+		return executions.filter((e) => e.executionData === null);
+	}
+
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
