@@ -8,7 +8,8 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
-import { computed, ref, toRefs, onMounted } from 'vue';
+import mathjax3 from 'markdown-it-mathjax3';
+import { computed, ref, toRefs, onMounted, onBeforeUnmount } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 
 import { useOptions } from '@n8n/chat/composables';
@@ -35,6 +36,8 @@ const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
 const fileSources = ref<Record<string, string>>({});
+// Store timer IDs for each code block to clear duplicate click timers
+const copyTimers = ref<Map<string, number>>(new Map());
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -57,6 +60,43 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	});
 };
 
+const mathPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(mathjax3);
+};
+
+// Custom code block plugin
+const codeBlockPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	// Override fence rules to directly output our custom structure
+	vueMarkdownItInstance.renderer.rules.fence = (tokens, idx, _options, _env, _renderer) => {
+		const token = tokens[idx];
+		const info = token.info ? vueMarkdownItInstance.utils.unescapeAll(token.info).trim() : '';
+		const langName = info ? info.split(/\s+/g)[0] : '';
+		const content = token.content;
+
+		const blockId = `code-block-${Date.now()}-${++codeBlockCounter}`;
+
+		let highlighted = content;
+		if (hljs.getLanguage(langName)) {
+			highlighted = hljs.highlight(content, { language: langName }).value;
+		} else {
+			highlighted = hljs.highlightAuto(content).value;
+		}
+
+		return `<div class="highlight" data-block-id="${blockId}" data-code="${encodeURIComponent(content)}">
+			<div class="highlight-tool-bar">
+				<span class="highlight-language">${langName || 'text'}</span>
+				<button class="highlight-copy-btn" type="button">
+					<span class="highlight-copy-text">Copy</span>
+					<span class="highlight-copied-text">Copy Successfully</span>
+				</button>
+			</div>
+			<pre><code class="highlight-code-box hljs${langName ? ` language-${langName}` : ''}">${highlighted}</code></pre>
+		</div>`;
+	};
+};
+
+const markdownPlugins = computed(() => [linksNewTabPlugin, mathPlugin, codeBlockPlugin]);
+
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
@@ -65,16 +105,11 @@ const scrollToView = () => {
 	}
 };
 
-const markdownOptions = {
-	highlight(str: string, lang: string) {
-		if (lang && hljs.getLanguage(lang)) {
-			try {
-				return hljs.highlight(str, { language: lang }).value;
-			} catch {}
-		}
+// Generate unique code block ID
+let codeBlockCounter = 0;
 
-		return ''; // use external default escaping
-	},
+const markdownOptions = {
+	// Remove highlight function as we now use custom plugin
 };
 
 const messageComponents = { ...(options?.messageComponents ?? {}) };
@@ -90,6 +125,50 @@ const readFileAsDataURL = async (file: File): Promise<string> =>
 	});
 
 onMounted(async () => {
+	// Use event delegation to handle copy button clicks
+	if (messageContainer.value) {
+		messageContainer.value.addEventListener('click', async (event) => {
+			const button = (event.target as HTMLElement)?.closest('.highlight-copy-btn');
+			if (button) {
+				const wrapper = button.closest('.highlight');
+				if (wrapper) {
+					const blockId = wrapper.getAttribute('data-block-id') ?? '';
+					const code = decodeURIComponent(wrapper.getAttribute('data-code') ?? '');
+
+					// Prevent duplicate clicks: return if button is already in copied state
+					if (wrapper.classList.contains('copied')) {
+						return;
+					}
+
+					try {
+						await navigator.clipboard.writeText(code);
+
+						// Clear previous timer for this code block (if exists)
+						const existingTimer = copyTimers.value.get(blockId);
+						if (existingTimer) {
+							clearTimeout(existingTimer);
+						}
+
+						// Update container state (add copied class to .highlight, not the button)
+						wrapper.classList.add('copied');
+
+						// Set new timer to restore after 1500ms
+						const timerId = window.setTimeout(() => {
+							wrapper.classList.remove('copied');
+							// Clear completed timer reference
+							copyTimers.value.delete(blockId);
+						}, 1500);
+
+						// Store timer ID
+						copyTimers.value.set(blockId, timerId);
+					} catch (error) {
+						console.error('Failed to copy code:', error);
+					}
+				}
+			}
+		});
+	}
+
 	if (message.value.files) {
 		for (const file of message.value.files) {
 			try {
@@ -100,6 +179,12 @@ onMounted(async () => {
 			}
 		}
 	}
+});
+
+// Clean up all timers when component unmounts
+onBeforeUnmount(() => {
+	copyTimers.value.forEach((timerId) => clearTimeout(timerId));
+	copyTimers.value.clear();
 });
 </script>
 
@@ -117,7 +202,7 @@ onMounted(async () => {
 				class="chat-message-markdown"
 				:source="messageText"
 				:options="markdownOptions"
-				:plugins="[linksNewTabPlugin]"
+				:plugins="markdownPlugins"
 			/>
 			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
 				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
@@ -205,17 +290,6 @@ onMounted(async () => {
 
 		> *:last-child {
 			margin-bottom: 0;
-		}
-
-		pre {
-			font-family: inherit;
-			font-size: inherit;
-			margin: 0;
-			white-space: pre-wrap;
-			box-sizing: border-box;
-			padding: var(--chat--spacing);
-			background: var(--chat--message--pre--background);
-			border-radius: var(--chat--border-radius);
 		}
 	}
 	.chat-message-files {
