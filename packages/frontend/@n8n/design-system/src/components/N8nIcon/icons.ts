@@ -16,6 +16,14 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
+import NodeDirty from './custom/node-dirty.svg';
+import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeError from './custom/node-error.svg';
+import NodePin from './custom/node-pin.svg';
+import NodePlay from './custom/node-play.svg';
+import NodePower from './custom/node-power.svg';
+import NodeSuccess from './custom/node-success.svg';
+import NodeTrash from './custom/node-trash.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -412,6 +420,14 @@ export const updatedIconSet = {
 	text: Text,
 	toolbox: Toolbox,
 	spinner: Spinner,
+	'node-dirty': NodeDirty,
+	'node-ellipsis': NodeEllipsis,
+	'node-error': NodeError,
+	'node-pin': NodePin,
+	'node-play': NodePlay,
+	'node-power': NodePower,
+	'node-success': NodeSuccess,
+	'node-trash': NodeTrash,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
