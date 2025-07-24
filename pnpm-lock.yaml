@@ -1429,6 +1429,9 @@ importers:
       helmet:
         specifier: 8.1.0
         version: 8.1.0
+      http-proxy-middleware:
+        specifier: ^3.0.5
+        version: 3.0.5
       infisical-node:
         specifier: 1.3.0
         version: 1.3.0
@@ -2360,19 +2363,19 @@ importers:
         version: 1.6.0(typescript@5.8.3)
       '@vue-flow/background':
         specifier: ^1.3.2
-        version: 1.3.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+        version: 1.3.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
       '@vue-flow/controls':
         specifier: ^1.1.2
-        version: 1.1.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+        version: 1.1.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
       '@vue-flow/core':
-        specifier: ^1.42.1
-        version: 1.42.1(vue@3.5.13(typescript@5.8.3))
+        specifier: ^1.45.0
+        version: 1.45.0(vue@3.5.13(typescript@5.8.3))
       '@vue-flow/minimap':
         specifier: ^1.5.2
-        version: 1.5.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+        version: 1.5.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
       '@vue-flow/node-resizer':
         specifier: ^1.4.0
-        version: 1.4.0(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+        version: 1.4.0(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
       '@vueuse/components':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.13(typescript@5.8.3))
@@ -7089,6 +7092,9 @@ packages:
   '@types/html-to-text@9.0.4':
     resolution: {integrity: sha512-pUY3cKH/Nm2yYrEmDlPR1mR7yszjGx4DrwPjQ702C4/D5CwHuZTgZdIdwPkRbcuhs7BAh2L5rg3CL5cbRiGTCQ==}
 
+  '@types/http-proxy@1.17.16':
+    resolution: {integrity: sha512-sdWoUajOB1cd0A8cRRQ1cfyWNbmFKLAqBB89Y8x5iYyG/mkJHc0YUH8pdWBy2omi9qtCpiIgGjuwO0dQST2l5w==}
+
   '@types/humanize-duration@3.27.1':
     resolution: {integrity: sha512-K3e+NZlpCKd6Bd/EIdqjFJRFHbrq5TzPPLwREk5Iv/YoIjQrs6ljdAUCo+Lb2xFlGNOjGSE0dqsVD19cZL137w==}
 
@@ -7706,8 +7712,8 @@ packages:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/core@1.42.1':
-    resolution: {integrity: sha512-QzzTxMAXfOeETKc+N3XMp5XpiPxKBHK5kq98avgTsE6MXyeU2E8EkANwwgSB/hvJ/k36RjU0Y7BOwCHiqiI1tw==}
+  '@vue-flow/core@1.45.0':
+    resolution: {integrity: sha512-+Qd4fTnCfrhfYQzlHyf5Jt7rNE4PlDnEJEJZH9v6hDZoTOeOy1RhS85cSxKYxdsJ31Ttj2v3yabhoVfBf+bmJA==}
     peerDependencies:
       vue: ^3.3.0
 
@@ -10848,6 +10854,14 @@ packages:
   http-proxy-agent@7.0.2:
     resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
     engines: {node: '>= 14'}
+
+  http-proxy-middleware@3.0.5:
+    resolution: {integrity: sha512-GLZZm1X38BPY4lkXA01jhwxvDoOkkXqjgVyUzVxiEK4iuRu03PZoYHhHRwxnfhQMDuaxi3vVri0YgSro/1oWqg==}
+    engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+
+  http-proxy@1.18.1:
+    resolution: {integrity: sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==}
+    engines: {node: '>=8.0.0'}
 
   http-signature@1.4.0:
     resolution: {integrity: sha512-G5akfn7eKbpDN+8nPS/cb57YeA1jLTVxjpCj7tmm3QKPdyDy7T+qSC40e9ptydSWvkwjSXw1VbkpyEm39ukeAg==}
@@ -21621,6 +21635,10 @@ snapshots:
 
   '@types/html-to-text@9.0.4': {}
 
+  '@types/http-proxy@1.17.16':
+    dependencies:
+      '@types/node': 20.19.1
+
   '@types/humanize-duration@3.27.1': {}
 
   '@types/imap@0.8.40':
@@ -22328,36 +22346,37 @@ snapshots:
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
 
-  '@vue-flow/background@1.3.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
+  '@vue-flow/background@1.3.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
-      '@vue-flow/core': 1.42.1(vue@3.5.13(typescript@5.8.3))
+      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.8.3))
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vue-flow/controls@1.1.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
+  '@vue-flow/controls@1.1.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
-      '@vue-flow/core': 1.42.1(vue@3.5.13(typescript@5.8.3))
+      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.8.3))
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3))':
+  '@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3))':
     dependencies:
       '@vueuse/core': 10.11.0(vue@3.5.13(typescript@5.8.3))
       d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.5.13(typescript@5.8.3)
     transitivePeerDependencies:
       - '@vue/composition-api'
 
-  '@vue-flow/minimap@1.5.2(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
+  '@vue-flow/minimap@1.5.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
-      '@vue-flow/core': 1.42.1(vue@3.5.13(typescript@5.8.3))
+      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.8.3))
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.42.1(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
+  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
-      '@vue-flow/core': 1.42.1(vue@3.5.13(typescript@5.8.3))
+      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.8.3))
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       vue: 3.5.13(typescript@5.8.3)
@@ -26309,6 +26328,25 @@ snapshots:
       debug: 4.4.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
+
+  http-proxy-middleware@3.0.5:
+    dependencies:
+      '@types/http-proxy': 1.17.16
+      debug: 4.4.1(supports-color@8.1.1)
+      http-proxy: 1.18.1(debug@4.4.1)
+      is-glob: 4.0.3
+      is-plain-object: 5.0.0
+      micromatch: 4.0.8
+    transitivePeerDependencies:
+      - supports-color
+
+  http-proxy@1.18.1(debug@4.4.1):
+    dependencies:
+      eventemitter3: 4.0.7
+      follow-redirects: 1.15.9(debug@4.4.1)
+      requires-port: 1.0.0
+    transitivePeerDependencies:
+      - debug
 
   http-signature@1.4.0:
     dependencies:
