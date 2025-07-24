@@ -67,11 +67,11 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	// Show confirmation if there's content AND the user has edited the prompt
 	if (hasContent.value && userEditedPrompt.value) {
 		const confirmed = await message.confirm(
-			i18n.baseText('aiAssistant.builder.suggestionPills.confirmMessage'),
-			i18n.baseText('aiAssistant.builder.suggestionPills.confirmTitle'),
+			i18n.baseText('aiAssistant.builder.canvasPrompt.confirmMessage'),
+			i18n.baseText('aiAssistant.builder.canvasPrompt.confirmTitle'),
 			{
-				confirmButtonText: i18n.baseText('aiAssistant.builder.suggestionPills.confirmButton'),
-				cancelButtonText: i18n.baseText('aiAssistant.builder.suggestionPills.cancelButton'),
+				confirmButtonText: i18n.baseText('aiAssistant.builder.canvasPrompt.confirmButton'),
+				cancelButtonText: i18n.baseText('aiAssistant.builder.canvasPrompt.cancelButton'),
 			},
 		);
 
@@ -98,7 +98,7 @@ function onAddNodeClick() {
 <template>
 	<article :class="$style.container" data-test-id="canvas-ai-prompt">
 		<header>
-			<h2 :class="$style.title">{{ i18n.baseText('aiAssistant.builder.title') }}</h2>
+			<h2 :class="$style.title">{{ i18n.baseText('aiAssistant.builder.canvasPrompt.title') }}</h2>
 		</header>
 
 		<!-- Prompt input section -->
@@ -130,7 +130,7 @@ function onAddNodeClick() {
 						:disabled="!hasContent || builderStore.streaming"
 						@keydown.enter="onSubmit"
 					>
-						{{ i18n.baseText('aiAssistant.builder.buildWorkflow') }}
+						{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWorkflow') }}
 					</n8n-button>
 				</footer>
 			</form>
@@ -161,10 +161,10 @@ function onAddNodeClick() {
 			</button>
 			<div :class="$style.startManuallyLabel">
 				<strong :class="$style.startManuallyText">
-					{{ i18n.baseText('aiAssistant.builder.startManually.title') }}
+					{{ i18n.baseText('aiAssistant.builder.canvasPrompt.startManually.title') }}
 				</strong>
 				<span :class="$style.startManuallySubtitle">
-					{{ i18n.baseText('aiAssistant.builder.startManually.subTitle') }}
+					{{ i18n.baseText('aiAssistant.builder.canvasPrompt.startManually.subTitle') }}
 				</span>
 			</div>
 		</section>
@@ -235,6 +235,7 @@ function onAddNodeClick() {
 		font-family: var(--font-family);
 		padding: 0;
 
+		/* Custom scrollbar styles */
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}
@@ -320,6 +321,26 @@ function onAddNodeClick() {
 	gap: var(--spacing-xs);
 	cursor: pointer;
 
+	.addButton {
+		background: var(--color-foreground-xlight);
+		border: 1px dashed var(--color-foreground-xdark);
+		border-radius: var(--border-radius-base);
+		min-width: 80px;
+		min-height: 80px;
+		cursor: pointer;
+		transition: all 0.3s ease;
+
+		svg {
+			width: 31px !important;
+			height: 40px;
+			path {
+				color: var(--color-foreground-xdark);
+				fill: var(--color-foreground-xdark);
+				transition: all 0.3s ease;
+			}
+		}
+	}
+
 	&:hover .addButton {
 		border-color: var(--color-button-secondary-hover-active-focus-border);
 
@@ -328,44 +349,22 @@ function onAddNodeClick() {
 			fill: var(--color-primary);
 		}
 	}
-}
 
-.startManuallyLabel {
-	display: flex;
-	flex-direction: column;
-}
+	.startManuallyLabel {
+		display: flex;
+		flex-direction: column;
+		font-size: var(--font-size-s);
+		line-height: var(--font-line-height-xloose);
 
-.addButton {
-	background: var(--color-foreground-xlight);
-	border: 1px dashed var(--color-foreground-xdark);
-	border-radius: var(--border-radius-base);
-	min-width: 80px;
-	min-height: 80px;
-	cursor: pointer;
-	transition: all 0.3s ease;
+		.startManuallyText {
+			font-weight: var(--font-weight-medium);
+			color: var(--color-text-dark);
+		}
 
-	svg {
-		width: 31px !important;
-		height: 40px;
-		path {
-			color: var(--color-foreground-xdark);
-			fill: var(--color-foreground-xdark);
-			transition: all 0.3s ease;
+		.startManuallySubtitle {
+			font-weight: var(--font-weight-regular);
+			color: var(--color-text-base);
 		}
 	}
-}
-
-.startManuallyText {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-medium);
-	line-height: var(--font-line-height-xloose);
-	color: var(--color-text-dark);
-}
-
-.startManuallySubtitle {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
-	line-height: var(--font-line-height-xloose);
-	color: var(--color-text-base);
 }
 </style>
