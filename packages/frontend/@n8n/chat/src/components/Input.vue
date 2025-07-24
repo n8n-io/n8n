@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { useFileDialog } from '@vueuse/core';
+import { v4 as uuidv4 } from 'uuid';
 import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
+import type { ChatMessage } from '../types';
 
 export interface ChatInputProps {
 	placeholder?: string;
@@ -36,8 +39,10 @@ const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 const isSubmitting = ref(false);
 const resizeObserver = ref<ResizeObserver | null>(null);
+const waitingForChatResponse = ref(false);
 
 const isSubmitDisabled = computed(() => {
+	if (waitingForChatResponse.value) return false;
 	return input.value === '' || unref(waitingForResponse) || options.disabled?.value === true;
 });
 
@@ -127,6 +132,110 @@ function setInputValue(value: string) {
 	focusChatInput();
 }
 
+function attachFiles() {
+	if (files.value) {
+		const filesToAttach = Array.from(files.value);
+		resetFileDialog();
+		files.value = null;
+		return filesToAttach;
+	}
+
+	return [];
+}
+
+function setupWebsocketConnection(executionId: string) {
+	// if webhookUrl is not defined onSubmit is called from integrated chat
+	// do not setup websocket as it would be handled by the integrated chat
+	if (options.webhookUrl && chatStore.currentSessionId.value) {
+		try {
+			const wsUrl = constructChatWebsocketUrl(
+				options.webhookUrl,
+				executionId,
+				chatStore.currentSessionId.value,
+				true,
+			);
+			chatStore.ws = new WebSocket(wsUrl);
+			chatStore.ws.onmessage = (e) => {
+				if (e.data === 'n8n|heartbeat') {
+					chatStore.ws?.send('n8n|heartbeat-ack');
+					return;
+				}
+
+				if (e.data === 'n8n|continue') {
+					waitingForChatResponse.value = false;
+					chatStore.waitingForResponse.value = true;
+					return;
+				}
+				const newMessage: ChatMessage = {
+					id: uuidv4(),
+					text: e.data,
+					sender: 'bot',
+				};
+
+				chatStore.messages.value.push(newMessage);
+				waitingForChatResponse.value = true;
+				chatStore.waitingForResponse.value = false;
+			};
+
+			chatStore.ws.onclose = () => {
+				chatStore.ws = null;
+				waitingForChatResponse.value = false;
+				chatStore.waitingForResponse.value = false;
+			};
+		} catch (error) {
+			// do not throw error here as it should work with n8n versions that do not support websockets
+			console.error('Error setting up websocket connection', error);
+		}
+	}
+}
+
+async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
+}
+
+async function respondToChatNode(ws: WebSocket, messageText: string) {
+	const sentMessage: ChatMessage = {
+		id: uuidv4(),
+		text: messageText,
+		sender: 'user',
+		files: files.value ? attachFiles() : undefined,
+	};
+
+	chatStore.messages.value.push(sentMessage);
+	ws.send(
+		JSON.stringify({
+			sessionId: chatStore.currentSessionId.value,
+			action: 'sendMessage',
+			chatInput: messageText,
+			files: await processFiles(sentMessage.files),
+		}),
+	);
+	chatStore.waitingForResponse.value = true;
+	waitingForChatResponse.value = false;
+}
+
 async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	event.preventDefault();
 
@@ -137,10 +246,19 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const messageText = input.value;
 	input.value = '';
 	isSubmitting.value = true;
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+
+	if (chatStore.ws && waitingForChatResponse.value) {
+		await respondToChatNode(chatStore.ws, messageText);
+		return;
+	}
+
+	const response = await chatStore.sendMessage(messageText, attachFiles());
+
+	if (response?.executionId) {
+		setupWebsocketConnection(response.executionId);
+	}
+
 	isSubmitting.value = false;
-	resetFileDialog();
-	files.value = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
@@ -225,7 +343,7 @@ function adjustTextAreaHeight() {
 				</button>
 			</div>
 		</div>
-		<div v-if="files?.length && !isSubmitting" class="chat-files">
+		<div v-if="files?.length && (!isSubmitting || waitingForChatResponse)" class="chat-files">
 			<ChatFile
 				v-for="file in files"
 				:key="file.name"

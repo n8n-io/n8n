@@ -11,11 +11,11 @@ import {
 import type { INodeUi, XYPosition } from '@/Interface';
 import type {
 	AssignmentCollectionValue,
+	IConnections,
 	INode,
 	INodeExecutionData,
 	INodeTypeDescription,
 	NodeHint,
-	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -27,6 +27,7 @@ import {
 	type Rect,
 	type ViewportTransform,
 } from '@vue-flow/core';
+import * as workflowUtils from 'n8n-workflow/common';
 
 /*
  * Canvas constants and functions
@@ -371,7 +372,8 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	workflow,
+	nodes,
+	connections,
 	hasNodeRun,
 }: {
 	workflowNode: INode;
@@ -379,7 +381,8 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	workflow: Workflow;
+	nodes: INode[];
+	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
 	const nodeHints: NodeHint[] = [];
@@ -417,7 +420,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -429,7 +432,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -470,9 +473,8 @@ export function getGenericHints({
 
 	// Split In Batches setup hints
 	if (node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-		const { connectionsBySourceNode } = workflow;
-
-		const firstNodesInLoop = connectionsBySourceNode[node.name]?.main[1] || [];
+		const firstNodesInLoop =
+			workflowUtils.mapConnectionsByDestination(connections)[node.name]?.main[1] || [];
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
@@ -482,7 +484,7 @@ export function getGenericHints({
 			});
 		} else {
 			for (const nodeInConnection of firstNodesInLoop || []) {
-				const nodeChilds = workflow.getChildNodes(nodeInConnection.node) || [];
+				const nodeChilds = workflowUtils.getChildNodes(connections, nodeInConnection.node) || [];
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
 						message:
