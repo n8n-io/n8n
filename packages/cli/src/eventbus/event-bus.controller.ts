@@ -124,7 +124,8 @@ export class EventBusController {
 	@GlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
-			return await this.eventBus.removeDestination(req.query.id);
+			await this.eventBus.removeDestination(req.query.id);
+			return await this.eventBus.deleteDestination(req.query.id);
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}
