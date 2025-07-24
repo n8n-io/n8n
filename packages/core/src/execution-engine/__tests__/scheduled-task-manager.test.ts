@@ -47,7 +47,7 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).toHaveBeenCalledTimes(10);
 	});
 
-	it('should should not invoke on follower instances', () => {
+	it('should not invoke on follower instances', () => {
 		scheduledTaskManager = new ScheduledTaskManager(
 			mock<InstanceSettings>({ isLeader: false }),
 			logger,

@@ -151,7 +151,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 		);
 
 		// 'b' got removed for the context 'workflow' and 'd' never got saved for that reason new
-		// 'a' and 'c' should should be known
+		// 'a' and 'c' should be known
 		expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 	});
 
