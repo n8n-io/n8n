@@ -71,6 +71,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import { type DataStoreEntity } from './features/dataStore/datastore.types';
 
 export * from '@n8n/design-system/types';
 
@@ -135,6 +136,8 @@ declare global {
 		Cypress: unknown;
 	}
 }
+
+export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 export type EndpointStyle = {
 	width?: number;
@@ -329,7 +332,20 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 };
 
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
+// TODO: Module resource types should be loaded from the module
+export type DataStoreResource = Prettify<
+	BaseResource &
+		DataStoreEntity & {
+			resourceType: 'datastore';
+		}
+>;
+
+export type Resource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource
+	| DataStoreResource;
 
 export type BaseFilters = {
 	search: string;

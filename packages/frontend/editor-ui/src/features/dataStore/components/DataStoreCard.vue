@@ -1,0 +1,159 @@
+<script setup lang="ts">
+import type { DataStoreResource, IUser, UserAction } from '@/Interface';
+import { useRouter } from 'vue-router';
+import { DATA_STORE_DETAILS } from '../constants';
+import { useI18n } from '@n8n/i18n';
+
+type Props = {
+	dataStore: DataStoreResource;
+	actions?: Array<UserAction<IUser>>;
+	readOnly?: boolean;
+	showOwnershipBadge?: boolean;
+};
+
+const router = useRouter();
+const i18n = useI18n();
+
+const props = withDefaults(defineProps<Props>(), {
+	actions: () => [],
+	readOnly: false,
+	showOwnershipBadge: false,
+});
+
+// TODO: Check how we can pass route object without resolving it
+const getDataStoreUrl = (id: string) => {
+	return router.resolve({
+		name: DATA_STORE_DETAILS,
+		params: {
+			projectId: props.dataStore.projectId,
+			id,
+		},
+	}).href;
+};
+</script>
+<template>
+	<div data-test-id="data-store-card">
+		<router-link
+			:to="getDataStoreUrl(props.dataStore.id)"
+			class="data-store-card"
+			data-test-id="data-store-card-link"
+		>
+			<n8n-card :class="$style.card">
+				<template #prepend>
+					<n8n-icon
+						data-test-id="data-store-card-icon"
+						:class="$style['card-icon']"
+						icon="database"
+						size="xlarge"
+						:stroke-width="1"
+					/>
+				</template>
+				<template #header>
+					<div :class="$style['card-header']">
+						<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+							{{ dataStore.name }}
+						</n8n-heading>
+						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+							{{ i18n.baseText('workflows.item.readonly') }}
+						</N8nBadge>
+					</div>
+				</template>
+				<template #footer>
+					<div :class="$style['card-footer']">
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+							data-test-id="folder-card-folder-count"
+						>
+							{{
+								i18n.baseText('data.stores.card.size', { interpolate: { size: dataStore.size } })
+							}}
+						</n8n-text>
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+							data-test-id="folder-card-workflow-count"
+						>
+							{{
+								i18n.baseText('data.stores.card.row.count', {
+									interpolate: { count: dataStore.recordCount },
+								})
+							}}
+						</n8n-text>
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+							data-test-id="folder-card-workflow-count"
+						>
+							{{
+								i18n.baseText('data.stores.card.column.count', {
+									interpolate: { count: dataStore.columnCount },
+								})
+							}}
+						</n8n-text>
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--updated']]"
+							data-test-id="folder-card-last-updated"
+						>
+							{{ i18n.baseText('workerList.item.lastUpdated') }}
+							<TimeAgo :date="String(dataStore.updatedAt)" />
+						</n8n-text>
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--created']]"
+							data-test-id="folder-card-created"
+						>
+							{{ i18n.baseText('workflows.item.created') }}
+							<TimeAgo :date="String(dataStore.createdAt)" />
+						</n8n-text>
+					</div>
+				</template>
+			</n8n-card>
+		</router-link>
+	</div>
+</template>
+
+<style lang="scss" module>
+.card {
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+
+	&:hover {
+		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+	}
+}
+
+.card-icon {
+	flex-shrink: 0;
+	color: var(--color-text-base);
+	align-content: center;
+	text-align: center;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-right: var(--spacing-xs);
+	margin-bottom: var(--spacing-5xs);
+}
+
+.card-footer {
+	display: flex;
+}
+
+.info-cell {
+	& + & {
+		&::before {
+			content: '|';
+			margin: 0 var(--spacing-4xs);
+		}
+	}
+}
+</style>

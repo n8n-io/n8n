@@ -9,14 +9,21 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
+import { fetchDataStores } from '../api/datastore.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type { DataStoreEntity } from '../datastore.types';
+import type { DataStoreResource } from '@/Interface';
+import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 
 const i18n = useI18n();
 const projectPages = useProjectPages();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
+const rootStore = useRootStore();
 
-const loading = ref(false);
+const loading = ref(true);
+const dataStores = ref<DataStoreResource[]>([]);
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -41,14 +48,24 @@ const emptyCalloutButtonText = computed(() => {
 });
 
 async function initialize() {
-	await Promise.resolve();
+	loading.value = true;
+	const fetched: DataStoreEntity[] = await fetchDataStores(
+		rootStore.restApiContext,
+		projectName.value ?? undefined,
+	);
+	dataStores.value = fetched.map((item) => ({
+		...item,
+		resourceType: 'datastore',
+	}));
+	loading.value = false;
 }
 </script>
 <template>
 	<ResourcesListLayout
 		ref="layout"
 		resource-key="datastores"
-		:resources="[]"
+		type="list-paginated"
+		:resources="dataStores"
 		:initialize="initialize"
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
@@ -72,6 +89,9 @@ async function initialize() {
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"
 			/>
+		</template>
+		<template #item="{ item: data }">
+			<DataStoreCard :data-store="data as DataStoreResource" class="mb-2xs" />
 		</template>
 	</ResourcesListLayout>
 </template>

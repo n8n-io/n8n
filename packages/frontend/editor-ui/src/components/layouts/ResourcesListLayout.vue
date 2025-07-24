@@ -16,6 +16,7 @@ import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Inter
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 
+// TOOD: Load module resource types from somewhere else
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'datastores';
 
 const route = useRoute();
