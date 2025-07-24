@@ -79,10 +79,9 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	};
 
 	const getAllDestinations = () => {
-		const destinations: MessageEventBusDestinationOptions[] = [];
-		for (const key of Object.keys(items)) {
-			destinations.push(items.value[key].destination);
-		}
+		const destinations: MessageEventBusDestinationOptions[] = Object.values(items.value).map(
+			(item) => item.destination,
+		);
 		return destinations;
 	};
 
@@ -115,37 +114,35 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const setSelectedInGroup = (destinationId: string, name: string, isSelected: boolean) => {
 		if (items.value[destinationId]) {
 			const groupName = eventGroupFromEventName(name);
-			const groupIndex = items.value[destinationId].eventGroups.findIndex(
-				(e) => e.name === groupName,
-			);
-
-			if (groupIndex > -1) {
+			const group = items.value[destinationId].eventGroups.find((e) => e.name === groupName);
+			if (group) {
+				const children = group.children;
 				if (groupName === name) {
-					items.value[destinationId].eventGroups[groupIndex].selected = isSelected;
+					group.selected = isSelected;
+					// if the group is selected (or unselected), all children should be deselected
+					children.forEach((e) => (e.selected = false));
 				} else {
-					const eventIndex = items.value[destinationId].eventGroups[groupIndex].children.findIndex(
-						(e) => e.name === name,
-					);
-					if (eventIndex > -1) {
-						items.value[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
-							isSelected;
-						if (isSelected) {
-							items.value[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
-						} else {
-							let anySelected = false;
-							for (
-								let i = 0;
-								i < items.value[destinationId].eventGroups[groupIndex].children.length;
-								i++
-							) {
-								anySelected =
-									anySelected ||
-									items.value[destinationId].eventGroups[groupIndex].children[i].selected;
-							}
-							items.value[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
+					const event = children.find((e) => e.name === name);
+					if (event) {
+						event.selected = isSelected;
+						if (!isSelected && group.selected) {
+							// If whole group is selected and the event is unselected,
+							// we unselect the group but keep other children selected
+							group.selected = false;
+							group.children.filter((e) => e !== event).forEach((e) => (e.selected = true));
+						}
+						if (isSelected && children.every((e) => e.selected)) {
+							// If all children are selected, we select the group
+							// and unselect all children
+							group.selected = true;
+							group.children.forEach((e) => (e.selected = false));
 						}
 					}
 				}
+				const selectedChildren = children.filter((e) => e.selected);
+				group.indeterminate =
+					selectedChildren.length > 0 && selectedChildren.length < children.length;
+				group.selected = group.selected || selectedChildren.length === children.length;
 			}
 		}
 	};
