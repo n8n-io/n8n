@@ -143,7 +143,7 @@ Module-level decorators to be aware of:
 
 ## Controller
 
-To register a controller with the server, simply import the controller file in the module entrypoint: 
+To register a controller with the server, simply import the controller file in the module entrypoint:
 
 ```ts
 @BackendModule({ name: 'my-feature' })
@@ -239,7 +239,7 @@ export class MyFeatureRepository extends Repository<MyFeatureEntity> {
   }
 
   async getSummary() {
-    return await /* typeorm query on entities */; 
+    return await /* typeorm query on entities */;
   }
 }
 ```
@@ -271,7 +271,7 @@ Entities must be registered with `typeorm` in the module entrypoint:
 class MyFeatureModule implements ModuleInterface {
   async entities() {
     const { MyFeatureEntity } = await import('./my-feature.entity');
-    
+
     return [MyFeatureEntity];
   }
 }
@@ -329,7 +329,7 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 
 2. License events (e.g. expiration) currently do not trigger module shutdown or initialization at runtime.
 
-3. Some core functionality is yet to be moved from `cli` into common packages. This is not a blocker for module adoption, but this is desirable so that (a) modules become decoupled from `cli` in the long term, and (b) future external extensions can access some of that functionality. 
+3. Some core functionality is yet to be moved from `cli` into common packages. This is not a blocker for module adoption, but this is desirable so that (a) modules become decoupled from `cli` in the long term, and (b) future external extensions can access some of that functionality.
 
 4. Existing features that are not modules (e.g. LDAP) should be turned into modules over time.
 

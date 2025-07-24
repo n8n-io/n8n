@@ -14,4 +14,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreColumn[]) {
 		await this.manager.query(...createUserTableQuery(tableName, columns));
 	}
+
+	async deleteUserTable(tableName: DataStoreUserTableName) {
+		console.log(await this.manager.query("SELECT name FROM sqlite_master WHERE type='table'"));
+		// await this.manager.query(`DROP TABLE ${tableName}`);
+	}
 }

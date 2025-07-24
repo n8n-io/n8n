@@ -63,9 +63,8 @@ export class DataStoreService {
 		if (existingMatch) {
 			return 'duplicate data store name in project';
 		}
-
-		await this.dataStoreRepository.createUserTable(toTableName(dataStore.id), dto.columns);
 		await this.dataStoreRepository.insert(dataStore);
+		await this.dataStoreRepository.createUserTable(toTableName(dataStore.id), dto.columns);
 
 		return dataStore;
 	}
@@ -104,16 +103,28 @@ export class DataStoreService {
 		return true;
 	}
 
-	async deleteDataStore(dataStoreId: string, dto: RenameDataStoreDto) {
+	async deleteDataStoreAll() {
+		const existingMatches = await this.dataStoreRepository.findBy({});
+
+		let changed = false;
+		for (const match of existingMatches) {
+			changed = changed || true === (await this.deleteDataStore(match.id));
+		}
+
+		return changed;
+	}
+
+	async deleteDataStore(dataStoreId: string) {
 		const existingMatch = await this.dataStoreRepository.existsBy({
 			id: dataStoreId,
 		});
 
 		if (!existingMatch) {
-			return 'tried to rename non-existent table';
+			return 'tried to delete non-existent table';
 		}
 
-		await this.dataStoreRepository.update({ id: dataStoreId }, dto);
+		await this.dataStoreRepository.delete({ id: dataStoreId });
+		await this.dataStoreRepository.deleteUserTable(toTableName(dataStoreId));
 
 		return true;
 	}
