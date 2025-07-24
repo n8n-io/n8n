@@ -20,4 +20,4 @@ export const CREDENTIAL_ERRORS = {
 	INVALID_DATA: 'Credentials data is not in a valid format.',
 };
 
-export const WAITING_TOKEN_QUERY_PARAM = 'n8nwaitingtoken';
+export const WAITING_TOKEN_QUERY_PARAM = 'signature';

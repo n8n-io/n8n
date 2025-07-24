@@ -23,6 +23,7 @@ describe('NodeExecutionContext', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: 'abc123',
 		encryptionKey: 'testEncryptionKey',
+		hmacSignatureSecret: 'testHmacSignatureSecret',
 	});
 	Container.set(InstanceSettings, instanceSettings);
 
@@ -351,12 +352,12 @@ describe('NodeExecutionContext', () => {
 
 			const result = testContext.getSignedResumeUrl();
 			const expectedToken = crypto
-				.createHmac('sha256', instanceSettings.encryptionKey)
-				.update(additionalData.executionId)
+				.createHmac('sha256', instanceSettings.hmacSignatureSecret)
+				.update(`${additionalData.executionId}-${JSON.stringify(node)}`)
 				.digest('hex');
 
 			expect(result).toBe(
-				`https://example.com/webhook/execution123/node456?n8nwaitingtoken=${expectedToken}`,
+				`https://example.com/webhook/execution123/node456?signature=${expectedToken}`,
 			);
 		});
 
