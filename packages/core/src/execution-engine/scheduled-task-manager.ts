@@ -29,12 +29,12 @@ export class ScheduledTaskManager {
 	}
 
 	private logActiveCrons() {
-		const activeCrons = Object.fromEntries(
-			Array.from(this.cronMap.entries()).map(([workflowId, cronJobs]) => [
-				`workflow-${workflowId}`,
-				cronJobs.map(({ displayableCron }) => displayableCron),
-			]),
-		);
+		const activeCrons: Record<string, string[]> = {};
+		for (const [workflowId, cronJobs] of this.cronMap) {
+			activeCrons[`workflow-${workflowId}`] = cronJobs.map(
+				({ displayableCron }) => displayableCron,
+			);
+		}
 
 		if (Object.keys(activeCrons).length === 0) return;
 
