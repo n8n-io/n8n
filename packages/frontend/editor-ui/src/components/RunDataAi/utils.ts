@@ -6,7 +6,6 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	NodeConnectionType,
-	Workflow,
 } from 'n8n-workflow';
 import { splitTextBySearch } from '@/utils/stringUtils';
 import { escapeHtml } from 'xss';
@@ -53,22 +52,23 @@ function createNode(
 
 export function getTreeNodeData(
 	nodeName: string,
-	connections: IConnections,
+	connectionsBySourceNode: IConnections,
 	aiData: AIResult[] | undefined,
 	runIndex: number,
 ): TreeNode[] {
-	return getTreeNodeDataRec(undefined, nodeName, 0, connections, aiData, runIndex);
+	return getTreeNodeDataRec(undefined, nodeName, 0, connectionsBySourceNode, aiData, runIndex);
 }
 
 function getTreeNodeDataRec(
 	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
-	connections: IConnections,
+	connectionsBySourceNode: IConnections,
 	aiData: AIResult[] | undefined,
 	runIndex: number,
 ): TreeNode[] {
-	const connectionsByDestinationNode = workflowUtils.mapConnectionsByDestination(connections);
+	const connectionsByDestinationNode =
+		workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 	const nodeConnections = connectionsByDestinationNode[nodeName];
 	const resultData =
 		aiData?.filter((data) => data.node === nodeName && runIndex === data.runIndex) ?? [];
@@ -107,7 +107,7 @@ function getTreeNodeDataRec(
 					treeNode,
 					data.node,
 					currentDepth + 1,
-					connections,
+					connectionsBySourceNode,
 					aiData,
 					data.runIndex,
 				)
@@ -127,10 +127,11 @@ function getTreeNodeDataRec(
 
 export function createAiData(
 	nodeName: string,
-	connections: IConnections,
+	connectionsBySourceNode: IConnections,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
 ): AIResult[] {
-	const connectionsByDestinationNode = workflowUtils.mapConnectionsByDestination(connections);
+	const connectionsByDestinationNode =
+		workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 	return workflowUtils
 		.getParentNodes(connectionsByDestinationNode, nodeName, 'ALL_NON_MAIN')
 		.flatMap((node) =>
