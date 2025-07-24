@@ -35,27 +35,30 @@ const allowedFileMimeTypeOption: INodeProperties = {
 		'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
 };
 
-const responseModeOptions = [
-	{
-		name: 'When Last Node Finishes',
-		value: 'lastNode',
-		description: 'Returns data of the last-executed node',
-	},
-	{
-		name: "Using 'Respond to Webhook' Node",
-		value: 'responseNode',
-		description: 'Response defined in that node',
-	},
-];
+const respondToWebhookResponseMode = {
+	name: "Using 'Respond to Webhook' Node",
+	value: 'responseNode',
+	description: 'Response defined in that node',
+};
 
-const responseModeWithStreamingOptions = [
-	...responseModeOptions,
-	{
-		name: 'Streaming Response',
-		value: 'streaming',
-		description: 'Streaming response from specified nodes (e.g. Agents)',
-	},
-];
+const lastNodeResponseMode = {
+	name: 'When Last Node Finishes',
+	value: 'lastNode',
+	description: 'Returns data of the last-executed node',
+};
+
+const streamingResponseMode = {
+	name: 'Streaming Response',
+	value: 'streaming',
+	description: 'Streaming response from specified nodes (e.g. Agents)',
+};
+
+const respondNodesResponseMode = {
+	name: 'Using Response Nodes',
+	value: 'responseNodes',
+	description:
+		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
+};
 
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
@@ -209,9 +212,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
-		// Keep the default version as 1.1 to avoid releasing streaming in broken state
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -390,7 +392,7 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						public: [false],
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [1, 1.1],
 					},
 				},
 				placeholder: 'Add Field',
@@ -417,13 +419,13 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: responseModeOptions,
+						options: [lastNodeResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 					},
 				],
 			},
-			// Options for version 1.2+ (with streaming)
+			// Options for version 1.2 (with streaming)
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -432,7 +434,7 @@ export class ChatTrigger extends Node {
 					show: {
 						mode: ['hostedChat', 'webhook'],
 						public: [true],
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [1.2],
 					},
 				},
 				placeholder: 'Add Field',
@@ -443,9 +445,69 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: responseModeWithStreamingOptions,
+						options: [lastNodeResponseMode, respondToWebhookResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						public: [false],
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					allowFileUploadsOption,
+					allowedFileMimeTypeOption,
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [lastNodeResponseMode, respondNodesResponseMode],
+						default: 'lastNode',
+						description: 'When and how to respond to the chat',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat', 'webhook'],
+						public: [true],
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					...commonOptionsFields,
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [lastNodeResponseMode, respondToWebhookResponseMode],
+						default: 'lastNode',
+						description: 'When and how to respond to the chat',
+						displayOptions: { show: { '/mode': ['webhook'] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [lastNodeResponseMode, respondNodesResponseMode],
+						default: 'lastNode',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/mode': ['hostedChat'] } },
 					},
 				],
 			},
@@ -536,10 +598,10 @@ export class ChatTrigger extends Node {
 			allowFileUploads?: boolean;
 			allowedFilesMimeTypes?: string;
 			customCss?: string;
+			responseMode?: string;
 		};
 
-		const responseMode = ctx.getNodeParameter('options.responseMode', 'lastNode') as string;
-		const enableStreaming = responseMode === 'streaming';
+		const enableStreaming = options.responseMode === 'streaming';
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
