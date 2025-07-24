@@ -378,7 +378,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
