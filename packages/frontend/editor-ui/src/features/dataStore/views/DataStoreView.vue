@@ -6,19 +6,30 @@ import { useProjectPages } from '@/composables/useProjectPages';
 import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import { fetchDataStores } from '@/features/dataStore/api/datastore.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
-import type { DataStoreResource, IUser, UserAction } from '@/Interface';
+import type {
+	DataStoreResource,
+	IUser,
+	SortingAndPaginationUpdates,
+	UserAction,
+} from '@/Interface';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
+import {
+	DATA_STORE_CARD_ACTIONS,
+	DEFAULT_DATA_STORE_PAGE_SIZE,
+} from '@/features/dataStore/constants';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const i18n = useI18n();
 const projectPages = useProjectPages();
+const { callDebounced } = useDebounce();
+const documentTitle = useDocumentTitle();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
@@ -27,6 +38,10 @@ const sourceControlStore = useSourceControlStore();
 
 const loading = ref(true);
 const dataStores = ref<DataStoreResource[]>([]);
+const totalCount = ref(0);
+
+const currentPage = ref(1);
+const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -70,18 +85,35 @@ const cardActions = computed<Array<UserAction<IUser>>>(() => [
 	},
 ]);
 
-async function initialize() {
+const initialize = async () => {
 	loading.value = true;
-	const fetched: DataStoreEntity[] = await fetchDataStores(
-		rootStore.restApiContext,
-		projectName.value ?? undefined,
-	);
-	dataStores.value = fetched.map((item) => ({
+	const response = await fetchDataStores(rootStore.restApiContext, projectName.value ?? undefined, {
+		page: currentPage.value,
+		pageSize: pageSize.value,
+	});
+	dataStores.value = response.data.map((item) => ({
 		...item,
 		resourceType: 'datastore',
 	}));
+	totalCount.value = response.count;
 	loading.value = false;
-}
+};
+
+const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
+	}
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (!loading.value) {
+		await callDebounced(initialize, { debounceTime: 200, trailing: true });
+	}
+};
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('dataStore.tab.label'));
+});
 </script>
 <template>
 	<ResourcesListLayout
@@ -93,13 +125,14 @@ async function initialize() {
 		:type-props="{ itemSize: 80 }"
 		:loading="loading"
 		:disabled="false"
-		:total-items="dataStores.length"
+		:total-items="totalCount"
 		:dont-perform-sorting-and-filtering="true"
 		:ui-config="{
 			searchEnabled: false,
 			showFiltersDropdown: false,
 			sortEnabled: false,
 		}"
+		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
 			<ProjectHeader>
