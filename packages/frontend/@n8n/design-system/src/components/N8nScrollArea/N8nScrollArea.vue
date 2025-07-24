@@ -115,7 +115,7 @@ const viewportStyle = computed(() => {
 	display: flex;
 	user-select: none;
 	touch-action: none;
-	padding: 2px;
+	padding: var(--spacing-5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
 
@@ -124,11 +124,11 @@ const viewportStyle = computed(() => {
 	}
 
 	&[data-orientation='vertical'] {
-		width: 12px;
+		width: var(--spacing-xs);
 	}
 
 	&[data-orientation='horizontal'] {
-		height: 12px;
+		height: var(--spacing-xs);
 		flex-direction: row;
 	}
 }
