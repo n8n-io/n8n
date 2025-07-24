@@ -312,7 +312,7 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.runsHeaderButtons">
 				<n8n-icon-button
-					:icon="isAllExpanded ? 'fold-vertical' : 'unfold-vertical'"
+					:icon="isAllExpanded ? 'chevrons-up-down' : 'chevrons-down-up'"
 					type="secondary"
 					size="medium"
 					@click="toggleAllExpansion"

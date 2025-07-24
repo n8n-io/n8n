@@ -90,7 +90,6 @@ import IconLucideFileText from '~icons/lucide/file-text';
 import IconLucideFiles from '~icons/lucide/files';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlaskConical from '~icons/lucide/flask-conical';
-import IconLucideFoldVertical from '~icons/lucide/fold-vertical';
 import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
@@ -174,7 +173,6 @@ import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
-import IconLucideUnfoldVertical from '~icons/lucide/unfold-vertical';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
@@ -581,8 +579,6 @@ export const updatedIconSet = {
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
 	'user-round': IconLucideUserRound,
-	'unfold-vertical': IconLucideUnfoldVertical,
-	'fold-vertical': IconLucideFoldVertical,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
