@@ -106,6 +106,20 @@ function extractValuesFromMatches(
 	return values;
 }
 
+function validateReferencedParameters(
+	validMatches: ParameterMatch[],
+	replacements: QueryValues,
+): void {
+	for (const match of validMatches) {
+		const paramIndex = Number(match.paramNumber) - 1;
+		if (paramIndex >= replacements.length || paramIndex < 0) {
+			throw new Error(
+				`Parameter $${match.paramNumber} referenced in query but no replacement value provided at index ${paramIndex + 1}`,
+			);
+		}
+	}
+}
+
 export const prepareQueryAndReplacements = (
 	rawQuery: string,
 	nodeVersion: number,
@@ -119,6 +133,9 @@ export const prepareQueryAndReplacements = (
 		const regex = /\$(\d+)(?::name)?/g;
 		const matches = findParameterMatches(rawQuery, regex);
 		const validMatches = filterValidMatches(matches, rawQuery);
+
+		validateReferencedParameters(validMatches, replacements);
+
 		const query = processParameterReplacements(rawQuery, validMatches, replacements);
 		const values = extractValuesFromMatches(validMatches, replacements);
 

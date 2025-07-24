@@ -138,6 +138,36 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 
 		expect(legacySpy).not.toHaveBeenCalled();
 	});
+
+	it('should throw error when parameter is referenced but no replacement value provided', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $4',
+				2.5,
+				['value1', 'value2'], // Only 2 values but query references $4
+			);
+		}).toThrow('Parameter $4 referenced in query but no replacement value provided at index 4');
+	});
+
+	it('should throw error when multiple parameters are missing replacement values', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $3 AND name = $5',
+				2.5,
+				['value1'], // Only 1 value but query references $3 and $5
+			);
+		}).toThrow('Parameter $3 referenced in query but no replacement value provided at index 3');
+	});
+
+	it('should not throw error when all referenced parameters have replacement values', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $1 AND name = $2',
+				2.5,
+				['123', 'John'], // Correct number of values
+			);
+		}).not.toThrow();
+	});
 });
 
 describe('Test MySql V2, wrapData', () => {
