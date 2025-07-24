@@ -61,7 +61,7 @@ export async function execute(
 
 		const options = this.getNodeParameter('options', i, {});
 
-		const nodeVersion = Number(nodeOptions.nodeVersion) || 2.5;
+		const nodeVersion = Number(nodeOptions.nodeVersion);
 
 		let values;
 		let queryReplacement = options.queryReplacement || [];
