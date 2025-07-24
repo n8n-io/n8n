@@ -4,12 +4,17 @@ import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '@/types';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestWorkflowObject } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(workflowObject);
 });
 
 describe('CanvasNodeRenderer', () => {

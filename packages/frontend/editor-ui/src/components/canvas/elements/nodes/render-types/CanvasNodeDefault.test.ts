@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { fireEvent } from '@testing-library/vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestWorkflowObject } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	global: {
@@ -18,6 +20,9 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(workflowObject);
 });
 
 describe('CanvasNodeDefault', () => {
@@ -204,7 +209,7 @@ describe('CanvasNodeDefault', () => {
 				[
 					'1 required',
 					[{ type: NodeConnectionTypes.AiLanguageModel, index: 0, required: true }],
-					'272px',
+					'224px',
 				],
 				[
 					'2 required, 1 optional',
@@ -213,7 +218,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
 						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
 					],
-					'272px',
+					'224px',
 				],
 				[
 					'2 required, 2 optional',
@@ -223,7 +228,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
 						{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
 					],
-					'272px',
+					'224px',
 				],
 				[
 					'1 required, 4 optional',
@@ -234,7 +239,7 @@ describe('CanvasNodeDefault', () => {
 						{ type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ type: NodeConnectionTypes.AiMemory, index: 0 },
 					],
-					'336px',
+					'272px',
 				],
 			])(
 				'should adjust width css variable based on the number of non-main inputs (%s)',
