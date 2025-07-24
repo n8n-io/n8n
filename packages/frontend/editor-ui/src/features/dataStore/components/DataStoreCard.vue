@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { DataStoreResource, IUser, UserAction } from '@/Interface';
-import { useRouter } from 'vue-router';
 import { DATA_STORE_DETAILS } from '../constants';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 type Props = {
 	dataStore: DataStoreResource;
@@ -11,7 +11,6 @@ type Props = {
 	showOwnershipBadge?: boolean;
 };
 
-const router = useRouter();
 const i18n = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,24 +19,19 @@ const props = withDefaults(defineProps<Props>(), {
 	showOwnershipBadge: false,
 });
 
-// TODO: Check how we can pass route object without resolving it
-const getDataStoreUrl = (id: string) => {
-	return router.resolve({
+const dataStoreRoute = computed(() => {
+	return {
 		name: DATA_STORE_DETAILS,
 		params: {
 			projectId: props.dataStore.projectId,
-			id,
+			id: props.dataStore.id,
 		},
-	}).href;
-};
+	};
+});
 </script>
 <template>
 	<div data-test-id="data-store-card">
-		<router-link
-			:to="getDataStoreUrl(props.dataStore.id)"
-			class="data-store-card"
-			data-test-id="data-store-card-link"
-		>
+		<router-link :to="dataStoreRoute" class="data-store-card" data-test-id="data-store-card-link">
 			<n8n-card :class="$style.card">
 				<template #prepend>
 					<n8n-icon
