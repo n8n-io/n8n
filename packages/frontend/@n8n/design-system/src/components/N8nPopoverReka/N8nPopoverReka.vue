@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
 
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+
 interface Props {
 	open?: boolean;
 	maxHeight?: string;
+	/**
+	 * Whether to enable scrolling in the popover content
+	 */
+	enableScrolling?: boolean;
+	/**
+	 * Scrollbar visibility behavior
+	 */
+	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
 }
 
 interface Emits {
@@ -13,6 +23,8 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
 	open: undefined,
 	maxHeight: undefined,
+	enableScrolling: true,
+	scrollType: 'hover',
 });
 
 const emit = defineEmits<Emits>();
@@ -24,13 +36,21 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent
-				side="bottom"
-				:side-offset="5"
-				:class="$style.popoverContent"
-				:style="props.maxHeight ? { maxHeight: props.maxHeight, overflowY: 'auto' } : undefined"
-			>
-				<slot name="content" :close="() => emit('update:open', false)" />
+			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
+				<N8nScrollArea
+					v-if="enableScrolling"
+					:max-height="props.maxHeight"
+					:type="scrollType"
+					:enable-vertical-scroll="true"
+					:enable-horizontal-scroll="false"
+				>
+					<div :class="$style.contentContainer">
+						<slot name="content" :close="() => emit('update:open', false)" />
+					</div>
+				</N8nScrollArea>
+				<div :class="$style.contentContainer" v-else>
+					<slot name="content" :close="() => emit('update:open', false)" />
+				</div>
 			</PopoverContent>
 		</PopoverPortal>
 	</PopoverRoot>
@@ -39,7 +59,6 @@ const emit = defineEmits<Emits>();
 <style lang="scss" module>
 .popoverContent {
 	border-radius: var(--border-radius-base);
-	padding: 16px;
 	width: 260px;
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
@@ -50,6 +69,10 @@ const emit = defineEmits<Emits>();
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
 	z-index: 1;
+}
+
+.contentContainer {
+	padding: 16px;
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

@@ -14,7 +14,7 @@ interface StoryArgs {
 }
 
 export default {
-	title: 'Atoms/TableHeaderControlsButton',
+	title: 'Modules/TableHeaderControlsButton',
 	component: TableHeaderControlsButton,
 };
 
@@ -63,6 +63,32 @@ AllColumnsShown.args = {
 		{ key: 'role', label: 'Role', visible: true },
 		{ key: 'status', label: 'Status', visible: true },
 		{ key: 'created', label: 'Created', visible: true },
+	],
+};
+
+export const ALotOfColumnsShown = Template.bind({});
+ALotOfColumnsShown.args = {
+	columns: [
+		{ key: 'name', label: 'Name', visible: true },
+		{ key: 'email', label: 'Email', visible: true },
+		{ key: 'role', label: 'Role', visible: true },
+		{ key: 'status', label: 'Status', visible: false },
+		{ key: 'created', label: 'Created', visible: true },
+		{ key: 'department', label: 'Department', visible: true },
+		{ key: 'manager', label: 'Manager', visible: false },
+		{ key: 'location', label: 'Location', visible: true },
+		{ key: 'phone', label: 'Phone', visible: false },
+		{ key: 'salary', label: 'Salary', visible: false },
+		{ key: 'startDate', label: 'Start Date', visible: true },
+		{ key: 'endDate', label: 'End Date', visible: false },
+		{ key: 'projects', label: 'Projects', visible: true },
+		{ key: 'skills', label: 'Skills', visible: false },
+		{ key: 'experience', label: 'Experience', visible: true },
+		{ key: 'education', label: 'Education', visible: false },
+		{ key: 'certifications', label: 'Certifications', visible: false },
+		{ key: 'languages', label: 'Languages', visible: false },
+		{ key: 'notes', label: 'Notes', visible: false },
+		{ key: 'lastLogin', label: 'Last Login', visible: true },
 	],
 };
 

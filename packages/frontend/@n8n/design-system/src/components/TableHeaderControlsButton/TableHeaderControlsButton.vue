@@ -128,7 +128,7 @@ const handleDragEnd = () => {
 </script>
 
 <template>
-	<N8nPopoverReka max-height="300px">
+	<N8nPopoverReka max-height="300px" scroll-type="auto">
 		<template #trigger>
 			<N8nButton
 				icon="sliders-horizontal"
