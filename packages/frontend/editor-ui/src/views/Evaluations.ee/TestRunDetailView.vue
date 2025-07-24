@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { getTestCasesColumns, mapToNumericColumns } from './utils';
 
 const router = useRouter();
 const toast = useToast();
@@ -65,28 +66,36 @@ const handleRowClick = (row: TestCaseExecutionRecord) => {
 	}
 };
 
+const inputColumns = computed(() => getTestCasesColumns(filteredTestCases.value, 'inputs'));
+
 const columns = computed(
-	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => [
-		{
-			prop: 'index',
-			width: 100,
-			label: locale.baseText('evaluation.runDetail.testCase'),
-			sortable: true,
-			formatter: (row: TestCaseExecutionRecord & { index: number }) => `#${row.index}`,
-		},
-		{
-			prop: 'status',
-			label: locale.baseText('evaluation.listRuns.status'),
-		},
-		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
-			prop: `metrics.${metric}`,
-			label: metric,
-			sortable: true,
-			filter: true,
-			showHeaderTooltip: true,
-			formatter: (row: TestCaseExecutionRecord) => row.metrics?.[metric]?.toFixed(2) ?? '-',
-		})),
-	],
+	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => {
+		const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
+		const metricColumns = Object.keys(run.value?.metrics ?? {}).filter(
+			(key) => !specialKeys.includes(key),
+		);
+		const specialColumns = specialKeys.filter((key) =>
+			run.value?.metrics ? key in run.value.metrics : false,
+		);
+
+		return [
+			{
+				prop: 'index',
+				width: 100,
+				label: locale.baseText('evaluation.runDetail.testCase'),
+				sortable: true,
+				formatter: (row: TestCaseExecutionRecord & { index: number }) => `#${row.index}`,
+			},
+			{
+				prop: 'status',
+				label: locale.baseText('evaluation.listRuns.status'),
+			},
+			...inputColumns.value,
+			...getTestCasesColumns(filteredTestCases.value, 'outputs'),
+			...mapToNumericColumns(metricColumns),
+			...mapToNumericColumns(specialColumns),
+		];
+	},
 );
 
 const metrics = computed(() => run.value?.metrics ?? {});
@@ -156,6 +165,7 @@ onMounted(async () => {
 				}}
 			</N8nText>
 		</n8n-callout>
+
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
@@ -215,6 +225,23 @@ onMounted(async () => {
 				</div>
 			</div>
 		</el-scrollbar>
+
+		<n8n-callout
+			v-if="
+				!isLoading &&
+				!inputColumns.length &&
+				run?.status === 'completed' &&
+				run?.finalResult === 'success'
+			"
+			theme="secondary"
+			icon="info"
+			class="mb-s"
+		>
+			<N8nText size="small" :class="$style.capitalized">
+				{{ locale.baseText('evaluation.runDetail.notice.useSetInputs') }}
+			</N8nText>
+		</n8n-callout>
+
 		<div v-if="isLoading" :class="$style.loading">
 			<n8n-loading :loading="true" :rows="5" />
 		</div>

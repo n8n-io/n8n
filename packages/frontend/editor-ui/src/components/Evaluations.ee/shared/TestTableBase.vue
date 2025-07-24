@@ -173,6 +173,10 @@ defineSlots<{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	border-bottom: 1px solid var(--border-color-light) !important;
+
+	> div {
+		max-height: 100px;
+	}
 }
 
 .cell {
