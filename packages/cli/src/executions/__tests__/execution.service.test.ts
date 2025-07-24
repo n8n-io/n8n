@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse, ExecutionRepository, ExecutionEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 
@@ -40,6 +40,19 @@ describe('ExecutionService', () => {
 	beforeEach(() => {
 		config.set('executions.mode', 'regular');
 		jest.clearAllMocks();
+	});
+
+	describe('mark invalid executions', () => {
+		it('should call the markAsCrashed function for invalid executions', async () => {
+			executionRepository.findInvalidExecutions.mockResolvedValue(
+				mock<ExecutionEntity[]>([{ id: 'id1' }, { id: 'id2' }]),
+			);
+			executionRepository.markAsCrashed.mockClear();
+
+			await executionService.markInvalidEnqueuedExecutionsAsCrashed();
+
+			expect(executionRepository.markAsCrashed).toBeCalledWith(['id1', 'id2']);
+		});
 	});
 
 	describe('retry', () => {
