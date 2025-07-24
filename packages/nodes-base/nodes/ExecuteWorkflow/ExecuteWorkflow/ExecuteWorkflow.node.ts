@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { findPairedItemTroughWorkflowData } from './../../../utils/workflow-backtracking';
+import { findPairedItemThroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
 import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
@@ -440,7 +440,7 @@ export class ExecuteWorkflow implements INodeType {
 						if (item.pairedItem) {
 							// If the item already has a paired item, we need to follow these to the start of the child workflow
 							if (workflowRunData !== undefined) {
-								const pairedItem = findPairedItemTroughWorkflowData(
+								const pairedItem = findPairedItemThroughWorkflowData(
 									workflowRunData,
 									item,
 									itemIndex,
