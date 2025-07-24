@@ -4,7 +4,8 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	GenericValue,
+	JsonObject,
+	JsonValue,
 } from 'n8n-workflow';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
@@ -12,10 +13,7 @@ import { metricHandlers } from './metricHandlers';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
 import assert from 'node:assert';
 
-function withEvaluationData(
-	this: IExecuteFunctions,
-	data: Record<string, GenericValue>,
-): INodeExecutionData[] {
+function withEvaluationData(this: IExecuteFunctions, data: JsonObject): INodeExecutionData[] {
 	const inputData = this.getInputData();
 	if (!inputData.length) {
 		return inputData;
@@ -34,7 +32,7 @@ function withEvaluationData(
 
 function isOutputsArray(
 	value: unknown,
-): value is Array<{ outputName: string; outputValue: GenericValue }> {
+): value is Array<{ outputName: string; outputValue: JsonValue }> {
 	return (
 		Array.isArray(value) &&
 		value.every(
@@ -105,13 +103,10 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		1, // header row
 	);
 
-	const outputs = outputFields.reduce<Record<string, GenericValue>>(
-		(acc, { outputName, outputValue }) => {
-			acc[outputName] = outputValue;
-			return acc;
-		},
-		{},
-	);
+	const outputs = outputFields.reduce<JsonObject>((acc, { outputName, outputValue }) => {
+		acc[outputName] = outputValue;
+		return acc;
+	}, {});
 
 	const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
 		[
@@ -134,7 +129,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 
 function isInputsArray(
 	value: unknown,
-): value is Array<{ inputName: string; inputValue: GenericValue }> {
+): value is Array<{ inputName: string; inputValue: JsonValue }> {
 	return (
 		Array.isArray(value) &&
 		value.every(
@@ -177,13 +172,10 @@ export function setInputs(this: IExecuteFunctions): INodeExecutionData[][] {
 		});
 	}
 
-	const inputs = inputFields.reduce<Record<string, GenericValue>>(
-		(acc, { inputName, inputValue }) => {
-			acc[inputName] = inputValue;
-			return acc;
-		},
-		{},
-	);
+	const inputs = inputFields.reduce<JsonObject>((acc, { inputName, inputValue }) => {
+		acc[inputName] = inputValue;
+		return acc;
+	}, {});
 
 	return [withEvaluationData.call(this, inputs)];
 }

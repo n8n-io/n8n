@@ -32,6 +32,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -417,10 +418,10 @@ export class TestRunnerService {
 		execution: IRun,
 		workflow: IWorkflowBase,
 		operation: 'setInputs' | 'setOutputs',
-	): Record<string, GenericValue> {
+	): JsonObject {
 		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
 
-		return evalNodes.reduce<Record<string, GenericValue>>((accu, node) => {
+		return evalNodes.reduce<JsonObject>((accu, node) => {
 			const runs = execution.data.resultData.runData[node.name];
 			const data = runs?.[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
 
