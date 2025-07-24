@@ -6,6 +6,7 @@ import {
 	getTestCasesColumns,
 	getTestTableHeaders,
 } from './utils';
+import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
 
 describe('utils', () => {
 	describe('applyCachedSortOrder', () => {
@@ -461,7 +462,7 @@ describe('utils', () => {
 
 	describe('getTestCasesColumns', () => {
 		it('should extract unique input column names from test cases', () => {
-			const testCases = [
+			const testCases: TestCaseExecutionRecord[] = [
 				{
 					id: '1',
 					testRunId: 'run1',
