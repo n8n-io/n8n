@@ -19,6 +19,12 @@ import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 // TOOD: Load module resource types from somewhere else
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'dataStore';
 
+type UIConfig = {
+	searchEnabled: boolean;
+	showFiltersDropdown: boolean;
+	sortEnabled: boolean;
+};
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -54,6 +60,7 @@ const props = withDefaults(
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
+		uiConfig?: UIConfig;
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -73,6 +80,11 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
 		hasEmptyState: true,
+		uiConfig: () => ({
+			searchEnabled: true,
+			showFiltersDropdown: true,
+			sortEnabled: true,
+		}),
 	},
 );
 
@@ -592,6 +604,7 @@ defineExpose({
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
 							<n8n-input
+								v-if="props.uiConfig.searchEnabled"
 								ref="search"
 								:model-value="filtersModel.search"
 								:class="$style.search"
@@ -605,7 +618,7 @@ defineExpose({
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="sortBy"
 									size="small"
@@ -621,7 +634,7 @@ defineExpose({
 									/>
 								</n8n-select>
 							</div>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown
 									v-if="showFiltersDropdown"
 									:keys="filterKeys"

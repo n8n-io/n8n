@@ -95,6 +95,11 @@ async function initialize() {
 		:disabled="false"
 		:total-items="dataStores.length"
 		:dont-perform-sorting-and-filtering="true"
+		:ui-config="{
+			searchEnabled: false,
+			showFiltersDropdown: false,
+			sortEnabled: false,
+		}"
 	>
 		<template #header>
 			<ProjectHeader>
