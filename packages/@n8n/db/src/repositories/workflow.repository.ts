@@ -720,8 +720,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		switch (dbType) {
 			case 'postgresdb':
-				whereClause = `EXISTS (SELECT 1 FROM jsonb_array_elements(workflow.nodes) AS node WHERE node->>'type' = ANY(:nodeTypes)
-			)`;
+				whereClause = `EXISTS (
+					SELECT 1
+					FROM jsonb_array_elements(workflow.nodes::jsonb) AS node
+					WHERE node->>'type' = ANY(:nodeTypes)
+				)`;
 				break;
 			case 'mysqldb':
 			case 'mariadb': {
