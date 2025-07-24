@@ -1044,6 +1044,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflowsStore.activeWorkflows = ['test-wf-id'];
 			workflowsStore.setActiveExecutionId('test-exec-id');
+			workflowsStore.executionWaitingForWebhook = false;
 
 			getExecutionSpy.mockResolvedValue(executionData);
 

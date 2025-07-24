@@ -835,6 +835,10 @@ export function getNodeParameters(
 					// Multiple can be set so will be an array
 
 					const tempArrayValue: INodeParameters[] = [];
+					// Collection values should always be an object
+					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
+						continue;
+					}
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName

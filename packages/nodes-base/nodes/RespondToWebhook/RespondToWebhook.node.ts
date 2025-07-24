@@ -19,6 +19,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -334,6 +335,14 @@ export class RespondToWebhook implements INodeType {
 		],
 	};
 
+	async onMessage(
+		context: IExecuteFunctions,
+		_data: INodeExecutionData,
+	): Promise<INodeExecutionData[][]> {
+		const inputData = context.getInputData();
+		return [inputData];
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
@@ -347,6 +356,10 @@ export class RespondToWebhook implements INodeType {
 
 		let response: IN8nHttpFullResponse;
 
+		const connectedNodes = this.getParentNodes(this.getNode().name, {
+			includeNodeParameters: true,
+		});
+
 		const options = this.getNodeParameter('options', 0, {});
 
 		const shouldStream =
@@ -354,7 +367,6 @@ export class RespondToWebhook implements INodeType {
 
 		try {
 			if (nodeVersion >= 1.1) {
-				const connectedNodes = this.getParentNodes(this.getNode().name);
 				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -505,6 +517,40 @@ export class RespondToWebhook implements INodeType {
 					this.getNode(),
 					`The Response Data option "${respondWith}" is not supported!`,
 				);
+			}
+
+			const chatTrigger = connectedNodes.find(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+			);
+
+			const parameters = chatTrigger?.parameters as {
+				options: { responseMode: string };
+			};
+
+			// if workflow is started from chat trigger and responseMode is set to "responseNodes"
+			// response to chat will be send by ChatService
+			if (
+				chatTrigger &&
+				!chatTrigger.disabled &&
+				parameters.options.responseMode === 'responseNodes'
+			) {
+				let message = '';
+
+				if (responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)) {
+					message =
+						(((responseBody as IDataObject).output ??
+							(responseBody as IDataObject).text ??
+							(responseBody as IDataObject).message) as string) ?? '';
+
+					if (message === '' && Object.keys(responseBody).length > 0) {
+						try {
+							message = JSON.stringify(responseBody, null, 2);
+						} catch (e) {}
+					}
+				}
+
+				await this.putExecutionToWait(WAIT_INDEFINITELY);
+				return [[{ json: {}, sendMessage: message }]];
 			}
 
 			if (
