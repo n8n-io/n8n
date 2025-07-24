@@ -208,11 +208,11 @@ export const getConnectedTools = async (
 		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
 		[]
 	).flatMap((toolOrToolkit) => {
-		if (toolOrToolkit instanceof Toolkit) {
-			return toolOrToolkit.getTools() as Tool[];
+		if (typeof (toolOrToolkit as Toolkit).getTools === 'function') {
+			return (toolOrToolkit as Toolkit).getTools() as Tool[];
 		}
 
-		return toolOrToolkit;
+		return toolOrToolkit as Tool;
 	});
 
 	if (!enforceUniqueNames) return connectedTools;
