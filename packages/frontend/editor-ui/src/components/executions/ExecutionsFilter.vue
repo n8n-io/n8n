@@ -61,7 +61,6 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	vote: 'all',
 });
 const filter = reactive(getDefaultFilter());
-const isResetting = ref(false);
 
 // Deep watcher to emit filterChanged events with debouncing for date fields only
 watch(
