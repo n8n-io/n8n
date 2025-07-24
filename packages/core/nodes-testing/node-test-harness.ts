@@ -210,6 +210,7 @@ export class NodeTestHarness {
 		hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '1',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
