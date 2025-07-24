@@ -45,7 +45,7 @@ const emptyCalloutButtonText = computed(() => {
 	if (projectPages.isOverviewSubPage || !projectName.value) {
 		return '';
 	}
-	return i18n.baseText('data.stores.empty.button.label', {
+	return i18n.baseText('dataStore.empty.button.label', {
 		interpolate: { projectName: projectName.value },
 	});
 });
@@ -86,13 +86,15 @@ async function initialize() {
 <template>
 	<ResourcesListLayout
 		ref="layout"
-		resource-key="datastores"
+		resource-key="dataStore"
 		type="list-paginated"
 		:resources="dataStores"
 		:initialize="initialize"
-		:type-props="{ itemSize: 77 }"
+		:type-props="{ itemSize: 80 }"
 		:loading="loading"
 		:disabled="false"
+		:total-items="dataStores.length"
+		:dont-perform-sorting-and-filtering="true"
 	>
 		<template #header>
 			<ProjectHeader>
@@ -107,7 +109,7 @@ async function initialize() {
 		<template #empty>
 			<n8n-action-box
 				data-test-id="empty-shared-action-box"
-				:heading="i18n.baseText('data.store.empty.label')"
+				:heading="i18n.baseText('dataStore.empty.label')"
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"

@@ -66,9 +66,7 @@ const getDataStoreUrl = (id: string) => {
 							:class="[$style['info-cell'], $style['info-cell--size']]"
 							data-test-id="folder-card-folder-count"
 						>
-							{{
-								i18n.baseText('data.stores.card.size', { interpolate: { size: dataStore.size } })
-							}}
+							{{ i18n.baseText('dataStore.card.size', { interpolate: { size: dataStore.size } }) }}
 						</n8n-text>
 						<n8n-text
 							size="small"
@@ -77,7 +75,7 @@ const getDataStoreUrl = (id: string) => {
 							data-test-id="data-store-card-record-count"
 						>
 							{{
-								i18n.baseText('data.stores.card.row.count', {
+								i18n.baseText('dataStore.card.row.count', {
 									interpolate: { count: dataStore.recordCount },
 								})
 							}}
@@ -89,7 +87,7 @@ const getDataStoreUrl = (id: string) => {
 							data-test-id="data-store-card-column-count"
 						>
 							{{
-								i18n.baseText('data.stores.card.column.count', {
+								i18n.baseText('dataStore.card.column.count', {
 									interpolate: { count: dataStore.columnCount },
 								})
 							}}

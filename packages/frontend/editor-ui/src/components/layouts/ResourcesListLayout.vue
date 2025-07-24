@@ -17,7 +17,7 @@ import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 
 // TOOD: Load module resource types from somewhere else
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'datastores';
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'dataStore';
 
 const route = useRoute();
 const router = useRouter();
