@@ -192,9 +192,9 @@ describe('indexedDbCache', () => {
 		const mockIndexedDB = {
 			open: vi.fn().mockImplementation(() => {
 				const request = {
-					onerror: null,
-					onsuccess: null,
-					onupgradeneeded: null,
+					onerror: null as ((event: Event) => void) | null,
+					onsuccess: null as ((event: Event) => void) | null,
+					onupgradeneeded: null as ((event: Event) => void) | null,
 					result: null,
 					error: new Error('Database error'),
 				};
@@ -203,13 +203,16 @@ describe('indexedDbCache', () => {
 				}, 0);
 				return request;
 			}),
+			cmp: vi.fn(),
+			databases: vi.fn(),
+			deleteDatabase: vi.fn(),
 		};
 
-		(global as any).indexedDB = mockIndexedDB;
+		global.indexedDB = mockIndexedDB;
 
 		await expect(indexedDbCache(dbName, storeName)).rejects.toThrow();
 
-		(global as any).indexedDB = originalIndexedDB;
+		global.indexedDB = originalIndexedDB;
 	});
 
 	it('should ensure IndexedDB operations are persisted correctly', async () => {
