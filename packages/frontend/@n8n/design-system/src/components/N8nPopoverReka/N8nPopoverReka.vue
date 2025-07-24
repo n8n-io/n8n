@@ -5,7 +5,6 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props {
 	open?: boolean;
-	maxHeight?: string;
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
@@ -14,6 +13,14 @@ interface Props {
 	 * Scrollbar visibility behavior
 	 */
 	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
+	/**
+	 * Popover width
+	 */
+	width?: string;
+	/**
+	 * Popover max height
+	 */
+	maxHeight?: string;
 }
 
 interface Emits {
@@ -23,6 +30,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
 	open: undefined,
 	maxHeight: undefined,
+	width: undefined,
 	enableScrolling: true,
 	scrollType: 'hover',
 });
@@ -44,11 +52,11 @@ const emit = defineEmits<Emits>();
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div :class="$style.contentContainer">
+					<div :class="$style.contentContainer" :style="{ width }">
 						<slot name="content" :close="() => emit('update:open', false)" />
 					</div>
 				</N8nScrollArea>
-				<div :class="$style.contentContainer" v-else>
+				<div v-else :class="$style.contentContainer" :style="{ width }">
 					<slot name="content" :close="() => emit('update:open', false)" />
 				</div>
 			</PopoverContent>
@@ -59,7 +67,6 @@ const emit = defineEmits<Emits>();
 <style lang="scss" module>
 .popoverContent {
 	border-radius: var(--border-radius-base);
-	width: 260px;
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	box-shadow:
@@ -72,7 +79,7 @@ const emit = defineEmits<Emits>();
 }
 
 .contentContainer {
-	padding: 16px;
+	padding: var(--spacing-s);
 }
 
 .popoverContent[data-state='open'][data-side='top'] {
