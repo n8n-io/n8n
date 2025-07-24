@@ -33,9 +33,15 @@ const emit = defineEmits<{
 	finishedLoading: [];
 }>();
 
-const props = defineProps<{
-	hasChanges: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		hasChanges: boolean;
+		isReadOnly?: boolean;
+	}>(),
+	{
+		isReadOnly: false,
+	},
+);
 
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
@@ -278,6 +284,7 @@ onMounted(() => {
 				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
 				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
 				data-test-id="ask-ai-prompt-input"
+				:readonly="props.isReadOnly"
 				@input="onPromptInput"
 			/>
 		</div>
