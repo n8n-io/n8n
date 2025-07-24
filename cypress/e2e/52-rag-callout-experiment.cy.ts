@@ -48,7 +48,7 @@ describe('RAG callout experiment', () => {
 			cy.contains('RAG starter template').should('not.exist');
 		});
 
-		it('should should callout is variant and open on click', () => {
+		it('should callout is variant and open on click', () => {
 			cy.intercept('workflows/templates/rag-starter-template?fromJson=true');
 			overrideFeatureFlag('033_rag_template', 'variant');
 
