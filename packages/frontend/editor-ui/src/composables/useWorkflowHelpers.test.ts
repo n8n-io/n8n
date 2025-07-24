@@ -14,12 +14,8 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import {
-	NodeConnectionTypes,
-	WEBHOOK_NODE_TYPE,
-	type AssignmentCollectionValue,
-	IConnections,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 
