@@ -66,6 +66,7 @@ import {
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
+import * as workflowUtils from 'n8n-workflow/common';
 import findLast from 'lodash/findLast';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
@@ -294,9 +295,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
+	/**
+	 * This section contains functions migrated from the workflow class
+	 */
+
+	const connectionsBySourceNode = computed(() => workflow.value.connections);
 	const connectionsByDestinationNode = computed(() =>
-		Workflow.getConnectionsByDestination(workflow.value.connections),
+		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
 	);
+
+	// End section
 
 	const selectableTriggerNodes = computed(() =>
 		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
@@ -384,7 +392,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getNodeByName(nodeName: string): INodeUi | null {
-		return nodesByName.value[nodeName] || null;
+		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
@@ -1955,6 +1963,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowResultDataByNodeName,
 		allConnections,
 		allNodes,
+		connectionsBySourceNode,
+		connectionsByDestinationNode,
 		isWaitingExecution,
 		isWorkflowRunning,
 		canvasNames,

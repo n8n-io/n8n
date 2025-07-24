@@ -253,6 +253,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (sourceData === null) {
 						const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
 						const executeData = workflowHelpers.executeData(
+							workflow.connectionsBySourceNode,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
