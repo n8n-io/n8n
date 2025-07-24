@@ -70,7 +70,7 @@ export async function testTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>(), mock(), mock());
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
@@ -130,7 +130,7 @@ export async function testWebhookTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>(), mock(), mock());
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>
