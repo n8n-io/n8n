@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nText, N8nInput, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
 import { computed, nextTick, ref, watch, toRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -28,7 +28,11 @@ import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
+import { useStyles } from '@/composables/useStyles';
+import { useExecutionData } from '@/composables/useExecutionData';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -48,11 +52,14 @@ const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
 const { debounce } = useDebounce();
+const styles = useStyles();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -62,7 +69,6 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
-const focusPanelHidden = computed(() => focusPanelStore.focusPanelHidden);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
@@ -107,6 +113,10 @@ const isExecutable = computed(() => {
 		foreignCredentials,
 	);
 });
+
+const node = computed(() => resolvedParameter.value?.node);
+
+const { hasNodeRun } = useExecutionData({ node });
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -171,6 +181,8 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 		parameterPath: resolvedParameter.value.parameterPath,
 	};
 });
+
+const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
@@ -252,6 +264,22 @@ function optionSelected(command: string) {
 	}
 }
 
+function closeFocusPanel() {
+	telemetry.track('User closed focus panel', {
+		source: 'closeIcon',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
+
+	focusPanelStore.closeFocusPanel();
+}
+
+function onExecute() {
+	telemetry.track(
+		'User executed node from focus panel',
+		focusPanelStore.focusedNodeParametersInTelemetryFormat[0],
+	);
+}
+
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 
 // Wait for editor to mount before focusing
@@ -303,14 +331,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<div v-if="focusPanelActive" v-show="!focusPanelHidden" :class="$style.wrapper" @keydown.stop>
+	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px` }"
+			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
@@ -333,19 +361,28 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:square="true"
 								:hide-label="true"
 								telemetry-source="focus"
-							></NodeExecuteButton>
+								@execute="onExecute"
+							/>
 							<N8nIcon
 								:class="$style.closeButton"
 								icon="x"
 								color="text-base"
 								size="xlarge"
-								@click="focusPanelStore.closeFocusPanel"
+								@click="closeFocusPanel"
 							/>
 						</div>
 					</div>
 					<div :class="$style.parameterDetailsWrapper">
 						<div :class="$style.parameterOptionsWrapper">
-							<div></div>
+							<div :class="$style.noExecutionDataTip">
+								<N8nInfoTip
+									v-if="!hasNodeRun && !isNodeExecuting"
+									:class="$style.delayedShow"
+									:bold="true"
+								>
+									{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
+								</N8nInfoTip>
+							</div>
 							<ParameterOptions
 								v-if="isDisplayed"
 								:parameter="resolvedParameter.parameter"
@@ -397,6 +434,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
@@ -405,6 +443,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
@@ -414,6 +453,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"
@@ -575,6 +615,10 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			justify-content: space-between;
 		}
 
+		.noExecutionDataTip {
+			align-content: center;
+		}
+
 		.editorContainer {
 			height: 100%;
 			overflow-y: auto;
@@ -591,6 +635,20 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				}
 			}
 		}
+	}
+}
+
+// We have this animation here to hide the short time between no longer
+// executing the node and having runData available
+.delayedShow {
+	opacity: 0;
+	transition: opacity 0.1s none;
+	animation: triggerShow 0.1s normal 0.1s forwards;
+}
+
+@keyframes triggerShow {
+	to {
+		opacity: 1;
 	}
 }
 

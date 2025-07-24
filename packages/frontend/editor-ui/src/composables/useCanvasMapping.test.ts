@@ -216,6 +216,8 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should handle input and output connections', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
 			const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 			const nodes = [manualTriggerNode, setNode];
 			const connections = {
@@ -225,6 +227,9 @@ describe('useCanvasMapping', () => {
 					],
 				},
 			};
+
+			workflowsStore.workflow.connections = connections;
+
 			const workflowObject = createTestWorkflowObject({
 				nodes,
 				connections,

@@ -14,13 +14,11 @@ import {
 	getTreeNodeData,
 	mergeStartData,
 	restoreChatHistory,
+	processFiles,
+	extractBotResponse,
 } from './logs.utils';
-import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	NodeConnectionTypes,
-	type ExecutionError,
-	type ITaskStartedData,
-} from 'n8n-workflow';
+import { AGENT_LANGCHAIN_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import type { ExecutionError, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
 import {
 	aiAgentNode,
 	aiChatWorkflow,
@@ -1169,6 +1167,115 @@ describe(createLogTree, () => {
 		expect(logs[0].runData).toBe(undefined);
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should process files correctly', async () => {
+		const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
+		const result = await processFiles([mockFile]);
+
+		expect(result).toEqual([
+			{
+				name: 'test.txt',
+				type: 'text/plain',
+				data: 'data:text/plain;base64,dGVzdCBjb250ZW50',
+			},
+		]);
+	});
+
+	it('should return an empty array if no files are provided', async () => {
+		expect(await processFiles(undefined)).toEqual([]);
+		expect(await processFiles([])).toEqual([]);
+	});
+});
+
+describe('extractBotResponse', () => {
+	it('should extract a successful bot response', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [[{ json: { message: 'Test output' } }]],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Test output',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
+
+	it('should extract an error bot response', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						error: {
+							message: 'Test error',
+						} as unknown as ExecutionError,
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: '[ERROR: Test error]',
+			sender: 'bot',
+			id: 'test-exec-id',
+		});
+	});
+
+	it('should return undefined if no response data is available', () => {
+		const resultData = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined if lastNodeExecuted is not available', () => {
+		const resultData = {
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toBeUndefined();
 	});
 });
 

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useVersionsStore } from './versions.store';
+import { useUsersStore } from './users.store';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
@@ -17,6 +18,8 @@ vi.mock('@/composables/useToast', () => {
 		},
 	};
 });
+
+vi.mock('./users.store');
 
 const settings: IVersionNotificationSettings = {
 	enabled: true,
@@ -503,5 +506,88 @@ describe('versions.store', () => {
 
 			expect(versionsStore.hasSignificantUpdates).toBe(false);
 		});
+	});
+});
+
+describe('shouldShowWhatsNewCallout', () => {
+	let versionsStore: ReturnType<typeof useVersionsStore>;
+
+	const makeArticle = (overrides: Partial<WhatsNewArticle> = {}): WhatsNewArticle => ({
+		id: 1,
+		title: 'Test',
+		content: 'Content',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		publishedAt: new Date().toISOString(),
+		...overrides,
+	});
+
+	beforeEach(() => {
+		localStorage.clear();
+		setActivePinia(createPinia());
+	});
+
+	it('returns false if there are no articles', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		versionsStore = useVersionsStore();
+		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
+		versionsStore.whatsNew.items = [];
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+	});
+
+	it('returns true if user has no createdAt and not all articles are dismissed', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		versionsStore = useVersionsStore();
+		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
+		versionsStore.whatsNew.items = [makeArticle()];
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(true);
+	});
+
+	it('returns false if all articles are dismissed', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as any);
+		versionsStore = useVersionsStore();
+		versionsStore.whatsNew.items = [makeArticle()];
+		versionsStore.dismissWhatsNewCallout();
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+	});
+
+	it('returns true if user createdAt is before article updatedAt', () => {
+		const now = Date.now();
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { createdAt: new Date(now - 10000).toISOString() },
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+		versionsStore = useVersionsStore();
+		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
+		versionsStore.whatsNew.items = [makeArticle({ updatedAt: new Date(now).toISOString() })];
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(true);
+	});
+
+	it('returns false if user createdAt is after article updatedAt', () => {
+		const now = Date.now();
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { createdAt: new Date(now).toISOString() },
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+		versionsStore = useVersionsStore();
+		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
+		versionsStore.whatsNew.items = [
+			makeArticle({ updatedAt: new Date(now - 10000).toISOString() }),
+		];
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+	});
+
+	it('handles missing updatedAt on article', () => {
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { createdAt: new Date().toISOString() },
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+		versionsStore = useVersionsStore();
+		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
+		versionsStore.whatsNew.items = [makeArticle({ updatedAt: undefined })];
+		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
 	});
 });
