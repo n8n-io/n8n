@@ -28,7 +28,7 @@ import {
 	getTestCasesColumns,
 	getTestTableHeaders,
 } from './utils';
-import { indexedDbCache } from '@/plugins/codemirror/typescript/worker/cache';
+import { indexedDbCache } from '@/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 
 export type Column =
