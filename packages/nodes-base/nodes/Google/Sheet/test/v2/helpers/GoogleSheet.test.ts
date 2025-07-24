@@ -122,6 +122,21 @@ describe('GoogleSheet', () => {
 				{ name: 'Jane', age: '25' },
 			]);
 		});
+
+		it('should handle zero values correctly', () => {
+			const data = [
+				['name', 'age'],
+				['John', 30],
+				['Jane', 0],
+			];
+
+			const result = googleSheet.convertSheetDataArrayToObjectArray(data, 1, ['name', 'age']);
+
+			expect(result).toEqual([
+				{ name: 'John', age: 30 },
+				{ name: 'Jane', age: 0 },
+			]);
+		});
 	});
 
 	describe('lookupValues', () => {
