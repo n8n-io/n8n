@@ -463,8 +463,6 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'],
-			// TODO: remove
-			2,
 		);
 	}
 
