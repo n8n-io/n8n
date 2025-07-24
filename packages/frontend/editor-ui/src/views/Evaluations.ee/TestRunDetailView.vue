@@ -487,7 +487,7 @@ onMounted(async () => {
 
 .runsHeaderButtons {
 	display: flex;
-	gap: 12px;
+	gap: var(--spacing-xs);
 }
 
 .loading {
