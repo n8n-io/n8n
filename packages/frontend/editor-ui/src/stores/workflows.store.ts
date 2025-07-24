@@ -612,15 +612,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return data;
 	}
 
-	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+	async function searchWorkflows({
+		projectId,
+		name,
+	}: { projectId?: string; name?: string }): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
+			name,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 		);
+		return workflows;
+	}
+
+	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+		const workflows = await searchWorkflows({ projectId });
 		setWorkflows(workflows);
 		return workflows;
 	}
@@ -1990,6 +1999,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getCurrentWorkflow,
 		getWorkflowFromUrl,
 		getActivationError,
+		searchWorkflows,
 		fetchAllWorkflows,
 		fetchWorkflowsPage,
 		fetchWorkflow,
