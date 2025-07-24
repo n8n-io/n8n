@@ -874,10 +874,14 @@ export interface FunctionsBase {
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
 	): NodeTypeAndVersion[];
-	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getParentNodes(
+		nodeName: string,
+		options?: { includeNodeParameters?: boolean },
+	): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
+	getChatTrigger: () => INode | null;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -1201,6 +1205,7 @@ export interface INodeExecutionData {
 		| NodeApiError
 		| NodeOperationError
 		| number
+		| string
 		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
@@ -1209,6 +1214,16 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	/**
+	 * Use this key to send a message to the chat.
+	 *
+	 * - Workflow has to be started by a chat node.
+	 * - Put execution to wait after sending.
+	 *
+	 * See example in
+	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
+	 */
+	sendMessage?: string;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1624,6 +1639,11 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	/**
+	 * A function called when a node receives a chat message. Allows it to react
+	 * to the message before it gets executed.
+	 */
+	onMessage?(context: IExecuteFunctions, data: INodeExecutionData): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -2110,11 +2130,28 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
+
+/**
+ * Defines how and when response should be sent:
+ *
+ * onReceived: Response is sent immidiatly after node done executing
+ *
+ * lastNode: Response is sent after the last node finishes executing
+ *
+ * responseNode: Response is sent from the Responde to Webhook node
+ *
+ * formPage: Special response with executionId sent to the form trigger node
+ *
+ * hostedChat: Special response with executionId sent to the hosted chat trigger node
+ *
+ * streaming: Response added to runData to httpResponse and streamingEnabled set to true
+ */
 export type WebhookResponseMode =
 	| 'onReceived'
 	| 'lastNode'
 	| 'responseNode'
 	| 'formPage'
+	| 'hostedChat'
 	| 'streaming';
 
 export interface INodeTypes {

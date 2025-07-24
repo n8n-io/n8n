@@ -25,6 +25,8 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
+const newValue = ref(props.modelValue);
+const temp = ref(props.modelValue || props.placeholder);
 const editableRoot = useTemplateRef('editableRoot');
 
 function forceFocus() {
@@ -40,15 +42,15 @@ function forceCancel() {
 	}
 }
 
-defineExpose({ forceFocus, forceCancel });
-
 function onSubmit() {
 	if (newValue.value === '') {
 		newValue.value = props.modelValue;
 		temp.value = props.modelValue;
 		return;
 	}
-	emit('update:model-value', newValue.value);
+	if (newValue.value !== props.modelValue) {
+		emit('update:model-value', newValue.value);
+	}
 }
 
 function onInput(value: string) {
@@ -62,9 +64,6 @@ function onStateChange(state: string) {
 }
 
 // Resize logic
-const newValue = ref(props.modelValue);
-const temp = ref(props.modelValue || props.placeholder);
-
 const measureSpan = useTemplateRef('measureSpan');
 const { width: measuredWidth } = useElementSize(measureSpan);
 
@@ -85,6 +84,8 @@ const computedInlineStyles = computed(() => {
 		zIndex: 1,
 	};
 });
+
+defineExpose({ forceFocus, forceCancel });
 </script>
 
 <template>

@@ -41,7 +41,7 @@ export function previousTaskData(
 	return nextRunData[nextRunIndex]; // Return the first run data for the next node
 }
 
-export function findPairedItemTroughWorkflowData(
+export function findPairedItemThroughWorkflowData(
 	workflowRunData: IRunExecutionData,
 	item: INodeExecutionData,
 	itemIndex: number,

@@ -36,18 +36,21 @@ import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -89,6 +92,7 @@ const {
 	editorRef: htmlEditor,
 	editorValue: () => props.modelValue,
 	extensions,
+	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},
