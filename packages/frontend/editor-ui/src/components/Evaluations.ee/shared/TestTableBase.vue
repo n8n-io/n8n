@@ -129,6 +129,7 @@ defineSlots<{
 				return `${baseClass} ${expandedClass}`;
 			}
 		"
+		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
 		@row-click="(row) => $emit('rowClick', row)"
@@ -248,6 +249,14 @@ defineSlots<{
 
 	:global(.caret-wrapper) {
 		display: none;
+	}
+
+	:global(.el-scrollbar__thumb) {
+		background-color: var(--color-foreground-base);
+	}
+
+	:global(.el-scrollbar__bar) {
+		opacity: 1;
 	}
 }
 </style>
