@@ -31,10 +31,10 @@ const dataStoreRoute = computed(() => {
 </script>
 <template>
 	<div data-test-id="data-store-card">
-		<router-link :to="dataStoreRoute" class="data-store-card" data-test-id="data-store-card-link">
-			<n8n-card :class="$style.card">
+		<N8nLink :to="dataStoreRoute" class="data-store-card" data-test-id="data-store-card-link">
+			<N8nCard :class="$style.card">
 				<template #prepend>
-					<n8n-icon
+					<N8nIcon
 						data-test-id="data-store-card-icon"
 						:class="$style['card-icon']"
 						icon="database"
@@ -44,9 +44,9 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
-						<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ dataStore.name }}
-						</n8n-heading>
+						</N8nHeading>
 						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
@@ -54,15 +54,15 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
-						<n8n-text
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--size']]"
 							data-test-id="folder-card-folder-count"
 						>
 							{{ i18n.baseText('dataStore.card.size', { interpolate: { size: dataStore.size } }) }}
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--record-count']]"
@@ -73,8 +73,8 @@ const dataStoreRoute = computed(() => {
 									interpolate: { count: dataStore.recordCount },
 								})
 							}}
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--column-count']]"
@@ -85,8 +85,8 @@ const dataStoreRoute = computed(() => {
 									interpolate: { count: dataStore.columnCount },
 								})
 							}}
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--updated']]"
@@ -94,8 +94,8 @@ const dataStoreRoute = computed(() => {
 						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
 							<TimeAgo :date="String(dataStore.updatedAt)" />
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--created']]"
@@ -103,12 +103,12 @@ const dataStoreRoute = computed(() => {
 						>
 							{{ i18n.baseText('workflows.item.created') }}
 							<TimeAgo :date="String(dataStore.createdAt)" />
-						</n8n-text>
+						</N8nText>
 					</div>
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
-						<n8n-action-toggle
+						<N8nActionToggle
 							v-if="actions.length"
 							:actions="actions"
 							theme="dark"
@@ -116,8 +116,8 @@ const dataStoreRoute = computed(() => {
 						/>
 					</div>
 				</template>
-			</n8n-card>
-		</router-link>
+			</N8nCard>
+		</N8nLink>
 	</div>
 </template>
 
