@@ -721,7 +721,6 @@ onMounted(() => {
 	});
 
 	if (props.paneType === 'output') {
-		setDisplayMode();
 		activatePane();
 	}
 
@@ -1231,6 +1230,10 @@ function init() {
 	if (isNDVV2.value) {
 		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 	}
+
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	}
 }
 
 function closeBinaryDataDisplay() {
@@ -1337,14 +1340,14 @@ function enableNode() {
 	}
 }
 
+const shouldDisplayHtml = computed(
+	() =>
+		node.value?.type === HTML_NODE_TYPE &&
+		node.value.parameters.operation === 'generateHtmlTemplate',
+);
+
 function setDisplayMode() {
-	if (!activeNode.value) return;
-
-	const shouldDisplayHtml =
-		activeNode.value.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate';
-
-	if (shouldDisplayHtml) {
+	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
 	}
 }
@@ -1461,10 +1464,7 @@ defineExpose({ enterEditMode });
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
-					:node-generates-html="
-						activeNode?.type === HTML_NODE_TYPE &&
-						activeNode.parameters.operation === 'generateHtmlTemplate'
-					"
+					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
