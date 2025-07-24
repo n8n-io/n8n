@@ -125,7 +125,7 @@ export function getTestTableHeaders(
 				sortable: true,
 				filter: true,
 				showHeaderTooltip: true,
-				minWidth: hasLongContent ? '250px' : '125px',
+				minWidth: hasLongContent ? 250 : 125,
 				formatter: (row: TestCaseExecutionRecord) => {
 					const value = row[column.columnType]?.[column.label];
 					if (column.numeric && typeof value === 'number') {

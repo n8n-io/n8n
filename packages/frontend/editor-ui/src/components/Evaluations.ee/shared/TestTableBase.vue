@@ -28,7 +28,7 @@ export type TestTableColumn<TRow> = {
 	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
-	minWidth: string;
+	minWidth?: number;
 };
 
 type TableRow = T & { id: string };
@@ -148,7 +148,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="column.minWidth"
+			:min-width="column.minWidth ?? 125"
 		>
 			<template #header="headerProps">
 				<N8nTooltip

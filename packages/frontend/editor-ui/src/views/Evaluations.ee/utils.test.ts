@@ -779,7 +779,21 @@ describe('utils', () => {
 				{ key: 'metrics.disabled', disabled: true as const },
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' },
+					metrics: { accuracy: 0.95 },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].prop).toBe('inputs.query');
@@ -803,7 +817,20 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					metrics: { accuracy: 0.95678 },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -833,7 +860,20 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					outputs: { result: { status: 'success', data: [1, 2, 3] } },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -866,7 +906,20 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test query' },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -898,7 +951,20 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: {},
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 			const formatter = result[0]?.formatter;
 
 			const testRow = {
@@ -946,11 +1012,186 @@ describe('utils', () => {
 				},
 			];
 
-			const result = getTestTableHeaders(columns);
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test' },
+					metrics: { accuracy: 0.95 },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
 
 			expect(result).toHaveLength(2);
 			expect(result[0]?.prop).toBe('inputs.query');
 			expect(result[1]?.prop).toBe('metrics.accuracy');
+		});
+
+		it('should set minWidth to 125 for short content', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' }, // 5 characters, <= 10
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(125);
+		});
+
+		it('should set minWidth to 250 for long content', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'this is a very long query string' }, // > 10 characters
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250);
+		});
+
+		it('should set minWidth to 250 for long numeric content when formatted', () => {
+			const columns = [
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false as const,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					metrics: { accuracy: 999999.999999 }, // When formatted to 2 decimals: "999999.00" (9 chars, still <= 10)
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(125); // Short content
+		});
+
+		it('should set minWidth to 250 for long JSON content', () => {
+			const columns = [
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false as const,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					outputs: { result: { status: 'success', data: [1, 2, 3], message: 'completed' } }, // Long JSON string
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250);
+		});
+
+		it('should check all test cases to determine minWidth', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' }, // 5 characters
+				},
+				{
+					id: '2',
+					testRunId: 'run1',
+					executionId: 'exec2',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'this is a very long query' }, // > 10 characters
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250); // Should be 250 because second test case has long content
 		});
 	});
 });

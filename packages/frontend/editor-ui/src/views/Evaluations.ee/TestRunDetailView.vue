@@ -122,7 +122,7 @@ const columns = computed((): Header[] => [
 	{
 		prop: 'status',
 		label: locale.baseText('evaluation.listRuns.status'),
-		minWidth: '125px',
+		minWidth: 125,
 	} as Header,
 	...getTestTableHeaders(orderedColumns.value, filteredTestCases.value),
 ]);
