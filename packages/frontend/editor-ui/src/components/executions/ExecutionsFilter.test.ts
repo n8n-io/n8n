@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import { describe, test, expect } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +10,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import merge from 'lodash/merge';
+
+vi.mock('vue-router', () => ({
+	useRoute: () =>
+		reactive({
+			location: {},
+		}),
+	RouterLink: vi.fn(),
+}));
 
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',

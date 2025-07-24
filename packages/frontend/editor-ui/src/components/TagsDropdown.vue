@@ -72,12 +72,14 @@ const containerClasses = computed(() => {
 	return { 'tags-container': true, focused: focused.value };
 });
 
-const dropdownClasses = computed(() => ({
-	'tags-dropdown': true,
-	[`tags-dropdown-${dropdownId}`]: true,
-	'tags-dropdown-create-enabled': props.createEnabled,
-	'tags-dropdown-manage-enabled': props.manageEnabled,
-}));
+const dropdownClasses = computed(() => {
+	const baseClasses = ['tags-dropdown', `tags-dropdown-${dropdownId}`];
+
+	if (props.createEnabled) baseClasses.push('tags-dropdown-create-enabled');
+	if (props.manageEnabled) baseClasses.push('tags-dropdown-manage-enabled');
+
+	return baseClasses.join(' ');
+});
 
 watch(
 	() => props.allTags,
