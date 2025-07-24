@@ -31,6 +31,8 @@ describe('NpsSurvey', () => {
 						config: {
 							key: 'test',
 							url: 'https://telemetry-test.n8n.io',
+							proxy: 'http://localhost:5678/rest/telemetry/proxy',
+							sourceConfig: 'http://localhost:5678/rest/telemetry/rudderstack',
 						},
 					};
 				}
@@ -77,6 +79,8 @@ describe('NpsSurvey', () => {
 						config: {
 							key: 'test',
 							url: 'https://telemetry-test.n8n.io',
+							proxy: 'http://localhost:5678/rest/telemetry/proxy',
+							sourceConfig: 'http://localhost:5678/rest/telemetry/rudderstack',
 						},
 					};
 				}
