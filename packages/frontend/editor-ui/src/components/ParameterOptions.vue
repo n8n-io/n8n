@@ -113,7 +113,6 @@ const actions = computed(() => {
 		];
 	}
 
-
 	const resetAction = {
 		label: resetValueLabel.value,
 		value: 'resetValue',
