@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+
 import N8nScrollArea from './N8nScrollArea.vue';
 
 describe('N8nScrollArea', () => {
