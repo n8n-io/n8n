@@ -55,6 +55,8 @@ import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { I18nT } from 'vue-i18n';
+import { N8nBlockUi, N8nIcon, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -68,7 +70,7 @@ const props = withDefaults(
 		inputSize: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
-		noWheel?: boolean;
+		subTitle?: string;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -78,7 +80,7 @@ const props = withDefaults(
 		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
-		noWheel: false,
+		subTitle: undefined,
 	},
 );
 
@@ -94,6 +96,7 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	captureWheelBody: [WheelEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -810,12 +813,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
-
-function handleWheelEvent(event: WheelEvent) {
-	if (event.ctrlKey) {
-		event.preventDefault();
-	}
-}
 </script>
 
 <template>
@@ -827,7 +824,22 @@ function handleWheelEvent(event: WheelEvent) {
 		}"
 		@keydown.stop
 	>
-		<div v-if="!isNDVV2" :class="$style.header">
+		<ExperimentalEmbeddedNdvHeader
+			v-if="isEmbeddedInCanvas && node"
+			:node="node"
+			:selected-tab="openPanel"
+			:read-only="readOnly"
+			:node-type="nodeType"
+			:push-ref="pushRef"
+			:sub-title="subTitle"
+			@name-changed="nameChanged"
+			@tab-changed="onTabSelect"
+		>
+			<template #actions>
+				<slot name="actions" />
+			</template>
+		</ExperimentalEmbeddedNdvHeader>
+		<div v-else-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -837,21 +849,18 @@ function handleWheelEvent(event: WheelEvent) {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<template v-if="isExecutable || slots.actions">
-					<NodeExecuteButton
-						v-if="isExecutable && !blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@value-changed="valueChanged"
-					/>
-					<slot name="actions" />
-				</template>
+				<NodeExecuteButton
+					v-if="isExecutable && !blockUI && node && nodeValid"
+					data-test-id="node-execute-button"
+					:node-name="node.name"
+					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+					:tooltip="executeButtonTooltip"
+					size="small"
+					telemetry-source="parameters"
+					@execute="onNodeExecute"
+					@stop-execution="onStopExecution"
+					@value-changed="valueChanged"
+				/>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -878,12 +887,12 @@ function handleWheelEvent(event: WheelEvent) {
 		/>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
-				<n8n-icon icon="triangle-alert" />
+				<N8nIcon icon="triangle-alert" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
+				<N8nText size="large" color="text-dark" bold>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
@@ -902,12 +911,12 @@ function handleWheelEvent(event: WheelEvent) {
 						</template>
 					</I18nT>
 				</div>
-				<n8n-link
+				<N8nLink
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
 					@click="onMissingNodeLearnMoreLinkClick"
 				>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
+				</N8nLink>
 			</div>
 			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 				<template #action>
@@ -925,13 +934,12 @@ function handleWheelEvent(event: WheelEvent) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
 				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
-			@wheel="noWheel ? handleWheelEvent : undefined"
+			@wheel.capture="emit('captureWheelBody', $event)"
 		>
-			<n8n-notice
+			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
@@ -968,9 +976,9 @@ function handleWheelEvent(event: WheelEvent) {
 					/>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" class="no-parameters">
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<div
@@ -978,7 +986,7 @@ function handleWheelEvent(event: WheelEvent) {
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
-					<n8n-notice
+					<N8nNotice
 						:content="
 							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
@@ -1038,7 +1046,7 @@ function handleWheelEvent(event: WheelEvent) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<n8n-block-ui :show="blockUI" />
+		<N8nBlockUi :show="blockUI" />
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
@@ -1100,11 +1108,8 @@ function handleWheelEvent(event: WheelEvent) {
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
+			margin-right: var(--spacing-s);
 		}
-	}
-
-	&.embedded .header-side-menu {
-		padding: var(--spacing-xs);
 	}
 
 	.node-is-not-valid {
@@ -1135,7 +1140,7 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
 
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;

@@ -276,3 +276,20 @@ describe('createHtmlSandboxTransformStream', () => {
 		expect(result).toEqual(getComparableHtml(input));
 	});
 });
+
+describe('sandboxHtmlResponse > not string types', () => {
+	it('should not throw if data is number', () => {
+		const data = 123;
+		expect(() => sandboxHtmlResponse(data)).not.toThrow();
+	});
+
+	it('should not throw if data is object', () => {
+		const data = {};
+		expect(() => sandboxHtmlResponse(data)).not.toThrow();
+	});
+
+	it('should not throw if data is boolean', () => {
+		const data = true;
+		expect(() => sandboxHtmlResponse(data)).not.toThrow();
+	});
+});
