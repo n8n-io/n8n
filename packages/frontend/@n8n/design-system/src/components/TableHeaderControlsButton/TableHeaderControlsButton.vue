@@ -105,7 +105,17 @@ const handleDrop = (event: DragEvent, targetColumnKey: string) => {
 
 		newOrder = [...allColumnKeys];
 		newOrder.splice(draggedIndex, 1);
-		newOrder.splice(targetIndex, 0, draggedColumnKey);
+
+		// When dragging onto a target, insert at the target's position
+		// The target will naturally shift due to the insertion
+		let insertIndex = targetIndex;
+
+		// If we removed an item before the target, the target's index has shifted left by 1
+		if (draggedIndex <= targetIndex) {
+			insertIndex = targetIndex - 1;
+		}
+
+		newOrder.splice(insertIndex, 0, draggedColumnKey);
 	}
 
 	emit('update:columnOrder', newOrder);

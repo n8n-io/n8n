@@ -118,12 +118,12 @@ const columns = computed((): Header[] => [
 		width: 100,
 		label: locale.baseText('evaluation.runDetail.testCase'),
 		sortable: true,
-	} as Header,
+	} satisfies Header,
 	{
 		prop: 'status',
 		label: locale.baseText('evaluation.listRuns.status'),
 		minWidth: 125,
-	} as Header,
+	} satisfies Header,
 	...getTestTableHeaders(orderedColumns.value, filteredTestCases.value),
 ]);
 

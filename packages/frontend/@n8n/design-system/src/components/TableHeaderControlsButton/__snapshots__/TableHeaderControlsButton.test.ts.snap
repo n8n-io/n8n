@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`TableHeaderControlsButton > Disabled columns > should render correctly when only disabled columns exist 1`] = `
-"<div>
+"<div max-height="300px">
   <trigger>
     <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
   </trigger>
@@ -10,7 +10,7 @@ exports[`TableHeaderControlsButton > Disabled columns > should render correctly 
 `;
 
 exports[`TableHeaderControlsButton > should render correctly with all columns hidden 1`] = `
-"<div>
+"<div max-height="300px">
   <trigger>
     <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
   </trigger>
@@ -44,7 +44,7 @@ exports[`TableHeaderControlsButton > should render correctly with all columns hi
 `;
 
 exports[`TableHeaderControlsButton > should render correctly with all columns visible 1`] = `
-"<div>
+"<div max-height="300px">
   <trigger>
     <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
   </trigger>
@@ -96,7 +96,7 @@ exports[`TableHeaderControlsButton > should render correctly with all columns vi
 `;
 
 exports[`TableHeaderControlsButton > should render correctly with mixed visible and hidden columns 1`] = `
-"<div>
+"<div max-height="300px">
   <trigger>
     <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
   </trigger>
@@ -144,7 +144,7 @@ exports[`TableHeaderControlsButton > should render correctly with mixed visible 
 `;
 
 exports[`TableHeaderControlsButton > should render correctly with no columns 1`] = `
-"<div>
+"<div max-height="300px">
   <trigger>
     <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
   </trigger>

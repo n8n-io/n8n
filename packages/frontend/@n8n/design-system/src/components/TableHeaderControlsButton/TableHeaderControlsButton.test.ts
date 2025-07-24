@@ -275,7 +275,7 @@ describe('TableHeaderControlsButton', () => {
 
 			const draggableColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
 			const firstColumn = draggableColumns[0]; // col1
-			const secondColumn = draggableColumns[1]; // col2
+			const thirdColumn = draggableColumns[2]; // col2
 
 			// Start dragging first column
 			const dragStartEvent = createDragEvent('dragstart', {
@@ -290,13 +290,13 @@ describe('TableHeaderControlsButton', () => {
 			});
 			const preventDefaultSpy = vi.spyOn(dropEvent, 'preventDefault');
 
-			await fireEvent(secondColumn, dropEvent);
+			await fireEvent(thirdColumn, dropEvent);
 
 			expect(preventDefaultSpy).toHaveBeenCalled();
 
 			const emitted = wrapper.emitted('update:columnOrder');
 			expect(emitted).toBeTruthy();
-			expect(emitted[0]).toEqual([['col2', 'col1', 'col3', 'col4', 'col5']]);
+			expect(emitted[0]).toEqual([['col2', 'col3', 'col1', 'col4', 'col5']]);
 		});
 
 		it('should emit update:columnOrder when dropping column at the end', async () => {
@@ -485,6 +485,97 @@ describe('TableHeaderControlsButton', () => {
 			// Check if drop indicator is shown in end zone
 			const endDropIndicator = endDropZone!.querySelector('[data-testid="drop-indicator"]');
 			expect(endDropIndicator).toBeTruthy();
+		});
+
+		it('should correctly reorder columns when dragging from earlier to later position', async () => {
+			// This test specifically addresses the bug mentioned in the comment:
+			// targetIndex is computed before the dragged element is removed,
+			// so when the element is dragged from an earlier index, the stored index
+			// becomes stale after the first splice and the column is inserted one position too far to the right.
+
+			const testColumns: ColumnHeader[] = [
+				{ key: 'A', label: 'Column A', disabled: false, visible: true },
+				{ key: 'B', label: 'Column B', disabled: false, visible: true },
+				{ key: 'C', label: 'Column C', disabled: false, visible: true },
+				{ key: 'D', label: 'Column D', disabled: false, visible: true },
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: testColumns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const draggableColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+			const columnA = draggableColumns[0]; // First column (A)
+			const columnC = draggableColumns[2]; // Third column (C)
+
+			// Start dragging column A (index 0)
+			const dragStartEvent = createDragEvent('dragstart', {
+				setData: vi.fn(),
+				effectAllowed: 'move',
+			});
+			await fireEvent(columnA, dragStartEvent);
+
+			// Drop it on column C (index 2)
+			const dropEvent = createDragEvent('drop', {
+				getData: vi.fn().mockReturnValue('A'),
+			});
+			await fireEvent(columnC, dropEvent);
+
+			const emitted = wrapper.emitted('update:columnOrder');
+			expect(emitted).toBeTruthy();
+
+			// Expected behavior: A should be inserted BEFORE C, not after
+			// Original order: [A, B, C, D]
+			// After moving A to C's position: [B, A, C, D]
+			expect(emitted[0]).toEqual([['B', 'A', 'C', 'D']]);
+		});
+
+		it('should correctly reorder columns when dragging from later to earlier position', async () => {
+			const testColumns: ColumnHeader[] = [
+				{ key: 'A', label: 'Column A', disabled: false, visible: true },
+				{ key: 'B', label: 'Column B', disabled: false, visible: true },
+				{ key: 'C', label: 'Column C', disabled: false, visible: true },
+				{ key: 'D', label: 'Column D', disabled: false, visible: true },
+			];
+
+			const wrapper = render(TableHeaderControlsButton, {
+				props: {
+					columns: testColumns,
+				},
+				global: {
+					stubs: defaultStubs,
+				},
+			});
+
+			const draggableColumns = wrapper.container.querySelectorAll('[data-testid="visible-column"]');
+			const columnA = draggableColumns[0]; // First column (A)
+			const columnD = draggableColumns[3]; // Fourth column (D)
+
+			// Start dragging column D (index 3)
+			const dragStartEvent = createDragEvent('dragstart', {
+				setData: vi.fn(),
+				effectAllowed: 'move',
+			});
+			await fireEvent(columnD, dragStartEvent);
+
+			// Drop it on column A (index 0)
+			const dropEvent = createDragEvent('drop', {
+				getData: vi.fn().mockReturnValue('D'),
+			});
+			await fireEvent(columnA, dropEvent);
+
+			const emitted = wrapper.emitted('update:columnOrder');
+			expect(emitted).toBeTruthy();
+
+			// Expected behavior: D should be inserted BEFORE A
+			// Original order: [A, B, C, D]
+			// After moving D to A's position: [D, A, B, C]
+			expect(emitted[0]).toEqual([['D', 'A', 'B', 'C']]);
 		});
 	});
 
@@ -792,8 +883,8 @@ describe('TableHeaderControlsButton', () => {
 
 			const emitted = wrapper.emitted('update:columnOrder');
 			expect(emitted).toBeTruthy();
-			// Order should only contain enabled columns
-			expect(emitted[0]).toEqual([['col2', 'col3', 'col4', 'col5', 'col1']]);
+			// After moving col1 to col5's position: [col2, col3, col4, col1, col5]
+			expect(emitted[0]).toEqual([['col2', 'col3', 'col4', 'col1', 'col5']]);
 		});
 
 		it('should not affect visibility toggle functionality for enabled columns when disabled columns are present', async () => {
