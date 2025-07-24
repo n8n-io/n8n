@@ -95,16 +95,16 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
+	if (props.additionalTabs.length) {
+		tabs.push(...props.additionalTabs);
+	}
+
 	if (props.showSettings) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS as string,
 			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } },
 		});
-	}
-
-	if (props.additionalTabs.length) {
-		tabs.push(...props.additionalTabs);
 	}
 
 	return tabs;
