@@ -9,11 +9,13 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { fetchDataStores } from '../api/datastore.api';
+import { fetchDataStores } from '@/features/dataStore/api/datastore.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { DataStoreEntity } from '../datastore.types';
-import type { DataStoreResource } from '@/Interface';
+import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStoreResource, IUser, UserAction } from '@/Interface';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
 
 const i18n = useI18n();
 const projectPages = useProjectPages();
@@ -21,6 +23,7 @@ const projectPages = useProjectPages();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const rootStore = useRootStore();
+const sourceControlStore = useSourceControlStore();
 
 const loading = ref(true);
 const dataStores = ref<DataStoreResource[]>([]);
@@ -46,6 +49,26 @@ const emptyCalloutButtonText = computed(() => {
 		interpolate: { projectName: projectName.value },
 	});
 });
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const cardActions = computed<Array<UserAction<IUser>>>(() => [
+	{
+		label: i18n.baseText('generic.rename'),
+		value: DATA_STORE_CARD_ACTIONS.RENAME,
+		disabled: readOnlyEnv.value,
+	},
+	{
+		label: i18n.baseText('generic.delete'),
+		value: DATA_STORE_CARD_ACTIONS.DELETE,
+		disabled: readOnlyEnv.value,
+	},
+	{
+		label: i18n.baseText('generic.clear'),
+		value: DATA_STORE_CARD_ACTIONS.CLEAR,
+		disabled: readOnlyEnv.value,
+	},
+]);
 
 async function initialize() {
 	loading.value = true;
@@ -91,7 +114,13 @@ async function initialize() {
 			/>
 		</template>
 		<template #item="{ item: data }">
-			<DataStoreCard :data-store="data as DataStoreResource" class="mb-2xs" />
+			<DataStoreCard
+				class="mb-2xs"
+				:data-store="data as DataStoreResource"
+				:show-ownership-badge="projectPages.isOverviewSubPage"
+				:actions="cardActions"
+				:read-only="readOnlyEnv"
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>

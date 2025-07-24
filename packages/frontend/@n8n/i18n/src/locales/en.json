@@ -36,6 +36,7 @@
 	"generic.cancel": "Cancel",
 	"generic.open": "Open",
 	"generic.close": "Close",
+	"generic.clear": "Clear",
 	"generic.confirm": "Confirm",
 	"generic.create": "Create",
 	"generic.create.workflow": "Create Workflow",

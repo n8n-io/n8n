@@ -63,7 +63,7 @@ const getDataStoreUrl = (id: string) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+							:class="[$style['info-cell'], $style['info-cell--size']]"
 							data-test-id="folder-card-folder-count"
 						>
 							{{
@@ -73,8 +73,8 @@ const getDataStoreUrl = (id: string) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
+							:class="[$style['info-cell'], $style['info-cell--record-count']]"
+							data-test-id="data-store-card-record-count"
 						>
 							{{
 								i18n.baseText('data.stores.card.row.count', {
@@ -85,8 +85,8 @@ const getDataStoreUrl = (id: string) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
+							:class="[$style['info-cell'], $style['info-cell--column-count']]"
+							data-test-id="data-store-card-column-count"
 						>
 							{{
 								i18n.baseText('data.stores.card.column.count', {
@@ -98,7 +98,7 @@ const getDataStoreUrl = (id: string) => {
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--updated']]"
-							data-test-id="folder-card-last-updated"
+							data-test-id="data-store-card-last-updated"
 						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
 							<TimeAgo :date="String(dataStore.updatedAt)" />
@@ -107,11 +107,21 @@ const getDataStoreUrl = (id: string) => {
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--created']]"
-							data-test-id="folder-card-created"
+							data-test-id="data-store-card-created"
 						>
 							{{ i18n.baseText('workflows.item.created') }}
 							<TimeAgo :date="String(dataStore.createdAt)" />
 						</n8n-text>
+					</div>
+				</template>
+				<template #append>
+					<div :class="$style['card-actions']" @click.prevent>
+						<n8n-action-toggle
+							v-if="actions.length"
+							:actions="actions"
+							theme="dark"
+							data-test-id="folder-card-actions"
+						/>
 					</div>
 				</template>
 			</n8n-card>
@@ -154,6 +164,17 @@ const getDataStoreUrl = (id: string) => {
 			content: '|';
 			margin: 0 var(--spacing-4xs);
 		}
+	}
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.card {
+		flex-wrap: wrap;
+	}
+	.info-cell--created,
+	.info-cell--record-count,
+	.info-cell--column-count {
+		display: none;
 	}
 }
 </style>
