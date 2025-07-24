@@ -807,8 +807,8 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					nodes: workflowsStore.allNodes,
-					connections: workflowsStore.connectionsBySourceNode,
+					nodes: props.workflow.nodes,
+					connections: props.workflow.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});

@@ -61,7 +61,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
@@ -87,7 +87,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
@@ -126,7 +126,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
@@ -151,7 +151,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
@@ -176,7 +176,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
@@ -202,7 +202,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: [],
+			nodes: {},
 			connections: {},
 		});
 
