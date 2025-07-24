@@ -145,9 +145,9 @@ const handleDragEnd = () => {
 				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
 				data-testid="visible-columns-section"
 			>
-				<h4 :class="$style.header">
+				<h5 :class="$style.header">
 					{{ t('tableControlsButton.shown') }}
-				</h4>
+				</h5>
 				<div v-for="column in visibleColumns" :key="column.key" :class="$style.columnWrapper">
 					<div
 						v-if="dragOverItem === column.key"
@@ -199,9 +199,9 @@ const handleDragEnd = () => {
 				:style="{ display: 'flex', flexDirection: 'column', gap: 2 }"
 				data-testid="hidden-columns-section"
 			>
-				<p :class="$style.header">
+				<h4 :class="$style.header">
 					{{ t('tableControlsButton.hidden') }}
-				</p>
+				</h4>
 				<fieldset
 					v-for="column in hiddenColumns"
 					:key="column.key"
@@ -225,7 +225,7 @@ const handleDragEnd = () => {
 
 <style lang="scss" module>
 .header {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	margin-bottom: var(--spacing-xs);
 }
