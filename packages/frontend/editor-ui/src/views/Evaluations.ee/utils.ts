@@ -130,7 +130,7 @@ export function getTestTableHeaders(
 					const value = row[column.columnType]?.[column.label];
 					const formattedValue = formatValue(column.label, value, { numeric: column.numeric });
 
-					return formattedValue.length > 10;
+					return formattedValue?.length > 10;
 				}),
 			);
 

@@ -158,7 +158,10 @@ const fetchExecutionTestCases = async () => {
 async function loadCachedUserPreferences() {
 	const cache = await indexedDbCache('workflows', 'evaluations');
 	cachedUserPreferences.value = jsonParse(cache.getItem(workflowId.value) ?? '', {
-		fallbackValue: undefined,
+		fallbackValue: {
+			order: [],
+			visibility: {},
+		},
 	});
 }
 
