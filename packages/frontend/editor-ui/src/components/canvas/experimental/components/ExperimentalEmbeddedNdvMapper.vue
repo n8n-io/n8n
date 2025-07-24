@@ -75,6 +75,9 @@ onBeforeUnmount(() => {
 		:width="360"
 		:offset="8"
 		:append-to="vf.viewportRef?.value"
+		:popper-options="{
+			modifiers: [{ name: 'flip', enabled: false }],
+		}"
 	>
 		<template #reference>
 			<slot />
