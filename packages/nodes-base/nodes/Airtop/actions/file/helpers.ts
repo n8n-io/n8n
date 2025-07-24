@@ -2,7 +2,7 @@ import pick from 'lodash/pick';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { BASE_URL, ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
+import { ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
 import { apiRequest } from '../../transport';
 import type { IAirtopResponseWithFiles, IAirtopFileInputRequest } from '../../transport/types';
 
@@ -147,9 +147,12 @@ export async function waitForFileInSession(
 	fileId: string,
 	timeout = OPERATION_TIMEOUT,
 ): Promise<void> {
-	const url = `${BASE_URL}/files/${fileId}`;
 	const isFileInSession = async (): Promise<boolean> => {
-		const fileInfo = (await apiRequest.call(this, 'GET', url)) as IAirtopResponseWithFiles;
+		const fileInfo = (await apiRequest.call(
+			this,
+			'GET',
+			`/files/${fileId}`,
+		)) as IAirtopResponseWithFiles;
 		return Boolean(fileInfo.data?.sessionIds?.includes(sessionId));
 	};
 

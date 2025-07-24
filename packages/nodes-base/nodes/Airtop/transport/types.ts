@@ -1,4 +1,8 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
+
+export interface IAirtopApiCredentials extends ICredentialDataDecryptedObject {
+	apiUrl: string;
+}
 
 export interface IAirtopSessionResponse extends IDataObject {
 	data: {

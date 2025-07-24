@@ -28,6 +28,14 @@ export class AirtopApi implements ICredentialType {
 			},
 			noDataExpression: true,
 		},
+		{
+			displayName: 'API URL',
+			name: 'apiUrl',
+			type: 'string',
+			default: '',
+			description: 'The base URL for the Airtop API. Leave empty to use the default.',
+			placeholder: 'https://api.airtop.ai/api/v1',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -43,7 +51,7 @@ export class AirtopApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'GET',
-			baseURL: BASE_URL,
+			baseURL: '={{$credentials.apiUrl || "' + BASE_URL + '"}}',
 			url: '/sessions',
 			qs: {
 				limit: 10,
