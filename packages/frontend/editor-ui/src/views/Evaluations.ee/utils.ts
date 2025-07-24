@@ -1,3 +1,4 @@
+import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from '../../api/evaluation.ee';
 import type { Column, Header } from './TestRunDetailView.vue';
 
@@ -94,6 +95,28 @@ function mapToColumns(
 	}));
 }
 
+function formatValue(
+	key: string,
+	value?: JsonValue,
+	{ numeric }: { numeric?: boolean } = { numeric: false },
+) {
+	let stringValue: string;
+
+	if (
+		numeric &&
+		typeof value === 'number' &&
+		!(key.endsWith('Tokens') || key === 'executionTime')
+	) {
+		stringValue = value.toFixed(2) ?? '-';
+	} else if (typeof value === 'object' && value !== null) {
+		stringValue = JSON.stringify(value, null, 2);
+	} else {
+		stringValue = `${value}`;
+	}
+
+	return stringValue;
+}
+
 export function getTestTableHeaders(
 	columnNames: Column[],
 	testCases: TestCaseExecutionRecord[],
@@ -105,17 +128,9 @@ export function getTestTableHeaders(
 			const hasLongContent = Boolean(
 				testCases.find((row) => {
 					const value = row[column.columnType]?.[column.label];
-					let stringValue: string;
+					const formattedValue = formatValue(column.label, value, { numeric: column.numeric });
 
-					if (column.numeric && typeof value === 'number') {
-						stringValue = value.toFixed(2) ?? '-';
-					} else if (typeof value === 'object' && value !== null) {
-						stringValue = JSON.stringify(value, null, 2);
-					} else {
-						stringValue = `${value}`;
-					}
-
-					return stringValue.length > 10;
+					return formattedValue.length > 10;
 				}),
 			);
 
@@ -128,15 +143,9 @@ export function getTestTableHeaders(
 				minWidth: hasLongContent ? 250 : 125,
 				formatter: (row: TestCaseExecutionRecord) => {
 					const value = row[column.columnType]?.[column.label];
-					if (column.numeric && typeof value === 'number') {
-						return value.toFixed(2) ?? '-';
-					}
+					const formattedValue = formatValue(column.label, value, { numeric: column.numeric });
 
-					if (typeof value === 'object' && value !== null) {
-						return JSON.stringify(value, null, 2);
-					}
-
-					return `${value}`;
+					return formattedValue;
 				},
 			};
 		});
