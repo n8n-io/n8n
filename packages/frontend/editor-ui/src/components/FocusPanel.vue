@@ -415,6 +415,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
@@ -423,6 +424,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
@@ -432,6 +434,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"
