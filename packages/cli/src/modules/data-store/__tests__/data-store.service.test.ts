@@ -282,5 +282,47 @@ describe('dataStore', () => {
 			expect(result[0].map((x) => x.name).sort()).toEqual(names.sort());
 			expect(result[1]).toEqual(11);
 		});
+		it('correctly joins columns', async () => {
+			// ARRANGE
+			const columns = [
+				{ name: 'myColumn1', type: 'string' },
+				{ name: 'myColumn2', type: 'number' },
+				{ name: 'myColumn3', type: 'number' },
+				{ name: 'myColumn4', type: 'date' },
+			] as const;
+			for (const column of columns) {
+				await dataStoreService.addColumn(dataStore1.id, { column });
+			}
+
+			// ACT
+			const result = await dataStoreService.getManyAndCount({
+				filter: { id: dataStore1.id },
+			});
+
+			// ASSERT
+			expect(result[1]).toEqual(1);
+			expect(result[0][0].columns).toEqual([
+				{
+					id: expect.any(String),
+					name: 'myColumn1',
+					type: 'string',
+				},
+				{
+					id: expect.any(String),
+					name: 'myColumn2',
+					type: 'number',
+				},
+				{
+					id: expect.any(String),
+					name: 'myColumn3',
+					type: 'number',
+				},
+				{
+					id: expect.any(String),
+					name: 'myColumn4',
+					type: 'date',
+				},
+			]);
+		});
 	});
 });

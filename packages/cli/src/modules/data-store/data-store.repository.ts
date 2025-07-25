@@ -121,7 +121,11 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 			.leftJoinAndSelect('dataStore.project', 'project')
 			.leftJoinAndSelect('dataStore.columns', 'data_store_column_entity')
 			// .leftJoinAndSelect('dataStore.sizeBytes', 'sizeBytes')
-			.select(['dataStore', 'data_store_column_entity', ...this.getProjectFields('project')]);
+			.select([
+				'dataStore',
+				...this.getDataStoreColumnFields('data_store_column_entity'),
+				...this.getProjectFields('project'),
+			]);
 	}
 
 	private applyCustomSelect(
@@ -153,14 +157,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		}
 	}
 
-	private getDataStoreFields(alias: string): string[] {
-		return [
-			`${alias}.id`,
-			`${alias}.name`,
-			`${alias}.columns`,
-			`${alias}.createdAt`,
-			`${alias}.updatedAt`,
-		];
+	private getDataStoreColumnFields(alias: string): string[] {
+		return [`${alias}.id`, `${alias}.name`, `${alias}.type`];
 	}
 
 	private getProjectFields(alias: string): string[] {
