@@ -107,6 +107,10 @@ export class Github implements INodeType {
 						value: 'issue',
 					},
 					{
+						name: 'Notification',
+						value: 'notification',
+					},
+					{
 						name: 'Organization',
 						value: 'organization',
 					},
@@ -201,6 +205,27 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['notification'],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the authenticated user\'s notifications',
+						action: 'Get notifications',
+					},
+				],
+				default: 'get',
 			},
 
 			{
@@ -2093,6 +2118,86 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
+			// ----------------------------------
+			//         notification
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['notification'],
+						operation: ['get'],
+					},
+				},
+				options: [
+					{
+						displayName: 'All',
+						name: 'all',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to show notifications marked as read',
+					},
+					{
+						displayName: 'Participating',
+						name: 'participating',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to only show notifications in which the user is directly participating',
+					},
+					{
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only show notifications updated after the given time (ISO 8601 timestamp)',
+					},
+					{
+						displayName: 'Before',
+						name: 'before',
+						type: 'dateTime',
+						default: '',
+						description: 'Only show notifications updated before the given time (ISO 8601 timestamp)',
+					},
+				],
+			},
+
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['notification'],
+						operation: ['get'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['notification'],
+						operation: ['get'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
 		],
 	};
 
@@ -2153,6 +2258,7 @@ export class Github implements INodeType {
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
 			'file:list',
+			'notification:get',
 			'repository:getIssues',
 			'repository:getPullRequests',
 			'repository:listPopularPaths',
@@ -2430,6 +2536,40 @@ export class Github implements INodeType {
 						qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
 
 						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
+					}
+				} else if (resource === 'notification') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
+
+						if (additionalFields.all !== undefined) {
+							qs.all = additionalFields.all;
+						}
+
+						if (additionalFields.participating !== undefined) {
+							qs.participating = additionalFields.participating;
+						}
+
+						if (additionalFields.since) {
+							qs.since = additionalFields.since;
+						}
+
+						if (additionalFields.before) {
+							qs.before = additionalFields.before;
+						}
+
+						endpoint = '/notifications';
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
 					}
 				} else if (resource === 'release') {
 					if (operation === 'create') {
