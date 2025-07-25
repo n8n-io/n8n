@@ -3,6 +3,8 @@
  * MockServer service helper functions for Playwright tests
  */
 
+import { mockServerClient, type MockServerClient } from 'mockserver-client';
+
 export interface MockServerRequest {
 	method: string;
 	path: string;
@@ -40,20 +42,30 @@ export interface RequestLog {
 }
 
 /**
+ * Create a MockServer client instance from a URL
+ */
+function createMockServerClient(mockServerUrl: string): MockServerClient {
+	const url = new URL(mockServerUrl);
+	return mockServerClient(url.hostname, parseInt(url.port, 10));
+}
+
+/**
  * Create an expectation in MockServer
  */
 export async function createExpectation(
 	mockServerUrl: string,
 	expectation: MockServerExpectation,
 ): Promise<void> {
-	const response = await fetch(`${mockServerUrl}/mockserver/expectation`, {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(expectation),
-	});
+	const client = createMockServerClient(mockServerUrl);
 
-	if (!response.ok) {
-		throw new Error(`Failed to create expectation: ${response.status} ${response.statusText}`);
+	try {
+		await client.mockAnyResponse({
+			httpRequest: expectation.httpRequest,
+			httpResponse: expectation.httpResponse,
+			times: expectation.times,
+		});
+	} catch (error) {
+		throw new Error(`Failed to create expectation: ${error}`);
 	}
 }
 
@@ -64,27 +76,26 @@ export async function verifyRequest(
 	mockServerUrl: string,
 	request: MockServerRequest,
 ): Promise<boolean> {
-	const response = await fetch(`${mockServerUrl}/mockserver/verify`, {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ httpRequest: request }),
-	});
+	const client = createMockServerClient(mockServerUrl);
 
-	return response.status === 202; // MockServer returns 202 for successful verification
+	try {
+		await client.verify(request, 1);
+		return true;
+	} catch (error) {
+		return false;
+	}
 }
 
 /**
  * Clear all expectations and logs from MockServer
  */
 export async function clearMockServer(mockServerUrl: string): Promise<void> {
-	const response = await fetch(`${mockServerUrl}/mockserver/clear`, {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({}),
-	});
+	const client = createMockServerClient(mockServerUrl);
 
-	if (!response.ok) {
-		throw new Error(`Failed to clear MockServer: ${response.status} ${response.statusText}`);
+	try {
+		await client.clear(null, 'ALL');
+	} catch (error) {
+		throw new Error(`Failed to clear MockServer: ${error}`);
 	}
 }
 
