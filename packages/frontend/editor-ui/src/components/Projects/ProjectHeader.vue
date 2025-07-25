@@ -90,11 +90,8 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 		return modulesStore.sharedPageTabs;
 	}
 	if (projectPages.isOverviewSubPage) {
-		console.log('==> OVERVIEW SUB PAGE TABS');
 		return modulesStore.overviewPageTabs;
 	}
-	console.log('==> PROJECT PAGE TABS');
-
 	return modulesStore.projectPageTabs;
 });
 
