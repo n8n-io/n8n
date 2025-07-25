@@ -1,5 +1,6 @@
-import { WorkflowPage, NDV } from '../pages';
+import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const nodeCreatorFeature = new NodeCreator();
@@ -19,6 +20,65 @@ describe('HTTP Request node', () => {
 		ndv.actions.execute();
 
 		ndv.getters.outputPanel().contains('fact');
+	});
+
+	it('should not crash when deleting body parameters', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('HTTP Request');
+		workflowPage.actions.openNode('HTTP Request');
+
+		// Enable body parameters
+		cy.getByTestId('parameter-input-sendBody').click();
+		cy.getByTestId('parameter-input-contentType').click();
+		getVisibleSelect().find('.option-headline').contains('JSON').click();
+		cy.getByTestId('parameter-input-specifyBody').click();
+		getVisibleSelect().find('.option-headline').contains('Using Fields Below').click();
+
+		// Add multiple body parameters
+		cy.getByTestId('parameter-input-bodyParameters').click();
+		cy.getByTestId('parameter-input-bodyParameters').find('.add-parameter').click();
+		cy.getByTestId('parameter-input-bodyParameters').find('.add-parameter').click();
+
+		// Fill in the parameters
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Name"]')
+			.first()
+			.type('param1');
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Value"]')
+			.first()
+			.type('value1');
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Name"]')
+			.eq(1)
+			.type('param2');
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Value"]')
+			.eq(1)
+			.type('value2');
+
+		// Delete the first parameter (this should not crash)
+		cy.getByTestId('parameter-input-bodyParameters').find('.delete-parameter').first().click();
+
+		// Verify the parameter was deleted and no crash occurred
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Name"]')
+			.should('have.length', 1);
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Name"]')
+			.first()
+			.should('have.value', 'param2');
+
+		// Delete the remaining parameter
+		cy.getByTestId('parameter-input-bodyParameters').find('.delete-parameter').first().click();
+
+		// Verify all parameters are deleted and no crash occurred
+		cy.getByTestId('parameter-input-bodyParameters')
+			.find('input[placeholder="Name"]')
+			.should('have.length', 0);
+
+		// Verify the page is still functional
+		ndv.getters.nodeNameContainer().should('be.visible');
 	});
 
 	describe('Credential-only HTTP Request Node variants', () => {
