@@ -11,11 +11,12 @@ import {
 import type { INodeUi, XYPosition } from '@/Interface';
 import type {
 	AssignmentCollectionValue,
+	IConnections,
 	INode,
 	INodeExecutionData,
+	INodes,
 	INodeTypeDescription,
 	NodeHint,
-	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -27,6 +28,7 @@ import {
 	type Rect,
 	type ViewportTransform,
 } from '@vue-flow/core';
+import * as workflowUtils from 'n8n-workflow/common';
 
 /*
  * Canvas constants and functions
@@ -35,7 +37,11 @@ import {
 export const GRID_SIZE = 16;
 
 export const DEFAULT_NODE_SIZE: [number, number] = [GRID_SIZE * 6, GRID_SIZE * 6];
-export const CONFIGURATION_NODE_SIZE: [number, number] = [GRID_SIZE * 5, GRID_SIZE * 5];
+export const CONFIGURATION_NODE_RADIUS = (GRID_SIZE * 5) / 2;
+export const CONFIGURATION_NODE_SIZE: [number, number] = [
+	CONFIGURATION_NODE_RADIUS * 2,
+	CONFIGURATION_NODE_RADIUS * 2,
+]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
@@ -47,10 +53,6 @@ export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMax: Infinity,
 	yMax: Infinity,
 };
-
-// The top-center of the configuration node is not a multiple of GRID_SIZE,
-// therefore we need to offset non-main inputs to align with the nodes top-center
-export const CONFIGURATION_NODE_OFFSET = (CONFIGURATION_NODE_SIZE[0] / 2) % GRID_SIZE;
 
 /**
  * Utility functions for returning nodes found at the edges of a group
@@ -371,7 +373,8 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	workflow,
+	nodes,
+	connections,
 	hasNodeRun,
 }: {
 	workflowNode: INode;
@@ -379,7 +382,8 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	workflow: Workflow;
+	nodes: INodes;
+	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
 	const nodeHints: NodeHint[] = [];
@@ -417,7 +421,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -429,7 +433,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -470,9 +474,8 @@ export function getGenericHints({
 
 	// Split In Batches setup hints
 	if (node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-		const { connectionsBySourceNode } = workflow;
-
-		const firstNodesInLoop = connectionsBySourceNode[node.name]?.main[1] || [];
+		const firstNodesInLoop =
+			workflowUtils.mapConnectionsByDestination(connections)[node.name]?.main[1] || [];
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
@@ -482,7 +485,7 @@ export function getGenericHints({
 			});
 		} else {
 			for (const nodeInConnection of firstNodesInLoop || []) {
-				const nodeChilds = workflow.getChildNodes(nodeInConnection.node) || [];
+				const nodeChilds = workflowUtils.getChildNodes(connections, nodeInConnection.node) || [];
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
 						message:
@@ -619,10 +622,13 @@ export function calculateNodeSize(
 	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
 
 	if (isConfigurable) {
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+
 		return {
+			// Configuration node has extra width so that its centered port aligns to the grid
 			width:
-				Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount) * GRID_SIZE * 4 +
-				CONFIGURATION_NODE_OFFSET * 2,
+				CONFIGURATION_NODE_RADIUS * 2 +
+				GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3),
 			height: isConfiguration ? CONFIGURATION_NODE_SIZE[1] : height,
 		};
 	}

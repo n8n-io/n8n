@@ -1,15 +1,16 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
+import type { JsonObject } from 'n8n-workflow';
 
 export interface TestRunRecord {
 	id: string;
 	workflowId: string;
 	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
-	metrics?: Record<string, number>;
+	metrics?: Record<string, number> | null;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;
-	completedAt: string;
+	completedAt: string | null;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
@@ -36,6 +37,8 @@ export interface TestCaseExecutionRecord {
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
+	inputs?: JsonObject;
+	outputs?: JsonObject;
 }
 
 const getTestRunsEndpoint = (workflowId: string, runId?: string) =>

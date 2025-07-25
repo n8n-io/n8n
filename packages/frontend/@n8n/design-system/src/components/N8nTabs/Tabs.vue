@@ -10,12 +10,14 @@ interface TabsProps {
 	modelValue?: Value;
 	options?: Array<TabOptions<Value>>;
 	size?: 'small' | 'medium';
+	variant?: 'modern' | 'legacy';
 }
 
 withDefaults(defineProps<TabsProps>(), {
 	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
+	variant: 'legacy',
 });
 
 const scrollPosition = ref(0);
@@ -69,7 +71,14 @@ const scrollRight = () => scroll(50);
 </script>
 
 <template>
-	<div :class="['n8n-tabs', $style.container, size === 'small' ? $style.small : '']">
+	<div
+		:class="[
+			'n8n-tabs',
+			$style.container,
+			size === 'small' ? $style.small : '',
+			variant === 'modern' ? $style.modern : '',
+		]"
+	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
 			<N8nIcon icon="chevron-left" size="small" />
 		</div>
@@ -116,7 +125,10 @@ const scrollRight = () => scroll(50);
 						@click="() => handleTabClick(option.value)"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
-						<span v-if="option.label">{{ option.label }}</span>
+						<span v-if="option.label" :class="$style.notificationContainer"
+							>{{ option.label }}
+							<div v-if="option.notification" :class="$style.notification"><div></div></div
+						></span>
 					</div>
 				</N8nTooltip>
 			</div>
@@ -130,6 +142,11 @@ const scrollRight = () => scroll(50);
 	height: 24px;
 	min-height: 24px;
 	width: 100%;
+
+	&.modern {
+		height: 26px;
+		min-height: 26px;
+	}
 }
 
 .tabs {
@@ -155,11 +172,9 @@ const scrollRight = () => scroll(50);
 	--active-tab-border-width: 2px;
 	display: block;
 	padding: 0 var(--spacing-s);
-	padding-bottom: calc(
-		var(--spacing-bottom-tab, var(--spacing-2xs)) + var(--active-tab-border-width)
-	);
-	font-size: var(--font-size-tab, var(--font-size-s));
-	font-weight: var(--font-weight-tab, var(--font-weight-regular));
+	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
+	font-size: var(--font-size-s);
+
 	cursor: pointer;
 	white-space: nowrap;
 	color: var(--color-text-base);
@@ -171,6 +186,12 @@ const scrollRight = () => scroll(50);
 		margin-left: var(--spacing-4xs);
 	}
 
+	.modern & {
+		padding-bottom: calc(var(--spacing-xs) + var(--active-tab-border-width));
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-bold);
+	}
+
 	.small & {
 		font-size: var(--font-size-2xs);
 	}
@@ -178,8 +199,12 @@ const scrollRight = () => scroll(50);
 
 .activeTab {
 	color: var(--color-primary);
-	padding-bottom: var(--spacing-bottom-tab, var(--spacing-2xs));
+	padding-bottom: var(--spacing-2xs);
 	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
+
+	.modern & {
+		padding-bottom: var(--spacing-xs);
+	}
 }
 
 .alignRight:not(.alignRight + .alignRight) {
@@ -209,6 +234,26 @@ const scrollRight = () => scroll(50);
 	display: flex;
 	align-items: center;
 	font-weight: var(--font-weight-bold);
+}
+
+.notificationContainer {
+	display: flex;
+	position: relative;
+}
+
+.notification {
+	display: flex;
+	position: absolute;
+	right: -0.5em;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 0.3em;
+		width: 0.3em;
+		background-color: var(--color-primary);
+		border-radius: 50%;
+	}
 }
 
 .back {

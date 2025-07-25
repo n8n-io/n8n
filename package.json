@@ -37,7 +37,9 @@
     "lint:backend": "turbo run lint:backend",
     "lint:nodes": "turbo run lint:nodes",
     "lint:frontend": "turbo run lint:frontend",
+    "lint:testing": "turbo run lint:testing",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+    "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
@@ -120,7 +122,9 @@
       "js-base64": "patches/js-base64.patch",
       "ics": "patches/ics.patch",
       "minifaker": "patches/minifaker.patch",
-      "z-vue-scan": "patches/z-vue-scan.patch"
+      "z-vue-scan": "patches/z-vue-scan.patch",
+      "@lezer/highlight": "patches/@lezer__highlight.patch",
+      "v-code-diff": "patches/v-code-diff.patch"
     }
   }
 }

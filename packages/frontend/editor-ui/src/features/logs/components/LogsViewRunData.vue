@@ -75,6 +75,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		v-if="runDataProps"
 		v-bind="runDataProps"
 		:key="`run-data${pipWindow ? '-pip' : ''}`"
+		:class="$style.component"
 		:workflow="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
@@ -118,7 +119,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template v-if="isMultipleInput" #callout-message>
-			<I18nT keypath="logs.details.body.multipleInputs">
+			<I18nT keypath="logs.details.body.multipleInputs" scope="global">
 				<template #button>
 					<N8nLink size="small" @click="handleClickOpenNdv">
 						{{ locale.baseText('logs.details.body.multipleInputs.openingTheNode') }}
@@ -130,6 +131,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 </template>
 
 <style lang="scss" module>
+.component {
+	--color-run-data-background: var(--color-background-light);
+}
+
 .title {
 	text-transform: uppercase;
 	letter-spacing: 3px;

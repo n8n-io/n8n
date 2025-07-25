@@ -117,6 +117,20 @@ export function getSessionId(
 			sessionId = bodyData.sessionId as string;
 		} else {
 			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+
+			// try to get sessionId from chat trigger
+			if (!sessionId || sessionId === undefined) {
+				try {
+					const chatTrigger = ctx.getChatTrigger();
+
+					if (chatTrigger) {
+						sessionId = ctx.evaluateExpression(
+							`{{ $('${chatTrigger.name}').first().json.sessionId }}`,
+							itemIndex,
+						) as string;
+					}
+				} catch (error) {}
+			}
 		}
 
 		if (sessionId === '' || sessionId === undefined) {

@@ -6,6 +6,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
@@ -39,6 +40,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -51,6 +54,9 @@ import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { I18nT } from 'vue-i18n';
+import { N8nBlockUi, N8nIcon, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -64,7 +70,7 @@ const props = withDefaults(
 		inputSize: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
-		noWheel?: boolean;
+		subTitle?: string;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -74,7 +80,7 @@ const props = withDefaults(
 		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
-		noWheel: false,
+		subTitle: undefined,
 	},
 );
 
@@ -90,9 +96,23 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	captureWheelBody: [WheelEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
+
+const nodeValues = ref<INodeParameters>({
+	color: '#ff0000',
+	alwaysOutputData: false,
+	executeOnce: false,
+	notesInFlow: false,
+	onError: 'stopWorkflow',
+	retryOnFail: false,
+	maxTries: 3,
+	waitBetweenTries: 1000,
+	notes: '',
+	parameters: {},
+});
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -106,7 +126,6 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeSettingsParameters = useNodeSettingsParameters();
-const nodeValues = nodeSettingsParameters.nodeValues;
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -128,6 +147,8 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
 const currentWorkflow = computed(() =>
@@ -227,6 +248,7 @@ const showNoParametersNotice = computed(
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
+const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -355,7 +377,11 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters?.[key] !== null && nodeParameters?.[key] !== undefined) {
-				nodeSettingsParameters.setValue(`parameters.${key}`, nodeParameters[key] as string);
+				nodeSettingsParameters.setValue(
+					nodeValues,
+					`parameters.${key}`,
+					nodeParameters[key] as string,
+				);
 			}
 		}
 
@@ -372,7 +398,13 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
-		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
+		nodeSettingsParameters.updateNodeParameter(
+			nodeValues,
+			parameterData,
+			newValue,
+			_node,
+			isToolNode.value,
+		);
 	} else {
 		// A property on the node itself changed
 
@@ -748,7 +780,7 @@ watch(node, () => {
 	setNodeValues();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	populateHiddenIssuesSet();
 	populateSettings();
 	setNodeValues();
@@ -758,6 +790,10 @@ onMounted(() => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
+
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
+	}
 });
 
 onBeforeUnmount(() => {
@@ -777,12 +813,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
-
-function handleWheelEvent(event: WheelEvent) {
-	if (event.ctrlKey) {
-		event.preventDefault();
-	}
-}
 </script>
 
 <template>
@@ -794,7 +824,22 @@ function handleWheelEvent(event: WheelEvent) {
 		}"
 		@keydown.stop
 	>
-		<div v-if="!isNDVV2" :class="$style.header">
+		<ExperimentalEmbeddedNdvHeader
+			v-if="isEmbeddedInCanvas && node"
+			:node="node"
+			:selected-tab="openPanel"
+			:read-only="readOnly"
+			:node-type="nodeType"
+			:push-ref="pushRef"
+			:sub-title="subTitle"
+			@name-changed="nameChanged"
+			@tab-changed="onTabSelect"
+		>
+			<template #actions>
+				<slot name="actions" />
+			</template>
+		</ExperimentalEmbeddedNdvHeader>
+		<div v-else-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -804,21 +849,18 @@ function handleWheelEvent(event: WheelEvent) {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<template v-if="isExecutable || slots.actions">
-					<NodeExecuteButton
-						v-if="isExecutable && !blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@value-changed="valueChanged"
-					/>
-					<slot name="actions" />
-				</template>
+				<NodeExecuteButton
+					v-if="isExecutable && !blockUI && node && nodeValid"
+					data-test-id="node-execute-button"
+					:node-name="node.name"
+					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+					:tooltip="executeButtonTooltip"
+					size="small"
+					telemetry-source="parameters"
+					@execute="onNodeExecute"
+					@stop-execution="onStopExecution"
+					@value-changed="valueChanged"
+				/>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -845,18 +887,19 @@ function handleWheelEvent(event: WheelEvent) {
 		/>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
-				<n8n-icon icon="triangle-alert" />
+				<N8nIcon icon="triangle-alert" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
+				<N8nText size="large" color="text-dark" bold>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n-t
+					<I18nT
 						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
+						scope="global"
 						@click="onMissingNodeTextClick"
 					>
 						<template #action>
@@ -866,16 +909,16 @@ function handleWheelEvent(event: WheelEvent) {
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
-				<n8n-link
+				<N8nLink
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
 					@click="onMissingNodeLearnMoreLinkClick"
 				>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
+				</N8nLink>
 			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -883,7 +926,7 @@ function handleWheelEvent(event: WheelEvent) {
 						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</div>
 		<div
 			v-if="node && nodeValid"
@@ -891,13 +934,12 @@ function handleWheelEvent(event: WheelEvent) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
 				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
-			@wheel="noWheel ? handleWheelEvent : undefined"
+			@wheel.capture="emit('captureWheelBody', $event)"
 		>
-			<n8n-notice
+			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
@@ -934,9 +976,9 @@ function handleWheelEvent(event: WheelEvent) {
 					/>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" class="no-parameters">
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<div
@@ -944,7 +986,7 @@ function handleWheelEvent(event: WheelEvent) {
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
-					<n8n-notice
+					<N8nNotice
 						:content="
 							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
@@ -954,6 +996,10 @@ function handleWheelEvent(event: WheelEvent) {
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
+				<CommunityNodeUpdateInfo
+					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					data-test-id="update-available"
+				/>
 				<ParameterInputList
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
@@ -1000,7 +1046,12 @@ function handleWheelEvent(event: WheelEvent) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<n8n-block-ui :show="blockUI" />
+		<N8nBlockUi :show="blockUI" />
+		<CommunityNodeFooter
+			v-if="openPanel === 'settings' && isCommunityNode"
+			:package-name="packageName"
+			:show-manage="useUsersStore().isInstanceOwner"
+		/>
 	</div>
 </template>
 
@@ -1057,11 +1108,8 @@ function handleWheelEvent(event: WheelEvent) {
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
+			margin-right: var(--spacing-s);
 		}
-	}
-
-	&.embedded .header-side-menu {
-		padding: var(--spacing-xs);
 	}
 
 	.node-is-not-valid {
@@ -1092,7 +1140,7 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
 
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
@@ -1104,7 +1152,7 @@ function handleWheelEvent(event: WheelEvent) {
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
 				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
 			}
 		}
 	}

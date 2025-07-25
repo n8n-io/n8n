@@ -48,6 +48,7 @@
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
@@ -124,6 +125,7 @@
       "dist/nodes/tools/ToolWorkflow/ToolWorkflow.node.js",
       "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
       "dist/nodes/trigger/ChatTrigger/ChatTrigger.node.js",
+      "dist/nodes/trigger/ChatTrigger/Chat.node.js",
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",

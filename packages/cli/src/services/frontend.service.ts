@@ -1,4 +1,4 @@
-import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
+import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -66,6 +66,18 @@ export class FrontendService {
 		}
 	}
 
+	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
+		const envFeatureFlags: N8nEnvFeatFlags = {};
+
+		for (const [key, value] of Object.entries(process.env)) {
+			if (key.startsWith('N8N_ENV_FEAT_') && value !== undefined) {
+				envFeatureFlags[key as keyof N8nEnvFeatFlags] = value;
+			}
+		}
+
+		return envFeatureFlags;
+	}
+
 	private initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -77,13 +89,15 @@ export class FrontendService {
 		if (telemetrySettings.enabled) {
 			const conf = this.globalConfig.diagnostics.frontendConfig;
 			const [key, url] = conf.split(';');
+			const proxy = `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`;
+			const sourceConfig = `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`;
 
 			if (!key || !url) {
 				this.logger.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 
-			telemetrySettings.config = { key, url };
+			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
 		this.settings = {
@@ -260,6 +274,7 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
 
@@ -403,6 +418,9 @@ export class FrontendService {
 
 		// Refresh evaluation settings
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
+
+		// Refresh environment feature flags
+		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
 
 		return this.settings;
 	}

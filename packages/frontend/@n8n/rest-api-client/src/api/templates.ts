@@ -113,6 +113,9 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 export interface ITemplatesQuery {
 	categories: string[];
 	search: string;
+	apps?: string[];
+	sort?: string;
+	combineWith?: string;
 }
 
 export interface ITemplatesCategory {
@@ -150,24 +153,31 @@ export async function getCollections(
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { page: number; limit: number; categories: string[]; search: string },
+	query: {
+		page: number;
+		limit: number;
+		categories: string[];
+		search: string;
+		sort?: string;
+		apps?: string[];
+		combineWith?: string;
+	},
 	headers?: RawAxiosRequestHeaders,
 ): Promise<{
 	totalWorkflows: number;
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
 }> {
-	return await get(
-		apiEndpoint,
-		'/templates/search',
-		{
-			page: query.page,
-			rows: query.limit,
-			category: stringifyArray(query.categories),
-			search: query.search,
-		},
-		headers,
-	);
+	const { apps, sort, combineWith, categories, ...restQuery } = query;
+	const finalQuery = {
+		...restQuery,
+		category: stringifyArray(categories),
+		...(apps && { app: stringifyArray(apps) }),
+		...(sort && { sort }),
+		...(combineWith && { combineWith }),
+	};
+
+	return await get(apiEndpoint, '/templates/search', finalQuery, headers);
 }
 
 export async function getCollectionById(

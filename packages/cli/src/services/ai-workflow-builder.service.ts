@@ -1,4 +1,6 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -20,6 +22,7 @@ export class WorkflowBuilderService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
+		private readonly logger: Logger,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -40,13 +43,19 @@ export class WorkflowBuilderService {
 				});
 			}
 
-			this.service = new AiWorkflowBuilderService(this.nodeTypes, client);
+			this.service = new AiWorkflowBuilderService(this.nodeTypes, client, this.logger);
 		}
 		return this.service;
 	}
 
-	async *chat(payload: { question: string }, user: IUser) {
+	async *chat(payload: ChatPayload, user: IUser) {
 		const service = await this.getService();
 		yield* service.chat(payload, user);
+	}
+
+	async getSessions(workflowId: string | undefined, user: IUser) {
+		const service = await this.getService();
+		const sessions = await service.getSessions(workflowId, user);
+		return sessions;
 	}
 }

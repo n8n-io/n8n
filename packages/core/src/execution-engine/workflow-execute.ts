@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { GlobalConfig } from '@n8n/config';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -1211,13 +1212,13 @@ export class WorkflowExecute {
 						: await nodeType.execute.call(context);
 			}
 
-			// If data is not json compatible then log it as incorrect output
-			// Does not block the execution from continuing
-			const jsonCompatibleResult = isJsonCompatible(data);
-			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error(
-					new UnexpectedError('node execution output incorrect data'),
-					{
+			if (Container.get(GlobalConfig).sentry.backendDsn) {
+				// If data is not json compatible then log it as incorrect output
+				// Does not block the execution from continuing
+				const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
+				if (!jsonCompatibleResult.isValid) {
+					Container.get(ErrorReporter).error('node execution returned incorrect data', {
+						shouldBeLogged: false,
 						extra: {
 							nodeName: node.name,
 							nodeType: node.type,
@@ -1228,8 +1229,8 @@ export class WorkflowExecute {
 							errorPath: jsonCompatibleResult.errorPath,
 							errorMessage: jsonCompatibleResult.errorMessage,
 						},
-					},
-				);
+					});
+				}
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(

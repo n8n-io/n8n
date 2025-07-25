@@ -166,8 +166,8 @@ provide(CanvasNodeHandleKey, {
 
 <style lang="scss" module>
 .handle {
-	--handle--indicator--width: 16px;
-	--handle--indicator--height: 16px;
+	--handle--indicator--width: calc(16px * var(--canvas-zoom-compensation-factor, 1));
+	--handle--indicator--height: calc(16px * var(--canvas-zoom-compensation-factor, 1));
 
 	width: var(--handle--indicator--width);
 	height: var(--handle--indicator--height);
@@ -181,7 +181,7 @@ provide(CanvasNodeHandleKey, {
 
 	&.inputs {
 		&.main {
-			--handle--indicator--width: 8px;
+			--handle--indicator--width: calc(8px * var(--canvas-zoom-compensation-factor, 1));
 		}
 	}
 }

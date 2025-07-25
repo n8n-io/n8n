@@ -9,6 +9,7 @@ import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 import { useUsageStore } from '@/stores/usage.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 defineEmits<{
 	runTest: [];
@@ -209,13 +210,13 @@ function onSeePlans() {
 						:class="$style.quotaNote"
 					>
 						<N8nText size="xsmall" color="text-base">
-							<i18n-t keypath="evaluations.setupWizard.step3.notice">
+							<I18nT keypath="evaluations.setupWizard.step3.notice" scope="global">
 								<template #link>
 									<a style="text-decoration: underline; color: inherit" @click="onSeePlans"
 										>{{ locale.baseText('evaluations.setupWizard.step3.notice.link') }}
 									</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</N8nText>
 					</div>
 				</div>
