@@ -569,7 +569,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			:push-ref="pushRef"
 			:sub-title="subTitle"
 			:include-action="parametersByTab.action.length > 0"
-			:include-credential="parametersByTab.credential.length > 0"
+			:include-credential="isDisplayingCredentials"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
 		>
@@ -646,6 +646,31 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<div v-if="openPanel === 'action'">
+				<ParameterInputList
+					:parameters="parametersByTab.action"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path="parameters"
+					:node="props.activeNode"
+					@value-changed="valueChanged"
+					@activate="onWorkflowActivate"
+					@parameter-blur="onParameterBlur"
+				/>
+			</div>
+			<div v-if="openPanel === 'credential'">
+				<NodeCredentials
+					:node="node"
+					:readonly="isReadOnly"
+					:show-all="true"
+					:hide-issues="hiddenIssuesInputs.includes('credentials')"
+					@credential-selected="credentialSelected"
+					@value-changed="valueChanged"
+					@blur="onParameterBlur"
+				/>
+			</div>
 			<div v-if="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
