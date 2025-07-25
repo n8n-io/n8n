@@ -413,5 +413,35 @@ describe('ChatPlugin', () => {
 				'No response received. This is probably because streaming is disabled in the trigger but enabled in agent node(s)',
 			);
 		});
+
+		it('should return response when executionStarted is true', async () => {
+			const mockResponse = {
+				executionStarted: true,
+				executionId: '12345',
+			};
+			vi.mocked(api.sendMessage).mockResolvedValueOnce(mockResponse);
+
+			const result = await chatStore.sendMessage('Execute workflow');
+
+			expect(result).toEqual(mockResponse);
+			// Should only have the user message, no bot response
+			expect(chatStore.messages.value).toHaveLength(1);
+			expect(chatStore.messages.value[0]).toMatchObject({
+				text: 'Execute workflow',
+				sender: 'user',
+			});
+		});
+
+		it('should handle message field in response', async () => {
+			const mockResponse = { message: 'Response from message field' };
+			vi.mocked(api.sendMessage).mockResolvedValueOnce(mockResponse);
+
+			await chatStore.sendMessage('Test message field');
+
+			expect(chatStore.messages.value[1]).toMatchObject({
+				text: 'Response from message field',
+				sender: 'bot',
+			});
+		});
 	});
 });
