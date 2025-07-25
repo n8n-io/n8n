@@ -1,8 +1,7 @@
-import { nextTick } from 'vue';
-import type { Ref } from 'vue';
-
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import { nextTick } from 'vue';
+import type { Ref } from 'vue';
 
 import type { StreamingMessageManager } from './streaming';
 import { createBotMessage, updateMessageInArray } from './streaming';
@@ -16,8 +15,8 @@ export function handleStreamingChunk(
 	runIndex?: number,
 ): void {
 	try {
-		// Skip empty chunks to avoid showing empty responses
-		if (!chunk.trim()) {
+		// Only skip empty chunks, but not whitespace only chunks
+		if (chunk === '') {
 			return;
 		}
 
