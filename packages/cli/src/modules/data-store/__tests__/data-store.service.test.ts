@@ -1,4 +1,4 @@
-import type { AddDataStoreColumnDto } from '@n8n/api-types';
+import type { AddDataStoreColumnDto, DataStore } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -369,6 +369,64 @@ describe('dataStore', () => {
 					type: 'date',
 				},
 			]);
+		});
+		it('sorts as expected', async () => {
+			// ARRANGE
+			await dataStoreService.deleteDataStoreAll();
+			const ds0 = (await dataStoreService.createDataStore({
+				name: 'ds0',
+				columns: [],
+				projectId: project1.id,
+			})) as DataStoreEntity;
+
+			const ds1 = (await dataStoreService.createDataStore({
+				name: 'ds3',
+				columns: [],
+				projectId: project1.id,
+			})) as DataStoreEntity;
+			const ds2 = (await dataStoreService.createDataStore({
+				name: 'ds2',
+				columns: [],
+				projectId: project1.id,
+			})) as DataStoreEntity;
+
+			await dataStoreService.renameDataStore(ds1.id, { name: 'ds1' });
+
+			// ACT
+			const createdAsc = await dataStoreService.getManyAndCount({
+				sortBy: 'createdAt:asc',
+			});
+			const createdDesc = await dataStoreService.getManyAndCount({
+				sortBy: 'createdAt:desc',
+			});
+			const nameAsc = await dataStoreService.getManyAndCount({
+				sortBy: 'name:asc',
+			});
+			const nameDesc = await dataStoreService.getManyAndCount({
+				sortBy: 'name:desc',
+			});
+			const sizeBytesAsc = await dataStoreService.getManyAndCount({
+				sortBy: 'sizeBytes:asc',
+			});
+			const sizeBytesDesc = await dataStoreService.getManyAndCount({
+				sortBy: 'sizeBytes:desc',
+			});
+			const updatedAsc = await dataStoreService.getManyAndCount({
+				sortBy: 'updatedAt:asc',
+			});
+			const updatedDesc = await dataStoreService.getManyAndCount({
+				sortBy: 'updatedAt:desc',
+			});
+
+			// ASSERT
+			expect(createdAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(createdDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			expect(updatedAsc[0].map((x) => x.name)).toEqual(['ds1', 'ds0', 'ds2']);
+			expect(updatedDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds0', 'ds1']);
+			expect(nameAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(nameDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			expect(sizeBytesAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(sizeBytesDesc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
 		});
 	});
 });

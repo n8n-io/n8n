@@ -16,7 +16,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	}
 
 	async deleteUserTable(tableName: DataStoreUserTableName) {
-		// console.log(await this.manager.query("SELECT name FROM sqlite_master WHERE type='table'"));
 		await this.manager.query(`DROP TABLE ${tableName}`);
 	}
 
@@ -34,7 +33,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	getManyQuery(options: DataStoreListOptions = {}): SelectQueryBuilder<DataStoreEntity> {
 		const query = this.createQueryBuilder('dataStore');
 
-		this.applySelections(query, options.select);
+		this.applySelections(query);
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		this.applyPagination(query, options);
@@ -42,15 +41,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		return query;
 	}
 
-	private applySelections(
-		query: SelectQueryBuilder<DataStoreEntity>,
-		select?: DataStoreListOptions['select'],
-	): void {
-		if (select) {
-			this.applyCustomSelect(query, select);
-		} else {
-			this.applyDefaultSelect(query);
-		}
+	private applySelections(query: SelectQueryBuilder<DataStoreEntity>): void {
+		this.applyDefaultSelect(query);
 	}
 
 	private applyFilters(
@@ -97,6 +89,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		field: string,
 		direction: 'DESC' | 'ASC',
 	): void {
+		console.log(field, direction);
 		if (field === 'name') {
 			query
 				.addSelect('LOWER(dataStore.name)', 'dataStore_name_lower')
@@ -110,7 +103,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		query: SelectQueryBuilder<DataStoreEntity>,
 		options: DataStoreListOptions,
 	): void {
-		console.log(options);
 		query.skip(options.skip ?? 0);
 		query.take(options.take ?? 0);
 	}
@@ -125,35 +117,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				...this.getDataStoreColumnFields('data_store_column_entity'),
 				...this.getProjectFields('project'),
 			]);
-	}
-
-	private applyCustomSelect(
-		query: SelectQueryBuilder<DataStoreEntity>,
-		select?: DataStoreListOptions['select'],
-	): void {
-		const selections = ['dataStore.id'];
-
-		this.addBasicFields(selections, select);
-		this.addRelationFields(query, selections, select);
-
-		query.select(selections);
-	}
-
-	private addBasicFields(selections: string[], select?: DataStoreListOptions['select']): void {
-		if (select?.name) selections.push('dataStore.name');
-		if (select?.createdAt) selections.push('dataStore.createdAt');
-		if (select?.updatedAt) selections.push('dataStore.updatedAt');
-	}
-
-	private addRelationFields(
-		query: SelectQueryBuilder<DataStoreEntity>,
-		selections: string[],
-		select?: DataStoreListOptions['select'],
-	): void {
-		if (select?.project) {
-			query.leftJoin('dataStore.project', 'project');
-			selections.push(...this.getProjectFields('project'));
-		}
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {

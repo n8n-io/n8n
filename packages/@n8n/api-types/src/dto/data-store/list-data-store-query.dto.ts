@@ -11,9 +11,11 @@ const VALID_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
-	'size:desc',
-	'size:desc',
+	'sizeBytes:asc',
+	'sizeBytes:desc',
 ] as const;
+
+export type ListDataStoreQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
 
 const FILTER_OPTIONS = {
 	id: z.string().optional(),

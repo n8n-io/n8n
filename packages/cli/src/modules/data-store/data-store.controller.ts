@@ -68,4 +68,11 @@ export class DataStoreController {
 	) {
 		return await this.dataStoreService.deleteDataStore(dataStoreId);
 	}
+
+	@Get('/:dataStoreId', { skipAuth: true })
+	async getDataStoreContent(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+	) {}
 }

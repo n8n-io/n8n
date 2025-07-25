@@ -114,10 +114,11 @@ export class DataStoreService {
 
 	async deleteDataStoreAll() {
 		const existingMatches = await this.dataStoreRepository.findBy({});
-
+		console.log(existingMatches);
 		let changed = false;
 		for (const match of existingMatches) {
-			changed = changed || true === (await this.deleteDataStore(match.id));
+			const result = await this.deleteDataStore(match.id);
+			changed = changed || true === result;
 		}
 
 		return changed;

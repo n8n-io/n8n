@@ -1,4 +1,5 @@
-import { ListQuery } from '@/requests';
+import type { ListDataStoreQuerySortOptions } from '@n8n/api-types/src/dto/data-store/list-data-store-query.dto';
+import type { ListQuery } from '@/requests';
 
 export interface Datastore {
 	id: string;
@@ -19,4 +20,9 @@ export type DataStoreListFilter = {
 	projectId?: string | string[];
 	name?: string;
 };
-export type DataStoreListOptions = ListQuery.Options<DataStoreListFilter>;
+
+export type DataStoreListOptions = ListQuery.Options<
+	DataStoreListFilter,
+	never,
+	ListDataStoreQuerySortOptions
+>;
