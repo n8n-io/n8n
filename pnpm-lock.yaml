@@ -510,6 +510,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/yargs-parser':
+        specifier: 21.0.0
+        version: 21.0.0
       zod:
         specifier: 'catalog:'
         version: 3.25.67

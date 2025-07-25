@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@types/yargs-parser": "21.0.0",
     "zod": "catalog:"
   }
 }
