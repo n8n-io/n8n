@@ -420,8 +420,7 @@ onMounted(async () => {
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
-	margin: auto;
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	padding: var(--spacing-l) 0;
 }
 
 .header {
