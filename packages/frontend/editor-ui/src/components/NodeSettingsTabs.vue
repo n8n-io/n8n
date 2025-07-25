@@ -22,12 +22,14 @@ type Props = {
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
+	tabsVariant?: 'modern' | 'legacy';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	modelValue: 'params',
 	nodeType: undefined,
 	pushRef: '',
+	tabsVariant: undefined,
 });
 const emit = defineEmits<{
 	'update:model-value': [tab: Tab];
@@ -147,6 +149,7 @@ onMounted(async () => {
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
+		:variant="tabsVariant"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	/>

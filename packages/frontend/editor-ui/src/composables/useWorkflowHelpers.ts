@@ -29,6 +29,7 @@ import {
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
+import * as workflowUtils from 'n8n-workflow/common';
 
 import type {
 	ICredentialsResponse,
@@ -71,6 +72,7 @@ export type ResolveParameterOptions = {
 	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	isForCredential?: boolean;
 	contextNodeName?: string;
+	connections?: IConnections;
 };
 
 export function resolveParameter<T = IDataObject>(
@@ -81,6 +83,7 @@ export function resolveParameter<T = IDataObject>(
 		return resolveParameterImpl(
 			parameter,
 			() => opts.workflow,
+			opts.connections,
 			opts.envVars,
 			opts.workflow.getNode(opts.nodeName),
 			opts.execution,
@@ -100,6 +103,7 @@ export function resolveParameter<T = IDataObject>(
 	return resolveParameterImpl(
 		parameter,
 		workflowsStore.getCurrentWorkflow,
+		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
@@ -113,6 +117,7 @@ export function resolveParameter<T = IDataObject>(
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	getContextWorkflow: () => Workflow,
+	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
 	executionData: IExecutionResponse | null,
@@ -200,11 +205,11 @@ function resolveParameterImpl<T = IDataObject>(
 	}
 
 	let _connectionInputData = connectionInputData(
+		connections,
 		parentNode,
 		contextNode!.name,
 		inputName,
 		runIndexParent,
-		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
@@ -215,11 +220,11 @@ function resolveParameterImpl<T = IDataObject>(
 		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
 		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
 		const _executeData = executeDataImpl(
+			connections,
 			[contextNode.name],
 			contextNode.name,
 			inputName,
 			0,
-			getContextWorkflow,
 			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
@@ -265,11 +270,11 @@ function resolveParameterImpl<T = IDataObject>(
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
 	let _executeData = executeDataImpl(
+		connections,
 		parentNode,
 		contextNode!.name,
 		inputName,
 		runIndexCurrent,
-		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		executionData?.data?.resultData.runData ?? null,
@@ -279,11 +284,11 @@ function resolveParameterImpl<T = IDataObject>(
 	if (!_executeData.source) {
 		// fallback to parent's run index for multi-output case
 		_executeData = executeDataImpl(
+			connections,
 			parentNode,
 			contextNode!.name,
 			inputName,
 			runIndexParent,
-			getContextWorkflow,
 			shouldReplaceInputDataWithPinData,
 			pinData,
 			executionData?.data?.resultData.runData ?? null,
@@ -310,6 +315,7 @@ export function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
 	opts: {
+		connections?: IConnections;
 		targetItem?: TargetItem;
 		inputNodeName?: string;
 		inputRunIndex?: number;
@@ -382,11 +388,11 @@ function getNodeTypes(): INodeTypes {
 // TODO: move to separate file
 // Returns connectionInputData to be able to execute an expression.
 function connectionInputData(
+	connections: IConnections,
 	parentNode: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	getContextWorkflow: () => Workflow,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
@@ -394,11 +400,11 @@ function connectionInputData(
 ): INodeExecutionData[] | null {
 	let connectionInputData: INodeExecutionData[] | null = null;
 	const _executeData = executeDataImpl(
+		connections,
 		parentNode,
 		currentNode,
 		inputName,
 		runIndex,
-		getContextWorkflow,
 		shouldReplaceInputDataWithPinData,
 		pinData,
 		workflowRunData,
@@ -431,6 +437,7 @@ function connectionInputData(
 }
 
 export function executeData(
+	connections: IConnections,
 	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
@@ -440,11 +447,11 @@ export function executeData(
 	const workflowsStore = useWorkflowsStore();
 
 	return executeDataImpl(
+		connections,
 		parentNodes,
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.getCurrentWorkflow,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
 		workflowsStore.getWorkflowRunData,
@@ -454,16 +461,18 @@ export function executeData(
 
 // TODO: move to separate file
 function executeDataImpl(
+	connections: IConnections,
 	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	getContextWorkflow: () => Workflow,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
 	parentRunIndex?: number,
 ): IExecuteData {
+	const connectionsByDestinationNode = workflowUtils.mapConnectionsByDestination(connections);
+
 	const executeData = {
 		node: {},
 		data: {},
@@ -507,15 +516,12 @@ function executeDataImpl(
 					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
-				const workflow = getContextWorkflow();
-
 				let previousNodeOutput: number | undefined;
 				// As the node can be connected through either of the outputs find the correct one
 				// and set it to make pairedItem work on not executed nodes
-				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
-					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
-						currentNode
-					].main) {
+				if (connectionsByDestinationNode[currentNode]?.main) {
+					mainConnections: for (const mainConnections of connectionsByDestinationNode[currentNode]
+						.main) {
 						for (const connection of mainConnections ?? []) {
 							if (
 								connection.type === NodeConnectionTypes.Main &&

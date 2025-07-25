@@ -51,6 +51,7 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
 			getConnectedToolsMock.mockResolvedValue([]);
 			apiRequestMock.mockResolvedValue({
 				candidates: [

@@ -28,6 +28,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
 import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
@@ -53,6 +54,7 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
@@ -67,7 +69,6 @@ const resolvedParameter = computed(() =>
 );
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
-const focusPanelHidden = computed(() => focusPanelStore.focusPanelHidden);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
 const isDisabled = computed(() => {
@@ -115,7 +116,19 @@ const isExecutable = computed(() => {
 
 const node = computed(() => resolvedParameter.value?.node);
 
-const { hasNodeRun } = useExecutionData({ node });
+const { workflowRunData } = useExecutionData({ node });
+
+const hasNodeRun = computed(() => {
+	if (!node.value) return true;
+	const parentNode = workflowsStore
+		.getCurrentWorkflow()
+		.getParentNodes(node.value.name, 'main', 1)[0];
+	return Boolean(
+		parentNode &&
+			workflowRunData.value &&
+			Object.prototype.hasOwnProperty.bind(workflowRunData.value)(parentNode),
+	);
+});
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -263,6 +276,22 @@ function optionSelected(command: string) {
 	}
 }
 
+function closeFocusPanel() {
+	telemetry.track('User closed focus panel', {
+		source: 'closeIcon',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
+
+	focusPanelStore.closeFocusPanel();
+}
+
+function onExecute() {
+	telemetry.track(
+		'User executed node from focus panel',
+		focusPanelStore.focusedNodeParametersInTelemetryFormat[0],
+	);
+}
+
 const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
 
 // Wait for editor to mount before focusing
@@ -314,7 +343,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<div v-if="focusPanelActive" v-show="!focusPanelHidden" :class="$style.wrapper" @keydown.stop>
+	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
@@ -344,13 +373,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:square="true"
 								:hide-label="true"
 								telemetry-source="focus"
-							></NodeExecuteButton>
+								@execute="onExecute"
+							/>
 							<N8nIcon
 								:class="$style.closeButton"
 								icon="x"
 								color="text-base"
 								size="xlarge"
-								@click="focusPanelStore.closeFocusPanel"
+								@click="closeFocusPanel"
 							/>
 						</div>
 					</div>
@@ -416,6 +446,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
@@ -424,6 +455,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
@@ -433,6 +465,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
+									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="valueChangedDebounced" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"

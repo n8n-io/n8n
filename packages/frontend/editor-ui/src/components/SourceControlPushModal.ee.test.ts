@@ -255,9 +255,15 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
-		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
-		expect(getByRole('alert').textContent).toContain('Folders: at least one new or modified.');
+
+		expect(getByRole('alert').textContent).toContain(
+			[
+				'Changes to variables, tags and folders',
+				'Variables : at least one new or modified.',
+				'Tags : at least one new or modified.',
+				'Folders : at least one new or modified. ',
+			].join(' '),
+		);
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
 
@@ -608,6 +614,128 @@ describe('SourceControlPushModal', () => {
 
 			const items = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('Enter key behavior', () => {
+		it('should trigger commit and push when Enter is pressed and submit is enabled', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			const sourceControlStore = mockedStore(useSourceControlStore);
+
+			const { getByTestId } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+			const commitMessage = 'Test commit message';
+
+			await userEvent.type(commitInput, commitMessage);
+
+			expect(getByTestId('source-control-push-modal-submit')).not.toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					fileNames: expect.arrayContaining([status[0]]),
+				}),
+			);
+		});
+
+		it('should not trigger commit when Enter is pressed with empty commit message', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			const sourceControlStore = mockedStore(useSourceControlStore);
+
+			const { getByTestId } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+
+			expect(getByTestId('source-control-push-modal-submit')).toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).not.toHaveBeenCalled();
+		});
+
+		it('should not trigger commit when Enter is pressed with no items selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			const sourceControlStore = mockedStore(useSourceControlStore);
+
+			vi.spyOn(route, 'name', 'get').mockReturnValue('SOME_OTHER_VIEW');
+			vi.spyOn(route, 'params', 'get').mockReturnValue({ name: 'differentId' });
+
+			const { getByTestId, getAllByTestId } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+			const commitMessage = 'Test commit message';
+
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files).toHaveLength(1);
+			expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
+
+			await userEvent.type(commitInput, commitMessage);
+
+			expect(getByTestId('source-control-push-modal-submit')).toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).not.toHaveBeenCalled();
 		});
 	});
 });

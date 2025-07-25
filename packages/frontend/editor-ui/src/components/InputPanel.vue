@@ -532,8 +532,23 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							</I18nT>
 						</N8nText>
 					</template>
-					<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
-						<template #content>
+					<NodeExecuteButton
+						v-if="!readOnly"
+						type="secondary"
+						hide-icon
+						:transparent="true"
+						:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+						class="mt-m"
+						telemetry-source="inputs"
+						data-test-id="execute-previous-node"
+						tooltip-placement="bottom"
+						@execute="onNodeExecute"
+					>
+						<template
+							v-if="showDraggableHint && showDraggableHintWithDelay"
+							#persistentTooltipContent
+						>
 							<div
 								v-n8n-html="
 									i18n.baseText('dataMapping.dragFromPreviousHint', {
@@ -542,18 +557,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								"
 							></div>
 						</template>
-						<NodeExecuteButton
-							type="secondary"
-							hide-icon
-							:transparent="true"
-							:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
-							:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-							class="mt-m"
-							telemetry-source="inputs"
-							data-test-id="execute-previous-node"
-							@execute="onNodeExecute"
-						/>
-					</N8nTooltip>
+					</NodeExecuteButton>
 					<N8nText v-if="!readOnly" tag="div" size="small">
 						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
 							<template #info>

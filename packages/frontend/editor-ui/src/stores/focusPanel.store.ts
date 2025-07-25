@@ -13,8 +13,10 @@ import { useWorkflowsStore } from './workflows.store';
 import { LOCAL_STORAGE_FOCUS_PANEL, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
+import { isFromAIOverrideValue } from '@/utils/fromAIOverrideUtils';
 
-const DEFAULT_PANEL_WIDTH = 528;
+// matches NodeCreator to ensure they fully overlap by default when both are open
+const DEFAULT_PANEL_WIDTH = 385;
 
 type FocusedNodeParameter = {
 	nodeId: string;
@@ -59,21 +61,28 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const lastFocusTimestamp = ref(0);
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
-	const focusPanelHidden = ref(false);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
 	const _focusedNodeParameters = computed(() => currentFocusPanelData.value.parameters);
 
-	// An unenriched parameter indicates a missing nodeId
+	// An unenriched parameter indicates a missing nodeId or an otherwise unfocusable parameter
 	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
 		() =>
 			_focusedNodeParameters.value.map((x) => {
 				const node = workflowsStore.getNodeById(x.nodeId);
 				if (!node) return x;
 
+				const value = get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, ''));
+
+				// For overridden parameters we pretend they are gone
+				// To avoid situations where we show the raw value of a newly overridden, previously focused parameter
+				if (typeof value === 'string' && isFromAIOverrideValue(value)) {
+					return x;
+				}
+
 				return {
 					...x,
 					node,
-					value: get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, '')),
+					value,
 				} satisfies RichFocusedNodeParameter;
 			}),
 	);
@@ -109,11 +118,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		if (isActive) {
 			lastFocusTimestamp.value = Date.now();
 		}
-
-		// Unhide the focus panel if it was hidden
-		if (focusPanelHidden.value && focusPanelActive.value) {
-			focusPanelHidden.value = false;
-		}
 	}
 
 	// When a new workflow is saved, we should update the focus panel data with the new workflow ID
@@ -143,14 +147,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: false });
 	}
 
-	function hideFocusPanel(hide: boolean = true) {
-		if (focusPanelHidden.value === hide) {
-			return;
-		}
-
-		focusPanelHidden.value = hide;
-	}
-
 	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
@@ -165,6 +161,16 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
+	const focusedNodeParametersInTelemetryFormat = computed<
+		Array<{ parameterPath: string; nodeType: string; nodeId: string }>
+	>(() =>
+		focusedNodeParameters.value.map((x) => ({
+			parameterPath: x.parameterPath,
+			nodeType: isRichParameter(x) ? x.node.type : 'unresolved',
+			nodeId: x.nodeId,
+		})),
+	);
+
 	// Ensure lastFocusTimestamp is set on initial load if panel is already active (e.g. after reload)
 	watchOnce(
 		() => currentFocusPanelData.value,
@@ -178,12 +184,11 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
+		focusedNodeParametersInTelemetryFormat,
 		lastFocusTimestamp,
-		focusPanelHidden,
 		focusPanelWidth,
 		openWithFocusedNodeParameter,
 		isRichParameter,
-		hideFocusPanel,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
