@@ -19,7 +19,7 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useModulesStore } from '@/features/modules.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const route = useRoute();
 const router = useRouter();
@@ -27,7 +27,8 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const modulesStore = useModulesStore();
+const uiStore = useUIStore();
+
 const projectPages = useProjectPages();
 
 const emit = defineEmits<{
@@ -87,12 +88,12 @@ const showFolders = computed(() => {
 
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	if (projectPages.isSharedSubPage) {
-		return modulesStore.sharedPageTabs;
+		return uiStore.moduleTabs.shared;
 	}
 	if (projectPages.isOverviewSubPage) {
-		return modulesStore.overviewPageTabs;
+		return uiStore.moduleTabs.overview;
 	}
-	return modulesStore.projectPageTabs;
+	return uiStore.moduleTabs.project;
 });
 
 const ACTION_TYPES = {

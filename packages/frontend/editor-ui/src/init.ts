@@ -22,7 +22,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
-import { useModulesStore } from '@/features/modules.store';
 import { initializeModuleStores } from './features/moduleInitializer';
 
 export const state = {
@@ -130,7 +129,6 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
-	const modulesStore = useModulesStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {

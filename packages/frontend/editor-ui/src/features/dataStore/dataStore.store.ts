@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia';
-import { useModulesStore } from '../modules.store';
 import type { TabOptions } from '@n8n/design-system';
 import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
 import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from './constants';
 import { useI18n } from '@n8n/i18n';
 import { registerResource } from '@/features/resourceRegistry';
+import { useUIStore } from '@/stores/ui.store';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
-	const modulesStore = useModulesStore();
+	// const modulesStore = useModulesStore();
+	const uiStore = useUIStore();
 
 	const i18n = useI18n();
 
@@ -21,7 +22,7 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 				},
 			},
 		];
-		modulesStore.addOverviewPageTabs(tabs);
+		uiStore.registerCustomTabs('overview', tabs);
 	};
 
 	const registerProjectPageTabs = () => {
@@ -33,7 +34,7 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 				includeProjectId: true,
 			},
 		};
-		modulesStore.addProjectPageTabs([dataStoreTab as TabOptions<string>]);
+		uiStore.registerCustomTabs('project', [dataStoreTab]);
 	};
 
 	const initialize = () => {

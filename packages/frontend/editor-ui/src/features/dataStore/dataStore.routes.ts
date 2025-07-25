@@ -4,7 +4,7 @@ import {
 	DATA_STORE_VIEW,
 	PROJECT_DATA_STORES,
 } from '@/features/dataStore/constants';
-import { useModulesStore } from '../modules.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const DataStoreView = async () => await import('@/features/dataStore/views/DataStoreView.vue');
@@ -13,7 +13,7 @@ export const checkModuleAvailability = (to?: RouteLocationNormalized): boolean =
 	if (!to?.meta?.moduleName || typeof to.meta.moduleName !== 'string') {
 		return true;
 	}
-	return useModulesStore().isModuleActive(to.meta.moduleName);
+	return useSettingsStore().isModuleActive(to.meta.moduleName);
 };
 
 export const dataStoreRoutes: RouteRecordRaw[] = [

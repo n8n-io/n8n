@@ -16,7 +16,6 @@ import { useSSOStore } from '@/stores/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
-import { useModulesStore } from '@/features/modules.store';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -27,7 +26,6 @@ export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRec
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const modulesStore = useModulesStore();
 const ssoStore = useSSOStore();
 
 const route = useRoute();
@@ -138,7 +136,7 @@ const login = async (form: LoginRequestDto) => {
 		loading.value = false;
 		await settingsStore.getSettings();
 
-		if (modulesStore.activeModules.length > 0) {
+		if (settingsStore.activeModules.length > 0) {
 			await settingsStore.getModuleSettings();
 		}
 

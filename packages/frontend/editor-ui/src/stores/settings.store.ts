@@ -96,6 +96,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
+	// TODO: Hard-coded for now, should be fetched from settings
+	const activeModules = computed(() => [...settings.value.activeModules, 'data-store']);
+
+	const isModuleActive = (moduleName: string) => {
+		return activeModules.value.includes(moduleName);
+	};
+
 	const partialExecutionVersion = computed<1 | 2>(() => {
 		const defaultVersion = settings.value.partialExecution?.version ?? 1;
 		// -1 means we pick the defaultVersion
@@ -397,5 +404,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
+		activeModules,
+		isModuleActive,
 	};
 });
