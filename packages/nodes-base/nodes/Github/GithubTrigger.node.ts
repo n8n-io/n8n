@@ -474,7 +474,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.cause.httpCode === '404') {
+					if (error.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -524,7 +524,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.cause.httpCode === '422') {
+					if (error.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
@@ -550,7 +550,7 @@ export class GithubTrigger implements INodeType {
 						);
 					}
 
-					if (error.cause.httpCode === '404') {
+					if (error.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Check that the repository exists and that you have permission to create the webhooks this node requires',
