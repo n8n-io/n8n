@@ -65,7 +65,6 @@ function forceCancel() {
 }
 
 function onSubmit() {
-	console.log('====test');
 	const trimmed = editingValue.value.trim();
 	if (!trimmed) {
 		editingValue.value = props.modelValue;
