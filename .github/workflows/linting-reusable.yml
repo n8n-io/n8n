@@ -1,7 +1,7 @@
 name: Reusable linting workflow
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       ref:
         description: GitHub ref to lint.

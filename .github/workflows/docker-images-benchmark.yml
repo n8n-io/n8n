@@ -2,14 +2,6 @@ name: Benchmark Docker Image CI
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'packages/@n8n/benchmark/**'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - '.github/workflows/docker-images-benchmark.yml'
 
 jobs:
   build:

@@ -1,7 +1,7 @@
 name: Reusable e2e workflow
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test.'

@@ -40,7 +40,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
 				? 'rest'
 				: window.REST_ENDPOINT,
-		defaultLocale: 'en',
+		defaultLocale: 'pt-BR',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
@@ -49,7 +49,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
 		endpointWebhookWaiting: 'webhook-waiting',
-		timezone: 'America/New_York',
+		timezone: 'America/Sao_Paulo',
 		executionTimeout: -1,
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',

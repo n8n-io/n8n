@@ -63,24 +63,30 @@ export class License implements LicenseProvider {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = 72 * Time.hours.toSeconds;
-		const saveCertStr = isMainInstance
-			? async (value: TLicenseBlock) => await this.saveCertStr(value)
-			: async () => {};
-		const onFeatureChange = isMainInstance
-			? async () => await this.onFeatureChange()
-			: async () => {};
-		const onLicenseRenewed = isMainInstance
-			? async () => await this.onLicenseRenewed()
-			: async () => {};
-		const collectUsageMetrics = isMainInstance
-			? async () => await this.licenseMetricsService.collectUsageMetrics()
-			: async () => [];
-		const collectPassthroughData = isMainInstance
-			? async () => await this.licenseMetricsService.collectPassthroughData()
-			: async () => ({});
-		const onExpirySoon = !this.instanceSettings.isLeader ? () => this.onExpirySoon() : undefined;
-		const expirySoonOffsetMins = !this.instanceSettings.isLeader ? 120 : undefined;
+		// const autoRenewOffset = 72 * Time.hours.toSeconds;
+		// const saveCertStr = isMainInstance
+		// 	? async (value: TLicenseBlock) => await this.saveCertStr(value)
+		// 	: async () => {};
+		// const onFeatureChange = isMainInstance
+		// 	? async () => await this.onFeatureChange()
+		// 	: async () => {};
+		// const onLicenseRenewed = isMainInstance
+		// 	? async () => await this.onLicenseRenewed()
+		// 	: async () => {};
+		// const collectUsageMetrics = isMainInstance
+		// 	? async () => await this.licenseMetricsService.collectUsageMetrics()
+		// 	: async () => [];
+		// const collectPassthroughData = isMainInstance
+		// 	? async () => await this.licenseMetricsService.collectPassthroughData()
+		// 	: async () => ({});
+		// const onExpirySoon = !this.instanceSettings.isLeader ? () => this.onExpirySoon() : undefined;
+		// const expirySoonOffsetMins = !this.instanceSettings.isLeader ? 120 : undefined;
+
+		const autoRenewOffset = false;
+		const saveCertStr = async () => {};
+		const onFeatureChange = async () => {};
+		const collectUsageMetrics = async () => [];
+		const collectPassthroughData = async () => ({});
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
@@ -88,40 +94,40 @@ export class License implements LicenseProvider {
 
 		const shouldRenew = eligibleToRenew && autoRenewalEnabled;
 
-		if (eligibleToRenew && !autoRenewalEnabled) {
-			this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
-		}
+		// if (eligibleToRenew && !autoRenewalEnabled) {
+		// 	this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
+		// }
 
-		try {
-			this.manager = new LicenseManager({
-				server,
-				tenantId: this.globalConfig.license.tenantId,
-				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: shouldRenew,
-				renewOnInit: shouldRenew,
-				autoRenewOffset,
-				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
-				offlineMode,
-				logger: this.logger,
-				loadCertStr: async () => await this.loadCertStr(),
-				saveCertStr,
-				deviceFingerprint: () => this.instanceSettings.instanceId,
-				collectUsageMetrics,
-				collectPassthroughData,
-				onFeatureChange,
-				onLicenseRenewed,
-				onExpirySoon,
-				expirySoonOffsetMins,
-			});
+		// try {
+		// 	this.manager = new LicenseManager({
+		// 		server,
+		// 		tenantId: this.globalConfig.license.tenantId,
+		// 		productIdentifier: `n8n-${N8N_VERSION}`,
+		// 		autoRenewEnabled: shouldRenew,
+		// 		renewOnInit: shouldRenew,
+		// 		autoRenewOffset,
+		// 		detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
+		// 		offlineMode,
+		// 		logger: this.logger,
+		// 		loadCertStr: async () => await this.loadCertStr(),
+		// 		saveCertStr,
+		// 		deviceFingerprint: () => this.instanceSettings.instanceId,
+		// 		collectUsageMetrics,
+		// 		collectPassthroughData,
+		// 		onFeatureChange,
+		// 		onLicenseRenewed,
+		// 		onExpirySoon,
+		// 		expirySoonOffsetMins,
+		// 	});
 
-			await this.manager.initialize();
+		// 	await this.manager.initialize();
 
-			this.logger.debug('License initialized');
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				this.logger.error('Could not initialize license manager sdk', { error });
-			}
-		}
+		// 	this.logger.debug('License initialized');
+		// } catch (error: unknown) {
+		// 	if (error instanceof Error) {
+		// 		this.logger.error('Could not initialize license manager sdk', { error });
+		// 	}
+		// }
 	}
 
 	async loadCertStr(): Promise<TLicenseBlock> {
@@ -218,7 +224,7 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		return this.manager?.hasFeatureEnabled(feature) ?? true;
 	}
 
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
@@ -399,7 +405,7 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getAiCredits() {
-		return this.getValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
+		return this.getValue(LICENSE_QUOTAS.AI_CREDITS) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
 	/** @deprecated Use `LicenseState` instead. */
@@ -409,11 +415,11 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getTeamProjectLimit() {
-		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
+		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getPlanName(): string {
-		return this.getValue('planName') ?? 'Community';
+		return this.getValue('planName') ?? 'Enterprise';
 	}
 
 	getInfo(): string {

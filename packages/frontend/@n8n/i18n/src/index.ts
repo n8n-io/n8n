@@ -14,7 +14,7 @@ import {
 export * from './types';
 
 export const i18nInstance = createI18n({
-	locale: 'en',
+	locale: 'pt-BR',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
 	warnHtmlInMessage: 'off',

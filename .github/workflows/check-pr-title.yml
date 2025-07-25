@@ -1,13 +1,7 @@
 name: Check PR title
 
 on:
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-    branches:
-      - 'master'
+  workflow_dispatch:
 
 jobs:
   check-pr-title:

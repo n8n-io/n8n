@@ -1,0 +1,50 @@
+name: 'Publish to NPM'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+    outputs:
+      release: ${{ steps.set-release.outputs.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Set release version in env
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+
+      - name: Build
+        run: pnpm build
+
+      - name: Dry-run publishing
+        run: pnpm publish -r --no-git-checks --dry-run
+
+      - name: Publish to NPM
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/trim-fe-packageJson.js
+          node .github/scripts/ensure-provenance-fields.mjs
+          sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
+          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+          npm dist-tag rm n8n rc
+
+      - id: set-release
+        run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT

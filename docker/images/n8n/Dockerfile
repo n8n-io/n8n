@@ -43,7 +43,7 @@ RUN set -e; \
 FROM system-deps AS runtime
 
 ARG N8N_VERSION
-ARG N8N_RELEASE_TYPE=dev
+ARG N8N_RELEASE_TYPE=stable
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu

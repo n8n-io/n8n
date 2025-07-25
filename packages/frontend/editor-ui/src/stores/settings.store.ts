@@ -174,7 +174,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
-	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
+	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'enterprise');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 

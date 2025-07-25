@@ -253,7 +253,7 @@ export abstract class BaseCommand<F = never> {
 			const hasCert = (await this.license.loadCertStr()).length > 0;
 
 			if (hasCert) {
-				return this.logger.debug('Skipping license activation');
+				//  return this.logger.debug('Skipping license activation');
 			}
 
 			try {

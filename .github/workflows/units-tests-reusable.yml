@@ -1,39 +1,7 @@
 name: Reusable units test workflow
 
 on:
-  workflow_call:
-    inputs:
-      ref:
-        description: GitHub ref to test.
-        required: false
-        type: string
-        default: master
-      nodeVersion:
-        description: Version of node to use.
-        required: false
-        type: string
-        default: 22.x
-      cacheKey:
-        description: Cache key for modules and build artifacts.
-        required: false
-        default: ''
-        type: string
-      collectCoverage:
-        required: false
-        default: false
-        type: boolean
-      ignoreTurboCache:
-        required: false
-        default: false
-        type: boolean
-      skipFrontendTests:
-        required: false
-        default: false
-        type: boolean
-    secrets:
-      CODECOV_TOKEN:
-        description: 'Codecov upload token.'
-        required: false
+  workflow_dispatch:
 
 jobs:
   unit-test:

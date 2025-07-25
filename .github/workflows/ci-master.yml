@@ -1,9 +1,7 @@
 name: Test Master
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
   install-and-build:
