@@ -20,8 +20,9 @@ import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
-// Keywords to identify infrastructure errors in error messages
-const INFRA_ERROR_KEYWORDS = ['sqllite', 'out-of-memory'];
+// Keywords to identify specific infrastructure errors in error messages
+const DATABASE_ERROR_KEYWORDS = ['sqllite'];
+const MEMORY_ERROR_KEYWORDS = ['out-of-memory'];
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -36,8 +37,8 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
-		manual_workflow_infra_error?: IExecutionTrackData;
-		prod_workflow_infra_error?: IExecutionTrackData;
+		prod_workflow_database_error?: IExecutionTrackData;
+		prod_workflow_memory_error?: IExecutionTrackData;
 		user_id: string | undefined;
 	};
 }
@@ -124,8 +125,8 @@ export class Telemetry {
 			(workflowId) => {
 				const data = this.executionCountsBuffer[workflowId];
 				const infraSum =
-					(data.manual_workflow_infra_error?.count ?? 0) +
-					(data.prod_workflow_infra_error?.count ?? 0);
+					(data.prod_workflow_database_error?.count ?? 0) +
+					(data.prod_workflow_memory_error?.count ?? 0);
 				return infraSum > 0;
 			},
 		);
@@ -134,9 +135,10 @@ export class Telemetry {
 			this.track('Workflow failed due to infrastructure', {
 				event_version: '1',
 				workflow_id: workflowId,
-				manual_workflow_infra_error:
-					this.executionCountsBuffer[workflowId].manual_workflow_infra_error,
-				prod_workflow_infra_error: this.executionCountsBuffer[workflowId].prod_workflow_infra_error,
+				prod_workflow_database_error:
+					this.executionCountsBuffer[workflowId].prod_workflow_database_error,
+				prod_workflow_memory_error:
+					this.executionCountsBuffer[workflowId].prod_workflow_memory_error,
 			});
 		}
 
@@ -187,17 +189,33 @@ export class Telemetry {
 				executionTrackDataKey.count++;
 			}
 
-			if (
-				properties.error_message &&
-				INFRA_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
-			) {
-				const infraKey = properties.is_manual
-					? 'manual_workflow_infra_error'
-					: 'prod_workflow_infra_error';
-				if (!this.executionCountsBuffer[workflowId][infraKey]) {
-					this.executionCountsBuffer[workflowId][infraKey] = { count: 1, first: execTime };
-				} else {
-					this.executionCountsBuffer[workflowId][infraKey].count++;
+			if (properties.error_message && !properties.is_manual) {
+				// Check for database errors
+				if (
+					DATABASE_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
+				) {
+					if (!this.executionCountsBuffer[workflowId].prod_workflow_database_error) {
+						this.executionCountsBuffer[workflowId].prod_workflow_database_error = {
+							count: 1,
+							first: execTime,
+						};
+					} else {
+						this.executionCountsBuffer[workflowId].prod_workflow_database_error.count++;
+					}
+				}
+
+				// Check for memory errors
+				if (
+					MEMORY_ERROR_KEYWORDS.some((kw) => new RegExp(kw, 'i').test(properties.error_message!))
+				) {
+					if (!this.executionCountsBuffer[workflowId].prod_workflow_memory_error) {
+						this.executionCountsBuffer[workflowId].prod_workflow_memory_error = {
+							count: 1,
+							first: execTime,
+						};
+					} else {
+						this.executionCountsBuffer[workflowId].prod_workflow_memory_error.count++;
+					}
 				}
 			}
 
