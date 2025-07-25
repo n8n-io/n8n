@@ -16,9 +16,7 @@ const $style = useCssModule();
 		<div :class="$style.iconWrapper">
 			<AssistantIcon theme="blank" />
 		</div>
-		<span :class="$style.text">{{
-			i18n.baseText('aiAssistant.builder.canvas.thinking') || 'Thinking...'
-		}}</span>
+		<span :class="$style.text">{{ i18n.baseText('aiAssistant.builder.canvas.thinking') }}</span>
 	</div>
 </template>
 
