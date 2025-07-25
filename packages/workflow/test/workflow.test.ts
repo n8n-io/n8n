@@ -2525,7 +2525,7 @@ describe('Workflow', () => {
 				const result = workflow.getParentMainInputNode(simpleNode);
 
 				expect(result).toBe(simpleNode);
-				expect(result.name).toBe('SimpleNode');
+				expect(result!.name).toBe('SimpleNode');
 			});
 
 			test('should return the same node when it has no connections', () => {
@@ -2550,7 +2550,7 @@ describe('Workflow', () => {
 				const result = workflow.getParentMainInputNode(isolatedNode);
 
 				expect(result).toBe(isolatedNode);
-				expect(result.name).toBe('IsolatedNode');
+				expect(result!.name).toBe('IsolatedNode');
 			});
 		});
 
@@ -2590,7 +2590,7 @@ describe('Workflow', () => {
 				const toolNode = workflow.getNode('ToolNode')!;
 				const result = workflow.getParentMainInputNode(toolNode);
 
-				expect(result.name).toBe('AgentNode');
+				expect(result!.name).toBe('AgentNode');
 			});
 
 			test('should follow AI memory connection to find main input node', () => {
@@ -2628,7 +2628,7 @@ describe('Workflow', () => {
 				const memoryNode = workflow.getNode('MemoryNode')!;
 				const result = workflow.getParentMainInputNode(memoryNode);
 
-				expect(result.name).toBe('ChatNode');
+				expect(result!.name).toBe('ChatNode');
 			});
 
 			test('should handle mixed main and non-main outputs', () => {
@@ -2678,7 +2678,7 @@ describe('Workflow', () => {
 				const result = workflow.getParentMainInputNode(mixedNode);
 
 				// Should follow the first non-main connection (AiTool)
-				expect(result.name).toBe('ToolTarget');
+				expect(result!.name).toBe('ToolTarget');
 			});
 		});
 
@@ -2731,7 +2731,7 @@ describe('Workflow', () => {
 				const startTool = workflow.getNode('StartTool')!;
 				const result = workflow.getParentMainInputNode(startTool);
 
-				expect(result.name).toBe('FinalAgent');
+				expect(result!.name).toBe('FinalAgent');
 			});
 
 			test('should handle chain that ends with a node having only main outputs', () => {
@@ -2782,7 +2782,7 @@ describe('Workflow', () => {
 				const toolNode = workflow.getNode('ToolNode')!;
 				const result = workflow.getParentMainInputNode(toolNode);
 
-				expect(result.name).toBe('IntermediateNode');
+				expect(result!.name).toBe('IntermediateNode');
 			});
 
 			test('should handle complex multi-branch AI connections', () => {
@@ -2832,7 +2832,7 @@ describe('Workflow', () => {
 				const result = workflow.getParentMainInputNode(multiTool);
 
 				// Should follow the first connection in the array
-				expect(result.name).toBe('Agent1');
+				expect(result!.name).toBe('Agent1');
 			});
 		});
 
