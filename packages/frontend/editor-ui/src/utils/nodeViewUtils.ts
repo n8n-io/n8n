@@ -14,6 +14,7 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
+	INodes,
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
@@ -381,7 +382,7 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	nodes: INode[];
+	nodes: INodes;
 	connections: IConnections;
 	hasNodeRun: boolean;
 }) {

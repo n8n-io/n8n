@@ -7,7 +7,7 @@ import {
 	foldGutter,
 	indentOnInput,
 } from '@codemirror/language';
-import { Prec } from '@codemirror/state';
+import { Prec, EditorState } from '@codemirror/state';
 import {
 	dropCursor,
 	highlightActiveLine,
@@ -83,6 +83,7 @@ const extensions = computed(() => [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
+	...(props.isReadOnly ? [EditorState.readOnly.of(true)] : []),
 ]);
 const {
 	editor: editorRef,

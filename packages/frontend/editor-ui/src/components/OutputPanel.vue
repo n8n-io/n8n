@@ -306,7 +306,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <template>
 	<RunData
 		ref="runDataRef"
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="node"
 		:workflow="workflow"
 		:run-index="runIndex"
@@ -489,6 +489,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 }
 .runData {
 	background-color: var(--color-run-data-background);
+}
+
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);

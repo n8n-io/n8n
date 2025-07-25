@@ -234,12 +234,12 @@ const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => 
 	return props.modelValue as INodeParameterResourceLocator;
 });
 
-const modelValueExpressionEdit = computed<string>(() => {
+const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 	return isResourceLocatorParameter.value && typeof props.modelValue !== 'string'
 		? props.modelValue
-			? ((props.modelValue as INodeParameterResourceLocator).value as string)
+			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
-		: (props.modelValue as string);
+		: props.modelValue;
 });
 
 const editorRows = computed(() => getTypeOption<number>('rows'));
@@ -1175,6 +1175,7 @@ onUpdated(async () => {
 		@keydown.stop
 	>
 		<ExpressionEditModal
+			v-if="typeof modelValueExpressionEdit === 'string'"
 			:dialog-visible="expressionEditDialogVisible"
 			:model-value="modelValueExpressionEdit"
 			:parameter="parameter"
