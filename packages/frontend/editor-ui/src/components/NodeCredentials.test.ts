@@ -232,6 +232,15 @@ describe('NodeCredentials', () => {
 
 		expect(screen.queryByText('OpenAi account')).not.toBeInTheDocument();
 		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
+
+		await userEvent.keyboard('{Escape}');
+
+		await userEvent.click(credentialsSelect);
+
+		await userEvent.type(credentialSearch, 'Test');
+
+		expect(screen.queryByText('OpenAi account')).not.toBeInTheDocument();
+		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
 	});
 
 	it('should open the new credential modal when clicked', async () => {

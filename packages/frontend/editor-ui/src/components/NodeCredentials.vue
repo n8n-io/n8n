@@ -500,7 +500,7 @@ function setFilter(newFilter = '') {
 }
 
 function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle);
+	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
