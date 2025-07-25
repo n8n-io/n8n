@@ -128,7 +128,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return;
 		}
 
-		const workflow = workflowHelpers.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 
 		toast.clearAllStickyNotifications();
 
@@ -136,7 +136,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// Get the direct parents of the node
 			let directParentNodes: string[] = [];
 			if (options.destinationNode !== undefined) {
-				directParentNodes = workflow.getParentNodes(
+				directParentNodes = workflowObject.getParentNodes(
 					options.destinationNode,
 					NodeConnectionTypes.Main,
 					-1,
@@ -155,7 +155,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflow,
+				workflowObject,
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -177,7 +177,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
 				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
-					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
+					...workflowObject.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
@@ -199,7 +199,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage'
 			) {
-				const startNode = workflow.getStartNode(options.destinationNode);
+				const startNode = workflowObject.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =
@@ -251,9 +251,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// Find for each start node the source data
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
-						const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
+						const parentNodes = workflowObject.getParentNodes(name, NodeConnectionTypes.Main, 1);
 						const executeData = workflowHelpers.executeData(
-							workflow.connectionsBySourceNode,
+							workflowObject.connectionsBySourceNode,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -322,8 +322,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflow.id && nodeId && version === 2) {
-					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
+				if (workflowObject.id && nodeId && version === 2) {
+					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.id, nodeId);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {
@@ -355,7 +355,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
-				workflowId: workflow.id,
+				workflowId: workflowObject.id,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
 				data: {
@@ -377,7 +377,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			workflowsStore.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
+			workflowHelpers.setDocumentTitle(workflowObject.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
@@ -412,7 +412,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return runWorkflowApiResponse;
 		} catch (error) {
 			workflowsStore.setWorkflowExecutionData(null);
-			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
+			workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -539,11 +539,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
-		const workflow = workflowHelpers.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {
-				workflow_id: workflow.id,
+				workflow_id: workflowObject.id,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,

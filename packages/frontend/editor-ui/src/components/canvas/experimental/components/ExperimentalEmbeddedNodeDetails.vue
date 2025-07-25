@@ -93,7 +93,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 			};
 		}
 
-		const inputs = workflow.value.getParentNodesByDepth(nodeName, 1);
+		const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
 
 		if (inputs.length > 0) {
 			return {
@@ -109,7 +109,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	return {
 		localResolve: true,
 		envVars: useEnvironmentsStore().variablesAsObject,
-		workflow: workflow.value,
+		workflow: workflowObject.value,
 		execution,
 		nodeName,
 		additionalKeys: {},
@@ -118,7 +118,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const workflowObject = computed(() => workflowsStore.workflowObject);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -156,7 +156,7 @@ watchOnce(isVisible, (visible) => {
 		<template v-if="!node || !isOnceVisible" />
 		<ExperimentalEmbeddedNdvMapper
 			v-else-if="isExpanded"
-			:workflow="workflow"
+			:workflow="workflowObject"
 			:node="node"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
 			:container="containerRef"

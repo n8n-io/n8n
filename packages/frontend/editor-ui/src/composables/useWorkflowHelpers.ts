@@ -102,7 +102,7 @@ export function resolveParameter<T = IDataObject>(
 
 	return resolveParameterImpl(
 		parameter,
-		workflowsStore.getCurrentWorkflow,
+		workflowsStore.workflowObject,
 		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
@@ -342,10 +342,6 @@ export function resolveRequiredParameters(
 	);
 
 	return resolvedParameters;
-}
-
-function getCurrentWorkflow(copyData?: boolean): Workflow {
-	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
 function getConnectedNodes(
@@ -870,8 +866,7 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			const workflow = getCurrentWorkflow();
-			return workflow.expression.convertObjectValueToString(obj as object);
+			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}
@@ -1080,7 +1075,6 @@ export function useWorkflowHelpers() {
 		setDocumentTitle,
 		resolveParameter,
 		resolveRequiredParameters,
-		getCurrentWorkflow,
 		getConnectedNodes,
 		getWorkflow,
 		getNodeTypes,

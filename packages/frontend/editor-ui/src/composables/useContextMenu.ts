@@ -108,13 +108,13 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	};
 
 	const isExecutable = (node: INodeUi) => {
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = currentWorkflow.getNode(node.name) as INode;
+		const workflowObject = workflowsStore.workflowObject;
+		const workflowNode = workflowObject.nodes[node.name];
 		const nodeType = nodeTypesStore.getNodeType(
 			workflowNode.type,
 			workflowNode.typeVersion,
 		) as INodeTypeDescription;
-		return NodeHelpers.isExecutable(currentWorkflow, workflowNode, nodeType);
+		return NodeHelpers.isExecutable(workflowObject, workflowNode, nodeType);
 	};
 
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {

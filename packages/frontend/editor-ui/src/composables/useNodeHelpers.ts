@@ -118,14 +118,14 @@ export function useNodeHelpers() {
 	): boolean {
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		if (node && nodeType) {
-			const currentWorkflowInstance = workflowsStore.getCurrentWorkflow();
-			const workflowNode = currentWorkflowInstance.getNode(node.name);
+			const workflowObject = workflowsStore.workflowObject;
+			const workflowNode = workflowObject.nodes[node.name];
 
 			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
 
 			if (workflowNode) {
-				const inputs = NodeHelpers.getNodeInputs(currentWorkflowInstance, workflowNode, nodeType);
+				const inputs = NodeHelpers.getNodeInputs(workflowObject, workflowNode, nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
@@ -280,8 +280,8 @@ export function useNodeHelpers() {
 			return;
 		}
 
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+		const workflowObject = workflowsStore.workflowObject;
+		const nodeInputIssues = getNodeInputIssues(workflowObject, node, nodeType);
 
 		workflowsStore.setNodeIssue({
 			node: node.name,

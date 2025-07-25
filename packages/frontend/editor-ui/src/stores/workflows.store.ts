@@ -127,7 +127,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	...defaults,
 });
 
-let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
@@ -513,27 +512,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function updateCachedWorkflow() {
-		const nodeTypes = getNodeTypes();
-		const nodes = getNodes();
-		const connections = allConnections.value;
-
-		cachedWorkflow = new Workflow({
-			id: workflowId.value,
-			name: workflowName.value,
-			nodes,
-			connections,
-			active: false,
-			nodeTypes,
-			settings: workflowSettings.value,
-			pinData: pinnedWorkflowData.value,
-		});
-	}
-
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
-		let cachedWorkflowId: string | undefined = workflowId.value;
 
+		let cachedWorkflowId: string | undefined = workflowId.value;
 		if (cachedWorkflowId && cachedWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			cachedWorkflowId = undefined;
 		}
@@ -552,16 +534,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return cachedWorkflow;
 	}
 
-	function getCurrentWorkflow(copyData?: boolean): Workflow {
+	function cloneWorkflowObject(): Workflow {
 		const nodes = getNodes();
 		const connections = allConnections.value;
-		const cacheKey = JSON.stringify({ nodes, connections });
-		if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
-			return cachedWorkflow;
-		}
-		cachedWorkflowKey = cacheKey;
 
-		return getWorkflow(nodes, connections, copyData);
+		return getWorkflow(nodes, connections, true);
 	}
 
 	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
@@ -716,6 +693,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowId(id?: string) {
 		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		workflowObject.value.id = workflow.value.id;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -943,7 +921,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {} as IPinData);
 
 		workflow.value.pinData = validPinData;
-		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', validPinData);
 	}
@@ -1025,7 +1002,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		uiStore.stateIsDirty = true;
-		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
@@ -1048,7 +1024,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		uiStore.stateIsDirty = true;
-		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('unpin-data', {
 			nodeNames: [nodeName],
@@ -1313,12 +1288,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	function setConnections(connectionsBySourceNode: IConnections, updateWorkflow = false): void {
-		workflow.value.connections = connectionsBySourceNode;
-
-		if (updateWorkflow) {
-			updateCachedWorkflow();
-		}
+	function setConnections(value: IConnections): void {
+		workflow.value.connections = value;
 	}
 
 	function resetAllNodesIssues(): boolean {
@@ -1999,8 +1970,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodeTypes,
 		getNodes,
 		convertTemplateNodeToNodeUi,
+		workflowObject,
 		getWorkflow,
-		getCurrentWorkflow,
+		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,
 		fetchAllWorkflows,

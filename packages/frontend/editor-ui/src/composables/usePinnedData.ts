@@ -84,10 +84,11 @@ export function usePinnedData(
 
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const outputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType).map((output) =>
-			typeof output === 'string' ? { type: output } : output,
-		);
+		const outputs = NodeHelpers.getNodeOutputs(
+			workflowsStore.workflowObject,
+			targetNode,
+			nodeType,
+		).map((output) => (typeof output === 'string' ? { type: output } : output));
 
 		const mainOutputs = outputs.filter(
 			(output) => output.type === NodeConnectionTypes.Main && output.category !== 'error',
@@ -163,8 +164,8 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: currentPinData, ...workflow } = workflowsStore.getCurrentWorkflow();
-		const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
+		const { pinData: currentPinData, ...workflowObject } = workflowsStore.workflowObject;
+		const workflowJson = jsonStringify(workflowObject, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
 		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);

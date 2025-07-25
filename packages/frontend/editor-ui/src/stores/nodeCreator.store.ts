@@ -263,13 +263,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 		let filter;
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = workflow.getNode(nodeName);
+		const workflowObject = workflowsStore.workflowObject;
+		const workflowNode = workflowObject.getNode(nodeName);
 		if (!workflowNode) return { nodes: [] };
 
 		const nodeType = nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion);
 		if (nodeType) {
-			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+			const inputs = NodeHelpers.getNodeInputs(workflowObject, workflowNode, nodeType);
 
 			const filterFound = inputs.filter((input) => {
 				if (typeof input === 'string' || input.type !== outputType || !input.filter) {

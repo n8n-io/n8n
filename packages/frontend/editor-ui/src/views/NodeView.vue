@@ -559,6 +559,14 @@ watch(
 	{ deep: true },
 );
 
+watch(
+	workflowsStore.workflow.pinData,
+	(value) => {
+		workflowsStore.workflowObject.setPinData(value);
+	},
+	{ deep: true },
+);
+
 /**
  * Workflow
  */

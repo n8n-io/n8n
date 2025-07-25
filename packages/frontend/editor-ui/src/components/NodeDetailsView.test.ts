@@ -52,7 +52,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		currentWorkflow: workflowsStore.getCurrentWorkflow(),
+		currentWorkflow: workflowsStore.workflowObject,
 		nodeName: node.name,
 	};
 }

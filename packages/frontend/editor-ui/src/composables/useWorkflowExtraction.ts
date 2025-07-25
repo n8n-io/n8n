@@ -309,7 +309,7 @@ export function useWorkflowExtraction() {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
 
-			const ios = getIOs(workflowsStore.getCurrentWorkflow(), node, nodeType);
+			const ios = getIOs(workflowsStore.workflowObject, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -427,7 +427,7 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
@@ -438,16 +438,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? currentWorkflow
+			? workflowObject
 					.getChildNodes(end, 'main', 1)
-					.map((x) => currentWorkflow.getNode(x)?.name)
+					.map((x) => workflowObject.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 
 		const allAfterEndNodes = end
-			? currentWorkflow
+			? workflowObject
 					.getChildNodes(end, 'ALL')
-					.map((x) => currentWorkflow.getNode(x))
+					.map((x) => workflowObject.getNode(x))
 					.filter((x) => x !== null)
 			: [];
 

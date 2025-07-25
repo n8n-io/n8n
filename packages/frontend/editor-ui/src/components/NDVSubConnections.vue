@@ -59,15 +59,14 @@ const nodeType = computed(() =>
 
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 const nodeInputIssues = computed(() => {
-	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflow.value, [
-		'typeUnknown',
-		'parameters',
-		'credentials',
-		'execution',
-	]);
+	const issues = nodeHelpers.getNodeIssues(
+		nodeType.value,
+		props.rootNode,
+		workflowsStore.workflowObject,
+		['typeUnknown', 'parameters', 'credentials', 'execution'],
+	);
 	return issues?.input ?? {};
 });
 
@@ -82,7 +81,9 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflow.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ?? [];
+				workflowsStore.workflowObject.connectionsByDestinationNode[props.rootNode.name]?.[
+					connection.type
+				] ?? [];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
@@ -159,7 +160,11 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
+					const issues = nodeHelpers.getNodeIssues(
+						matchedNodeType,
+						node,
+						workflowsStore.workflowObject,
+					);
 					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
@@ -187,7 +192,11 @@ function isNodeInputConfiguration(
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	if (!nodeType.value || !props.rootNode) return [];
 
-	const inputs = NodeHelpers.getNodeInputs(workflow.value, props.rootNode, nodeType.value);
+	const inputs = NodeHelpers.getNodeInputs(
+		workflowsStore.workflowObject,
+		props.rootNode,
+		nodeType.value,
+	);
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;

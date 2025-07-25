@@ -90,10 +90,10 @@ export class Workflow {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
-		this.pinData = parameters.pinData;
 
 		this.setNodes(parameters.nodes);
 		this.setConnections(parameters.connections);
+		this.setPinData(parameters.pinData);
 
 		this.active = parameters.active || false;
 
@@ -174,6 +174,10 @@ export class Workflow {
 
 	setConnections(connections: IConnections): void {
 		this.connectionsBySourceNode = connections;
+	}
+
+	setPinData(pinData: IPinData | undefined): void {
+		this.pinData = pinData;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {

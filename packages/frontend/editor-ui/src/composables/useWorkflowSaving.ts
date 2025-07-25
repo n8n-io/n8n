@@ -414,7 +414,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			uiStore.stateIsDirty = false;
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
-			getCurrentWorkflow(true); // refresh cache
 			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
