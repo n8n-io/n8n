@@ -3160,6 +3160,7 @@
 	"evaluation.listRuns.metricsOverTime": "Metrics over time",
 	"evaluation.listRuns.status": "Status",
 	"evaluation.listRuns.runListHeader": "All runs",
+	"evaluation.listRuns.allTestCases": "All test cases | All test cases ({count})",
 	"evaluation.listRuns.testCasesListHeader": "Run #{index}",
 	"evaluation.listRuns.runNumber": "Run",
 	"evaluation.listRuns.runDate": "Run date",
