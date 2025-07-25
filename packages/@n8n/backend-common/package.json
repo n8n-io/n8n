@@ -29,9 +29,11 @@
     "n8n-workflow": "workspace:^",
     "picocolors": "catalog:",
     "reflect-metadata": "catalog:",
-    "winston": "3.14.2"
+    "winston": "3.14.2",
+    "yargs-parser": "21.1.1"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "zod": "catalog:"
   }
 }

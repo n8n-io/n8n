@@ -1,9 +1,8 @@
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { CliParser, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import picocolors from 'picocolors';
-import argvParser from 'yargs-parser';
 import { z } from 'zod';
 import './zod-alias-support';
 
@@ -15,14 +14,12 @@ import './zod-alias-support';
 export class CommandRegistry {
 	private commandName: string;
 
-	private readonly argv: argvParser.Arguments;
-
 	constructor(
 		private readonly commandMetadata: CommandMetadata,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly logger: Logger,
+		private readonly cliParser: CliParser,
 	) {
-		this.argv = argvParser(process.argv.slice(2));
 		this.commandName = process.argv[2] ?? 'start';
 	}
 
@@ -51,13 +48,21 @@ export class CommandRegistry {
 			return process.exit(1);
 		}
 
-		if (this.argv.help || this.argv.h) {
+		console.log(commandEntry);
+
+		const { argsByKey, flags } = this.cliParser.parse({
+			argv: process.argv.slice(2),
+			flagsSchema: commandEntry.flagsSchema,
+			argsSchema: commandEntry.argsSchema,
+		});
+
+		if (argsByKey.help || argsByKey.h) {
 			this.printCommandUsage(commandEntry);
 			return process.exit(0);
 		}
 
 		const command = Container.get(commandEntry.class);
-		command.flags = this.parseFlags(commandEntry);
+		command.flags = flags;
 
 		let error: Error | undefined = undefined;
 		try {
@@ -69,26 +74,6 @@ export class CommandRegistry {
 		} finally {
 			await command.finally?.(error);
 		}
-	}
-
-	parseFlags(commandEntry: CommandEntry) {
-		if (!commandEntry.flagsSchema) return {};
-		const { _, ...argv } = this.argv;
-		Object.entries(commandEntry.flagsSchema.shape).forEach(([key, flagSchema]) => {
-			let schemaDef = flagSchema._def as z.ZodTypeDef & {
-				typeName: string;
-				innerType?: z.ZodType;
-			};
-			if (schemaDef.typeName === 'ZodOptional' && schemaDef.innerType) {
-				schemaDef = schemaDef.innerType._def as typeof schemaDef;
-			}
-			const alias = schemaDef._alias;
-			if (alias?.length && !(key in argv) && argv[alias]) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				argv[key] = argv[alias];
-			}
-		});
-		return commandEntry.flagsSchema.parse(argv);
 	}
 
 	async listAllCommands() {
