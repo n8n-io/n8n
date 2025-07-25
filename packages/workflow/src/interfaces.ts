@@ -1380,6 +1380,7 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	allowEmptyValues?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
