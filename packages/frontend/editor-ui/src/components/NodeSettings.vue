@@ -19,7 +19,7 @@ import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
@@ -31,6 +31,7 @@ import {
 	createCommonNodeSettings,
 	nameIsParameter,
 	getNodeSettingsInitialValues,
+	collectParametersByTab,
 } from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -50,12 +51,12 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { usePostHog } from '@/stores/posthog.store';
-import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 const props = withDefaults(
 	defineProps<{
@@ -126,7 +127,7 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
-const openPanel = ref<Tab>('params');
+const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -203,14 +204,9 @@ const parameters = computed(() => {
 	return nodeType.value?.properties ?? [];
 });
 
-const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
-
-const parametersNoneSetting = computed(() => {
-	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
-
-	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
-});
+const parametersByTab = computed(() =>
+	collectParametersByTab(parameters.value, props.isEmbeddedInCanvas),
+);
 
 const isDisplayingCredentials = computed(
 	() =>
@@ -223,7 +219,7 @@ const isDisplayingCredentials = computed(
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
-		parametersNoneSetting.value.filter((item) => item.type !== 'notice').length === 0,
+		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
@@ -426,7 +422,7 @@ const onOpenConnectionNodeCreator = (
 const populateHiddenIssuesSet = () => {
 	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
-	parametersNoneSetting.value.forEach((parameter) => {
+	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
 	workflowsStore.setNodePristine(node.value.name, false);
@@ -500,7 +496,7 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: Tab) => {
+const onTabSelect = (tab: NodeSettingsTab) => {
 	openPanel.value = tab;
 };
 
@@ -572,6 +568,8 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
+			:include-action="parametersByTab.action.length > 0"
+			:include-credential="parametersByTab.credential.length > 0"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
 		>
@@ -648,12 +646,11 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				"
 			/>
 			<FreeAiCreditsCallout />
-			<div v-show="openPanel === 'params'">
+			<div v-if="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
-					v-if="nodeValuesInitialized"
-					:parameters="parametersNoneSetting"
+					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -695,13 +692,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					/>
 				</div>
 			</div>
-			<div v-show="openPanel === 'settings'">
+			<div v-if="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
 					v-if="isCommunityNode && installedPackage?.updateAvailable"
 					data-test-id="update-available"
 				/>
 				<ParameterInputList
-					:parameters="parametersSetting"
+					:parameters="parametersByTab.settings"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
 					:hide-delete="true"

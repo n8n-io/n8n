@@ -15,14 +15,17 @@ import { N8nTabs } from '@n8n/design-system';
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
-export type Tab = 'settings' | 'params' | 'communityNode' | 'docs';
 type Props = {
-	modelValue?: Tab;
+	modelValue?: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
 	tabsVariant?: 'modern' | 'legacy';
+	includeAction?: boolean;
+	includeCredential?: boolean;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -32,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 	tabsVariant: undefined,
 });
 const emit = defineEmits<{
-	'update:model-value': [tab: Tab];
+	'update:model-value': [tab: NodeSettingsTab];
 }>();
 
 const externalHooks = useExternalHooks();
@@ -66,9 +69,27 @@ const documentationUrl = computed(() => {
 });
 
 const options = computed(() => {
-	const options: Array<ITab<Tab>> = [
+	const ret: Array<ITab<NodeSettingsTab>> = [];
+
+	if (props.includeAction) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.action'),
+			value: 'action',
+		});
+	}
+
+	if (props.includeCredential) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.credential'),
+			value: 'credential',
+		});
+	}
+
+	ret.push(
 		{
-			label: i18n.baseText('nodeSettings.parameters'),
+			label: i18n.baseText(
+				props.compact ? 'nodeSettings.parametersShort' : 'nodeSettings.parameters',
+			),
 			value: 'params',
 		},
 		{
@@ -76,10 +97,10 @@ const options = computed(() => {
 			value: 'settings',
 			notification: installedPackage.value?.updateAvailable ? true : undefined,
 		},
-	];
+	);
 
 	if (isCommunityNode.value) {
-		options.push({
+		ret.push({
 			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
@@ -93,7 +114,7 @@ const options = computed(() => {
 	}
 
 	if (documentationUrl.value) {
-		options.push({
+		ret.push({
 			label: i18n.baseText('nodeSettings.docs'),
 			value: 'docs',
 			href: documentationUrl.value,
@@ -101,10 +122,10 @@ const options = computed(() => {
 		});
 	}
 
-	return options;
+	return ret;
 });
 
-function onTabSelect(tab: string | number) {
+function onTabSelect(tab: NodeSettingsTab) {
 	if (tab === 'docs' && props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
@@ -127,12 +148,12 @@ function onTabSelect(tab: string | number) {
 		});
 	}
 
-	if (tab === 'settings' || tab === 'params') {
+	if (tab === 'settings' || tab === 'params' || tab === 'action' || tab === 'credential') {
 		emit('update:model-value', tab);
 	}
 }
 
-function onTooltipClick(tab: string | number, event: MouseEvent) {
+function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}

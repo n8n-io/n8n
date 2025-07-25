@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
-import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import { N8nText } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 defineProps<{
 	node: INode;
@@ -10,12 +11,14 @@ defineProps<{
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 	subTitle?: string;
-	selectedTab: Tab;
+	selectedTab: NodeSettingsTab;
+	includeAction: boolean;
+	includeCredential: boolean;
 }>();
 
 const emit = defineEmits<{
 	'name-changed': [value: string];
-	'tab-changed': [tab: Tab];
+	'tab-changed': [tab: NodeSettingsTab];
 }>();
 
 defineSlots<{ actions?: {} }>();
@@ -43,6 +46,9 @@ defineSlots<{ actions?: {} }>();
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			tabs-variant="modern"
+			compact
+			:include-action="includeAction"
+			:include-credential="includeCredential"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
 	</div>
