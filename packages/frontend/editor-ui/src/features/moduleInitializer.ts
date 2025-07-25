@@ -1,11 +1,38 @@
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { type Router } from 'vue-router';
+import { insightsRoutes } from './insights/insights.router';
+import { dataStoreRoutes } from './dataStore/dataStore.routes';
+import { VIEWS } from '@/constants';
 
 /**
- * Initialize all modules.
- * This is called in init.ts
- * Once we have a proper module loading mechanism,
- * replace this with something more sophisticated.
+ * Once we have a mechanism to register and initialize modules generically,
+ * we should remove this.
+ * Each module should be responsible for its own initialization on demand.
  */
-export const initializeModules = () => {
+
+/**
+ * Initialize modules stores, done in init.ts
+ */
+export const initializeModuleStores = () => {
 	useDataStoreStore().initialize();
+};
+
+/**
+ * Initialize module routes, done in main.ts
+ */
+export const registerModuleRoutes = (router: Router) => {
+	// Init insights module routes
+	insightsRoutes.forEach((route) => {
+		router.addRoute(route);
+	});
+
+	// Register data store routes
+	dataStoreRoutes.forEach((route) => {
+		// Add project-specific routes under main project route
+		if (route.meta?.projectRoute) {
+			router.addRoute(VIEWS.PROJECT_DETAILS, route);
+		} else {
+			router.addRoute(route);
+		}
+	});
 };

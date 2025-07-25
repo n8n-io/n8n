@@ -4,9 +4,6 @@ import type { TabOptions } from '@n8n/design-system';
 import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
 import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from './constants';
 import { useI18n } from '@n8n/i18n';
-import { dataStoreRoutes } from './dataStore.routes';
-import router from '@/router';
-import { VIEWS } from '@/constants';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
 	const modulesStore = useModulesStore();
@@ -38,27 +35,7 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 		modulesStore.addProjectPageTabs([dataStoreTab as TabOptions<string>]);
 	};
 
-	// In this case, overview route is the only one with meta.projectRoute set to false
-	// so this is equivalent to router.addRoute(dataStoreRoutes[0]);
-	const registerOverviewRoute = () => {
-		dataStoreRoutes
-			.filter((route) => route.meta?.projectRoute !== true)
-			.forEach((route) => {
-				router.addRoute(route);
-			});
-	};
-
-	const registerProjectRoutes = () => {
-		dataStoreRoutes
-			.filter((route) => route.meta?.projectRoute === true)
-			.forEach((route) => {
-				router.addRoute(VIEWS.PROJECT_DETAILS, route);
-			});
-	};
-
 	const initialize = () => {
-		registerOverviewRoute();
-		registerProjectRoutes();
 		registerOverviewPageTabs();
 		registerProjectPageTabs();
 	};
