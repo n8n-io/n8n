@@ -138,7 +138,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 
-const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
+const vueFlow = useVueFlow(props.id);
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -160,6 +160,7 @@ const {
 	nodesSelectionActive,
 	userSelectionRect,
 	setViewport,
+	setCenter,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -285,6 +286,18 @@ function selectUpstreamNodes(id: string) {
 	onSelectNodes({ ids: [...upstreamNodes.map((node) => node.id), id] });
 }
 
+function onToggleZoomMode() {
+	experimentalNdvStore.toggleZoomMode({
+		canvasViewport: viewport.value,
+		canvasDimensions: dimensions.value,
+		selectedNodes: selectedNodes.value,
+		setViewport,
+		fitView,
+		zoomTo,
+		setCenter,
+	});
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -308,6 +321,7 @@ const keyMap = computed(() => {
 		l: () => emit('update:logs-open'),
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
+		z: onToggleZoomMode,
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -431,7 +445,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, { duration: 200 });
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
@@ -453,6 +467,18 @@ function onUpdateNodeInputs(id: string) {
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+}
+
+function onFocusNode(id: string) {
+	const node = vueFlow.nodeLookup.value.get(id);
+
+	if (node) {
+		experimentalNdvStore.focusNode(node, {
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	}
 }
 
 /**
@@ -836,6 +862,26 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
+watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
+	const toFocusNode =
+		toFocusName &&
+		(nodes as Array<GraphNode<CanvasNodeData>>).find((n) => n.data.name === toFocusName);
+
+	if (!toFocusNode) {
+		return;
+	}
+
+	// setTimeout() so that this happens after layout recalculation with the node to be focused
+	setTimeout(() => {
+		experimentalNdvStore.focusNode(toFocusNode, {
+			collapseOthers: false,
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	});
+});
+
 /**
  * Provide
  */
@@ -870,6 +916,7 @@ provide(CanvasKey, {
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
+		:delete-key-code="null"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
@@ -896,7 +943,6 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
-					:is-experimental-ndv-active="isExperimentalNdvActive"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -909,6 +955,7 @@ provide(CanvasKey, {
 					@update:outputs="onUpdateNodeOutputs"
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
+					@focus="onFocusNode"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
@@ -972,6 +1019,7 @@ provide(CanvasKey, {
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@toggle-zoom-mode="onToggleZoomMode"
 		/>
 
 		<Suspense>
@@ -1004,7 +1052,7 @@ provide(CanvasKey, {
 	}
 
 	&.isExperimentalNdvActive {
-		--canvas-zoom-compensation-factor: 0.67;
+		--canvas-zoom-compensation-factor: 0.5;
 	}
 }
 </style>

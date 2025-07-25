@@ -24,7 +24,15 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 		headers,
 	});
 
-	return (await response.json()) as T;
+	let responseData;
+
+	try {
+		responseData = await response.clone().json();
+	} catch (error) {
+		responseData = await response.text();
+	}
+
+	return responseData as T;
 }
 
 export async function get<T>(url: string, query: object = {}, options: RequestInit = {}) {

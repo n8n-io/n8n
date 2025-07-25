@@ -23,14 +23,21 @@ describe('N8nInlineTextEdit', () => {
 				modelValue: 'Test Value',
 			},
 		});
-		const input = wrapper.getByTestId('inline-edit-input');
 		const preview = wrapper.getByTestId('inline-edit-preview');
 
-		await wrapper.rerender({ modelValue: 'New Value' });
+		await userEvent.click(preview);
+
+		const input = wrapper.getByTestId('inline-edit-input');
+
+		await userEvent.clear(input);
 		await userEvent.type(input, 'Updated Value');
 		await userEvent.keyboard('{Enter}');
 
 		expect(preview).toHaveTextContent('Updated Value');
+
+		const emittedEvents = wrapper.emitted('update:model-value');
+		expect(emittedEvents).toBeDefined();
+		expect(emittedEvents?.[0]).toEqual(['Updated Value']);
 	});
 
 	it('should not update value on blur if input is empty', async () => {
@@ -39,8 +46,10 @@ describe('N8nInlineTextEdit', () => {
 				modelValue: 'Test Value',
 			},
 		});
-		const input = wrapper.getByTestId('inline-edit-input');
 		const preview = wrapper.getByTestId('inline-edit-preview');
+
+		await userEvent.click(preview);
+		const input = wrapper.getByTestId('inline-edit-input');
 
 		await userEvent.clear(input);
 		await userEvent.tab(); // Simulate blur
@@ -54,12 +63,31 @@ describe('N8nInlineTextEdit', () => {
 				modelValue: 'Test Value',
 			},
 		});
-		const input = wrapper.getByTestId('inline-edit-input');
 		const preview = wrapper.getByTestId('inline-edit-preview');
 
+		await userEvent.click(preview);
+		const input = wrapper.getByTestId('inline-edit-input');
+
+		await userEvent.clear(input);
 		await userEvent.type(input, 'Updated Value');
 		await userEvent.keyboard('{Escape}');
 
 		expect(preview).toHaveTextContent('Test Value');
+	});
+
+	it('should not emit update:model-value on blur when value unchanged', async () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+			},
+		});
+		const preview = wrapper.getByTestId('inline-edit-preview');
+
+		await userEvent.click(preview);
+
+		await userEvent.tab();
+
+		const emittedEvents = wrapper.emitted('update:model-value');
+		expect(emittedEvents).toBeUndefined();
 	});
 });

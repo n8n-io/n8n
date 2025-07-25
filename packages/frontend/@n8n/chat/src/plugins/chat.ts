@@ -39,7 +39,7 @@ function createUserMessage(text: string, files: File[] = []): ChatMessage {
  * @returns The extracted text message or stringified response
  */
 function processMessageResponse(response: SendMessageResponse): string {
-	let textMessage = response.output ?? response.text ?? '';
+	let textMessage = response.output ?? response.text ?? response.message ?? '';
 
 	if (textMessage === '' && Object.keys(response).length > 0) {
 		try {
@@ -162,17 +162,22 @@ interface NonStreamingMessageConfig {
  * Handles sending messages without streaming
  * Sends the message and processes the complete response
  * @param config - Configuration object for non-streaming message handling
- * @returns The bot's response message
+ * @returns The API response or a bot message
  */
 async function handleNonStreamingMessage(
 	config: NonStreamingMessageConfig,
-): Promise<ChatMessageText> {
+): Promise<{ response?: SendMessageResponse; botMessage?: ChatMessageText }> {
 	const { text, files, sessionId, options } = config;
 
-	const receivedMessage = createBotMessage();
 	const sendMessageResponse = await api.sendMessage(text, files, sessionId, options);
+	
+	if (sendMessageResponse?.executionStarted) {
+		return { response: sendMessageResponse };
+	}
+
+	const receivedMessage = createBotMessage();
 	receivedMessage.text = processMessageResponse(sendMessageResponse);
-	return receivedMessage;
+	return { botMessage: receivedMessage };
 }
 
 export const ChatPlugin: Plugin<ChatOptions> = {
@@ -191,7 +196,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			})),
 		);
 
-		async function sendMessage(text: string, files: File[] = []) {
+		async function sendMessage(text: string, files: File[] = []): Promise<SendMessageResponse | null> {
 			// Create and add user message
 			const sentMessage = createUserMessage(text, files);
 			messages.value.push(sentMessage);
@@ -216,14 +221,22 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						streamingManager,
 					});
 				} else {
-					const botMessage = await handleNonStreamingMessage({
+					const result = await handleNonStreamingMessage({
 						text,
 						files,
 						sessionId: currentSessionId.value as string,
 						options,
 					});
-					receivedMessage.value = botMessage;
-					messages.value.push(botMessage);
+					
+					if (result.response?.executionStarted) {
+						waitingForResponse.value = false;
+						return result.response;
+					}
+					
+					if (result.botMessage) {
+						receivedMessage.value = result.botMessage;
+						messages.value.push(result.botMessage);
+					}
 				}
 			} catch (error) {
 				handleMessageError({ error, receivedMessage, messages });
@@ -234,6 +247,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			void nextTick(() => {
 				chatEventBus.emit('scrollToBottom');
 			});
+
+			return null;
 		}
 
 		async function loadPreviousSession() {

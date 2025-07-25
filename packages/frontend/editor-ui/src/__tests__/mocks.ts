@@ -130,14 +130,18 @@ export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
 	({ type }) => type.description,
 ) as INodeTypeDescription[];
 
-const nodeTypes = mock<INodeTypes>({
-	getByName(nodeType) {
-		return defaultNodeTypes[nodeType].type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
-	},
-});
+export function createMockNodeTypes(data: INodeTypeData) {
+	return mock<INodeTypes>({
+		getByName(nodeType) {
+			return data[nodeType].type;
+		},
+		getByNameAndVersion(nodeType: string, version?: number): INodeType {
+			return NodeHelpers.getVersionedNodeType(data[nodeType].type, version);
+		},
+	});
+}
+
+const nodeTypes = createMockNodeTypes(defaultNodeTypes);
 
 export function createTestWorkflowObject({
 	id = uuid(),
@@ -148,6 +152,7 @@ export function createTestWorkflowObject({
 	staticData = {},
 	settings = {},
 	pinData = {},
+	...rest
 }: {
 	id?: string;
 	name?: string;
@@ -157,6 +162,7 @@ export function createTestWorkflowObject({
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
+	nodeTypes?: INodeTypes;
 } = {}) {
 	return new Workflow({
 		id,
@@ -167,7 +173,7 @@ export function createTestWorkflowObject({
 		staticData,
 		settings,
 		pinData,
-		nodeTypes,
+		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
 
