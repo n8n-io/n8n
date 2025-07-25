@@ -24,7 +24,7 @@ export class CliParser {
 		input: CliInput<Flags>,
 	): ParsedArgs<z.infer<z.ZodObject<Flags>>> {
 		// eslint-disable-next-line id-denylist
-		const { _: rawArgs, ...rawFlags } = argvParser(input.argv, { string: ['id'] });
+		const { _: rest, ...rawFlags } = argvParser(input.argv, { string: ['id'] });
 
 		let flags = {} as z.infer<z.ZodObject<Flags>>;
 		if (input.flagsSchema) {
@@ -49,13 +49,13 @@ export class CliParser {
 			flags = input.flagsSchema.parse(rawFlags);
 		}
 
-		const args = rawArgs.map(String);
+		const args = rest.map(String).slice(2);
 
 		this.logger.debug('Received CLI command', {
-			execPath: process.argv[0],
-			scriptPath: process.argv[1],
-			flags,
+			execPath: rest[0],
+			scriptPath: rest[1],
 			args,
+			flags,
 		});
 
 		return { flags, args };
