@@ -27,6 +27,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
+	const nodeNameToBeFocused = ref<string | undefined>();
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -53,6 +54,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
+	function setNodeNameToBeFocused(nodeName: string) {
+		nodeNameToBeFocused.value = nodeName;
+	}
+
 	interface FocusNodeOptions {
 		collapseOthers?: boolean;
 		canvasViewport: ViewportTransform;
@@ -73,6 +78,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 		const topMargin = 80; // pixels
 		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
+
+		if (nodeNameToBeFocused.value === node.data.name) {
+			nodeNameToBeFocused.value = undefined;
+		}
 
 		// Move the node to top center of the canvas
 		void setCenter(
@@ -128,11 +137,13 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		maxCanvasZoom,
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
+		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
 		toggleZoomMode,
 		focusNode,
+		setNodeNameToBeFocused,
 	};
 });
