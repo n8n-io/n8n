@@ -217,9 +217,18 @@ export class ApiHelpers {
 
 	async get(path: string, params?: URLSearchParams) {
 		const response = await this.request.get(path, { params });
-
 		const { data } = await response.json();
 		return data;
+	}
+
+	/**
+	 * Check if n8n is healthy
+	 * @returns True if n8n is healthy, false otherwise
+	 */
+	async isHealthy(): Promise<boolean> {
+		const response = await this.request.get('/healthz');
+		const data = await response.json();
+		return data.status === 'ok';
 	}
 
 	// ===== PRIVATE METHODS =====

@@ -23,6 +23,7 @@ interface WaitForLogOptions {
 	namePattern?: string | RegExp;
 	timeoutMs?: number;
 	caseSensitive?: boolean;
+	throwOnTimeout?: boolean;
 }
 
 interface StreamLogMatch {
@@ -71,15 +72,19 @@ export class ContainerTestHelpers {
 	/**
 	 * Wait for a log message matching pattern (case-insensitive by default)
 	 * Uses streaming approach for immediate detection
+	 *
+	 * @returns LogMatch if found, null if timeout reached and throwOnTimeout is false
+	 * @throws Error if timeout reached and throwOnTimeout is true (default)
 	 */
 	async waitForLog(
 		messagePattern: string | RegExp,
 		options: WaitForLogOptions = {},
-	): Promise<LogMatch> {
+	): Promise<LogMatch | null> {
 		const {
 			namePattern,
 			timeoutMs = ContainerTestHelpers.DEFAULT_TIMEOUT_MS,
 			caseSensitive = false,
+			throwOnTimeout = true,
 		} = options;
 
 		const messageRegex = this.createRegex(messagePattern, caseSensitive);
@@ -87,7 +92,7 @@ export class ContainerTestHelpers {
 		const startTime = Date.now();
 
 		console.log(
-			`🔍 Waiting for log pattern: ${messageRegex} in ${targetContainers.length} containers (timeout: ${timeoutMs}ms)`,
+			`🔍 Waiting for log pattern: ${messageRegex} in ${targetContainers.length} containers (timeout: ${timeoutMs}ms, throwOnTimeout: ${throwOnTimeout})`,
 		);
 
 		// First check: scan existing logs quickly
@@ -98,7 +103,13 @@ export class ContainerTestHelpers {
 		}
 
 		// Monitor new logs with streaming approach
-		return await this.pollForNewLogs(targetContainers, messageRegex, startTime, timeoutMs);
+		return await this.pollForNewLogs(
+			targetContainers,
+			messageRegex,
+			startTime,
+			timeoutMs,
+			throwOnTimeout,
+		);
 	}
 
 	/**
@@ -134,7 +145,8 @@ export class ContainerTestHelpers {
 		messageRegex: RegExp,
 		startTime: number,
 		timeoutMs: number,
-	): Promise<LogMatch> {
+		throwOnTimeout: boolean,
+	): Promise<LogMatch | null> {
 		let currentCheckTime = Math.floor(Date.now() / 1000);
 		let iteration = 0;
 
@@ -170,7 +182,12 @@ export class ContainerTestHelpers {
 		}
 
 		console.log(`❌ Timeout reached after ${timeoutMs}ms`);
-		throw new Error(`Timeout reached after ${timeoutMs}ms`);
+
+		if (throwOnTimeout) {
+			throw new Error(`Timeout reached after ${timeoutMs}ms`);
+		}
+
+		return null;
 	}
 
 	/**
