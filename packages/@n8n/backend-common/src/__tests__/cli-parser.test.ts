@@ -3,19 +3,15 @@ import z from 'zod';
 
 import { CliParser } from '../cli-parser';
 
-let cliParser: CliParser;
-
-beforeEach(() => {
-	cliParser = new CliParser(mock());
-});
-
 describe('parse', () => {
 	it('should parse `argv` without flags schema', () => {
+		const cliParser = new CliParser(mock());
 		const result = cliParser.parse({ argv: ['node', 'script.js', 'arg1', 'arg2'] });
 		expect(result).toEqual({ flags: {}, args: ['arg1', 'arg2'] });
 	});
 
 	it('should parse `argv` with flags schema', () => {
+		const cliParser = new CliParser(mock());
 		const flagsSchema = z.object({
 			verbose: z.boolean().optional(),
 			name: z.string().optional(),
@@ -33,6 +29,7 @@ describe('parse', () => {
 	});
 
 	it('should ignore flags not defined in schema', () => {
+		const cliParser = new CliParser(mock());
 		const flagsSchema = z.object({
 			name: z.string().optional(),
 			// ignored is absent
@@ -53,6 +50,7 @@ describe('parse', () => {
 	});
 
 	it('should handle a numeric value for `--id` flag', () => {
+		const cliParser = new CliParser(mock());
 		const result = cliParser.parse({
 			argv: ['node', 'script.js', '--id', '123', 'arg1'],
 			flagsSchema: z.object({
@@ -67,6 +65,7 @@ describe('parse', () => {
 	});
 
 	it('should convert positional arguments to strings', () => {
+		const cliParser = new CliParser(mock());
 		const result = cliParser.parse({
 			argv: ['node', 'script.js', '123', 'true'],
 		});
@@ -77,6 +76,7 @@ describe('parse', () => {
 	});
 
 	it('should handle optional flags with aliases', () => {
+		const cliParser = new CliParser(mock());
 		const flagsSchema = z.object({
 			name: z.optional(z.string()),
 		});
