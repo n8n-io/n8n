@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { UserAction } from '@n8n/design-system';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
@@ -19,6 +19,7 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useUIStore } from '@/stores/ui.store';
 
 const route = useRoute();
 const router = useRouter();
@@ -26,6 +27,8 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+
 const projectPages = useProjectPages();
 
 const emit = defineEmits<{
@@ -81,6 +84,16 @@ const showFolders = computed(() => {
 		settingsStore.isFoldersFeatureEnabled &&
 		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
 	);
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	if (projectPages.isSharedSubPage) {
+		return uiStore.moduleTabs.shared;
+	}
+	if (projectPages.isOverviewSubPage) {
+		return uiStore.moduleTabs.overview;
+	}
+	return uiStore.moduleTabs.project;
 });
 
 const ACTION_TYPES = {
@@ -278,6 +291,7 @@ const onSelect = (action: string) => {
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
 			/>
 		</div>
 	</div>

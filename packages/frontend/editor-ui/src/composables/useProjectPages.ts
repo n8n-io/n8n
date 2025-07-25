@@ -1,7 +1,6 @@
 import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
-
 /**
  * This composable holds reusable logic that detects the current page type
  */
@@ -14,7 +13,8 @@ export const useProjectPages = () => {
 			route.name === VIEWS.HOMEPAGE ||
 			route.name === VIEWS.CREDENTIALS ||
 			route.name === VIEWS.EXECUTIONS ||
-			route.name === VIEWS.FOLDERS,
+			route.name === VIEWS.FOLDERS ||
+			route.params?.projectId === undefined,
 	);
 
 	const isSharedSubPage = computed(
@@ -30,7 +30,8 @@ export const useProjectPages = () => {
 			route.name === VIEWS.PROJECTS_CREDENTIALS ||
 			route.name === VIEWS.PROJECTS_EXECUTIONS ||
 			route.name === VIEWS.PROJECT_SETTINGS ||
-			route.name === VIEWS.PROJECTS_FOLDERS,
+			route.name === VIEWS.PROJECTS_FOLDERS ||
+			route.params?.projectId !== undefined,
 	);
 
 	return reactive({
