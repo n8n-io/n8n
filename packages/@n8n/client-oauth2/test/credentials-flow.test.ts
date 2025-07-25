@@ -31,7 +31,10 @@ describe('CredentialsFlow', () => {
 				scopes,
 			});
 
-		const mockTokenCall = async ({ requestedScope }: { requestedScope?: string } = {}) => {
+		const mockTokenCall = async ({
+			requestedScope,
+			refreshToken,
+		}: { requestedScope?: string; refreshToken?: string } = {}) => {
 			const nockScope = nock(config.baseUrl)
 				.post(
 					'/login/oauth/access_token',
@@ -41,7 +44,7 @@ describe('CredentialsFlow', () => {
 				.once()
 				.reply(200, {
 					access_token: config.accessToken,
-					refresh_token: config.refreshToken,
+					refresh_token: refreshToken,
 					scope: requestedScope,
 				});
 			return await new Promise<{ headers: Headers; body: unknown }>((resolve) => {
@@ -136,13 +139,11 @@ describe('CredentialsFlow', () => {
 				const nockScope = nock(config.baseUrl)
 					.post(
 						'/login/oauth/access_token',
-						({ refresh_token, grant_type }) =>
-							refresh_token === config.refreshToken && grant_type === 'refresh_token',
+						({ grant_type }) => grant_type === 'client_credentials',
 					)
 					.once()
 					.reply(200, {
 						access_token: config.refreshedAccessToken,
-						refresh_token: config.refreshedRefreshToken,
 					});
 				return await new Promise<{ headers: Headers; body: unknown }>((resolve) => {
 					nockScope.once('request', (req) => {
@@ -163,11 +164,13 @@ describe('CredentialsFlow', () => {
 
 				const requestPromise = mockRefreshCall();
 				const token1 = await token.refresh();
-				await requestPromise;
+				const { headers, body } = await requestPromise;
 
 				expect(token1).toBeInstanceOf(ClientOAuth2Token);
 				expect(token1.accessToken).toEqual(config.refreshedAccessToken);
 				expect(token1.tokenType).toEqual('bearer');
+				expect(headers?.authorization).toBe('Basic YWJjOjEyMw==');
+				expect(body).toEqual('grant_type=client_credentials&scope=notifications');
 			});
 
 			it('should make a request to get a new access token with authentication = "body"', async () => {
@@ -186,7 +189,7 @@ describe('CredentialsFlow', () => {
 				expect(token1.tokenType).toEqual('bearer');
 				expect(headers?.authorization).toBe(undefined);
 				expect(body).toEqual(
-					'refresh_token=def456token&grant_type=refresh_token&client_id=abc&client_secret=123',
+					'grant_type=client_credentials&scope=notifications&client_id=abc&client_secret=123',
 				);
 			});
 
@@ -208,7 +211,100 @@ describe('CredentialsFlow', () => {
 				expect(token1.accessToken).toEqual(config.refreshedAccessToken);
 				expect(token1.tokenType).toEqual('bearer');
 				expect(headers?.authorization).toBe('Basic YWJjOjEyMw==');
-				expect(body).toEqual('refresh_token=def456token&grant_type=refresh_token');
+				expect(body).toEqual('grant_type=client_credentials&scope=notifications');
+			});
+
+			describe('backward-compatibility', () => {
+				const mockLegacyRefreshCall = async () => {
+					const nockScope = nock(config.baseUrl)
+						.post(
+							'/login/oauth/access_token',
+							({ refresh_token, grant_type }) =>
+								refresh_token === config.refreshToken && grant_type === 'refresh_token',
+						)
+						.once()
+						.reply(200, {
+							access_token: config.refreshedAccessToken,
+							refresh_token: config.refreshedRefreshToken,
+						});
+					return await new Promise<{ headers: Headers; body: unknown }>((resolve) => {
+						nockScope.once('request', (req) => {
+							resolve({
+								headers: req.headers,
+								body: req.requestBodyBuffers.toString('utf-8'),
+							});
+						});
+					});
+				};
+
+				it('should make a request to get a new access token using `refresh_token`', async () => {
+					const authClient = createAuthClient({ scopes: ['notifications'] });
+					void mockTokenCall({
+						requestedScope: 'notifications',
+						refreshToken: config.refreshToken,
+					});
+
+					const token = await authClient.credentials.getToken();
+					expect(token.accessToken).toEqual(config.accessToken);
+
+					const requestPromise = mockLegacyRefreshCall();
+					const token1 = await token.refresh();
+					await requestPromise;
+
+					expect(token1).toBeInstanceOf(ClientOAuth2Token);
+					expect(token1.accessToken).toEqual(config.refreshedAccessToken);
+					expect(token1.tokenType).toEqual('bearer');
+				});
+
+				it('should make a request to get a new access token using `refresh_token` with authentication = "body"', async () => {
+					const authClient = createAuthClient({
+						scopes: ['notifications'],
+						authentication: 'body',
+					});
+					void mockTokenCall({
+						requestedScope: 'notifications',
+						refreshToken: config.refreshToken,
+					});
+
+					const token = await authClient.credentials.getToken();
+					expect(token.accessToken).toEqual(config.accessToken);
+
+					const requestPromise = mockLegacyRefreshCall();
+					const token1 = await token.refresh();
+					const { headers, body } = await requestPromise;
+
+					expect(token1).toBeInstanceOf(ClientOAuth2Token);
+					expect(token1.accessToken).toEqual(config.refreshedAccessToken);
+					expect(token1.tokenType).toEqual('bearer');
+					expect(headers?.authorization).toBe(undefined);
+					expect(body).toEqual(
+						'refresh_token=def456token&grant_type=refresh_token&client_id=abc&client_secret=123',
+					);
+				});
+
+				it('should make a request to get a new access token using `refresh_token` with authentication = "header"', async () => {
+					const authClient = createAuthClient({
+						scopes: ['notifications'],
+						authentication: 'header',
+					});
+					void mockTokenCall({
+						requestedScope: 'notifications',
+						refreshToken: config.refreshToken,
+					});
+
+					const token = await authClient.credentials.getToken();
+					expect(token.accessToken).toEqual(config.accessToken);
+
+					const requestPromise = mockLegacyRefreshCall();
+					const token1 = await token.refresh();
+					const { headers, body } = await requestPromise;
+
+					expect(token1).toBeInstanceOf(ClientOAuth2Token);
+					expect(token1.accessToken).toEqual(config.refreshedAccessToken);
+					expect(token1.tokenType).toEqual('bearer');
+					expect(headers?.authorization).toBe('Basic YWJjOjEyMw==');
+					expect(body).toEqual('refresh_token=def456token&grant_type=refresh_token');
+				});
 			});
 		});
 	});
