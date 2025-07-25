@@ -3204,6 +3204,7 @@
 	"evaluation.runDetail.error.unknownError.solution": "View execution",
 	"evaluation.runDetail.error.noMetricsCollected": "No 'Set metrics' node executed",
 	"evaluation.runDetail.error.partialCasesFailed": "Finished with errors",
+	"evaluation.runDetail.notice.useSetInputs": "Tip: Show input columns from your dataset here by adding the evaluation node's 'set inputs' operation to your workflow",
 	"evaluation.runTest": "Run Test",
 	"evaluation.stopTest": "Stop Test",
 	"evaluation.cancelTestRun": "Cancel Test Run",
