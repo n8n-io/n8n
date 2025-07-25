@@ -2,7 +2,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { type TabOptions } from '@n8n/design-system';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useDataStoreStore } from './dataStore/dataStore.store';
 
 export const useModulesStore = defineStore('modules', () => {
 	const settingsStore = useSettingsStore();
@@ -34,14 +33,6 @@ export const useModulesStore = defineStore('modules', () => {
 		return activeModules.value.includes(moduleName);
 	};
 
-	/**
-	 * Initialize the store by initialize module stores.
-	 * This is temporary solution until we have proper module loading mechanism.
-	 */
-	const initialize = () => {
-		useDataStoreStore().initialize();
-	};
-
 	return {
 		activeModules,
 		isModuleActive,
@@ -51,6 +42,5 @@ export const useModulesStore = defineStore('modules', () => {
 		addOverviewPageTabs,
 		sharedPageTabs,
 		addSharedPageTabs,
-		initialize,
 	};
 });

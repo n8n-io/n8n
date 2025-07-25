@@ -23,6 +23,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useModulesStore } from '@/features/modules.store';
+import { initializeModules } from './features/moduleInitializer';
 
 export const state = {
 	initialized: false,
@@ -183,7 +184,7 @@ export async function initializeAuthenticatedFeatures(
 		rolesStore.fetchRoles(),
 	]);
 
-	modulesStore.initialize();
+	initializeModules();
 
 	authenticatedFeaturesInitialized = true;
 }
