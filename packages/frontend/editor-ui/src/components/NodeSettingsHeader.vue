@@ -68,4 +68,8 @@ const emit = defineEmits<{
 .tabs {
 	align-self: flex-end;
 }
+
+.tabs :global(#communityNode) {
+	padding-right: var(--spacing-2xs);
+}
 </style>
