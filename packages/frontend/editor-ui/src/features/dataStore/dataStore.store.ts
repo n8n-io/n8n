@@ -38,6 +38,8 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 		modulesStore.addProjectPageTabs([dataStoreTab as TabOptions<string>]);
 	};
 
+	// In this case, overview route is the only one with meta.projectRoute set to false
+	// so this is equivalent to router.addRoute(dataStoreRoutes[0]);
 	const registerOverviewRoute = () => {
 		dataStoreRoutes
 			.filter((route) => route.meta?.projectRoute !== true)
