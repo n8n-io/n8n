@@ -3,6 +3,10 @@ name: Docker Image CI
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'GitHub branch to create image off.'
+        required: true
+        default: 'master'
       image-name:
         description: 'Image name.'
         required: true
@@ -29,7 +33,7 @@ on:
       user:
         description: ''
         required: false
-        default: 'aireset'
+        default: 'schedule'
       start-url:
         description: 'URL to call after workflow is kicked off.'
         required: false
@@ -40,7 +44,7 @@ on:
         default: ''
 
 env:
-  N8N_TAG: ${{ inputs.tag || 'latest' }}
+  N8N_TAG: ${{ inputs.tag || 'nightly' }}
   GH_TOKEN: ${{ github.token }}
   TEMP_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/n8n-temp:${{ inputs.image-name || 'latest' }}
 
@@ -69,14 +73,14 @@ jobs:
 
       - name: Merge Master - optionally
         run: |
-          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/aireset/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
 
       - name: Build and push image to Temporary Registry
         uses: docker/build-push-action@v5.1.0
         with:
           context: .
-          file: ./docker/images/n8n/Dockerfile
+          file: ./docker/images/n8n-custom/Dockerfile
           build-args: |
             N8N_RELEASE_TYPE=stable
           platforms: linux/amd64,linux/arm64
