@@ -53,7 +53,7 @@ export class CliParser {
 
 		this.logger.debug('Received CLI command', {
 			execPath: process.argv[0],
-			jsFile: process.argv[1],
+			scriptPath: process.argv[1],
 			flags,
 			args,
 		});
