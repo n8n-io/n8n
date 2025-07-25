@@ -621,10 +621,26 @@ export class LoadNodesAndCredentials {
 			{
 				displayName: 'Restrict HTTP Request Domains',
 				name: 'restrictHttpRequestDomains',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to restrict domains this credential can be used with in HTTP Request nodes',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Allow all requests when used in the HTTP Request node',
+					},
+					{
+						name: 'Specific Domains',
+						value: 'domains',
+						description: 'Restrict requests to specific domains',
+					},
+					{
+						name: 'None',
+						value: 'none',
+						description: 'Block all requests when used in the HTTP Request node',
+					},
+				],
+				default: 'all',
+				description: 'Control which domains this credential can be used with in HTTP Request nodes',
 			},
 			{
 				displayName: 'Allowed Domains',
@@ -635,7 +651,7 @@ export class LoadNodesAndCredentials {
 				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
 				displayOptions: {
 					show: {
-						restrictHttpRequestDomains: [true],
+						restrictHttpRequestDomains: ['domains'],
 					},
 				},
 			},
@@ -658,7 +674,7 @@ export class LoadNodesAndCredentials {
 				default: 'strict',
 				displayOptions: {
 					show: {
-						restrictHttpRequestDomains: [true],
+						restrictHttpRequestDomains: ['domains'],
 					},
 				},
 			},

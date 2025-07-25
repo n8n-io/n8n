@@ -189,7 +189,7 @@ export class HttpRequestV3 implements INodeType {
 					url: string,
 					credentialType?: string,
 				) => {
-					if (credentialData.restrictHttpRequestDomains === true) {
+					if (credentialData.restrictHttpRequestDomains === 'domains') {
 						const allowedDomains = credentialData.allowedDomains as string;
 						const validationMode =
 							(credentialData.domainValidationMode as 'strict' | 'subdomain') || 'strict';
@@ -202,6 +202,11 @@ export class HttpRequestV3 implements INodeType {
 									`Only the following domains are allowed: ${allowedDomains}`,
 							);
 						}
+					} else if (credentialData.restrictHttpRequestDomains === 'none') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'This credential is configured to block all HTTP requests',
+						);
 					}
 				};
 
@@ -219,7 +224,10 @@ export class HttpRequestV3 implements INodeType {
 						const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
 						await checkDomainRestrictions(credentialData, url, nodeCredentialType);
 					} catch (error) {
-						if (error.message?.includes('Domain not allowed')) {
+						if (
+							error.message?.includes('Domain not allowed') ||
+							error.message?.includes('block all HTTP requests')
+						) {
 							throw error;
 						}
 					}
