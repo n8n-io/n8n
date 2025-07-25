@@ -49,9 +49,8 @@ export class CommandRegistry {
 		}
 
 		const { args, flags } = this.cliParser.parse({
-			argv: process.argv.slice(2),
+			argv: process.argv,
 			flagsSchema: commandEntry.flagsSchema,
-			argsSchema: commandEntry.argsSchema,
 		});
 
 		if (['help', 'h'].some((s) => args.includes(s))) {
