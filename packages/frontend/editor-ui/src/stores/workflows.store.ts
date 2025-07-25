@@ -639,6 +639,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowData;
 	}
 
+	async function fetchWorkflowsWithNodesIncluded(nodeTypes: string[]) {
+		return await workflowsApi.getWorkflowsWithNodesIncluded(rootStore.restApiContext, nodeTypes);
+	}
+
 	async function getNewWorkflowData(
 		name?: string,
 		projectId?: string,
@@ -2003,6 +2007,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchAllWorkflows,
 		fetchWorkflowsPage,
 		fetchWorkflow,
+		fetchWorkflowsWithNodesIncluded,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
 		resetWorkflow,
