@@ -1,5 +1,15 @@
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
+import { JSDOM } from 'jsdom';
+
+export const hasHtml = (data: string) => {
+	try {
+		const dom = new JSDOM(data);
+		return dom.window.document.body.children.length > 0;
+	} catch {
+		return false;
+	}
+};
 
 /**
  * Sandboxes the HTML response to prevent possible exploitation. Embeds the
@@ -11,6 +21,10 @@ export const sandboxHtmlResponse = <T>(data: T) => {
 		text = JSON.stringify(data);
 	} else {
 		text = data;
+	}
+
+	if (!hasHtml(text)) {
+		return text;
 	}
 
 	// Escape & and " as mentioned in the spec:
