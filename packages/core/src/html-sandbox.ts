@@ -2,9 +2,12 @@ import { JSDOM } from 'jsdom';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
 
-export const hasHtml = (data: string) => {
+/**
+ * Checks if the given string contains HTML.
+ */
+export const hasHtml = (str: string) => {
 	try {
-		const dom = new JSDOM(data);
+		const dom = new JSDOM(str);
 		return dom.window.document.body.children.length > 0;
 	} catch {
 		return false;
@@ -12,8 +15,13 @@ export const hasHtml = (data: string) => {
 };
 
 /**
- * Sandboxes the HTML response to prevent possible exploitation. Embeds the
- * response in an iframe to make sure the HTML has a different origin.
+ * Sandboxes the HTML response to prevent possible exploitation, if the data has HTML.
+ * If the data does not have HTML, it will be returned as is.
+ * Otherwise, it embeds the response in an iframe to make sure the HTML has a different origin.
+ *
+ * @param data - The data to sandbox.
+ * @param forceSandbox - Whether to force sandboxing even if the data does not contain HTML.
+ * @returns The sandboxed HTML response.
  */
 export const sandboxHtmlResponse = <T>(data: T, forceSandbox = false) => {
 	let text;
