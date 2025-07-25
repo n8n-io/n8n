@@ -91,7 +91,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 .settingsIcons {
 	position: absolute;
 	top: var(--canvas-node--status-icons-offset);
-	right: var(--canvas-node--status-icons-offset);
+	right: var(--spacing-5xs);
 	display: flex;
 	flex-direction: row;
 }
