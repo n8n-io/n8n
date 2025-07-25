@@ -4,6 +4,7 @@ import type { TabOptions } from '@n8n/design-system';
 import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
 import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from './constants';
 import { useI18n } from '@n8n/i18n';
+import { registerResource } from '@/features/resourceRegistry';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
 	const modulesStore = useModulesStore();
@@ -36,6 +37,12 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 	};
 
 	const initialize = () => {
+		// Register the resource type
+		registerResource({
+			key: 'dataStore',
+			displayName: 'Data Store',
+		});
+
 		registerOverviewPageTabs();
 		registerProjectPageTabs();
 	};

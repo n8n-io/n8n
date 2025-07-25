@@ -6,8 +6,10 @@ import { VIEWS } from '@/constants';
 
 /**
  * Once we have a mechanism to register and initialize modules generically,
- * we should remove this.
+ * we can remove this.
  * Each module should be responsible for its own initialization on demand.
+ * This currently works that way for registering project tabs but routes
+ * all still registered by explicitly importing the module routes here.
  */
 
 /**
