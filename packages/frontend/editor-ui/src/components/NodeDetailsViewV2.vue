@@ -717,7 +717,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport v-if="activeNode && activeNodeType" :to="`#${APP_MODALS_ELEMENT_ID}`">
+	<Teleport
+		v-if="activeNode && activeNodeType && !isActiveStickyNode"
+		:to="`#${APP_MODALS_ELEMENT_ID}`"
+	>
 		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
 
 		<dialog
