@@ -8,4 +8,14 @@ test.describe('Workflows', () => {
 		await n8n.workflows.importWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
 		await expect(n8n.workflows.workflowTags()).toHaveText(['some-tag-1', 'some-tag-2']);
 	});
+
+	test.only('should create a workflow @db:reset @mode:mockserver', async ({ n8n }) => {
+		await n8n.goNewWorkflow();
+		await n8n.workflows.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
+
+		// TODO Add proxy from http://mock-api.com/data to mockserver url
+
+		// this executes workflow but does not validate notification correctly it seems
+		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+	});
 });

@@ -21,6 +21,7 @@ import {
 	setupPostgres,
 	setupRedis,
 	setupCaddyLoadBalancer,
+	setupMockServer,
 	pollContainerHttpEndpoint,
 } from './n8n-test-container-dependencies';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
@@ -30,6 +31,7 @@ import { createSilentLogConsumer } from './n8n-test-container-utils';
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
 const CADDY_IMAGE = 'caddy:2-alpine';
+const MOCKSERVER_IMAGE = 'mockserver/mockserver:latest';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
@@ -64,12 +66,14 @@ export interface N8NConfig {
 				mains?: number;
 				workers?: number;
 		  };
+	mockServer?: boolean;
 	env?: Record<string, string>;
 	projectName?: string;
 }
 
 export interface N8NStack {
 	baseUrl: string;
+	mockServerUrl?: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
 }
@@ -97,7 +101,7 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const { postgres = false, queueMode = false, env = {}, projectName } = config;
+	const { postgres = false, queueMode = false, mockServer = false, env = {}, projectName } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -105,7 +109,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
-	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer;
+	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer || mockServer;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -170,6 +174,19 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		}
 	}
 
+	let mockServerContainer: StartedTestContainer | undefined;
+	let mockServerUrl: string | undefined;
+	if (mockServer) {
+		assert(network, 'Network should be created for MockServer');
+		mockServerContainer = await setupMockServer({
+			mockServerImage: MOCKSERVER_IMAGE,
+			projectName: uniqueProjectName,
+			network,
+		});
+		containers.push(mockServerContainer);
+		mockServerUrl = `http://localhost:${mockServerContainer.getMappedPort(1080)}`;
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -222,6 +239,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	return {
 		baseUrl,
+		mockServerUrl,
 		stop: async () => {
 			await stopN8NStack(containers, network, uniqueProjectName);
 		},

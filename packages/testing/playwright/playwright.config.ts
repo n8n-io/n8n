@@ -40,6 +40,7 @@ const containerConfigs = [
 	{ name: 'mode:postgres', config: { postgres: true } },
 	{ name: 'mode:queue', config: { queueMode: { mains: 1, workers: 1 } } },
 	{ name: 'mode:multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'mode:mockserver', config: { mockServer: true } },
 ];
 
 // Parallel tests can run fully parallel on a worker

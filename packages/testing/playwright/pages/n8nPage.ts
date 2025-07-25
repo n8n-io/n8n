@@ -66,4 +66,8 @@ export class n8nPage {
 	async goHome() {
 		await this.page.goto('/');
 	}
+
+	async goNewWorkflow() {
+		await this.page.goto('/workflow/new');
+	}
 }
