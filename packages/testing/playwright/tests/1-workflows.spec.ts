@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/base';
+import { createGetExpectation, verifyGetRequest } from '../services/mockserver';
 
 // Example of importing a workflow from a file
 test.describe('Workflows', () => {
@@ -9,13 +10,25 @@ test.describe('Workflows', () => {
 		await expect(n8n.workflows.workflowTags()).toHaveText(['some-tag-1', 'some-tag-2']);
 	});
 
-	test.only('should create a workflow @db:reset @mode:mockserver', async ({ n8n }) => {
+	test.only('should run a simple workflow calling http endpoint @db:reset @mode:mockserver', async ({
+		n8n,
+		n8nContainer,
+	}) => {
+		const mockServerUrl = n8nContainer.mockServerUrl!;
+		const mockResponse = { data: 'Hello from MockServer!', test: '1' };
+
+		// Create expectation in mockserver to handle the request
+		await createGetExpectation(mockServerUrl, '/data', mockResponse, { test: '1' });
+
 		await n8n.goNewWorkflow();
 		await n8n.workflows.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
 
-		// TODO Add proxy from http://mock-api.com/data to mockserver url
-
-		// this executes workflow but does not validate notification correctly it seems
+		// Execute workflow - this should now proxy through mockserver
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+
+		// Verify the request was handled by mockserver
+		const wasRequestHandled = await verifyGetRequest(mockServerUrl, '/data', { test: '1' });
+
+		expect(wasRequestHandled).toBe(true);
 	});
 });

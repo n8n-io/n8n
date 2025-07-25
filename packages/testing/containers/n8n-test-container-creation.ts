@@ -185,6 +185,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		});
 		containers.push(mockServerContainer);
 		mockServerUrl = `http://localhost:${mockServerContainer.getMappedPort(1080)}`;
+
+		// Configure n8n to proxy all HTTP requests through mockserver
+		environment = {
+			...environment,
+			HTTP_PROXY: 'http://mockserver:1080',
+			HTTPS_PROXY: 'http://mockserver:1080',
+		};
 	}
 
 	let baseUrl: string;
