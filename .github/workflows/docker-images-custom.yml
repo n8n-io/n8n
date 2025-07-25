@@ -1,5 +1,9 @@
 name: Docker Custom Image CI
+
 run-name: Build ${{ inputs.branch }} - ${{ inputs.user }}
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=8192'
 
 on:
   workflow_dispatch:

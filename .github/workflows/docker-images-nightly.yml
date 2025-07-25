@@ -1,5 +1,8 @@
 name: Docker Image CI
 
+env:
+  NODE_OPTIONS: '--max-old-space-size=8192'
+
 on:
   workflow_dispatch:
     inputs:

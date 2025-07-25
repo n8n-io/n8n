@@ -10,9 +10,6 @@ env:
   NODE_OPTIONS: '--max-old-space-size=8192'
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-
   workflow_call:
     inputs:
       n8n_version:
