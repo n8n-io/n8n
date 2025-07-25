@@ -263,6 +263,7 @@ defineExpose({
 				<AskAI
 					:key="activeTab"
 					:has-changes="hasManualChanges"
+					:is-read-only="props.isReadOnly"
 					@replace-code="onAiReplaceCode"
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"

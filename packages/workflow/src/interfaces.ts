@@ -1214,6 +1214,7 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	evaluationData?: Record<string, GenericValue>;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
