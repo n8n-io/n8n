@@ -17,7 +17,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
 import type {

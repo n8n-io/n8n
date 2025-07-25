@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import type {
 	Workflow,
 	INode,

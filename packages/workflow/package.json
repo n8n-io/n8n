@@ -38,8 +38,8 @@
   "devDependencies": {
     "@langchain/core": "catalog:",
     "@n8n/config": "workspace:*",
-    "@n8n/vitest-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
@@ -50,6 +50,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
+    "@n8n/errors": "workspace:^",
     "@n8n/tournament": "1.0.6",
     "ast-types": "0.15.2",
     "callsites": "catalog:",

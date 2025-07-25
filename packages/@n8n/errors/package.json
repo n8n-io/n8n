@@ -21,6 +21,10 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "@sentry/node": "catalog:"
+  },
+  "dependencies": {
+    "callsites": "catalog:"
   }
 }
