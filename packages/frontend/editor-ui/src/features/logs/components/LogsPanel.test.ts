@@ -658,6 +658,7 @@ describe('LogsPanel', () => {
 						sendMessage: vi.fn(),
 						previousMessageIndex: ref(0),
 						isLoading: computed(() => false),
+						setLoadingState: vi.fn(),
 					};
 				});
 			});
@@ -693,6 +694,7 @@ describe('LogsPanel', () => {
 					sendMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
+					setLoadingState: vi.fn(),
 				});
 
 				logsStore.state = LOGS_PANEL_STATE.ATTACHED;
@@ -800,6 +802,7 @@ describe('LogsPanel', () => {
 						sendMessage: sendMessageSpy,
 						previousMessageIndex: ref(0),
 						isLoading: computed(() => false),
+						setLoadingState: vi.fn(),
 					};
 				});
 			});

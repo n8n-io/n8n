@@ -2,6 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
 import {
+	getNodeByName,
+	getConnectedNodes,
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from './common';
+
+import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
@@ -123,9 +131,7 @@ export class Workflow {
 		this.connectionsBySourceNode = parameters.connections;
 
 		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			parameters.connections,
-		);
+		this.connectionsByDestinationNode = mapConnectionsByDestination(parameters.connections);
 
 		this.active = parameters.active || false;
 
@@ -146,11 +152,6 @@ export class Workflow {
 		this.staticData.__dataChanged = true;
 	}
 
-	/**
-	 * The default connections are by source node. This function rewrites them by destination nodes
-	 * to easily find parent nodes.
-	 *
-	 */
 	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
@@ -288,11 +289,7 @@ export class Workflow {
 	 * @param {string} nodeName Name of the node to return
 	 */
 	getNode(nodeName: string): INode | null {
-		if (this.nodes.hasOwnProperty(nodeName)) {
-			return this.nodes[nodeName];
-		}
-
-		return null;
+		return getNodeByName(this.nodes, nodeName);
 	}
 
 	/**
@@ -477,9 +474,7 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			this.connectionsBySourceNode,
-		);
+		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
 	/**
@@ -576,7 +571,7 @@ export class Workflow {
 		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
-		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
+		return getChildNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
@@ -590,7 +585,7 @@ export class Workflow {
 		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
-		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
+		return getParentNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
 	/**
@@ -607,87 +602,7 @@ export class Workflow {
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
-		depth = depth === -1 ? -1 : depth;
-		const newDepth = depth === -1 ? depth : depth - 1;
-		if (depth === 0) {
-			// Reached max depth
-			return [];
-		}
-
-		if (!connections.hasOwnProperty(nodeName)) {
-			// Node does not have incoming connections
-			return [];
-		}
-
-		let types: NodeConnectionType[];
-		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as NodeConnectionType[];
-		} else if (connectionType === 'ALL_NON_MAIN') {
-			types = Object.keys(connections[nodeName]).filter(
-				(type) => type !== 'main',
-			) as NodeConnectionType[];
-		} else {
-			types = [connectionType];
-		}
-
-		let addNodes: string[];
-		let nodeIndex: number;
-		let i: number;
-		let parentNodeName: string;
-		const returnNodes: string[] = [];
-
-		types.forEach((type) => {
-			if (!connections[nodeName].hasOwnProperty(type)) {
-				// Node does not have incoming connections of given type
-				return;
-			}
-
-			const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
-
-			if (checkedNodes.includes(nodeName)) {
-				// Node got checked already before
-				return;
-			}
-
-			checkedNodes.push(nodeName);
-
-			connections[nodeName][type].forEach((connectionsByIndex) => {
-				connectionsByIndex?.forEach((connection) => {
-					if (checkedNodes.includes(connection.node)) {
-						// Node got checked already before
-						return;
-					}
-
-					returnNodes.unshift(connection.node);
-
-					addNodes = this.getConnectedNodes(
-						connections,
-						connection.node,
-						connectionType,
-						newDepth,
-						checkedNodes,
-					);
-
-					for (i = addNodes.length; i--; i > 0) {
-						// Because nodes can have multiple parents it is possible that
-						// parts of the tree is parent of both and to not add nodes
-						// twice check first if they already got added before.
-						parentNodeName = addNodes[i];
-						nodeIndex = returnNodes.indexOf(parentNodeName);
-
-						if (nodeIndex !== -1) {
-							// Node got found before so remove it from current location
-							// that node-order stays correct
-							returnNodes.splice(nodeIndex, 1);
-						}
-
-						returnNodes.unshift(parentNodeName);
-					}
-				});
-			});
-		});
-
-		return returnNodes;
+		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
 	}
 
 	/**
