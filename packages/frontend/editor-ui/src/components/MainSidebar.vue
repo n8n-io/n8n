@@ -29,11 +29,13 @@ import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
+import { useModulesStore } from '@/features/modules.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const modulesStore = useModulesStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -122,7 +124,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
-			settingsStore.settings.activeModules.includes('insights') &&
+			modulesStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{

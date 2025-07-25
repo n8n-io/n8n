@@ -19,7 +19,7 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { useModulesStore } from '@/features/modules.store';
 
 const route = useRoute();
 const router = useRouter();
@@ -27,6 +27,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const modulesStore = useModulesStore();
 const projectPages = useProjectPages();
 
 const emit = defineEmits<{
@@ -84,38 +85,17 @@ const showFolders = computed(() => {
 	);
 });
 
-const isDataStoreModuleEnabled = computed(() => {
-	return settingsStore.activeModules.includes('data-store');
-});
-
-// Add data store tab if the module is enabled
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	if (!isDataStoreModuleEnabled.value || projectPages.isSharedSubPage) {
-		return [];
+	if (projectPages.isSharedSubPage) {
+		return modulesStore.sharedPageTabs;
 	}
 	if (projectPages.isOverviewSubPage) {
-		return [
-			{
-				label: i18n.baseText('dataStore.tab.label'),
-				value: DATA_STORE_VIEW,
-				to: {
-					name: DATA_STORE_VIEW,
-				},
-			},
-		];
+		console.log('==> OVERVIEW SUB PAGE TABS');
+		return modulesStore.overviewPageTabs;
 	}
-	return [
-		{
-			label: i18n.baseText('dataStore.tab.label'),
-			value: PROJECT_DATA_STORES,
-			to: {
-				name: PROJECT_DATA_STORES,
-				params: {
-					projectId: homeProject.value?.id,
-				},
-			},
-		},
-	];
+	console.log('==> PROJECT PAGE TABS');
+
+	return modulesStore.projectPageTabs;
 });
 
 const ACTION_TYPES = {

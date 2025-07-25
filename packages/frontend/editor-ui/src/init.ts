@@ -22,6 +22,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
+import { useModulesStore } from '@/features/modules.store';
 
 export const state = {
 	initialized: false,
@@ -128,6 +129,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
+	const modulesStore = useModulesStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -180,6 +182,8 @@ export async function initializeAuthenticatedFeatures(
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
 	]);
+
+	modulesStore.initialize();
 
 	authenticatedFeaturesInitialized = true;
 }

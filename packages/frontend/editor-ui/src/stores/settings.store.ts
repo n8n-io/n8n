@@ -178,13 +178,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	// TODO: Hard-coding this for now until back-end is merged
-	const activeModules = computed(() => [...settings.value.activeModules, 'data-store']);
-
-	const isModuleActive = (moduleName: string) => {
-		return activeModules.value.includes(moduleName);
-	};
-
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
@@ -400,11 +393,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		activeModules,
 		getModuleSettings,
 		moduleSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
-		isModuleActive,
 	};
 });

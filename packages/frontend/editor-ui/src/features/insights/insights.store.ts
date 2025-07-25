@@ -8,19 +8,19 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { transformInsightsSummary } from '@/features/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useModulesStore } from '@/features/modules.store';
 
 export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
+	const modulesStore = useModulesStore();
 
 	const globalInsightsPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
 	);
 
-	const isInsightsEnabled = computed(() =>
-		settingsStore.settings.activeModules.includes('insights'),
-	);
+	const isInsightsEnabled = computed(() => modulesStore.isModuleActive('insights'));
 
 	const isDashboardEnabled = computed(() => !!settingsStore.moduleSettings.insights?.dashboard);
 
