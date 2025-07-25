@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DataStoreResource, IUser, UserAction } from '@/Interface';
+import type { IUser, UserAction } from '@/Interface';
+import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '../constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';

@@ -11,12 +11,8 @@ import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import { fetchDataStores } from '@/features/dataStore/api/datastore.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	DataStoreResource,
-	IUser,
-	SortingAndPaginationUpdates,
-	UserAction,
-} from '@/Interface';
+import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
+import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {

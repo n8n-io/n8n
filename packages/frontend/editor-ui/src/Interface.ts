@@ -71,7 +71,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
-import { type DataStoreEntity } from './features/dataStore/datastore.types';
 
 export * from '@n8n/design-system/types';
 
@@ -332,20 +331,19 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 };
 
-// TODO: Module resource types should be loaded from the module
-export type DataStoreResource = Prettify<
-	BaseResource &
-		DataStoreEntity & {
-			resourceType: 'datastore';
-		}
->;
-
-export type Resource =
+// Base resource types that are always available
+export type CoreResource =
 	| WorkflowResource
 	| FolderResource
 	| CredentialsResource
-	| VariableResource
-	| DataStoreResource;
+	| VariableResource;
+
+// This interface can be extended by modules to add their own resource types
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ModuleResources {}
+
+// The Resource type is the union of core resources and any module resources
+export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
 
 export type BaseFilters = {
 	search: string;
