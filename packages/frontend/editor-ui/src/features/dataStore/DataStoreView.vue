@@ -7,9 +7,10 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { fetchDataStores } from '@/features/dataStore/api/datastore.api';
+import { fetchDataStores } from '@/features/dataStore/datastore.mock.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
@@ -23,6 +24,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const i18n = useI18n();
+const route = useRoute();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
@@ -83,7 +85,10 @@ const cardActions = computed<Array<UserAction<IUser>>>(() => [
 
 const initialize = async () => {
 	loading.value = true;
-	const response = await fetchDataStores(rootStore.restApiContext, projectName.value ?? undefined, {
+	const projectId = Array.isArray(route.params.projectId)
+		? route.params.projectId[0]
+		: route.params.projectId;
+	const response = await fetchDataStores(rootStore.restApiContext, projectId, {
 		page: currentPage.value,
 		pageSize: pageSize.value,
 	});

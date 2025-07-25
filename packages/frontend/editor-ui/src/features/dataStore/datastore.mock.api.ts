@@ -1,5 +1,13 @@
+// import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { IRestApiContext } from '@n8n/rest-api-client';
+
 import { type DataStoreEntity } from '@/features/dataStore/datastore.types';
 
+/**
+ * FOR TESTING PURPOSES ONLY
+ * This file simulates the API for NWBl77TREaNzOhJ2.
+ * It should be replaced with actual API calls once back-end is merged.
+ */
 export const MOCKED_DATASTORES: DataStoreEntity[] = [
 	{
 		id: '1',
@@ -9,8 +17,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 8,
 		createdAt: '2025-07-07T00:00:00Z',
 		updatedAt: '2025-07-17T00:00:00Z',
-		// For now using names as project IDs,
-		projectId: 'Personal',
+		projectId: '4KJl0T0erg4DwK70',
 	},
 	{
 		id: '2',
@@ -20,7 +27,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 17,
 		createdAt: '2023-01-01T00:00:00Z',
 		updatedAt: '2025-07-07T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '3',
@@ -30,7 +37,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 12,
 		createdAt: '2024-03-15T00:00:00Z',
 		updatedAt: '2025-07-20T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '4',
@@ -40,7 +47,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 15,
 		createdAt: '2024-01-10T00:00:00Z',
 		updatedAt: '2025-07-22T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '5',
@@ -50,7 +57,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 20,
 		createdAt: '2024-02-20T00:00:00Z',
 		updatedAt: '2025-07-24T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '6',
@@ -60,7 +67,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 6,
 		createdAt: '2024-05-01T00:00:00Z',
 		updatedAt: '2025-07-18T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '7',
@@ -70,7 +77,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 10,
 		createdAt: '2024-04-12T00:00:00Z',
 		updatedAt: '2025-07-21T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '8',
@@ -80,7 +87,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 14,
 		createdAt: '2024-06-05T00:00:00Z',
 		updatedAt: '2025-07-23T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '9',
@@ -90,7 +97,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 11,
 		createdAt: '2024-03-08T00:00:00Z',
 		updatedAt: '2025-07-19T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '10',
@@ -100,7 +107,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 18,
 		createdAt: '2024-01-15T00:00:00Z',
 		updatedAt: '2025-07-24T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '11',
@@ -110,7 +117,7 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 9,
 		createdAt: '2024-07-01T00:00:00Z',
 		updatedAt: '2025-07-22T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 	{
 		id: '12',
@@ -120,6 +127,36 @@ export const MOCKED_DATASTORES: DataStoreEntity[] = [
 		columnCount: 7,
 		createdAt: '2024-02-28T00:00:00Z',
 		updatedAt: '2025-07-20T00:00:00Z',
-		projectId: 'Data Stores',
+		projectId: 'NWBl77TREaNzOhJ2',
 	},
 ];
+
+export const fetchDataStores = async (
+	context: IRestApiContext,
+	projectId?: string,
+	options?: {
+		page?: number;
+		pageSize?: number;
+	},
+) => {
+	await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
+	let stores = MOCKED_DATASTORES;
+	if (projectId) {
+		stores = MOCKED_DATASTORES.filter((store) => store.projectId === projectId);
+	}
+	if (options?.page && options?.pageSize) {
+		const start = (options.page - 1) * options.pageSize;
+		const end = start + options.pageSize;
+		return {
+			count: stores.length,
+			data: stores.slice(start, end),
+		};
+	}
+	if (options?.pageSize) {
+		return {
+			count: stores.length,
+			data: stores.slice(0, options.pageSize),
+		};
+	}
+	return { count: MOCKED_DATASTORES.length, data: stores };
+};

@@ -7,7 +7,7 @@ import {
 import { useSettingsStore } from '@/stores/settings.store';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const DataStoreView = async () => await import('@/features/dataStore/views/DataStoreView.vue');
+const DataStoreView = async () => await import('@/features/dataStore/DataStoreView.vue');
 
 export const checkModuleAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.meta?.moduleName || typeof to.meta.moduleName !== 'string') {
