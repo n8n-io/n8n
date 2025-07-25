@@ -990,6 +990,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../client-oauth2
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../errors
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod
