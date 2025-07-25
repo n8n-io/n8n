@@ -3,7 +3,6 @@ import { clearNotifications } from '../pages/notifications';
 import {
 	getNpsSurvey,
 	getNpsSurveyClose,
-	getNpsSurveyEmail,
 	getNpsSurveyFeedback,
 	getNpsSurveyRatings,
 } from '../pages/npsSurvey';
@@ -23,7 +22,7 @@ describe('NpsSurvey', () => {
 		cy.signin(INSTANCE_ADMIN);
 	});
 
-	it('shows nps survey to recently activated user and can submit email ', () => {
+	it('shows nps survey to recently activated user and can submit feedback ', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
@@ -57,9 +56,6 @@ describe('NpsSurvey', () => {
 
 		getNpsSurveyFeedback().find('textarea').type('n8n is the best');
 		getNpsSurveyFeedback().find('button').click();
-
-		getNpsSurveyEmail().find('input').type('test@n8n.io');
-		getNpsSurveyEmail().find('button').click();
 
 		// test that modal does not show up again until 6 months later
 		workflowPage.actions.visit(true, NOW + ONE_DAY);
