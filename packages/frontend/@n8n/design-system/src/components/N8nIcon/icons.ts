@@ -3,7 +3,6 @@ import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/Continue.svg';
 import EmptyOutput from './custom/EmptyOutput.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
-import Json from './custom/json.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
 import NodeError from './custom/node-error.svg';
