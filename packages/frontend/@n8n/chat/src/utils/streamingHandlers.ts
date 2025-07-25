@@ -67,7 +67,6 @@ export function handleNodeStart(
 ): void {
 	try {
 		// Just register the run as starting, don't create a message yet
-		console.log('Handling node start:', nodeId, runIndex);
 		// Message will be created when first chunk arrives
 		streamingManager.registerRunStart(nodeId, runIndex);
 	} catch (error) {
@@ -82,7 +81,6 @@ export function handleNodeComplete(
 ): void {
 	try {
 		streamingManager.removeRunFromActive(nodeId, runIndex);
-		console.log('Handling node complete:', nodeId, runIndex);
 	} catch (error) {
 		console.error('Error handling node complete:', error);
 	}
