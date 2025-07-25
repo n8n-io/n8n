@@ -1,6 +1,6 @@
+import { JSDOM } from 'jsdom';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
-import { JSDOM } from 'jsdom';
 
 export const hasHtml = (data: string) => {
 	try {
@@ -15,7 +15,7 @@ export const hasHtml = (data: string) => {
  * Sandboxes the HTML response to prevent possible exploitation. Embeds the
  * response in an iframe to make sure the HTML has a different origin.
  */
-export const sandboxHtmlResponse = <T>(data: T) => {
+export const sandboxHtmlResponse = <T>(data: T, forceSandbox = false) => {
 	let text;
 	if (typeof data !== 'string') {
 		text = JSON.stringify(data);
@@ -23,7 +23,7 @@ export const sandboxHtmlResponse = <T>(data: T) => {
 		text = data;
 	}
 
-	if (!hasHtml(text)) {
+	if (!forceSandbox && !hasHtml(text)) {
 		return text;
 	}
 

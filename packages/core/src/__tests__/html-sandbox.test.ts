@@ -24,14 +24,25 @@ describe('sandboxHtmlResponse', () => {
 		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
 	});
 
-	it('should handle empty HTML', () => {
-		const html = '';
-		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
-	});
-
 	it('should handle HTML with special characters', () => {
 		const html = '<p>Special characters: <>&"\'</p>';
 		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
+	});
+
+	it.each([
+		['Hello World', 'Hello World'],
+		['< not html >', '< not html >'],
+		['# Test', '# Test'],
+		['', ''],
+		[123, '123'],
+		[null, 'null'],
+	])('should not sandbox if not html', (data, expected) => {
+		expect(sandboxHtmlResponse(data)).toBe(expected);
+	});
+
+	it('should always sandbox if forceSandbox is true', () => {
+		const text = 'Hello World';
+		expect(sandboxHtmlResponse(text, true)).toMatchSnapshot();
 	});
 });
 
@@ -143,7 +154,7 @@ describe('bufferEscapeHtml', () => {
 
 describe('createHtmlSandboxTransformStream', () => {
 	const getComparableHtml = (input: Buffer | string) =>
-		sandboxHtmlResponse(input.toString()).replace(/\s+/g, ' ');
+		sandboxHtmlResponse(input.toString(), true).replace(/\s+/g, ' ');
 
 	it('should wrap single chunk in iframe with proper escaping', async () => {
 		const input = Buffer.from('Hello & "World"', 'utf8');
