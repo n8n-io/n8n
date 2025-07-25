@@ -5,6 +5,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './common';
 export * from './cron';
 export * from './deferred-promise';
 export * from './global-state';

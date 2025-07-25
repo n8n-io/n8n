@@ -13,6 +13,8 @@ export interface IVersionNotificationSettings {
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
+	proxy: string;
+	sourceConfig: string;
 }
 
 export interface ITelemetrySettings {
