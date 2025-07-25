@@ -47,10 +47,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Permissões necessárias para fazer push para o GHCR
-    permissions:
-      contents: read
-      packages: write
     outputs:
       temp_image_name: ${{ env.TEMP_IMAGE_NAME }}
 
@@ -80,7 +76,7 @@ jobs:
         uses: docker/build-push-action@v5.1.0
         with:
           context: .
-          file: ./docker/images/n8n-custom/Dockerfile
+          file: ./docker/images/n8n/Dockerfile
           build-args: |
             N8N_RELEASE_TYPE=stable
           platforms: linux/amd64,linux/arm64
