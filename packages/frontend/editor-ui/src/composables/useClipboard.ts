@@ -1,14 +1,52 @@
 import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
 import { PiPWindowSymbol } from '@/constants';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { useNodeHelpers } from './useNodeHelpers';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
+
+function updateNodeWebhookAndId(node: INodeUi, nodeHelpers: ReturnType<typeof useNodeHelpers>) {
+	nodeHelpers.assignWebhookId(node);
+
+	if (node.parameters.path) {
+		node.parameters.path = node.webhookId;
+	} else if ((node.parameters.options as IDataObject).path) {
+		(node.parameters.options as IDataObject).path = node.webhookId;
+	}
+
+	if (node.id) {
+		nodeHelpers.assignNodeId(node);
+	}
+}
+
+export function getClipboardValue(value: string, nodeHelpers = useNodeHelpers()) {
+	const clipboardValue = jsonParse<IWorkflowDb>(value);
+
+	if (Array.isArray(clipboardValue.nodes)) {
+		clipboardValue.nodes.map((node) => {
+			// We automatically reassign a new webhookId to webhook nodes to prevent
+			// webhook url takeovers
+			if (node.webhookId) {
+				updateNodeWebhookAndId(node, nodeHelpers);
+			}
+
+			return node;
+		});
+	}
+
+	return JSON.stringify(clipboardValue);
+}
 
 export function useClipboard({
 	onPaste: onPasteFn = () => {},
 }: {
 	onPaste?: ClipboardEventFn;
 } = {}) {
+	const nodeHelpers = useNodeHelpers();
+
 	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 	const { copy, copied, isSupported, text } = useClipboardCore({
 		navigator: pipWindow?.value?.navigator ?? window.navigator,
@@ -44,7 +82,10 @@ export function useClipboard({
 		const clipboardData = event.clipboardData;
 		if (clipboardData !== null) {
 			const clipboardValue = clipboardData.getData('text/plain');
-			onPasteCallback.value(clipboardValue, event);
+
+			// onPasteCallback.value(clipboardValue, event);
+
+			onPasteCallback.value(getClipboardValue(clipboardValue, nodeHelpers), event);
 		}
 	}
 
