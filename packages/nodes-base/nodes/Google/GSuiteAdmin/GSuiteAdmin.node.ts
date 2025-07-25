@@ -11,7 +11,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-import { groupFields, groupOperations } from './GroupDescripion';
+import { groupFields, groupOperations } from './GroupDescription';
 import { searchDevices, searchGroups, searchUsers } from './SearchFunctions';
 import { userFields, userOperations } from './UserDescription';
 
@@ -334,7 +334,10 @@ export class GSuiteAdmin implements INodeType {
 						}
 
 						if (filter.userId) {
-							qs.userId = filter.userId;
+							qs.userKey = filter.userId;
+						} else if (!qs.customer) {
+							// userKey and customer cannot be defined together
+							qs.customer = 'my_customer';
 						}
 
 						if (sort.sortRules) {
@@ -345,10 +348,6 @@ export class GSuiteAdmin implements INodeType {
 							if (sortOrder) {
 								qs.sortOrder = sortOrder;
 							}
-						}
-
-						if (!qs.customer) {
-							qs.customer = 'my_customer';
 						}
 
 						if (!returnAll) {
