@@ -86,7 +86,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	stopExecution: [];
-	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
 	openConnectionNodeCreator: [
@@ -304,11 +303,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 	if (_node === null) {
 		return;
-	}
-
-	if (parameterData.name === 'onError') {
-		// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
-		emit('redrawRequired');
 	}
 
 	if (parameterData.name === 'name') {
