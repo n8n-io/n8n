@@ -10,6 +10,7 @@ export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
 				column('projectId').varchar(36).notNull,
+				column('sizeBytes').int.notNull,
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project', // @Review: this hardcodes a dependency on the project table, is this cool?

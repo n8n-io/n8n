@@ -29,4 +29,7 @@ export class DataStoreEntity extends WithTimestampsAndStringId {
 
 	@Column()
 	projectId: string;
+
+	@Column({ type: 'int', default: 0 })
+	sizeBytes: number;
 }

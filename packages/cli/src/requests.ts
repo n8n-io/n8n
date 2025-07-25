@@ -35,9 +35,12 @@ export namespace ListQuery {
 		sortBy?: string;
 	};
 
-	export type Options = {
-		filter?: Record<string, unknown>;
-		select?: Record<string, true>;
+	export type Options<
+		Filter extends Record<string, unknown> = Record<string, unknown>,
+		Select extends Record<string, true> = Record<string, true>,
+	> = {
+		filter?: Filter;
+		select?: Select;
 		skip?: number;
 		take?: number;
 		sortBy?: string;

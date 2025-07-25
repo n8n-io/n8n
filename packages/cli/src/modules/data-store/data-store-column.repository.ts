@@ -11,14 +11,11 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		super(DataStoreColumnEntity, dataSource.manager);
 	}
 
-	async addColumn(
-		dataStoreId: DataStoreUserTableName,
-		columns: [DataStoreColumn, ...DataStoreColumn[]],
-	) {
-		await this.manager.query(...addColumnQuery(dataStoreId, columns));
+	async addColumn(dataStoreId: DataStoreUserTableName, column: DataStoreColumn) {
+		await this.manager.query(...addColumnQuery(dataStoreId, column));
 	}
 
-	async deleteColumn(dataStoreId: DataStoreUserTableName, columns: [string, ...string[]]) {
-		await this.manager.query(...deleteColumnQuery(dataStoreId, columns));
+	async deleteColumn(dataStoreId: DataStoreUserTableName, column: string) {
+		await this.manager.query(...deleteColumnQuery(dataStoreId, column));
 	}
 }

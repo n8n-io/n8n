@@ -1,10 +1,12 @@
+import { z } from 'zod';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type {
 	DataStoreColumn,
 	DataStoreColumnType,
 	DataStoreUserTableName,
 } from '../data-store.types';
-import { z } from 'zod';
 
 function dataStoreColumnTypeToSql(type: DataStoreColumnType) {
 	switch (type) {
@@ -37,7 +39,7 @@ function dataStoreColumnTypeToZod(fieldType: DataStoreColumnType) {
 }
 
 function columnToWildcardAndType(column: DataStoreColumn) {
-	return `\`?\` ${dataStoreColumnTypeToSql(column.type)}`;
+	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`;
 }
 
 export function createUserTableQuery(
@@ -54,21 +56,23 @@ export function createUserTableQuery(
 	];
 }
 
+function isValidColumnName(name: string) {
+	// Only allow alphanumeric and underscore
+	return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+}
+
 export function addColumnQuery(
 	tableName: DataStoreUserTableName,
-	columns: [DataStoreColumn, ...DataStoreColumn[]],
+	column: DataStoreColumn,
 ): [string, string[]] {
-	const columnSql = columns.map(columnToWildcardAndType);
-	const columnsFieldQuery = `, ${columnSql.join(', ')}`;
-
-	return [`ALTER TABLE ${tableName} ADD ${columnsFieldQuery}`, columns.map((x) => x.name)];
+	// @Review: What to do about sql injection here?
+	if (!isValidColumnName(column.name)) throw new Error('bad column name');
+	return [`ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column)}`, []];
 }
 
 export function deleteColumnQuery(
 	tableName: DataStoreUserTableName,
-	columns: [string, ...string[]],
+	column: string,
 ): [string, string[]] {
-	const columnSql = columns.map((_) => 'DROP COLUMN ?').join(', ');
-
-	return [`ALTER TABLE ${tableName} ${columnSql}`, columns];
+	return [`ALTER TABLE ${tableName} DROP COLUMN \`${column}\``, []];
 }

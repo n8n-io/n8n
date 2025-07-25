@@ -14,9 +14,12 @@ export const dataStoreColumnNameSchema = z
 	);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
-export const dataStoreColumnSchema = z.object({
+export const dataStoreCreateColumnSchema = z.object({
 	name: dataStoreColumnNameSchema,
 	type: dataStoreColumnTypeSchema,
+});
+
+export const dataStoreColumnSchema = dataStoreCreateColumnSchema.extend({
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 	dataStoreId: dataStoreIdSchema,
