@@ -195,7 +195,7 @@ defineSlots<{
 
 .expandedCell {
 	white-space: normal;
-	background: var(--color-background-base);
+	background: var(--color-background-light-base);
 	border-bottom: 1px solid var(--border-color-light) !important;
 	vertical-align: top !important;
 
