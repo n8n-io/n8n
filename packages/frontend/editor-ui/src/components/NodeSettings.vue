@@ -259,6 +259,14 @@ const featureRequestUrl = computed(() => {
 	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
 });
 
+const hasOutputConnection = computed(() => {
+	if (!node.value) return false;
+	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+
+	// Check if there's at-least one output connection
+	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
+});
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
 
@@ -558,6 +566,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			dragging: dragging,
 			embedded: props.isEmbeddedInCanvas,
 		}"
+		:data-has-output-connection="hasOutputConnection"
 		@keydown.stop
 	>
 		<ExperimentalEmbeddedNdvHeader
@@ -917,5 +926,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		box-sizing: border-box;
 		background-color: #793300;
 	}
+}
+</style>
+
+<style lang="scss">
+// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
+[data-has-output-connection='true'] .ndv-connection-hint-notice {
+	display: none;
 }
 </style>
