@@ -11,10 +11,12 @@ describe('Wordpress > Page Workflows', () => {
 			.post('/wp-json/wp/v2/pages', {
 				title: 'A new page',
 				content: 'Some content',
+				slug: 'a-new-page',
 				status: 'draft',
 				comment_status: 'closed',
 				ping_status: 'closed',
 				menu_order: 1,
+				featured_media: 10,
 			})
 			.reply(200, pageCreate);
 		mock.get('/wp-json/wp/v2/pages/2').reply(200, pageGet);
@@ -25,6 +27,7 @@ describe('Wordpress > Page Workflows', () => {
 				title: 'New Title',
 				content: 'Updated Content',
 				slug: 'new-slug',
+				excerpt: 'Updated excerpt',
 			})
 			.reply(200, pageUpdate);
 	});

@@ -15,10 +15,17 @@
 				"title": "A new page",
 				"additionalFields": {
 					"content": "Some content",
-					"status": "draft",
+					"status": {
+						"status": {
+							"pageStatus": "draft",
+							"pageDateTime": ""
+						}
+					},
+					"slug": "a-new-page",
 					"commentStatus": "closed",
 					"pingStatus": "closed",
-					"menuOrder": 1
+					"menuOrder": 1,
+					"featuredMediaId": 10
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -79,7 +86,8 @@
 				"updateFields": {
 					"title": "New Title",
 					"content": "Updated Content",
-					"slug": "new-slug"
+					"slug": "new-slug",
+					"excerpt": "Updated excerpt"
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -161,7 +169,7 @@
 						"protected": false
 					},
 					"author": 1,
-					"featured_media": 0,
+					"featured_media": 10,
 					"parent": 0,
 					"menu_order": 1,
 					"comment_status": "closed",
@@ -450,11 +458,11 @@
 					},
 					"excerpt": {
 						"raw": "",
-						"rendered": "<p>Updated Content</p>\n",
+						"rendered": "<p>Updated excerpt</p>\n",
 						"protected": false
 					},
 					"author": 1,
-					"featured_media": 0,
+					"featured_media": 10,
 					"parent": 0,
 					"menu_order": 0,
 					"comment_status": "closed",

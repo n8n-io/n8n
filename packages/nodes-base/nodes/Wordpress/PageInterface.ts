@@ -2,6 +2,7 @@ export interface IPage {
 	author?: number;
 	comment_status?: string;
 	content?: string;
+	excerpt?: string;
 	featured_media?: number;
 	id?: number;
 	menu_order?: number;
@@ -11,6 +12,7 @@ export interface IPage {
 	ping_status?: string;
 	slug?: string;
 	status?: string;
+	date?: string;
 	template?: string;
 	title?: string;
 }
