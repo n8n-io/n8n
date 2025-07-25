@@ -48,15 +48,15 @@ export class CommandRegistry {
 			return process.exit(1);
 		}
 
-		const { args, flags } = this.cliParser.parse({
-			argv: process.argv,
-			flagsSchema: commandEntry.flagsSchema,
-		});
-
-		if (['help', 'h'].some((s) => args.includes(s))) {
+		if (process.argv.includes('--help') || process.argv.includes('-h')) {
 			this.printCommandUsage(commandEntry);
 			return process.exit(0);
 		}
+
+		const { flags } = this.cliParser.parse({
+			argv: process.argv,
+			flagsSchema: commandEntry.flagsSchema,
+		});
 
 		const command = Container.get(commandEntry.class);
 		command.flags = flags;
