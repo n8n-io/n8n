@@ -5,6 +5,7 @@ import {
 	getNpsSurveyClose,
 	getNpsSurveyFeedback,
 	getNpsSurveyRatings,
+	getNpsSurveySubmit,
 } from '../pages/npsSurvey';
 import { WorkflowPage } from '../pages/workflow';
 
@@ -55,7 +56,7 @@ describe('NpsSurvey', () => {
 		getNpsSurveyRatings().find('button').first().click();
 
 		getNpsSurveyFeedback().find('textarea').type('n8n is the best');
-		getNpsSurveyFeedback().find('button').click();
+		getNpsSurveySubmit().find('button').click();
 
 		// test that modal does not show up again until 6 months later
 		workflowPage.actions.visit(true, NOW + ONE_DAY);
