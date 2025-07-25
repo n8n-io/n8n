@@ -24,6 +24,7 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 				'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 				'n8n-local-rules/no-useless-catch-throw': 'error',
+				'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
 			},
 		},
 	},
