@@ -69,6 +69,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				passthroughBinaryImages?: boolean;
 			};
 
+			if (!options.systemMessage) {
+				options.systemMessage =
+					'If you need to use the available tools, say something before using the tools so that the user will know, like what tools to use, what parameters to use, etc. ';
+			}
+
 			// Prepare the prompt messages and prompt template.
 			const messages = await prepareMessages(this, itemIndex, {
 				systemMessage: options.systemMessage,

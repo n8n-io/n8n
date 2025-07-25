@@ -9,4 +9,5 @@ export async function nodeExecuteBefore({ data }: NodeExecuteBefore) {
 
 	workflowsStore.addExecutingNode(data.nodeName);
 	workflowsStore.addNodeExecutionStartedData(data);
+	workflowsStore.concatenateOutput(data.intermediateText);
 }

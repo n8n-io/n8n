@@ -49,6 +49,7 @@ export type NodeExecuteBefore = {
 		executionId: string;
 		nodeName: string;
 		data: ITaskStartedData;
+		intermediateText?: string;
 	};
 };
 
@@ -58,6 +59,7 @@ export type NodeExecuteAfter = {
 		executionId: string;
 		nodeName: string;
 		data: ITaskData;
+		intermediateText?: string;
 
 		/**
 		 * When a worker relays updates about a manual execution to main, if the

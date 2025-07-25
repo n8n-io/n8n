@@ -27,6 +27,7 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 	}
 
 	workflowsStore.updateNodeExecutionData(pushData);
+	workflowsStore.concatenateOutput(pushData.intermediateText); // concatenate the output text to imitate streaming
 
 	// Remove the node from the executing queue after a short delay
 	// To allow the running spinner to show for at least 50ms

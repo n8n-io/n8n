@@ -292,15 +292,32 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName, taskData]);
+
+			// parse the LLM input and response
+			const queryInput: string = JSON.stringify(taskData.inputOverride?.ai_tool?.[0]?.[0]) ?? '';
+			if (queryInput.length == 0) {
+				await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName, taskData]);
+			} else {
+				await additionalData.hooks?.runHook('nodeExecuteBefore', [
+					nodeName,
+					taskData,
+					'``` ' + queryInput + '```',
+				]);
+			}
 		} else {
 			// Outputs
 			taskData.executionTime = Date.now() - taskData.startTime;
+
+			// parse the text should there be any
+			const responseData = taskData?.data?.ai_languageModel?.[0]?.[0]?.json as any;
+			const gens0 = responseData?.response?.generations?.[0];
+			const lastTextChunk = gens0?.length ? gens0[gens0.length - 1]?.text : undefined;
 
 			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,
 				taskData,
 				this.runExecutionData,
+				lastTextChunk,
 			]);
 
 			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {

@@ -71,7 +71,7 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
-	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
+	hooks.addHandler('nodeExecuteBefore', function (nodeName, data, intermediateText) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
@@ -82,20 +82,29 @@ function hookFunctionsPush(
 		});
 
 		pushInstance.send(
-			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
+			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data, intermediateText } },
 			pushRef,
 		);
 	});
-	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
+	hooks.addHandler('nodeExecuteAfter', function (nodeName, data, executionData, intermediateText) {
+		if (executionData) {
+		} // executionData is a parameter that must be kept but is not useful, so I added this statement to avaoid typecheck issues
 		const { executionId } = this;
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
 			pushRef,
 			workflowId: this.workflowData.id,
+			intermediateText,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
+		pushInstance.send(
+			{
+				type: 'nodeExecuteAfter',
+				data: { executionId, nodeName, data, intermediateText },
+			},
+			pushRef,
+		);
 	});
 	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
 		const { executionId } = this;

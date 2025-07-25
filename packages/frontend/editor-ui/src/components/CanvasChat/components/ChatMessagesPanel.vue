@@ -13,6 +13,7 @@ import { useToast } from '@/composables/useToast';
 import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 interface Props {
 	pastChatMessages: string[];
@@ -42,6 +43,11 @@ const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
 const settingsStore = useSettingsStore();
+const workflowsStore = useWorkflowsStore();
+
+// Use the executingNode array to show currently executing nodes
+const currentlyExecutingNodes = computed(() => workflowsStore.executingNode);
+const executingOutput = computed(() => workflowsStore.executingOutput);
 
 const previousMessageIndex = ref(0);
 
@@ -238,6 +244,8 @@ watch(
 		<main v-if="isOpen" :class="$style.chatBody">
 			<MessagesList
 				:messages="messages"
+				:executed-nodes="currentlyExecutingNodes"
+				:executing-output="executingOutput"
 				:class="$style.messages"
 				:empty-text="
 					isNewLogsEnabled ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
