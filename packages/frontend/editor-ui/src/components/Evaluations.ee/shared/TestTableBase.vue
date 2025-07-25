@@ -256,5 +256,16 @@ defineSlots<{
 	:global(.el-scrollbar__bar) {
 		opacity: 1;
 	}
+
+	* {
+		// hide browser scrollbars completely
+		// but still allow mouse gestures to scroll
+		&::-webkit-scrollbar {
+			display: none;
+		}
+
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
 }
 </style>
