@@ -60,7 +60,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		for (const x of ['id', 'projectId'] as const) {
 			const content = [filter?.[x]].flat().filter((x) => x !== undefined);
 			if (content.length === 0) continue;
-			console.log(content);
 
 			query.andWhere(`dataStore.${x} IN (:...${x}s)`, {
 				/*
@@ -111,9 +110,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		query: SelectQueryBuilder<DataStoreEntity>,
 		options: DataStoreListOptions,
 	): void {
-		if (options?.take) {
-			query.skip(options.skip ?? 0).take(options.take);
-		}
+		console.log(options);
+		query.skip(options.skip ?? 0);
+		query.take(options.take ?? 0);
 	}
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataStoreEntity>): void {

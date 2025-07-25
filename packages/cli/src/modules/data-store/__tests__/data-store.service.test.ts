@@ -1,10 +1,10 @@
+import type { AddDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import type { DataStoreEntity } from '../data-store.entity';
 import { DataStoreService } from '../data-store.service';
-import { AddDataStoreColumnDto } from '@n8n/api-types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -281,6 +281,52 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result[0].map((x) => x.name).sort()).toEqual(names.sort());
 			expect(result[1]).toEqual(11);
+		});
+		it('should retrieve by id with pagination', async () => {
+			// ARRANGE
+			const names = [dataStore1.name];
+			for (let i = 0; i < 10; ++i) {
+				const ds = (await dataStoreService.createDataStore({
+					name: `anotherDataStore${i}`,
+					projectId: project1.id,
+					columns: [],
+				})) as DataStoreEntity;
+				names.push(ds.name);
+			}
+
+			// ACT
+			const p0 = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
+				skip: 0,
+				take: 3,
+			});
+			const p1 = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
+				skip: 3,
+				take: 3,
+			});
+			const rest = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
+				skip: 6,
+			});
+
+			// ASSERT
+			expect(p0[1]).toBe(11);
+			expect(p0[0]).toHaveLength(3);
+
+			expect(p1[1]).toBe(11);
+			expect(p1[0]).toHaveLength(3);
+
+			expect(rest[1]).toBe(11);
+			expect(rest[0]).toHaveLength(5);
+
+			expect(
+				p0[0]
+					.concat(p1[0])
+					.concat(rest[0])
+					.map((x) => x.name)
+					.sort(),
+			).toEqual(names.sort());
 		});
 		it('correctly joins columns', async () => {
 			// ARRANGE
