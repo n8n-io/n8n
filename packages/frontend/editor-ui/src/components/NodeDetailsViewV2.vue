@@ -717,7 +717,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport v-if="activeNode && activeNodeType" :to="`#${APP_MODALS_ELEMENT_ID}`">
+	<Teleport
+		v-if="activeNode && activeNodeType && !isActiveStickyNode"
+		:to="`#${APP_MODALS_ELEMENT_ID}`"
+	>
 		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
 
 		<dialog
@@ -863,7 +866,8 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .backdrop {
-	position: fixed;
+	position: absolute;
+	z-index: var(--z-index-ndv);
 	top: 0;
 	left: 0;
 	right: 0;
@@ -872,9 +876,10 @@ onBeforeUnmount(() => {
 }
 
 .dialog {
-	position: fixed;
-	width: calc(100vw - var(--spacing-2xl));
-	height: calc(100vh - var(--spacing-2xl));
+	position: absolute;
+	z-index: var(--z-index-ndv);
+	width: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-2xl));
 	top: var(--spacing-l);
 	left: var(--spacing-l);
 	border: none;
