@@ -25,4 +25,5 @@ export type CommandEntry = {
 	description: string;
 	examples?: string[];
 	flagsSchema?: FlagsSchema;
+	argsSchema?: readonly string[];
 };
