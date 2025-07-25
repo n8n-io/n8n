@@ -98,7 +98,7 @@ async function send() {
 
 		toast.showMessage({
 			title: i18n.baseText('prompts.npsSurvey.thanks'),
-			message: Number(form.value.value) >= 10 ? i18n.baseText('prompts.npsSurvey.reviewUs') : '',
+			message: Number(form.value.value) >= 8 ? i18n.baseText('prompts.npsSurvey.reviewUs') : '',
 			type: 'success',
 			duration: 15000,
 		});
@@ -173,7 +173,7 @@ watch(
 							@update:model-value="onFeedbackInput"
 						/>
 					</div>
-					<div :class="$style.button">
+					<div :class="$style.button" data-test-id="nps-survey-feedback-button">
 						<n8n-button
 							:label="SEND"
 							float="right"
