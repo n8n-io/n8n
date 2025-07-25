@@ -2,13 +2,17 @@ import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from '../../api/evaluation.ee';
 import type { Column, Header } from './TestRunDetailView.vue';
 
+export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
+const LONG_TABLE_CELL_MIN_WIDTH = 250;
+const EXECUTION_TIME_KEY = 'executionTime';
+const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
+
 export function getDefaultOrderedColumns(
 	run?: TestRunRecord,
 	filteredTestCases?: TestCaseExecutionRecord[],
 ) {
 	// Default sort order
 	// -> inputs, outputs, metrics, tokens, executionTime
-	const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
 	const metricColumns = Object.keys(run?.metrics ?? {}).filter((key) => !specialKeys.includes(key));
 	const specialColumns = specialKeys.filter((key) => (run?.metrics ? key in run.metrics : false));
 	const inputColumns = getTestCasesColumns(filteredTestCases ?? [], 'inputs');
@@ -102,11 +106,7 @@ function formatValue(
 ) {
 	let stringValue: string;
 
-	if (
-		numeric &&
-		typeof value === 'number' &&
-		!(key.endsWith('Tokens') || key === 'executionTime')
-	) {
+	if (numeric && typeof value === 'number' && !specialKeys.includes(key)) {
 		stringValue = value.toFixed(2) ?? '-';
 	} else if (typeof value === 'object' && value !== null) {
 		stringValue = JSON.stringify(value, null, 2);
@@ -140,7 +140,7 @@ export function getTestTableHeaders(
 				sortable: true,
 				filter: true,
 				showHeaderTooltip: true,
-				minWidth: hasLongContent ? 250 : 125,
+				minWidth: hasLongContent ? LONG_TABLE_CELL_MIN_WIDTH : SHORT_TABLE_CELL_MIN_WIDTH,
 				formatter: (row: TestCaseExecutionRecord) => {
 					const value = row[column.columnType]?.[column.label];
 					const formattedValue = formatValue(column.label, value, { numeric: column.numeric });

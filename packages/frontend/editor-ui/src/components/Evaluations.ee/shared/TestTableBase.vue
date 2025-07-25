@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="T extends object">
+import { SHORT_TABLE_CELL_MIN_WIDTH } from '@/views/Evaluations.ee/utils';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { TableInstance } from 'element-plus';
+import type { ColumnCls, TableInstance } from 'element-plus';
 import { ElTable, ElTableColumn } from 'element-plus';
 import isEqual from 'lodash/isEqual';
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, ref, useCssModule, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
@@ -49,6 +51,8 @@ const props = withDefaults(
 		expandedRows: () => new Set(),
 	},
 );
+
+const $style = useCssModule();
 
 const tableRef = ref<TableInstance>();
 const selectedRows = ref<TableRow[]>([]);
@@ -101,6 +105,18 @@ const handleColumnResize = (
 	}
 };
 
+const getCellClassName: ColumnCls<TableRow> = ({ row }) => {
+	return `${props.expandedRows?.has(row.id) ? $style.expandedCell : $style.baseCell}`;
+};
+
+const getRowClassName: ColumnCls<TableRow> = ({ row }) => {
+	const baseClass =
+		'status' in row && row?.status === 'error' ? $style.customDisabledRow : $style.customRow;
+
+	const expandedClass = props.expandedRows?.has(row.id) ? $style.expandedRow : '';
+	return `${baseClass} ${expandedClass}`;
+};
+
 defineSlots<{
 	id(props: { row: TableRow }): unknown;
 	index(props: { row: TableRow }): unknown;
@@ -115,18 +131,8 @@ defineSlots<{
 		:default-sort="defaultSort"
 		:data="localData"
 		:border="true"
-		:cell-class-name="
-			({ row }) => {
-				return `${expandedRows?.has(row.id) ? $style.expandedCell : $style.baseCell}`;
-			}
-		"
-		:row-class-name="
-			({ row }) => {
-				const baseClass = row?.status === 'error' ? $style.customDisabledRow : $style.customRow;
-				const expandedClass = expandedRows?.has(row.id) ? $style.expandedRow : '';
-				return `${baseClass} ${expandedClass}`;
-			}
-		"
+		:cell-class-name="getCellClassName"
+		:row-class-name="getRowClassName"
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
@@ -147,7 +153,7 @@ defineSlots<{
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="column.minWidth ?? 125"
+			:min-width="column.minWidth ?? SHORT_TABLE_CELL_MIN_WIDTH"
 		>
 			<template #header="headerProps">
 				<N8nTooltip

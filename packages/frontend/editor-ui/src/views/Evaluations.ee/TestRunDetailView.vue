@@ -40,6 +40,8 @@ export type Column =
 			disabled: false;
 			columnType: 'inputs' | 'outputs' | 'metrics';
 	  }
+	// Disabled state ensures current sort order is not lost if user resorts teh columns
+	// even if some columns are disabled / not available in the current run
 	| { key: string; disabled: true };
 
 interface UserPreferences {
