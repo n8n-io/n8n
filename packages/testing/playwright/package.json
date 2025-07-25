@@ -20,6 +20,7 @@
     "@playwright/test": "1.53.0",
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.0",
-    "n8n-containers": "workspace:*"
+    "n8n-containers": "workspace:*",
+    "mockserver-client": "^5.15.0"
   }
 }

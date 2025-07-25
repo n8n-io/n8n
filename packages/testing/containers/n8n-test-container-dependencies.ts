@@ -316,6 +316,35 @@ export async function pollContainerHttpEndpoint(
 	);
 }
 
+export async function setupMockServer({
+	mockServerImage,
+	projectName,
+	network,
+}: {
+	mockServerImage: string;
+	projectName: string;
+	network: StartedNetwork;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(mockServerImage)
+			.withNetwork(network)
+			.withNetworkAliases('mockserver')
+			.withExposedPorts(1080)
+			.withWaitStrategy(Wait.forLogMessage('INFO 1080 started on port: 1080'))
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'mockserver',
+			})
+			.withName(`${projectName}-mockserver`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
 // TODO: Look at Ollama container?
 // TODO: Look at MariaDB container?
-// TODO: Look at MockServer container, could we use this for mocking out external services?

@@ -29,6 +29,7 @@ interface ContainerConfig {
 		mains: number;
 		workers: number;
 	};
+	mockServer?: boolean;
 	env?: Record<string, string>;
 }
 
