@@ -21,7 +21,9 @@
 				},
 				"returnAll": true,
 				"filters": {
-					"inclusive": true
+					"inclusive": true,
+					"latest": "1734322597.935429",
+					"oldest": "1734321942.689159"
 				}
 			},
 			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
