@@ -4,7 +4,6 @@ import type { Column, Header } from './TestRunDetailView.vue';
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;
-const EXECUTION_TIME_KEY = 'executionTime';
 const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
 
 export function getDefaultOrderedColumns(
