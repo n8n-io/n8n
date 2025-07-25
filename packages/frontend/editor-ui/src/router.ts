@@ -18,9 +18,9 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
+import { insightsRoutes } from '@/features/insights/insights.router';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
-import { getModuleRoutes } from './features/router.utils';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -719,7 +719,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
-	...getModuleRoutes().filter((route) => route.meta?.projectRoute !== true),
+	...insightsRoutes,
 	{
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,

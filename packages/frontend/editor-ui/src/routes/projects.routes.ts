@@ -2,7 +2,6 @@ import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { getModuleRoutes } from '@/features/router.utils';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
@@ -10,7 +9,7 @@ const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 
-export const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
+const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {
 		return true;
 	}
@@ -115,37 +114,38 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		redirect: '/home/workflows',
 		children: [
 			{
+				name: VIEWS.PROJECT_DETAILS,
 				path: ':projectId',
 				meta: {
 					middleware: ['authenticated'],
 				},
 				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
-				children: [
-					...commonChildRoutes.map((route, idx) => ({
+				children: commonChildRoutes
+					.map((route, idx) => ({
 						...route,
 						name: commonChildRouteExtensions.projects[idx].name,
-					})),
-					{
-						path: 'settings',
-						name: VIEWS.PROJECT_SETTINGS,
-						components: {
-							default: ProjectSettings,
-							sidebar: MainSidebar,
-						},
-						meta: {
-							middleware: ['authenticated', 'custom'],
-							middlewareOptions: {
-								custom: (options) => {
-									const project = useProjectsStore().myProjects.find(
-										(p) => p.id === options?.to.params.projectId,
-									);
-									return !!getResourcePermissions(project?.scopes).project.update;
+					}))
+					.concat([
+						{
+							path: 'settings',
+							name: VIEWS.PROJECT_SETTINGS,
+							components: {
+								default: ProjectSettings,
+								sidebar: MainSidebar,
+							},
+							meta: {
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => {
+										const project = useProjectsStore().myProjects.find(
+											(p) => p.id === options?.to.params.projectId,
+										);
+										return !!getResourcePermissions(project?.scopes).project.update;
+									},
 								},
 							},
 						},
-					},
-					...getModuleRoutes().filter((route) => route.meta?.projectRoute === true),
-				],
+					]),
 			},
 		],
 	},

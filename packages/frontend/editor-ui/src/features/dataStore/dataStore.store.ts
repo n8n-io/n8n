@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia';
 import { useModulesStore } from '../modules.store';
 import type { TabOptions } from '@n8n/design-system';
+import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
 import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from './constants';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { dataStoreRoutes } from './dataStore.routes';
+import router from '@/router';
+import { VIEWS } from '@/constants';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
 	const modulesStore = useModulesStore();
-	const projectsStore = useProjectsStore();
 
 	const i18n = useI18n();
 
@@ -25,22 +27,28 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 	};
 
 	const registerProjectPageTabs = () => {
-		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject;
-		modulesStore.addProjectPageTabs([
-			{
-				label: i18n.baseText('dataStore.tab.label'),
-				value: PROJECT_DATA_STORES,
-				to: {
-					name: PROJECT_DATA_STORES,
-					params: {
-						projectId: homeProject?.id,
-					},
-				},
+		const dataStoreTab: DynamicTabOptions = {
+			label: i18n.baseText('dataStore.tab.label'),
+			value: PROJECT_DATA_STORES,
+			dynamicRoute: {
+				name: PROJECT_DATA_STORES,
+				includeProjectId: true,
 			},
-		]);
+		};
+		modulesStore.addProjectPageTabs([dataStoreTab as TabOptions<string>]);
+	};
+	const registerOverviewRoute = () => {
+		router.addRoute(dataStoreRoutes[0]);
+	};
+
+	const registerProjectRoutes = () => {
+		router.addRoute(VIEWS.PROJECT_DETAILS, dataStoreRoutes[1]);
+		router.addRoute(VIEWS.PROJECT_DETAILS, dataStoreRoutes[2]);
 	};
 
 	const initialize = () => {
+		registerOverviewRoute();
+		registerProjectRoutes();
 		registerOverviewPageTabs();
 		registerProjectPageTabs();
 	};
