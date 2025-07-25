@@ -68,13 +68,9 @@ export class Workflow {
 
 	nodes: INodes = {};
 
-	connectionsBySourceNode: IConnections;
-
-	connectionsByDestinationNode: IConnections;
+	connectionsBySourceNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
-
-	expression: Expression;
 
 	active: boolean;
 
@@ -96,11 +92,57 @@ export class Workflow {
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
 
-		// Save nodes in workflow as object to be able to get the
-		// nodes easily by its name.
-		// Also directly add the default values of the node type.
+		this.setNodes(parameters.nodes);
+		this.setConnections(parameters.connections);
+
+		this.active = parameters.active || false;
+
+		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
+
+		this.settings = parameters.settings || {};
+		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
+	}
+
+	private _connectionsByDestinationNodeCacheMap = new WeakMap<IConnections, IConnections>();
+
+	get connectionsByDestinationNode(): IConnections {
+		const cached = this._connectionsByDestinationNodeCacheMap.get(this.connectionsBySourceNode);
+		if (cached) {
+			return cached;
+		}
+
+		const result = mapConnectionsByDestination(this.connectionsBySourceNode);
+		this._connectionsByDestinationNodeCacheMap.set(this.connectionsBySourceNode, result);
+
+		return result;
+	}
+
+	private _expressionCacheMap = new WeakMap<
+		{ nodes: INodes; connections: IConnections },
+		Expression
+	>();
+
+	get expression(): Expression {
+		const cacheKey = { nodes: this.nodes, connections: this.connectionsBySourceNode };
+		const cached = this._expressionCacheMap.get(cacheKey);
+		if (cached) {
+			return cached;
+		}
+
+		const result = new Expression(this);
+		this._expressionCacheMap.set(cacheKey, result);
+
+		return result;
+	}
+
+	// Save nodes in workflow as object to be able to get the
+	// nodes easily by its name.
+	// Also directly add the default values of the node type.
+	setNodes(nodes: INode[]): void {
 		let nodeType: INodeType | undefined;
-		for (const node of parameters.nodes) {
+		for (const node of nodes) {
 			this.nodes[node.name] = node;
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -128,21 +170,10 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
+	}
 
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(parameters.connections);
-
-		this.active = parameters.active || false;
-
-		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
-			ignoreEmptyOnFirstChild: true,
-		});
-
-		this.settings = parameters.settings || {};
-		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
-
-		this.expression = new Expression(this);
+	setConnections(connections: IConnections): void {
+		this.connectionsBySourceNode = connections;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {
@@ -472,9 +503,6 @@ export class Workflow {
 				}
 			}
 		}
-
-		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
 	/**

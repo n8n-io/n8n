@@ -70,6 +70,7 @@ export function useCanvasMapping({
 	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
 }) {
+	console.log(nodes.value);
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();

@@ -142,6 +142,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	const workflowObject = ref<Workflow>(
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+		getWorkflow(workflow.value.nodes, workflow.value.connections),
+	);
+
 	// For paginated workflow lists
 	const totalWorkflowCount = ref(0);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
@@ -228,11 +233,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (activeNode) {
 			if (willNodeWait(activeNode)) return true;
 
-			const workflow = getCurrentWorkflow();
-			const parentNodes = workflow.getParentNodes(activeNode.name);
+			const parentNodes = workflowObject.value.getParentNodes(activeNode.name);
 
 			for (const parentNode of parentNodes) {
-				if (willNodeWait(workflow.nodes[parentNode])) {
+				if (willNodeWait(workflowObject.value.nodes[parentNode])) {
 					return true;
 				}
 			}
@@ -1309,8 +1313,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	function setConnections(connections: IConnections, updateWorkflow = false): void {
-		workflow.value.connections = connections;
+	function setConnections(connectionsBySourceNode: IConnections, updateWorkflow = false): void {
+		workflow.value.connections = connectionsBySourceNode;
 
 		if (updateWorkflow) {
 			updateCachedWorkflow();
@@ -1829,8 +1833,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
-		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, NodeConnectionTypes.Main);
+		const parents = workflowObject.value.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
