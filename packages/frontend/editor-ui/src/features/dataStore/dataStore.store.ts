@@ -37,13 +37,21 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 		};
 		modulesStore.addProjectPageTabs([dataStoreTab as TabOptions<string>]);
 	};
+
 	const registerOverviewRoute = () => {
-		router.addRoute(dataStoreRoutes[0]);
+		dataStoreRoutes
+			.filter((route) => route.meta?.projectRoute !== true)
+			.forEach((route) => {
+				router.addRoute(route);
+			});
 	};
 
 	const registerProjectRoutes = () => {
-		router.addRoute(VIEWS.PROJECT_DETAILS, dataStoreRoutes[1]);
-		router.addRoute(VIEWS.PROJECT_DETAILS, dataStoreRoutes[2]);
+		dataStoreRoutes
+			.filter((route) => route.meta?.projectRoute === true)
+			.forEach((route) => {
+				router.addRoute(VIEWS.PROJECT_DETAILS, route);
+			});
 	};
 
 	const initialize = () => {

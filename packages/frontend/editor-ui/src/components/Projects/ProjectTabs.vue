@@ -112,7 +112,6 @@ const options = computed<Array<TabOptions<string>>>(() => {
 					name: tab.dynamicRoute.name,
 				};
 
-				// Add project ID if requested and available
 				if (tab.dynamicRoute.includeProjectId && projectId.value) {
 					tabRoute.params = { projectId: projectId.value };
 				}
