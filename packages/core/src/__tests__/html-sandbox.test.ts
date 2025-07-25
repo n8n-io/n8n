@@ -45,6 +45,17 @@ describe('sandboxHtmlResponse', () => {
 		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
 	});
 
+	it('should sandbox when outside <body> and <head> tags', () => {
+		const html =
+			'<html><head><title>Test</title></head><body></body><script>alert("Hello")</script></html>';
+		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
+	});
+
+	it('should sandbox when outside <html> tag', () => {
+		const html = '<html><head><title>Test</title></head></html><script>alert("Hello")</script>';
+		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
+	});
+
 	it('should always sandbox if forceSandbox is true', () => {
 		const text = 'Hello World';
 		expect(sandboxHtmlResponse(text, true)).toMatchSnapshot();
