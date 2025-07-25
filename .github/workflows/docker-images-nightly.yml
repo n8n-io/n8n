@@ -3,10 +3,6 @@ name: Docker Image CI
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'GitHub branch to create image off.'
-        required: true
-        default: 'master'
       image-name:
         description: 'Image name.'
         required: true
@@ -33,7 +29,7 @@ on:
       user:
         description: ''
         required: false
-        default: 'schedule'
+        default: 'aireset'
       start-url:
         description: 'URL to call after workflow is kicked off.'
         required: false
@@ -44,13 +40,17 @@ on:
         default: ''
 
 env:
-  N8N_TAG: ${{ inputs.tag || 'nightly' }}
+  N8N_TAG: ${{ inputs.tag || 'latest' }}
   GH_TOKEN: ${{ github.token }}
   TEMP_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/n8n-temp:${{ inputs.image-name || 'latest' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Permissões necessárias para fazer push para o GHCR
+    permissions:
+      contents: read
+      packages: write
     outputs:
       temp_image_name: ${{ env.TEMP_IMAGE_NAME }}
 
@@ -73,7 +73,7 @@ jobs:
 
       - name: Merge Master - optionally
         run: |
-          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/aireset/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
 
       - name: Build and push image to Temporary Registry
