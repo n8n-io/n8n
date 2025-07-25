@@ -68,13 +68,33 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						},
 					};
 
-					await api.sendMessageStreaming(
+					const { hasReceivedChunks } = await api.sendMessageStreaming(
 						text,
 						files,
 						currentSessionId.value as string,
 						options,
 						handlers,
 					);
+
+					// Check if no chunks were received (empty stream)
+					if (!hasReceivedChunks) {
+						// Create an error message if we haven't received any data
+						if (!receivedMessage.value) {
+							receivedMessage.value = createBotMessage();
+							messages.value.push(receivedMessage.value);
+						} else {
+							// Check if any existing messages have content
+							const hasContent = messages.value.some(
+								(msg) => msg.sender === 'bot' && 'text' in msg && msg.text.trim().length > 0,
+							);
+							if (!hasContent) {
+								receivedMessage.value = createBotMessage();
+								messages.value.push(receivedMessage.value);
+							}
+						}
+						receivedMessage.value.text =
+							'No response received. This is probably because streaming is disabled in the trigger but enabled in agent node(s)';
+					}
 				} else {
 					receivedMessage.value = createBotMessage();
 
@@ -99,13 +119,16 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 					messages.value.push(receivedMessage.value);
 				}
 			} catch (error) {
-				if (!receivedMessage.value) {
-					receivedMessage.value = createBotMessage();
+				receivedMessage.value ??= createBotMessage();
+
+				// Always show error message to user
+				receivedMessage.value.text = 'Error: Failed to receive response';
+
+				// Ensure the error message is added to messages array if not already there
+				if (!messages.value.includes(receivedMessage.value)) {
 					messages.value.push(receivedMessage.value);
 				}
-				if (receivedMessage.value && 'text' in receivedMessage.value) {
-					receivedMessage.value.text = 'Error: Failed to receive response';
-				}
+
 				console.error('Chat API error:', error);
 			} finally {
 				waitingForResponse.value = false;
