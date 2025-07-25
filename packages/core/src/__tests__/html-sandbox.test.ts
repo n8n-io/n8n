@@ -40,6 +40,11 @@ describe('sandboxHtmlResponse', () => {
 		expect(sandboxHtmlResponse(data)).toBe(expected);
 	});
 
+	it('should sandbox even with no <body> tag', () => {
+		const html = '<html><head><title>Test</title><script>alert("Hello")</script></head></html>';
+		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
+	});
+
 	it('should always sandbox if forceSandbox is true', () => {
 		const text = 'Hello World';
 		expect(sandboxHtmlResponse(text, true)).toMatchSnapshot();

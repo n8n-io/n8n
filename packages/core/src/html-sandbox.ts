@@ -8,7 +8,9 @@ import { Transform } from 'stream';
 export const hasHtml = (str: string) => {
 	try {
 		const dom = new JSDOM(str);
-		return dom.window.document.body.children.length > 0;
+		return (
+			dom.window.document.body.children.length > 0 || dom.window.document.head.children.length > 0
+		);
 	} catch {
 		return false;
 	}

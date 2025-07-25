@@ -17,3 +17,9 @@ exports[`sandboxHtmlResponse should replace ampersands and double quotes in HTML
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true"></iframe>"
 `;
+
+exports[`sandboxHtmlResponse should sandbox even with no <body> tag 1`] = `
+"<iframe srcdoc="<html><head><title>Test</title><script>alert(&quot;Hello&quot;)</script></head></html>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true"></iframe>"
+`;
