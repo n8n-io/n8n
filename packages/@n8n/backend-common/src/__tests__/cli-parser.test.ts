@@ -64,7 +64,7 @@ describe('parse', () => {
 		});
 	});
 
-	it('should convert positional arguments to strings', () => {
+	it('should handle positional arguments', () => {
 		const cliParser = new CliParser(mock());
 		const result = cliParser.parse({
 			argv: ['node', 'script.js', '123', 'true'],
@@ -73,6 +73,26 @@ describe('parse', () => {
 		expect(result.args).toEqual(['123', 'true']);
 		expect(typeof result.args[0]).toBe('string');
 		expect(typeof result.args[1]).toBe('string');
+	});
+
+	it('should handle required flags with aliases', () => {
+		const cliParser = new CliParser(mock());
+		const flagsSchema = z.object({
+			name: z.string(),
+		});
+
+		// @ts-expect-error zod was monkey-patched to support aliases
+		flagsSchema.shape.name._def._alias = 'n';
+
+		const result = cliParser.parse({
+			argv: ['node', 'script.js', '-n', 'test', 'arg1'],
+			flagsSchema,
+		});
+
+		expect(result).toEqual({
+			flags: { name: 'test' },
+			args: ['arg1'],
+		});
 	});
 
 	it('should handle optional flags with aliases', () => {
