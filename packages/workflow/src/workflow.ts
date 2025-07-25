@@ -36,7 +36,6 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
-	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -677,40 +676,28 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode): INode {
-		if (node) {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
+		if (!node) return node;
 
-			if (
-				outputs.find(
-					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
-				)
-			) {
-				// Get the first node which is connected to a non-main output
-				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(
-						node.name,
-						(outputName as INodeOutputConfiguration)?.type ?? outputName,
-					);
-					if (parentNodes.length > 0) {
-						acc.push(...parentNodes);
+		const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!nodeConnections) return node;
+
+		// Get non-main connection types
+		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
+			(type) => type !== NodeConnectionTypes.Main,
+		);
+
+		for (const connectionType of nonMainConnectionTypes) {
+			const connections = nodeConnections[connectionType] ?? [];
+			for (const connectionGroup of connections) {
+				for (const connection of connectionGroup ?? []) {
+					if (connection?.node) {
+						const returnNode = this.getNode(connection.node);
+						if (!returnNode) {
+							throw new ApplicationError(`Node "${connection.node}" not found`);
+						}
+						return this.getParentMainInputNode(returnNode);
 					}
-					return acc;
-				}, [] as string[]);
-
-				if (nonMainNodesConnected.length) {
-					const returnNode = this.getNode(nonMainNodesConnected[0]);
-					if (returnNode === null) {
-						// This should theoretically never happen as the node is connected
-						// but who knows and it makes TS happy
-						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
-					}
-
-					// The chain of non-main nodes is potentially not finished yet so
-					// keep on going
-					return this.getParentMainInputNode(returnNode);
 				}
 			}
 		}
@@ -933,6 +920,17 @@ export class Workflow {
 	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
 		if (fromNodeName === toNodeName) return true;
 
+		// Get connection types that actually exist in this workflow
+		// We need both source and destination connection types for bidirectional search
+		const connectionTypes = new Set<NodeConnectionType>();
+		for (const nodeConnections of Object.values(this.connectionsBySourceNode).concat(
+			Object.values(this.connectionsByDestinationNode),
+		)) {
+			for (const type of Object.keys(nodeConnections)) {
+				connectionTypes.add(type as NodeConnectionType);
+			}
+		}
+
 		const visited = new Set<string>();
 		const queue: Array<{ nodeName: string; depth: number }> = [
 			{ nodeName: fromNodeName, depth: 0 },
@@ -947,16 +945,7 @@ export class Workflow {
 
 			visited.add(nodeName);
 
-			// Check all connection types for this node
-			const allConnectionTypes = [
-				NodeConnectionTypes.Main,
-				NodeConnectionTypes.AiTool,
-				NodeConnectionTypes.AiMemory,
-				NodeConnectionTypes.AiDocument,
-				NodeConnectionTypes.AiVectorStore,
-			];
-
-			for (const connectionType of allConnectionTypes) {
+			for (const connectionType of connectionTypes) {
 				// Get children (forward direction)
 				const children = this.getChildNodes(nodeName, connectionType);
 				for (const childName of children) {
