@@ -1739,6 +1739,9 @@ importers:
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3
+      jsdom:
+        specifier: 23.0.1
+        version: 23.0.1
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.2
