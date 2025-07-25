@@ -180,7 +180,7 @@ export class WorkflowBuilderAgent {
 			: crypto.randomUUID();
 	}
 
-	async *chat(payload: ChatPayload, userId?: string) {
+	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
@@ -216,6 +216,7 @@ export class WorkflowBuilderAgent {
 				...threadConfig,
 				streamMode: ['updates', 'custom'],
 				recursionLimit: 30,
+				signal: abortSignal,
 				callbacks: this.tracer ? [this.tracer] : undefined,
 			});
 		} else {
@@ -235,7 +236,8 @@ export class WorkflowBuilderAgent {
 			stream = await agent.stream(stateUpdate, {
 				...threadConfig,
 				streamMode: ['updates', 'custom'],
-				recursionLimit: 80,
+				recursionLimit: 30,
+				signal: abortSignal,
 				callbacks: this.tracer ? [this.tracer] : undefined,
 			});
 		}
