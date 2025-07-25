@@ -74,3 +74,30 @@ export async function wordpressApiRequestAllItems(
 
 	return returnData;
 }
+
+export async function wordpressApiRequestMedia(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: any,
+	headers: IDataObject = {},
+): Promise<any> {
+	const credentials = await this.getCredentials('wordpressApi');
+	let options: IRequestOptions = {
+		headers: {
+			'Content-Type': 'multipart/form-data',
+			'User-Agent': 'n8n',
+		},
+		method,
+		body,
+		uri: `${credentials.url}/wp-json/wp/v2${resource}`,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+		json: true,
+	};
+	try {
+		const credentialType = 'wordpressApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
