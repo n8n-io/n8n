@@ -327,6 +327,10 @@ export class GmailTrigger implements INodeType {
 					}
 				}
 
+				if (fullMessage.labelIds?.includes('SENT')) {
+					continue;
+				}
+
 				if (!simple) {
 					const dataPropertyNameDownload =
 						options.dataPropertyAttachmentsPrefixName || 'attachment_';
