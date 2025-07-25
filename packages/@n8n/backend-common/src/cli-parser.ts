@@ -11,7 +11,7 @@ type CliInput<Flags extends z.ZodRawShape> = {
 	examples?: string[];
 };
 
-export type ParsedArgs<Flags = Record<string, unknown>> = {
+type ParsedArgs<Flags = Record<string, unknown>> = {
 	flags: Flags;
 	args: string[];
 };
