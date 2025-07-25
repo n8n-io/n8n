@@ -761,7 +761,7 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode): INode {
+	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
 		if (!node) return node;
 
 		const nodeConnections = this.connectionsBySourceNode[node.name];
@@ -773,9 +773,9 @@ export class Workflow {
 		);
 
 		for (const connectionType of nonMainConnectionTypes) {
-			const connections = nodeConnections[connectionType] || [];
+			const connections = nodeConnections[connectionType] ?? [];
 			for (const connectionGroup of connections) {
-				for (const connection of connectionGroup || []) {
+				for (const connection of connectionGroup ?? []) {
 					if (connection?.node) {
 						const returnNode = this.getNode(connection.node);
 						if (!returnNode) {
@@ -1006,14 +1006,15 @@ export class Workflow {
 		if (fromNodeName === toNodeName) return true;
 
 		// Get connection types that actually exist in this workflow
-		const connectionTypes = new Set<NodeConnectionType>(
-			[
-				...Object.values(this.connectionsBySourceNode),
-				...Object.values(this.connectionsByDestinationNode),
-			].flatMap((nodeConnections) =>
-				Object.keys(nodeConnections).filter((key): key is NodeConnectionType => !!key),
-			),
-		);
+		// We need both source and destination connection types for bidirectional search
+		const connectionTypes = new Set<NodeConnectionType>();
+		for (const nodeConnections of Object.values(this.connectionsBySourceNode).concat(
+			Object.values(this.connectionsByDestinationNode),
+		)) {
+			for (const type of Object.keys(nodeConnections)) {
+				connectionTypes.add(type as NodeConnectionType);
+			}
+		}
 
 		const visited = new Set<string>();
 		const queue: Array<{ nodeName: string; depth: number }> = [
