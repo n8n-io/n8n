@@ -2,7 +2,7 @@
 
 # n8n - Secure Workflow Automation for Technical Teams
 
-n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
+n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 1000+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
 
@@ -12,7 +12,7 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 - **AI-Native Platform**: Build AI agent workflows based on LangChain with your own data and models
 - **Full Control**: Self-host with our fair-code license or use our [cloud offering](https://app.n8n.cloud/login)
 - **Enterprise-Ready**: Advanced permissions, SSO, and air-gapped deployments
-- **Active Community**: 400+ integrations and 900+ ready-to-use [templates](https://n8n.io/workflows)
+- **Active Community**: 1000+ integrations and 1500+ ready-to-use [templates](https://n8n.io/workflows)
 
 ## Quick Start
 
@@ -34,7 +34,7 @@ Access the editor at http://localhost:5678
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
-- 🔧 [400+ Integrations](https://n8n.io/integrations)
+- 🔧 [1000+ Integrations](https://n8n.io/integrations)
 - 💡 [Example Workflows](https://n8n.io/workflows)
 - 🤖 [AI & LangChain Guide](https://docs.n8n.io/langchain/)
 - 👥 [Community Forum](https://community.n8n.io)
