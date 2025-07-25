@@ -146,21 +146,21 @@ jobs:
             docker push ghcr.io/${{ github.repository_owner }}/n8n:$TAG
           done
 
-  cleanup:
-    runs-on: ubuntu-latest
-    needs: [push-to-dockerhub, push-to-ghcr]
-    if: always()
-    steps:
-      - name: Login to GHCR (Temporary Registry)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  # cleanup:
+  #   runs-on: ubuntu-latest
+  #   needs: [push-to-dockerhub, push-to-ghcr]
+  #   if: always()
+  #   steps:
+  #     - name: Login to GHCR (Temporary Registry)
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove Temporary Image
-        run: |
-          IMAGE_ID=$(echo "${{ env.TEMP_IMAGE_NAME }}" | sed 's/.*://')
-          gh api --method DELETE "/orgs/${{ github.repository_owner }}/packages/container/n8n-temp/versions/$IMAGE_ID" \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+  #     - name: Remove Temporary Image
+  #       run: |
+  #         IMAGE_ID=$(echo "${{ env.TEMP_IMAGE_NAME }}" | sed 's/.*://')
+  #         gh api --method DELETE "/orgs/${{ github.repository_owner }}/packages/container/n8n-temp/versions/$IMAGE_ID" \
+  #           -H "Accept: application/vnd.github+json" \
+  #           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
