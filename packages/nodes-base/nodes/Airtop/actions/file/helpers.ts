@@ -1,5 +1,5 @@
 import pick from 'lodash/pick';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
@@ -148,11 +148,11 @@ export async function waitForFileInSession(
 	timeout = OPERATION_TIMEOUT,
 ): Promise<void> {
 	const isFileInSession = async (): Promise<boolean> => {
-		const fileInfo = (await apiRequest.call(
-			this,
-			'GET',
-			`/files/${fileId}`,
-		)) as IAirtopResponseWithFiles;
+		const fileInfo = await apiRequest.call<
+			IExecuteFunctions,
+			[IHttpRequestMethods, string],
+			Promise<IAirtopResponseWithFiles>
+		>(this, 'GET', `/files/${fileId}`);
 		return Boolean(fileInfo.data?.sessionIds?.includes(sessionId));
 	};
 
