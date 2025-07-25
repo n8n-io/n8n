@@ -66,6 +66,8 @@ const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
 
+const slots = defineSlots<{ persistentTooltipContent?: {} }>();
+
 defineOptions({
 	inheritAttrs: false,
 });
@@ -390,9 +392,14 @@ async function onClick() {
 <template>
 	<N8nTooltip
 		:placement="tooltipPlacement ?? 'right'"
-		:disabled="!tooltipText"
-		:content="tooltipText"
+		:disabled="!tooltipText && !slots.persistentTooltipContent"
+		:visible="slots.persistentTooltipContent ? true : undefined"
 	>
+		<template #content>
+			<slot name="persistentTooltipContent">
+				{{ tooltipText }}
+			</slot>
+		</template>
 		<N8nButton
 			v-bind="$attrs"
 			:loading="isLoading"

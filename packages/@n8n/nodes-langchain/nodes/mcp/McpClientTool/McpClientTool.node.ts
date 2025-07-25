@@ -1,3 +1,5 @@
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -6,9 +8,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getTools } from './loadOptions';
 import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
@@ -294,11 +293,10 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client.result, (error) => {
+					createCallTool(tool.name, client.result, (errorMessage) => {
+						const error = new NodeOperationError(node, errorMessage, { itemIndex });
+						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
-							description: error,
-						});
 					}),
 				),
 				this,

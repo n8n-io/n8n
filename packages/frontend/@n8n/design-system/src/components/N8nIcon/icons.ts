@@ -1,8 +1,11 @@
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
+import Continue from './custom/Continue.svg';
+import EmptyOutput from './custom/EmptyOutput.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
-import Json from './custom/json.svg';
 import PopOut from './custom/pop-out.svg';
+import Retry from './custom/Retry.svg';
+import RunOnce from './custom/RunOnce.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
 import StatusCanceled from './custom/status-canceled.svg';
@@ -32,6 +35,7 @@ import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
+import IconLucideBraces from '~icons/lucide/braces';
 import IconLucideBrain from '~icons/lucide/brain';
 import IconLucideBug from '~icons/lucide/bug';
 import IconLucideCalculator from '~icons/lucide/calculator';
@@ -204,7 +208,7 @@ export const deprecatedIconSet = {
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
 	schema: Schema,
-	json: Json,
+	json: IconLucideBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
@@ -406,8 +410,12 @@ export const updatedIconSet = {
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
+	'continue-on-error': Continue,
+	'always-output-data': EmptyOutput,
+	'retry-on-fail': Retry,
+	'execute-once': RunOnce,
 	schema: Schema,
-	json: Json,
+	json: IconLucideBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
