@@ -19,6 +19,26 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+vi.mock('@/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: () => ({
+		goToUpgrade: vi.fn(),
+	}),
+}));
+
+vi.mock('@/components/AnnotationTagsDropdown.ee.vue', () => ({
+	default: {
+		name: 'AnnotationTagsDropdown',
+		template: '<div data-test-id="executions-filter-annotation-tags-select"></div>',
+	},
+}));
+
+vi.mock('@/components/WorkflowTagsDropdown.vue', () => ({
+	default: {
+		name: 'WorkflowTagsDropdown',
+		template: '<div data-test-id="executions-filter-tags-select"></div>',
+	},
+}));
+
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
@@ -197,5 +217,44 @@ describe('ExecutionsFilter', () => {
 
 		expect(track).toHaveBeenCalledWith('User filtered executions with custom data');
 		expect(track).toHaveBeenCalledTimes(1);
+	});
+
+	test('handles metadata value input changes', async () => {
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+
+		const valueInput = getByTestId('execution-filter-saved-data-value-input');
+		await userEvent.type(valueInput, 'test-value');
+
+		const filterChangedEvents = emitted().filterChanged;
+		expect(filterChangedEvents).toBeDefined();
+		expect(filterChangedEvents.length).toBeGreaterThan(0);
+	});
+
+	test('handles exact match checkbox changes', async () => {
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+
+		const checkbox = getByTestId('execution-filter-saved-data-exact-match-checkbox');
+		await userEvent.click(checkbox);
+
+		const filterChangedEvents = emitted().filterChanged;
+		expect(filterChangedEvents).toBeDefined();
+		expect(filterChangedEvents.length).toBeGreaterThan(0);
+	});
+
+	test('shows upgrade link when advanced filters disabled', async () => {
+		settingsStore.settings.enterprise.advancedExecutionFilters = false;
+
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+		await userEvent.hover(getByTestId('execution-filter-saved-data-key-input'));
+
+		const upgradeLink = getByTestId('executions-filter-view-plans-link');
+		expect(upgradeLink).toBeInTheDocument();
+		expect(upgradeLink).toHaveAttribute('href', '#');
 	});
 });
