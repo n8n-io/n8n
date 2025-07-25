@@ -384,6 +384,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		if (decryptedDataOriginal.restrictHttpRequestDomains !== undefined) {
+			decryptedData.restrictHttpRequestDomains = decryptedDataOriginal.restrictHttpRequestDomains;
+		}
+		if (decryptedDataOriginal.allowedDomains !== undefined) {
+			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
+		}
+		if (decryptedDataOriginal.domainValidationMode !== undefined) {
+			decryptedData.domainValidationMode = decryptedDataOriginal.domainValidationMode;
+		}
+
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
