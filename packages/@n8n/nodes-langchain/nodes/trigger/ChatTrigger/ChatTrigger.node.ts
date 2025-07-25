@@ -520,7 +520,10 @@ export class ChatTrigger extends Node {
 		const { data, files } = req.body;
 
 		const returnItem: INodeExecutionData = {
-			json: data,
+			json: {
+				...data,
+				headers: context.getHeaderData(),
+			},
 		};
 
 		if (files && Object.keys(files).length) {
@@ -607,6 +610,7 @@ export class ChatTrigger extends Node {
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
+		bodyData.headers = ctx.getHeaderData();
 
 		try {
 			await validateAuth(ctx);
