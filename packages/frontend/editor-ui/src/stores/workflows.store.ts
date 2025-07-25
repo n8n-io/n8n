@@ -127,8 +127,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	...defaults,
 });
 
-let cachedWorkflow: Workflow | null = null;
-
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -515,23 +513,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 
-		let cachedWorkflowId: string | undefined = workflowId.value;
-		if (cachedWorkflowId && cachedWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			cachedWorkflowId = undefined;
+		let id: string | undefined = workflow.value.id;
+		if (id && id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			id = undefined;
 		}
 
-		cachedWorkflow = new Workflow({
-			id: cachedWorkflowId,
-			name: workflowName.value,
+		return new Workflow({
+			id,
+			name: workflow.value.name,
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflowSettings.value,
-			pinData: pinnedWorkflowData.value,
+			settings: workflow.value.settings ?? { ...defaults.settings },
+			pinData: workflow.value.pinData,
 		});
-
-		return cachedWorkflow;
 	}
 
 	function cloneWorkflowObject(): Workflow {
@@ -901,10 +897,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		workflow.value = {
-			...workflow.value,
-			settings: workflowSettings as IWorkflowDb['settings'],
-		};
+		workflow.value.settings = workflowSettings as IWorkflowDb['settings'];
+		workflowObject.value.setSettings(workflowSettings);
 	}
 
 	function setWorkflowPinData(data: IPinData = {}) {
@@ -930,19 +924,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function addWorkflowTagIds(tags: string[]) {
-		workflow.value = {
-			...workflow.value,
-			tags: [...new Set([...(workflow.value.tags ?? []), ...tags])] as IWorkflowDb['tags'],
-		};
+		workflow.value.tags = [
+			...new Set([...(workflow.value.tags ?? []), ...tags]),
+		] as IWorkflowDb['tags'];
 	}
 
 	function removeWorkflowTagId(tagId: string) {
 		const tags = workflow.value.tags as string[];
 		const updated = tags.filter((id: string) => id !== tagId);
-		workflow.value = {
-			...workflow.value,
-			tags: updated as IWorkflowDb['tags'],
-		};
+		workflow.value.tags = updated as IWorkflowDb['tags'];
 	}
 
 	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
@@ -977,7 +967,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeName = payload.node.name;
 
 		if (!workflow.value.pinData) {
-			workflow.value = { ...workflow.value, pinData: {} };
+			workflow.value.pinData = {};
 		}
 
 		if (!Array.isArray(payload.data)) {
@@ -993,13 +983,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			isJsonKeyObject(item) ? { json: item.json } : { json: item },
 		);
 
-		workflow.value = {
-			...workflow.value,
-			pinData: {
-				...workflow.value.pinData,
-				[nodeName]: storedPinData,
-			},
-		};
+		workflow.value.pinData[nodeName] = storedPinData;
 
 		uiStore.stateIsDirty = true;
 
@@ -1010,14 +994,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeName = payload.node.name;
 
 		if (!workflow.value.pinData) {
-			workflow.value = { ...workflow.value, pinData: {} };
+			workflow.value.pinData = {};
 		}
 
 		const { [nodeName]: _, ...pinData } = workflow.value.pinData as IPinData;
-		workflow.value = {
-			...workflow.value,
-			pinData,
-		};
+		workflow.value.pinData = pinData;
 
 		if (nodeMetadata.value[nodeName]) {
 			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
@@ -1042,25 +1023,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Check if source node and type exist already and if not add them
 		if (!workflow.value.connections.hasOwnProperty(sourceData.node)) {
-			workflow.value = {
-				...workflow.value,
-				connections: {
-					...workflow.value.connections,
-					[sourceData.node]: {},
-				},
-			};
+			workflow.value.connections[sourceData.node] = {};
 		}
 
 		if (!workflow.value.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
-			workflow.value = {
-				...workflow.value,
-				connections: {
-					...workflow.value.connections,
-					[sourceData.node]: {
-						...workflow.value.connections[sourceData.node],
-						[sourceData.type]: [],
-					},
-				},
+			workflow.value.connections[sourceData.node] = {
+				...workflow.value.connections[sourceData.node],
+				[sourceData.type]: [],
 			};
 		}
 
@@ -1218,12 +1187,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (workflow.value.pinData?.[nameData.old]) {
 			const { [nameData.old]: renamed, ...restPinData } = workflow.value.pinData;
-			workflow.value = {
-				...workflow.value,
-				pinData: {
-					...restPinData,
-					[nameData.new]: renamed,
-				},
+			workflow.value.pinData = {
+				...restPinData,
+				[nameData.new]: renamed,
 			};
 		}
 
@@ -1261,10 +1227,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
-		workflow.value = {
-			...workflow.value,
-			parentFolder: folder,
-		};
+		workflow.value.parentFolder = folder;
 	}
 
 	function setNodes(nodes: INodeUi[]): void {
@@ -1286,10 +1249,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
 		});
+		workflowObject.value.setNodes(nodes);
 	}
 
 	function setConnections(value: IConnections): void {
 		workflow.value.connections = value;
+		workflowObject.value.setConnections(value);
 	}
 
 	function resetAllNodesIssues(): boolean {
@@ -1307,6 +1272,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const node = workflow.value.nodes[nodeIndex];
 			const changed = !isEqual(pick(node, Object.keys(nodeData)), nodeData);
 			Object.assign(node, nodeData);
+
+			if (changed) {
+				workflowObject.value.setNodes(workflow.value.nodes);
+			}
+
 			return changed;
 		}
 		return false;
@@ -1351,6 +1321,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflow.value.nodes.push(nodeData);
+		workflowObject.value.setNodes(workflow.value.nodes);
+
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
 			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
@@ -1363,19 +1335,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
 			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
-			workflow.value = {
-				...workflow.value,
-				pinData: remainingPinData,
-			};
+			workflow.value.pinData = remainingPinData;
 		}
 
 		for (let i = 0; i < workflow.value.nodes.length; i++) {
 			if (workflow.value.nodes[i].name === node.name) {
-				workflow.value = {
-					...workflow.value,
-					nodes: [...workflow.value.nodes.slice(0, i), ...workflow.value.nodes.slice(i + 1)],
-				};
-
+				workflow.value.nodes = [
+					...workflow.value.nodes.slice(0, i),
+					...workflow.value.nodes.slice(i + 1),
+				];
+				workflowObject.value.setNodes(workflow.value.nodes);
 				uiStore.stateIsDirty = true;
 				return;
 			}
@@ -1388,13 +1357,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (data.removePinData) {
-			workflow.value = {
-				...workflow.value,
-				pinData: {},
-			};
+			workflow.value.pinData = {};
 		}
 
 		workflow.value.nodes.splice(0, workflow.value.nodes.length);
+		workflowObject.value.setNodes(workflow.value.nodes);
 		nodeMetadata.value = {};
 	}
 

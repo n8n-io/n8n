@@ -70,7 +70,6 @@ export function useCanvasMapping({
 	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
 }) {
-	console.log(nodes.value);
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -189,6 +188,8 @@ export function useCanvasMapping({
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
+
+			// console.log(workflowObject.value.nodes);
 
 			acc[node.id] =
 				workflowObjectNode && nodeTypeDescription
@@ -582,6 +583,8 @@ export function useCanvasMapping({
 			...nodes.value.map<CanvasNode>((node) => {
 				const outputConnections = connectionsBySourceNode[node.name] ?? {};
 				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
+
+				// console.log(node.name, nodeInputsById.value[node.id]);
 
 				const data: CanvasNodeData = {
 					id: node.id,

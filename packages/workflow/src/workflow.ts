@@ -74,7 +74,7 @@ export class Workflow {
 
 	active: boolean;
 
-	settings: IWorkflowSettings;
+	settings: IWorkflowSettings = {};
 
 	readonly timezone: string;
 
@@ -94,6 +94,7 @@ export class Workflow {
 		this.setNodes(parameters.nodes);
 		this.setConnections(parameters.connections);
 		this.setPinData(parameters.pinData);
+		this.setSettings(parameters.settings ?? {});
 
 		this.active = parameters.active || false;
 
@@ -101,11 +102,10 @@ export class Workflow {
 			ignoreEmptyOnFirstChild: true,
 		});
 
-		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 	}
 
-	private _connectionsByDestinationNodeCacheMap = new WeakMap<IConnections, IConnections>();
+	_connectionsByDestinationNodeCacheMap = new WeakMap<IConnections, IConnections>();
 
 	get connectionsByDestinationNode(): IConnections {
 		const cached = this._connectionsByDestinationNodeCacheMap.get(this.connectionsBySourceNode);
@@ -119,20 +119,16 @@ export class Workflow {
 		return result;
 	}
 
-	private _expressionCacheMap = new WeakMap<
-		{ nodes: INodes; connections: IConnections },
-		Expression
-	>();
+	_expressionCacheMap = new WeakMap<INodes, Expression>();
 
 	get expression(): Expression {
-		const cacheKey = { nodes: this.nodes, connections: this.connectionsBySourceNode };
-		const cached = this._expressionCacheMap.get(cacheKey);
+		const cached = this._expressionCacheMap.get(this.nodes);
 		if (cached) {
 			return cached;
 		}
 
 		const result = new Expression(this);
-		this._expressionCacheMap.set(cacheKey, result);
+		this._expressionCacheMap.set(this.nodes, result);
 
 		return result;
 	}
@@ -178,6 +174,10 @@ export class Workflow {
 
 	setPinData(pinData: IPinData | undefined): void {
 		this.pinData = pinData;
+	}
+
+	setSettings(settings: IWorkflowSettings): void {
+		this.settings = settings;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {

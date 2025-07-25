@@ -41,12 +41,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 
-	const {
-		getWorkflowDataToSave,
-		checkConflictingWebhooks,
-		getWorkflowProjectRole,
-		getCurrentWorkflow,
-	} = useWorkflowHelpers();
+	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
+		useWorkflowHelpers();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,

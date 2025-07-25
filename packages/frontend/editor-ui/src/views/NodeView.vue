@@ -540,34 +540,6 @@ function updateNodesIssues() {
 }
 
 /**
- * Handle Workflow Object updates
- */
-
-watch(
-	workflowsStore.workflow.nodes,
-	(value) => {
-		workflowsStore.workflowObject.setNodes(value);
-	},
-	{ deep: true },
-);
-
-watch(
-	workflowsStore.workflow.connections,
-	(value) => {
-		workflowsStore.workflowObject.setConnections(value);
-	},
-	{ deep: true },
-);
-
-watch(
-	workflowsStore.workflow.pinData,
-	(value) => {
-		workflowsStore.workflowObject.setPinData(value);
-	},
-	{ deep: true },
-);
-
-/**
  * Workflow
  */
 
