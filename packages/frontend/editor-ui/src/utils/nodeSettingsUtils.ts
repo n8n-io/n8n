@@ -31,7 +31,6 @@ import { isPresent } from './typesUtils';
 import type { Ref } from 'vue';
 import { omitKey } from './objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
-import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 export function getNodeSettingsInitialValues(): INodeParameters {
 	return {
@@ -699,13 +698,10 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 }
 
 export function collectParametersByTab(parameters: INodeProperties[], isEmbeddedInCanvas: boolean) {
-	const ret: Record<NodeSettingsTab, INodeProperties[]> = {
+	const ret: Record<'settings' | 'action' | 'params', INodeProperties[]> = {
 		settings: [],
 		action: [],
 		params: [],
-		communityNode: [],
-		docs: [],
-		credential: [],
 	};
 
 	for (const item of parameters) {
@@ -721,11 +717,6 @@ export function collectParametersByTab(parameters: INodeProperties[], isEmbedded
 
 		if (item.name === 'resource' || item.name === 'operation') {
 			ret.action.push(item);
-			continue;
-		}
-
-		if (item.name === 'authentication') {
-			ret.credential.push(item);
 			continue;
 		}
 
