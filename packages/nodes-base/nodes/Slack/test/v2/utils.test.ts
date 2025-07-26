@@ -9,6 +9,7 @@ describe('Slack Utility Functions', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 1 } as any);
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/node123?token=abc');
 		jest.clearAllMocks();
 	});
 
@@ -33,8 +34,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
@@ -70,7 +69,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/node123?token=abc&approved=true',
 							},
 						],
 						type: 'actions',
@@ -86,8 +85,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ approvalType: 'double' });
 
 			expect(createSendAndWaitMessageBody(mockExecuteFunctions)).toEqual({
@@ -123,7 +120,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=false',
+								url: 'http://localhost/node123?token=abc&approved=false',
 							},
 
 							{
@@ -134,7 +131,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/node123?token=abc&approved=true',
 							},
 						],
 						type: 'actions',
@@ -150,8 +147,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
 
@@ -187,7 +182,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/node123?token=abc&approved=true',
 							},
 						],
 						type: 'actions',
@@ -203,8 +198,6 @@ describe('Slack Utility Functions', () => {
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('subject');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('localhost');
-			mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('node123');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ approvalType: 'double' });
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 2.3 } as any);
@@ -241,7 +234,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=false',
+								url: 'http://localhost/node123?token=abc&approved=false',
 							},
 
 							{
@@ -252,7 +245,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'localhost/node123?approved=true',
+								url: 'http://localhost/node123?token=abc&approved=true',
 							},
 						],
 						type: 'actions',

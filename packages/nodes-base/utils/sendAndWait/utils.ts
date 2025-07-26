@@ -357,6 +357,12 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const res = this.getResponseObject();
 	const req = this.getRequestObject();
 
+	const isTokenValid = this.validateExecutionWaitingToken();
+
+	if (!isTokenValid) {
+		throw new Error('Invalid waiting token');
+	}
+
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
@@ -480,8 +486,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		.replace(/\\n/g, '\n')
 		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
-	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
 	const approvalOptions = context.getNodeParameter('approvalOptions.values', 0, {}) as {
 		approvalType?: 'single' | 'double';
 		approveLabel?: string;
@@ -495,7 +499,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
-		url: `${resumeUrl}/${nodeId}`,
+		url: context.getSignedResumeUrl(),
 		options: [],
 		appendAttribution: options?.appendAttribution as boolean,
 	};
@@ -543,7 +547,7 @@ export function createButton(url: string, label: string, approved: string, style
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
 	}
-	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
+	return `<a href="${url}&approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
 
 export function createEmail(context: IExecuteFunctions) {
