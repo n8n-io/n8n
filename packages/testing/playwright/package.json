@@ -2,7 +2,7 @@
   "name": "n8n-playwright",
   "private": true,
   "scripts": {
-    "test": "playwright test",
+    "test:all": "playwright test",
     "test:local:reset": "N8N_BASE_URL=http://localhost:5678 RESET_E2E_DB=true playwright test --workers=4",
     "test:local": "N8N_BASE_URL=http://localhost:5678 playwright test",
     "test:standard": "playwright test --project=mode:standard*",

@@ -11,7 +11,7 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "deps:graph": "madge src/index.ts --image deps-graph.svg",
     "deps:graph:service": "madge src/ai-workflow-builder-agent.service.ts --image deps-service.svg",

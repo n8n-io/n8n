@@ -11,7 +11,7 @@
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
-    "lintfix": "eslint src --fix",
+    "lint:fix": "eslint src --fix",
     "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../../../.prettierignore",
     "storybook": "storybook dev -p 6006 --no-open",

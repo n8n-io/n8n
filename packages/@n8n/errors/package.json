@@ -9,10 +9,10 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:dev": "jest --watch"
+    "test": "echo \"WARNING: no test specified\" && exit 0",
+    "test:dev": "echo \"WARNING: no test specified\" && exit 0"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

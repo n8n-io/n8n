@@ -17,7 +17,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "jest",
     "test:dev": "jest --watch"
