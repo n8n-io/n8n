@@ -1,0 +1,423 @@
+{
+	"createdAt": "2021-02-17T11:28:33.699Z",
+	"updatedAt": "2021-05-21T11:22:40.069Z",
+	"id": "30",
+	"name": "ClickUp:TaskDependency:create delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "c8338da0-7dbd-4b7b-ad70-c682f23f274b"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"team": "4651110",
+				"space": "8716115",
+				"name": "=TestFolder3{{Date.now()}}"
+			},
+			"name": "ClickUp",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "49bfdc4c-78c5-4fa0-ad06-749599d37da9"
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"team": "4651110",
+				"space": "8716115",
+				"folder": "={{$node[\"ClickUp\"].json[\"id\"]}}",
+				"name": "=TestList{{Date.now()}}",
+				"additionalFields": {}
+			},
+			"name": "ClickUp1",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [700, 350],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "22b07b3b-3d70-4812-8113-ca3414a823fe"
+		},
+		{
+			"parameters": {
+				"team": "4651110",
+				"space": "8716115",
+				"folder": "={{$node[\"ClickUp\"].json[\"id\"]}}",
+				"list": "={{$node[\"ClickUp1\"].json[\"id\"]}}",
+				"name": "=testTask{{Date.now()}}",
+				"additionalFields": {}
+			},
+			"name": "ClickUp9",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [990, 400],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "f1468cfb-3736-4be0-b195-1f0c5f755890"
+		},
+		{
+			"parameters": {
+				"resource": "taskDependency",
+				"task": "={{$node[\"ClickUp9\"].json[\"id\"]}}",
+				"dependsOnTask": "={{$node[\"ClickUp11\"].json[\"id\"]}}"
+			},
+			"name": "ClickUp10",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [1530, 500],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "51f2c6b6-b7a4-41fc-b2e0-ce6185f735a3"
+		},
+		{
+			"parameters": {
+				"team": "4651110",
+				"space": "8716115",
+				"folder": "={{$node[\"ClickUp\"].json[\"id\"]}}",
+				"list": "={{$node[\"ClickUp1\"].json[\"id\"]}}",
+				"name": "=testTask2{{Date.now()}}",
+				"additionalFields": {}
+			},
+			"name": "ClickUp11",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [1250, 400],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "befbbbf0-82d4-41f2-a557-f58d40499944"
+		},
+		{
+			"parameters": {
+				"resource": "taskDependency",
+				"operation": "delete",
+				"task": "={{$node[\"ClickUp9\"].json[\"id\"]}}",
+				"dependsOnTask": "={{$node[\"ClickUp11\"].json[\"id\"]}}"
+			},
+			"name": "ClickUp12",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [1810, 500],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "86f22c06-fcb6-40eb-a5f5-9e2e70bd768a"
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "delete",
+				"team": "4651110",
+				"space": "8716115",
+				"folder": "={{$node[\"ClickUp\"].json[\"id\"]}}",
+				"list": "={{$node[\"ClickUp1\"].json[\"id\"]}}"
+			},
+			"name": "ClickUp7",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [2080, 350],
+			"alwaysOutputData": true,
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "e81f92bb-d7a6-49d5-8627-684107126a98"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"team": "4651110",
+				"space": "8716115",
+				"folder": "={{$node[\"ClickUp\"].json[\"id\"]}}"
+			},
+			"name": "ClickUp8",
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [2370, 300],
+			"credentials": {
+				"clickUpApi": {
+					"id": "13",
+					"name": "clickup cred"
+				}
+			},
+			"id": "a5a69ffb-9f8d-40c6-aa84-a19bc6701824"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds",
+			"type": "n8n-nodes-base.function",
+			"position": [550, 300],
+			"typeVersion": 1,
+			"id": "7d5fb22c-f448-40ff-981c-ea5d4a9e191c"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds1",
+			"type": "n8n-nodes-base.function",
+			"position": [850, 400],
+			"typeVersion": 1,
+			"id": "19cce08a-a818-4749-9b8f-95aa6d36a847"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds2",
+			"type": "n8n-nodes-base.function",
+			"position": [1120, 400],
+			"typeVersion": 1,
+			"id": "1a67dc29-5e28-4c23-921b-d8198ab9c4ff"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds3",
+			"type": "n8n-nodes-base.function",
+			"position": [1390, 500],
+			"typeVersion": 1,
+			"id": "d80fb697-e532-4fca-a70a-7ba202475d18"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds4",
+			"type": "n8n-nodes-base.function",
+			"position": [1670, 500],
+			"typeVersion": 1,
+			"id": "43edd50f-e0fd-433f-ba37-0b5b3c2534a4"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds5",
+			"type": "n8n-nodes-base.function",
+			"position": [1950, 350],
+			"typeVersion": 1,
+			"id": "7507f4e6-4a8b-4080-ae36-df0df0d2243a"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds6",
+			"type": "n8n-nodes-base.function",
+			"position": [2240, 300],
+			"typeVersion": 1,
+			"id": "a08f6787-67f4-4a5e-92a8-4c0479911f6e"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "ClickUp",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp1": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp9": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp10": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp11": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp12": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ClickUp7": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds": {
+			"main": [
+				[
+					{
+						"node": "ClickUp1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds1": {
+			"main": [
+				[
+					{
+						"node": "ClickUp9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds2": {
+			"main": [
+				[
+					{
+						"node": "ClickUp11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds3": {
+			"main": [
+				[
+					{
+						"node": "ClickUp10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds4": {
+			"main": [
+				[
+					{
+						"node": "ClickUp12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds5": {
+			"main": [
+				[
+					{
+						"node": "ClickUp7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds6": {
+			"main": [
+				[
+					{
+						"node": "ClickUp8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

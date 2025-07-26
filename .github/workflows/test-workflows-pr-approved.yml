@@ -22,6 +22,4 @@ jobs:
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ github.event.pull_request.head.sha }}
-      send_webhook_report: true
-      pr_number: ${{ github.event.pull_request.number }}
     secrets: inherit
