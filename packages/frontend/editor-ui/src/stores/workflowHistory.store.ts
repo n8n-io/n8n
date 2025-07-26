@@ -93,7 +93,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		return await workflowsStore
 			.updateWorkflow(workflowId, updateData, true)
 			.catch(async (error) => {
-				if (error.httpStatusCode === 400 && error.message.includes('can not be activated')) {
+				if (
+					error.httpStatusCode === 400 &&
+					typeof error.message === 'string' &&
+					error.message.includes('can not be activated')
+				) {
 					return await workflowsStore.fetchWorkflow(workflowId);
 				} else {
 					throw new Error(error);

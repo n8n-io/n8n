@@ -207,7 +207,7 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				code = generatedCode;
 				break;
 			} catch (e) {
-				if (e.message.includes('maximum context length')) {
+				if (typeof e.message === 'string' && e.message.includes('maximum context length')) {
 					reducePayloadSizeOrThrow(payload, e);
 					continue;
 				}
