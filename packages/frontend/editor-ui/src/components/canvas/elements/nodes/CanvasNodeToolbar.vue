@@ -130,7 +130,7 @@ function onFocusNode() {
 					type="tertiary"
 					text
 					size="small"
-					icon="play"
+					icon="node-play"
 					:disabled="isExecuting || isDisabled"
 					:title="i18n.baseText('node.testStep')"
 					@click="executeNode"
@@ -142,7 +142,7 @@ function onFocusNode() {
 				type="tertiary"
 				text
 				size="small"
-				icon="power"
+				icon="node-power"
 				:title="nodeDisabledTitle"
 				@click="onToggleNode"
 			/>
@@ -152,7 +152,7 @@ function onFocusNode() {
 				type="tertiary"
 				size="small"
 				text
-				icon="trash-2"
+				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
 			/>
@@ -174,7 +174,7 @@ function onFocusNode() {
 				type="tertiary"
 				size="small"
 				text
-				icon="ellipsis"
+				icon="node-ellipsis"
 				@click="onOpenContextMenu"
 			/>
 		</div>
