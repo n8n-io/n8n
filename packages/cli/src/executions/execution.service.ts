@@ -409,6 +409,16 @@ export class ExecutionService {
 		};
 	}
 
+	async markInvalidEnqueuedExecutionsAsCrashed() {
+		const invalidExecutions = await this.executionRepository.findInvalidExecutions({
+			select: ['id'],
+			where: { status: 'new' },
+		});
+		if (invalidExecutions.length > 0) {
+			await this.executionRepository.markAsCrashed(invalidExecutions.map((e) => e.id));
+		}
+	}
+
 	async findAllEnqueuedExecutions() {
 		return await this.executionRepository.findMultipleExecutions(
 			{
