@@ -22,26 +22,10 @@ const TMP_PDF_DEST_DIR = path.join(BASE_TMP_DIR, 'testData', 'pdfs');
  * @param options Options for `child_process.execFile`. `cwd` is typically required.
  * @returns A promise that resolves with the stdout of the command, or rejects on error.
  */
-async function runN8nCliCommand(
-	command: string,
-	args: string[],
-	options: { cwd: string },
-): Promise<string> {
+async function runN8nCliCommand(command: string, args: string[], options: { cwd: string }) {
 	const n8nExecutablePath = '../../../cli/bin/n8n';
 	console.log(`Executing n8n command: n8n ${command} ${args.join(' ')}`);
-	try {
-		const { stdout, stderr } = await execFileAsync(n8nExecutablePath, [command, ...args], options);
-
-		if (stderr) {
-			console.error(`CLI Command "${command}" produced stderr:\n${stderr.trim()}`);
-		}
-		console.log(`✅ CLI command "${command}" executed successfully.`);
-		return stdout.trim();
-	} catch (error: unknown) {
-		const errorOutput = error instanceof Error ? error.message : String(error);
-		console.error(`❌ Failed to execute n8n CLI command "${command}":\n${errorOutput.trim()}`);
-		throw new Error(`n8n CLI command "${command}" failed: ${errorOutput.trim()}`);
-	}
+	await execFileAsync(n8nExecutablePath, [command, ...args], options);
 }
 
 /**
@@ -74,7 +58,7 @@ async function copyAsset(sourcePath: string, destinationPath: string): Promise<v
 			console.warn(`⚠️ Warning: Source asset not found at ${sourcePath}. Skipping copy.`);
 		} else {
 			console.error(
-				`❌ Error copying asset from ${sourcePath} to ${destinationPath}: ${error.message}`,
+				`❌ Error copying asset from ${sourcePath} to ${destinationPath}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			throw error;
 		}
@@ -90,19 +74,16 @@ export async function globalWorkflowSetup(): Promise<void> {
 	console.log('\n--- 🚀 Starting n8n workflow test environment setup ---\n');
 
 	try {
-		// 1. Import credentials
 		console.log('📥 Importing test credentials...');
 		await runN8nCliCommand('import:credentials', ['--input', CREDENTIALS_FILE_NAME], {
 			cwd: __dirname,
 		});
 
-		// 2. Import workflows
 		console.log('📥 Importing test workflows...');
 		await runN8nCliCommand('import:workflow', ['--separate', '--input', WORKFLOWS_DIR_NAME], {
 			cwd: __dirname,
 		});
 
-		// 3. Copy test data/assets
 		console.log('📁 Copying test assets...');
 
 		await fsPromises.mkdir(BASE_TMP_DIR, { recursive: true });
@@ -125,7 +106,6 @@ export async function globalWorkflowSetup(): Promise<void> {
 	}
 }
 
-// Run the setup when this script is executed directly
 if (require.main === module) {
 	globalWorkflowSetup().catch((error) => {
 		console.error('Setup failed:', error);

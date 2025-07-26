@@ -5,7 +5,7 @@ export default [
 	...baseConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
-		ignores: ['playwright-report/**/*', '**/playwright-report/**/*'],
+		ignores: ['playwright-report/**/*'],
 	},
 	{
 		rules: {
