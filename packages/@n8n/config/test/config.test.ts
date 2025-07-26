@@ -275,6 +275,9 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+			cron: {
+				activeInterval: 0,
+			},
 		},
 		multiMainSetup: {
 			enabled: false,

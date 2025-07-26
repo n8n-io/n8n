@@ -19,11 +19,11 @@ describe('getSchedulingFunctions', () => {
 
 	describe('registerCron', () => {
 		it('should invoke scheduledTaskManager.registerCron', () => {
-			schedulingFunctions.registerCron(cronExpression, onTick);
+			schedulingFunctions.registerCron({ expression: cronExpression }, onTick);
 
 			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
 				workflow,
-				cronExpression,
+				{ expression: cronExpression },
 				onTick,
 			);
 		});
