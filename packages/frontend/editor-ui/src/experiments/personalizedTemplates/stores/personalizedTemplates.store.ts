@@ -59,7 +59,7 @@ function keepTop3Templates(templates: ITemplatesWorkflowFull[]) {
 	}
 
 	return Array.from(new Map(templates.map((t) => [t.id, t])).values())
-		.sort((a, b) => a.totalViews - b.totalViews)
+		.sort((a, b) => b.totalViews - a.totalViews)
 		.slice(0, 3);
 }
 
