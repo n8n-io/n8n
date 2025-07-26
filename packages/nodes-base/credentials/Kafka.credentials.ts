@@ -30,6 +30,68 @@ export class Kafka implements ICredentialType {
 			default: true,
 		},
 		{
+			displayName: 'SSL CA',
+			name: 'sslCa',
+			type: 'string',
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSslIssues',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: false,
+		},
+		{
+			displayName: 'SSL Cert',
+			name: 'sslCert',
+			type: 'string',
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'SSL Key',
+			name: 'sslKey',
+			type: 'string',
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+		},
+		{
+			displayName: 'SSL Key Password',
+			name: 'sslKeyPassword',
+			type: 'string',
+			displayOptions: {
+				show: {
+					ssl: [true],
+					sslKey: [{_cnd: { exists: true}}],
+				},
+			},
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+		},
+		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'boolean',
