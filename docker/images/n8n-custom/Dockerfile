@@ -64,7 +64,7 @@ RUN \
 ENV SHELL /bin/sh
 USER root
 
-RUN npm install -g @brave/n8n-nodes-brave-search
+RUN pnpm install -g @brave/n8n-nodes-brave-search
 
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
