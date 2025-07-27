@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
-	type IDataObject,
+	type JsonObject,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type INodeParameters,
@@ -32,6 +32,7 @@ import {
 	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
+import { assertIsString } from '@utils/types';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -1027,7 +1028,7 @@ export class Beeminder implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		let results;
+		let results: JsonObject[];
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -1036,7 +1037,7 @@ export class Beeminder implements INodeType {
 					if (operation === 'create') {
 						const value = this.getNodeParameter('value', i) as number;
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							value,
 							goalName,
 						};
@@ -1047,14 +1048,14 @@ export class Beeminder implements INodeType {
 						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						Object.assign(data, options);
@@ -1065,14 +1066,14 @@ export class Beeminder implements INodeType {
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
 						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 							datapointId,
 						};
@@ -1082,43 +1083,43 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 							datapointId,
 						};
 						results = await deleteDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'createAll') {
 						const datapoints = this.getNodeParameter('datapoints', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 							datapoints: JSON.parse(datapoints),
 						};
 						results = await createAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 							datapointId,
 						};
 						results = await getSingleDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1127,26 +1128,30 @@ export class Beeminder implements INodeType {
 					if (operation === 'create') {
 						const amount = this.getNodeParameter('amount', i) as number;
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							amount,
 						};
 						Object.assign(data, options);
 
 						results = await createCharge.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					}
 				} else if (resource === 'goal') {
 					if (operation === 'create') {
-						const slug = this.getNodeParameter('slug', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
-						const goalType = this.getNodeParameter('goal_type', i) as string;
-						const gunits = this.getNodeParameter('gunits', i) as string;
+						const slug = this.getNodeParameter('slug', i);
+						assertIsString('slug', slug);
+						const title = this.getNodeParameter('title', i);
+						assertIsString('title', title);
+						const goalType = this.getNodeParameter('goal_type', i);
+						assertIsString('goalType', goalType);
+						const gunits = this.getNodeParameter('gunits', i);
+						assertIsString('gunits', gunits);
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							slug,
 							title,
 							goal_type: goalType,
@@ -1159,50 +1164,50 @@ export class Beeminder implements INodeType {
 						}
 						results = await createGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						Object.assign(data, options);
 
 						results = await getGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {};
+						const data: JsonObject = {};
 						Object.assign(data, options);
 
 						results = await getAllGoals.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getArchived') {
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {};
+						const data: JsonObject = {};
 						Object.assign(data, options);
 
 						results = await getArchivedGoals.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
 						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						Object.assign(data, options);
@@ -1212,63 +1217,63 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'refresh') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						results = await refreshGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'shortCircuit') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						results = await shortCircuitGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'stepDown') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						results = await stepDownGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'cancelStepDown') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 						results = await cancelStepDownGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'uncle') {
 						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: IDataObject = {
+						const data: JsonObject = {
 							goalName,
 						};
 
 						results = await uncleGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1276,12 +1281,12 @@ export class Beeminder implements INodeType {
 				} else if (resource === 'user') {
 					if (operation === 'get') {
 						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: IDataObject = {};
+						const data: JsonObject = {};
 						Object.assign(data, options);
 
 						results = await getUser.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results as IDataObject[]),
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
