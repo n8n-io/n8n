@@ -1041,6 +1041,10 @@ export class Beeminder implements INodeType {
 						assertIsNumber('value', value);
 
 						const options = this.getNodeParameter('additionalFields', i);
+						if (options.timestamp) {
+							options.timestamp = moment.tz(options.timestamp, timezone).unix();
+						}
+
 						assertIsNodeParameters<{
 							comment?: string;
 							timestamp?: number;
@@ -1056,9 +1060,6 @@ export class Beeminder implements INodeType {
 							...options,
 						};
 
-						if (data.timestamp) {
-							data.timestamp = moment.tz(data.timestamp, timezone).unix();
-						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results),
@@ -1092,6 +1093,10 @@ export class Beeminder implements INodeType {
 					} else if (operation === 'update') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
 						const options = this.getNodeParameter('updateFields', i);
+						if (options.timestamp) {
+							options.timestamp = moment.tz(options.timestamp, timezone).unix();
+						}
+
 						assertIsNodeParameters<{
 							value?: number;
 							comment?: string;
@@ -1106,9 +1111,7 @@ export class Beeminder implements INodeType {
 							datapointId,
 							...options,
 						};
-						if (data.timestamp) {
-							data.timestamp = moment.tz(data.timestamp, timezone).unix();
-						}
+
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results),

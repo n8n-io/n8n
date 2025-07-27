@@ -22,6 +22,7 @@ export async function beeminderApiRequest(
 
 	body: any = {},
 	query: IDataObject = {},
+	useFormData: boolean = false,
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken');
 
@@ -36,14 +37,23 @@ export async function beeminderApiRequest(
 
 	const options: IRequestOptions = {
 		method,
-		body,
 		qs: query,
 		uri: `${BEEMINDER_URI}${endpoint}`,
 		json: true,
 	};
 
+	if (useFormData) {
+		options.formData = body;
+	} else {
+		options.body = body;
+	}
+
 	if (!Object.keys(body as IDataObject).length) {
-		delete options.body;
+		if (useFormData) {
+			delete options.formData;
+		} else {
+			delete options.body;
+		}
 	}
 
 	if (!Object.keys(query).length) {
