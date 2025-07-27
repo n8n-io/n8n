@@ -25,6 +25,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -47,6 +48,7 @@ export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
+export { NodesConfig } from './configs/nodes.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -166,6 +168,9 @@ export class GlobalConfig {
 
 	@Nested
 	personalization: PersonalizationConfig;
+
+	@Nested
+	sso: SsoConfig;
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')

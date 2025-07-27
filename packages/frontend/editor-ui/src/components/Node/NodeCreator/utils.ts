@@ -314,6 +314,7 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	const ragKeywords = ['rag', 'vec', 'know'];
 	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
 		results.push({
+			uuid: 'rag-starter-template',
 			key: 'rag-starter-template',
 			type: 'openTemplate',
 			properties: {

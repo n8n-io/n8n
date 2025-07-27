@@ -67,9 +67,7 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -278,7 +276,6 @@ export class AgentV1 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 					name: 'mySql',
 					required: true,
 					testedBy: 'mysqlConnectionTest',

@@ -1,9 +1,11 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { DataDeduplicationService } from 'n8n-core';
-import type { ICheckProcessedContextData } from 'n8n-workflow';
-import type { IDeduplicationOutput, INode, DeduplicationItemTypes } from 'n8n-workflow';
+import type {
+	ICheckProcessedContextData,
+	IDeduplicationOutput,
+	INode,
+	DeduplicationItemTypes,
+} from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { getDataDeduplicationService } from '@/deduplication';

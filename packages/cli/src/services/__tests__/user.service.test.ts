@@ -1,7 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 

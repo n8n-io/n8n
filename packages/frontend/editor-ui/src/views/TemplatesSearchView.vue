@@ -377,7 +377,7 @@ watch(workflows, (newWorkflows) => {
 						@blur="trackSearch"
 					>
 						<template #prefix>
-							<font-awesome-icon icon="search" />
+							<n8n-icon icon="search" />
 						</template>
 					</n8n-input>
 					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">

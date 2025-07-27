@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { EvaluationTrigger } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
@@ -53,6 +53,11 @@ describe('Evaluation Trigger Node', () => {
 				});
 			});
 
+			test('credential test for googleApi should be in methods', async () => {
+				const evaluationTrigger = new EvaluationTrigger();
+				expect(evaluationTrigger.methods.credentialTest.googleApiCredentialTest).toBeDefined();
+			});
+
 			test('should return a single row from google sheet', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
@@ -67,7 +72,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -118,7 +123,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -169,7 +174,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -208,7 +213,7 @@ describe('Evaluation Trigger Node', () => {
 							limitRows: true,
 							maxRows: 1,
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -277,7 +282,7 @@ describe('Evaluation Trigger Node', () => {
 							sheetName,
 							sheetMode: 'id',
 						};
-						return mockParams[key] ?? fallbackValue;
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 					},
 				);
 
@@ -359,7 +364,7 @@ describe('Evaluation Trigger Node', () => {
 						limitRows: true,
 						maxRows: 2,
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 
@@ -426,7 +431,7 @@ describe('Evaluation Trigger Node', () => {
 						sheetName,
 						sheetMode: 'id',
 					};
-					return mockParams[key] ?? fallbackValue;
+					return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
 				},
 			);
 

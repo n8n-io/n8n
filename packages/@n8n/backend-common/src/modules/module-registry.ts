@@ -58,7 +58,8 @@ export class ModuleRegistry {
 			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
-			modulesDir = path.resolve(__dirname, '../../../../cli/dist/modules');
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
@@ -74,7 +75,7 @@ export class ModuleRegistry {
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
-			const entities = Container.get(ModuleClass).entities?.();
+			const entities = await Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
 
@@ -111,6 +112,22 @@ export class ModuleRegistry {
 
 			this.activeModules.push(moduleName);
 		}
+	}
+
+	async shutdownModule(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping shutdown for unregistered module', { moduleName });
+			return;
+		}
+
+		await Container.get(moduleEntry.class).shutdown?.();
+
+		const index = this.activeModules.indexOf(moduleName);
+		if (index > -1) this.activeModules.splice(index, 1);
+
+		this.logger.debug(`Shut down module "${moduleName}"`);
 	}
 
 	isActive(moduleName: ModuleName) {

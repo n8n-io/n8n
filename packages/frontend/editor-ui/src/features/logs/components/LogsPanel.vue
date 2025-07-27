@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, computed, useTemplateRef } from 'vue';
+import { nextTick, computed, useTemplateRef, ref } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
@@ -58,13 +58,16 @@ const {
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData();
-const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
 	entries,
 	flatLogEntries,
 	toggleExpanded,
 );
+
+const inputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
+const outputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
@@ -79,6 +82,16 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
+const inputCollapsingColumnName = computed(() =>
+	inputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+		? (inputTableColumnCollapsing.value?.columnName ?? null)
+		: null,
+);
+const outputCollapsingColumnName = computed(() =>
+	outputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+		? (outputTableColumnCollapsing.value?.columnName ?? null)
+		: null,
+);
 
 const keyMap = computed<KeyMap>(() => ({
 	j: selectNext,
@@ -109,6 +122,16 @@ function handleOpenNdv(treeNode: LogEntry) {
 		ndvEventBus.emit('setInputBranchIndex', inputBranch);
 		ndvStore.setOutputRunIndex(treeNode.runIndex);
 	});
+}
+
+function handleChangeInputTableColumnCollapsing(columnName: string | null) {
+	inputTableColumnCollapsing.value =
+		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
+}
+
+function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
+	outputTableColumnCollapsing.value =
+		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
 }
 </script>
 
@@ -171,7 +194,6 @@ function handleOpenNdv(treeNode: LogEntry) {
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
-								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
@@ -186,7 +208,6 @@ function handleOpenNdv(treeNode: LogEntry) {
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
 								@open-ndv="handleOpenNdv"
-								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -202,11 +223,15 @@ function handleOpenNdv(treeNode: LogEntry) {
 							:is-open="isOpen"
 							:log-entry="selected"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selected.id]"
+							:latest-info="latestNodeNameById[selected.node.id]"
 							:panels="logsStore.detailsState"
+							:collapsing-input-table-column-name="inputCollapsingColumnName"
+							:collapsing-output-table-column-name="outputCollapsingColumnName"
 							@click-header="onToggleOpen(true)"
 							@toggle-input-open="logsStore.toggleInputOpen"
 							@toggle-output-open="logsStore.toggleOutputOpen"
+							@collapsing-input-table-column-changed="handleChangeInputTableColumnCollapsing"
+							@collapsing-output-table-column-changed="handleChangeOutputTableColumnCollapsing"
 						>
 							<template #actions>
 								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />

@@ -19,7 +19,10 @@ import type {
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -44,6 +47,8 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const assistantStore = useAssistantStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -82,6 +87,26 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
+
+function toggleFocusPanel() {
+	focusPanelStore.toggleFocusPanel();
+
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasButton',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
+}
+
+function onAskAssistantButtonClick() {
+	if (!assistantStore.chatWindowOpen)
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
+
+	assistantStore.toggleChatOpen();
+}
 </script>
 
 <template>
@@ -107,7 +132,7 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			<n8n-icon-button
 				size="large"
 				type="tertiary"
-				:icon="['far', 'note-sticky']"
+				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
@@ -118,13 +143,25 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<n8n-icon-button type="tertiary" size="large" icon="panel-right" @click="toggleFocusPanel" />
+		</KeyboardShortcutTooltip>
+		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+			<n8n-button
 				type="tertiary"
 				size="large"
-				icon="list"
-				@click="focusPanelStore.toggleFocusPanel"
-			/>
-		</KeyboardShortcutTooltip>
+				square
+				:class="$style.icon"
+				data-test-id="ask-assistant-canvas-action-button"
+				@click="onAskAssistantButtonClick"
+			>
+				<template #default>
+					<div>
+						<AssistantIcon size="large" />
+					</div>
+				</template>
+			</n8n-button>
+		</n8n-tooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -145,5 +182,15 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-s);
 	pointer-events: all !important;
+}
+
+.icon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>

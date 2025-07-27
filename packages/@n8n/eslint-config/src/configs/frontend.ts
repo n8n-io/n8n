@@ -1,6 +1,7 @@
 import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
@@ -36,6 +37,7 @@ export const frontendConfig = tseslint.config(
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
 		rules: {
 			'import-x/no-extraneous-dependencies': 'warn',
+			'vue/one-component-per-file': 'off',
 		},
 	},
 	{
@@ -98,4 +100,5 @@ export const frontendConfig = tseslint.config(
 			'vue/return-in-computed-property': 'warn',
 		},
 	},
+	eslintConfigPrettier,
 );

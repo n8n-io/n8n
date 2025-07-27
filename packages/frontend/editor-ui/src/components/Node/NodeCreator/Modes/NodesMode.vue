@@ -277,6 +277,7 @@ function arrowLeft() {
 
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
+		...(globalCallouts.value ?? []),
 		...(activeViewStack.value.items ?? []),
 		...(globalSearchItemsDiff.value ?? []),
 		...(moreFromCommunity.value ?? []),
@@ -290,13 +291,13 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
 	handler: arrowLeft,
 });
 </script>
@@ -329,8 +330,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 
@@ -339,8 +340,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="moreFromCommunity.length > 0"
 			:elements="moreFromCommunity"
 			:category="i18n.baseText('nodeCreator.categoryNames.moreFromCommunity')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 	</span>

@@ -1001,7 +1001,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', exactMatch ? value : `%${value}%`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		if (annotationTags?.length || vote) {
 			// If there is a filter by one or multiple tags or by vote - we need to join the annotations table
 			qb.innerJoin('execution.annotation', 'annotation');

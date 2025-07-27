@@ -8,19 +8,104 @@ import {
 	type INode,
 	type INodeParameters,
 	type NodeParameterValue,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type INodePropertyCollection,
+	type NodePropertyTypes,
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
 	isINodePropertyOptionsList,
 	displayParameter,
+	isResourceLocatorValue,
+	deepCopy,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
-import { SWITCH_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import isEqual from 'lodash/isEqual';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
+import { isPresent } from './typesUtils';
+import type { Ref } from 'vue';
+import { omitKey } from './objectUtils';
+
+export function setValue(
+	nodeValues: Ref<INodeParameters>,
+	name: string,
+	value: NodeParameterValue,
+) {
+	const nameParts = name.split('.');
+	let lastNamePart: string | undefined = nameParts.pop();
+
+	let isArray = false;
+	if (lastNamePart?.includes('[')) {
+		// It includes an index so we have to extract it
+		const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
+		if (lastNameParts) {
+			nameParts.push(lastNameParts[1]);
+			lastNamePart = lastNameParts[2];
+			isArray = true;
+		}
+	}
+
+	// Set the value so that everything updates correctly in the UI
+	if (nameParts.length === 0) {
+		// Data is on top level
+		if (value === null) {
+			// Property should be deleted
+			if (lastNamePart) {
+				nodeValues.value = omitKey(nodeValues.value, lastNamePart);
+			}
+		} else {
+			// Value should be set
+			nodeValues.value = {
+				...nodeValues.value,
+				[lastNamePart as string]: value,
+			};
+		}
+	} else {
+		// Data is on lower level
+		if (value === null) {
+			// Property should be deleted
+			let tempValue = get(nodeValues.value, nameParts.join('.')) as
+				| INodeParameters
+				| INodeParameters[];
+
+			if (lastNamePart && !Array.isArray(tempValue)) {
+				tempValue = omitKey(tempValue, lastNamePart);
+			}
+
+			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
+				// If a value from an array got delete and no values are left
+				// delete also the parent
+				lastNamePart = nameParts.pop();
+				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
+				if (lastNamePart) {
+					tempValue = omitKey(tempValue, lastNamePart);
+				}
+			}
+		} else {
+			// Value should be set
+			if (typeof value === 'object') {
+				set(
+					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
+					lastNamePart as string,
+					deepCopy(value),
+				);
+			} else {
+				set(
+					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
+					lastNamePart as string,
+					value,
+				);
+			}
+		}
+	}
+
+	nodeValues.value = { ...nodeValues.value };
+}
 
 export function updateDynamicConnections(
 	node: INodeUi,
@@ -160,7 +245,12 @@ export function removeMismatchedOptionValues(
 	nodeType.properties.forEach((prop) => {
 		const displayOptions = prop.displayOptions;
 		// Not processing parameters that are not set or don't have options
-		if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+		if (
+			!nodeParameterValues ||
+			!Object.prototype.hasOwnProperty.call(nodeParameterValues, prop.name) ||
+			!displayOptions ||
+			!prop.options
+		) {
 			return;
 		}
 		// Only process the parameters that depend on the updated parameter
@@ -234,4 +324,127 @@ export function updateParameterByPath(
 	}
 
 	return parameterPath;
+}
+
+export function getParameterTypeOption<T = string | number | boolean | undefined>(
+	parameter: INodeProperties,
+	optionName: string,
+): T {
+	return parameter.typeOptions?.[optionName] as T;
+}
+
+export function isResourceLocatorParameterType(type: NodePropertyTypes) {
+	return type === 'resourceLocator' || type === 'workflowSelector';
+}
+
+export function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return 'value' in option && isPresent(option.value) && isPresent(option.name);
+}
+
+export function mustHideDuringCustomApiCall(
+	parameter: INodeProperties,
+	nodeParameters: INodeParameters,
+): boolean {
+	if (parameter?.displayOptions?.hide) return true;
+
+	const MUST_REMAIN_VISIBLE = [
+		'authentication',
+		'resource',
+		'operation',
+		...Object.keys(nodeParameters),
+	];
+
+	return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+}
+
+export function nameIsParameter(
+	parameterData: IUpdateInformation,
+): parameterData is IUpdateInformation & { name: `parameters.${string}` } {
+	return parameterData.name.startsWith('parameters.');
+}
+
+export function formatAsExpression(
+	value: NodeParameterValueType,
+	parameterType: NodePropertyTypes,
+) {
+	if (isResourceLocatorParameterType(parameterType)) {
+		if (isResourceLocatorValue(value)) {
+			return {
+				__rl: true,
+				value: `=${value.value}`,
+				mode: value.mode,
+			};
+		}
+
+		return { __rl: true, value: `=${value as string}`, mode: '' };
+	}
+
+	const isNumber = parameterType === 'number';
+	const isBoolean = parameterType === 'boolean';
+	const isMultiOptions = parameterType === 'multiOptions';
+
+	if (isNumber && (!value || value === '[Object: null]')) {
+		return '={{ 0 }}';
+	}
+
+	if (isMultiOptions) {
+		return `={{ ${JSON.stringify(value)} }}`;
+	}
+
+	if (isNumber || isBoolean || typeof value !== 'string') {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string -- stringified intentionally
+		return `={{ ${String(value)} }}`;
+	}
+
+	return `=${value}`;
+}
+
+export function parseFromExpression(
+	currentParameterValue: NodeParameterValueType,
+	evaluatedExpressionValue: unknown,
+	parameterType: NodePropertyTypes,
+	defaultValue: NodeParameterValueType,
+	parameterOptions: INodePropertyOptions[] = [],
+) {
+	if (parameterType === 'multiOptions' && typeof evaluatedExpressionValue === 'string') {
+		return evaluatedExpressionValue
+			.split(',')
+			.filter((valueItem) => parameterOptions.find((option) => option.value === valueItem));
+	}
+
+	if (
+		isResourceLocatorParameterType(parameterType) &&
+		isResourceLocatorValue(currentParameterValue)
+	) {
+		return { __rl: true, value: evaluatedExpressionValue, mode: currentParameterValue.mode };
+	}
+
+	if (parameterType === 'string') {
+		return currentParameterValue
+			? (currentParameterValue as string).toString().replace(/^=+/, '')
+			: null;
+	}
+
+	if (typeof evaluatedExpressionValue !== 'undefined') {
+		return evaluatedExpressionValue;
+	}
+
+	if (['number', 'boolean'].includes(parameterType)) {
+		return defaultValue;
+	}
+
+	return null;
+}
+
+export function shouldSkipParamValidation(
+	parameter: INodeProperties,
+	value: NodeParameterValueType,
+) {
+	return (
+		(typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY)) ||
+		(['options', 'multiOptions'].includes(parameter.type) &&
+			Boolean(parameter.allowArbitraryValues))
+	);
 }

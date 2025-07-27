@@ -1,7 +1,9 @@
-FROM n8n-base:local
+FROM ghcr.io/ozlevka/n8n-base:latest
 
 RUN apk add --no-cache --update openssh sudo shadow bash fish
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir /workspaces && chown node:node /workspaces
+RUN npm install -g pnpm
+
 USER node
 RUN mkdir -p ~/.pnpm-store && pnpm config set store-dir ~/.pnpm-store --global

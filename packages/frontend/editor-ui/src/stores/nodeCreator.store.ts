@@ -250,7 +250,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 					title: actionNode.properties.displayName,
 					nodeIcon: {
 						type: 'icon',
-						name: 'check-double',
+						name: 'check-check',
 					},
 					rootView: 'Regular',
 					mode: 'actions',
@@ -292,17 +292,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		nodePanelSessionId.value = `nodes_panel_session_${new Date().valueOf()}`;
 	}
 
-	function trackNodeCreatorEvent(event: string, properties: IDataObject = {}, withPostHog = false) {
-		telemetry.track(
-			event,
-			{
-				...properties,
-				nodes_panel_session_id: nodePanelSessionId.value,
-			},
-			{
-				withPostHog,
-			},
-		);
+	function trackNodeCreatorEvent(event: string, properties: IDataObject = {}) {
+		telemetry.track(event, {
+			...properties,
+			nodes_panel_session_id: nodePanelSessionId.value,
+		});
 	}
 
 	function onCreatorOpened({
@@ -419,7 +413,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		drag_and_drop?: boolean;
 		input_node_type?: string;
 	}) {
-		trackNodeCreatorEvent('User added node to workflow canvas', properties, true);
+		trackNodeCreatorEvent('User added node to workflow canvas', properties);
 	}
 
 	function getMode(mode: NodeFilterType): string {

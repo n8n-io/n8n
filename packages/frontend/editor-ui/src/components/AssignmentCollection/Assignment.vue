@@ -128,20 +128,20 @@ const onBlur = (): void => {
 			v-if="!isReadOnly"
 			type="tertiary"
 			text
-			size="mini"
+			size="small"
 			icon="grip-vertical"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
-		></N8nIconButton>
+		/>
 		<N8nIconButton
 			v-if="!isReadOnly"
 			type="tertiary"
 			text
-			size="mini"
-			icon="trash"
+			size="small"
+			icon="trash-2"
 			data-test-id="assignment-remove"
 			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
-		></N8nIconButton>
+		/>
 
 		<div :class="$style.inputs">
 			<InputTriple middle-width="100px">

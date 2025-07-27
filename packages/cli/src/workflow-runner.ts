@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
@@ -200,7 +200,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
-	// eslint-disable-next-line complexity
+
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -248,6 +248,7 @@ export class WorkflowRunner {
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.streamingEnabled = data.streamingEnabled;
 
 		additionalData.executionId = executionId;
 
@@ -306,10 +307,21 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
-				executionTimeout = setTimeout(() => {
-					void this.activeExecutions.stopExecution(executionId);
-				}, timeout);
+				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as milliseconds
+				if (data.startedAt && data.startedAt instanceof Date) {
+					// If startedAt is set, we calculate the timeout based on the startedAt time
+					// This is useful for executions that were waiting in a waiting state
+					// and we want to ensure the timeout is relative to when the execution started.
+					const now = Date.now();
+					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
+				}
+				if (timeout === 0) {
+					this.activeExecutions.stopExecution(executionId);
+				} else {
+					executionTimeout = setTimeout(() => {
+						void this.activeExecutions.stopExecution(executionId);
+					}, timeout);
+				}
 			}
 
 			workflowExecution
@@ -357,6 +369,7 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			streamingEnabled: data.streamingEnabled,
 		};
 
 		if (!this.scalingService) {

@@ -42,8 +42,9 @@ export class ResponseError extends Error {
 		readonly status: number,
 		readonly body: unknown,
 		readonly code = 'ESTATUS',
+		readonly message = `HTTP status ${status}`,
 	) {
-		super(`HTTP status ${status}`);
+		super(message);
 	}
 }
 
@@ -133,6 +134,11 @@ export class ClientOAuth2 {
 			return qs.parse(body) as T;
 		}
 
-		throw new Error(`Unsupported content type: ${contentType}`);
+		throw new ResponseError(
+			response.status,
+			body,
+			undefined,
+			`Unsupported content type: ${contentType}`,
+		);
 	}
 }
