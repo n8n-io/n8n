@@ -64,7 +64,8 @@ RUN \
 ENV SHELL /bin/sh
 USER root
 
-RUN pnpm install -g @brave/n8n-nodes-brave-search
+# Install community packages into n8n directory (proper method)
+RUN cd /usr/local/lib/node_modules/n8n && npm install @brave/n8n-nodes-brave-search --ignore-scripts
 
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
