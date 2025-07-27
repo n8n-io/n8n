@@ -31,12 +31,6 @@ export class BeeminderOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'Scope',
-			name: 'scope',
-			type: 'hidden',
-			default: '',
-		},
-		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
@@ -46,7 +40,13 @@ export class BeeminderOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',
-			default: 'header',
+			default: 'body',
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden',
+			default: '',
 		},
 	];
 }
