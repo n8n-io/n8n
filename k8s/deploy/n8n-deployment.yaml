@@ -61,7 +61,7 @@ spec:
               value: "http://192.168.68.120:30567"
             - name: NODE_FUNCTION_ALLOW_EXTERNAL
               value: "node-fetch"
-          image: ghcr.io/ozlevka/n8n:0.0.4
+          image: ghcr.io/ozlevka/n8n:0.0.5
           name: n8n
           ports:
             - containerPort: 5678
@@ -98,4 +98,20 @@ spec:
       port: 5678         # Internal port the Service listens on
       targetPort: 5678   # Port the Pods listen on (containerPort)
       nodePort: 30567    # Port exposed on the Node's IP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-cloudflare
+  namespace: n8n  # Match the Deployment's namespace
+  labels:
+    service: n8n-service # Match the Deployment's labels
+spec:
+  type: ClusterIP
+  selector:
+    service: n8n # Selects Pods with this label
+  ports:
+    - protocol: TCP
+      port: 5678         # Internal port the Service listens on
+      targetPort: 5678   # Port the Pods listen on (containerPort)
 
