@@ -8,6 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -39,6 +40,487 @@ import {
 	assertIsNumber,
 	assertIsArray,
 } from '../../utils/types';
+
+// Helper functions for execution
+function buildExecutionData(
+	context: IExecuteFunctions,
+	results: JsonObject[],
+	itemIndex: number,
+): INodeExecutionData[] {
+	return context.helpers.constructExecutionMetaData(context.helpers.returnJsonArray(results), {
+		itemData: { item: itemIndex },
+	});
+}
+
+async function executeDatapointCreate(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	const value = context.getNodeParameter('value', itemIndex);
+	assertIsNumber('value', value);
+
+	const options = context.getNodeParameter('additionalFields', itemIndex);
+	if (options.timestamp) {
+		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+	}
+
+	assertIsNodeParameters<{
+		comment?: string;
+		timestamp?: number;
+		requestid?: string;
+	}>(options, {
+		comment: { type: 'string', optional: true },
+		timestamp: { type: 'number', optional: true },
+		requestid: { type: 'string', optional: true },
+	});
+
+	const data = {
+		value,
+		goalName,
+		...options,
+	};
+
+	return await createDatapoint.call(context, data);
+}
+
+async function executeDatapointGetAll(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const returnAll = context.getNodeParameter('returnAll', itemIndex);
+	const options = context.getNodeParameter('options', itemIndex);
+	assertIsNodeParameters<{
+		sort?: string;
+		page?: number;
+		per?: number;
+	}>(options, {
+		sort: { type: 'string', optional: true },
+		page: { type: 'number', optional: true },
+		per: { type: 'number', optional: true },
+	});
+
+	const data = {
+		goalName,
+		count: !returnAll ? context.getNodeParameter('limit', 0) : undefined,
+		...options,
+	};
+
+	return await getAllDatapoints.call(context, data);
+}
+
+async function executeDatapointUpdate(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	const datapointId = context.getNodeParameter('datapointId', itemIndex);
+	assertIsString('datapointId', datapointId);
+	const options = context.getNodeParameter('updateFields', itemIndex);
+	if (options.timestamp) {
+		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+	}
+
+	assertIsNodeParameters<{
+		value?: number;
+		comment?: string;
+		timestamp?: number;
+	}>(options, {
+		value: { type: 'number', optional: true },
+		comment: { type: 'string', optional: true },
+		timestamp: { type: 'number', optional: true },
+	});
+
+	const data = {
+		goalName,
+		datapointId,
+		...options,
+	};
+
+	return await updateDatapoint.call(context, data);
+}
+
+async function executeDatapointDelete(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const datapointId = context.getNodeParameter('datapointId', itemIndex);
+	assertIsString('datapointId', datapointId);
+	const data = {
+		goalName,
+		datapointId,
+	};
+	return await deleteDatapoint.call(context, data);
+}
+
+async function executeDatapointCreateAll(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const datapoints = context.getNodeParameter('datapoints', itemIndex);
+	const parsedDatapoints = typeof datapoints === 'string' ? jsonParse(datapoints) : datapoints;
+	assertIsArray<Datapoint>(
+		'datapoints',
+		parsedDatapoints,
+		(val): val is Datapoint => typeof val === 'object' && val !== null && 'value' in val,
+	);
+
+	const data = {
+		goalName,
+		datapoints: parsedDatapoints,
+	};
+	return await createAllDatapoints.call(context, data);
+}
+
+async function executeDatapointGet(
+	context: IExecuteFunctions,
+	goalName: string,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const datapointId = context.getNodeParameter('datapointId', itemIndex);
+	assertIsString('datapointId', datapointId);
+	const data = {
+		goalName,
+		datapointId,
+	};
+	return await getSingleDatapoint.call(context, data);
+}
+
+async function executeDatapointOperations(
+	context: IExecuteFunctions,
+	operation: string,
+	goalName: string,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	switch (operation) {
+		case 'create':
+			return await executeDatapointCreate(context, goalName, itemIndex, timezone);
+		case 'getAll':
+			return await executeDatapointGetAll(context, goalName, itemIndex);
+		case 'update':
+			return await executeDatapointUpdate(context, goalName, itemIndex, timezone);
+		case 'delete':
+			return await executeDatapointDelete(context, goalName, itemIndex);
+		case 'createAll':
+			return await executeDatapointCreateAll(context, goalName, itemIndex);
+		case 'get':
+			return await executeDatapointGet(context, goalName, itemIndex);
+		default:
+			throw new NodeOperationError(context.getNode(), `Unknown datapoint operation: ${operation}`);
+	}
+}
+
+async function executeChargeOperations(
+	context: IExecuteFunctions,
+	operation: string,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	if (operation === 'create') {
+		const amount = context.getNodeParameter('amount', itemIndex);
+		assertIsNumber('amount', amount);
+		const options = context.getNodeParameter('additionalFields', itemIndex);
+		assertIsNodeParameters<{
+			note?: string;
+			dryrun?: boolean;
+		}>(options, {
+			note: { type: 'string', optional: true },
+			dryrun: { type: 'boolean', optional: true },
+		});
+		const data = {
+			amount,
+			...options,
+		};
+
+		return await createCharge.call(context, data);
+	}
+	throw new NodeOperationError(context.getNode(), `Unknown charge operation: ${operation}`);
+}
+
+async function executeGoalCreate(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	const slug = context.getNodeParameter('slug', itemIndex);
+	assertIsString('slug', slug);
+	const title = context.getNodeParameter('title', itemIndex);
+	assertIsString('title', title);
+	const goalType = context.getNodeParameter('goal_type', itemIndex);
+	assertIsString('goalType', goalType);
+	const gunits = context.getNodeParameter('gunits', itemIndex);
+	assertIsString('gunits', gunits);
+	const options = context.getNodeParameter('additionalFields', itemIndex);
+	if ('tags' in options && typeof options.tags === 'string') {
+		options.tags = jsonParse(options.tags);
+	}
+	if (options.goaldate && typeof options.goaldate === 'string') {
+		options.goaldate = moment.tz(options.goaldate, timezone).unix();
+	}
+
+	assertIsNodeParameters<{
+		goaldate?: number;
+		goalval?: number;
+		rate?: number;
+		initval?: number;
+		secret?: boolean;
+		datapublic?: boolean;
+		datasource?: string;
+		dryrun?: boolean;
+		tags?: string[];
+	}>(options, {
+		goaldate: { type: 'number', optional: true },
+		goalval: { type: 'number', optional: true },
+		rate: { type: 'number', optional: true },
+		initval: { type: 'number', optional: true },
+		secret: { type: 'boolean', optional: true },
+		datapublic: { type: 'boolean', optional: true },
+		datasource: { type: 'string', optional: true },
+		dryrun: { type: 'boolean', optional: true },
+		tags: { type: 'string[]', optional: true },
+	});
+
+	const data = {
+		slug,
+		title,
+		goal_type: goalType,
+		gunits,
+		...options,
+	};
+
+	return await createGoal.call(context, data);
+}
+
+async function executeGoalGet(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+	const options = context.getNodeParameter('additionalFields', itemIndex);
+	assertIsNodeParameters<{
+		datapoints?: boolean;
+		emaciated?: boolean;
+	}>(options, {
+		datapoints: { type: 'boolean', optional: true },
+		emaciated: { type: 'boolean', optional: true },
+	});
+	const data = {
+		goalName,
+		...options,
+	};
+
+	return await getGoal.call(context, data);
+}
+
+async function executeGoalGetAll(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const options = context.getNodeParameter('additionalFields', itemIndex);
+	assertIsNodeParameters<{
+		emaciated?: boolean;
+	}>(options, {
+		emaciated: { type: 'boolean', optional: true },
+	});
+	const data = { ...options };
+
+	return await getAllGoals.call(context, data);
+}
+
+async function executeGoalGetArchived(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const options = context.getNodeParameter('additionalFields', itemIndex);
+	assertIsNodeParameters<{
+		emaciated?: boolean;
+	}>(options, {
+		emaciated: { type: 'boolean', optional: true },
+	});
+	const data = { ...options };
+
+	return await getArchivedGoals.call(context, data);
+}
+
+async function executeGoalUpdate(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+	const options = context.getNodeParameter('updateFields', itemIndex);
+	if ('tags' in options && typeof options.tags === 'string') {
+		options.tags = jsonParse(options.tags);
+	}
+	if ('roadall' in options && typeof options.roadall === 'string') {
+		options.roadall = jsonParse(options.roadall);
+	}
+	console.log('roadall', typeof options.roadall, options.roadall);
+	assertIsNodeParameters<{
+		title?: string;
+		yaxis?: string;
+		tmin?: string;
+		tmax?: string;
+		goaldate?: number;
+		secret?: boolean;
+		datapublic?: boolean;
+		roadall?: object;
+		datasource?: string;
+		tags?: string[];
+	}>(options, {
+		title: { type: 'string', optional: true },
+		yaxis: { type: 'string', optional: true },
+		tmin: { type: 'string', optional: true },
+		tmax: { type: 'string', optional: true },
+		secret: { type: 'boolean', optional: true },
+		datapublic: { type: 'boolean', optional: true },
+		roadall: { type: 'object', optional: true },
+		datasource: { type: 'string', optional: true },
+		tags: { type: 'string[]', optional: true },
+	});
+	const data = {
+		goalName,
+		...options,
+	};
+
+	if (data.goaldate) {
+		data.goaldate = moment.tz(data.goaldate, timezone).unix();
+	}
+	return await updateGoal.call(context, data);
+}
+
+async function executeGoalRefresh(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+	const data = {
+		goalName,
+	};
+	return await refreshGoal.call(context, data);
+}
+
+async function executeGoalShortCircuit(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+
+	const data = {
+		goalName,
+	};
+	return await shortCircuitGoal.call(context, data);
+}
+
+async function executeGoalStepDown(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+
+	const data = {
+		goalName,
+	};
+	return await stepDownGoal.call(context, data);
+}
+
+async function executeGoalCancelStepDown(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+	const data = {
+		goalName,
+	};
+	return await cancelStepDownGoal.call(context, data);
+}
+
+async function executeGoalUncle(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<JsonObject[]> {
+	const goalName = context.getNodeParameter('goalName', itemIndex);
+	assertIsString('goalName', goalName);
+	const data = {
+		goalName,
+	};
+
+	return await uncleGoal.call(context, data);
+}
+
+async function executeGoalOperations(
+	context: IExecuteFunctions,
+	operation: string,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	switch (operation) {
+		case 'create':
+			return await executeGoalCreate(context, itemIndex, timezone);
+		case 'get':
+			return await executeGoalGet(context, itemIndex);
+		case 'getAll':
+			return await executeGoalGetAll(context, itemIndex);
+		case 'getArchived':
+			return await executeGoalGetArchived(context, itemIndex);
+		case 'update':
+			return await executeGoalUpdate(context, itemIndex, timezone);
+		case 'refresh':
+			return await executeGoalRefresh(context, itemIndex);
+		case 'shortCircuit':
+			return await executeGoalShortCircuit(context, itemIndex);
+		case 'stepDown':
+			return await executeGoalStepDown(context, itemIndex);
+		case 'cancelStepDown':
+			return await executeGoalCancelStepDown(context, itemIndex);
+		case 'uncle':
+			return await executeGoalUncle(context, itemIndex);
+		default:
+			throw new NodeOperationError(context.getNode(), `Unknown goal operation: ${operation}`);
+	}
+}
+
+async function executeUserOperations(
+	context: IExecuteFunctions,
+	operation: string,
+	itemIndex: number,
+	timezone: string,
+): Promise<JsonObject[]> {
+	if (operation === 'get') {
+		const options = context.getNodeParameter('additionalFields', itemIndex);
+		if (options.diff_since) {
+			options.diff_since = moment.tz(options.diff_since, timezone).unix();
+		}
+		assertIsNodeParameters<{
+			associations?: boolean;
+			diff_since?: number;
+			skinny?: boolean;
+			emaciated?: boolean;
+			datapoints_count?: number;
+		}>(options, {
+			associations: { type: 'boolean', optional: true },
+			diff_since: { type: 'number', optional: true },
+			skinny: { type: 'boolean', optional: true },
+			emaciated: { type: 'boolean', optional: true },
+			datapoints_count: { type: 'number', optional: true },
+		});
+		const data = { ...options };
+
+		return await getUser.call(context, data);
+	}
+	throw new NodeOperationError(context.getNode(), `Unknown user operation: ${operation}`);
+}
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -1034,417 +1516,35 @@ export class Beeminder implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		let results: JsonObject[];
 
 		for (let i = 0; i < length; i++) {
 			try {
+				let results: JsonObject[];
+
 				if (resource === 'datapoint') {
 					const goalName = this.getNodeParameter('goalName', i);
 					assertIsString('goalName', goalName);
-
-					if (operation === 'create') {
-						const value = this.getNodeParameter('value', i);
-						assertIsNumber('value', value);
-
-						const options = this.getNodeParameter('additionalFields', i);
-						if (options.timestamp) {
-							options.timestamp = moment.tz(options.timestamp, timezone).unix();
-						}
-
-						assertIsNodeParameters<{
-							comment?: string;
-							timestamp?: number;
-							requestid?: string;
-						}>(options, {
-							comment: { type: 'string', optional: true },
-							timestamp: { type: 'number', optional: true },
-							requestid: { type: 'string', optional: true },
-						});
-						const data = {
-							value,
-							goalName,
-							...options,
-						};
-
-						results = await createDatapoint.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i);
-						assertIsNodeParameters<{
-							sort?: string;
-							page?: number;
-							per?: number;
-						}>(options, {
-							sort: { type: 'string', optional: true },
-							page: { type: 'number', optional: true },
-							per: { type: 'number', optional: true },
-						});
-						const data = {
-							goalName,
-							count: !returnAll ? this.getNodeParameter('limit', 0) : undefined,
-							...options,
-						};
-
-						results = await getAllDatapoints.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'update') {
-						const datapointId = this.getNodeParameter('datapointId', i);
-						assertIsString('datapointId', datapointId);
-						const options = this.getNodeParameter('updateFields', i);
-						if (options.timestamp) {
-							options.timestamp = moment.tz(options.timestamp, timezone).unix();
-						}
-
-						assertIsNodeParameters<{
-							value?: number;
-							comment?: string;
-							timestamp?: number;
-						}>(options, {
-							value: { type: 'number', optional: true },
-							comment: { type: 'string', optional: true },
-							timestamp: { type: 'number', optional: true },
-						});
-						const data = {
-							goalName,
-							datapointId,
-							...options,
-						};
-
-						results = await updateDatapoint.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'delete') {
-						const datapointId = this.getNodeParameter('datapointId', i);
-						assertIsString('datapointId', datapointId);
-						const data = {
-							goalName,
-							datapointId,
-						};
-						results = await deleteDatapoint.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'createAll') {
-						const datapoints = this.getNodeParameter('datapoints', i);
-						const parsedDatapoints =
-							typeof datapoints === 'string' ? jsonParse(datapoints) : datapoints;
-						assertIsArray<Datapoint>(
-							'datapoints',
-							parsedDatapoints,
-							(val): val is Datapoint => typeof val === 'object' && val !== null && 'value' in val,
-						);
-
-						const data = {
-							goalName,
-							datapoints: parsedDatapoints,
-						};
-						results = await createAllDatapoints.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'get') {
-						const datapointId = this.getNodeParameter('datapointId', i);
-						assertIsString('datapointId', datapointId);
-						const data = {
-							goalName,
-							datapointId,
-						};
-						results = await getSingleDatapoint.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					}
+					results = await executeDatapointOperations(this, operation, goalName, i, timezone);
 				} else if (resource === 'charge') {
-					if (operation === 'create') {
-						const amount = this.getNodeParameter('amount', i);
-						assertIsNumber('amount', amount);
-						const options = this.getNodeParameter('additionalFields', i);
-						assertIsNodeParameters<{
-							note?: string;
-							dryrun?: boolean;
-						}>(options, {
-							note: { type: 'string', optional: true },
-							dryrun: { type: 'boolean', optional: true },
-						});
-						const data = {
-							amount,
-							...options,
-						};
-
-						results = await createCharge.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					}
+					results = await executeChargeOperations(this, operation, i);
 				} else if (resource === 'goal') {
-					if (operation === 'create') {
-						const slug = this.getNodeParameter('slug', i);
-						assertIsString('slug', slug);
-						const title = this.getNodeParameter('title', i);
-						assertIsString('title', title);
-						const goalType = this.getNodeParameter('goal_type', i);
-						assertIsString('goalType', goalType);
-						const gunits = this.getNodeParameter('gunits', i);
-						assertIsString('gunits', gunits);
-						const options = this.getNodeParameter('additionalFields', i);
-						if ('tags' in options && typeof options.tags === 'string') {
-							options.tags = jsonParse(options.tags);
-						}
-						if (options.goaldate && typeof options.goaldate === 'string') {
-							options.goaldate = moment.tz(options.goaldate, timezone).unix();
-						}
-
-						assertIsNodeParameters<{
-							goaldate?: number;
-							goalval?: number;
-							rate?: number;
-							initval?: number;
-							secret?: boolean;
-							datapublic?: boolean;
-							datasource?: string;
-							dryrun?: boolean;
-							tags?: string[];
-						}>(options, {
-							goaldate: { type: 'number', optional: true },
-							goalval: { type: 'number', optional: true },
-							rate: { type: 'number', optional: true },
-							initval: { type: 'number', optional: true },
-							secret: { type: 'boolean', optional: true },
-							datapublic: { type: 'boolean', optional: true },
-							datasource: { type: 'string', optional: true },
-							dryrun: { type: 'boolean', optional: true },
-							tags: { type: 'string[]', optional: true },
-						});
-
-						const data = {
-							slug,
-							title,
-							goal_type: goalType,
-							gunits,
-							...options,
-						};
-
-						results = await createGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'get') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-						const options = this.getNodeParameter('additionalFields', i);
-						assertIsNodeParameters<{
-							datapoints?: boolean;
-							emaciated?: boolean;
-						}>(options, {
-							datapoints: { type: 'boolean', optional: true },
-							emaciated: { type: 'boolean', optional: true },
-						});
-						const data = {
-							goalName,
-							...options,
-						};
-
-						results = await getGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'getAll') {
-						const options = this.getNodeParameter('additionalFields', i);
-						assertIsNodeParameters<{
-							emaciated?: boolean;
-						}>(options, {
-							emaciated: { type: 'boolean', optional: true },
-						});
-						const data = { ...options };
-
-						results = await getAllGoals.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'getArchived') {
-						const options = this.getNodeParameter('additionalFields', i);
-						assertIsNodeParameters<{
-							emaciated?: boolean;
-						}>(options, {
-							emaciated: { type: 'boolean', optional: true },
-						});
-						const data = { ...options };
-
-						results = await getArchivedGoals.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'update') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-						const options = this.getNodeParameter('updateFields', i);
-						if ('tags' in options && typeof options.tags === 'string') {
-							options.tags = jsonParse(options.tags);
-						}
-						if ('roadall' in options && typeof options.roadall === 'string') {
-							options.roadall = jsonParse(options.roadall);
-						}
-						console.log('roadall', typeof options.roadall, options.roadall);
-						assertIsNodeParameters<{
-							title?: string;
-							yaxis?: string;
-							tmin?: string;
-							tmax?: string;
-							goaldate?: number;
-							secret?: boolean;
-							datapublic?: boolean;
-							roadall?: object;
-							datasource?: string;
-							tags?: string[];
-						}>(options, {
-							title: { type: 'string', optional: true },
-							yaxis: { type: 'string', optional: true },
-							tmin: { type: 'string', optional: true },
-							tmax: { type: 'string', optional: true },
-							secret: { type: 'boolean', optional: true },
-							datapublic: { type: 'boolean', optional: true },
-							roadall: { type: 'object', optional: true },
-							datasource: { type: 'string', optional: true },
-							tags: { type: 'string[]', optional: true },
-						});
-						const data = {
-							goalName,
-							...options,
-						};
-
-						if (data.goaldate) {
-							data.goaldate = moment.tz(data.goaldate, timezone).unix();
-						}
-						results = await updateGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'refresh') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-						const data = {
-							goalName,
-						};
-						results = await refreshGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'shortCircuit') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-
-						const data = {
-							goalName,
-						};
-						results = await shortCircuitGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'stepDown') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-
-						const data = {
-							goalName,
-						};
-						results = await stepDownGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'cancelStepDown') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-						const data = {
-							goalName,
-						};
-						results = await cancelStepDownGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					} else if (operation === 'uncle') {
-						const goalName = this.getNodeParameter('goalName', i);
-						assertIsString('goalName', goalName);
-						const data = {
-							goalName,
-						};
-
-						results = await uncleGoal.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					}
+					results = await executeGoalOperations(this, operation, i, timezone);
 				} else if (resource === 'user') {
-					if (operation === 'get') {
-						const options = this.getNodeParameter('additionalFields', i);
-						if (options.diff_since) {
-							options.diff_since = moment.tz(options.diff_since, timezone).unix();
-						}
-						assertIsNodeParameters<{
-							associations?: boolean;
-							diff_since?: number;
-							skinny?: boolean;
-							emaciated?: boolean;
-							datapoints_count?: number;
-						}>(options, {
-							associations: { type: 'boolean', optional: true },
-							diff_since: { type: 'number', optional: true },
-							skinny: { type: 'boolean', optional: true },
-							emaciated: { type: 'boolean', optional: true },
-							datapoints_count: { type: 'number', optional: true },
-						});
-						const data = { ...options };
-
-						results = await getUser.call(this, data);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-					}
+					results = await executeUserOperations(this, operation, i, timezone);
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`);
 				}
+
+				const executionData = buildExecutionData(this, results, i);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {}, itemIndex: i });
+					const errorData = {
+						json: {},
+						error: error instanceof NodeOperationError ? error : undefined,
+						itemIndex: i,
+					};
+					returnData.push(errorData);
 					continue;
 				}
 				throw error;
