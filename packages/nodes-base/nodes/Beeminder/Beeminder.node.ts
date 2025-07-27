@@ -1416,6 +1416,9 @@ export class Beeminder implements INodeType {
 				} else if (resource === 'user') {
 					if (operation === 'get') {
 						const options = this.getNodeParameter('additionalFields', i);
+						if (options.diff_since) {
+							options.diff_since = moment.tz(options.diff_since, timezone).unix();
+						}
 						assertIsNodeParameters<{
 							associations?: boolean;
 							diff_since?: number;
