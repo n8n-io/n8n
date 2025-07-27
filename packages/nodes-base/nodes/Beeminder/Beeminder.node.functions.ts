@@ -12,6 +12,7 @@ export interface Datapoint {
 	value: number;
 	comment?: string;
 	requestid?: string;
+	daystamp?: string;
 }
 
 export async function createDatapoint(

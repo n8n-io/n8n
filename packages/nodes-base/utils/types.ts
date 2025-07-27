@@ -16,6 +16,18 @@ export function assertIsString(parameterName: string, value: unknown): asserts v
 	assertIsType<string>(parameterName, value, 'string');
 }
 
+export function assertIsArray<T>(
+	parameterName: string,
+	value: unknown,
+	validator: (val: unknown) => val is T,
+): asserts value is T[] {
+	assert(Array.isArray(value), `Parameter "${parameterName}" is not an array`);
+	assert(
+		value.every(validator),
+		`Parameter "${parameterName}" has elements that don't match expected types`,
+	);
+}
+
 export function assertIsNodeParameters<T>(
 	value: unknown,
 	parameters: Record<

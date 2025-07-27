@@ -11,6 +11,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
+import type { Datapoint } from './Beeminder.node.functions';
 import {
 	createDatapoint,
 	deleteDatapoint,
@@ -32,7 +33,12 @@ import {
 	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
-import { assertIsString, assertIsNodeParameters, assertIsNumber } from '../../utils/types';
+import {
+	assertIsString,
+	assertIsNodeParameters,
+	assertIsNumber,
+	assertIsArray,
+} from '../../utils/types';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -1091,7 +1097,8 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
-						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const datapointId = this.getNodeParameter('datapointId', i);
+						assertIsString('datapointId', datapointId);
 						const options = this.getNodeParameter('updateFields', i);
 						if (options.timestamp) {
 							options.timestamp = moment.tz(options.timestamp, timezone).unix();
@@ -1119,7 +1126,8 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'delete') {
-						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const datapointId = this.getNodeParameter('datapointId', i);
+						assertIsString('datapointId', datapointId);
 						const data = {
 							goalName,
 							datapointId,
@@ -1131,10 +1139,18 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'createAll') {
-						const datapoints = this.getNodeParameter('datapoints', i) as string;
+						const datapoints = this.getNodeParameter('datapoints', i);
+						const parsedDatapoints =
+							typeof datapoints === 'string' ? jsonParse(datapoints) : datapoints;
+						assertIsArray<Datapoint>(
+							'datapoints',
+							parsedDatapoints,
+							(val): val is Datapoint => typeof val === 'object' && val !== null && 'value' in val,
+						);
+
 						const data = {
 							goalName,
-							datapoints: JSON.parse(datapoints),
+							datapoints: parsedDatapoints,
 						};
 						results = await createAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1143,7 +1159,8 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'get') {
-						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const datapointId = this.getNodeParameter('datapointId', i);
+						assertIsString('datapointId', datapointId);
 						const data = {
 							goalName,
 							datapointId,
@@ -1157,7 +1174,8 @@ export class Beeminder implements INodeType {
 					}
 				} else if (resource === 'charge') {
 					if (operation === 'create') {
-						const amount = this.getNodeParameter('amount', i) as number;
+						const amount = this.getNodeParameter('amount', i);
+						assertIsNumber('amount', amount);
 						const options = this.getNodeParameter('additionalFields', i);
 						assertIsNodeParameters<{
 							note?: string;
@@ -1291,7 +1309,6 @@ export class Beeminder implements INodeType {
 						if ('tags' in options && typeof options.tags === 'string') {
 							options.tags = jsonParse(options.tags);
 						}
-						console.log('roadall', typeof options.roadall, options.roadall);
 						if ('roadall' in options && typeof options.roadall === 'string') {
 							options.roadall = jsonParse(options.roadall);
 						}
