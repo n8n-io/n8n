@@ -1,16 +1,28 @@
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	JsonObject,
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
 import { beeminderApiRequest, beeminderApiRequestAllItems } from './GenericFunctions';
 
+export interface Datapoint {
+	timestamp: number;
+	value: number;
+	comment?: string;
+	requestid?: string;
+}
+
 export async function createDatapoint(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: {
+		goalName: string;
+		value: number;
+		timestamp?: number;
+		comment?: string;
+		requestid?: string;
+	},
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints.json`;
 
@@ -19,7 +31,7 @@ export async function createDatapoint(
 
 export async function getAllDatapoints(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string; count?: number; sort?: string; page?: number; per?: number },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints.json`;
 
@@ -32,7 +44,13 @@ export async function getAllDatapoints(
 
 export async function updateDatapoint(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: {
+		goalName: string;
+		datapointId: string;
+		value?: number;
+		comment?: string;
+		timestamp?: number;
+	},
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
@@ -41,7 +59,7 @@ export async function updateDatapoint(
 
 export async function deleteDatapoint(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string; datapointId: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
@@ -50,7 +68,7 @@ export async function deleteDatapoint(
 
 export async function createCharge(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { amount: number; note?: string; dryrun?: boolean },
 ) {
 	const endpoint = '/charges.json';
 
@@ -66,7 +84,7 @@ export async function createCharge(
 
 export async function uncleGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/uncleme.json`;
 
@@ -75,7 +93,7 @@ export async function uncleGoal(
 
 export async function createAllDatapoints(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string; datapoints: Datapoint[] },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints/create_all.json`;
 
@@ -88,7 +106,7 @@ export async function createAllDatapoints(
 
 export async function getSingleDatapoint(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string; datapointId: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
@@ -98,7 +116,7 @@ export async function getSingleDatapoint(
 // Goal Operations
 export async function getGoal(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string; datapoints?: boolean; emaciated?: boolean },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}.json`;
 
@@ -107,7 +125,7 @@ export async function getGoal(
 
 export async function getAllGoals(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data?: JsonObject,
+	data?: { emaciated?: boolean },
 ) {
 	const endpoint = '/users/me/goals.json';
 
@@ -116,7 +134,7 @@ export async function getAllGoals(
 
 export async function getArchivedGoals(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data?: JsonObject,
+	data?: { emaciated?: boolean },
 ) {
 	const endpoint = '/users/me/goals/archived.json';
 
@@ -125,7 +143,21 @@ export async function getArchivedGoals(
 
 export async function createGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: {
+		slug: string;
+		title: string;
+		goal_type: string;
+		gunits: string;
+		goaldate?: number;
+		goalval?: number;
+		rate?: number;
+		initval?: number;
+		secret?: boolean;
+		datapublic?: boolean;
+		datasource?: string;
+		dryrun?: boolean;
+		tags?: string[];
+	},
 ) {
 	const endpoint = '/users/me/goals.json';
 
@@ -134,7 +166,18 @@ export async function createGoal(
 
 export async function updateGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: {
+		goalName: string;
+		title?: string;
+		yaxis?: string;
+		tmin?: string;
+		tmax?: string;
+		secret?: boolean;
+		datapublic?: boolean;
+		roadall?: object;
+		datasource?: string;
+		tags?: string[];
+	},
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}.json`;
 
@@ -143,7 +186,7 @@ export async function updateGoal(
 
 export async function refreshGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/refresh_graph.json`;
 
@@ -152,7 +195,7 @@ export async function refreshGoal(
 
 export async function shortCircuitGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/shortcircuit.json`;
 
@@ -161,7 +204,7 @@ export async function shortCircuitGoal(
 
 export async function stepDownGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/stepdown.json`;
 
@@ -170,7 +213,7 @@ export async function stepDownGoal(
 
 export async function cancelStepDownGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: { goalName: string },
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/cancel_stepdown.json`;
 
@@ -180,7 +223,13 @@ export async function cancelStepDownGoal(
 // User Operations
 export async function getUser(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	data: JsonObject,
+	data: {
+		associations?: boolean;
+		diff_since?: number;
+		skinny?: boolean;
+		emaciated?: boolean;
+		datapoints_count?: number;
+	},
 ) {
 	const endpoint = '/users/me.json';
 

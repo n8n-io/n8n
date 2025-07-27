@@ -4,11 +4,11 @@ import {
 	type JsonObject,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
-	type INodeParameters,
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	jsonParse,
 } from 'n8n-workflow';
 
 import {
@@ -32,7 +32,7 @@ import {
 	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
-import { assertIsString } from '@utils/types';
+import { assertIsString, assertIsNodeParameters, assertIsNumber } from '../../utils/types';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -1033,15 +1033,28 @@ export class Beeminder implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'datapoint') {
-					const goalName = this.getNodeParameter('goalName', i) as string;
+					const goalName = this.getNodeParameter('goalName', i);
+					assertIsString('goalName', goalName);
+
 					if (operation === 'create') {
-						const value = this.getNodeParameter('value', i) as number;
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const value = this.getNodeParameter('value', i);
+						assertIsNumber('value', value);
+
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							comment?: string;
+							timestamp?: number;
+							requestid?: string;
+						}>(options, {
+							comment: { type: 'string', optional: true },
+							timestamp: { type: 'number', optional: true },
+							requestid: { type: 'string', optional: true },
+						});
+						const data = {
 							value,
 							goalName,
+							...options,
 						};
-						Object.assign(data, options);
 
 						if (data.timestamp) {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
@@ -1054,15 +1067,21 @@ export class Beeminder implements INodeType {
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as INodeParameters;
-						const data: JsonObject = {
+						const options = this.getNodeParameter('options', i);
+						assertIsNodeParameters<{
+							sort?: string;
+							page?: number;
+							per?: number;
+						}>(options, {
+							sort: { type: 'string', optional: true },
+							page: { type: 'number', optional: true },
+							per: { type: 'number', optional: true },
+						});
+						const data = {
 							goalName,
+							count: !returnAll ? this.getNodeParameter('limit', 0) : undefined,
+							...options,
 						};
-						Object.assign(data, options);
-
-						if (!returnAll) {
-							data.count = this.getNodeParameter('limit', 0);
-						}
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1072,12 +1091,21 @@ export class Beeminder implements INodeType {
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
-						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const options = this.getNodeParameter('updateFields', i);
+						assertIsNodeParameters<{
+							value?: number;
+							comment?: string;
+							timestamp?: number;
+						}>(options, {
+							value: { type: 'number', optional: true },
+							comment: { type: 'string', optional: true },
+							timestamp: { type: 'number', optional: true },
+						});
+						const data = {
 							goalName,
 							datapointId,
+							...options,
 						};
-						Object.assign(data, options);
 						if (data.timestamp) {
 							data.timestamp = moment.tz(data.timestamp, timezone).unix();
 						}
@@ -1089,7 +1117,7 @@ export class Beeminder implements INodeType {
 						returnData.push(...executionData);
 					} else if (operation === 'delete') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
-						const data: JsonObject = {
+						const data = {
 							goalName,
 							datapointId,
 						};
@@ -1101,7 +1129,7 @@ export class Beeminder implements INodeType {
 						returnData.push(...executionData);
 					} else if (operation === 'createAll') {
 						const datapoints = this.getNodeParameter('datapoints', i) as string;
-						const data: JsonObject = {
+						const data = {
 							goalName,
 							datapoints: JSON.parse(datapoints),
 						};
@@ -1113,7 +1141,7 @@ export class Beeminder implements INodeType {
 						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						const datapointId = this.getNodeParameter('datapointId', i) as string;
-						const data: JsonObject = {
+						const data = {
 							goalName,
 							datapointId,
 						};
@@ -1127,11 +1155,18 @@ export class Beeminder implements INodeType {
 				} else if (resource === 'charge') {
 					if (operation === 'create') {
 						const amount = this.getNodeParameter('amount', i) as number;
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							note?: string;
+							dryrun?: boolean;
+						}>(options, {
+							note: { type: 'string', optional: true },
+							dryrun: { type: 'boolean', optional: true },
+						});
+						const data = {
 							amount,
+							...options,
 						};
-						Object.assign(data, options);
 
 						results = await createCharge.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1150,18 +1185,44 @@ export class Beeminder implements INodeType {
 						assertIsString('goalType', goalType);
 						const gunits = this.getNodeParameter('gunits', i);
 						assertIsString('gunits', gunits);
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const options = this.getNodeParameter('additionalFields', i);
+						if ('tags' in options && typeof options.tags === 'string') {
+							options.tags = jsonParse(options.tags);
+						}
+						if (options.goaldate && typeof options.goaldate === 'string') {
+							options.goaldate = moment.tz(options.goaldate, timezone).unix();
+						}
+
+						assertIsNodeParameters<{
+							goaldate?: number;
+							goalval?: number;
+							rate?: number;
+							initval?: number;
+							secret?: boolean;
+							datapublic?: boolean;
+							datasource?: string;
+							dryrun?: boolean;
+							tags?: string[];
+						}>(options, {
+							goaldate: { type: 'number', optional: true },
+							goalval: { type: 'number', optional: true },
+							rate: { type: 'number', optional: true },
+							initval: { type: 'number', optional: true },
+							secret: { type: 'boolean', optional: true },
+							datapublic: { type: 'boolean', optional: true },
+							datasource: { type: 'string', optional: true },
+							dryrun: { type: 'boolean', optional: true },
+							tags: { type: 'string[]', optional: true },
+						});
+
+						const data = {
 							slug,
 							title,
 							goal_type: goalType,
 							gunits,
+							...options,
 						};
-						Object.assign(data, options);
 
-						if (data.goaldate) {
-							data.goaldate = moment.tz(data.goaldate, timezone).unix();
-						}
 						results = await createGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(results),
@@ -1169,12 +1230,20 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'get') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							datapoints?: boolean;
+							emaciated?: boolean;
+						}>(options, {
+							datapoints: { type: 'boolean', optional: true },
+							emaciated: { type: 'boolean', optional: true },
+						});
+						const data = {
 							goalName,
+							...options,
 						};
-						Object.assign(data, options);
 
 						results = await getGoal.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1183,9 +1252,13 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {};
-						Object.assign(data, options);
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							emaciated?: boolean;
+						}>(options, {
+							emaciated: { type: 'boolean', optional: true },
+						});
+						const data = { ...options };
 
 						results = await getAllGoals.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1194,9 +1267,13 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getArchived') {
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {};
-						Object.assign(data, options);
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							emaciated?: boolean;
+						}>(options, {
+							emaciated: { type: 'boolean', optional: true },
+						});
+						const data = { ...options };
 
 						results = await getArchivedGoals.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1205,12 +1282,43 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'update') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+						const options = this.getNodeParameter('updateFields', i);
+						if ('tags' in options && typeof options.tags === 'string') {
+							options.tags = jsonParse(options.tags);
+						}
+						console.log('roadall', typeof options.roadall, options.roadall);
+						if ('roadall' in options && typeof options.roadall === 'string') {
+							options.roadall = jsonParse(options.roadall);
+						}
+						console.log('roadall', typeof options.roadall, options.roadall);
+						assertIsNodeParameters<{
+							title?: string;
+							yaxis?: string;
+							tmin?: string;
+							tmax?: string;
+							goaldate?: number;
+							secret?: boolean;
+							datapublic?: boolean;
+							roadall?: object;
+							datasource?: string;
+							tags?: string[];
+						}>(options, {
+							title: { type: 'string', optional: true },
+							yaxis: { type: 'string', optional: true },
+							tmin: { type: 'string', optional: true },
+							tmax: { type: 'string', optional: true },
+							secret: { type: 'boolean', optional: true },
+							datapublic: { type: 'boolean', optional: true },
+							roadall: { type: 'object', optional: true },
+							datasource: { type: 'string', optional: true },
+							tags: { type: 'string[]', optional: true },
+						});
+						const data = {
 							goalName,
+							...options,
 						};
-						Object.assign(data, options);
 
 						if (data.goaldate) {
 							data.goaldate = moment.tz(data.goaldate, timezone).unix();
@@ -1222,8 +1330,9 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'refresh') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+						const data = {
 							goalName,
 						};
 						results = await refreshGoal.call(this, data);
@@ -1233,8 +1342,10 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'shortCircuit') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+
+						const data = {
 							goalName,
 						};
 						results = await shortCircuitGoal.call(this, data);
@@ -1244,8 +1355,10 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'stepDown') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+
+						const data = {
 							goalName,
 						};
 						results = await stepDownGoal.call(this, data);
@@ -1255,8 +1368,9 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'cancelStepDown') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+						const data = {
 							goalName,
 						};
 						results = await cancelStepDownGoal.call(this, data);
@@ -1266,8 +1380,9 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'uncle') {
-						const goalName = this.getNodeParameter('goalName', i) as string;
-						const data: JsonObject = {
+						const goalName = this.getNodeParameter('goalName', i);
+						assertIsString('goalName', goalName);
+						const data = {
 							goalName,
 						};
 
@@ -1280,9 +1395,21 @@ export class Beeminder implements INodeType {
 					}
 				} else if (resource === 'user') {
 					if (operation === 'get') {
-						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-						const data: JsonObject = {};
-						Object.assign(data, options);
+						const options = this.getNodeParameter('additionalFields', i);
+						assertIsNodeParameters<{
+							associations?: boolean;
+							diff_since?: number;
+							skinny?: boolean;
+							emaciated?: boolean;
+							datapoints_count?: number;
+						}>(options, {
+							associations: { type: 'boolean', optional: true },
+							diff_since: { type: 'number', optional: true },
+							skinny: { type: 'boolean', optional: true },
+							emaciated: { type: 'boolean', optional: true },
+							datapoints_count: { type: 'number', optional: true },
+						});
+						const data = { ...options };
 
 						results = await getUser.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
