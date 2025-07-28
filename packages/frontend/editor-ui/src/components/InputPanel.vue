@@ -373,7 +373,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <template>
 	<RunData
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
@@ -642,6 +642,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <style lang="scss" module>
 .runData {
 	background-color: var(--color-run-data-background);
+}
+
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
 }
 
 .mappedNode {
