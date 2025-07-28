@@ -84,6 +84,7 @@
     ],
     "overrides": {
       "@azure/identity": "^4.3.0",
+      "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
