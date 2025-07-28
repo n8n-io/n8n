@@ -42,7 +42,6 @@ const props = withDefaults(
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
-		showFiltersDropdown?: boolean;
 		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
 		sortOptions?: string[];
 		type?: 'datatable' | 'list-full' | 'list-paginated';
@@ -67,7 +66,6 @@ const props = withDefaults(
 		typeProps: () => ({ itemSize: 80 }),
 		loading: true,
 		additionalFiltersHandler: undefined,
-		showFiltersDropdown: true,
 		shareable: true,
 		customPageSize: 25,
 		availablePageSizeOptions: () => [10, 25, 50, 100],
@@ -630,7 +628,6 @@ defineExpose({
 							</div>
 							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown
-									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:model-value="filtersModel"
@@ -651,7 +648,7 @@ defineExpose({
 					<slot name="callout"></slot>
 
 					<div
-						v-if="showFiltersDropdown"
+						v-if="props.uiConfig.showFiltersDropdown"
 						v-show="hasFilters"
 						class="mt-xs"
 						data-test-id="resources-list-filters-applied-info"
