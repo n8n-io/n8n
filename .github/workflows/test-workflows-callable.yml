@@ -28,6 +28,9 @@ on:
         description: 'Webhook URL to send test results to (if enabled).'
         required: false
 
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
+
 jobs:
   build_and_test:
     name: Install, Build, and Test Workflows
