@@ -64,7 +64,7 @@ defineSlots<{ actions?: {} }>();
 	align-items: center;
 	padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
 	border-bottom: var(--border-base);
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: 14px; // to match bottom padding of tabs
 	gap: var(--spacing-4xs);
 
 	.disabled & {

@@ -33,6 +33,7 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
+import IconLucideBookOpen from '~icons/lucide/book-open';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -157,6 +158,7 @@ import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
+import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
@@ -435,6 +437,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	bell: IconLucideBell,
 	book: IconLucideBook,
+	'book-open': IconLucideBookOpen,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,
@@ -554,6 +557,7 @@ export const updatedIconSet = {
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
 	search: IconLucideSearch,
+	settings: IconLucideSettings,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,

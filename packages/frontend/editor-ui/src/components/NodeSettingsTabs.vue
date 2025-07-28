@@ -93,9 +93,11 @@ const options = computed(() => {
 			value: 'params',
 		},
 		{
-			label: i18n.baseText('nodeSettings.settings'),
 			value: 'settings',
 			notification: installedPackage.value?.updateAvailable ? true : undefined,
+			...(props.compact
+				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
+				: { label: i18n.baseText('nodeSettings.settings') }),
 		},
 	);
 
@@ -115,10 +117,12 @@ const options = computed(() => {
 
 	if (documentationUrl.value) {
 		ret.push({
-			label: i18n.baseText('nodeSettings.docs'),
 			value: 'docs',
 			href: documentationUrl.value,
 			align: 'right',
+			...(props.compact
+				? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
+				: { label: i18n.baseText('nodeSettings.docs') }),
 		});
 	}
 
@@ -171,6 +175,7 @@ onMounted(async () => {
 		:options="options"
 		:model-value="modelValue"
 		:variant="tabsVariant"
+		:size="compact ? 'small' : 'medium'"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	/>

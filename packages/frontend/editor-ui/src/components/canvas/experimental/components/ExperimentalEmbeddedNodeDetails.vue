@@ -198,7 +198,7 @@ watchOnce(isVisible, (visible) => {
 
 <style lang="scss" module>
 .component {
-	align-items: flex-start;
+	align-items: flex-start !important;
 	justify-content: stretch;
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;

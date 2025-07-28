@@ -1465,7 +1465,7 @@
 	"nodeSettings.parametersShort": "Params",
 	"nodeSettings.settings": "Settings",
 	"nodeSettings.action": "Action",
-	"nodeSettings.credential": "Cred",
+	"nodeSettings.credential": "Auth",
 	"nodeSettings.communityNodeTooltip": "This is a <a href=\"{docUrl}\" target=\"_blank\"/>community node</a>",
 	"nodeSettings.retryOnFail.description": "If active, the node tries to execute again when it fails",
 	"nodeSettings.retryOnFail.displayName": "Retry On Fail",

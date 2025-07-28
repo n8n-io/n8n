@@ -92,7 +92,7 @@ const scrollRight = () => scroll(50);
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
 					<template #content>
 						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
@@ -100,31 +100,40 @@ const scrollRight = () => scroll(50);
 						v-if="option.href"
 						target="_blank"
 						:href="option.href"
-						:class="[$style.link, $style.tab]"
+						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external">
-								<N8nIcon icon="external-link" size="small" />
-							</span>
+							<N8nIcon
+								:class="$style.external"
+								:icon="option.icon ?? 'external-link'"
+								size="small"
+							/>
 						</div>
 					</a>
 					<RouterLink
 						v-else-if="option.to"
 						:to="option.to"
-						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+						:class="[
+							$style.tab,
+							{ [$style.activeTab]: modelValue === option.value, [$style.noText]: !option.label },
+						]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</RouterLink>
 					<div
 						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:class="{
+							[$style.tab]: true,
+							[$style.activeTab]: modelValue === option.value,
+							[$style.noText]: !option.label,
+						}"
 						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" :class="$style.icon" size="small" />
 						<span v-if="option.label" :class="$style.notificationContainer"
 							>{{ option.label }}
 							<div v-if="option.notification" :class="$style.notification"><div></div></div
@@ -147,6 +156,10 @@ const scrollRight = () => scroll(50);
 		height: 26px;
 		min-height: 26px;
 	}
+
+	&.small {
+		padding-inline: var(--spacing-2xs);
+	}
 }
 
 .tabs {
@@ -166,6 +179,10 @@ const scrollRight = () => scroll(50);
 	/* Hide scrollbar for IE, Edge and Firefox */
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
+
+	.small & {
+		width: calc(100% - var(--spacing-2xs) * 2);
+	}
 }
 
 .tab {
@@ -193,6 +210,7 @@ const scrollRight = () => scroll(50);
 	}
 
 	.small & {
+		padding-inline: var(--spacing-2xs);
 		font-size: var(--font-size-2xs);
 	}
 }
@@ -223,6 +241,15 @@ const scrollRight = () => scroll(50);
 .external {
 	display: inline-block;
 	margin-left: var(--spacing-5xs);
+
+	.noText & {
+		display: block;
+		margin-left: 0;
+	}
+}
+
+.noText .icon {
+	display: block;
 }
 
 .button {
