@@ -1075,31 +1075,18 @@ export class WorkflowDataProxy {
 					throw createNodeReferenceError(nodeName);
 				}
 
-				const ensureNodeExecutionData = (isAfterValidPath = false) => {
+				const ensureNodeExecutionData = () => {
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						if (isAfterValidPath) {
-							// When there's a valid path but no execution data,
-							// show helpful "Execute node for preview" message
-							throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
-								messageTemplate: `Execute node "${nodeName}" for preview`,
-								nodeCause: nodeName,
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-							});
-						} else {
-							// Traditional paired item scenario: no path exists
-							throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
-								messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-								type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
-								descriptionKey: EXPRESSION_DESCRIPTION_KEYS.NO_NODE_EXECUTION_DATA,
-								nodeCause: nodeName,
-							});
-						}
+						// Always show helpful "Execute node for preview" message
+						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
+							messageTemplate: `Execute node "${nodeName}" for preview`,
+							nodeCause: nodeName,
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						});
 					}
 				};
 
@@ -1177,7 +1164,7 @@ export class WorkflowDataProxy {
 									throw createNodeReferenceError(nodeName);
 								}
 
-								ensureNodeExecutionData(true); // Path validated, show helpful message
+								ensureNodeExecutionData();
 
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
@@ -1256,7 +1243,7 @@ export class WorkflowDataProxy {
 
 							if (property === 'first') {
 								ensureValidPath();
-								ensureNodeExecutionData(true); // Path validated, show helpful message
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
@@ -1275,7 +1262,7 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'last') {
 								ensureValidPath();
-								ensureNodeExecutionData(true); // Path validated, show helpful message
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
@@ -1297,7 +1284,7 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'all') {
 								ensureValidPath();
-								ensureNodeExecutionData(true); // Path validated, show helpful message
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
