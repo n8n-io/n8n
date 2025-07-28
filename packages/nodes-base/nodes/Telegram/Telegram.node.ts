@@ -657,6 +657,31 @@ export class Telegram implements INodeType {
 				default: true,
 				description: 'Whether to download the file',
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['file'],
+						download: [true],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'MIME Type',
+						name: 'mimeType',
+						type: 'string',
+						placeholder: 'image/jpeg',
+						default: '',
+						description:
+							'The MIME type of the file. If not specified, the MIME type will be determined by the file extension.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         message
@@ -2171,7 +2196,9 @@ export class Telegram implements INodeType {
 						);
 
 						const fileName = filePath.split('/').pop() as string;
-						const mimeType = lookup(fileName) || 'application/octet-stream';
+						const additionalFields = this.getNodeParameter('additionalFields', 0);
+						const providedMimeType = additionalFields?.mimeType as string | undefined;
+						const mimeType = providedMimeType ?? (lookup(fileName) || 'application/octet-stream');
 
 						const data = await this.helpers.prepareBinaryData(
 							file.body as Buffer,

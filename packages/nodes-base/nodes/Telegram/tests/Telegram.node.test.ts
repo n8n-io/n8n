@@ -124,5 +124,64 @@ describe('Telegram node', () => {
 				'application/octet-stream',
 			);
 		});
+
+		it('should use the provided mime type if it is specified', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'file';
+					case 'operation':
+						return 'get';
+					case 'download':
+						return true;
+					case 'fileId':
+						return 'file-id';
+					case 'additionalFields':
+						return { mimeType: 'image/jpeg' };
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValueOnce({
+				result: {
+					file_id: 'file-id',
+					file_path: 'documents/file_1.pdf',
+				},
+			});
+			apiRequestSpy.mockResolvedValueOnce({
+				body: Buffer.from('test-file'),
+			});
+			executeFunctionsMock.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'test-file',
+				mimeType: 'image/jpeg',
+			});
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							result: {
+								file_id: 'file-id',
+								file_path: 'documents/file_1.pdf',
+							},
+						},
+						binary: {
+							data: {
+								data: 'test-file',
+								mimeType: 'image/jpeg',
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('test-file'),
+				'file_1.pdf',
+				'image/jpeg',
+			);
+		});
 	});
 });
