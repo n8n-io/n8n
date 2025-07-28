@@ -7,7 +7,6 @@ import { registerResource } from '@/features/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
-	// const modulesStore = useModulesStore();
 	const uiStore = useUIStore();
 
 	const i18n = useI18n();
@@ -22,7 +21,7 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 				},
 			},
 		];
-		uiStore.registerCustomTabs('overview', tabs);
+		uiStore.registerCustomTabs('overview', 'data-store', tabs);
 	};
 
 	const registerProjectPageTabs = () => {
@@ -34,7 +33,7 @@ export const useDataStoreStore = defineStore('dataStore', () => {
 				includeProjectId: true,
 			},
 		};
-		uiStore.registerCustomTabs('project', [dataStoreTab]);
+		uiStore.registerCustomTabs('project', 'data-store', [dataStoreTab]);
 	};
 
 	const initialize = () => {

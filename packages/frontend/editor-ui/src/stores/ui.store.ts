@@ -239,11 +239,23 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Since these tabs are specific to the page they are on,
 	 * we add them to separate arrays so pages can pick the right ones
 	 * at render time.
+	 * Module name is also added to the key so that we can check if the module is active
+	 * when tabs are rendered.\
+	 * @example
+	 * uiStore.registerCustomTabs('overview', 'data-store', [
+	 *   {
+	 *     label: 'Data Store',
+	 *     value: 'data-store',
+	 *     to: { name: 'data-store' },
+	 *   },
+	 * ]);
 	 */
-	const moduleTabs = ref<Record<'overview' | 'project' | 'shared', Array<TabOptions<string>>>>({
-		overview: [],
-		project: [],
-		shared: [],
+	const moduleTabs = ref<
+		Record<'overview' | 'project' | 'shared', Record<string, Array<TabOptions<string>>>>
+	>({
+		overview: {},
+		project: {},
+		shared: {},
 	});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -544,12 +556,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const registerCustomTabs = (
 		page: 'overview' | 'project' | 'shared',
+		moduleName: string,
 		tabs: Array<TabOptions<string>>,
 	) => {
 		if (!moduleTabs.value[page]) {
 			throw new Error(`Invalid page type: ${page}`);
 		}
-		moduleTabs.value[page].push(...tabs);
+		moduleTabs.value[page][moduleName] = tabs;
 	};
 
 	/**

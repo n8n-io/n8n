@@ -87,13 +87,20 @@ const showFolders = computed(() => {
 });
 
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	// Determine the type of tab based on the current project page
+	let tabType: 'shared' | 'overview' | 'project';
 	if (projectPages.isSharedSubPage) {
-		return uiStore.moduleTabs.shared;
+		tabType = 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		tabType = 'overview';
+	} else {
+		tabType = 'project';
 	}
-	if (projectPages.isOverviewSubPage) {
-		return uiStore.moduleTabs.overview;
-	}
-	return uiStore.moduleTabs.project;
+	// Only pick up tabs from active modules
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter((module) =>
+		settingsStore.isModuleActive(module),
+	);
+	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
 });
 
 const ACTION_TYPES = {
