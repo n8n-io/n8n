@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.replicate",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Generate images using Replicate AI models with text-to-image functionality",
+	"categories": ["Transform"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.replicate.com/reference/http"
+			}
+		]
+	},
+	"alias": ["Image Generation", "Text to Image", "FLUX", "Stable Diffusion"],
+	"subcategories": {
+		"Transform": ["Content Creation"]
+	}
+}
