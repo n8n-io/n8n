@@ -41,6 +41,8 @@ const suggestions = ref(WORKFLOW_SUGGESTIONS);
  * Handles form submission to build a workflow from the prompt
  */
 async function onSubmit() {
+	if (!hasContent.value || builderStore.streaming) return;
+
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 
 	// Save the workflow to get workflow ID which is used for session
@@ -113,6 +115,7 @@ function onAddNodeClick() {
 			<form :class="$style.form" @submit.prevent="onSubmit">
 				<n8n-input
 					v-model="prompt"
+					name="aiBuilderPrompt"
 					:class="$style.formTextarea"
 					type="textarea"
 					:disabled="builderStore.streaming"
