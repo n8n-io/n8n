@@ -216,7 +216,7 @@ describe('ChatPlugin', () => {
 
 			expect(chatStore.messages.value).toHaveLength(2);
 			expect(chatStore.messages.value[1]).toMatchObject({
-				text: 'No response received. This is probably because streaming is disabled in the trigger but enabled in agent node(s)',
+				text: '[No response received. This could happen if streaming is enabled in the trigger but disabled in agent node(s)]',
 				sender: 'bot',
 			});
 		});
@@ -410,7 +410,7 @@ describe('ChatPlugin', () => {
 			const lastMessage = chatStore.messages.value[chatStore.messages.value.length - 1];
 			assert(lastMessage.type === 'text');
 			expect(lastMessage.text).toBe(
-				'No response received. This is probably because streaming is disabled in the trigger but enabled in agent node(s)',
+				'[No response received. This could happen if streaming is enabled in the trigger but disabled in agent node(s)]',
 			);
 		});
 

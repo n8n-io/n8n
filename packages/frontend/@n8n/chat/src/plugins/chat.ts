@@ -79,7 +79,7 @@ function handleEmptyStreamResponse(config: EmptyStreamConfig): void {
 		}
 	}
 	receivedMessage.value.text =
-		'No response received. This is probably because streaming is disabled in the trigger but enabled in agent node(s)';
+		'[No response received. This could happen if streaming is enabled in the trigger but disabled in agent node(s)]';
 }
 
 interface ErrorConfig {
@@ -170,7 +170,7 @@ async function handleNonStreamingMessage(
 	const { text, files, sessionId, options } = config;
 
 	const sendMessageResponse = await api.sendMessage(text, files, sessionId, options);
-	
+
 	if (sendMessageResponse?.executionStarted) {
 		return { response: sendMessageResponse };
 	}
@@ -196,7 +196,10 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			})),
 		);
 
-		async function sendMessage(text: string, files: File[] = []): Promise<SendMessageResponse | null> {
+		async function sendMessage(
+			text: string,
+			files: File[] = [],
+		): Promise<SendMessageResponse | null> {
 			// Create and add user message
 			const sentMessage = createUserMessage(text, files);
 			messages.value.push(sentMessage);
@@ -227,12 +230,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 						sessionId: currentSessionId.value as string,
 						options,
 					});
-					
+
 					if (result.response?.executionStarted) {
 						waitingForResponse.value = false;
 						return result.response;
 					}
-					
+
 					if (result.botMessage) {
 						receivedMessage.value = result.botMessage;
 						messages.value.push(result.botMessage);
