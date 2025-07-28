@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstalledPackages } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
@@ -22,13 +21,14 @@ import {
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
-import { isVersionExists, verifyIntegrity } from '../utils/npm-utils';
+import { CommunityPackagesConfig } from './community-packages.config';
+import type { CommunityPackages } from './community-packages.types';
+import { isVersionExists, verifyIntegrity } from './npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -82,7 +82,7 @@ export class CommunityPackagesService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly publisher: Publisher,
 		private readonly license: License,
-		private readonly globalConfig: GlobalConfig,
+		private readonly config: CommunityPackagesConfig,
 	) {}
 
 	async init() {
@@ -312,7 +312,7 @@ export class CommunityPackagesService {
 
 		if (missingPackages.size === 0) return;
 
-		const { reinstallMissing } = this.globalConfig.nodes.communityPackages;
+		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
 			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
 			try {
@@ -365,7 +365,7 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmRegistry() {
-		const { registry } = this.globalConfig.nodes.communityPackages;
+		const { registry } = this.config;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
@@ -379,7 +379,7 @@ export class CommunityPackagesService {
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
-		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
+		if (!this.config.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
 	}

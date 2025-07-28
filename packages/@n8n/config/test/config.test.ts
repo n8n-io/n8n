@@ -138,14 +138,6 @@ describe('GlobalConfig', () => {
 			files: [],
 		},
 		nodes: {
-			communityPackages: {
-				enabled: true,
-				registry: 'https://registry.npmjs.org',
-				reinstallMissing: false,
-				unverifiedEnabled: true,
-				verifiedEnabled: true,
-				preventLoading: false,
-			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: [],
