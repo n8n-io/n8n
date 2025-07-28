@@ -275,6 +275,9 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+			cron: {
+				activeInterval: 0,
+			},
 		},
 		multiMainSetup: {
 			enabled: false,
@@ -347,6 +350,13 @@ describe('GlobalConfig', () => {
 				loginEnabled: false,
 				loginLabel: '',
 			},
+		},
+		redis: {
+			prefix: 'n8n',
+		},
+		externalFrontendHooksUrls: '',
+		ai: {
+			enabled: false,
 		},
 	};
 
