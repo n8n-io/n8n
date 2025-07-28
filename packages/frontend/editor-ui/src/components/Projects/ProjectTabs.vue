@@ -19,7 +19,7 @@ type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
 	pageType?: 'overview' | 'shared' | 'project';
-	additionalTabs?: Array<DynamicTabOptions>;
+	additionalTabs?: DynamicTabOptions[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -103,7 +103,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.additionalTabs.length) {
+	if (props.additionalTabs?.length) {
 		// Process additional tabs and resolve dynamic routes
 		const processedAdditionalTabs = props.additionalTabs.map((tab) => {
 			// Handle dynamic route resolution
