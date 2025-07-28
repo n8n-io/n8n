@@ -22,7 +22,7 @@ describe('Telegram node', () => {
 	});
 
 	describe('file:get', () => {
-		it('should determine the mime type of the file', async () => {
+		beforeEach(() => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
 				switch (p) {
 					case 'resource':
@@ -37,6 +37,9 @@ describe('Telegram node', () => {
 						return undefined;
 				}
 			});
+		});
+
+		it('should determine the mime type of the file', async () => {
 			apiRequestSpy.mockResolvedValueOnce({
 				result: {
 					file_id: 'file-id',
@@ -76,6 +79,49 @@ describe('Telegram node', () => {
 				Buffer.from('test-file'),
 				'file_1.pdf',
 				'application/pdf',
+			);
+		});
+
+		it('should fallback to application/octet-stream if the mime type cannot be determined', async () => {
+			apiRequestSpy.mockResolvedValueOnce({
+				result: {
+					file_id: 'file-id',
+					file_path: 'documents/file_1.foo',
+				},
+			});
+			apiRequestSpy.mockResolvedValueOnce({
+				body: Buffer.from('test-file'),
+			});
+			executeFunctionsMock.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'test-file',
+				mimeType: 'application/octet-stream',
+			});
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							result: {
+								file_id: 'file-id',
+								file_path: 'documents/file_1.foo',
+							},
+						},
+						binary: {
+							data: {
+								data: 'test-file',
+								mimeType: 'application/octet-stream',
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('test-file'),
+				'file_1.foo',
+				'application/octet-stream',
 			);
 		});
 	});
