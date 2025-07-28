@@ -15,7 +15,7 @@ on:
         default: 22.x
 
 env:
-  NODE_OPTIONS: --max-old-space-size=8192
+  NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
   lint:
