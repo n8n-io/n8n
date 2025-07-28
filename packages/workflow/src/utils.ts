@@ -352,7 +352,6 @@ export function isDomainAllowed(
 	urlString: string,
 	options: {
 		allowedDomains: string;
-		validationMode: 'strict' | 'subdomain';
 	},
 ): boolean {
 	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
@@ -379,12 +378,6 @@ export function isDomainAllowed(
 			// Exact match
 			else if (hostname === allowedDomain) {
 				return true;
-			}
-			// Subdomain mode - check if it's a subdomain of an allowed domain
-			else if (options.validationMode === 'subdomain') {
-				if (hostname.endsWith(`.${allowedDomain}`)) {
-					return true;
-				}
 			}
 		}
 

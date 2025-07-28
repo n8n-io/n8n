@@ -390,9 +390,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (decryptedDataOriginal.allowedDomains !== undefined) {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
-		if (decryptedDataOriginal.domainValidationMode !== undefined) {
-			decryptedData.domainValidationMode = decryptedDataOriginal.domainValidationMode;
-		}
 
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {

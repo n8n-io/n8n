@@ -189,12 +189,10 @@ export class HttpRequestV3 implements INodeType {
 					url: string,
 					credentialType?: string,
 				) => {
-					if (credentialData.restrictHttpRequestDomains === 'domains') {
+					if (credentialData.allowedHttpRequestDomains === 'domains') {
 						const allowedDomains = credentialData.allowedDomains as string;
-						const validationMode =
-							(credentialData.domainValidationMode as 'strict' | 'subdomain') || 'strict';
 
-						if (!isDomainAllowed(url, { allowedDomains, validationMode })) {
+						if (!isDomainAllowed(url, { allowedDomains })) {
 							const credentialInfo = credentialType ? ` (${credentialType})` : '';
 							throw new NodeOperationError(
 								this.getNode(),
@@ -202,7 +200,7 @@ export class HttpRequestV3 implements INodeType {
 									`Only the following domains are allowed: ${allowedDomains}`,
 							);
 						}
-					} else if (credentialData.restrictHttpRequestDomains === 'none') {
+					} else if (credentialData.allowedHttpRequestDomains === 'none') {
 						throw new NodeOperationError(
 							this.getNode(),
 							'This credential is configured to block all HTTP requests',

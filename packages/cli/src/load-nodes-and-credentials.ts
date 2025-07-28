@@ -613,14 +613,13 @@ export class LoadNodesAndCredentials {
 
 	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
 		// Check if fields already exist to avoid duplicates
-		if (properties.some((prop) => prop.name === 'restrictHttpRequestDomains')) {
+		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
 			return properties;
 		}
-
 		const domainFields: INodeProperties[] = [
 			{
-				displayName: 'Restrict HTTP Request Domains',
-				name: 'restrictHttpRequestDomains',
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
 				type: 'options',
 				options: [
 					{
@@ -651,30 +650,7 @@ export class LoadNodesAndCredentials {
 				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
 				displayOptions: {
 					show: {
-						restrictHttpRequestDomains: ['domains'],
-					},
-				},
-			},
-			{
-				displayName: 'Domain Validation Mode',
-				name: 'domainValidationMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Strict',
-						value: 'strict',
-						description: 'Domains must match exactly (except for * wildcards)',
-					},
-					{
-						name: 'Subdomain',
-						value: 'subdomain',
-						description: 'Allow subdomains of specified domains automatically',
-					},
-				],
-				default: 'strict',
-				displayOptions: {
-					show: {
-						restrictHttpRequestDomains: ['domains'],
+						allowedHttpRequestDomains: ['domains'],
 					},
 				},
 			},

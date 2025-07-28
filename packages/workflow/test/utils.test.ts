@@ -466,15 +466,11 @@ describe('sleepWithAbort', () => {
 describe('isDomainAllowed', () => {
 	describe('when no allowed domains are specified', () => {
 		it('should allow all domains when allowedDomains is empty', () => {
-			expect(
-				isDomainAllowed('https://example.com', { allowedDomains: '', validationMode: 'strict' }),
-			).toBe(true);
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '' })).toBe(true);
 		});
 
 		it('should allow all domains when allowedDomains contains only whitespace', () => {
-			expect(
-				isDomainAllowed('https://example.com', { allowedDomains: '   ', validationMode: 'strict' }),
-			).toBe(true);
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '   ' })).toBe(true);
 		});
 	});
 
@@ -483,7 +479,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.com', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -492,7 +487,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.com', {
 					allowedDomains: 'test.com,example.com,other.org',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -501,7 +495,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.com', {
 					allowedDomains: ' test.com , example.com , other.org ',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -510,63 +503,14 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://malicious.com', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(false);
 		});
 
-		it('should block subdomains in strict mode', () => {
+		it('should block subdomains not set', () => {
 			expect(
 				isDomainAllowed('https://sub.example.com', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
-				}),
-			).toBe(false);
-		});
-	});
-
-	describe('in subdomain validation mode', () => {
-		it('should allow exact domain matches', () => {
-			expect(
-				isDomainAllowed('https://example.com', {
-					allowedDomains: 'example.com',
-					validationMode: 'subdomain',
-				}),
-			).toBe(true);
-		});
-
-		it('should allow subdomains of allowed domains', () => {
-			expect(
-				isDomainAllowed('https://sub.example.com', {
-					allowedDomains: 'example.com',
-					validationMode: 'subdomain',
-				}),
-			).toBe(true);
-		});
-
-		it('should allow nested subdomains', () => {
-			expect(
-				isDomainAllowed('https://deep.sub.example.com', {
-					allowedDomains: 'example.com',
-					validationMode: 'subdomain',
-				}),
-			).toBe(true);
-		});
-
-		it('should block non-matching domains', () => {
-			expect(
-				isDomainAllowed('https://malicious.com', {
-					allowedDomains: 'example.com',
-					validationMode: 'subdomain',
-				}),
-			).toBe(false);
-		});
-
-		it('should block partial domain matches', () => {
-			expect(
-				isDomainAllowed('https://notexample.com', {
-					allowedDomains: 'example.com',
-					validationMode: 'subdomain',
 				}),
 			).toBe(false);
 		});
@@ -577,7 +521,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://test.example.com', {
 					allowedDomains: '*.example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -586,7 +529,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://deep.nested.example.com', {
 					allowedDomains: '*.example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -595,7 +537,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.org', {
 					allowedDomains: '*.example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(false);
 		});
@@ -606,7 +547,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('not-a-valid-url', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(false);
 		});
@@ -615,7 +555,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.com:8080/path', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -624,7 +563,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://user:pass@example.com', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -633,7 +571,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.com/path?query=test#fragment', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -642,7 +579,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://192.168.1.1', {
 					allowedDomains: '192.168.1.1',
-					validationMode: 'strict',
 				}),
 			).toBe(true);
 		});
@@ -651,7 +587,6 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('', {
 					allowedDomains: 'example.com',
-					validationMode: 'strict',
 				}),
 			).toBe(false);
 		});
