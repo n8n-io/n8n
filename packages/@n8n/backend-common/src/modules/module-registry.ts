@@ -1,6 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { existsSync } from 'fs';
 import path from 'path';
 
 import { MissingModuleError } from './errors/missing-module.error';
@@ -54,7 +55,8 @@ export class ModuleRegistry {
 			// docker + tests
 			const n8nPackagePath = require.resolve('n8n/package.json');
 			const n8nRoot = path.dirname(n8nPackagePath);
-			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
 			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
