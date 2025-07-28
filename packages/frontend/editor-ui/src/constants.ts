@@ -759,12 +759,6 @@ export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const FOCUS_PANEL_EXPERIMENT = {
-	name: 'focus_panel',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const TEMPLATE_ONBOARDING_EXPERIMENT = {
 	name: '035_template_onboarding',
 	control: 'control',
