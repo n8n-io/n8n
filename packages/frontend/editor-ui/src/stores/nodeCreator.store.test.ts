@@ -46,12 +46,12 @@ vi.mock('@/stores/workflows.store', () => {
 			}),
 			workflowTriggerNodes: [],
 			workflowId: 'dummy-workflow-id',
-			getCurrentWorkflow: vi.fn(() => ({
+			workflowObject: {
 				getNode: vi.fn(() => ({
 					type: 'n8n-node.example',
 					typeVersion: 1,
 				})),
-			})),
+			},
 		}),
 	};
 });

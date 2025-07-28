@@ -55,7 +55,6 @@ vi.mock('vue-router', () => {
 
 vi.mock('@/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
-		getCurrentWorkflow: vi.fn(),
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 		setDocumentTitle: vi.fn(),

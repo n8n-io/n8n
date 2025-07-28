@@ -121,7 +121,7 @@ describe('FromAiParametersModal', () => {
 					return mockParentNode;
 			}
 		});
-		workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+		workflowsStore.workflowObject = mockWorkflow;
 		agentRequestStore = useAgentRequestStore();
 		agentRequestStore.clearAgentRequests = vi.fn();
 		agentRequestStore.setAgentRequestForNode = vi.fn();

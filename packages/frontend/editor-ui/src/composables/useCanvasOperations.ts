@@ -113,6 +113,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { storeToRefs } from 'pinia';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -156,6 +157,7 @@ export function useCanvasOperations() {
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
+	const experimentalNdvStore = useExperimentalNdvStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -790,7 +792,11 @@ export function useCanvasOperations() {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
 				if (options.openNDV && !preventOpeningNDV) {
-					ndvStore.setActiveNodeName(nodeData.name);
+					if (experimentalNdvStore.isEnabled) {
+						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
+					} else {
+						ndvStore.setActiveNodeName(nodeData.name);
+					}
 				}
 			}
 		});

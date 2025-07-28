@@ -116,7 +116,17 @@ const isExecutable = computed(() => {
 
 const node = computed(() => resolvedParameter.value?.node);
 
-const { hasNodeRun } = useExecutionData({ node });
+const { workflowRunData } = useExecutionData({ node });
+
+const hasNodeRun = computed(() => {
+	if (!node.value) return true;
+	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
+	return Boolean(
+		parentNode &&
+			workflowRunData.value &&
+			Object.prototype.hasOwnProperty.bind(workflowRunData.value)(parentNode),
+	);
+});
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
