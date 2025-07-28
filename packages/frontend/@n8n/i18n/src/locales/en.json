@@ -2794,6 +2794,7 @@
 	"dataStore.sort.nameAsc": "Sort by name (A-Z)",
 	"dataStore.sort.nameDesc": "Sort by name (Z-A)",
 	"dataStore.search.placeholder": "Search",
+	"dataStore.error.fetching": "Error loading data stores",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",

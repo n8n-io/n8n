@@ -22,12 +22,14 @@ import {
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/composables/useToast';
 
 const i18n = useI18n();
 const route = useRoute();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
+const toast = useToast();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
@@ -88,16 +90,21 @@ const initialize = async () => {
 	const projectId = Array.isArray(route.params.projectId)
 		? route.params.projectId[0]
 		: route.params.projectId;
-	const response = await fetchDataStores(rootStore.restApiContext, projectId, {
-		page: currentPage.value,
-		pageSize: pageSize.value,
-	});
-	dataStores.value = response.data.map((item) => ({
-		...item,
-		resourceType: 'datastore',
-	}));
-	totalCount.value = response.count;
-	loading.value = false;
+	try {
+		const response = await fetchDataStores(rootStore.restApiContext, projectId, {
+			page: currentPage.value,
+			pageSize: pageSize.value,
+		});
+		dataStores.value = response.data.map((item) => ({
+			...item,
+			resourceType: 'datastore',
+		}));
+		totalCount.value = response.count;
+	} catch (error) {
+		toast.showError(error, 'Error loading data stores');
+	} finally {
+		loading.value = false;
+	}
 };
 
 const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
