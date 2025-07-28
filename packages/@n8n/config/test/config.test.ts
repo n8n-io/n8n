@@ -348,6 +348,13 @@ describe('GlobalConfig', () => {
 				loginLabel: '',
 			},
 		},
+		redis: {
+			prefix: 'n8n',
+		},
+		externalFrontendHooksUrls: '',
+		ai: {
+			enabled: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
