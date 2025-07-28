@@ -2,8 +2,8 @@
 
 ## Quick Start
 ```bash
-pnpm test                 # Run all tests (fresh containers)
-pnpm run test:local       # Run against http://localhost:5678
+pnpm test                 # Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
+pnpm test:local           # Creates isolated n8n instance on port 5679 and runs the tests against it
 ```
 
 ## Test Commands

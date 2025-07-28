@@ -13,7 +13,7 @@ Add to your `/.vscode/settings.json`:
 ```json
 {
   "playwright.env": {
-    "N8N_BASE_URL": "http://localhost:58825", // URL to test against
+    "N8N_BASE_URL": "http://localhost:5679",  // URL to test against (Don't use 5678 as that can wipe your dev instance DB)
     "SHOW_BROWSER": "true",                   // Show browser (useful with n8n.page.pause())
     "RESET_E2E_DB": "true"                    // Reset DB for fresh state
   }
@@ -24,6 +24,12 @@ Add to your `/.vscode/settings.json`:
 1. **Initial Setup**: Click "Run global setup" in Playwright extension to reset database
 2. **Run Tests**: Click play button next to any test in the IDE
 3. **Debug**: Add `await n8n.page.pause()` to hijack test execution
+
+Troubleshooting:
+- Why can't I run my test from the UI?
+  - The tests are separated by groups for tests that can run in parallel or tests that need a DB reset each time. You can select the project in the test explorer.
+- Not all my tests ran from the CLI
+  - Currently the DB reset tests are a "dependency" of the parallel tests, this is to stop them running at the same time. So if the parallel tests fail the sequential tests won't run.
 
 ---
 
