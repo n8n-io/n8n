@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn } from '@n8n/typeorm';
 import { IWorkflowBase } from 'n8n-workflow';
 
 import { JsonColumn } from './abstract-entity';
@@ -21,8 +21,9 @@ export class ExecutionData {
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
 
-	@ManyToOne('ExecutionEntity', 'data', {
-		onDelete: 'CASCADE',
+	@OneToOne('ExecutionEntity', 'executionData')
+	@JoinColumn({
+		name: 'executionId',
 	})
 	execution: ExecutionEntity;
 }

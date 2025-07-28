@@ -146,9 +146,9 @@ export class ExecutionRecoveryService {
 			});
 
 			return execution ?? null;
-		} catch (e) {
+		} catch (error) {
 			this.logger.warn(`[Recovery] failed to retrieve execution information for ${executionId}`, {
-				e,
+				error,
 			});
 			return null;
 		}

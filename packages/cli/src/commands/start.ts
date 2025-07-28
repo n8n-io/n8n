@@ -373,15 +373,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
 	private async runEnqueuedExecutions() {
-		const executionService = Container.get(ExecutionService);
-
-		/**
-		 * If executions are still in enqueued state, but because of a crash there is
-		 * no execution data available, we mark these as crashed.
-		 */
-		await executionService.markInvalidEnqueuedExecutionsAsCrashed();
-
-		const executions = await executionService.findAllEnqueuedExecutions();
+		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
 
 		if (executions.length === 0) return;
 

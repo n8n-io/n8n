@@ -156,8 +156,25 @@ export class MessageEventBus extends EventEmitter {
 						select: ['id'],
 					})
 				).map((e) => e.id);
+
+				// Executions in the new state without executionData are invalid and need to be cleaned up
+				const dbInvalidExecutions = (
+					await this.executionRepository
+						.createQueryBuilder('execution')
+						.where('execution.status = :status', { status: 'new' })
+						.andWhere(
+							'NOT EXISTS (SELECT 1 FROM execution_data WHERE execution_data.executionId = execution.id)',
+						)
+						.select('execution.id')
+						.getMany()
+				).map((e) => e.id);
+
 				unfinishedExecutionIds = Array.from(
-					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
+					new Set<string>([
+						...unfinishedExecutionIds,
+						...dbUnfinishedExecutionIds,
+						...dbInvalidExecutions,
+					]),
 				);
 			}
 
