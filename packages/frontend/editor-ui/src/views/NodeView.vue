@@ -54,7 +54,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
-	FOCUS_PANEL_EXPERIMENT,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -252,10 +251,6 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
-
-const isFocusPanelFeatureEnabled = computed(() => {
-	return usePostHog().getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -1228,10 +1223,6 @@ function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 }
 
 function onToggleFocusPanel() {
-	if (!isFocusPanelFeatureEnabled.value) {
-		return;
-	}
-
 	focusPanelStore.toggleFocusPanel();
 	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
 		source: 'canvasKeyboardShortcut',
@@ -2172,7 +2163,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="isFocusPanelFeatureEnabled && !isLoading"
+			v-if="!isLoading"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 		/>
