@@ -23,7 +23,7 @@ on:
         required: false
 
 env:
-  NODE_OPTIONS: --max-old-space-size=8192
+  NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
   unit-test:
@@ -36,11 +36,13 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Build and Test
+      - name: Build
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          build-command: pnpm test:ci
           node-version: ${{ inputs.nodeVersion }}
+
+      - name: Test
+        run: pnpm test:ci
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
