@@ -10,7 +10,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { fetchDataStores } from '@/features/dataStore/datastore.api';
 
-vi.mock('@/features/dataStore/datastore.mock.api');
+vi.mock('@/features/dataStore/datastore.api');
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -126,6 +126,9 @@ describe('DataStoreView', () => {
 			data: [TEST_DATA_STORE],
 			count: 1,
 		});
+
+		projectsStore.getCurrentProjectId = vi.fn(() => 'test-project');
+		sourceControlStore.isProjectShared = vi.fn(() => false);
 	});
 
 	describe('initialization', () => {
