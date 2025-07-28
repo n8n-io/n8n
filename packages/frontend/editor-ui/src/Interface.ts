@@ -160,10 +160,10 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: {
+	properties: Partial<{
 		position: XYPosition;
 		[key: string]: IDataObject | XYPosition;
-	};
+	}>;
 }
 
 export type XYPosition = [number, number];

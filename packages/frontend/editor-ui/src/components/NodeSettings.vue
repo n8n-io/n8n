@@ -57,6 +57,7 @@ import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
+import NodeActionsList from '@/components/NodeActionsList.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -557,6 +558,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
+
+function handleSelectAction(params: INodeParameters) {
+	for (const [key, value] of Object.entries(params)) {
+		valueChanged({ name: `parameters.${key}`, value });
+	}
+}
 </script>
 
 <template>
@@ -655,35 +662,24 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				"
 			/>
 			<FreeAiCreditsCallout />
-			<div v-if="openPanel === 'action'">
-				<ParameterInputList
-					:parameters="parametersByTab.action"
-					:hide-delete="true"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path="parameters"
-					:node="props.activeNode"
-					@value-changed="valueChanged"
-					@activate="onWorkflowActivate"
-					@parameter-blur="onParameterBlur"
-				/>
-			</div>
-			<div v-if="openPanel === 'credential'">
-				<NodeCredentials
-					:node="node"
-					:readonly="isReadOnly"
-					:show-all="true"
-					:hide-issues="hiddenIssuesInputs.includes('credentials')"
-					@credential-selected="credentialSelected"
-					@value-changed="valueChanged"
-					@blur="onParameterBlur"
-				/>
-			</div>
+			<NodeActionsList
+				v-if="openPanel === 'action'"
+				class="action-tab"
+				:node="node"
+				@action-selected="handleSelectAction"
+			/>
+			<NodeCredentialsList
+				v-if="openPanel === 'credential'"
+				class="cred-tab"
+				:node="node"
+				:readonly="isReadOnly"
+				@credential-selected="credentialSelected"
+			/>
 			<div v-if="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
+					v-if="nodeValuesInitialized"
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
@@ -837,21 +833,32 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
 
 		&.ndv-v2 {
 			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
 		}
+
+		& > :not(:is(.cred-tab, .action-tab)) {
+			margin-inline: var(--spacing-m);
+		}
+
+		& > *:last-child {
+			margin-block-end: var(--spacing-l);
+		}
 	}
 
 	&.embedded .node-parameters-wrapper {
-		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+		& > :not(:is(.cred-tab, .action-tab)) {
+			margin-inline: var(--spacing-xs);
+		}
+
+		& > *:last-child {
+			margin-block-end: var(--spacing-xs);
+		}
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
-
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}
