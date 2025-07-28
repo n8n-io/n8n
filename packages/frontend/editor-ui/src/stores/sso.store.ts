@@ -1,5 +1,4 @@
-import type { OidcConfigDto } from '@n8n/api-types';
-import { type SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,10 +9,18 @@ import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import type { IDataObject } from 'n8n-workflow';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 
+export const SupportedProtocols = {
+	SAML: 'saml',
+	OIDC: 'oidc',
+} as const;
+
+export type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
+
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 
 	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
+	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -189,10 +196,20 @@ export const useSSOStore = defineStore('sso', () => {
 		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
 	};
 
+	const initializeSelectedProtocol = () => {
+		if (selectedAuthProtocol.value) return;
+
+		selectedAuthProtocol.value = isDefaultAuthenticationOidc.value
+			? SupportedProtocols.OIDC
+			: SupportedProtocols.SAML;
+	};
+
 	return {
 		showSsoLoginButton,
 		getSSORedirectUrl,
 		initialize,
+		selectedAuthProtocol,
+		initializeSelectedProtocol,
 
 		saml,
 		samlConfig,

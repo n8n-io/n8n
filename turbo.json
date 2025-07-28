@@ -11,6 +11,9 @@
 		"clean": {
 			"cache": false
 		},
+		"build:playwright": {
+			"dependsOn": ["install-browsers:ci", "build"]
+		},
 		"build:backend": {
 			"dependsOn": ["n8n#build"]
 		},
@@ -31,6 +34,7 @@
 		"format:check": {},
 		"lint:backend": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
@@ -52,6 +56,7 @@
 		},
 		"lint:frontend": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"@n8n/rest-api-client#lint",
 				"@n8n/api-types#lint",
@@ -71,14 +76,23 @@
 		},
 		"lint:nodes": {
 			"dependsOn": [
+				"@n8n/eslint-config#build",
 				"^build",
 				"n8n-nodes-base#lint",
 				"@n8n/n8n-nodes-langchain#lint",
 				"@n8n/json-schema-to-zod#lint"
 			]
 		},
+		"lint:testing": {
+			"dependsOn": [
+				"@n8n/eslint-config#build",
+				"^build",
+				"n8n-playwright#lint",
+				"n8n-containers#lint"
+			]
+		},
 		"lint": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
 		"lintfix": {},
 		"test:backend": {
@@ -136,6 +150,20 @@
 		"dev": {
 			"cache": false,
 			"persistent": true
+		},
+		"install-browsers:ci": {
+			"cache": true,
+			"inputs": ["package.json"],
+			"outputs": ["ms-playwright-cache/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+		},
+		"install-browsers:local": {
+			"cache": false,
+			"inputs": ["package.json"]
+		},
+		"test:standard": {
+			"dependsOn": ["install-browsers:local"],
+			"cache": false
 		}
 	}
 }

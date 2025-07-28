@@ -1,6 +1,10 @@
 import { ref } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
-import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	EnterpriseEditionFeature,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
 
 import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -26,6 +30,7 @@ import type {
 	NodeConnectionType,
 	IRunExecutionData,
 	NodeHint,
+	INodeCredentials,
 } from 'n8n-workflow';
 
 import type {
@@ -41,12 +46,12 @@ import { isObject } from '@/utils/objectUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import get from 'lodash/get';
 import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -63,6 +68,7 @@ export function useNodeHelpers() {
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
@@ -92,8 +98,68 @@ export function useNodeHelpers() {
 		return false;
 	}
 
-	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
-		return get(nodeValues, path ? path + '.' + parameterName : parameterName);
+	/**
+	 * Determines whether a given node is considered executable in the workflow editor.
+	 *
+	 * A node is considered executable if:
+	 * - It structurally qualifies for execution (e.g. is a trigger, tool, or has a 'Main' input),
+	 *   AND
+	 * - It is either explicitly marked as `executable`, OR uses foreign credentials
+	 *   (credentials the current user cannot access, allowed under Workflow Sharing).
+	 *
+	 * @param node The node to check
+	 * @param executable Whether the node is in a state that allows execution (e.g. not readonly)
+	 * @param foreignCredentials List of credential IDs that the current user cannot access
+	 */
+	function isNodeExecutable(
+		node: INodeUi | null,
+		executable: boolean | undefined,
+		foreignCredentials: string[],
+	): boolean {
+		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
+		if (node && nodeType) {
+			const currentWorkflowInstance = workflowsStore.getCurrentWorkflow();
+			const workflowNode = currentWorkflowInstance.getNode(node.name);
+
+			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
+			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
+
+			if (workflowNode) {
+				const inputs = NodeHelpers.getNodeInputs(currentWorkflowInstance, workflowNode, nodeType);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
+					return false;
+				}
+			}
+		}
+
+		return Boolean(executable || foreignCredentials.length > 0);
+	}
+
+	/**
+	 * Returns a list of credential IDs that the current user does not have access to,
+	 * if the Sharing feature is enabled.
+	 *
+	 * These are considered "foreign" credentials: the user can't view or manage them,
+	 * but can still execute workflows that use them.
+	 */
+	function getForeignCredentialsIfSharingEnabled(
+		credentials: INodeCredentials | undefined,
+	): string[] {
+		if (
+			!credentials ||
+			!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
+		) {
+			return [];
+		}
+
+		const usedCredentials = workflowsStore.usedCredentials;
+
+		return Object.values(credentials)
+			.map(({ id }) => id)
+			.filter((id) => id !== null)
+			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
 	}
 
 	// Returns if the given parameter should be displayed or not
@@ -181,7 +247,7 @@ export function useNodeHelpers() {
 	function hasNodeExecutionIssues(node: INodeUi): boolean {
 		const workflowResultData = workflowsStore.getWorkflowRunData;
 
-		if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
+		if (!workflowResultData?.hasOwnProperty(node.name)) {
 			return false;
 		}
 
@@ -1005,7 +1071,8 @@ export function useNodeHelpers() {
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
-		getParameterValue,
+		isNodeExecutable,
+		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
 		getNodeIssues,
 		updateNodesInputIssues,

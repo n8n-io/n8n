@@ -17,7 +17,6 @@ export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
 		id: uuid(),
 		children: [],
 		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
-		depth: 0,
 		workflow: createTestWorkflowObject(),
 		executionId,
 		execution: createTestWorkflowExecutionResponse({ id: executionId }).data!,

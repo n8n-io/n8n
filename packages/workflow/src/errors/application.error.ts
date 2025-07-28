@@ -1,7 +1,7 @@
 import type { Event } from '@sentry/node';
 import callsites from 'callsites';
 
-import type { ErrorLevel, ReportingOptions } from '@/errors/error.types';
+import type { ErrorLevel, ReportingOptions } from './error.types';
 
 /**
  * @deprecated Use `UserError`, `OperationalError` or `UnexpectedError` instead.
@@ -17,7 +17,7 @@ export class ApplicationError extends Error {
 
 	constructor(
 		message: string,
-		{ level, tags = {}, extra, ...rest }: Partial<ErrorOptions> & ReportingOptions = {},
+		{ level, tags = {}, extra, ...rest }: ErrorOptions & ReportingOptions = {},
 	) {
 		super(message, rest);
 		this.level = level ?? 'error';

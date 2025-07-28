@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/composables/useToast';
 import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
@@ -19,6 +20,7 @@ import { executionRetryMessage } from '@/utils/executionUtils';
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const projectsStore = useProjectsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
@@ -146,6 +148,9 @@ async function fetchWorkflow() {
 		}
 
 		workflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		const workflowData = await workflowsStore.fetchWorkflow(workflow.value.id);
+
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} else {
 		workflow.value = workflowsStore.workflow;
 	}

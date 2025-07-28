@@ -194,5 +194,20 @@ describe('ErrorReporter', () => {
 			errorReporter.error(error);
 			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
 		});
+
+		it.each([true, undefined])(
+			'should log the error when shouldBeLogged is %s',
+			(shouldBeLogged) => {
+				error.level = 'error';
+				errorReporter.error(error, { shouldBeLogged });
+				expect(logger.error).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('should not log the error when shouldBeLogged is false', () => {
+			error.level = 'error';
+			errorReporter.error(error, { shouldBeLogged: false });
+			expect(logger.error).toHaveBeenCalledTimes(0);
+		});
 	});
 });

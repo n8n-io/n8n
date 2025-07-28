@@ -1,5 +1,8 @@
-import { inDevelopment, inProduction, LicenseState } from '@n8n/backend-common';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +15,6 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -25,7 +27,6 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 
@@ -62,6 +63,10 @@ import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
+import { ChatServer } from './chat/chat-server';
+
+import { MfaService } from './mfa/mfa.service';
+
 @Service()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
@@ -75,7 +80,6 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly licenseState: LicenseState,
 	) {
 		super();
 
@@ -124,6 +128,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (isMfaFeatureEnabled()) {
+			await Container.get(MfaService).init();
 			await import('@/controllers/mfa.controller');
 		}
 
@@ -149,16 +154,21 @@ export class Server extends AbstractServer {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
 		}
 
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
+		}
+
 		// ----------------------------------------
 		// OIDC
 		// ----------------------------------------
 
 		try {
-			if (this.licenseState.isOidcLicensed()) {
-				const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-				await Container.get(OidcService).init();
-				await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-			}
+			// in the short term, we load the OIDC module here to ensure it is initialized
+			// ideally we want to migrate this to a module and be able to load it dynamically
+			// when the license changes, but that requires some refactoring
+			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
+			await Container.get(OidcService).init();
+			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
 		} catch (error) {
 			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
 		}
@@ -167,16 +177,14 @@ export class Server extends AbstractServer {
 		// Source Control
 		// ----------------------------------------
 
-		if (this.licenseState.isSourceControlLicensed()) {
-			try {
-				const { SourceControlService } = await import(
-					'@/environments.ee/source-control/source-control.service.ee'
-				);
-				await Container.get(SourceControlService).init();
-				await import('@/environments.ee/source-control/source-control.controller.ee');
-			} catch (error) {
-				this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-			}
+		try {
+			const { SourceControlService } = await import(
+				'@/environments.ee/source-control/source-control.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
 		}
 
 		try {
@@ -277,19 +285,21 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
-			// Return Sentry config as a static file
-			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
-				res.type('js');
-				res.write('window.sentry=');
-				res.write(
-					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontendDsn,
-						environment: process.env.ENVIRONMENT || 'development',
-						serverName: process.env.DEPLOYMENT_NAME,
-						release: `n8n@${N8N_VERSION}`,
-					}),
-				);
-				res.end();
+			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
+				const frontendSentryConfig = JSON.stringify({
+					dsn: this.globalConfig.sentry.frontendDsn,
+					environment: process.env.ENVIRONMENT || 'development',
+					serverName: process.env.DEPLOYMENT_NAME,
+					release: `n8n@${N8N_VERSION}`,
+				});
+				const frontendConfig = [
+					`window.BASE_PATH = '${this.globalConfig.path}';`,
+					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
+					`window.sentry = ${frontendSentryConfig};`,
+				].join('\n');
+
+				res.type('application/javascript');
+				res.send(frontendConfig);
 			});
 		}
 
@@ -368,7 +378,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -414,7 +424,7 @@ export class Server extends AbstractServer {
 			});
 
 			// Route all UI urls to index.html to support history-api
-			const nonUIRoutes: Readonly<string[]> = [
+			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',
@@ -471,5 +481,6 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatServer).setup(server, app);
 	}
 }

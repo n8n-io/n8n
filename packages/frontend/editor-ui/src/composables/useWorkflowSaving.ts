@@ -15,13 +15,9 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import type {
-	ITag,
-	IUpdateInformation,
-	IWorkflowDataCreate,
-	IWorkflowDataUpdate,
-	NotificationOptions,
-} from '@/Interface';
+import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from './useToast';
@@ -30,6 +26,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -37,6 +34,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -134,7 +132,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 	async function getWorkflowDeactivationInfo(
 		workflowId: string,
-		request: IWorkflowDataUpdate,
+		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
@@ -177,7 +175,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect);
+			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -187,7 +185,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			}
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataUpdate = await getWorkflowDataToSave();
+			const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
 			// This can happen if the user has another workflow in the browser history and navigates
 			// via the browser back button, encountering our warning dialog with the new route already set
 			if (workflowDataRequest.id !== currentWorkflow) {
@@ -306,14 +304,14 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
 			parentFolderId?: string;
-			data?: IWorkflowDataCreate;
+			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
-	): Promise<boolean> {
+	): Promise<IWorkflowDb['id'] | null> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataCreate = data || (await getWorkflowDataToSave());
+			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {
@@ -350,6 +348,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			workflowsStore.addWorkflow(workflowData);
 
+			focusPanelStore.onNewWorkflowSave(workflowData.id);
+
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
@@ -357,7 +357,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
-				return true;
+				return workflowData.id;
 			}
 
 			// workflow should not be active if there is live webhook with the same path
@@ -390,7 +390,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			});
 
 			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag): string => tag.id);
+			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowsStore.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
@@ -415,7 +415,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			getCurrentWorkflow(true); // refresh cache
-			return true;
+			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
 
@@ -425,7 +425,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				type: 'error',
 			});
 
-			return false;
+			return null;
 		}
 	}
 

@@ -86,7 +86,9 @@ const isPersonalSecurityEnabled = computed((): boolean => {
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
 });
-
+const mfaEnforced = computed((): boolean => {
+	return settingsStore.isMFAEnforced;
+});
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
@@ -194,7 +196,8 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	}
 }
 
-async function onSubmit(form: UserBasicDetailsForm) {
+async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
+	const form = data as UserBasicDetailsForm;
 	const emailChanged = usersStore.currentUser?.email !== form.email;
 
 	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
@@ -361,6 +364,11 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice
+					v-if="mfaDisabled && mfaEnforced"
+					:content="i18n.baseText('settings.personal.mfa.enforced')"
+				/>
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"

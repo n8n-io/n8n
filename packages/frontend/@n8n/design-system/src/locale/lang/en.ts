@@ -3,6 +3,7 @@ import type { N8nLocale } from '@n8n/design-system/types';
 
 export default {
 	'generic.retry': 'Retry',
+	'generic.cancel': 'Cancel',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
@@ -45,6 +46,9 @@ export default {
 	'assistantChat.builder.selectedNodes': 'Selected workflow nodes',
 	'assistantChat.builder.selectingNodes': 'Selecting nodes...',
 	'assistantChat.builder.generatedNodes': 'Generated workflow nodes',
+	'assistantChat.builder.toolRunning': 'Tool running',
+	'assistantChat.builder.toolCompleted': 'Tool completed',
+	'assistantChat.builder.toolError': 'Tool completed with error',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'AI Assistant',
 	'assistantChat.aiAssistantName': 'Assistant',
@@ -66,4 +70,5 @@ export default {
 	'iconPicker.tabs.icons': 'Icons',
 	'iconPicker.tabs.emojis': 'Emojis',
 	'selectableList.addDefault': '+ Add a',
+	'auth.changePassword.passwordsMustMatchError': 'Passwords must match',
 } as N8nLocale;

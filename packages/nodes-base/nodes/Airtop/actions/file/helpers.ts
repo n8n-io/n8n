@@ -1,10 +1,10 @@
+import pick from 'lodash/pick';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { jsonParse, NodeApiError } from 'n8n-workflow';
-import type { Stream } from 'stream';
+import { NodeApiError } from 'n8n-workflow';
 
 import { BASE_URL, ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
 import { apiRequest } from '../../transport';
-import type { IAirtopResponseWithFiles, IAirtopServerEvent } from '../../transport/types';
+import type { IAirtopResponseWithFiles, IAirtopFileInputRequest } from '../../transport/types';
 
 /**
  * Fetches all files from the Airtop API using pagination
@@ -132,27 +132,11 @@ export async function createAndUploadFile(
 	return await pollingFunction.call(this, fileId as string);
 }
 
-function parseEvent(eventText: string): IAirtopServerEvent | null {
-	const dataLine = eventText.split('\n').find((line) => line.startsWith('data:'));
-	if (!dataLine) {
-		return null;
-	}
-	const jsonStr = dataLine.replace('data: ', '').trim();
-	return jsonParse<IAirtopServerEvent>(jsonStr, {
-		errorMessage: 'Failed to parse server event',
-	});
-}
-
-function isFileAvailable(event: IAirtopServerEvent, fileId: string): boolean {
-	return (
-		event.event === 'file_upload_status' && event.fileId === fileId && event.status === 'available'
-	);
-}
-
 /**
- * Waits for a file to be ready in a session by monitoring session events
+ * Waits for a file to be ready in a session by polling file's information
  * @param this - The execution context providing access to n8n functionality
- * @param sessionId - ID of the session to monitor for file events
+ * @param sessionId - ID of the session to check for file availability
+ * @param fileId - ID of the file
  * @param timeout - Maximum time in milliseconds to wait before failing (defaults to OPERATION_TIMEOUT)
  * @returns Promise that resolves when a file in the session becomes available
  * @throws NodeApiError if the timeout is reached before a file becomes available
@@ -163,61 +147,25 @@ export async function waitForFileInSession(
 	fileId: string,
 	timeout = OPERATION_TIMEOUT,
 ): Promise<void> {
-	const url = `${BASE_URL}/sessions/${sessionId}/events?all=true`;
+	const url = `${BASE_URL}/files/${fileId}`;
+	const isFileInSession = async (): Promise<boolean> => {
+		const fileInfo = (await apiRequest.call(this, 'GET', url)) as IAirtopResponseWithFiles;
+		return Boolean(fileInfo.data?.sessionIds?.includes(sessionId));
+	};
 
-	const fileReadyPromise = new Promise<void>(async (resolve, reject) => {
-		const stream = (await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', {
-			method: 'GET',
-			url,
-			encoding: 'stream',
-		})) as Stream;
-
-		const close = () => {
-			resolve();
-			stream.removeAllListeners();
-		};
-
-		const onError = (errorMessage: string) => {
-			const error = new NodeApiError(this.getNode(), {
-				message: errorMessage,
-				description: 'Failed to upload file',
+	const startTime = Date.now();
+	while (!(await isFileInSession())) {
+		const elapsedTime = Date.now() - startTime;
+		// throw error if timeout is reached
+		if (elapsedTime >= timeout) {
+			throw new NodeApiError(this.getNode(), {
+				message: ERROR_MESSAGES.TIMEOUT_REACHED,
 				code: 500,
 			});
-			reject(error);
-			stream.removeAllListeners();
-		};
-
-		stream.on('data', (data: Uint8Array) => {
-			const event = parseEvent(data.toString());
-			if (!event) {
-				return;
-			}
-			// handle error
-			if (event?.eventData?.error) {
-				onError(event.eventData.error);
-				return;
-			}
-			// handle file available
-			if (isFileAvailable(event, fileId)) {
-				close();
-			}
-		});
-	});
-
-	const timeoutPromise = new Promise<void>((_resolve, reject) => {
-		setTimeout(
-			() =>
-				reject(
-					new NodeApiError(this.getNode(), {
-						message: ERROR_MESSAGES.TIMEOUT_REACHED,
-						code: 500,
-					}),
-				),
-			timeout,
-		);
-	});
-
-	await Promise.race([fileReadyPromise, timeoutPromise]);
+		}
+		// wait 1 second before checking again
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
 }
 
 /**
@@ -249,15 +197,14 @@ export async function pushFileToSession(
  */
 export async function triggerFileInput(
 	this: IExecuteFunctions,
-	fileId: string,
-	windowId: string,
-	sessionId: string,
-	elementDescription = '',
+	request: IAirtopFileInputRequest,
 ): Promise<void> {
-	await apiRequest.call(this, 'POST', `/sessions/${sessionId}/windows/${windowId}/file-input`, {
-		fileId,
-		...(elementDescription ? { elementDescription } : {}),
-	});
+	await apiRequest.call(
+		this,
+		'POST',
+		`/sessions/${request.sessionId}/windows/${request.windowId}/file-input`,
+		pick(request, ['fileId', 'elementDescription', 'includeHiddenElements']),
+	);
 }
 
 /**

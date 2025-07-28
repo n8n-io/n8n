@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
@@ -60,7 +60,10 @@ export class ErrorReporter {
 					meta = e.extra;
 				}
 				const msg = [e.message + context, stack].join('');
-				this.logger.error(msg, meta);
+				// Default to logging the error if option is not specified
+				if (options?.shouldBeLogged ?? true) {
+					this.logger.error(msg, meta);
+				}
 				e = e.cause as Error;
 			} while (e);
 		}
@@ -81,6 +84,8 @@ export class ErrorReporter {
 		serverName,
 		releaseDate,
 	}: ErrorReporterInitOptions) {
+		if (inTest) return;
+
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});

@@ -1,8 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import type { PublicUser } from '@n8n/db';
-import { InvalidAuthTokenRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -16,9 +15,8 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';

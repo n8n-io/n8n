@@ -1,14 +1,16 @@
 import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
+	Role,
 	SettingsUpdateRequestDto,
+	UsersList,
+	UsersListFilterDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IUserResponse,
-	InvitableRoleName,
 } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
@@ -126,8 +128,11 @@ export async function deleteUser(
 	await makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 }
 
-export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
-	return await makeRestApiRequest(context, 'GET', '/users');
+export async function getUsers(
+	context: IRestApiContext,
+	filter?: UsersListFilterDto,
+): Promise<UsersList> {
+	return await makeRestApiRequest(context, 'GET', '/users', filter);
 }
 
 export async function getInviteLink(
@@ -153,7 +158,7 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: InvitableRoleName;
+	newRoleName: Role;
 }
 
 export async function updateGlobalRole(

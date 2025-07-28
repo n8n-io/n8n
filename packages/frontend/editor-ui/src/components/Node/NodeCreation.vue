@@ -1,23 +1,28 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
+	FOCUS_PANEL_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { usePostHog } from '@/stores/posthog.store';
 import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 import { useActions } from './NodeCreator/composables/useActions';
-import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -39,26 +44,17 @@ const emit = defineEmits<{
 }>();
 
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
+const posthogStore = usePostHog();
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const assistantStore = useAssistantStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
-const wrapperRef = ref<HTMLElement | undefined>();
-const wrapperBoundingRect = ref<DOMRect | undefined>();
-const isStickyNotesButtonVisible = ref(true);
-
-const onMouseMove = useThrottleFn((event: MouseEvent) => {
-	if (wrapperBoundingRect.value) {
-		const offset = 100;
-		isStickyNotesButtonVisible.value =
-			event.clientX >= wrapperBoundingRect.value.left - offset &&
-			event.clientX <= wrapperBoundingRect.value.right + offset &&
-			event.clientY >= wrapperBoundingRect.value.top - offset &&
-			event.clientY <= wrapperBoundingRect.value.bottom + offset;
-	} else {
-		isStickyNotesButtonVisible.value = true;
-	}
-}, 250);
+const isOpenFocusPanelButtonVisible = computed(() => {
+	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
+});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -92,53 +88,80 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	closeNodeCreator(true);
 }
 
-function setWrapperRect() {
-	wrapperBoundingRect.value = wrapperRef.value?.getBoundingClientRect();
+function toggleFocusPanel() {
+	focusPanelStore.toggleFocusPanel();
+
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasButton',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
 }
 
-onMounted(() => {
-	setWrapperRect();
+function onAskAssistantButtonClick() {
+	if (!assistantStore.chatWindowOpen)
+		assistantStore.trackUserOpenedAssistant({
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+		});
 
-	document.addEventListener('mousemove', onMouseMove);
-	window.addEventListener('resize', setWrapperRect);
-});
-
-onBeforeUnmount(() => {
-	document.removeEventListener('mousemove', onMouseMove);
-	window.removeEventListener('resize', setWrapperRect);
-});
+	assistantStore.toggleChatOpen();
+}
 </script>
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<div ref="wrapperRef" :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-			<KeyboardShortcutTooltip
-				:label="i18n.baseText('nodeView.openNodesPanel')"
-				:shortcut="{ keys: ['Tab'] }"
-				placement="left"
-			>
-				<n8n-icon-button
-					size="large"
-					icon="plus"
-					type="tertiary"
-					:class="$style.nodeCreatorPlus"
-					@click="openNodeCreator"
-				/>
-			</KeyboardShortcutTooltip>
-			<div
-				:class="[$style.addStickyButton, isStickyNotesButtonVisible ? $style.visibleButton : '']"
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.openNodesPanel')"
+			:shortcut="{ keys: ['Tab'] }"
+			placement="left"
+		>
+			<n8n-icon-button
+				size="large"
+				icon="plus"
+				type="tertiary"
+				data-test-id="node-creator-plus-button"
+				@click="openNodeCreator"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.addStickyHint')"
+			:shortcut="{ keys: ['s'], shiftKey: true }"
+			placement="left"
+		>
+			<n8n-icon-button
+				size="large"
+				type="tertiary"
+				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="isOpenFocusPanelButtonVisible"
+			:label="i18n.baseText('nodeView.openFocusPanel')"
+			:shortcut="{ keys: ['f'], shiftKey: true }"
+			placement="left"
+		>
+			<n8n-icon-button type="tertiary" size="large" icon="panel-right" @click="toggleFocusPanel" />
+		</KeyboardShortcutTooltip>
+		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
+			<n8n-button
+				type="tertiary"
+				size="large"
+				square
+				:class="$style.icon"
+				data-test-id="ask-assistant-canvas-action-button"
+				@click="onAskAssistantButtonClick"
 			>
-				<KeyboardShortcutTooltip
-					:label="i18n.baseText('nodeView.addStickyHint')"
-					:shortcut="{ keys: ['s'], shiftKey: true }"
-					placement="left"
-				>
-					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
-				</KeyboardShortcutTooltip>
-			</div>
-		</div>
+				<template #default>
+					<div>
+						<AssistantIcon size="large" />
+					</div>
+				</template>
+			</n8n-button>
+		</n8n-tooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator
@@ -155,33 +178,19 @@ onBeforeUnmount(() => {
 	top: 0;
 	right: 0;
 	display: flex;
-}
-
-.addStickyButton {
-	margin-top: var(--spacing-2xs);
-	opacity: 0;
-	transition: 0.1s;
-	transition-timing-function: linear;
-}
-
-.visibleButton {
-	opacity: 1;
-	pointer-events: all;
-}
-
-.noEvents {
-	pointer-events: none;
-}
-
-.nodeCreatorButton {
-	position: absolute;
-	text-align: center;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	flex-direction: column;
+	gap: var(--spacing-2xs);
+	padding: var(--spacing-s);
 	pointer-events: all !important;
 }
-.nodeCreatorPlus {
-	width: 36px;
-	height: 36px;
+
+.icon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>

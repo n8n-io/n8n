@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
@@ -128,7 +128,7 @@ async function pullWorkfolder() {
 			data-test-id="main-sidebar-source-control-connected"
 		>
 			<span :class="$style.branchName">
-				<n8n-icon icon="code-branch" />
+				<n8n-icon icon="git-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">

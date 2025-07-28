@@ -1,5 +1,5 @@
-import type { InstalledNodes } from '@n8n/db';
-import type { InstalledPackages } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { InstalledNodes, InstalledPackages } from '@n8n/db';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -9,7 +9,6 @@ import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,

@@ -76,6 +76,15 @@ describe('LicenseService', () => {
 	});
 
 	describe('renewLicense', () => {
+		test('should skip renewal for unlicensed user (Community plan)', async () => {
+			license.getPlanName.mockReturnValueOnce('Community');
+
+			await licenseService.renewLicense();
+
+			expect(license.renew).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		test('on success', async () => {
 			license.renew.mockResolvedValueOnce();
 			await licenseService.renewLicense();

@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type {
 	BrokerMessage,
@@ -10,7 +11,6 @@ import type {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { Time } from '@/constants';
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
