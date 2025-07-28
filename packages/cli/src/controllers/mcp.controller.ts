@@ -16,7 +16,7 @@ export class McpController {
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
-		console.log('Handling MCP request:', req.method, req.url);
+		console.log('Handling MCP request:', req.method, req.url, req.headers);
 		try {
 			const server = this.mcpService.getServer(req.user);
 			const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({

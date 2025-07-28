@@ -116,10 +116,16 @@ export class AuthService {
 	}
 
 	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
-		const apiKey = req.headers['x-n8n-api-key'];
+		let apiKey = req.headers['authorization'] ?? req.headers['Authorization'];
 		if (!apiKey || typeof apiKey !== 'string') {
 			response.status(401).json({ status: 'error', message: 'API key is required' });
 			return;
+		}
+
+		// Remove 'Bearer ' prefix if present
+		const apiKeyMatch = apiKey.match(/^Bearer\s+(.+)$/);
+		if (apiKeyMatch) {
+			apiKey = apiKeyMatch[1];
 		}
 
 		try {
