@@ -16,7 +16,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint src --quiet",
-    "lintfix": "eslint src --fix",
+    "lint:fix": "eslint src --fix",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",
     "watch": "tsc --watch"
   },
