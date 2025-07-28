@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsCache } from '@/composables/useWorkflowsCache';
+import { useWorkflowsCache, WorkflowSettings } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
@@ -22,7 +22,7 @@ const workflowsCache = useWorkflowsCache();
 const uiStore = useUIStore();
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
-const workflowSettings = ref<Awaited<ReturnType<typeof workflowsCache.getWorkflowSettings>>>(null);
+const cachedSettings = ref<WorkflowSettings | null>(null);
 
 const hasAINode = computed(() => {
 	const nodes = props.workflow.nodes;
@@ -45,18 +45,18 @@ const hasTimeSaved = computed(() => {
 });
 
 const availableActions = computed(() => {
-	if (!props.workflow.active || !workflowSettings.value) {
+	if (!props.workflow.active) {
 		return [];
 	}
 
 	const actions = [];
-	const suggestedActions = workflowSettings.value.suggestedActions || {};
+	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Evaluations action
 	if (
 		hasAINode.value &&
 		!hasEvaluationSetOutputsNode.value &&
-		!suggestedActions.evaluations?.ignored
+		!suggestedActionSettings.evaluations?.ignored
 	) {
 		actions.push({
 			id: 'evaluations',
@@ -68,7 +68,7 @@ const availableActions = computed(() => {
 	}
 
 	// Error workflow action
-	if (!hasErrorWorkflow.value && !suggestedActions.errorWorkflow?.ignored) {
+	if (!hasErrorWorkflow.value && !suggestedActionSettings.errorWorkflow?.ignored) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
@@ -80,7 +80,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (!hasTimeSaved.value && !suggestedActions.timeSaved?.ignored) {
+	if (!hasTimeSaved.value && !suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowSuggestedActions.timeSaved.title'),
@@ -99,7 +99,7 @@ const showRedDot = computed(() => {
 
 async function loadWorkflowSettings() {
 	if (props.workflow.id) {
-		workflowSettings.value = await workflowsCache.getWorkflowSettings(props.workflow.id);
+		cachedSettings.value = await workflowsCache.getWorkflowSettings(props.workflow.id);
 	}
 }
 
@@ -142,7 +142,7 @@ watch(
 			await loadWorkflowSettings();
 
 			// Check if this is the first activation
-			if (!workflowSettings.value?.firstActivatedAt && availableActions.value.length > 0) {
+			if (!cachedSettings.value?.firstActivatedAt && availableActions.value.length > 0) {
 				// Open suggested actions popover before updating firstActivatedAt
 				setTimeout(() => {
 					openSuggestedActions();
