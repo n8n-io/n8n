@@ -139,22 +139,6 @@ export const schema = {
 		},
 	},
 
-	externalFrontendHooksUrls: {
-		doc: 'URLs to external frontend hooks files, ; separated',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
-	},
-
-	redis: {
-		prefix: {
-			doc: 'Prefix for all n8n related keys',
-			format: String,
-			default: 'n8n',
-			env: 'N8N_REDIS_KEY_PREFIX',
-		},
-	},
-
 	/**
 	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
 	 */
@@ -170,10 +154,8 @@ export const schema = {
 	 */
 	ai: {
 		enabled: {
-			doc: 'Whether AI features are enabled',
 			format: Boolean,
-			default: false,
-			env: 'N8N_AI_ENABLED',
+			default: Container.get(GlobalConfig).ai.enabled,
 		},
 	},
 };
