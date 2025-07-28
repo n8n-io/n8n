@@ -75,4 +75,12 @@ describe('ScheduledTaskManager', () => {
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
 	});
+
+	it('should not set up log interval when activeInterval is 0', () => {
+		const configWithZeroInterval = mock({ activeInterval: 0 });
+		const manager = new ScheduledTaskManager(instanceSettings, logger, configWithZeroInterval);
+
+		// @ts-expect-error Private property
+		expect(manager.logInterval).toBeUndefined();
+	});
 });
