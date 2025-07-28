@@ -1,0 +1,82 @@
+name: Deploy n8n to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: n8n-production
+  REPO_NAME: n8n-docker-repo
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    environment: production
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+          flags: >-
+            --vpc-connector=n8n-vpc-connector
+            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:n8n-postgres-instance
+
+          secrets: >-
+            N8N_ENCRYPTION_KEY=n8n-encryption-key:latest,
+            DB_POSTGRESDB_PASSWORD=n8n-postgres-password:latest
+
+          env_vars: >-
+            DB_TYPE=postgresdb,
+            DB_POSTGRESDB_HOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:n8n-postgres-instance,
+            DB_POSTGRESDB_PORT=5432,
+            DB_POSTGRESDB_DATABASE=n8n,
+            DB_POSTGRESDB_USER=postgres,
+            DB_POSTGRESDB_SCHEMA=public,
+            GENERIC_TIMEZONE=America/Sao_Paulo,
+            EXECUTIONS_MODE=main,
+            N8N_LOG_LEVEL=info,
+            N8N_HOST=0.0.0.0,
+            WEBHOOK_URL=https://engine.pareto.io
+            DB_TYPE=”postgresdb”
