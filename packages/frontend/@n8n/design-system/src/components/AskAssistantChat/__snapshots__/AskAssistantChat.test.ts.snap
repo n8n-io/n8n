@@ -54,11 +54,6 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -155,6 +150,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -247,11 +243,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -348,6 +339,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -624,6 +616,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -668,6 +661,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -799,6 +793,7 @@ Testing more code
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -928,6 +923,7 @@ Testing more code
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <div
               class="quickReplies"
@@ -1063,11 +1059,6 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
           >
             AI Assistant
           </span>
-        </div>
-        <div
-          class="beta"
-        >
-          beta
         </div>
         
         
@@ -1250,11 +1241,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1351,6 +1337,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1359,6 +1346,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           >
             <div
               class="message"
+              is-last-message="true"
+              streaming="false"
             >
               <!--v-if-->
               
@@ -1427,6 +1416,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 </span>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1520,11 +1510,6 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1552,6 +1537,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           >
             <div
               class="message"
+              is-last-message="true"
+              streaming="false"
             >
               <div
                 class="roleName userSection"
@@ -1633,6 +1620,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 />
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1724,11 +1712,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           >
             AI Assistant
           </span>
-        </div>
-        <div
-          class="beta"
-        >
-          beta
         </div>
         
         
@@ -1896,6 +1879,7 @@ catch(e) {
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1987,11 +1971,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           >
             AI Assistant
           </span>
-        </div>
-        <div
-          class="beta"
-        >
-          beta
         </div>
         
         
@@ -2091,6 +2070,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                 />
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>

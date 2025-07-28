@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { Worker } from '../worker';
-
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { RedisClientService } from '@/services/redis-client.service';
+
+import { Worker } from '../worker';
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);

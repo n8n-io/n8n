@@ -1,6 +1,4 @@
-import { type InstalledNodes } from '@n8n/db';
-import { type CredentialsEntity } from '@n8n/db';
-import { type User } from '@n8n/db';
+import { type InstalledNodes, type CredentialsEntity, type User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { CommunityNode } from '../community-node';

@@ -2,30 +2,15 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { Logger, inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { ensureError, type INodeTypeDescription } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
-import { getCommunityNodeTypes } from '../utils/community-node-types-utils';
+import {
+	getCommunityNodeTypes,
+	StrapiCommunityNodeType,
+} from '../utils/community-node-types-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
-
-export type StrapiCommunityNodeType = {
-	authorGithubUrl: string;
-	authorName: string;
-	checksum: string;
-	description: string;
-	displayName: string;
-	name: string;
-	numberOfStars: number;
-	numberOfDownloads: number;
-	packageName: string;
-	createdAt: string;
-	updatedAt: string;
-	npmVersion: string;
-	isOfficialNode: boolean;
-	companyName?: string;
-	nodeDescription: INodeTypeDescription;
-};
 
 @Service()
 export class CommunityNodeTypesService {
@@ -47,8 +32,7 @@ export class CommunityNodeTypesService {
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
 				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
-				const environment =
-					inProduction || process.env.ENVIRONMENT === 'production' ? 'production' : 'staging';
+				const environment = this.detectEnvironment();
 				data = await getCommunityNodeTypes(environment);
 			}
 
@@ -56,6 +40,14 @@ export class CommunityNodeTypesService {
 		} catch (error) {
 			this.logger.error('Failed to fetch community node types', { error: ensureError(error) });
 		}
+	}
+
+	private detectEnvironment() {
+		const environment = process.env.ENVIRONMENT;
+		if (environment === 'staging') return 'staging';
+		if (inProduction) return 'production';
+		if (environment === 'production') return 'production';
+		return 'staging';
 	}
 
 	private updateCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {

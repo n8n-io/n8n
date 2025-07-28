@@ -58,7 +58,7 @@ export class OidcService {
 
 	async init() {
 		this.oidcConfig = await this.loadConfig(true);
-		console.log(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
+		this.logger.debug(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 	}
 
@@ -104,10 +104,6 @@ export class OidcService {
 			throw new BadRequestError('An email is required');
 		}
 
-		if (!userInfo.email_verified) {
-			throw new BadRequestError('Email needs to be verified');
-		}
-
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: ['user'],
@@ -120,7 +116,19 @@ export class OidcService {
 		const foundUser = await this.userRepository.findOneBy({ email: userInfo.email });
 
 		if (foundUser) {
-			throw new BadRequestError('User already exist with that email.');
+			this.logger.debug(
+				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
+			);
+			// If the user already exists, we just add the OIDC identity to the user
+			const id = this.authIdentityRepository.create({
+				providerId: claims.sub,
+				providerType: 'oidc',
+				userId: foundUser.id,
+			});
+
+			await this.authIdentityRepository.save(id);
+
+			return foundUser;
 		}
 
 		return await this.userRepository.manager.transaction(async (trx) => {
@@ -156,6 +164,9 @@ export class OidcService {
 		if (currentConfig) {
 			try {
 				const oidcConfig = jsonParse<OidcConfigDto>(currentConfig.value);
+
+				if (oidcConfig.discoveryEndpoint === '') return DEFAULT_OIDC_RUNTIME_CONFIG;
+
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
 				if (oidcConfig.clientSecret && decryptSecret) {
@@ -168,7 +179,7 @@ export class OidcService {
 			} catch (error) {
 				this.logger.warn(
 					'Failed to load OIDC configuration from database, falling back to default configuration.',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					{ error },
 				);
 			}

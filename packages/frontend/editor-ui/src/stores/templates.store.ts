@@ -1,9 +1,17 @@
-import { defineStore } from 'pinia';
-import { TEMPLATES_URLS } from '@/constants';
-import { STORES } from '@n8n/stores';
+import { useStorage } from '@/composables/useStorage';
+import {
+	LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
+	TEMPLATES_URLS,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
-import { useSettingsStore } from './settings.store';
-import * as templatesApi from '@n8n/rest-api-client/api/templates';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import {
+	getSuggestedTemplatesForLowCodingSkill,
+	getTemplatePathByRole,
+	getTop3Templates,
+	isPersonalizedTemplatesExperimentEnabled,
+} from '@/utils/experiments';
+import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
@@ -13,12 +21,15 @@ import type {
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
 } from '@n8n/rest-api-client/api/templates';
-import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
+import * as templatesApi from '@n8n/rest-api-client/api/templates';
+import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { jsonParse } from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
-import { computed, ref } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -78,6 +89,27 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const currentN8nPath = ref<string>(
 		`${window.location.protocol}//${window.location.host}${window.BASE_PATH}`,
 	);
+
+	const experimentalAllSuggestedWorkflows = ref<ITemplatesWorkflowFull[]>([]);
+	const experimentalDismissedSuggestedWorkflowsStorage = useStorage(
+		LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
+	);
+	const experimentalDismissedSuggestedWorkflows = computed((): number[] => {
+		return experimentalDismissedSuggestedWorkflowsStorage.value
+			? jsonParse(experimentalDismissedSuggestedWorkflowsStorage.value, { fallbackValue: [] })
+			: [];
+	});
+	const experimentalSuggestedWorkflows = computed(() =>
+		experimentalAllSuggestedWorkflows.value.filter(
+			({ id }) => !experimentalDismissedSuggestedWorkflows.value.includes(id),
+		),
+	);
+	const experimentalDismissSuggestedWorkflow = (id: number) => {
+		experimentalDismissedSuggestedWorkflowsStorage.value = JSON.stringify([
+			...(experimentalDismissedSuggestedWorkflows.value ?? []),
+			id,
+		]);
+	};
 
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -165,6 +197,15 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
 	});
 
+	const userRole = computed(
+		() =>
+			cloudPlanStore.currentUserCloudInfo?.role ??
+			(userStore.currentUser?.personalizationAnswers &&
+			'role' in userStore.currentUser.personalizationAnswers
+				? userStore.currentUser.personalizationAnswers.role
+				: undefined),
+	);
+
 	const websiteTemplateRepositoryParameters = computed(() => {
 		const defaultParameters: Record<string, string> = {
 			...TEMPLATES_URLS.UTM_QUERY,
@@ -172,15 +213,8 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			utm_n8n_version: rootStore.versionCli,
 			utm_awc: String(workflowsStore.activeWorkflows.length),
 		};
-		const userRole: string | null | undefined =
-			cloudPlanStore.currentUserCloudInfo?.role ??
-			(userStore.currentUser?.personalizationAnswers &&
-			'role' in userStore.currentUser.personalizationAnswers
-				? userStore.currentUser.personalizationAnswers.role
-				: undefined);
-
-		if (userRole) {
-			defaultParameters.utm_user_role = userRole;
+		if (userRole.value) {
+			defaultParameters.utm_user_role = userRole.value;
 		}
 		return new URLSearchParams({
 			...defaultParameters,
@@ -189,8 +223,11 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 
 	const websiteTemplateRepositoryURL = computed(
 		() =>
-			`${TEMPLATES_URLS.BASE_WEBSITE_URL}?${websiteTemplateRepositoryParameters.value.toString()}`,
+			`${TEMPLATES_URLS.BASE_WEBSITE_URL}${getTemplatePathByRole(userRole.value)}?${websiteTemplateRepositoryParameters.value.toString()}`,
 	);
+
+	const websiteTemplateURLById = (path: string) =>
+		`${TEMPLATES_URLS.BASE_WEBSITE_URL}${path}${getTemplatePathByRole(userRole.value)}?${websiteTemplateRepositoryParameters.value.toString()}`;
 
 	const constructTemplateRepositoryURL = (params: URLSearchParams): string => {
 		return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${params.toString()}`;
@@ -437,6 +474,49 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		return template;
 	};
 
+	const experimentalFetchSuggestedWorkflows = async () => {
+		if (!isPersonalizedTemplatesExperimentEnabled()) {
+			return;
+		}
+
+		try {
+			const codingSkill = cloudPlanStore.codingSkill;
+			const selectedApps = cloudPlanStore.selectedApps;
+
+			if (codingSkill === 1) {
+				const predefinedSelected = getSuggestedTemplatesForLowCodingSkill(selectedApps);
+
+				if (predefinedSelected.length > 0) {
+					const suggestedWorkflowsPromises = predefinedSelected.map(
+						async (id) => await fetchTemplateById(id.toString()),
+					);
+
+					const suggestedWorkflows = await Promise.all(suggestedWorkflowsPromises);
+					experimentalAllSuggestedWorkflows.value = getTop3Templates(suggestedWorkflows);
+					return;
+				}
+			}
+
+			const topWorkflowsByApp = await getWorkflows({
+				categories: [],
+				search: '',
+				sort: 'rank:desc',
+				apps: selectedApps.length > 0 ? selectedApps : undefined,
+				combineWith: 'or',
+			});
+
+			const topWorkflowsIds = topWorkflowsByApp.slice(0, 3).map((workflow) => workflow.id);
+			const suggestedWorkflowsPromises = topWorkflowsIds.map(
+				async (id) => await fetchTemplateById(id.toString()),
+			);
+
+			const suggestedWorkflows = await Promise.all(suggestedWorkflowsPromises);
+			experimentalAllSuggestedWorkflows.value = getTop3Templates(suggestedWorkflows);
+		} catch (error) {
+			// Let it fail silently
+		}
+	};
+
 	return {
 		categories,
 		collections,
@@ -477,5 +557,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		getMoreWorkflows,
 		getWorkflowTemplate,
 		getFixedWorkflowTemplate,
+		websiteTemplateURLById,
+		experimentalFetchSuggestedWorkflows,
+		experimentalSuggestedWorkflows,
+		experimentalDismissSuggestedWorkflow,
 	};
 });

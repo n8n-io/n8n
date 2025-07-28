@@ -58,16 +58,18 @@ const emit = defineEmits<{
 }
 
 .overrideCloseButton {
-	padding: 0px 8px 3px; // the icon used is off-center vertically
+	padding: 0px var(--spacing-2xs);
 	border: 0px;
 	color: var(--color-text-base);
 	margin-left: auto;
 	--button-hover-background-color: transparent;
 	--button-active-background-color: transparent;
+	background-color: var(--color-foreground-base);
 }
 
 .contentOverrideContainer {
 	display: flex;
+	align-items: center;
 	white-space: nowrap;
 	width: 100%;
 	gap: var(--spacing-4xs);

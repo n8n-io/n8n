@@ -15,6 +15,7 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
 import { useStorage } from '@/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -52,6 +53,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
 	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
@@ -130,7 +132,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				const versions = await versionsApi.getNextVersions(endpoint, current, instanceId);
 				setVersions({ versions, currentVersion: current });
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error('Failed to fetch versions:', e);
+		}
 	};
 
 	const setVersions = (params: SetVersionParams) => {
@@ -167,9 +171,22 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	};
 
 	const shouldShowWhatsNewCallout = (): boolean => {
-		return !whatsNewArticles.value.every((item) =>
+		const createdAt = usersStore.currentUser?.createdAt;
+		let hasNewArticle = false;
+		if (createdAt) {
+			const userCreatedAt = new Date(createdAt).getTime();
+			hasNewArticle = whatsNewArticles.value.some((item) => {
+				const updatedAt = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+				return updatedAt > userCreatedAt;
+			});
+		} else {
+			hasNewArticle = true;
+		}
+		const allArticlesDismissed = whatsNewArticles.value.every((item) =>
 			lastDismissedWhatsNewCallout.value.includes(item.id),
 		);
+
+		return hasNewArticle && !allArticlesDismissed;
 	};
 
 	const fetchWhatsNew = async () => {
@@ -208,7 +225,9 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 					}
 				}
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error('Failed to fetch Whats New section:', e);
+		}
 	};
 
 	const initialize = (settings: IVersionNotificationSettings) => {
@@ -269,5 +288,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		isWhatsNewArticleRead,
 		setWhatsNewArticleRead,
 		closeWhatsNewCallout,
+		shouldShowWhatsNewCallout,
+		dismissWhatsNewCallout,
 	};
 });

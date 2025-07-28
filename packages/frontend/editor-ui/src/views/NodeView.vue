@@ -137,6 +137,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -197,6 +198,7 @@ const foldersStore = useFoldersStore();
 const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
+const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -498,6 +500,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
+		}
+
+		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
+			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+				workflowData.meta.templateId.split('-').pop() ?? '',
+			);
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
@@ -1079,13 +1087,18 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
+		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
+		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
 		setTimeout(() => {
-			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+			canvasEventBus.emit('tidyUp', {
+				source: 'import-workflow-data',
+				nodeIdsFilter: nodesIdsToTidyUp,
+			});
 		}, 0);
 	}
 }
@@ -1182,7 +1195,7 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 	await revertAddNode(node.name);
 }
 
-async function onSwitchActiveNode(nodeName: string) {
+function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
@@ -1190,20 +1203,12 @@ async function onSwitchActiveNode(nodeName: string) {
 	selectNodes([node.id]);
 }
 
-async function onOpenSelectiveNodeCreator(
+function onOpenSelectiveNodeCreator(
 	node: string,
 	connectionType: NodeConnectionType,
 	connectionIndex: number = 0,
 ) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, connectionIndex });
-}
-
-function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
-}
-
-function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
-	onToggleNodeCreator({ createNodeActive: true, source });
 }
 
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
@@ -1214,12 +1219,25 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	}
 }
 
+function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
+	onToggleNodeCreator({ createNodeActive: true, source });
+}
+
+function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
+}
+
 function onToggleFocusPanel() {
 	if (!isFocusPanelFeatureEnabled.value) {
 		return;
 	}
 
 	focusPanelStore.toggleFocusPanel();
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasKeyboardShortcut',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+	});
 }
 
 function closeNodeCreator() {
@@ -1318,13 +1336,13 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function onOpenExecution(executionId: string) {
+async function onOpenExecution(executionId: string, nodeId?: string) {
 	canvasStore.startLoading();
 
 	resetWorkspace();
 	await initializeData();
 
-	const data = await openExecution(executionId);
+	const data = await openExecution(executionId, nodeId);
 	if (!data) {
 		return;
 	}
@@ -1577,7 +1595,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				isProductionExecutionPreview.value =
 					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
-				await onOpenExecution(json.executionId);
+				await onOpenExecution(json.executionId, json.nodeId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
@@ -2153,7 +2171,11 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<FocusPanel v-if="isFocusPanelFeatureEnabled" :executable="!isCanvasReadOnly" />
+		<FocusPanel
+			v-if="isFocusPanelFeatureEnabled && !isLoading"
+			:is-canvas-read-only="isCanvasReadOnly"
+			@save-keyboard-shortcut="onSaveWorkflow"
+		/>
 	</div>
 </template>
 

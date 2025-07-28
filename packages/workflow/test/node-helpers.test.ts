@@ -3416,6 +3416,104 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is not an object or is an array',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as an array instead of an object
+						values: [] as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when propertyValues is a string',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// This simulates when propertyValues is incorrectly set as a string
+						values: 'invalid value' as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {

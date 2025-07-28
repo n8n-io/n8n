@@ -42,6 +42,7 @@ import {
 	isResourceLocatorParameterType,
 	isValidParameterOption,
 	parseFromExpression,
+	shouldSkipParamValidation,
 } from '@/utils/nodeSettingsUtils';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 
@@ -77,6 +78,7 @@ import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -140,6 +142,7 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -231,12 +234,12 @@ const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => 
 	return props.modelValue as INodeParameterResourceLocator;
 });
 
-const modelValueExpressionEdit = computed<string>(() => {
+const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 	return isResourceLocatorParameter.value && typeof props.modelValue !== 'string'
 		? props.modelValue
-			? ((props.modelValue as INodeParameterResourceLocator).value as string)
+			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
-		: (props.modelValue as string);
+		: props.modelValue;
 });
 
 const editorRows = computed(() => getTypeOption<number>('rows'));
@@ -416,17 +419,19 @@ const getIssues = computed<string[]>(() => {
 		['options', 'multiOptions'].includes(props.parameter.type) &&
 		!remoteParameterOptionsLoading.value &&
 		remoteParameterOptionsLoadingIssues.value === null &&
-		parameterOptions.value
+		parameterOptions.value &&
+		(!isModelValueExpression.value || props.expressionEvaluated !== null)
 	) {
-		// Check if the value resolves to a valid option
-		// Currently it only displays an error in the node itself in
+		// Check if the value resolves to a valid option.
+		// For expressions do not validate if there is no evaluated value.
+		// Currently, it only displays an error in the node itself in
 		// case the value is not valid. The workflow can still be executed
 		// and the error is not displayed on the node in the workflow
 		const validOptions = parameterOptions.value.map((options) => options.value);
 
 		let checkValues: string[] = [];
 
-		if (!nodeSettingsParameters.shouldSkipParamValidation(displayValue.value)) {
+		if (!shouldSkipParamValidation(props.parameter, displayValue.value)) {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
@@ -997,6 +1002,10 @@ async function optionSelected(command: string) {
 
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
+			telemetry.track('User opened focus panel', {
+				source: 'parameterButton',
+				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+			});
 			return;
 	}
 
@@ -1166,6 +1175,7 @@ onUpdated(async () => {
 		@keydown.stop
 	>
 		<ExpressionEditModal
+			v-if="typeof modelValueExpressionEdit === 'string'"
 			:dialog-visible="expressionEditDialogVisible"
 			:model-value="modelValueExpressionEdit"
 			:parameter="parameter"

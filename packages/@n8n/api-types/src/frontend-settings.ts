@@ -13,6 +13,8 @@ export interface IVersionNotificationSettings {
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
+	proxy: string;
+	sourceConfig: string;
 }
 
 export interface ITelemetrySettings {
@@ -202,6 +204,7 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	envFeatureFlags: N8nEnvFeatFlags;
 }
 
 export type FrontendModuleSettings = {
@@ -218,3 +221,6 @@ export type FrontendModuleSettings = {
 		dateRanges: InsightsDateRange[];
 	};
 };
+
+export type N8nEnvFeatFlagValue = boolean | string | number | undefined;
+export type N8nEnvFeatFlags = Record<`N8N_ENV_FEAT_${Uppercase<string>}`, N8nEnvFeatFlagValue>;

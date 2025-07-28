@@ -45,7 +45,7 @@ const perks = computed(() =>
 					{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
 				</N8nButton>
 				<N8nButton type="primary" @click="goToUpgrade">
-					{{ i18n.baseText('insights.upgradeModal.button.upgrade') }}
+					{{ i18n.baseText('generic.upgrade') }}
 				</N8nButton>
 			</div>
 		</template>
