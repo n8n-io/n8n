@@ -1,3 +1,4 @@
+import { lookup } from 'mime-types';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -2169,11 +2170,13 @@ export class Telegram implements INodeType {
 							},
 						);
 
-						const fileName = filePath.split('/').pop();
+						const fileName = filePath.split('/').pop() as string;
+						const mimeType = lookup(fileName) || 'application/octet-stream';
 
 						const data = await this.helpers.prepareBinaryData(
 							file.body as Buffer,
-							fileName as string,
+							fileName,
+							mimeType,
 						);
 
 						returnData.push({
