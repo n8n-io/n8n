@@ -731,10 +731,17 @@ importers:
         version: link:../typescript-config
 
   packages/@n8n/errors:
+    dependencies:
+      callsites:
+        specifier: 'catalog:'
+        version: 3.1.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@sentry/node':
+        specifier: 'catalog:'
+        version: 8.52.1
 
   packages/@n8n/eslint-config:
     dependencies:
@@ -981,6 +988,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../client-oauth2
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../errors
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod
@@ -1205,6 +1215,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../errors
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.52.1
@@ -1792,6 +1805,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.67
     devDependencies:
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../@n8n/errors
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -2670,6 +2686,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../@n8n/errors
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
@@ -2983,6 +3002,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../@n8n/errors
       '@n8n/tournament':
         specifier: 1.0.6
         version: 1.0.6

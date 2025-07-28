@@ -27,6 +27,7 @@
     "bin"
   ],
   "devDependencies": {
+    "@n8n/errors": "workspace:^",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
