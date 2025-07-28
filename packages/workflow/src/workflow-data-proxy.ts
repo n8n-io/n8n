@@ -1075,17 +1075,31 @@ export class WorkflowDataProxy {
 					throw createNodeReferenceError(nodeName);
 				}
 
-				const ensureNodeExecutionData = () => {
+				const ensureNodeExecutionData = (isAfterValidPath = false) => {
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
-							messageTemplate: `Execute node "${nodeName}" for preview`,
-							nodeCause: nodeName,
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
+						if (isAfterValidPath) {
+							// When there's a valid path but no execution data,
+							// show helpful "Execute node for preview" message
+							throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
+								messageTemplate: `Execute node "${nodeName}" for preview`,
+								nodeCause: nodeName,
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+							});
+						} else {
+							// Traditional paired item scenario: no path exists
+							throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
+								messageTemplate: EXPRESSION_ERROR_MESSAGES.NODE_REFERENCE_TEMPLATE,
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+								type: EXPRESSION_ERROR_TYPES.PAIRED_ITEM_NO_CONNECTION,
+								descriptionKey: EXPRESSION_DESCRIPTION_KEYS.NO_NODE_EXECUTION_DATA,
+								nodeCause: nodeName,
+							});
+						}
 					}
 				};
 
@@ -1103,7 +1117,10 @@ export class WorkflowDataProxy {
 						contextNode = parentMainInputNode?.name ?? contextNode;
 					}
 
-					if (!that.workflow.hasPath(nodeName, contextNode)) {
+					// For .first(), .last(), .all() methods, use unidirectional path checking
+					// (forward only) to maintain traditional paired item behavior
+					const hasForwardPath = that.workflow.getChildNodes(nodeName).includes(contextNode);
+					if (!hasForwardPath) {
 						throw createNodeReferenceError(nodeName);
 					}
 				};
@@ -1160,7 +1177,7 @@ export class WorkflowDataProxy {
 									throw createNodeReferenceError(nodeName);
 								}
 
-								ensureNodeExecutionData();
+								ensureNodeExecutionData(true); // Path validated, show helpful message
 
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
@@ -1239,7 +1256,7 @@ export class WorkflowDataProxy {
 
 							if (property === 'first') {
 								ensureValidPath();
-								ensureNodeExecutionData();
+								ensureNodeExecutionData(true); // Path validated, show helpful message
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
@@ -1258,7 +1275,7 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'last') {
 								ensureValidPath();
-								ensureNodeExecutionData();
+								ensureNodeExecutionData(true); // Path validated, show helpful message
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
@@ -1280,7 +1297,7 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'all') {
 								ensureValidPath();
-								ensureNodeExecutionData();
+								ensureNodeExecutionData(true); // Path validated, show helpful message
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
 										branchIndex ??
