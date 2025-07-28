@@ -15,7 +15,7 @@
 		},
 		"lint:fix": {},
 		"test": {
-			"dependsOn": ["^build", "build", "n8n-nodes-base#build"],
+			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
 		"watch": { "cache": false, "persistent": true },
