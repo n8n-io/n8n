@@ -51,6 +51,7 @@ export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
+export { CronLoggingConfig } from './configs/logging.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
