@@ -82,13 +82,12 @@ describe('CanvasNodeAIPrompt', () => {
 		isNewWorkflow.value = false;
 	});
 
-	// A. Snapshot Test
+	// Snapshot Test
 	it('should render component correctly', () => {
 		const { html } = renderComponent();
 		expect(html()).toMatchSnapshot();
 	});
 
-	// B. Disabled State Tests
 	describe('disabled state', () => {
 		it('should disable textarea when builder is streaming', () => {
 			streaming.value = true;
@@ -114,7 +113,6 @@ describe('CanvasNodeAIPrompt', () => {
 		});
 	});
 
-	// C. Form Submission Tests
 	describe('form submission', () => {
 		it('should submit form on Cmd+Enter keyboard shortcut', async () => {
 			const { container } = renderComponent();
@@ -204,7 +202,6 @@ describe('CanvasNodeAIPrompt', () => {
 		});
 	});
 
-	// D. Suggestion Pills Tests
 	describe('suggestion pills', () => {
 		it('should render all workflow suggestions', () => {
 			const { container } = renderComponent();
@@ -301,7 +298,6 @@ describe('CanvasNodeAIPrompt', () => {
 		});
 	});
 
-	// E. Manual Node Creation Test
 	describe('manual node creation', () => {
 		it('should open node creator when "Add node manually" is clicked', async () => {
 			const { container } = renderComponent();
@@ -317,24 +313,22 @@ describe('CanvasNodeAIPrompt', () => {
 		});
 	});
 
-	// G. Event Propagation Tests
 	describe('event propagation', () => {
-		it('should stop propagation of mouse events on prompt container', async () => {
-			const { container } = renderComponent();
-			const promptContainer = container.querySelector('.promptContainer');
+		it.each(['click', 'dblclick', 'mousedown', 'scroll', 'wheel'])(
+			'should stop propagation of %s event on prompt container',
+			async (eventType) => {
+				const { container } = renderComponent();
+				const promptContainer = container.querySelector('.promptContainer');
 
-			if (!promptContainer) throw new Error('Prompt container not found');
+				if (!promptContainer) throw new Error('Prompt container not found');
 
-			const events = ['click', 'dblclick', 'mousedown', 'scroll', 'wheel'];
-
-			for (const eventType of events) {
 				const event = new Event(eventType, { bubbles: true });
 				const stopPropagationSpy = vi.spyOn(event, 'stopPropagation');
 
 				promptContainer.dispatchEvent(event);
 
 				expect(stopPropagationSpy).toHaveBeenCalled();
-			}
-		});
+			},
+		);
 	});
 });
