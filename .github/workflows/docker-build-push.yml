@@ -166,26 +166,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          run_install: false
-
-      - name: Setup Node.js
-        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
-        with:
-          node-version: 22.x
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        shell: bash
-
-      - name: Configure Turborepo Cache
-        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
-
-      - name: Build n8n for Docker
-        run: pnpm build:n8n
-        shell: bash
+          build-command: pnpm build:n8n
 
       - name: Determine Docker tags
         id: determine-tags
