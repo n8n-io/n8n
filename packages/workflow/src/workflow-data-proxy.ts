@@ -1080,7 +1080,12 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createNodeReferenceError(nodeName);
+						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
+							messageTemplate: `Execute node "${nodeName}" for preview`,
+							nodeCause: nodeName,
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						});
 					}
 				};
 
