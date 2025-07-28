@@ -199,7 +199,7 @@ export class GlobalConfig {
 	editorBaseUrl: string = '';
 
 	/** URLs to external frontend hooks files, separated by semicolons. */
-	@Env('N8N_EXTERNAL_FRONTEND_HOOKS_URLS')
+	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
 	externalFrontendHooksUrls: string = '';
 
 	@Nested
