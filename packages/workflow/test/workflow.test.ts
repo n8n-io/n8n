@@ -2362,6 +2362,479 @@ describe('Workflow', () => {
 			const result = WORKFLOW_WITH_LOOPS.getParentMainInputNode(set1Node);
 			expect(result).toBe(set1Node);
 		});
+
+		describe('nodes with only main outputs', () => {
+			test('should return the same node when it only has main outputs', () => {
+				const nodes: INode[] = [
+					{
+						id: '1',
+						name: 'SimpleNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'TargetNode',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [200, 100],
+						parameters: {},
+					},
+				];
+
+				const connections = {
+					SimpleNode: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+
+				const workflow = new Workflow({
+					id: 'test',
+					nodes,
+					connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const simpleNode = workflow.getNode('SimpleNode')!;
+				const result = workflow.getParentMainInputNode(simpleNode);
+
+				expect(result).toBe(simpleNode);
+				expect(result!.name).toBe('SimpleNode');
+			});
+
+			test('should return the same node when it has no connections', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'IsolatedNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				const isolatedNode = workflow.getNode('IsolatedNode')!;
+				const result = workflow.getParentMainInputNode(isolatedNode);
+
+				expect(result).toBe(isolatedNode);
+				expect(result!.name).toBe('IsolatedNode');
+			});
+		});
+
+		describe('nodes with non-main outputs (AI/Tool connections)', () => {
+			test('should follow AI tool connection to find main input node', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'ToolNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'AgentNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						ToolNode: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'AgentNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const toolNode = workflow.getNode('ToolNode')!;
+				const result = workflow.getParentMainInputNode(toolNode);
+
+				expect(result!.name).toBe('AgentNode');
+			});
+
+			test('should follow AI memory connection to find main input node', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'MemoryNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'ChatNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						MemoryNode: {
+							[NodeConnectionTypes.AiMemory]: [
+								[{ node: 'ChatNode', type: NodeConnectionTypes.AiMemory, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const memoryNode = workflow.getNode('MemoryNode')!;
+				const result = workflow.getParentMainInputNode(memoryNode);
+
+				expect(result!.name).toBe('ChatNode');
+			});
+
+			test('should handle mixed main and non-main outputs', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'MixedNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'MainTarget',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'ToolTarget',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 200],
+							parameters: {},
+						},
+					],
+					connections: {
+						MixedNode: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'MainTarget', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'ToolTarget', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const mixedNode = workflow.getNode('MixedNode')!;
+				const result = workflow.getParentMainInputNode(mixedNode);
+
+				// Should follow the first non-main connection (AiTool)
+				expect(result!.name).toBe('ToolTarget');
+			});
+		});
+
+		describe('chain traversal scenarios', () => {
+			test('should follow a chain of AI connections until reaching main input node', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'StartTool',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'MiddleTool',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'FinalAgent',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [300, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						StartTool: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'MiddleTool', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+						MiddleTool: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'FinalAgent', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const startTool = workflow.getNode('StartTool')!;
+				const result = workflow.getParentMainInputNode(startTool);
+
+				expect(result!.name).toBe('FinalAgent');
+			});
+
+			test('should handle chain that ends with a node having only main outputs', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'ToolNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'IntermediateNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'EndNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [300, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						ToolNode: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'IntermediateNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+						IntermediateNode: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'EndNode', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const toolNode = workflow.getNode('ToolNode')!;
+				const result = workflow.getParentMainInputNode(toolNode);
+
+				expect(result!.name).toBe('IntermediateNode');
+			});
+
+			test('should handle complex multi-branch AI connections', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'MultiTool',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Agent1',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 50],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Agent2',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [200, 150],
+							parameters: {},
+						},
+					],
+					connections: {
+						MultiTool: {
+							[NodeConnectionTypes.AiTool]: [
+								[
+									{ node: 'Agent1', type: NodeConnectionTypes.AiTool, index: 0 },
+									{ node: 'Agent2', type: NodeConnectionTypes.AiTool, index: 0 },
+								],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const multiTool = workflow.getNode('MultiTool')!;
+				const result = workflow.getParentMainInputNode(multiTool);
+
+				// Should follow the first connection in the array
+				expect(result!.name).toBe('Agent1');
+			});
+		});
+
+		describe('edge cases', () => {
+			test('should handle null node input', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const result = workflow.getParentMainInputNode(null as any);
+				expect(result).toBeNull();
+			});
+
+			test('should handle undefined node input', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const result = workflow.getParentMainInputNode(undefined as any);
+				expect(result).toBeUndefined();
+			});
+
+			test('should throw error when connected node does not exist in workflow', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'ToolNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						ToolNode: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'NonExistentNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const toolNode = workflow.getNode('ToolNode')!;
+
+				expect(() => {
+					workflow.getParentMainInputNode(toolNode);
+				}).toThrow('Node "NonExistentNode" not found');
+			});
+
+			test('should handle empty connection arrays', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'EmptyConnectionNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						EmptyConnectionNode: {
+							[NodeConnectionTypes.AiTool]: [
+								[], // Empty connection array
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const emptyConnectionNode = workflow.getNode('EmptyConnectionNode')!;
+				const result = workflow.getParentMainInputNode(emptyConnectionNode);
+
+				expect(result).toBe(emptyConnectionNode);
+			});
+
+			test('should handle null connections in connection array', () => {
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [
+						{
+							id: '1',
+							name: 'NullConnectionNode',
+							type: 'test.set',
+							typeVersion: 1,
+							position: [100, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						NullConnectionNode: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: '', type: NodeConnectionTypes.AiTool, index: 0 }], // Connection with empty node name
+							],
+						},
+					},
+					active: false,
+					nodeTypes,
+				});
+
+				const nullConnectionNode = workflow.getNode('NullConnectionNode')!;
+				const result = workflow.getParentMainInputNode(nullConnectionNode);
+
+				expect(result).toBe(nullConnectionNode);
+			});
+		});
 	});
 
 	describe('getNodeConnectionIndexes', () => {

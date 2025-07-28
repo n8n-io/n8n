@@ -11,7 +11,8 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"types": ["node", "jest"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts"]
 }

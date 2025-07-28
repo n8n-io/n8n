@@ -126,7 +126,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
-		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
 		if (hooksUrls) {

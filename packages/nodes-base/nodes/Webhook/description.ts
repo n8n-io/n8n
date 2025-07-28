@@ -164,7 +164,7 @@ export const responseModePropertyStreaming: INodeProperties = {
 	options: [
 		...responseModeOptions,
 		{
-			name: 'Streaming Response',
+			name: 'Streaming',
 			value: 'streaming',
 			description: 'Returns data in real time from streaming enabled nodes',
 		},

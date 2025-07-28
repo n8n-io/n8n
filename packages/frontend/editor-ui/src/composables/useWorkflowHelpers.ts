@@ -169,7 +169,7 @@ function resolveParameterImpl<T = IDataObject>(
 	let contextNode = activeNode;
 
 	if (activeNode) {
-		contextNode = workflow.getParentMainInputNode(activeNode);
+		contextNode = workflow.getParentMainInputNode(activeNode) ?? null;
 	}
 
 	const workflowRunData = executionData?.data?.resultData.runData ?? null;

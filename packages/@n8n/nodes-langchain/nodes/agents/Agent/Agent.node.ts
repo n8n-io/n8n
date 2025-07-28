@@ -27,8 +27,7 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			// We keep defaultVersion as 2.1 to ensure we publish streaming when everything is ready
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

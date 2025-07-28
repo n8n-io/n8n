@@ -451,7 +451,8 @@ export class ScheduleTrigger implements INodeType {
 		if (this.getMode() !== 'manual') {
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
-					this.helpers.registerCron(cronExpression, () => executeTrigger(recurrence));
+					const cron = { expression: cronExpression, recurrence };
+					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {

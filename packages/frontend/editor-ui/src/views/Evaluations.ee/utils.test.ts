@@ -1,421 +1,1198 @@
 import { describe, it, expect } from 'vitest';
-import { getTestCasesColumns } from './utils';
-import type { TestCaseExecutionRecord } from '../../api/evaluation.ee';
-import { mock } from 'vitest-mock-extended';
+import {
+	applyCachedSortOrder,
+	applyCachedVisibility,
+	getDefaultOrderedColumns,
+	getTestCasesColumns,
+	getTestTableHeaders,
+} from './utils';
+import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
 
 describe('utils', () => {
+	describe('applyCachedSortOrder', () => {
+		it('should reorder columns according to cached order', () => {
+			const defaultOrder = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+				{
+					key: 'metrics.executionTime',
+					label: 'executionTime',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const cachedOrder = [
+				'metrics.accuracy',
+				'inputs.query',
+				'metrics.executionTime',
+				'outputs.result',
+			];
+
+			const result = applyCachedSortOrder(defaultOrder, cachedOrder);
+
+			expect(result).toEqual([
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'metrics.executionTime',
+					label: 'executionTime',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+			]);
+		});
+
+		it('should handle extra keys in both cached order and default order', () => {
+			const defaultOrder = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'inputs.limit',
+					label: 'limit',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				}, // Extra key not in cached order
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+				{
+					key: 'outputs.count',
+					label: 'count',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				}, // Extra key not in cached order
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+				{
+					key: 'metrics.executionTime',
+					label: 'executionTime',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				}, // Extra key not in cached order
+			];
+
+			const cachedOrder = [
+				'metrics.accuracy',
+				'metrics.nonexistent1', // Extra key not in default order
+				'inputs.query',
+				'metrics.nonexistent2', // Extra key not in default order
+				'outputs.result',
+				'metrics.nonexistent3', // Extra key not in default order
+			];
+
+			const result = applyCachedSortOrder(defaultOrder, cachedOrder);
+
+			expect(result).toEqual([
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{ key: 'metrics.nonexistent1', disabled: true },
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{ key: 'metrics.nonexistent2', disabled: true },
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+				{ key: 'metrics.nonexistent3', disabled: true },
+				{
+					key: 'inputs.limit',
+					label: 'limit',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.count',
+					label: 'count',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+				{
+					key: 'metrics.executionTime',
+					label: 'executionTime',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+			]);
+		});
+
+		it('should handle empty cached order and return default order unchanged', () => {
+			const defaultOrder = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const result = applyCachedSortOrder(defaultOrder, []);
+
+			expect(result).toEqual(defaultOrder);
+		});
+
+		it('should handle undefined cached order and return default order unchanged', () => {
+			const defaultOrder = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const result = applyCachedSortOrder(defaultOrder, undefined);
+
+			expect(result).toEqual(defaultOrder);
+		});
+
+		it('should handle cached order with all keys not in default order', () => {
+			const defaultOrder = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const cachedOrder = ['metrics.accuracy', 'metrics.speed', 'outputs.error'];
+
+			const result = applyCachedSortOrder(defaultOrder, cachedOrder);
+
+			expect(result).toEqual([
+				{ key: 'metrics.accuracy', disabled: true },
+				{ key: 'metrics.speed', disabled: true },
+				{ key: 'outputs.error', disabled: true },
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+			]);
+		});
+	});
+
+	describe('applyCachedVisibility', () => {
+		it('should apply visibility settings to columns', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const visibility = {
+				'inputs.query': false,
+				'metrics.accuracy': true,
+			};
+
+			const result = applyCachedVisibility(columns, visibility);
+
+			expect(result).toEqual([
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: false,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+			]);
+		});
+
+		it('should not modify disabled columns', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{ key: 'metrics.nonexistent', disabled: true as const },
+			];
+
+			const visibility = {
+				'inputs.query': false,
+				'metrics.nonexistent': true,
+			};
+
+			const result = applyCachedVisibility(columns, visibility);
+
+			expect(result).toEqual([
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: false,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{ key: 'metrics.nonexistent', disabled: true },
+			]);
+		});
+
+		it('should return original columns when visibility is undefined', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: false,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const result = applyCachedVisibility(columns, undefined);
+
+			expect(result).toEqual(columns);
+		});
+
+		it('should preserve original visibility for keys not in visibility object', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: false,
+					disabled: false,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const visibility = {
+				'inputs.query': false,
+			};
+
+			const result = applyCachedVisibility(columns, visibility);
+
+			expect(result).toEqual([
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: false,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: false,
+					disabled: false,
+					columnType: 'outputs',
+				},
+			]);
+		});
+	});
+
 	describe('getTestCasesColumns', () => {
-		const mockTestCases: TestCaseExecutionRecord[] = [
-			mock<TestCaseExecutionRecord>({
-				id: 'test-case-1',
-				testRunId: 'test-run-1',
-				executionId: 'execution-1',
-				status: 'completed',
-				createdAt: '2023-10-01T10:00:00Z',
-				updatedAt: '2023-10-01T10:00:00Z',
-				runAt: '2023-10-01T10:00:00Z',
-				inputs: {
-					query: 'test query',
-					limit: 10,
-					category: 'test',
+		it('should extract unique input column names from test cases', () => {
+			const testCases: TestCaseExecutionRecord[] = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test', limit: 10 },
+					outputs: { result: 'success' },
 				},
-				outputs: {
-					result: 'success',
-					count: 5,
+				{
+					id: '2',
+					testRunId: 'run1',
+					executionId: 'exec2',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test2', offset: 5 },
+					outputs: { result: 'success', count: 3 },
 				},
-				metrics: {
-					accuracy: 0.95,
-				},
-			}),
-			mock<TestCaseExecutionRecord>({
-				id: 'test-case-2',
-				testRunId: 'test-run-1',
-				executionId: 'execution-2',
-				status: 'completed',
-				createdAt: '2023-10-01T10:01:00Z',
-				updatedAt: '2023-10-01T10:01:00Z',
-				runAt: '2023-10-01T10:01:00Z',
-				inputs: {
-					query: 'another query',
-					limit: 20,
-					filter: 'active',
-				},
-				outputs: {
-					result: 'success',
-					data: { items: [] },
-				},
-				metrics: {
-					accuracy: 0.88,
-				},
-			}),
-			mock<TestCaseExecutionRecord>({
-				id: 'test-case-3',
-				testRunId: 'test-run-1',
-				executionId: 'execution-3',
-				status: 'error',
-				createdAt: '2023-10-01T10:02:00Z',
-				updatedAt: '2023-10-01T10:02:00Z',
-				runAt: '2023-10-01T10:02:00Z',
-				inputs: {
-					query: 'error query',
-					timeout: 5000,
-				},
-				outputs: {
-					error: 'timeout occurred',
-				},
-				metrics: {
-					accuracy: 0.0,
-				},
-			}),
-		];
+			];
 
-		it('should extract input columns from test cases', () => {
-			const columns = getTestCasesColumns(mockTestCases, 'inputs');
+			const inputColumns = getTestCasesColumns(testCases, 'inputs');
+			const outputColumns = getTestCasesColumns(testCases, 'outputs');
 
-			expect(columns).toHaveLength(5);
-
-			const columnProps = columns.map((col) => col.prop);
-			expect(columnProps).toContain('inputs.query');
-			expect(columnProps).toContain('inputs.limit');
-			expect(columnProps).toContain('inputs.category');
-			expect(columnProps).toContain('inputs.filter');
-			expect(columnProps).toContain('inputs.timeout');
+			expect(inputColumns.sort()).toEqual(['limit', 'offset', 'query']);
+			expect(outputColumns.sort()).toEqual(['count', 'result']);
 		});
 
-		it('should extract output columns from test cases', () => {
-			const columns = getTestCasesColumns(mockTestCases, 'outputs');
+		it('should return empty array when test cases have no inputs/outputs', () => {
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+				},
+			];
 
-			expect(columns).toHaveLength(4);
+			const inputColumns = getTestCasesColumns(testCases, 'inputs');
+			const outputColumns = getTestCasesColumns(testCases, 'outputs');
 
-			const columnProps = columns.map((col) => col.prop);
-			expect(columnProps).toContain('outputs.result');
-			expect(columnProps).toContain('outputs.count');
-			expect(columnProps).toContain('outputs.data');
-			expect(columnProps).toContain('outputs.error');
-		});
-
-		it('should return columns with correct structure', () => {
-			const columns = getTestCasesColumns(mockTestCases, 'inputs');
-			const firstColumn = columns[0];
-
-			expect(firstColumn).toHaveProperty('prop');
-			expect(firstColumn).toHaveProperty('label');
-			expect(firstColumn).toHaveProperty('sortable', true);
-			expect(firstColumn).toHaveProperty('filter', true);
-			expect(firstColumn).toHaveProperty('showHeaderTooltip', true);
-		});
-
-		it('should set correct label for columns', () => {
-			const columns = getTestCasesColumns(mockTestCases, 'inputs');
-			const queryColumn = columns.find((col) => col.prop === 'inputs.query');
-
-			expect(queryColumn?.label).toBe('query');
+			expect(inputColumns).toEqual([]);
+			expect(outputColumns).toEqual([]);
 		});
 
 		it('should handle empty test cases array', () => {
-			const columns = getTestCasesColumns([], 'inputs');
+			const inputColumns = getTestCasesColumns([], 'inputs');
+			const outputColumns = getTestCasesColumns([], 'outputs');
 
-			expect(columns).toHaveLength(0);
+			expect(inputColumns).toEqual([]);
+			expect(outputColumns).toEqual([]);
 		});
 
-		it('should handle test cases with no inputs', () => {
-			const testCasesWithoutInputs: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {},
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
-			];
-
-			const columns = getTestCasesColumns(testCasesWithoutInputs, 'inputs');
-
-			expect(columns).toHaveLength(0);
-		});
-
-		it('should handle test cases with no outputs', () => {
-			const testCasesWithoutOutputs: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						query: 'test',
-					},
-					outputs: {},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
-			];
-
-			const columns = getTestCasesColumns(testCasesWithoutOutputs, 'outputs');
-
-			expect(columns).toHaveLength(0);
-		});
-
-		it('should handle test cases with undefined inputs', () => {
-			const testCasesWithUndefinedInputs: TestCaseExecutionRecord[] = [
+		it('should handle test cases with null/undefined inputs/outputs', () => {
+			const testCases = [
 				{
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: undefined,
+					outputs: undefined,
+				},
+				{
+					id: '2',
+					testRunId: 'run1',
+					executionId: 'exec2',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test' },
 				},
 			];
 
-			const columns = getTestCasesColumns(testCasesWithUndefinedInputs, 'inputs');
+			const inputColumns = getTestCasesColumns(testCases, 'inputs');
+			const outputColumns = getTestCasesColumns(testCases, 'outputs');
 
-			expect(columns).toHaveLength(0);
+			expect(inputColumns).toEqual(['query']);
+			expect(outputColumns).toEqual([]);
 		});
+	});
 
-		it('should handle test cases with undefined outputs', () => {
-			const testCasesWithUndefinedOutputs: TestCaseExecutionRecord[] = [
+	describe('getDefaultOrderedColumns', () => {
+		it('should return default column order with inputs, outputs, metrics, and special columns', () => {
+			const run = {
+				id: 'run1',
+				workflowId: 'workflow1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				completedAt: '2023-01-01',
+				metrics: {
+					accuracy: 0.95,
+					precision: 0.88,
+					promptTokens: 100,
+					completionTokens: 50,
+					executionTime: 1.5,
+				},
+			};
+
+			const testCases = [
 				{
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						query: 'test',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test', limit: 10 },
+					outputs: { result: 'success', count: 3 },
 				},
 			];
 
-			const columns = getTestCasesColumns(testCasesWithUndefinedOutputs, 'outputs');
+			const result = getDefaultOrderedColumns(run, testCases);
 
-			expect(columns).toHaveLength(0);
+			expect(result).toEqual([
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'inputs.limit',
+					label: 'limit',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+				{
+					key: 'outputs.count',
+					label: 'count',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'metrics.precision',
+					label: 'precision',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'metrics.promptTokens',
+					label: 'promptTokens',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'metrics.completionTokens',
+					label: 'completionTokens',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'metrics.executionTime',
+					label: 'executionTime',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+			]);
 		});
 
-		it('should handle mixed test cases with some having empty inputs/outputs', () => {
-			const mixedTestCases: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						query: 'test query',
-						limit: 10,
-					},
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-2',
-					testRunId: 'test-run-1',
-					executionId: 'execution-2',
-					status: 'completed',
-					createdAt: '2023-10-01T10:01:00Z',
-					updatedAt: '2023-10-01T10:01:00Z',
-					runAt: '2023-10-01T10:01:00Z',
+		it('should handle undefined run and test cases', () => {
+			const result = getDefaultOrderedColumns(undefined, undefined);
+
+			expect(result).toEqual([]);
+		});
+
+		it('should handle run without metrics', () => {
+			const run = {
+				id: 'run1',
+				workflowId: 'workflow1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				completedAt: '2023-01-01',
+			};
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test' },
+					outputs: { result: 'success' },
+				},
+			];
+
+			const result = getDefaultOrderedColumns(run, testCases);
+
+			expect(result).toEqual([
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false,
+					columnType: 'inputs',
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false,
+					columnType: 'outputs',
+				},
+			]);
+		});
+
+		it('should only include special metric columns that exist in run metrics', () => {
+			const run = {
+				id: 'run1',
+				workflowId: 'workflow1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				completedAt: '2023-01-01',
+				metrics: {
+					accuracy: 0.95,
+					promptTokens: 100,
+					// Missing completionTokens, totalTokens, executionTime
+				},
+			};
+
+			const result = getDefaultOrderedColumns(run, []);
+
+			expect(result).toEqual([
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+				{
+					key: 'metrics.promptTokens',
+					label: 'promptTokens',
+					visible: true,
+					disabled: false,
+					columnType: 'metrics',
+					numeric: true,
+				},
+			]);
+		});
+	});
+
+	describe('getHeaders', () => {
+		it('should convert visible enabled columns to headers', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false as const,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: false,
+					disabled: false as const,
+					columnType: 'outputs' as const,
+				},
+				{ key: 'metrics.disabled', disabled: true as const },
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' },
+					metrics: { accuracy: 0.95 },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].prop).toBe('inputs.query');
+			expect(result[0].label).toBe('query');
+			expect(result[0].sortable).toBe(true);
+			expect(result[0].showHeaderTooltip).toBe(true);
+
+			expect(result[1].prop).toBe('metrics.accuracy');
+			expect(result[1].label).toBe('accuracy');
+		});
+
+		it('should format numeric values correctly in formatter', () => {
+			const columns = [
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false as const,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					metrics: { accuracy: 0.95678 },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+			const formatter = result[0]?.formatter;
+
+			const testRow = {
+				id: '1',
+				testRunId: 'run1',
+				executionId: 'exec1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				metrics: { accuracy: 0.95678 },
+				index: 1,
+			};
+
+			expect(formatter).toBeDefined();
+			expect(formatter!(testRow)).toBe('0.96');
+		});
+
+		it('should format object values as JSON string in formatter', () => {
+			const columns = [
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false as const,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					outputs: { result: { status: 'success', data: [1, 2, 3] } },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+			const formatter = result[0]?.formatter;
+
+			const testRow = {
+				id: '1',
+				testRunId: 'run1',
+				executionId: 'exec1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				outputs: { result: { status: 'success', data: [1, 2, 3] } },
+				index: 1,
+			};
+
+			expect(formatter).toBeDefined();
+			if (formatter) {
+				const formatted = formatter(testRow);
+				expect(formatted).toBe(JSON.stringify({ status: 'success', data: [1, 2, 3] }, null, 2));
+			}
+		});
+
+		it('should format primitive values as strings in formatter', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test query' },
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+			const formatter = result[0]?.formatter;
+
+			const testRow = {
+				id: '1',
+				testRunId: 'run1',
+				executionId: 'exec1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				inputs: { query: 'test query' },
+				index: 1,
+			};
+
+			expect(formatter).toBeDefined();
+			if (formatter) {
+				expect(formatter(testRow)).toBe('test query');
+			}
+		});
+
+		it('should handle missing values in formatter', () => {
+			const columns = [
+				{
+					key: 'inputs.missing',
+					label: 'missing',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
 					inputs: {},
-					outputs: {
-						result: 'success',
-						count: 5,
-					},
-					metrics: {
-						accuracy: 0.88,
-					},
-				}),
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-3',
-					testRunId: 'test-run-1',
-					executionId: 'execution-3',
-					status: 'completed',
-					createdAt: '2023-10-01T10:02:00Z',
-					updatedAt: '2023-10-01T10:02:00Z',
-					runAt: '2023-10-01T10:02:00Z',
-					inputs: {
-						filter: 'active',
-					},
-					outputs: {},
-					metrics: {
-						accuracy: 0.92,
-					},
-				}),
+				},
 			];
 
-			const inputColumns = getTestCasesColumns(mixedTestCases, 'inputs');
-			const outputColumns = getTestCasesColumns(mixedTestCases, 'outputs');
+			const result = getTestTableHeaders(columns, testCases);
+			const formatter = result[0]?.formatter;
 
-			expect(inputColumns).toHaveLength(3);
-			expect(outputColumns).toHaveLength(2);
+			const testRow = {
+				id: '1',
+				testRunId: 'run1',
+				executionId: 'exec1',
+				status: 'completed' as const,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				runAt: '2023-01-01',
+				inputs: {},
+				index: 1,
+			};
 
-			const inputProps = inputColumns.map((col) => col.prop);
-			expect(inputProps).toContain('inputs.query');
-			expect(inputProps).toContain('inputs.limit');
-			expect(inputProps).toContain('inputs.filter');
-
-			const outputProps = outputColumns.map((col) => col.prop);
-			expect(outputProps).toContain('outputs.result');
-			expect(outputProps).toContain('outputs.count');
+			expect(formatter).toBeDefined();
+			if (formatter) {
+				expect(formatter(testRow)).toBe('undefined');
+			}
 		});
 
-		it('should remove duplicate columns from multiple test cases', () => {
-			const testCasesWithDuplicates: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						query: 'test query 1',
-						limit: 10,
-					},
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-2',
-					testRunId: 'test-run-1',
-					executionId: 'execution-2',
-					status: 'completed',
-					createdAt: '2023-10-01T10:01:00Z',
-					updatedAt: '2023-10-01T10:01:00Z',
-					runAt: '2023-10-01T10:01:00Z',
-					inputs: {
-						query: 'test query 2',
-						limit: 20,
-					},
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.88,
-					},
-				}),
+		it('should filter out disabled and invisible columns', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: false,
+					disabled: false as const,
+					columnType: 'outputs' as const,
+				},
+				{ key: 'metrics.disabled', disabled: true as const },
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false as const,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
 			];
 
-			const inputColumns = getTestCasesColumns(testCasesWithDuplicates, 'inputs');
-			const outputColumns = getTestCasesColumns(testCasesWithDuplicates, 'outputs');
-
-			expect(inputColumns).toHaveLength(2);
-			expect(outputColumns).toHaveLength(1);
-		});
-
-		it('should handle complex nested object keys', () => {
-			const testCasesWithComplexKeys: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						'user.name': 'John Doe',
-						'user.email': 'john@example.com',
-						'config.timeout': 5000,
-						'config.retries': 3,
-					},
-					outputs: {
-						'response.status': 200,
-						'response.data': { success: true },
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'test' },
+					metrics: { accuracy: 0.95 },
+				},
 			];
 
-			const inputColumns = getTestCasesColumns(testCasesWithComplexKeys, 'inputs');
-			const outputColumns = getTestCasesColumns(testCasesWithComplexKeys, 'outputs');
+			const result = getTestTableHeaders(columns, testCases);
 
-			expect(inputColumns).toHaveLength(4);
-			expect(outputColumns).toHaveLength(2);
-
-			const inputLabels = inputColumns.map((col) => col.label);
-			expect(inputLabels).toContain('user.name');
-			expect(inputLabels).toContain('user.email');
-			expect(inputLabels).toContain('config.timeout');
-			expect(inputLabels).toContain('config.retries');
-
-			const outputLabels = outputColumns.map((col) => col.label);
-			expect(outputLabels).toContain('response.status');
-			expect(outputLabels).toContain('response.data');
+			expect(result).toHaveLength(2);
+			expect(result[0]?.prop).toBe('inputs.query');
+			expect(result[1]?.prop).toBe('metrics.accuracy');
 		});
 
-		it('should maintain consistent column order across multiple calls', () => {
-			const columns1 = getTestCasesColumns(mockTestCases, 'inputs');
-			const columns2 = getTestCasesColumns(mockTestCases, 'inputs');
-
-			expect(columns1.map((col) => col.prop)).toEqual(columns2.map((col) => col.prop));
-		});
-
-		it('should handle single test case', () => {
-			const singleTestCase: TestCaseExecutionRecord[] = [
-				mock<TestCaseExecutionRecord>({
-					id: 'test-case-1',
-					testRunId: 'test-run-1',
-					executionId: 'execution-1',
-					status: 'completed',
-					createdAt: '2023-10-01T10:00:00Z',
-					updatedAt: '2023-10-01T10:00:00Z',
-					runAt: '2023-10-01T10:00:00Z',
-					inputs: {
-						query: 'single test',
-					},
-					outputs: {
-						result: 'success',
-					},
-					metrics: {
-						accuracy: 0.95,
-					},
-				}),
+		it('should set minWidth to 125 for short content', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
 			];
 
-			const inputColumns = getTestCasesColumns(singleTestCase, 'inputs');
-			const outputColumns = getTestCasesColumns(singleTestCase, 'outputs');
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' }, // 5 characters, <= 10
+				},
+			];
 
-			expect(inputColumns).toHaveLength(1);
-			expect(outputColumns).toHaveLength(1);
-			expect(inputColumns[0].prop).toBe('inputs.query');
-			expect(outputColumns[0].prop).toBe('outputs.result');
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(125);
+		});
+
+		it('should set minWidth to 250 for long content', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'this is a very long query string' }, // > 10 characters
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250);
+		});
+
+		it('should set minWidth to 250 for long numeric content when formatted', () => {
+			const columns = [
+				{
+					key: 'metrics.accuracy',
+					label: 'accuracy',
+					visible: true,
+					disabled: false as const,
+					columnType: 'metrics' as const,
+					numeric: true,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					metrics: { accuracy: 999999.999999 }, // When formatted to 2 decimals: "999999.00" (9 chars, still <= 10)
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(125); // Short content
+		});
+
+		it('should set minWidth to 250 for long JSON content', () => {
+			const columns = [
+				{
+					key: 'outputs.result',
+					label: 'result',
+					visible: true,
+					disabled: false as const,
+					columnType: 'outputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					outputs: { result: { status: 'success', data: [1, 2, 3], message: 'completed' } }, // Long JSON string
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250);
+		});
+
+		it('should check all test cases to determine minWidth', () => {
+			const columns = [
+				{
+					key: 'inputs.query',
+					label: 'query',
+					visible: true,
+					disabled: false as const,
+					columnType: 'inputs' as const,
+				},
+			];
+
+			const testCases = [
+				{
+					id: '1',
+					testRunId: 'run1',
+					executionId: 'exec1',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'short' }, // 5 characters
+				},
+				{
+					id: '2',
+					testRunId: 'run1',
+					executionId: 'exec2',
+					status: 'completed' as const,
+					createdAt: '2023-01-01',
+					updatedAt: '2023-01-01',
+					runAt: '2023-01-01',
+					inputs: { query: 'this is a very long query' }, // > 10 characters
+				},
+			];
+
+			const result = getTestTableHeaders(columns, testCases);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.minWidth).toBe(250); // Should be 250 because second test case has long content
 		});
 	});
 });

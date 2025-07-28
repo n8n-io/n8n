@@ -10,7 +10,11 @@ export class WorkflowComposer {
 	 * Executes a successful workflow and waits for the notification to be closed.
 	 * This waits for http calls and also closes the notification.
 	 */
-	async executeWorkflowAndWaitForNotification(notificationMessage: string) {
+	async executeWorkflowAndWaitForNotification(
+		notificationMessage: string,
+		options: { timeout?: number } = {},
+	) {
+		const { timeout = 3000 } = options;
 		const responsePromise = this.n8n.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') &&
@@ -20,6 +24,6 @@ export class WorkflowComposer {
 
 		await this.n8n.canvas.clickExecuteWorkflowButton();
 		await responsePromise;
-		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage);
+		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, { timeout });
 	}
 }

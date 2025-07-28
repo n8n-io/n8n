@@ -24,12 +24,13 @@ vi.mock('vue-router', () => {
 	};
 });
 
-async function createPiniaStore(isActiveNode: boolean) {
-	const node = mockNodes[0];
+async function createPiniaStore(
+	{ activeNodeName }: { activeNodeName: string | null } = { activeNodeName: null },
+) {
 	const workflow = mock<IWorkflowDb>({
 		connections: {},
 		active: true,
-		nodes: [node],
+		nodes: mockNodes,
 	});
 
 	const pinia = createPinia();
@@ -41,11 +42,12 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
+	workflowsStore.nodeMetadata = mockNodes.reduce(
+		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
+		{},
+	);
 
-	if (isActiveNode) {
-		ndvStore.activeNodeName = node.name;
-	}
+	ndvStore.activeNodeName = activeNodeName;
 
 	await useSettingsStore().getSettings();
 	await useUsersStore().loginWithCookie();
@@ -53,7 +55,6 @@ async function createPiniaStore(isActiveNode: boolean) {
 	return {
 		pinia,
 		currentWorkflow: workflowsStore.getCurrentWorkflow(),
-		nodeName: node.name,
 	};
 }
 
@@ -78,8 +79,8 @@ describe('NodeDetailsViewV2', () => {
 		server.shutdown();
 	});
 
-	it('should render correctly', async () => {
-		const { pinia, currentWorkflow } = await createPiniaStore(true);
+	test('should render correctly', async () => {
+		const { pinia, currentWorkflow } = await createPiniaStore({ activeNodeName: 'Manual Trigger' });
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
@@ -103,9 +104,34 @@ describe('NodeDetailsViewV2', () => {
 		await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 	});
 
+	test('should not render for stickies', async () => {
+		const { pinia, currentWorkflow } = await createPiniaStore({ activeNodeName: 'Sticky' });
+
+		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
+			props: {
+				teleported: false,
+				appendToBody: false,
+				workflowObject: currentWorkflow,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			pinia,
+		});
+
+		expect(queryByTestId('ndv')).not.toBeInTheDocument();
+	});
+
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+			const { pinia, currentWorkflow } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
@@ -130,7 +156,7 @@ describe('NodeDetailsViewV2', () => {
 			const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 			const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.activeNodeName = 'Manual Trigger';
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 
@@ -152,7 +178,7 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+			const { pinia, currentWorkflow } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
@@ -174,7 +200,7 @@ describe('NodeDetailsViewV2', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.activeNodeName = 'Manual Trigger';
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 
@@ -193,7 +219,7 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+			const { pinia, currentWorkflow } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
@@ -215,7 +241,7 @@ describe('NodeDetailsViewV2', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.activeNodeName = 'Manual Trigger';
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 

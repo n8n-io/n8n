@@ -70,6 +70,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			grep: new RegExp(
 				`${modeTag}(?!.*(@db:reset|@chaostest))|^(?!.*(@mode:|@db:reset|@chaostest))`,
 			),
+			testIgnore: '*examples*',
 			fullyParallel: true,
 			use: { containerConfig: mergedConfig } as any,
 		},
@@ -77,6 +78,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			name: `${name} - Sequential`,
 			grep: new RegExp(`${modeTag}.*@db:reset|@db:reset(?!.*@mode:)`),
 			fullyParallel: false,
+			testIgnore: '*examples*',
 			workers: 1,
 			...(shouldAddDependencies && { dependencies: [`${name} - Parallel`] }),
 			use: { containerConfig: mergedConfig } as any,
@@ -84,6 +86,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 		{
 			name: `${name} - Chaos`,
 			grep: new RegExp(`${modeTag}.*@chaostest`),
+			testIgnore: '*examples*',
 			fullyParallel: false,
 			workers: 1,
 			use: { containerConfig: mergedConfig } as any,
@@ -119,7 +122,7 @@ export default defineConfig({
 		testIdAttribute: 'data-test-id',
 		headless: true,
 		viewport: { width: 1536, height: 960 },
-		actionTimeout: 10000,
+		actionTimeout: 30000,
 		navigationTimeout: 10000,
 		channel: 'chromium',
 	},

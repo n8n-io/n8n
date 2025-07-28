@@ -40,7 +40,7 @@ describe('N8nInlineTextEdit', () => {
 		expect(emittedEvents?.[0]).toEqual(['Updated Value']);
 	});
 
-	it('should not update value on blur if input is empty', async () => {
+	it('should not update value on enter if input is empty', async () => {
 		const wrapper = renderComponent({
 			props: {
 				modelValue: 'Test Value',
@@ -52,9 +52,24 @@ describe('N8nInlineTextEdit', () => {
 		const input = wrapper.getByTestId('inline-edit-input');
 
 		await userEvent.clear(input);
-		await userEvent.tab(); // Simulate blur
+		await userEvent.keyboard('{Enter}');
 
 		expect(preview).toHaveTextContent('Test Value');
+	});
+
+	it('should display changes to props.modelValue', async () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+			},
+		});
+		const preview = wrapper.getByTestId('inline-edit-preview');
+
+		expect(preview).toHaveTextContent('Test Value');
+
+		await wrapper.rerender({ modelValue: 'New Value!' });
+
+		expect(preview).toHaveTextContent('New Value!');
 	});
 
 	it('should not update on escape key press', async () => {

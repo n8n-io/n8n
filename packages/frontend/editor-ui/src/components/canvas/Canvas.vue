@@ -862,6 +862,26 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
+watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
+	const toFocusNode =
+		toFocusName &&
+		(nodes as Array<GraphNode<CanvasNodeData>>).find((n) => n.data.name === toFocusName);
+
+	if (!toFocusNode) {
+		return;
+	}
+
+	// setTimeout() so that this happens after layout recalculation with the node to be focused
+	setTimeout(() => {
+		experimentalNdvStore.focusNode(toFocusNode, {
+			collapseOthers: false,
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	});
+});
+
 /**
  * Provide
  */

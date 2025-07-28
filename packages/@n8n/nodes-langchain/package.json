@@ -13,7 +13,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
-    "lintfix": "eslint nodes credentials utils --fix",
+    "lint:fix": "eslint nodes credentials utils --fix",
     "watch": "tsup --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "jest",
     "test:dev": "jest --watch"
