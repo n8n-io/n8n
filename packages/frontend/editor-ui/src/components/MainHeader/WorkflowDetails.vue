@@ -21,6 +21,7 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import WorkflowSuggestedActions from '@/components/WorkflowSuggestedActions.vue';
 import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
@@ -822,6 +823,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					</N8nTooltip>
 				</template>
 			</EnterpriseEdition>
+			<WorkflowSuggestedActions v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<div :class="$style.group">
 				<SaveButton
 					type="primary"
