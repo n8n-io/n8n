@@ -12,6 +12,8 @@ import type { PushConfig } from '@/push/push.config';
 import { FrontendService } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import { Container } from '@n8n/di';
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -63,6 +65,13 @@ describe('FrontendService', () => {
 					oidc: { loginEnabled: false },
 				},
 			});
+
+			Container.set(
+				CommunityPackagesConfig,
+				mock<CommunityPackagesConfig>({
+					enabled: false,
+				}),
+			);
 
 			const logger = mock<Logger>();
 			const instanceSettings = mock<InstanceSettings>({

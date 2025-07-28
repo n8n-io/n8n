@@ -10,6 +10,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import type { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -20,7 +22,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import type { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -30,7 +31,6 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
-import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 @Service()
 export class FrontendService {
