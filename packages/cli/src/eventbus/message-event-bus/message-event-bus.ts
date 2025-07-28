@@ -1,6 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import {
+	EventDestinationsRepository,
+	ExecutionData,
+	ExecutionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -163,7 +168,14 @@ export class MessageEventBus extends EventEmitter {
 						.createQueryBuilder('execution')
 						.where('execution.status = :status', { status: 'new' })
 						.andWhere(
-							'NOT EXISTS (SELECT 1 FROM execution_data WHERE execution_data.executionId = execution.id)',
+							'NOT EXISTS (' +
+								this.executionRepository.manager
+									.createQueryBuilder()
+									.select('1')
+									.from(ExecutionData, 'execution_data')
+									.where('execution_data.executionId = execution.id')
+									.getQuery() +
+								')',
 						)
 						.select('execution.id')
 						.getMany()
