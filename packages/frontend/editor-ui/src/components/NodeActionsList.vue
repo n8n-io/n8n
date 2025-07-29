@@ -18,45 +18,41 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeVersion));
 const { generateMergedNodesAndActions } = useActionsGenerator();
-const a = useActions();
+const { parseCategoryActions, getActionData } = useActions();
 const i18n = useI18n();
+
+const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeVersion));
 const options = computed(() => {
-	const m = generateMergedNodesAndActions(
-		nodeType.value ? [nodeType.value] : [],
-		[], // TODO: what is this?
-	);
+	const { actions } = generateMergedNodesAndActions(nodeType.value ? [nodeType.value] : [], []);
 
-	return a
-		.parseCategoryActions(
-			Object.values(m.actions).flatMap((aa) =>
-				aa
-					.filter((aaa) => aaa.actionKey !== CUSTOM_API_CALL_KEY)
-					.map<ActionCreateElement>((aaa) => ({
-						type: 'action',
-						subcategory: aaa.actionKey,
-						key: aaa.actionKey,
-						properties: aaa,
-					})),
-			),
-			i18n.baseText('nodeCreator.actionsCategory.actions'),
-			true,
-		)
-		.map((action) => {
-			if (action.type !== 'action') {
-				return { ...action, isSelected: false };
-			}
+	return parseCategoryActions(
+		Object.values(actions).flatMap((typeDescriptions) =>
+			typeDescriptions
+				.filter(({ actionKey }) => actionKey !== CUSTOM_API_CALL_KEY)
+				.map<ActionCreateElement>((typeDescription) => ({
+					type: 'action',
+					subcategory: typeDescription.actionKey,
+					key: typeDescription.actionKey,
+					properties: typeDescription,
+				})),
+		),
+		i18n.baseText('nodeCreator.actionsCategory.actions'),
+		true,
+	).map((action) => {
+		if (action.type !== 'action') {
+			return { action, isSelected: false };
+		}
 
-			const data = a.getActionData(action.properties).value;
-			let isSelected = true;
+		const data = getActionData(action.properties).value;
+		let isSelected = true;
 
-			for (const [key, value] of Object.entries(data)) {
-				isSelected = isSelected && node.parameters[key] === value;
-			}
+		for (const [key, value] of Object.entries(data)) {
+			isSelected = isSelected && node.parameters[key] === value;
+		}
 
-			return { ...action, isSelected };
-		});
+		return { action, isSelected };
+	});
 });
 
 function handleClickOption(option: INodeCreateElement) {
@@ -64,35 +60,35 @@ function handleClickOption(option: INodeCreateElement) {
 		return;
 	}
 
-	emit('actionSelected', a.getActionData(option.properties).value);
+	emit('actionSelected', getActionData(option.properties).value);
 }
 </script>
 
 <template>
 	<div :class="$style.component">
-		<template v-for="option in options" :key="option.key">
+		<template v-for="option in options" :key="option.action.key">
 			<N8nText
-				v-if="option.type === 'label'"
+				v-if="option.action.type === 'label'"
 				tag="div"
 				:class="$style.label"
 				size="xsmall"
 				color="text-base"
 				bold
 			>
-				{{ option.key }}
+				{{ option.action.key }}
 			</N8nText>
 			<div
-				v-else-if="option.type === 'action'"
+				v-else-if="option.action.type === 'action'"
 				:class="{
 					[$style.option]: true,
 					[$style.selected]: option.isSelected,
 				}"
 				role="button"
-				@click="handleClickOption(option)"
+				@click="handleClickOption(option.action)"
 			>
 				<NodeIcon :size="20" :node-type="nodeType" />
 				<N8nText size="small" bold :class="$style.optionText">{{
-					option.properties.displayName
+					option.action.properties.displayName
 				}}</N8nText>
 				<N8nIcon v-if="option.isSelected" icon="check" color="primary" />
 			</div>
