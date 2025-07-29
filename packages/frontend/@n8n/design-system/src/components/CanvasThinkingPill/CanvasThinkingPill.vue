@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useCssModule } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
+
+import { useI18n } from '../../composables/useI18n';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 
 defineOptions({
 	name: 'CanvasThinkingPill',
 });
 
-const i18n = useI18n();
+const { t } = useI18n();
 const $style = useCssModule();
 </script>
 
@@ -16,7 +17,7 @@ const $style = useCssModule();
 		<div :class="$style.iconWrapper">
 			<AssistantIcon theme="blank" />
 		</div>
-		<span :class="$style.text">{{ i18n.baseText('aiAssistant.builder.canvas.thinking') }}</span>
+		<span :class="$style.text">{{ t('aiAssistant.builder.canvas.thinking') }}</span>
 	</div>
 </template>
 
@@ -24,7 +25,7 @@ const $style = useCssModule();
 .thinkingPill {
 	display: flex;
 	height: 40px;
-	padding: 0 16px 0 14px;
+	padding: 0 var(--spacing-s) 0 var(--spacing-xs);
 	justify-content: center;
 	align-items: center;
 	gap: var(--spacing-3xs);
@@ -52,8 +53,8 @@ const $style = useCssModule();
 
 .text {
 	color: white;
-	font-size: 14px;
-	font-weight: 500;
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-medium);
 	white-space: nowrap;
 }
 </style>
