@@ -5,6 +5,21 @@ import { defineConfig } from '@playwright/test';
 
 import currentsConfig from './currents.config';
 
+// Type definitions for container configurations
+interface ContainerConfig {
+	postgres?: boolean;
+	queueMode?: {
+		mains: number;
+		workers: number;
+	};
+	env?: Record<string, string>;
+}
+
+interface ContainerConfigEntry {
+	name: string;
+	config: ContainerConfig;
+}
+
 /*
  * Mode-based Test Configuration
  *
@@ -35,17 +50,26 @@ import currentsConfig from './currents.config';
  */
 
 // Container configurations
-const containerConfigs = [
+const containerConfigs: ContainerConfigEntry[] = [
 	{ name: 'mode:standard', config: {} },
 	{ name: 'mode:postgres', config: { postgres: true } },
 	{ name: 'mode:queue', config: { queueMode: { mains: 1, workers: 1 } } },
 	{ name: 'mode:multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
+// Workflow tests are run in a separate project, since they are not run in parallel with the other tests
+const workflowProject: Project = {
+	name: 'mode:workflows',
+	testDir: './test-workflows',
+	testMatch: 'workflow-tests.spec.ts',
+	retries: process.env.CI ? 2 : 0,
+	fullyParallel: true,
+};
+
 // Parallel tests can run fully parallel on a worker
 // Sequential tests can run on a single worker, since the need a DB reset
 // Chaos tests can run on a single worker, since they can destroy containers etc, these need to be isolate from DB tests since they are destructive
-function createProjectTrio(name: string, containerConfig: any): Project[] {
+function createProjectTrio(name: string, containerConfig: ContainerConfig): Project[] {
 	const modeTag = `@${name}`;
 
 	// Parse custom env vars from command line
@@ -72,7 +96,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			),
 			testIgnore: '*examples*',
 			fullyParallel: true,
-			use: { containerConfig: mergedConfig } as any,
+			use: { containerConfig: mergedConfig },
 		},
 		{
 			name: `${name} - Sequential`,
@@ -81,7 +105,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			testIgnore: '*examples*',
 			workers: 1,
 			...(shouldAddDependencies && { dependencies: [`${name} - Parallel`] }),
-			use: { containerConfig: mergedConfig } as any,
+			use: { containerConfig: mergedConfig },
 		},
 		{
 			name: `${name} - Chaos`,
@@ -89,7 +113,7 @@ function createProjectTrio(name: string, containerConfig: any): Project[] {
 			testIgnore: '*examples*',
 			fullyParallel: false,
 			workers: 1,
-			use: { containerConfig: mergedConfig } as any,
+			use: { containerConfig: mergedConfig },
 			timeout: 120000,
 		},
 	];
@@ -131,5 +155,8 @@ export default defineConfig({
 		? containerConfigs
 				.filter(({ name }) => name === 'mode:standard')
 				.flatMap(({ name, config }) => createProjectTrio(name, config))
-		: containerConfigs.flatMap(({ name, config }) => createProjectTrio(name, config)),
+				.concat([workflowProject])
+		: containerConfigs
+				.flatMap(({ name, config }) => createProjectTrio(name, config))
+				.concat([workflowProject]),
 });

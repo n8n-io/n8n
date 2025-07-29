@@ -20,6 +20,8 @@ export class CommandRegistry {
 		private readonly logger: Logger,
 		private readonly cliParser: CliParser,
 	) {
+		// eslint-disable-next-line id-denylist
+		this.argv = argvParser(process.argv.slice(2), { string: ['id'] });
 		this.commandName = process.argv[2] ?? 'start';
 	}
 
