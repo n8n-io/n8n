@@ -1089,6 +1089,20 @@ export class WorkflowExecute {
 		return customOperation;
 	}
 
+	/**
+	 * Handles execution of disabled nodes by passing through input data
+	 */
+	private handleDisabledNode(inputData: ITaskDataConnections): IRunNodeResponse {
+		if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+			// If the node is disabled simply return the data from the first main input
+			if (inputData.main[0] === null) {
+				return { data: undefined };
+			}
+			return { data: [inputData.main[0]] };
+		}
+		return { data: undefined };
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1104,16 +1118,7 @@ export class WorkflowExecute {
 		let inputData = executionData.data;
 
 		if (node.disabled === true) {
-			// If node is disabled simply pass the data through
-			// return NodeRunHelpers.
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-				// If the node is disabled simply return the data from the first main input
-				if (inputData.main[0] === null) {
-					return { data: undefined };
-				}
-				return { data: [inputData.main[0]] };
-			}
-			return { data: undefined };
+			return this.handleDisabledNode(inputData);
 		}
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
