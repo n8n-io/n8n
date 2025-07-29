@@ -76,41 +76,6 @@ const takeValidator = z
 		message: 'Take must be a valid number',
 	});
 
-// Select parameter validation
-const selectFieldsValidator = z.array(z.enum(VALID_SELECT_FIELDS));
-const selectValidator = z
-	.string()
-	.optional()
-	.transform((val, ctx) => {
-		if (!val) return undefined;
-		try {
-			const parsed: unknown = JSON.parse(val);
-			try {
-				const selectFields = selectFieldsValidator.parse(parsed);
-				if (selectFields.length === 0) return undefined;
-				type SelectField = (typeof VALID_SELECT_FIELDS)[number];
-				return selectFields.reduce<Record<SelectField, true>>(
-					(acc, field) => ({ ...acc, [field]: true }),
-					{} as Record<SelectField, true>,
-				);
-			} catch (e) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `Invalid select fields. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
-					path: ['select'],
-				});
-				return z.NEVER;
-			}
-		} catch (e) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: 'Invalid select format',
-				path: ['select'],
-			});
-			return z.NEVER;
-		}
-	});
-
 // SortBy parameter validation
 const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
@@ -120,6 +85,5 @@ export class ListDataStoreQueryDto extends Z.class({
 	filter: filterValidator,
 	skip: skipValidator,
 	take: takeValidator,
-	select: selectValidator,
 	sortBy: sortByValidator,
 }) {}

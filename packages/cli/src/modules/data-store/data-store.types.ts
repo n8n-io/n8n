@@ -26,3 +26,5 @@ export type DataStoreListOptions = ListQuery.Options<
 	never,
 	ListDataStoreQuerySortOptions
 >;
+
+export type DataStoreRows = Array<Record<PropertyKey, unknown>>;

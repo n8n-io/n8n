@@ -11,6 +11,12 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		super(DataStoreColumnEntity, dataSource.manager);
 	}
 
+	async getColumns(rawDataStoreId: string) {
+		return await this.createQueryBuilder('dataStoreColumns')
+			.where(`dataStoreColumns.dataStoreId = '${rawDataStoreId}'`)
+			.getMany();
+	}
+
 	async addColumn(dataStoreId: DataStoreUserTableName, column: DataStoreColumn) {
 		await this.manager.query(...addColumnQuery(dataStoreId, column));
 	}

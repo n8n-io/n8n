@@ -12,7 +12,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	}
 
 	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreColumn[]) {
-		await this.manager.query(...createUserTableQuery(tableName, columns));
+		const dbType = this.manager.connection.options.type;
+		await this.manager.query(...createUserTableQuery(tableName, columns, dbType));
 	}
 
 	async deleteUserTable(tableName: DataStoreUserTableName) {
@@ -89,7 +90,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		field: string,
 		direction: 'DESC' | 'ASC',
 	): void {
-		console.log(field, direction);
 		if (field === 'name') {
 			query
 				.addSelect('LOWER(dataStore.name)', 'dataStore_name_lower')

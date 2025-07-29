@@ -2,6 +2,7 @@ import {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
+	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	RenameDataStoreDto,
 } from '@n8n/api-types';
@@ -70,9 +71,12 @@ export class DataStoreController {
 	}
 
 	@Get('/:dataStoreId', { skipAuth: true })
-	async getDataStoreContent(
+	async getDataStoreRows(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-	) {}
+		@Body dto: ListDataStoreContentQueryDto,
+	) {
+		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
+	}
 }

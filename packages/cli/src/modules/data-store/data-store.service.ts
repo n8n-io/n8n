@@ -2,6 +2,7 @@ import {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
+	ListDataStoreContentQueryDto,
 } from '@n8n/api-types';
 import { RenameDataStoreDto } from '@n8n/api-types/src/dto/data-store/rename-data-store.dto';
 import { Logger } from '@n8n/backend-common';
@@ -9,8 +10,13 @@ import { Service } from '@n8n/di';
 
 import { DataStoreConfig } from './data-store';
 import { DataStoreColumnRepository } from './data-store-column.repository';
+import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
-import type { DataStoreListOptions, DataStoreUserTableName } from './data-store.types';
+import type {
+	DataStoreListOptions,
+	DataStoreRows,
+	DataStoreUserTableName,
+} from './data-store.types';
 
 function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
@@ -27,6 +33,7 @@ export class DataStoreService {
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
+		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly config: DataStoreConfig,
 	) {
@@ -69,26 +76,6 @@ export class DataStoreService {
 		return dataStore;
 	}
 
-	// async getMetaData(dataStoreId: string) {
-	// 	const existingMatch = await this.dataStoreRepository.findBy({
-	// 		id: dataStoreId,
-	// 	});
-
-	// 	if (!existingMatch) {
-	// 		return 'tried to rename non-existent table';
-	// 	}
-
-	// 	return existingMatch;
-	// }
-
-	// async getMetaDataByProjectIds(projectIds: string[]) {
-	// 	return await this.dataStoreRepository.findBy(projectIds.map((projectId) => ({ projectId })));
-	// }
-
-	// async getMetaDataAll() {
-	// 	return await this.dataStoreRepository.find({});
-	// }
-
 	async renameDataStore(dataStoreId: string, dto: RenameDataStoreDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			id: dataStoreId,
@@ -114,7 +101,6 @@ export class DataStoreService {
 
 	async deleteDataStoreAll() {
 		const existingMatches = await this.dataStoreRepository.findBy({});
-		console.log(existingMatches);
 		let changed = false;
 		for (const match of existingMatches) {
 			const result = await this.deleteDataStore(match.id);
@@ -195,5 +181,60 @@ export class DataStoreService {
 
 	async getManyAndCount(options: DataStoreListOptions) {
 		return await this.dataStoreRepository.getManyAndCount(options);
+	}
+
+	async getManyRowsAndCount(dataStoreId: string, dto: Partial<ListDataStoreContentQueryDto>) {
+		// unclear if we should validate here, only use case would be to reduce the chance of
+		// a renamed/removed column appearing here (or added column missing) if the store was
+		// modified between when the frontend sent the request and we received it
+		return await this.dataStoreRowsRepository.getManyAndCount(toTableName(dataStoreId), dto);
+	}
+
+	private async validateRows(dataStoreId: string, rows: DataStoreRows) {
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		if (columns.length === 0) {
+			return 'no columns found for id';
+		}
+
+		const columnNames = new Set(columns.map((x) => x.name));
+		const columnTypeMap = new Map(columns.map((x) => [x.name, x.type]));
+		for (const row of rows) {
+			const keys = Object.keys(row);
+			if (columns.length !== keys.length) {
+				return 'mismatched key count';
+			}
+			for (const key of keys) {
+				if (!columnNames.has(key)) {
+					return 'unknown column name';
+				}
+				const cell = row[key];
+				if (cell === null) continue;
+				switch (columnTypeMap.get(key)) {
+					case 'boolean':
+						if (typeof cell !== 'boolean') return 'type mismatch';
+						break;
+					case 'date':
+						if (!(cell instanceof Date)) return 'type mismatch';
+						row[key] = cell.toISOString();
+						break;
+					case 'string':
+						if (typeof cell !== 'string') return 'type mismatch';
+						break;
+					case 'number':
+						if (typeof cell !== 'number') return 'type mismatch';
+						break;
+				}
+			}
+		}
+		return true;
+	}
+
+	async appendRows(dataStoreId: string, rows: DataStoreRows) {
+		const validationResult = await this.validateRows(dataStoreId, rows);
+		if (validationResult !== true) {
+			return validationResult;
+		}
+
+		return await this.dataStoreRowsRepository.appendRows(toTableName(dataStoreId), rows);
 	}
 }

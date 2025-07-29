@@ -1,4 +1,4 @@
-import type { AddDataStoreColumnDto, DataStore } from '@n8n/api-types';
+import type { AddDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -427,6 +427,128 @@ describe('dataStore', () => {
 			expect(nameDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
 			expect(sizeBytesAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
 			expect(sizeBytesDesc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+		});
+	});
+	describe('appendRows', () => {
+		it('appends a row to an existing table', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows(dataStore1.id, [
+				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+				{ c1: 4, c2: false, c3: new Date(), c4: 'hello!' },
+				{ c1: 5, c2: true, c3: new Date(), c4: 'hello.' },
+			]);
+
+			// ASSERT
+			expect(result).toBe(true);
+		});
+
+		it('rejects a mismatched row with extra column', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows(dataStore1.id, [
+				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+				{ cWrong: 3, c1: 4, c2: true, c3: new Date(), c4: 'hello?' },
+			]);
+
+			// ASSERT
+			expect(result).toBe('mismatched key count');
+		});
+		it('rejects a mismatched row with missing column', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows(dataStore1.id, [
+				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+				{ c2: true, c3: new Date(), c4: 'hello?' },
+			]);
+
+			// ASSERT
+			expect(result).toBe('mismatched key count');
+		});
+		it('rejects a mismatched row with replaced column', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows(dataStore1.id, [
+				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
+			]);
+
+			// ASSERT
+			expect(result).toBe('unknown column name');
+		});
+		it('rejects unknown data store id', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows('this is not an id', [
+				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
+			]);
+
+			// ASSERT
+			expect(result).toBe('no columns found for id');
+		});
+		it('fails on type mismatch', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+
+			// ACT
+			const result = await dataStoreService.appendRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);
+
+			// ASSERT
+			expect(result).toBe('type mismatch');
+		});
+	});
+	describe('getManyRowsAndCount', () => {
+		it('retrieves rows correctly', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
+			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+
+			await dataStoreService.appendRows(dataStore1.id, [
+				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },
+				{ c1: 4, c2: false, c3: new Date(1), c4: 'hello!' },
+				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },
+			]);
+
+			// ACT
+			const result = await dataStoreService.getManyRowsAndCount(dataStore1.id, {});
+
+			// ASSERT
+			expect(result).toEqual([
+				3,
+				[
+					{ c1: 3, c2: 1, c3: '1970-01-01T00:00:00.000Z', c4: 'hello?', id: 1 },
+					{ c1: 4, c2: 0, c3: '1970-01-01T00:00:00.001Z', c4: 'hello!', id: 2 },
+					{ c1: 5, c2: 1, c3: '1970-01-01T00:00:00.002Z', c4: 'hello.', id: 3 },
+				],
+			]);
 		});
 	});
 });
