@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.102.0",
+  "version": "1.103.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -882,6 +882,7 @@
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:^",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "alasql": "4.4.0",
