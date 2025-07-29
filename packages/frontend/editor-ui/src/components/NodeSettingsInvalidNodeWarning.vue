@@ -17,7 +17,7 @@ const isCommunityNode = computed(() => isCommunityPackageName(node.type));
 const npmPackage = computed(() => node.type.split('.')[0]);
 
 function onMissingNodeTextClick(event: MouseEvent) {
-	if ((event.target as Element).localName === 'a') {
+	if (event.target instanceof Element && event.target.localName === 'a') {
 		telemetry.track('user clicked cnr browse button', {
 			source: 'cnr missing node modal',
 		});
@@ -52,7 +52,11 @@ function onMissingNodeLearnMoreLinkClick() {
 					@click="onMissingNodeTextClick"
 				>
 					<template #action>
-						<a :href="`https://www.npmjs.com/package/${npmPackage}`" target="_blank">
+						<a
+							:href="`https://www.npmjs.com/package/${npmPackage}`"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
 							{{ npmPackage }}
 						</a>
 					</template>

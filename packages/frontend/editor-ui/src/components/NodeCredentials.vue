@@ -251,7 +251,6 @@ function clearSelectedCredential(credentialType: string) {
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -368,7 +367,6 @@ function onCredentialSelected(
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
