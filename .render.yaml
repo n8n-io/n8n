@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: n8n
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./docker/images/n8n/Dockerfile
+    buildCommand: ""
+    startCommand: "n8n start"
+    envVars:
+      - key: GENERIC_TIMEZONE
+        value: America/Santo_Domingo
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: true
+      - key: N8N_BASIC_AUTH_USER
+        value: admin
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: nextride2025
