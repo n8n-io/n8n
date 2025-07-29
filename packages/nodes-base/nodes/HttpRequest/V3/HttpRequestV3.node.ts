@@ -182,7 +182,7 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 				}
 
-				const url: string = this.getNodeParameter('url', itemIndex);
+				const url = this.getNodeParameter('url', itemIndex) as string;
 
 				const checkDomainRestrictions = async (
 					credentialData: ICredentialDataDecryptedObject,
