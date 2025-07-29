@@ -36,13 +36,18 @@ const emit = defineEmits<SuggestedActionsEmits>();
 const { t } = useI18n();
 
 const isOpen = ref(false);
+const ignoringActions = ref<Set<string>>(new Set());
 
 const handleActionClick = (actionId: string) => {
 	emit('action-click', actionId);
 };
 
 const handleIgnoreClick = (actionId: string) => {
-	emit('ignore-click', actionId);
+	ignoringActions.value.add(actionId);
+	setTimeout(() => {
+		emit('ignore-click', actionId);
+		ignoringActions.value.delete(actionId);
+	}, 500);
 };
 
 const openPopover = () => {
@@ -77,7 +82,7 @@ defineExpose({
 				<div
 					v-for="action in actions"
 					:key="action.id"
-					:class="$style.actionItem"
+					:class="[$style.actionItem, { [$style.ignoring]: ignoringActions.has(action.id) }]"
 					data-test-id="suggested-action-item"
 				>
 					<div>
@@ -148,10 +153,19 @@ defineExpose({
 	gap: var(--spacing-5xs);
 	padding-bottom: var(--spacing-m);
 	border-bottom: var(--border-base);
+	transition:
+		opacity 0.3s ease,
+		filter 0.3s ease;
 
 	&:last-child {
 		padding-bottom: 0;
 		border-bottom: none;
+	}
+
+	&.ignoring {
+		opacity: 0.5;
+		filter: grayscale(0.8);
+		pointer-events: none;
 	}
 }
 
