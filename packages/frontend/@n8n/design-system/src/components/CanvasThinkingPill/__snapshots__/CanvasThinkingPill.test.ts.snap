@@ -45,7 +45,9 @@ exports[`CanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
     </div>
     <span
       class="text"
-    />
+    >
+      Working...
+    </span>
   </div>
 </div>
 `;
