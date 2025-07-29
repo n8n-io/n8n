@@ -156,11 +156,11 @@ export class MessageEventBus extends EventEmitter {
 						select: ['id'],
 					})
 				).map((e) => e.id);
-
 				unfinishedExecutionIds = Array.from(
 					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
 				);
 			}
+
 			if (unfinishedExecutionIds.length > 0) {
 				const activeWorkflows = await this.workflowRepository.find({
 					where: { active: true },
