@@ -135,9 +135,14 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
+
+const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
+const currentWorkflow = computed(() =>
+	workflowsStore.getWorkflowById(currentWorkflowInstance.value.id),
+);
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
-	() => workflowsStore.workflow.homeProject?.type === ProjectTypes.Team,
+	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
