@@ -159,7 +159,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			aspectRatio: options.aspectRatio,
 			personGeneration: options.personGeneration,
 			sampleCount: options.sampleCount ?? 1,
-			durationSeconds: options.durationSeconds ?? 8,
+			durationSeconds: options.durationSeconds,
 		},
 	};
 	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:predictLongRunning`, {
