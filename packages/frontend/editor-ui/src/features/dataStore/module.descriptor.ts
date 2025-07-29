@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/features/module.types';
+import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import {
 	DATA_STORE_DETAILS,
 	DATA_STORE_VIEW,

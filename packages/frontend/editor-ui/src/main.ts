@@ -24,7 +24,7 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
-import { registerModuleRoutes } from './features/moduleInitializer';
+import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
 
 import type { VueScanOptions } from 'z-vue-scan';
 

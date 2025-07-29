@@ -1,11 +1,11 @@
 import { type Router } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { type FrontendModuleDescription } from './module.types';
 import { DataStoreModule } from '@/features/dataStore/module.descriptor';
-import { registerResource } from '@/features/resourceRegistry';
+import { registerResource } from '@/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { InsightsModule } from './insights/module.descriptor';
+import { InsightsModule } from '../features/insights/module.descriptor';
+import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.

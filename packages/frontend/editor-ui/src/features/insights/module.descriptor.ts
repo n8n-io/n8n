@@ -1,6 +1,6 @@
 import { RouterView } from 'vue-router';
-import type { FrontendModuleDescription } from '../module.types';
-import { useInsightsStore } from './insights.store';
+import type { FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import { VIEWS } from '@/constants';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
