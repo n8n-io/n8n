@@ -775,6 +775,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		</span>
 
 		<PushConnectionTracker class="actions">
+			<WorkflowSuggestedActions v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
 					:is-archived="isArchived"
@@ -823,7 +824,6 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					</N8nTooltip>
 				</template>
 			</EnterpriseEdition>
-			<WorkflowSuggestedActions v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<div :class="$style.group">
 				<SaveButton
 					type="primary"

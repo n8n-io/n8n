@@ -4,7 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsCache, WorkflowSettings } from '@/composables/useWorkflowsCache';
+import type { WorkflowSettings } from '@/composables/useWorkflowsCache';
+import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
@@ -18,7 +19,7 @@ const i18n = useI18n();
 const router = useRouter();
 const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsCache = useWorkflowsCache();
+const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
@@ -114,6 +115,7 @@ async function handleActionClick(actionId: string) {
 		// Open workflow settings modal
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	}
+	suggestedActionsComponent.value?.openPopover();
 }
 
 function isValidAction(action: string): action is 'evaluations' | 'errorWorkflow' | 'timeSaved' {
@@ -138,9 +140,6 @@ watch(
 	() => props.workflow.active,
 	async (isActive, wasActive) => {
 		if (isActive && !wasActive) {
-			// Workflow was just activated
-			await loadWorkflowSettings();
-
 			// Check if this is the first activation
 			if (!cachedSettings.value?.firstActivatedAt && availableActions.value.length > 0) {
 				// Open suggested actions popover before updating firstActivatedAt

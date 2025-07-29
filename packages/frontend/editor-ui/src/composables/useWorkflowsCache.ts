@@ -1,7 +1,10 @@
-import { ref } from 'vue';
 import { indexedDbCache } from '@/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 
+export interface UserEvaluationPreferences {
+	order: string[];
+	visibility: Record<string, boolean>;
+}
 export interface WorkflowSettings {
 	firstActivatedAt?: number;
 	suggestedActions?: {
@@ -9,72 +12,44 @@ export interface WorkflowSettings {
 		errorWorkflow?: { ignored: boolean };
 		timeSaved?: { ignored: boolean };
 	};
+	evaluationRuns?: UserEvaluationPreferences;
 }
 
-export interface UserEvaluationPreferences {
-	order: string[];
-	visibility: Record<string, boolean>;
-}
-
-export function useWorkflowsCache() {
-	const cacheLoading = ref(false);
-	const cacheError = ref<Error | null>(null);
-
-	async function getCache(dbName: string, storeName: string) {
-		cacheLoading.value = true;
-		cacheError.value = null;
-
-		try {
-			const cache = await indexedDbCache(dbName, storeName);
-			return cache;
-		} catch (error) {
-			cacheError.value = error as Error;
-			throw error;
-		} finally {
-			cacheLoading.value = false;
-		}
+export function useWorkflowSettingsCache() {
+	async function getCache() {
+		return await indexedDbCache('workflows', 'settings');
 	}
 
-	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings | null> {
-		try {
-			const cache = await getCache('workflows', 'settings');
-			const settingsJson = cache.getItem(workflowId);
-			if (!settingsJson) {
-				return null;
-			}
-			return JSON.parse(settingsJson);
-		} catch (error) {
-			console.error('Error getting workflow settings:', error);
-			return null;
-		}
+	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
+		const cache = await getCache();
+		const preferencesJson = cache.getItem(workflowId);
+
+		return jsonParse<WorkflowSettings>(preferencesJson ?? '', {
+			fallbackValue: {},
+		});
 	}
 
 	async function upsertWorkflowSettings(
 		workflowId: string,
 		updates: Partial<WorkflowSettings>,
 	): Promise<void> {
-		try {
-			const cache = await getCache('workflows', 'settings');
-			const existingSettings = (await getWorkflowSettings(workflowId)) || {};
+		const cache = await getCache();
+		const existingSettings = await getWorkflowSettings(workflowId);
 
-			const updatedSettings: WorkflowSettings = {
-				...existingSettings,
-				...updates,
+		const updatedSettings: WorkflowSettings = {
+			...existingSettings,
+			...updates,
+		};
+
+		// Deep merge suggestedActions if provided
+		if (updates.suggestedActions) {
+			updatedSettings.suggestedActions = {
+				...existingSettings.suggestedActions,
+				...updates.suggestedActions,
 			};
-
-			// Deep merge suggestedActions if provided
-			if (updates.suggestedActions) {
-				updatedSettings.suggestedActions = {
-					...existingSettings.suggestedActions,
-					...updates.suggestedActions,
-				};
-			}
-
-			cache.setItem(workflowId, JSON.stringify(updatedSettings));
-		} catch (error) {
-			console.error('Error upserting workflow settings:', error);
-			throw error;
 		}
+
+		cache.setItem(workflowId, JSON.stringify(updatedSettings));
 	}
 
 	async function updateFirstActivatedAt(workflowId: string): Promise<void> {
@@ -100,28 +75,22 @@ export function useWorkflowsCache() {
 	}
 
 	async function getEvaluationPreferences(workflowId: string): Promise<UserEvaluationPreferences> {
-		const cache = await getCache('workflows', 'evaluations');
-		const preferencesJson = cache.getItem(workflowId);
-
-		return jsonParse(preferencesJson ?? '', {
-			fallbackValue: {
+		return (
+			(await getWorkflowSettings(workflowId))?.evaluationRuns ?? {
 				order: [],
 				visibility: {},
-			},
-		});
+			}
+		);
 	}
 
 	async function saveEvaluationPreferences(
 		workflowId: string,
-		preferences: UserEvaluationPreferences,
+		evaluationRuns: UserEvaluationPreferences,
 	): Promise<void> {
-		const cache = await getCache('workflows', 'evaluations');
-		cache.setItem(workflowId, JSON.stringify(preferences));
+		await upsertWorkflowSettings(workflowId, { evaluationRuns });
 	}
 
 	return {
-		cacheLoading,
-		cacheError,
 		getCache,
 		getWorkflowSettings,
 		upsertWorkflowSettings,

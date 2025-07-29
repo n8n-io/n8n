@@ -28,7 +28,10 @@ import {
 	getTestCasesColumns,
 	getTestTableHeaders,
 } from './utils';
-import { useWorkflowsCache, type UserEvaluationPreferences } from '@/composables/useWorkflowsCache';
+import {
+	useWorkflowSettingsCache,
+	type UserEvaluationPreferences,
+} from '@/composables/useWorkflowsCache';
 
 export type Column =
 	| {
@@ -50,7 +53,7 @@ const toast = useToast();
 const evaluationStore = useEvaluationStore();
 const workflowsStore = useWorkflowsStore();
 const locale = useI18n();
-const workflowsCache = useWorkflowsCache();
+const workflowsCache = useWorkflowSettingsCache();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
