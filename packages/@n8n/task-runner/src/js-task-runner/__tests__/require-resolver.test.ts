@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 
