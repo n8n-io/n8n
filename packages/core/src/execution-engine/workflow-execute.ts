@@ -361,6 +361,7 @@ export class WorkflowExecute {
 			'a destinationNodeName is required for the new partial execution flow',
 		);
 		const originalDestination = destinationNodeName;
+		const originalWorkflow = workflow;
 
 		let destination = workflow.getNode(destinationNodeName);
 		assert.ok(
@@ -369,6 +370,7 @@ export class WorkflowExecute {
 		);
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
+		let isToolExecution = false;
 
 		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
 			destination.type,
@@ -376,6 +378,7 @@ export class WorkflowExecute {
 		);
 		// Partial execution of nodes as tools
 		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
+			isToolExecution = true;
 			graph = rewireGraph(destination, graph, agentRequest);
 			workflow = graph.toWorkflow({ ...workflow });
 			// Rewire destination node to the virtual agent
@@ -454,7 +457,10 @@ export class WorkflowExecute {
 
 		// 3. Find the Start Nodes
 		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
-		runData = cleanRunData(runData, graph, dirtyNodes);
+		if (!isToolExecution) {
+			// For regular execution, clean runData as usual
+			runData = cleanRunData(runData, graph, dirtyNodes);
+		}
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
@@ -462,7 +468,10 @@ export class WorkflowExecute {
 		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
-		runData = cleanRunData(runData, graph, startNodes);
+		if (!isToolExecution) {
+			// For tool execution, preserve all runData to maintain node references for expressions
+			runData = cleanRunData(runData, graph, startNodes);
+		}
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
@@ -493,11 +502,11 @@ export class WorkflowExecute {
 			},
 		};
 
-		// Still passing the original workflow here, because the WorkflowDataProxy
-		// needs it to create more useful error messages, e.g. differentiate
-		// between a node not being connected to the node referencing it or a node
-		// not existing in the workflow.
-		return this.processRunExecutionData(workflow);
+		// For tool execution, pass the original workflow to preserve node references
+		// that may be used in expressions. For regular execution, pass the potentially
+		// modified workflow. The WorkflowDataProxy needs the original workflow structure
+		// to create accurate error messages and resolve node references correctly.
+		return this.processRunExecutionData(isToolExecution ? originalWorkflow : workflow);
 	}
 
 	/**
