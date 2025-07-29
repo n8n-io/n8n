@@ -3,6 +3,7 @@ import { type Router } from 'vue-router';
 import { insightsRoutes } from './insights/insights.router';
 import { dataStoreRoutes } from './dataStore/dataStore.routes';
 import { VIEWS } from '@/constants';
+import { moduleRegistry } from '@/types/moduleTypes';
 
 /**
  * Once we have a mechanism to register and initialize modules generically,
@@ -10,13 +11,20 @@ import { VIEWS } from '@/constants';
  * Each module should be responsible for its own initialization on demand.
  * This currently works that way for registering project tabs but routes
  * all still registered by explicitly importing the module routes here.
+ *
+ * NOTE: The new moduleRegistry provides a foundation for this, but we're keeping
+ * the current approach for backward compatibility until all modules are migrated.
  */
 
 /**
  * Initialize modules stores, done in init.ts
  */
 export const initializeModuleStores = () => {
+	// Current approach - individual initialization
 	useDataStoreStore().initialize();
+
+	// Future approach - registry-based initialization
+	// moduleRegistry.initializeAll();
 };
 
 /**
@@ -37,4 +45,13 @@ export const registerModuleRoutes = (router: Router) => {
 			router.addRoute(route);
 		}
 	});
+
+	// Future approach - registry-based route registration
+	// moduleRegistry.getAllRoutes().forEach((route) => {
+	//   if (route.meta?.projectRoute) {
+	//     router.addRoute(VIEWS.PROJECT_DETAILS, route);
+	//   } else {
+	//     router.addRoute(route);
+	//   }
+	// });
 };
