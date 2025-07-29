@@ -961,6 +961,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};
+		workflowObject.value = cloneWorkflowObject();
 	}
 
 	function pinData(payload: { node: INodeUi; data: INodeExecutionData[] }): void {
@@ -1231,7 +1232,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setNodes(nodes: INodeUi[]): void {
-		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
 			if (!node.id) {
 				nodeHelpers.assignNodeId(node);
@@ -1249,6 +1249,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
 		});
+
+		workflow.value.nodes = nodes;
 		workflowObject.value.setNodes(nodes);
 	}
 
@@ -1270,10 +1272,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
 			const node = workflow.value.nodes[nodeIndex];
-			const changed = !isEqual(pick(node, Object.keys(nodeData)), nodeData);
-			Object.assign(node, nodeData);
+			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
+			const changed = !isEqual(existingData, nodeData);
 
 			if (changed) {
+				Object.assign(node, nodeData);
 				workflowObject.value.setNodes(workflow.value.nodes);
 			}
 

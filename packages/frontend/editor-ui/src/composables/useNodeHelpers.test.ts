@@ -53,7 +53,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => node,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -80,7 +80,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => node,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -107,7 +107,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => node,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -134,7 +134,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => triggerNode,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(true);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -161,7 +161,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => toolNode,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(true);
@@ -188,7 +188,7 @@ describe('useNodeHelpers()', () => {
 				getNode: () => node,
 			};
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);

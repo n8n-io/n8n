@@ -109,7 +109,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const isExecutable = (node: INodeUi) => {
 		const workflowObject = workflowsStore.workflowObject;
-		const workflowNode = workflowObject.nodes[node.name];
+		const workflowNode = workflowObject.getNode(node.name) as INode;
 		const nodeType = nodeTypesStore.getNodeType(
 			workflowNode.type,
 			workflowNode.typeVersion,

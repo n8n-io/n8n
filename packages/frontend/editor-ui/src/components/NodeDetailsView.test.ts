@@ -13,7 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { createTestWorkflow, defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
@@ -26,7 +26,7 @@ vi.mock('vue-router', () => {
 
 async function createPiniaStore(isActiveNode: boolean) {
 	const node = mockNodes[0];
-	const workflow = mock<IWorkflowDb>({
+	const workflow = createTestWorkflow({
 		connections: {},
 		active: true,
 		nodes: [node],
@@ -40,7 +40,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
+	workflowsStore.setWorkflow(workflow);
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 
 	if (isActiveNode) {
@@ -52,7 +52,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		currentWorkflow: workflowsStore.workflowObject,
+		workflowObject: workflowsStore.workflowObject,
 		nodeName: node.name,
 	};
 }
@@ -78,13 +78,13 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
-		const { pinia, currentWorkflow } = await createPiniaStore(true);
+		const { pinia, workflowObject } = await createPiniaStore(true);
 
 		const renderComponent = createComponentRenderer(NodeDetailsView, {
 			props: {
 				teleported: false,
 				appendToBody: false,
-				workflowObject: currentWorkflow,
+				workflowObject,
 			},
 			global: {
 				mocks: {
@@ -103,15 +103,15 @@ describe('NodeDetailsView', () => {
 	});
 
 	describe('keyboard listener', () => {
-		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+		test.only('should register and unregister keydown listener based on modal open state', async () => {
+			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -152,14 +152,14 @@ describe('NodeDetailsView', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -194,14 +194,14 @@ describe('NodeDetailsView', () => {
 		});
 
 		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
+			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {

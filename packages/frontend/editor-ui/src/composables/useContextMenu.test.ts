@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
+	INode,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
@@ -43,12 +44,12 @@ describe('useContextMenu', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.nodes = nodes;
 		workflowsStore.workflow.scopes = ['workflow:update'];
-		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
+		workflowsStore.workflowObject = {
 			nodes,
 			getNode: (_: string) => {
 				return {};
 			},
-		} as never);
+		} as never;
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);

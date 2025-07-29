@@ -13,7 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { createTestWorkflow, defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
@@ -27,7 +27,7 @@ vi.mock('vue-router', () => {
 async function createPiniaStore(
 	{ activeNodeName }: { activeNodeName: string | null } = { activeNodeName: null },
 ) {
-	const workflow = mock<IWorkflowDb>({
+	const workflow = createTestWorkflow({
 		connections: {},
 		active: true,
 		nodes: mockNodes,
@@ -41,7 +41,7 @@ async function createPiniaStore(
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
+	workflowsStore.setWorkflow(workflow);
 	workflowsStore.nodeMetadata = mockNodes.reduce(
 		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
 		{},
@@ -54,7 +54,7 @@ async function createPiniaStore(
 
 	return {
 		pinia,
-		currentWorkflow: workflowsStore.workflowObject,
+		workflowObject: workflowsStore.workflowObject,
 	};
 }
 
@@ -80,13 +80,13 @@ describe('NodeDetailsViewV2', () => {
 	});
 
 	test('should render correctly', async () => {
-		const { pinia, currentWorkflow } = await createPiniaStore({ activeNodeName: 'Manual Trigger' });
+		const { pinia, workflowObject } = await createPiniaStore({ activeNodeName: 'Manual Trigger' });
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
 				teleported: false,
 				appendToBody: false,
-				workflowObject: currentWorkflow,
+				workflowObject,
 			},
 			global: {
 				mocks: {
@@ -105,13 +105,13 @@ describe('NodeDetailsViewV2', () => {
 	});
 
 	test('should not render for stickies', async () => {
-		const { pinia, currentWorkflow } = await createPiniaStore({ activeNodeName: 'Sticky' });
+		const { pinia, workflowObject } = await createPiniaStore({ activeNodeName: 'Sticky' });
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
 				teleported: false,
 				appendToBody: false,
-				workflowObject: currentWorkflow,
+				workflowObject,
 			},
 			global: {
 				mocks: {
@@ -131,14 +131,14 @@ describe('NodeDetailsViewV2', () => {
 
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, currentWorkflow } = await createPiniaStore();
+			const { pinia, workflowObject } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -178,14 +178,14 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, currentWorkflow } = await createPiniaStore();
+			const { pinia, workflowObject } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -219,14 +219,14 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, currentWorkflow } = await createPiniaStore();
+			const { pinia, workflowObject } = await createPiniaStore();
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {

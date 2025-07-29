@@ -119,7 +119,7 @@ export function useNodeHelpers() {
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		if (node && nodeType) {
 			const workflowObject = workflowsStore.workflowObject;
-			const workflowNode = workflowObject.nodes[node.name];
+			const workflowNode = workflowObject.getNode(node.name);
 
 			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
