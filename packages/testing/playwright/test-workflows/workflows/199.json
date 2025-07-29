@@ -1,0 +1,60 @@
+{
+	"createdAt": "2021-05-10T11:24:19.202Z",
+	"updatedAt": "2021-05-10T13:18:56.388Z",
+	"id": "199",
+	"name": "MailCheck:Email:check",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "77ccc40b-307c-479e-882d-6f2700b67b8d"
+		},
+		{
+			"parameters": {
+				"email": "jan@n8n.io"
+			},
+			"name": "Mailcheck",
+			"type": "n8n-nodes-base.mailcheck",
+			"typeVersion": 1,
+			"position": [470, 300],
+			"credentials": {
+				"mailcheckApi": {
+					"id": "169",
+					"name": "Mailcheck API creds"
+				}
+			},
+			"id": "01a36e75-0cbd-4536-896e-1fe4cf9a8179"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Mailcheck",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"timezone": "Europe/Berlin"
+	},
+	"staticData": {
+		"node:Clockify Trigger": {
+			"userId": "60335ad2f24e660123d7fdeb",
+			"lastTimeChecked": "2021-05-10T14:49:24Z"
+		}
+	},
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

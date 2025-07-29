@@ -85,7 +85,6 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = ref(-1);
 const isLinkingEnabled = ref(true);
@@ -821,7 +820,6 @@ onBeforeUnmount(() => {
 								:class="$style.settings"
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
-								@redraw-required="redrawRequired = true"
 								@activate="onWorkflowActivate"
 								@switch-selected-node="onSwitchSelectedNode"
 								@open-connection-node-creator="onOpenConnectionNodeCreator"

@@ -4,10 +4,8 @@ import { getCommunityNodeTypes } from '../../utils/community-node-types-utils';
 import { CommunityNodeTypesService } from '../community-node-types.service';
 
 jest.mock('@n8n/backend-common', () => ({
+	...jest.requireActual('@n8n/backend-common'),
 	inProduction: jest.fn().mockReturnValue(false),
-	logger: jest.fn().mockImplementation(() => ({
-		error: jest.fn(),
-	})),
 }));
 
 jest.mock('../../utils/community-node-types-utils', () => ({
