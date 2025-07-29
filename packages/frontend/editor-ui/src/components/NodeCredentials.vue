@@ -219,9 +219,9 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('credential.createNew', onCreateAndAssignNewCredential);
 });
 
-function getSelectedId(type: string) {
+function getSelectedId(type: INodeCredentialDescription) {
 	if (isCredentialExisting(type)) {
-		return selected.value[type].id;
+		return selected.value[type.name].id;
 	}
 	return undefined;
 }
@@ -465,7 +465,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 				>
 					<N8nSelect
 						ref="selectRefs"
-						:model-value="getSelectedId(type.name)"
+						:model-value="getSelectedId(type)"
 						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 						size="small"
 						filterable
@@ -514,7 +514,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					</div>
 
 					<div
-						v-if="selected[type.name] && isCredentialExisting(type.name)"
+						v-if="selected[type.name] && isCredentialExisting(type)"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>

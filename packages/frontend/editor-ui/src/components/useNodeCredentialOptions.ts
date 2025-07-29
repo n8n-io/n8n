@@ -32,6 +32,17 @@ export function useNodeCredentialOptions(
 		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
 	);
 
+	const credentialTypesNodeDescriptionDisplayed = computed(() =>
+		credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => ({
+			type,
+			options: getCredentialOptions(getAllRelatedCredentialTypes(type)),
+		})),
+	);
+
+	const areAllCredentialsSet = computed(() =>
+		credentialTypesNodeDescriptionDisplayed.value.every(({ type }) => isCredentialExisting(type)),
+	);
+
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 		let options: CredentialDropdownOption[] = [];
 		types.forEach((type) => {
@@ -94,36 +105,22 @@ export function useNodeCredentialOptions(
 		return [credentialType.name];
 	}
 
-	function isCredentialExisting(credentialType: string): boolean {
-		if (!node.value?.credentials?.[credentialType]?.id) {
+	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
+		if (!node.value?.credentials?.[credentialType.name]?.id) {
 			return false;
 		}
-		const { id } = node.value.credentials[credentialType];
-		const options = getCredentialOptions([credentialType]);
+		const { id } = node.value.credentials[credentialType.name];
+		const options = getCredentialOptions([credentialType.name]);
 
 		return !!options.find((option: ICredentialsResponse) => option.id === id);
 	}
 
-	const areAllCredentialsSet = computed(() => {
-		const displayedCredentials = credentialTypesNodeDescriptions.value.filter(displayCredentials);
-
-		return displayedCredentials.every((credentialType) => {
-			const relatedTypes = getAllRelatedCredentialTypes(credentialType);
-			return relatedTypes.some((type) => isCredentialExisting(type));
-		});
-	});
-
 	return {
 		credentialTypesNodeDescriptions,
-		credentialTypesNodeDescriptionDisplayed: computed(() =>
-			credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => ({
-				type,
-				options: getCredentialOptions(getAllRelatedCredentialTypes(type)),
-			})),
-		),
+		credentialTypesNodeDescriptionDisplayed,
 		mainNodeAuthField,
+		areAllCredentialsSet,
 		showMixedCredentials,
 		isCredentialExisting,
-		areAllCredentialsSet,
 	};
 }
