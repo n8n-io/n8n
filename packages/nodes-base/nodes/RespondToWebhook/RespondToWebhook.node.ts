@@ -23,9 +23,9 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
-import { configuredOutputs } from './utils/outputs';
 import { getBinaryResponse } from './utils/binary';
+import { configuredOutputs } from './utils/outputs';
+import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -252,7 +252,18 @@ export class RespondToWebhook implements INodeType {
 				},
 				description: 'The name of the node input field with the binary data',
 			},
-
+			{
+				displayName:
+					'To avoid unexpected behavior, add a "Content-Type" response header with the appropriate value',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['text'],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
