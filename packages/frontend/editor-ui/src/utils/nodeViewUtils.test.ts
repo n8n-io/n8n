@@ -23,6 +23,8 @@ import { SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import type { GraphNode } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 describe('getGenericHints', () => {
 	let mockWorkflowNode: MockProxy<INode>;
@@ -34,6 +36,9 @@ describe('getGenericHints', () => {
 	let hasNodeRun: boolean;
 
 	beforeEach(() => {
+		const pinia = createTestingPinia({});
+		setActivePinia(pinia);
+
 		mockWorkflowNode = mock<INode>();
 		mockNode = mock<INodeUi>({ type: 'test' });
 		mockNodeType = mock<INodeTypeDescription>();
@@ -55,8 +60,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -80,8 +86,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -118,8 +125,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -142,8 +150,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -166,8 +175,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -191,8 +201,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([

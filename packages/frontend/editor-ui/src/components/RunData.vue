@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/components/NodeSettingsHint.vue';
@@ -99,6 +98,7 @@ import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
 import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
+import RunDataBinary from '@/components/RunDataBinary.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -220,7 +220,6 @@ const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
 const outputIndex = ref(0);
-const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -636,6 +635,10 @@ const hasParsedAiContent = computed(() =>
 	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
 );
 
+const binaryDataDisplayVisible = computed(
+	() => binaryDataDisplayData.value !== null && props.displayMode === 'binary',
+);
+
 function setInputBranchIndex(value: number) {
 	if (props.paneType === 'input') {
 		outputIndex.value = value;
@@ -804,7 +807,8 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					workflow: props.workflow,
+					nodes: props.workflow.nodes,
+					connections: props.workflow.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});
@@ -1237,35 +1241,10 @@ function init() {
 }
 
 function closeBinaryDataDisplay() {
-	binaryDataDisplayVisible.value = false;
 	binaryDataDisplayData.value = null;
 }
 
-function isViewable(index: number, key: string | number): boolean {
-	const { mimeType } = binaryData.value[index][key];
-	return ViewableMimeTypes.includes(mimeType);
-}
-
-function isDownloadable(index: number, key: string | number): boolean {
-	const { mimeType, fileName } = binaryData.value[index][key];
-	return !!(mimeType && fileName);
-}
-
-async function downloadBinaryData(index: number, key: string | number) {
-	const { id, data, fileName, fileExtension, mimeType } = binaryData.value[index][key];
-
-	if (id) {
-		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		saveAs(url, [fileName, fileExtension].join('.'));
-		return;
-	} else {
-		const bufferString = 'data:' + mimeType + ';base64,' + data;
-		const blob = await fetch(bufferString).then(async (d) => await d.blob());
-		saveAs(blob, fileName);
-	}
-}
-
-async function downloadJsonData() {
+function downloadJsonData() {
 	const fileName = (node.value?.name ?? '').replace(/[^\w\d]/g, '_');
 	const blob = new Blob([JSON.stringify(rawInputData.value, null, 2)], {
 		type: 'application/json',
@@ -1276,7 +1255,6 @@ async function downloadJsonData() {
 
 function displayBinaryData(index: number, key: string | number) {
 	const { data, mimeType } = binaryData.value[index][key];
-	binaryDataDisplayVisible.value = true;
 
 	binaryDataDisplayData.value = {
 		node: node.value?.name,
@@ -1412,13 +1390,6 @@ defineExpose({ enterEditMode });
 			</template>
 		</N8nCallout>
 
-		<BinaryDataDisplay
-			v-if="binaryDataDisplayData"
-			:window-visible="binaryDataDisplayVisible"
-			:display-data="binaryDataDisplayData"
-			@close="closeBinaryDataDisplay"
-		/>
-
 		<div :class="$style.header">
 			<div :class="$style.title">
 				<slot name="header"></slot>
@@ -1512,126 +1483,135 @@ defineExpose({ enterEditMode });
 			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 		</div>
 
-		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
-			<slot name="input-select"></slot>
-		</div>
-
-		<div
-			v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
-			v-show="!editMode.enabled"
-			:class="$style.runSelector"
-		>
-			<div :class="$style.runSelectorInner">
-				<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
-
-				<N8nSelect
-					:model-value="runIndex"
-					:class="$style.runSelectorSelect"
-					size="small"
-					teleported
-					data-test-id="run-selector"
-					@update:model-value="onRunIndexChange"
-					@click.stop
-				>
-					<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
-					<N8nOption
-						v-for="option in maxRunIndex + 1"
-						:key="option"
-						:label="getRunLabel(option)"
-						:value="option - 1"
-					></N8nOption>
-				</N8nSelect>
-
-				<N8nTooltip v-if="canLinkRuns" placement="right">
-					<template #content>
-						{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-					</template>
-					<N8nIconButton
-						:icon="linkedRuns ? 'unlink' : 'link'"
-						:class="['linkRun', linkedRuns ? 'linked' : '']"
-						text
-						type="tertiary"
-						size="small"
-						data-test-id="link-run"
-						@click="toggleLinkRuns"
-					/>
-				</N8nTooltip>
-
-				<slot name="run-info"></slot>
+		<div v-show="!binaryDataDisplayVisible">
+			<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
+				<slot name="input-select"></slot>
 			</div>
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
-			/>
-		</div>
 
-		<slot v-if="!displaysMultipleNodes" name="before-data" />
+			<div
+				v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
+				v-show="!editMode.enabled"
+				:class="$style.runSelector"
+			>
+				<div :class="$style.runSelectorInner">
+					<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
-		<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
-			<N8nCallout theme="info" data-test-id="run-data-callout">
-				<slot name="callout-message">
-					<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
-				</slot>
+					<N8nSelect
+						:model-value="runIndex"
+						:class="$style.runSelectorSelect"
+						size="small"
+						teleported
+						data-test-id="run-selector"
+						@update:model-value="onRunIndexChange"
+						@click.stop
+					>
+						<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
+						<N8nOption
+							v-for="option in maxRunIndex + 1"
+							:key="option"
+							:label="getRunLabel(option)"
+							:value="option - 1"
+						></N8nOption>
+					</N8nSelect>
+
+					<N8nTooltip v-if="canLinkRuns" placement="right">
+						<template #content>
+							{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+						</template>
+						<N8nIconButton
+							:icon="linkedRuns ? 'unlink' : 'link'"
+							:class="['linkRun', linkedRuns ? 'linked' : '']"
+							text
+							type="tertiary"
+							size="small"
+							data-test-id="link-run"
+							@click="toggleLinkRuns"
+						/>
+					</N8nTooltip>
+
+					<slot name="run-info"></slot>
+				</div>
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
+				/>
+			</div>
+
+			<slot v-if="!displaysMultipleNodes" name="before-data" />
+
+			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
+				<N8nCallout theme="info" data-test-id="run-data-callout">
+					<slot name="callout-message">
+						<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+					</slot>
+				</N8nCallout>
+			</div>
+			<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
+			<N8nCallout
+				v-for="hint in getNodeHints()"
+				:key="hint.message"
+				:class="$style.hintCallout"
+				:theme="hint.type || 'info'"
+				data-test-id="node-hint"
+			>
+				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
-		</div>
-		<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
-		<N8nCallout
-			v-for="hint in getNodeHints()"
-			:key="hint.message"
-			:class="$style.hintCallout"
-			:theme="hint.type || 'info'"
-			data-test-id="node-hint"
-		>
-			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
-		</N8nCallout>
 
-		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
-			:class="$style.outputs"
-			data-test-id="branches"
-		>
-			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
-			/>
+			<div
+				v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
+				:class="$style.outputs"
+				data-test-id="branches"
+			>
+				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
+				/>
 
-			<div :class="$style.tabs">
-				<N8nTabs
-					size="small"
-					:model-value="currentOutputIndex"
-					:options="branches"
-					@update:model-value="onBranchChange"
+				<div :class="$style.tabs">
+					<N8nTabs
+						size="small"
+						:model-value="currentOutputIndex"
+						:options="branches"
+						@update:model-value="onBranchChange"
+					/>
+				</div>
+			</div>
+
+			<div
+				v-else-if="
+					!props.compact &&
+					hasNodeRun &&
+					!isSearchInSchemaView &&
+					((dataCount > 0 && maxRunIndex === 0) || search) &&
+					!isArtificialRecoveredEventItem &&
+					!displaysMultipleNodes
+				"
+				v-show="!editMode.enabled"
+				:class="$style.itemsCount"
+				data-test-id="ndv-items-count"
+			>
+				<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
+
+				<RunDataItemCount v-bind="itemsCountProps" />
+				<ViewSubExecution
+					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+					:task-metadata="activeTaskMetadata"
+					:display-mode="displayMode"
 				/>
 			</div>
 		</div>
 
-		<div
-			v-else-if="
-				!props.compact &&
-				hasNodeRun &&
-				!isSearchInSchemaView &&
-				((dataCount > 0 && maxRunIndex === 0) || search) &&
-				!isArtificialRecoveredEventItem &&
-				!displaysMultipleNodes
-			"
-			v-show="!editMode.enabled"
-			:class="$style.itemsCount"
-			data-test-id="ndv-items-count"
-		>
-			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
-
-			<RunDataItemCount v-bind="itemsCountProps" />
-			<ViewSubExecution
-				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
-				:task-metadata="activeTaskMetadata"
-				:display-mode="displayMode"
-			/>
-		</div>
-
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
+			<BinaryDataDisplay
+				v-if="binaryDataDisplayData"
+				:window-visible="binaryDataDisplayVisible"
+				:display-data="binaryDataDisplayData"
+				@close="closeBinaryDataDisplay"
+			/>
+
 			<div
 				v-if="isExecuting && !isWaitNodeWaiting"
 				:class="[$style.center, $style.executingMessage]"
@@ -1911,91 +1891,12 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-				<N8nText align="center" tag="div">{{ i18n.baseText('runData.noBinaryDataFound') }}</N8nText>
-			</div>
+			<RunDataBinary
+				v-else-if="displayMode === 'binary'"
+				:binary-data="binaryData"
+				@preview="displayBinaryData"
+			/>
 
-			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
-				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
-						<div>
-							{{ index + 1 }}
-						</div>
-					</div>
-
-					<div :class="$style.binaryRow">
-						<div
-							v-for="(binaryData, key) in binaryDataEntry"
-							:key="index + '_' + key"
-							:class="$style.binaryCell"
-						>
-							<div :data-test-id="'ndv-binary-data_' + index">
-								<div :class="$style.binaryHeader">
-									{{ key }}
-								</div>
-								<div v-if="binaryData.fileName">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileName') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
-								</div>
-								<div v-if="binaryData.directory">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.directory') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
-								</div>
-								<div v-if="binaryData.fileExtension">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileExtension') }}:</N8nText
-										>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
-								</div>
-								<div v-if="binaryData.mimeType">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.mimeType') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
-								</div>
-								<div v-if="binaryData.fileSize">
-									<div>
-										<N8nText size="small" :bold="true"
-											>{{ i18n.baseText('runData.fileSize') }}:
-										</N8nText>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
-								</div>
-
-								<div :class="$style.binaryButtonContainer">
-									<N8nButton
-										v-if="isViewable(index, key)"
-										size="small"
-										:label="i18n.baseText('runData.showBinaryData')"
-										data-test-id="ndv-view-binary-data"
-										@click="displayBinaryData(index, key)"
-									/>
-									<N8nButton
-										v-if="isDownloadable(index, key)"
-										size="small"
-										type="secondary"
-										:label="i18n.baseText('runData.downloadBinaryData')"
-										data-test-id="ndv-download-binary-data"
-										@click="downloadBinaryData(index, key)"
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
 			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
@@ -2184,67 +2085,6 @@ defineExpose({ enterEditMode });
 
 .search {
 	margin-left: auto;
-}
-
-.binaryIndex {
-	display: block;
-	padding: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-
-	> * {
-		display: inline-block;
-		width: 30px;
-		height: 30px;
-		line-height: 30px;
-		border-radius: var(--border-radius-base);
-		text-align: center;
-		background-color: var(--color-foreground-xdark);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text-xlight);
-	}
-}
-
-.binaryRow {
-	display: inline-flex;
-	font-size: var(--font-size-2xs);
-}
-
-.binaryCell {
-	display: inline-block;
-	width: 300px;
-	overflow: hidden;
-	background-color: var(--color-foreground-xlight);
-	margin-right: var(--ndv-spacing);
-	margin-bottom: var(--ndv-spacing);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
-	padding: var(--ndv-spacing);
-}
-
-.binaryHeader {
-	color: $color-primary;
-	font-weight: var(--font-weight-bold);
-	font-size: 1.2em;
-	padding-bottom: var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
-	border-bottom: 1px solid var(--color-text-light);
-}
-
-.binaryButtonContainer {
-	margin-top: 1.5em;
-	display: flex;
-	flex-direction: row;
-	justify-content: center;
-
-	> * {
-		flex-grow: 0;
-		margin-right: var(--spacing-3xs);
-	}
-}
-
-.binaryValue {
-	white-space: initial;
-	word-wrap: break-word;
 }
 
 .displayModes {
