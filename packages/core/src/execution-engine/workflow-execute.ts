@@ -1391,8 +1391,18 @@ export class WorkflowExecute {
 		return { data };
 	}
 
-	/** Executes the given node */
-	// eslint-disable-next-line complexity
+	/**
+	 * Executes the given node based on its type and configuration
+	 *
+	 * @param workflow - The workflow containing the node
+	 * @param executionData - Data needed for node execution
+	 * @param runExecutionData - Overall execution state
+	 * @param runIndex - Index of current execution run
+	 * @param additionalData - Additional workflow execution data
+	 * @param mode - Workflow execution mode
+	 * @param abortSignal - Signal for canceling execution
+	 * @returns Promise resolving to node execution result
+	 */
 	async runNode(
 		workflow: Workflow,
 		executionData: IExecuteData,
