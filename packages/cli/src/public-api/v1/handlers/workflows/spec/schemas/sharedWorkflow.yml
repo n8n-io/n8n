@@ -12,7 +12,15 @@ properties:
     example: '2tUt1wbLX592XDdX'
   project:
     type: object
-    $ref: '../../../projects/spec/schemas/project.yml'
+    properties:
+      id:
+        type: string
+        readOnly: true
+      name:
+        type: string
+      type:
+        type: string
+        readOnly: true
   createdAt:
     type: string
     format: date-time
