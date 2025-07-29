@@ -1,5 +1,5 @@
 import type { DataSourceOptions } from '@n8n/typeorm';
-import { z } from 'zod';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -9,7 +9,6 @@ import type {
 	DataStoreRows,
 	DataStoreUserTableName,
 } from '../data-store.types';
-import { UnexpectedError } from 'n8n-workflow';
 
 function dataStoreColumnTypeToSql(type: DataStoreColumnType) {
 	switch (type) {

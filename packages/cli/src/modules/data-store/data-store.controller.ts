@@ -10,6 +10,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
+import { DataStoreRows } from './data-store.types';
 @RestController('/data-store')
 export class DataStoreController {
 	constructor(private readonly dataStoreService: DataStoreService) {}
@@ -75,8 +76,18 @@ export class DataStoreController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: ListDataStoreContentQueryDto,
+		@Body dto: Partial<ListDataStoreContentQueryDto>,
 	) {
 		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
+	}
+
+	@Post('/:dataStoreId/append', { skipAuth: true })
+	async appendDataStoreRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Body dto: DataStoreRows,
+	) {
+		return await this.dataStoreService.appendRows(dataStoreId, dto);
 	}
 }
