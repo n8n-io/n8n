@@ -69,7 +69,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="400px">
+	<N8nPopoverReka v-model:open="isOpen" width="328px">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
@@ -89,7 +89,7 @@ defineExpose({
 					:class="[$style.actionItem, { [$style.ignoring]: ignoringActions.has(action.id) }]"
 					data-test-id="suggested-action-item"
 				>
-					<div>
+					<div class="mb-3xs">
 						<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
 					</div>
 					<div>
@@ -171,14 +171,13 @@ defineExpose({
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing-s);
 }
 
 .actionItem {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-5xs);
-	padding-bottom: var(--spacing-m);
+	padding-bottom: var(--spacing-s);
 	border-bottom: var(--border-base);
 	transition:
 		opacity 0.3s ease,
@@ -200,7 +199,7 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-s);
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing-s);
 }
 
 .ignoreAllContainer {
