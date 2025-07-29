@@ -1058,5 +1058,176 @@ describe('Paired Item Path Detection', () => {
 			const mainAgentParent = wf.getParentMainInputNode(mainAgentNode);
 			expect(mainAgentParent?.name).toBe('MainAgent');
 		});
+
+		test('should handle workflow with multiple AI connections', () => {
+			const nodes: INode[] = [
+				{
+					id: '85056f63-f461-4b64-a8ca-807b019b30da',
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+					typeVersion: 1.2,
+					position: [-272, 16],
+					parameters: {},
+				},
+				{
+					id: '9670cb60-8926-40d0-bcba-efab28b477ee',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [1056, 0],
+					parameters: {},
+				},
+				{
+					id: '7fe1aa70-3418-4ad7-940d-af0b7f9b6fb2',
+					name: 'Anthropic Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+					typeVersion: 1.3,
+					position: [1072, 224],
+					parameters: {},
+				},
+				{
+					id: 'e7820a46-6f6e-48b2-8dfe-744d3515af79',
+					name: 'Zep',
+					type: '@n8n/n8n-nodes-langchain.memoryZep',
+					typeVersion: 1.3,
+					position: [1200, 224],
+					parameters: {},
+				},
+				{
+					id: 'f259429d-3a70-4746-945e-c8056160408c',
+					name: 'Send a text message',
+					type: 'n8n-nodes-base.telegram',
+					typeVersion: 1.2,
+					position: [1696, 0],
+					parameters: {},
+				},
+				{
+					id: '92756ecf-546f-454c-9423-ae273f07a2f2',
+					name: 'AI Agent Tool',
+					type: '@n8n/n8n-nodes-langchain.agentTool',
+					typeVersion: 2.2,
+					position: [1536, 272],
+					parameters: {},
+				},
+				{
+					id: '193c4482-8477-4a72-9bdb-cc8dc46fe34c',
+					name: 'Anthropic Chat Model1',
+					type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+					typeVersion: 1.3,
+					position: [1424, 480],
+					parameters: {},
+				},
+				{
+					id: '141264f6-dcfa-4a50-9212-a4fbc76fead6',
+					name: 'Switch',
+					type: 'n8n-nodes-base.switch',
+					typeVersion: 3.2,
+					position: [160, 16],
+					parameters: {},
+				},
+				{
+					id: 'b9498c03-f517-43e8-830b-7b694be1199f',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [368, 112],
+					parameters: {},
+				},
+				{
+					id: '564bfeaf-85a6-46f7-bc00-b6ed4e305c8f',
+					name: 'Typing ...',
+					type: 'n8n-nodes-base.telegram',
+					typeVersion: 1.2,
+					position: [-64, 16],
+					parameters: {},
+				},
+			];
+
+			const connections = {
+				'Telegram Trigger': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Typing ...', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'AI Agent': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Send a text message', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'Anthropic Chat Model': {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'AI Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+				Zep: {
+					[NodeConnectionTypes.AiMemory]: [
+						[{ node: 'AI Agent', type: NodeConnectionTypes.AiMemory, index: 0 }],
+					],
+				},
+				'Anthropic Chat Model1': {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'AI Agent Tool', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+				'AI Agent Tool': {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				Switch: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Edit Fields', type: NodeConnectionTypes.Main, index: 1 }],
+					],
+				},
+				'Edit Fields': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'AI Agent', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				'Typing ...': {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Switch', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const workflow = createWorkflow(nodes, connections);
+			const wf = new Workflow({
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				active: workflow.active,
+				nodeTypes: NodeTypes(),
+				settings: workflow.settings,
+			});
+
+			// Test bidirectional path detection for the complex workflow
+			// Main flow: Telegram Trigger -> Typing ... -> Switch -> Edit Fields -> AI Agent -> Send a text message
+			expect(wf.hasPath('Telegram Trigger', 'Send a text message')).toBe(true);
+			expect(wf.hasPath('Typing ...', 'AI Agent')).toBe(true);
+			expect(wf.hasPath('Switch', 'AI Agent')).toBe(true);
+			expect(wf.hasPath('Edit Fields', 'AI Agent')).toBe(true);
+
+			// Test AI connections that should be reachable via bidirectional path detection
+			expect(wf.hasPath('Zep', 'Send a text message')).toBe(true); // ai_memory -> AI Agent -> Send a text message
+			expect(wf.hasPath('Anthropic Chat Model', 'Send a text message')).toBe(true); // ai_languageModel -> AI Agent -> Send a text message
+			expect(wf.hasPath('AI Agent Tool', 'Send a text message')).toBe(true); // ai_tool -> AI Agent -> Send a text message
+			expect(wf.hasPath('Anthropic Chat Model1', 'Send a text message')).toBe(true); // ai_languageModel -> AI Agent Tool -> AI Agent -> Send a text message
+
+			// Test WorkflowDataProxy access from 'Send a text message' to all other nodes
+			const proxy = createProxy(workflow, 'Send a text message');
+
+			// These should all work without throwing path detection errors
+			expect(() => proxy.$('Telegram Trigger')).not.toThrow();
+			expect(() => proxy.$('Typing ...')).not.toThrow();
+			expect(() => proxy.$('Switch')).not.toThrow();
+			expect(() => proxy.$('Edit Fields')).not.toThrow();
+			expect(() => proxy.$('AI Agent')).not.toThrow();
+			expect(() => proxy.$('Zep')).not.toThrow();
+			expect(() => proxy.$('Anthropic Chat Model')).not.toThrow();
+			expect(() => proxy.$('AI Agent Tool')).not.toThrow();
+			expect(() => proxy.$('Anthropic Chat Model1')).not.toThrow();
+		});
 	});
 });
