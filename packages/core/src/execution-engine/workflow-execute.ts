@@ -1171,6 +1171,23 @@ export class WorkflowExecute {
 		}
 	}
 
+	/**
+	 * Handles executeOnce logic by limiting input data to first item only
+	 */
+	private handleExecuteOnce(node: INode, inputData: ITaskDataConnections): ITaskDataConnections {
+		if (node.executeOnce === true) {
+			// If node should be executed only once so use only the first input item
+			const newInputData: ITaskDataConnections = {};
+			for (const connectionType of Object.keys(inputData)) {
+				newInputData[connectionType] = inputData[connectionType].map((input) => {
+					return input && input.slice(0, 1);
+				});
+			}
+			return newInputData;
+		}
+		return inputData;
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1206,16 +1223,7 @@ export class WorkflowExecute {
 
 		this.handlePreviousExecutionError(runExecutionData, node);
 
-		if (node.executeOnce === true) {
-			// If node should be executed only once so use only the first input item
-			const newInputData: ITaskDataConnections = {};
-			for (const connectionType of Object.keys(inputData)) {
-				newInputData[connectionType] = inputData[connectionType].map((input) => {
-					return input && input.slice(0, 1);
-				});
-			}
-			inputData = newInputData;
-		}
+		inputData = this.handleExecuteOnce(node, inputData);
 
 		if (nodeType.execute || customOperation) {
 			const closeFunctions: CloseFunction[] = [];
