@@ -52,7 +52,7 @@ const computedInlineStyles = computed(() => ({
 }));
 
 function forceFocus() {
-	if (editableRoot.value && !props.readOnly) {
+	if (editableRoot.value && !props.readOnly && !props.disabled) {
 		editableRoot.value.edit();
 	}
 }
