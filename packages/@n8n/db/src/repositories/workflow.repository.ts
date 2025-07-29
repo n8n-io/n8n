@@ -19,6 +19,7 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 
 type ResourceType = 'folder' | 'workflow';
@@ -711,65 +712,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 	}
 
-	private filterWorkflowsByNodesConstructWhereClause(nodeTypes: string[]) {
-		const dbType = this.globalConfig.database.type;
-
-		let whereClause: string;
-
-		const parameters: Record<string, string | string[]> = { nodeTypes };
-
-		switch (dbType) {
-			case 'postgresdb':
-				whereClause = `EXISTS (
-					SELECT 1
-					FROM jsonb_array_elements(workflow.nodes::jsonb) AS node
-					WHERE node->>'type' = ANY(:nodeTypes)
-				)`;
-				break;
-			case 'mysqldb':
-			case 'mariadb': {
-				const conditions = nodeTypes
-					.map(
-						(_, i) =>
-							`JSON_SEARCH(JSON_EXTRACT(workflow.nodes, '$[*].type'), 'one', :nodeType${i}) IS NOT NULL`,
-					)
-					.join(' OR ');
-
-				whereClause = `(${conditions})`;
-
-				nodeTypes.forEach((nodeType, index) => {
-					parameters[`nodeType${index}`] = nodeType;
-				});
-				break;
-			}
-			case 'sqlite': {
-				const conditions = nodeTypes
-					.map(
-						(_, i) =>
-							`EXISTS (SELECT 1 FROM json_each(workflow.nodes) WHERE json_extract(json_each.value, '$.type') = :nodeType${i})`,
-					)
-					.join(' OR ');
-
-				whereClause = `(${conditions})`;
-
-				nodeTypes.forEach((nodeType, index) => {
-					parameters[`nodeType${index}`] = nodeType;
-				});
-				break;
-			}
-			default:
-				throw new Error('Unsupported database type');
-		}
-
-		return { whereClause, parameters };
-	}
-
 	async findWorkflowsWithNodeType(nodeTypes: string[]) {
 		if (!nodeTypes?.length) return [];
 
 		const qb = this.createQueryBuilder('workflow');
 
-		const { whereClause, parameters } = this.filterWorkflowsByNodesConstructWhereClause(nodeTypes);
+		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
+			nodeTypes,
+			this.globalConfig.database.type,
+		);
 
 		const workflows: Array<{ id: string; name: string; active: boolean }> = await qb
 			.select(['workflow.id', 'workflow.name', 'workflow.active'])
