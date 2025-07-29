@@ -141,7 +141,6 @@ describe('NodeDetailsViewV2', () => {
 			const { pinia, workflowObject } = await createPiniaStore({
 				activeNodeName: 'Manual Trigger',
 			});
-			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
@@ -158,7 +157,7 @@ describe('NodeDetailsViewV2', () => {
 				},
 			});
 
-			const { getByTestId, queryByTestId, unmount } = renderComponent({
+			const { getByTestId, unmount } = renderComponent({
 				pinia,
 			});
 
@@ -224,7 +223,6 @@ describe('NodeDetailsViewV2', () => {
 			const { pinia, workflowObject } = await createPiniaStore({
 				activeNodeName: 'Manual Trigger',
 			});
-			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
