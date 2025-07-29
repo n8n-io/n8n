@@ -52,7 +52,11 @@ function onMissingNodeLearnMoreLinkClick() {
 					@click="onMissingNodeTextClick"
 				>
 					<template #action>
-                        <a :href="`https://www.npmjs.com/package/${npmPackage}`" target="_blank" rel="noopener noreferrer">
+						<a
+							:href="`https://www.npmjs.com/package/${npmPackage}`"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
 							{{ npmPackage }}
 						</a>
 					</template>
