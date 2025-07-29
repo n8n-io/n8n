@@ -223,7 +223,7 @@ onMounted(async () => {
 	if (communityStorePackage.value?.installedNodes.length) {
 		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
 		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
-		workflowsWithPackageNodes.value = response.data;
+		workflowsWithPackageNodes.value = response?.data ?? [];
 	}
 
 	setIsVerifiedLatestPackage();
