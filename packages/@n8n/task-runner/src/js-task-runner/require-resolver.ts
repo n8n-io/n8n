@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import { isBuiltin } from 'node:module';
 
 import { ExecutionError } from './errors/execution-error';
