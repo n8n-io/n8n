@@ -148,6 +148,7 @@ type Props = {
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
+	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
 };
@@ -169,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
+	disableSettingsHint: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
@@ -1541,7 +1543,10 @@ defineExpose({ enterEditMode });
 					</slot>
 				</N8nCallout>
 			</div>
-			<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
+			<NodeSettingsHint
+				v-if="!props.disableSettingsHint && props.paneType === 'output'"
+				:node="node"
+			/>
 			<N8nCallout
 				v-for="hint in getNodeHints()"
 				:key="hint.message"
