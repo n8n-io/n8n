@@ -58,6 +58,7 @@ import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/comp
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 import NodeActionsList from '@/components/NodeActionsList.vue';
+import { useNodeCredentialOptions } from '@/components/useNodeCredentialOptions';
 
 const props = withDefaults(
 	defineProps<{
@@ -149,6 +150,8 @@ const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
 );
+
+const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, false);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -562,6 +565,15 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 function handleSelectAction(params: INodeParameters) {
 	for (const [key, value] of Object.entries(params)) {
 		valueChanged({ name: `parameters.${key}`, value });
+	}
+
+	if (isDisplayingCredentials.value && !areAllCredentialsSet.value) {
+		onTabSelect('credential');
+		return;
+	}
+
+	if (parametersByTab.value.params.length > 0) {
+		onTabSelect('params');
 	}
 }
 </script>

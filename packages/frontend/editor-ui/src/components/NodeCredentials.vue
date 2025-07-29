@@ -87,14 +87,13 @@ const {
 	mainNodeAuthField,
 	credentialTypesNodeDescriptionDisplayed,
 	credentialTypesNodeDescriptions,
-	getCredentialOptions,
+	isCredentialExisting,
 	showMixedCredentials,
 } = useNodeCredentialOptions(
 	node,
 	nodeType,
 	computed(() => props.overrideCredType),
 );
-console.log(1, credentialTypesNodeDescriptionDisplayed.value);
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
@@ -387,16 +386,6 @@ function getIssues(credentialTypeName: string): string[] {
 		return [];
 	}
 	return node.issues.credentials[credentialTypeName];
-}
-
-function isCredentialExisting(credentialType: string): boolean {
-	if (!props.node.credentials?.[credentialType]?.id) {
-		return false;
-	}
-	const { id } = props.node.credentials[credentialType];
-	const options = getCredentialOptions([credentialType]);
-
-	return !!options.find((option: ICredentialsResponse) => option.id === id);
 }
 
 function editCredential(credentialType: string): void {
