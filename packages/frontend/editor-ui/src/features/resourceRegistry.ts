@@ -16,41 +16,33 @@
 
 import { type ResourceMetadata } from './module.types';
 
-class ResourceRegistry {
-	private resources: Map<string, ResourceMetadata> = new Map();
+// Private module state
+const resources: Map<string, ResourceMetadata> = new Map();
 
-	/**
-	 * Register a new resource type
-	 */
-	register(metadata: ResourceMetadata): void {
-		this.resources.set(metadata.key, metadata);
-	}
-
-	/**
-	 * Get resource metadata by key
-	 */
-	get(key: string): ResourceMetadata | undefined {
-		return this.resources.get(key);
-	}
-
-	/**
-	 * Check if a resource is registered
-	 */
-	has(key: string): boolean {
-		return this.resources.has(key);
-	}
-
-	/**
-	 * Get all registered resource keys
-	 */
-	getAllKeys(): string[] {
-		return Array.from(this.resources.keys());
-	}
+/**
+ * Register a new resource type
+ */
+export function registerResource(metadata: ResourceMetadata): void {
+	resources.set(metadata.key, metadata);
 }
 
-// Singleton instance
-export const resourceRegistry = new ResourceRegistry();
+/**
+ * Get resource metadata by key
+ */
+export function getResource(key: string): ResourceMetadata | undefined {
+	return resources.get(key);
+}
 
-export function registerResource(metadata: ResourceMetadata): void {
-	resourceRegistry.register(metadata);
+/**
+ * Check if a resource is registered
+ */
+export function hasResource(key: string): boolean {
+	return resources.has(key);
+}
+
+/**
+ * Get all registered resource keys
+ */
+export function getAllResourceKeys(): string[] {
+	return Array.from(resources.keys());
 }

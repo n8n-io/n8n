@@ -96,7 +96,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
-	const activeModules = computed(() => settings.value.activeModules);
+	const activeModules = computed(() => [...settings.value.activeModules, 'data-store']);
 
 	const isModuleActive = (moduleName: string) => {
 		return activeModules.value.includes(moduleName);
