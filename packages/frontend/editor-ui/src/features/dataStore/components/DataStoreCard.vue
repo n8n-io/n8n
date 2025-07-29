@@ -48,7 +48,7 @@ const dataStoreRoute = computed(() => {
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ dataStore.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>
@@ -110,8 +110,8 @@ const dataStoreRoute = computed(() => {
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
 						<N8nActionToggle
-							v-if="actions.length"
-							:actions="actions"
+							v-if="props.actions.length"
+							:actions="props.actions"
 							theme="dark"
 							data-test-id="folder-card-actions"
 						/>
