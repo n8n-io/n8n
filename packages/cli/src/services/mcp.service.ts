@@ -130,7 +130,7 @@ export class McpService {
 						return `
 								<trigger ${index + 1}>
 								\t - Node name: ${node.name}
-								\t - Base URL: ${this.urlService.baseUrl}
+								\t - Base URL: ${this.urlService.getWebhookBaseUrl()}
 								\t - PATH: ${workflow.active ? '/webhook/' : '/webhook-test/'}${node.parameters.path as string}
 								\t - HTTP Method: ${(node.parameters.httpMethod as string) ?? 'GET'}
 								\t - Response Mode: ${responseModeInfo}
