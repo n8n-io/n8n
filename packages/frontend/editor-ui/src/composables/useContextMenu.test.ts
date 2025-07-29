@@ -8,7 +8,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
-	INode,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,

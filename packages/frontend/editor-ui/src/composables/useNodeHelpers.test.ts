@@ -48,10 +48,10 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				id: 'workflow-id',
 				getNode: () => node,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
@@ -76,9 +76,9 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
@@ -103,9 +103,9 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
@@ -130,9 +130,9 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => triggerNode,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
@@ -157,9 +157,9 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => toolNode,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
@@ -184,9 +184,9 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});

@@ -112,7 +112,6 @@ import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
-import { storeToRefs } from 'pinia';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -172,8 +171,8 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const { workflow: editableWorkflow, workflowObject: editableWorkflowObject } =
-		storeToRefs(workflowsStore);
+	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
+	const editableWorkflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;

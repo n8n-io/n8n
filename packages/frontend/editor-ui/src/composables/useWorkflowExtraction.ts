@@ -44,6 +44,8 @@ export function useWorkflowExtraction() {
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
 
+	const workflowObject = computed(() => workflowsStore.workflowObject);
+
 	function showError(message: string) {
 		toast.showMessage({
 			type: 'error',
@@ -309,7 +311,7 @@ export function useWorkflowExtraction() {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
 
-			const ios = getIOs(workflowsStore.workflowObject, node, nodeType);
+			const ios = getIOs(workflowObject.value, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -427,7 +429,6 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const workflowObject = workflowsStore.workflowObject;
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
@@ -438,16 +439,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? workflowObject
+			? workflowObject.value
 					.getChildNodes(end, 'main', 1)
 					.map((x) => workflowObject.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 
 		const allAfterEndNodes = end
-			? workflowObject
+			? workflowObject.value
 					.getChildNodes(end, 'ALL')
-					.map((x) => workflowObject.getNode(x))
+					.map((x) => workflowObject.value.getNode(x))
 					.filter((x) => x !== null)
 			: [];
 

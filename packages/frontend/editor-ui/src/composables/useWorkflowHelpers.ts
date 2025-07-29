@@ -102,7 +102,7 @@ export function resolveParameter<T = IDataObject>(
 
 	return resolveParameterImpl(
 		parameter,
-		workflowsStore.workflowObject,
+		workflowsStore.workflowObject as Workflow,
 		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,

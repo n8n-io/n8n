@@ -43,7 +43,7 @@ vi.mock('@/stores/workflows.store', () => {
 		previousExecutionId: undefined,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
-		workflowObject: { id: '123' },
+		workflowObject: mock<Workflow>({ id: '123' }),
 		getNodeByName: vi
 			.fn()
 			.mockImplementation((name) =>

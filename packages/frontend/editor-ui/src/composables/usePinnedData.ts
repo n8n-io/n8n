@@ -1,6 +1,6 @@
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import type { INodeExecutionData, IPinData } from 'n8n-workflow';
+import type { INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
 import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
@@ -51,6 +51,8 @@ export function usePinnedData(
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
+	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
 	});
@@ -84,11 +86,9 @@ export function usePinnedData(
 
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
-		const outputs = NodeHelpers.getNodeOutputs(
-			workflowsStore.workflowObject,
-			targetNode,
-			nodeType,
-		).map((output) => (typeof output === 'string' ? { type: output } : output));
+		const outputs = NodeHelpers.getNodeOutputs(workflowObject.value, targetNode, nodeType).map(
+			(output) => (typeof output === 'string' ? { type: output } : output),
+		);
 
 		const mainOutputs = outputs.filter(
 			(output) => output.type === NodeConnectionTypes.Main && output.category !== 'error',
@@ -164,8 +164,8 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: currentPinData, ...workflowObject } = workflowsStore.workflowObject;
-		const workflowJson = jsonStringify(workflowObject, { replaceCircularRefs: true });
+		const { pinData: currentPinData, ...workflowObjectWithoutPinData } = workflowObject.value;
+		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
 		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);

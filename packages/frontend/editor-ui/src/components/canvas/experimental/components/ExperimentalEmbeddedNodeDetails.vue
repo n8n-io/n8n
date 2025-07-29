@@ -12,6 +12,7 @@ import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
+import type { Workflow } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
@@ -118,7 +119,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-const workflowObject = computed(() => workflowsStore.workflowObject);
+const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);

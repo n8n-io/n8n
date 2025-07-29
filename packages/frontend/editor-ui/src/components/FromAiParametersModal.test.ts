@@ -7,9 +7,11 @@ import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useRouter } from 'vue-router';
+import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nextTick } from 'vue';
+import { mock } from 'vitest-mock-extended';
 
 const ModalStub = {
 	template: `
@@ -63,10 +65,10 @@ const mockRunData = {
 	},
 };
 
-const mockWorkflow = {
+const mockWorkflow = mock<Workflow>({
 	id: 'test-workflow',
 	getChildNodes: () => ['Parent Node'],
-};
+});
 
 const mockTools = [
 	{

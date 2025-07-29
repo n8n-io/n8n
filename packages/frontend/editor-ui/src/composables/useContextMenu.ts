@@ -50,6 +50,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const sourceControlStore = useSourceControlStore();
 	const i18n = useI18n();
 
+	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
 	);
@@ -108,13 +110,12 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	};
 
 	const isExecutable = (node: INodeUi) => {
-		const workflowObject = workflowsStore.workflowObject;
-		const workflowNode = workflowObject.getNode(node.name) as INode;
+		const workflowNode = workflowObject.value.getNode(node.name) as INode;
 		const nodeType = nodeTypesStore.getNodeType(
 			workflowNode.type,
 			workflowNode.typeVersion,
 		) as INodeTypeDescription;
-		return NodeHelpers.isExecutable(workflowObject, workflowNode, nodeType);
+		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
 	};
 
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {

@@ -138,7 +138,6 @@ describe('completion utils', () => {
 				connections,
 			});
 
-			const workflowHelpersMock: MockInstance = vi.spyOn(workflowHelpers, 'useWorkflowHelpers');
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.workflowObject = workflowObject;
 
