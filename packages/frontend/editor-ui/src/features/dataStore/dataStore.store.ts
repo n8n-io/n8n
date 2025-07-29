@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { DATA_STORE_VIEW, PROJECT_DATA_STORES } from './constants';
 import { registerResource } from '@/features/resourceRegistry';
 import { createModuleTabs } from '@/utils/moduleTabHelper';
-import type { ModuleInitializer } from '@/types/moduleTypes';
+import type { ModuleInitializer } from '@/utils/moduleRegistry';
 
 export const useDataStoreStore = defineStore('dataStore', () => {
 	const initialize = () => {

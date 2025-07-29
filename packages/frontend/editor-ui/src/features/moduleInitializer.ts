@@ -3,7 +3,7 @@ import { type Router } from 'vue-router';
 import { insightsRoutes } from './insights/insights.router';
 import { dataStoreRoutes } from './dataStore/dataStore.routes';
 import { VIEWS } from '@/constants';
-import { initializeAllModules, getAllModuleRoutes } from '@/types/moduleTypes';
+import { initializeAllModules, getAllModuleRoutes } from '@/utils/moduleRegistry';
 
 /**
  * Once we have a mechanism to register and initialize modules generically,
