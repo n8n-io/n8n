@@ -108,7 +108,7 @@ async function handleActionClick(actionId: string) {
 	if (actionId === 'evaluations') {
 		// Navigate to evaluations
 		await router.push({
-			name: VIEWS.EVALUATION,
+			name: VIEWS.EVALUATION_EDIT,
 			params: { name: props.workflow.id },
 		});
 	} else if (actionId === 'errorWorkflow' || actionId === 'timeSaved') {
