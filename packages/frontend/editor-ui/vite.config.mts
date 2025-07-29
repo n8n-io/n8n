@@ -133,7 +133,9 @@ const plugins: UserConfig['plugins'] = [
 	},
 	// For sanitize-html
 	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
+		include: ['fs', 'path', 'util', 'timers'],
+		// Exclude url to avoid punycode directory import issue
+		exclude: ['url'],
 	}),
 ];
 
