@@ -9,3 +9,4 @@ export * from './pubsub';
 export { Redactable } from './redactable';
 export * from './shutdown';
 export * from './module/module-metadata';
+export { Timed, TimedOptions } from './timed';
