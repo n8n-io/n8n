@@ -28,6 +28,7 @@ import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreato
 import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
+import { I18nT } from 'vue-i18n';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -109,7 +110,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'variables',
 		icon: 'variable',
 		label: i18n.baseText('mainSidebar.variables'),
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
@@ -117,7 +117,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'insights',
 		icon: 'chart-column-decreasing',
 		label: 'Insights',
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
@@ -390,7 +389,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					placement="bottom"
 				>
 					<template #content>
-						<i18n-t keypath="readOnlyEnv.tooltip">
+						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
 								<N8nLink
 									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
@@ -399,7 +398,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
 								</N8nLink>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 					<N8nIcon
 						data-test-id="read-only-env-icon"

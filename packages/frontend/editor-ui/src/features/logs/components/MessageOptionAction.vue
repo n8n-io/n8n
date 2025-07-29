@@ -1,22 +1,8 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { useAttrs } from 'vue';
 import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
-defineProps({
-	label: {
-		type: String,
-		required: true,
-	},
-	icon: {
-		type: Object as PropType<IconName>,
-		required: true,
-	},
-	placement: {
-		type: String as PropType<'left' | 'right' | 'top' | 'bottom'>,
-		default: 'top',
-	},
-});
+defineProps<{ label: string; icon: IconName; placement: 'left' | 'right' | 'top' | 'bottom' }>();
 
 const attrs = useAttrs();
 

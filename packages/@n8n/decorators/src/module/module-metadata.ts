@@ -15,6 +15,10 @@ export class ModuleMetadata {
 		this.modules.set(moduleName, moduleEntry);
 	}
 
+	get(moduleName: string) {
+		return this.modules.get(moduleName);
+	}
+
 	getEntries() {
 		return [...this.modules.entries()];
 	}

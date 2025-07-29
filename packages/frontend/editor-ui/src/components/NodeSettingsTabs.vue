@@ -3,9 +3,9 @@ import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, PublicInstalledPackage } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -13,6 +13,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { N8nTabs } from '@n8n/design-system';
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUsersStore } from '@/stores/users.store';
 
 export type Tab = 'settings' | 'params' | 'communityNode' | 'docs';
 type Props = {
@@ -20,12 +22,14 @@ type Props = {
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
+	tabsVariant?: 'modern' | 'legacy';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	modelValue: 'params',
 	nodeType: undefined,
 	pushRef: '',
+	tabsVariant: undefined,
 });
 const emit = defineEmits<{
 	'update:model-value': [tab: Tab];
@@ -37,8 +41,11 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
+const communityNodesStore = useCommunityNodesStore();
 
 const activeNode = computed(() => ndvStore.activeNode);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const isCommunityNode = computed(() => {
 	const nodeType = props.nodeType;
@@ -67,6 +74,7 @@ const options = computed(() => {
 		{
 			label: i18n.baseText('nodeSettings.settings'),
 			value: 'settings',
+			notification: installedPackage.value?.updateAvailable ? true : undefined,
 		},
 	];
 
@@ -129,12 +137,19 @@ function onTooltipClick(tab: string | number, event: MouseEvent) {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}
 }
+
+onMounted(async () => {
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await communityNodesStore.getInstalledPackage(packageName.value);
+	}
+});
 </script>
 
 <template>
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
+		:variant="tabsVariant"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	/>

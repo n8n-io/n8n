@@ -1,0 +1,421 @@
+{
+	"createdAt": "2021-03-10T16:41:57.544Z",
+	"updatedAt": "2021-07-14T14:15:34.356Z",
+	"id": "121",
+	"name": "Mautic:Company:create update get getAll delete:Contact:create update get getAll delete:ContactCompany:add remove",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "32f14cad-d9c6-4b95-ab68-d4826d48fabf"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "company",
+				"name": "=Company{{Date.now()}}",
+				"additionalFields": {}
+			},
+			"name": "Mautic",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [550, 250],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "d51c36e4-8d14-4d6b-9d98-a54dba80d8d9"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "company",
+				"operation": "update",
+				"companyId": "={{$node[\"Mautic\"].json[\"id\"]}}",
+				"updateFields": {
+					"name": "=UpdatedCompany{{Date.now()}}"
+				}
+			},
+			"name": "Mautic1",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [700, 250],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "9d20aa4c-55c2-43f1-9eb8-61aa035fa095"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "company",
+				"operation": "get",
+				"companyId": "={{$node[\"Mautic\"].json[\"id\"]}}"
+			},
+			"name": "Mautic2",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1300, 250],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "2c32e4c1-c0f0-4119-935a-a41944fcc1f6"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "company",
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Mautic3",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1450, 250],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "e8aaee34-faed-4540-a153-e007360950e6"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "company",
+				"operation": "delete",
+				"companyId": "={{$node[\"Mautic\"].json[\"id\"]}}"
+			},
+			"name": "Mautic4",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1600, 250],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "51e9562a-6ed2-474f-a166-79aadba161ce"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"email": "=fakeemail{{Date.now()}}@gmail.com",
+				"firstName": "=Name{{Date.now()}}",
+				"lastName": "=LasName{{Date.now()}}",
+				"position": "=Position{{Date.now()}}",
+				"title": "=Title{{Date.now()}}",
+				"additionalFields": {},
+				"options": {}
+			},
+			"name": "Mautic5",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [550, 400],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "b1254079-c7e5-4bbd-b82d-949659011b06"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "update",
+				"contactId": "={{$node[\"Mautic5\"].json[\"id\"]}}",
+				"updateFields": {
+					"title": "=UpdatedTitle{{Date.now()}}"
+				},
+				"options": {}
+			},
+			"name": "Mautic6",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [700, 400],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "a52da7e6-2d92-4e0f-a216-8ea0a40eb335"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "get",
+				"contactId": "={{$node[\"Mautic5\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Mautic7",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1300, 400],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "f6defb20-2e74-4a39-9232-b5da5c865f0c"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Mautic8",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1450, 400],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "e58f2f81-3e0c-45e4-818b-5f665ea7c539"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "delete",
+				"contactId": "={{$node[\"Mautic5\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Mautic9",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1600, 400],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "f06c2ab6-32ee-4c50-a122-f3bad0523587"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "companyContact",
+				"operation": "add",
+				"contactId": "={{$node[\"Mautic5\"].json[\"id\"]}}",
+				"companyId": "={{$node[\"Mautic\"].json[\"id\"]}}"
+			},
+			"name": "Mautic10",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1000, 340],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "fb483ebe-6c2c-4003-9808-c669f4a91274"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "companyContact",
+				"operation": "remove",
+				"contactId": "={{$node[\"Mautic5\"].json[\"id\"]}}",
+				"companyId": "={{$node[\"Mautic\"].json[\"id\"]}}"
+			},
+			"name": "Mautic11",
+			"type": "n8n-nodes-base.mautic",
+			"typeVersion": 1,
+			"position": [1150, 340],
+			"credentials": {
+				"mauticOAuth2Api": {
+					"id": "89",
+					"name": "Mautic OAuth2 API creds"
+				}
+			},
+			"id": "98d7a2b6-1cc9-4887-88ca-ce5866116d63"
+		},
+		{
+			"parameters": {
+				"mode": "wait"
+			},
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 1,
+			"position": [850, 340],
+			"notesInFlow": true,
+			"notes": "Keep single execution",
+			"id": "be2a68cb-4317-4f90-8c79-fb0b30014081"
+		}
+	],
+	"connections": {
+		"Mautic": {
+			"main": [
+				[
+					{
+						"node": "Mautic1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Mautic",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mautic5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic2": {
+			"main": [
+				[
+					{
+						"node": "Mautic3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic3": {
+			"main": [
+				[
+					{
+						"node": "Mautic4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic5": {
+			"main": [
+				[
+					{
+						"node": "Mautic6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic6": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Mautic7": {
+			"main": [
+				[
+					{
+						"node": "Mautic8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic8": {
+			"main": [
+				[
+					{
+						"node": "Mautic9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic10": {
+			"main": [
+				[
+					{
+						"node": "Mautic11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mautic11": {
+			"main": [
+				[
+					{
+						"node": "Mautic2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mautic7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Mautic10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}
