@@ -131,6 +131,15 @@ async function handleIgnoreClick(actionId: string) {
 	await loadWorkflowSettings();
 }
 
+async function handleIgnoreAll() {
+	await workflowsCache.ignoreAllSuggestedActions(props.workflow.id);
+	await loadWorkflowSettings();
+}
+
+function handleTurnOffSuggestions() {
+	workflowsCache.turnOffAllSuggestedActions();
+}
+
 function openSuggestedActions() {
 	suggestedActionsComponent.value?.openPopover();
 }
@@ -169,7 +178,10 @@ defineExpose({
 		ref="suggestedActionsComponent"
 		:actions="availableActions"
 		:show-red-dot="showRedDot"
+		:turn-off-actions-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
+		@ignore-all="handleIgnoreAll"
+		@turn-off="handleTurnOffSuggestions"
 	/>
 </template>

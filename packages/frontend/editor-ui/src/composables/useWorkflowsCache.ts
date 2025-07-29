@@ -1,6 +1,10 @@
 import { indexedDbCache } from '@/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 
+const actionTypes = ['evaluations', 'errorWorkflow', 'timeSaved'] as const;
+
+type ActionType = (typeof actionTypes)[number];
+
 export interface UserEvaluationPreferences {
 	order: string[];
 	visibility: Record<string, boolean>;
@@ -8,20 +12,18 @@ export interface UserEvaluationPreferences {
 export interface WorkflowSettings {
 	firstActivatedAt?: number;
 	suggestedActions?: {
-		evaluations?: { ignored: boolean };
-		errorWorkflow?: { ignored: boolean };
-		timeSaved?: { ignored: boolean };
+		[K in ActionType]?: { ignored: boolean };
 	};
 	evaluationRuns?: UserEvaluationPreferences;
 }
 
 export function useWorkflowSettingsCache() {
-	async function getCache() {
+	async function getWorkflowsCache() {
 		return await indexedDbCache('workflows', 'settings');
 	}
 
 	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
-		const cache = await getCache();
+		const cache = await getWorkflowsCache();
 		const preferencesJson = cache.getItem(workflowId);
 
 		return jsonParse<WorkflowSettings>(preferencesJson ?? '', {
@@ -33,7 +35,7 @@ export function useWorkflowSettingsCache() {
 		workflowId: string,
 		updates: Partial<WorkflowSettings>,
 	): Promise<void> {
-		const cache = await getCache();
+		const cache = await getWorkflowsCache();
 		const existingSettings = await getWorkflowSettings(workflowId);
 
 		const updatedSettings: WorkflowSettings = {
@@ -63,10 +65,7 @@ export function useWorkflowSettingsCache() {
 		}
 	}
 
-	async function ignoreSuggestedAction(
-		workflowId: string,
-		action: 'evaluations' | 'errorWorkflow' | 'timeSaved',
-	): Promise<void> {
+	async function ignoreSuggestedAction(workflowId: string, action: ActionType): Promise<void> {
 		await upsertWorkflowSettings(workflowId, {
 			suggestedActions: {
 				[action]: { ignored: true },
@@ -90,12 +89,31 @@ export function useWorkflowSettingsCache() {
 		await upsertWorkflowSettings(workflowId, { evaluationRuns });
 	}
 
+	async function ignoreAllSuggestedActions(workflowId: string) {
+		await upsertWorkflowSettings(
+			workflowId,
+			actionTypes.reduce<WorkflowSettings>((accu, key) => {
+				accu.suggestedActions = accu.suggestedActions ?? {};
+				accu.suggestedActions[key] = {
+					ignored: true,
+				};
+
+				return accu;
+			}, {}),
+		);
+	}
+
+	function turnOffAllSuggestedActions() {
+		// todo
+	}
+
 	return {
-		getCache,
 		getWorkflowSettings,
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
 		ignoreSuggestedAction,
+		ignoreAllSuggestedActions,
+		turnOffAllSuggestedActions,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
 	};

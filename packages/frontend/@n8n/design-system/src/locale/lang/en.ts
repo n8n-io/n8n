@@ -5,6 +5,7 @@ export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.ignore': 'Ignore',
+	'generic.ignoreAll': 'Ignore all',
 	'generic.moreInfo': 'More info',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',

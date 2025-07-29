@@ -12,24 +12,28 @@ interface SuggestedAction {
 	id: string;
 	title: string;
 	description: string;
-	moreInfoLink?: string;
 	buttonLabel: string;
+	moreInfoLink?: string;
 }
 
 interface SuggestedActionsProps {
 	actions: SuggestedAction[];
 	showRedDot?: boolean;
+	turnOffActionsLabel?: string;
 }
 
 interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
 	(event: 'ignore-click', actionId: string): void;
+	(event: 'ignore-all'): void;
+	(event: 'turn-off'): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
 
 withDefaults(defineProps<SuggestedActionsProps>(), {
 	showRedDot: false,
+	turnOffActionsLabel: undefined,
 });
 
 const emit = defineEmits<SuggestedActionsEmits>();
@@ -65,7 +69,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="400px" max-height="400px">
+	<N8nPopoverReka v-model:open="isOpen" width="400px">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
@@ -119,6 +123,29 @@ defineExpose({
 							{{ t('generic.ignore') }}
 						</N8nLink>
 					</div>
+				</div>
+				<div v-if="actions.length > 1 || turnOffActionsLabel" :class="$style.ignoreAllContainer">
+					<N8nLink
+						v-if="actions.length > 1"
+						theme="text"
+						size="small"
+						underline
+						data-test-id="suggested-action-ignore-all"
+						@click.prevent="emit('ignore-all')"
+					>
+						{{ t('generic.ignoreAll') }}
+					</N8nLink>
+
+					<N8nLink
+						v-if="turnOffActionsLabel"
+						theme="text"
+						size="small"
+						underline
+						data-test-id="suggested-action-turn-off-all"
+						@click.prevent="emit('turn-off')"
+					>
+						{{ turnOffActionsLabel }}
+					</N8nLink>
 				</div>
 			</div>
 		</template>
@@ -174,5 +201,10 @@ defineExpose({
 	align-items: center;
 	gap: var(--spacing-s);
 	margin-top: var(--spacing-xs);
+}
+
+.ignoreAllContainer {
+	display: flex;
+	gap: var(--spacing-s);
 }
 </style>
