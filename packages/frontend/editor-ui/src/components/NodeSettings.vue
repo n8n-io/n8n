@@ -680,12 +680,15 @@ function handleSelectAction(params: INodeParameters) {
 				:node="node"
 				@action-selected="handleSelectAction"
 			/>
-			<NodeCredentialsList
+			<NodeCredentials
 				v-if="openPanel === 'credential'"
-				class="cred-tab"
 				:node="node"
 				:readonly="isReadOnly"
+				:show-all="true"
+				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				@credential-selected="credentialSelected"
+				@value-changed="valueChanged"
+				@blur="onParameterBlur"
 			/>
 			<div v-if="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
@@ -851,7 +854,7 @@ function handleSelectAction(params: INodeParameters) {
 			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
 		}
 
-		& > :not(:is(.cred-tab, .action-tab)) {
+		& > :not(.action-tab) {
 			margin-inline: var(--spacing-m);
 		}
 
@@ -861,7 +864,7 @@ function handleSelectAction(params: INodeParameters) {
 	}
 
 	&.embedded .node-parameters-wrapper {
-		& > :not(:is(.cred-tab, .action-tab)) {
+		& > :not(.action-tab) {
 			margin-inline: var(--spacing-xs);
 		}
 
