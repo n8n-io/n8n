@@ -8,13 +8,14 @@ import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
-import { computed, onBeforeUnmount, provide, ref, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
+import { useCanvas } from '@/composables/useCanvas';
 
 const { nodeId, isReadOnly, isConfigurable } = defineProps<{
 	nodeId: string;
@@ -36,22 +37,7 @@ const nodeType = computed(() => {
 	return null;
 });
 const vf = useVueFlow();
-
-const isMoving = ref(false);
-
-const moveStartListener = vf.onMoveStart(() => {
-	isMoving.value = true;
-});
-
-const moveEndListener = vf.onMoveEnd(() => {
-	isMoving.value = false;
-});
-
-onBeforeUnmount(() => {
-	moveStartListener.off();
-	moveEndListener.off();
-});
-
+const { isPaneMoving } = useCanvas();
 const isVisible = computed(() =>
 	vf.isNodeIntersecting(
 		{ id: nodeId },
@@ -150,7 +136,7 @@ watchOnce(isVisible, (visible) => {
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
 			'--node-width-scaler': isConfigurable ? 1 : 1.5,
 			'--max-height-on-focus': `${(vf.dimensions.value.height * 0.8) / experimentalNdvStore.maxCanvasZoom}px`,
-			pointerEvents: isMoving ? 'none' : 'auto', // Don't interrupt canvas panning
+			pointerEvents: isPaneMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
 		<template v-if="!node || !isOnceVisible" />

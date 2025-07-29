@@ -894,6 +894,7 @@ provide(CanvasKey, {
 	initialized,
 	viewport,
 	isExperimentalNdvActive,
+	isPaneMoving,
 });
 </script>
 
