@@ -135,7 +135,7 @@ export class Workflow {
 	// Save nodes in workflow as object to be able to get the
 	// nodes easily by its name.
 	// Also directly add the default values of the node type.
-	setNodes(nodes: INode[]): void {
+	setNodes(nodes: INode[], withParameters = false): void {
 		let nodeType: INodeType | undefined;
 		for (const node of nodes) {
 			this.nodes[node.name] = node;
@@ -152,6 +152,10 @@ export class Workflow {
 				// 	tags: { nodeType: node.type },
 				// 	extra: { node },
 				// });
+			}
+
+			if (withParameters) {
+				continue;
 			}
 
 			// Add default values

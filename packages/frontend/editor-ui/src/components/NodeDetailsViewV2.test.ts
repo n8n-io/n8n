@@ -1,10 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, waitForElementToBeRemoved, fireEvent } from '@testing-library/vue';
-import { mock } from 'vitest-mock-extended';
+import { waitFor, fireEvent } from '@testing-library/vue';
 
 import NodeDetailsViewV2 from '@/components/NodeDetailsViewV2.vue';
 import { VIEWS } from '@/constants';
-import type { IWorkflowDb } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -13,7 +11,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { createTestWorkflow, defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import {
+	createTestWorkflow,
+	createTestWorkflowObject,
+	defaultNodeDescriptions,
+	mockNodes,
+} from '@/__tests__/mocks';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
@@ -41,7 +44,8 @@ async function createPiniaStore(
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.setWorkflow(workflow);
+	workflowsStore.workflow = workflow;
+	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
 	workflowsStore.nodeMetadata = mockNodes.reduce(
 		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
 		{},
@@ -131,7 +135,12 @@ describe('NodeDetailsViewV2', () => {
 
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, workflowObject } = await createPiniaStore();
+			const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+			const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
+
+			const { pinia, workflowObject } = await createPiniaStore({
+				activeNodeName: 'Manual Trigger',
+			});
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
@@ -149,14 +158,9 @@ describe('NodeDetailsViewV2', () => {
 				},
 			});
 
-			const { getByTestId, queryByTestId } = renderComponent({
+			const { getByTestId, queryByTestId, unmount } = renderComponent({
 				pinia,
 			});
-
-			const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
-			const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
-
-			ndvStore.activeNodeName = 'Manual Trigger';
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 
@@ -167,9 +171,7 @@ describe('NodeDetailsViewV2', () => {
 				true,
 			);
 
-			ndvStore.activeNodeName = null;
-
-			await waitForElementToBeRemoved(queryByTestId('ndv'));
+			unmount();
 
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
 
@@ -219,7 +221,9 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, workflowObject } = await createPiniaStore();
+			const { pinia, workflowObject } = await createPiniaStore({
+				activeNodeName: 'Manual Trigger',
+			});
 			const ndvStore = useNDVStore();
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
@@ -240,8 +244,6 @@ describe('NodeDetailsViewV2', () => {
 			const { getByTestId, emitted } = renderComponent({
 				pinia,
 			});
-
-			ndvStore.activeNodeName = 'Manual Trigger';
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 

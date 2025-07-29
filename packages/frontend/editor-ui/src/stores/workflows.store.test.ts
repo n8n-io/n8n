@@ -18,6 +18,7 @@ import type {
 	IConnection,
 	INodeExecutionData,
 	INode,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
@@ -46,10 +47,15 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
-const getNodeType = vi.fn();
+const getNodeType = vi.fn((): Partial<INodeTypeDescription> | null => ({
+	inputs: [],
+	group: [],
+	webhooks: false,
+	properties: [],
+}));
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(() => ({ inputs: [], group: [], webhooks: false, properties: [] })),
+		getNodeType,
 	})),
 }));
 
@@ -180,7 +186,12 @@ describe('useWorkflowsStore', () => {
 
 	describe('workflowTriggerNodes', () => {
 		it('should return only nodes that are triggers', () => {
-			getNodeType.mockReturnValueOnce({ group: ['trigger'] });
+			getNodeType.mockImplementation((nodeTypeName: string) => ({
+				group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
+				inputs: [],
+				webhooks: false,
+				properties: [],
+			}));
 
 			workflowsStore.setNodes([
 				{ type: 'triggerNode', typeVersion: '1' },
@@ -632,6 +643,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
+			workflowsStore.workflow.pinData = {};
 			workflowsStore.setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
@@ -1070,9 +1082,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setNodeParameters', () => {
 		beforeEach(() => {
-			workflowsStore.workflow.nodes = [
-				createTestNode({ name: 'a', parameters: { p: 1, q: true } }),
-			];
+			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
 		});
 
 		it('should set node parameters', () => {
@@ -1276,7 +1286,7 @@ describe('useWorkflowsStore', () => {
 		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
 
 		beforeEach(() => {
-			workflowsStore.workflow.nodes = [n0, n1];
+			workflowsStore.setNodes([n0, n1]);
 			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
 		});
 
