@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 import type { ResourceMetadata } from '@/features/resourceRegistry';
-import type { ModuleTabsConfig } from '@/utils/moduleTabHelper';
+import type { ModuleTabsConfig } from '@/utils/module/tabHelper';
 
 /**
  * Standard interface for module initialization

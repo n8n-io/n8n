@@ -1,4 +1,4 @@
-import { createModuleConstants } from '@/utils/moduleConstants';
+import { createModuleConstants } from '@/utils/module/constants';
 
 // Route and view identifiers
 const constants = createModuleConstants('dataStore', {
