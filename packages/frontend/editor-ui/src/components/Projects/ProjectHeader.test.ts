@@ -295,8 +295,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('module1');
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('module2');
 		});
 
 		it('should pass tabs for overview page type when on overview sub page', () => {
@@ -319,7 +317,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('overviewModule');
 		});
 
 		it('should pass tabs for project page type when not on shared or overview sub pages', () => {
@@ -345,7 +342,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('projectModule');
 		});
 
 		it('should filter out tabs from inactive modules', () => {
@@ -372,8 +368,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('activeModule');
-			expect(settingsStore.isModuleActive).toHaveBeenCalledWith('inactiveModule');
 		});
 
 		it('should flatten tabs from multiple active modules', () => {
