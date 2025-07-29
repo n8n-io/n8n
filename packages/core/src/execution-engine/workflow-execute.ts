@@ -1357,6 +1357,40 @@ export class WorkflowExecute {
 		return { data: inputData.main as INodeExecutionData[][] };
 	}
 
+	/**
+	 * Executes a declarative node using RoutingNode
+	 */
+	private async executeDeclarativeNode(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeType,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
+	): Promise<IRunNodeResponse> {
+		// NOTE: This block is only called by nodes tests.
+		// In the application, declarative nodes get assigned a `.execute` method in NodeTypes.
+		const context = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executionData,
+			[],
+		);
+		const routingNode = new RoutingNode(context, nodeType);
+		const data = await routingNode.runNode();
+		return { data };
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1426,11 +1460,10 @@ export class WorkflowExecute {
 			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
-			// NOTE: This block is only called by nodes tests.
-			// In the application, declarative nodes get assigned a `.execute` method in NodeTypes.
-			const context = new ExecuteContext(
+			return await this.executeDeclarativeNode(
 				workflow,
 				node,
+				nodeType,
 				additionalData,
 				mode,
 				runExecutionData,
@@ -1438,11 +1471,7 @@ export class WorkflowExecute {
 				connectionInputData,
 				inputData,
 				executionData,
-				[],
 			);
-			const routingNode = new RoutingNode(context, nodeType);
-			const data = await routingNode.runNode();
-			return { data };
 		}
 	}
 
