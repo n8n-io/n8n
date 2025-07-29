@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { INodeParameters } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const { node } = defineProps<{
 	node: INodeUi;
@@ -21,6 +21,8 @@ const nodeTypesStore = useNodeTypesStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 const { parseCategoryActions, getActionData } = useActions();
 const i18n = useI18n();
+
+const selectedActionRef = ref<HTMLElement>();
 
 const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeVersion));
 const options = computed(() => {
@@ -62,6 +64,20 @@ function handleClickOption(option: INodeCreateElement) {
 
 	emit('actionSelected', getActionData(option.properties).value);
 }
+
+function handleSelectedItemRef(el: unknown) {
+	if (el instanceof HTMLDivElement) {
+		selectedActionRef.value = el;
+	}
+}
+
+watch(
+	selectedActionRef,
+	(selected) => {
+		selected?.scrollIntoView();
+	},
+	{ flush: 'post' },
+);
 </script>
 
 <template>
@@ -79,6 +95,7 @@ function handleClickOption(option: INodeCreateElement) {
 			</N8nText>
 			<div
 				v-else-if="option.action.type === 'action'"
+				:ref="option.isSelected ? handleSelectedItemRef : undefined"
 				:class="{
 					[$style.option]: true,
 					[$style.selected]: option.isSelected,
