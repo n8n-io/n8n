@@ -1,40 +1,90 @@
-import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { type Router } from 'vue-router';
 import { insightsRoutes } from './insights/insights.router';
-import { dataStoreRoutes } from './dataStore/dataStore.routes';
 import { VIEWS } from '@/constants';
+import { type FrontendModuleDescription } from './module.types';
+import { DataStoreModule } from '@/features/dataStore/module.descriptor';
+import { registerResource } from '@/features/resourceRegistry';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 /**
- * Once we have a mechanism to register and initialize modules generically,
- * we can remove this.
- * Each module should be responsible for its own initialization on demand.
- * This currently works that way for registering project tabs but routes
- * all still registered by explicitly importing the module routes here.
+ * Hard-coding modules list until we have a dynamic way to load modules.
  */
+const modules: FrontendModuleDescription[] = [DataStoreModule];
 
 /**
- * Initialize modules stores, done in init.ts
+ * Initialize modules resources (used in ResourcesListLayout), done in init.ts
  */
-export const initializeModuleStores = () => {
-	useDataStoreStore().initialize();
+export const registerModuleResources = () => {
+	modules.forEach((module) => {
+		module.resources?.forEach((resource) => {
+			registerResource(resource);
+		});
+	});
+};
+
+/**
+ * Initialize modules project tabs (used in ProjectHeader), done in init.ts
+ */
+export const registerModuleProjectTabs = () => {
+	const uiStore = useUIStore();
+	modules.forEach((module) => {
+		if (module.projectTabs) {
+			if (module.projectTabs.overview) {
+				uiStore.registerCustomTabs('overview', module.id, module.projectTabs.overview);
+			}
+			if (module.projectTabs.project) {
+				uiStore.registerCustomTabs('project', module.id, module.projectTabs.project);
+			}
+			if (module.projectTabs.shared) {
+				uiStore.registerCustomTabs('shared', module.id, module.projectTabs.shared);
+			}
+		}
+	});
+};
+
+/**
+ * Middleware function to check if a module is available
+ */
+const checkModuleAvailability = (options: any) => {
+	if (!options?.to?.meta?.moduleName || typeof options.to.meta.moduleName !== 'string') {
+		return true;
+	}
+	return useSettingsStore().isModuleActive(options.to.meta.moduleName);
 };
 
 /**
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
-	// Init insights module routes
+	// // Init insights module routes
 	insightsRoutes.forEach((route) => {
 		router.addRoute(route);
 	});
 
-	// Register data store routes
-	dataStoreRoutes.forEach((route) => {
-		// Add project-specific routes under main project route
-		if (route.meta?.projectRoute) {
-			router.addRoute(VIEWS.PROJECT_DETAILS, route);
-		} else {
-			router.addRoute(route);
-		}
+	modules.forEach((module) => {
+		module.routes?.forEach((route) => {
+			// Prepare the enhanced route with module metadata and custom middleware that checks module availability
+			const enhancedRoute = {
+				...route,
+				meta: {
+					...route.meta,
+					moduleName: module.id,
+					// Merge middleware options if custom middleware is present
+					...(route.meta?.middleware?.includes('custom') && {
+						middlewareOptions: {
+							...route.meta?.middlewareOptions,
+							custom: checkModuleAvailability,
+						},
+					}),
+				},
+			};
+
+			if (route.meta?.projectRoute) {
+				router.addRoute(VIEWS.PROJECT_DETAILS, enhancedRoute);
+			} else {
+				router.addRoute(enhancedRoute);
+			}
+		});
 	});
 };

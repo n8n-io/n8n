@@ -14,11 +14,7 @@
   	4. Import your resource type from the local types file in your components
  */
 
-interface ResourceMetadata {
-	key: string;
-	displayName: string;
-	i18nKeys?: Record<string, string>;
-}
+import { type ResourceMetadata } from './module.types';
 
 class ResourceRegistry {
 	private resources: Map<string, ResourceMetadata> = new Map();
