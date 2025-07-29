@@ -1147,6 +1147,30 @@ export class WorkflowExecute {
 		return connectionInputData;
 	}
 
+	/**
+	 * Handles re-throwing errors from previous node execution attempts
+	 */
+	private handlePreviousExecutionError(runExecutionData: IRunExecutionData, node: INode): void {
+		if (
+			runExecutionData.resultData.lastNodeExecuted === node.name &&
+			runExecutionData.resultData.error !== undefined
+		) {
+			// The node did already fail. So throw an error here that it displays and logs it correctly.
+			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
+			// to log the error and display in Editor-UI.
+			if (
+				runExecutionData.resultData.error.name === 'NodeOperationError' ||
+				runExecutionData.resultData.error.name === 'NodeApiError'
+			) {
+				throw runExecutionData.resultData.error;
+			}
+
+			const error = new Error(runExecutionData.resultData.error.message);
+			error.stack = runExecutionData.resultData.error.stack;
+			throw error;
+		}
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1180,24 +1204,7 @@ export class WorkflowExecute {
 			return { data: undefined };
 		}
 
-		if (
-			runExecutionData.resultData.lastNodeExecuted === node.name &&
-			runExecutionData.resultData.error !== undefined
-		) {
-			// The node did already fail. So throw an error here that it displays and logs it correctly.
-			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
-			// to log the error and display in Editor-UI.
-			if (
-				runExecutionData.resultData.error.name === 'NodeOperationError' ||
-				runExecutionData.resultData.error.name === 'NodeApiError'
-			) {
-				throw runExecutionData.resultData.error;
-			}
-
-			const error = new Error(runExecutionData.resultData.error.message);
-			error.stack = runExecutionData.resultData.error.stack;
-			throw error;
-		}
+		this.handlePreviousExecutionError(runExecutionData, node);
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
