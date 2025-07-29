@@ -97,8 +97,8 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 		tabType = 'project';
 	}
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter((module) =>
-		settingsStore.isModuleActive(module),
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
+		settingsStore.isModuleActive,
 	);
 	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
 });

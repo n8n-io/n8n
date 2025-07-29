@@ -1,5 +1,5 @@
+import type { DynamicTabOptions } from '@/utils/modules/tabUtils';
 import type { RouteRecordRaw } from 'vue-router';
-import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
 
 export type ResourceMetadata = {
 	key: string;
