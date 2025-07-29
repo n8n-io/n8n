@@ -179,7 +179,6 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
-			partialExecutionVersion: 2,
 			dirtyNodeNames,
 			triggerToStartFrom,
 			agentRequest,
@@ -214,7 +213,6 @@ export class WorkflowExecutionService {
 				},
 				manualData: {
 					userId: data.userId,
-					partialExecutionVersion: data.partialExecutionVersion,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},

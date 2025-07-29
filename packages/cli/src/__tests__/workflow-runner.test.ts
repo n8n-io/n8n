@@ -169,38 +169,6 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).toHaveBeenCalled();
 	});
 
-	it('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
-		// ARRANGE
-		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
-			new PCancelable(() => {
-				return mock<IRun>();
-			}),
-		);
-
-		const recreateNodeExecutionStackSpy = jest.spyOn(core, 'recreateNodeExecutionStack');
-
-		const data = mock<IWorkflowExecutionDataProcess>({
-			triggerToStartFrom: { name: 'trigger', data: undefined },
-
-			workflowData: { nodes: [] },
-			executionData: undefined,
-			startNodes: [mock<StartNodeData>()],
-			destinationNode: undefined,
-		});
-
-		// ACT
-		await runner.run(data);
-
-		// ASSERT
-		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
-	});
-
 	it('run partial execution with additional data', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);

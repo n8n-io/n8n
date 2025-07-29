@@ -2253,7 +2253,7 @@ export interface IRunExecutionData {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
 export type SchemaType =
@@ -2406,7 +2406,6 @@ export interface IWorkflowExecutionDataProcess {
 	 *  1 - use the old flow
 	 *  2 - use the new flow
 	 */
-	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;

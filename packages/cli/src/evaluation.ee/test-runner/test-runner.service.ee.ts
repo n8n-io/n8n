@@ -224,7 +224,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -240,7 +239,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -301,7 +299,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			executionData: {
 				startData: {
 					destinationNode: triggerNode.name,
@@ -311,7 +308,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
