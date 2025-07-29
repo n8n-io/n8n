@@ -1,0 +1,266 @@
+{
+	"createdAt": "2021-03-26T08:52:34.511Z",
+	"updatedAt": "2021-11-19T13:01:47.053Z",
+	"id": "160",
+	"name": "Wordpress:User:getAll get create update:Post:create get getAll update",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "1a1d54e3-a566-4100-9ce1-3299836fbf11"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Wordpress",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [450, 150],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "47be3700-b529-4ea0-b262-9230788cc460"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"username": "=username{{Date.now()}}",
+				"name": "=Name{{Date.now()}}",
+				"firstName": "=Fname{{Date.now()}}",
+				"lastName": "=Lname{{Date.now()}}",
+				"email": "=fake{{Date.now()}}@gmail.com",
+				"password": "={{new Array(12).fill().map(() => String.fromCharCode(Math.random()*25+66)).join(\"\")}}",
+				"additionalFields": {}
+			},
+			"name": "Wordpress1",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [750, 150],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "3195d3b1-4dad-4470-9707-cefbe4409813"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "={{$node[\"Wordpress\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Wordpress2",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [600, 150],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "e1ef9cce-7248-470b-a827-b4bb27c3ce22"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "update",
+				"userId": "={{$node[\"Wordpress1\"].json[\"id\"]}}",
+				"updateFields": {
+					"slug": "=slug-updated{{$node[\"Wordpress1\"].json[\"slug\"]}}"
+				}
+			},
+			"name": "Wordpress3",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [900, 150],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "cf5aa95b-d232-493e-9c8a-d35039ac13b4"
+		},
+		{
+			"parameters": {
+				"title": "=Title{{Date.now()}}",
+				"additionalFields": {
+					"content": "=Post content {{Date.now()}}",
+					"status": "draft"
+				}
+			},
+			"name": "Wordpress4",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "3e3bf3c6-e000-4034-9919-6ff705999f1a"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"postId": "={{$node[\"Wordpress4\"].json[\"id\"]}}",
+				"options": {}
+			},
+			"name": "Wordpress5",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "761de321-3bf2-4c4d-9432-ffe80813bda9"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Wordpress6",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "2bf2fd5e-ed32-4964-95dd-2a94e7f0fb4d"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"postId": "={{$node[\"Wordpress4\"].json[\"id\"]}}",
+				"updateFields": {
+					"title": "=Updated{{$node[\"Wordpress4\"].json[\"title\"][\"rendered\"]}}"
+				}
+			},
+			"name": "Wordpress7",
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"credentials": {
+				"wordpressApi": {
+					"id": "126",
+					"name": "Wordpress API creds"
+				}
+			},
+			"id": "f574c739-2015-4996-ace7-c9d6f7f170ba"
+		}
+	],
+	"connections": {
+		"Wordpress": {
+			"main": [
+				[
+					{
+						"node": "Wordpress2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wordpress2": {
+			"main": [
+				[
+					{
+						"node": "Wordpress1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wordpress1": {
+			"main": [
+				[
+					{
+						"node": "Wordpress3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wordpress4": {
+			"main": [
+				[
+					{
+						"node": "Wordpress5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wordpress5": {
+			"main": [
+				[
+					{
+						"node": "Wordpress6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Wordpress",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wordpress4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wordpress6": {
+			"main": [
+				[
+					{
+						"node": "Wordpress7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}
