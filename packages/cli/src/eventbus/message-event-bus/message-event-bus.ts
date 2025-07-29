@@ -64,6 +64,7 @@ export interface MessageEventBusInitializeOptions {
 // eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
+	cleanDanglingExecutions = false;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -162,32 +163,38 @@ export class MessageEventBus extends EventEmitter {
 					})
 				).map((e) => e.id);
 
-				// Executions in the new state without executionData are invalid and need to be cleaned up
-				const dbInvalidExecutions = (
-					await this.executionRepository
-						.createQueryBuilder('execution')
-						.where('execution.status = :status', { status: 'new' })
-						.andWhere(
-							'NOT EXISTS (' +
-								this.executionRepository.manager
-									.createQueryBuilder()
-									.select('1')
-									.from(ExecutionData, 'execution_data')
-									.where('execution_data.executionId = execution.id')
-									.getQuery() +
-								')',
-						)
-						.select('execution.id')
-						.getMany()
-				).map((e) => e.id);
+				if (this.cleanDanglingExecutions) {
+					// Executions in the new state without executionData are invalid and need to be cleaned up
+					const dbInvalidExecutions = (
+						await this.executionRepository
+							.createQueryBuilder('execution')
+							.where('execution.status = :status', { status: 'new' })
+							.andWhere(
+								'NOT EXISTS (' +
+									this.executionRepository.manager
+										.createQueryBuilder()
+										.select('1')
+										.from(ExecutionData, 'execution_data')
+										.where('execution_data.executionId = execution.id')
+										.getQuery() +
+									')',
+							)
+							.select('execution.id')
+							.getMany()
+					).map((e) => e.id);
 
-				unfinishedExecutionIds = Array.from(
-					new Set<string>([
-						...unfinishedExecutionIds,
-						...dbUnfinishedExecutionIds,
-						...dbInvalidExecutions,
-					]),
-				);
+					unfinishedExecutionIds = Array.from(
+						new Set<string>([
+							...unfinishedExecutionIds,
+							...dbUnfinishedExecutionIds,
+							...dbInvalidExecutions,
+						]),
+					);
+				} else {
+					unfinishedExecutionIds = Array.from(
+						new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
+					);
+				}
 			}
 
 			if (unfinishedExecutionIds.length > 0) {

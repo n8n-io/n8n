@@ -52,6 +52,10 @@ const flagsSchema = z.object({
 			'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		)
 		.optional(),
+	cleanDanglingExecutions: z
+		.boolean()
+		.describe('Removes dangling executions that are queued and are missing execution data.')
+		.optional(),
 });
 
 @Command({
@@ -314,6 +318,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
 		}
+
+		const eventBus = Container.get(MessageEventBus);
+		eventBus.cleanDanglingExecutions = flags.cleanDanglingExecutions ?? false;
 
 		await this.server.start();
 
