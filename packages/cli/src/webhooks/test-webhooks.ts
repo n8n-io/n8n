@@ -200,13 +200,28 @@ export class TestWebhooks implements IWebhookManager {
 		if (timeout) clearTimeout(timeout);
 	}
 
+	async getWebhooksFromPath(rawPath: string) {
+		const path = removeTrailingSlash(rawPath);
+		const webhooks: IWebhookData[] = [];
+		for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
+			let webhook = await this.getActiveWebhook(method, path);
+			if (!webhook) {
+				// check for dynamic webhooks
+				const [webhookId, ...segments] = path.split('/');
+				webhook = await this.getActiveWebhook(method, segments.join('/'), webhookId);
+			}
+			if (webhook) {
+				webhooks.push(webhook);
+			}
+		}
+		return webhooks;
+	}
+
 	async getWebhookMethods(rawPath: string) {
 		const path = removeTrailingSlash(rawPath);
-		const allKeys = await this.registrations.getAllKeys();
+		const webhooks = await this.getWebhooksFromPath(path);
 
-		const webhookMethods = allKeys
-			.filter((key) => key.includes(path))
-			.map((key) => key.split('|')[0] as IHttpRequestMethods);
+		const webhookMethods = webhooks.map((webhook) => webhook.httpMethod);
 
 		if (!webhookMethods.length) throw new WebhookNotFoundError({ path });
 
