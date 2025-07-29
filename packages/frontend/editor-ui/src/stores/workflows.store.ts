@@ -141,7 +141,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const workflowObject = ref<Workflow>(
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
-		getWorkflow(workflow.value.nodes, workflow.value.connections),
+		createWorkflowObject(workflow.value.nodes, workflow.value.connections),
 	);
 
 	// For paginated workflow lists
@@ -510,7 +510,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+	function createWorkflowObject(
+		nodes: INodeUi[],
+		connections: IConnections,
+		copyData?: boolean,
+	): Workflow {
 		const nodeTypes = getNodeTypes();
 
 		let id: string | undefined = workflow.value.id;
@@ -534,7 +538,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodes = getNodes();
 		const connections = allConnections.value;
 
-		return getWorkflow(nodes, connections, true);
+		return createWorkflowObject(nodes, connections);
 	}
 
 	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
@@ -973,7 +977,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};
-		workflowObject.value = getWorkflow(workflow.value.nodes, workflow.value.connections, true);
+		workflowObject.value = createWorkflowObject(
+			workflow.value.nodes,
+			workflow.value.connections,
+			true,
+		);
 	}
 
 	function pinData(payload: { node: INodeUi; data: INodeExecutionData[] }): void {
@@ -1263,7 +1271,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 
 		workflow.value.nodes = nodes;
-		workflowObject.value.setNodes(nodes, true);
+		workflowObject.value.setNodes(nodes);
 	}
 
 	function setConnections(value: IConnections): void {
@@ -1291,7 +1299,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.nodes[nodeIndex] = node;
 
 			if (changed) {
-				workflowObject.value.setNodes(workflow.value.nodes, true);
+				workflowObject.value.setNodes(workflow.value.nodes);
 			}
 
 			console.log(workflow.value.nodes[nodeIndex]);
@@ -1340,7 +1348,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflow.value.nodes.push(nodeData);
-		workflowObject.value.setNodes(workflow.value.nodes, true);
+		workflowObject.value.setNodes(workflow.value.nodes);
 
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
@@ -1363,7 +1371,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					...workflow.value.nodes.slice(0, i),
 					...workflow.value.nodes.slice(i + 1),
 				];
-				workflowObject.value.setNodes(workflow.value.nodes, true);
+				workflowObject.value.setNodes(workflow.value.nodes);
 				uiStore.stateIsDirty = true;
 				return;
 			}
@@ -1380,7 +1388,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflow.value.nodes.splice(0, workflow.value.nodes.length);
-		workflowObject.value.setNodes(workflow.value.nodes, true);
+		workflowObject.value.setNodes(workflow.value.nodes);
 		nodeMetadata.value = {};
 	}
 
@@ -1957,7 +1965,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodes,
 		convertTemplateNodeToNodeUi,
 		workflowObject,
-		getWorkflow,
+		createWorkflowObject,
 		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,

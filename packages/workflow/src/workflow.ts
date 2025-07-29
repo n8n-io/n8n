@@ -90,6 +90,34 @@ export class Workflow {
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 
+		let nodeType: INodeType | undefined;
+		for (const node of parameters.nodes) {
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+			if (nodeType === undefined) {
+				// Go on to next node when its type is not known.
+				// For now do not error because that causes problems with
+				// expression resolution also then when the unknown node
+				// does not get used.
+				continue;
+				// throw new ApplicationError(`Node with unknown node type`, {
+				// 	tags: { nodeType: node.type },
+				// 	extra: { node },
+				// });
+			}
+
+			// Add default values
+			const nodeParameters = NodeHelpers.getNodeParameters(
+				nodeType.description.properties,
+				node.parameters,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+			node.parameters = nodeParameters !== null ? nodeParameters : {};
+		}
+
 		this.setNodes(parameters.nodes);
 		this.setConnections(parameters.connections);
 		this.setPinData(parameters.pinData);
@@ -132,42 +160,10 @@ export class Workflow {
 		return result;
 	}
 
-	// Save nodes in workflow as object to be able to get the
-	// nodes easily by its name.
-	// Also directly add the default values of the node type.
-	setNodes(nodes: INode[], withParameters = false): void {
-		let nodeType: INodeType | undefined;
+	// Save nodes in workflow as object to be able to get the nodes easily by their name.
+	setNodes(nodes: INode[]): void {
 		for (const node of nodes) {
 			this.nodes[node.name] = node;
-
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-			if (nodeType === undefined) {
-				// Go on to next node when its type is not known.
-				// For now do not error because that causes problems with
-				// expression resolution also then when the unknown node
-				// does not get used.
-				continue;
-				// throw new ApplicationError(`Node with unknown node type`, {
-				// 	tags: { nodeType: node.type },
-				// 	extra: { node },
-				// });
-			}
-
-			if (withParameters) {
-				continue;
-			}
-
-			// Add default values
-			const nodeParameters = NodeHelpers.getNodeParameters(
-				nodeType.description.properties,
-				node.parameters,
-				true,
-				false,
-				node,
-				nodeType.description,
-			);
-			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
 	}
 
