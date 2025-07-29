@@ -384,10 +384,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		if (decryptedDataOriginal.allowedHttpRequestDomains !== undefined) {
+		if (
+			decryptedData.allowedHttpRequestDomains === undefined &&
+			decryptedDataOriginal.allowedHttpRequestDomains !== undefined
+		) {
 			decryptedData.allowedHttpRequestDomains = decryptedDataOriginal.allowedHttpRequestDomains;
 		}
-		if (decryptedDataOriginal.allowedDomains !== undefined) {
+		if (
+			decryptedData.allowedDomains === undefined &&
+			decryptedDataOriginal.allowedDomains !== undefined
+		) {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
