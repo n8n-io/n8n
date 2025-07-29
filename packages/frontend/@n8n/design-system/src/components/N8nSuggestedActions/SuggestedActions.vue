@@ -75,10 +75,10 @@ defineExpose({
 					:class="$style.actionItem"
 					data-test-id="suggested-action-item"
 				>
-					<div :class="$style.actionHeader">
+					<div>
 						<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
 					</div>
-					<div :class="$style.actionDescription">
+					<div>
 						<N8nText size="small" color="text-light">
 							{{ action.description }}
 							<N8nLink
@@ -118,13 +118,12 @@ defineExpose({
 <style lang="scss" module>
 .triggerContainer {
 	position: relative;
-	display: inline-block;
 }
 
 .redDot {
 	position: absolute;
-	top: 0;
-	right: 0;
+	top: -2px;
+	right: -2px;
 	width: 8px;
 	height: 8px;
 	background-color: var(--color-danger);
@@ -141,23 +140,14 @@ defineExpose({
 .actionItem {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-5xs);
 	padding-bottom: var(--spacing-m);
-	border-bottom: 1px solid var(--color-foreground-base);
+	border-bottom: var(--border-base);
 
 	&:last-child {
 		padding-bottom: 0;
 		border-bottom: none;
 	}
-}
-
-.actionHeader {
-	display: flex;
-	align-items: center;
-}
-
-.actionDescription {
-	line-height: var(--font-line-height-regular);
 }
 
 .actionButtons {
