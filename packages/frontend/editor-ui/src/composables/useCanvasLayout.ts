@@ -9,7 +9,7 @@ import {
 	type CanvasNodeData,
 } from '../types';
 import { isPresent } from '../utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE } from '../utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '../utils/nodeViewUtils';
 
 export type CanvasLayoutOptions = { id?: string };
 export type CanvasLayoutTarget = 'selection' | 'all';
@@ -85,6 +85,48 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		return { x: edge.targetX, y: edge.targetY };
 	}
 
+	function getNodeDimensions(node: GraphNode<CanvasNodeData>): { width: number; height: number } {
+		// Check if dimensions exist and have valid values
+		if (
+			node.dimensions &&
+			typeof node.dimensions.width === 'number' &&
+			typeof node.dimensions.height === 'number' &&
+			node.dimensions.width > 0 &&
+			node.dimensions.height > 0
+		) {
+			return { width: node.dimensions.width, height: node.dimensions.height };
+		}
+
+		// Calculate dimensions based on node data
+		if (node.data && node.data.render) {
+			const isConfiguration =
+				node.data.render.type === CanvasNodeRenderType.Default &&
+				node.data.render.options.configuration === true;
+			const isConfigurable =
+				node.data.render.type === CanvasNodeRenderType.Default &&
+				node.data.render.options.configurable === true;
+
+			// Get input/output counts from node data
+			const mainInputCount = node.data.inputs.filter((input) => input.type === 'main').length || 1;
+			const mainOutputCount =
+				node.data.outputs.filter((output) => output.type === 'main').length || 1;
+			const nonMainInputCount =
+				node.data.inputs.filter((input) => input.type !== 'main').length +
+				node.data.outputs.filter((output) => output.type !== 'main').length;
+
+			return calculateNodeSize(
+				isConfiguration,
+				isConfigurable,
+				mainInputCount,
+				mainOutputCount,
+				nonMainInputCount,
+			);
+		}
+
+		// Fallback to default size
+		return { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
+	}
+
 	function createDagreGraph({ nodes, edges }: CanvasLayoutTargetData) {
 		const graph = new dagre.graphlib.Graph();
 		graph.setDefaultEdgeLabel(() => ({}));
@@ -96,8 +138,10 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 
 		const nodeIdSet = new Set(nodes.map((node) => node.id));
 
-		graphNodes.forEach(({ id: nodeId, position: { x, y }, dimensions: { width, height } }) => {
-			graph.setNode(nodeId, { width, height, x, y });
+		graphNodes.forEach((node) => {
+			const { width, height } = getNodeDimensions(node);
+			const { x, y } = node.position;
+			graph.setNode(node.id, { width, height, x, y });
 		});
 
 		edges
@@ -221,11 +265,12 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	}
 
 	function boundingBoxFromCanvasNode(node: GraphNode<CanvasNodeData>): BoundingBox {
+		const { width, height } = getNodeDimensions(node);
 		return {
 			x: node.position.x,
 			y: node.position.y,
-			width: node.dimensions.width,
-			height: node.dimensions.height,
+			width,
+			height,
 		};
 	}
 
