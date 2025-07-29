@@ -882,6 +882,7 @@
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:^",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "alasql": "4.4.0",

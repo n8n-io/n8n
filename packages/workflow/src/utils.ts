@@ -5,7 +5,7 @@ import merge from 'lodash/merge';
 import { URL } from 'url';
 
 import { ALPHABET } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { ExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
