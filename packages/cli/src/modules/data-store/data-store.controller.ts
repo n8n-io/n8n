@@ -32,6 +32,15 @@ export class DataStoreController {
 		return { count, data };
 	}
 
+	@Get('/:dataStoreId/get-columns', { skipAuth: true })
+	async getColumns(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+	) {
+		return await this.dataStoreService.getColumns(dataStoreId);
+	}
+
 	@Post('/:dataStoreId/add-column', { skipAuth: true })
 	async addColumn(
 		_req: AuthenticatedRequest,
@@ -71,7 +80,7 @@ export class DataStoreController {
 		return await this.dataStoreService.deleteDataStore(dataStoreId);
 	}
 
-	@Get('/:dataStoreId', { skipAuth: true })
+	@Get('/:dataStoreId/get-rows', { skipAuth: true })
 	async getDataStoreRows(
 		_req: AuthenticatedRequest,
 		_res: Response,

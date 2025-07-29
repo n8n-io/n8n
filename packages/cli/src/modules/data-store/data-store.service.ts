@@ -190,6 +190,10 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.getManyAndCount(toTableName(dataStoreId), dto);
 	}
 
+	async getColumns(dataStoreId: string) {
+		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
+	}
+
 	private async validateRows(dataStoreId: string, rows: DataStoreRows) {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
