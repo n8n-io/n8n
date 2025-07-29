@@ -101,6 +101,7 @@ defineExpose({ forceFocus, forceCancel });
 		:readonly="readOnly"
 		select-on-focus
 		auto-resize
+		@click="forceFocus"
 		@submit="onSubmit"
 		@update:model-value="onInput"
 		@update:state="onStateChange"
