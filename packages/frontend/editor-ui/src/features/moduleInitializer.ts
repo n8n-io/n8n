@@ -3,7 +3,7 @@ import { type Router } from 'vue-router';
 import { insightsRoutes } from './insights/insights.router';
 import { dataStoreRoutes } from './dataStore/dataStore.routes';
 import { VIEWS } from '@/constants';
-import { moduleRegistry } from '@/types/moduleTypes';
+import { initializeAllModules, getAllModuleRoutes } from '@/types/moduleTypes';
 
 /**
  * Once we have a mechanism to register and initialize modules generically,
@@ -24,7 +24,7 @@ export const initializeModuleStores = () => {
 	useDataStoreStore().initialize();
 
 	// Future approach - registry-based initialization
-	// moduleRegistry.initializeAll();
+	// initializeAllModules();
 };
 
 /**
@@ -47,7 +47,7 @@ export const registerModuleRoutes = (router: Router) => {
 	});
 
 	// Future approach - registry-based route registration
-	// moduleRegistry.getAllRoutes().forEach((route) => {
+	// getAllModuleRoutes().forEach((route) => {
 	//   if (route.meta?.projectRoute) {
 	//     router.addRoute(VIEWS.PROJECT_DETAILS, route);
 	//   } else {
