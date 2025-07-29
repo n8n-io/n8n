@@ -1,11 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
 import { ExecutionData, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
-import { Push } from '@/push';
-import { GlobalConfig } from '@n8n/config';
-import { ExecutionService } from './execution.service';
 
 /**
  * Service for recovering executions that are missing execution data, this should only happen
