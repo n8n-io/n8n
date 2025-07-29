@@ -38,6 +38,6 @@ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): T
 export function processDynamicTabs(
 	tabs: DynamicTabOptions[],
 	projectId?: string,
-): TabOptions<string>[] {
+): Array<TabOptions<string>> {
 	return tabs.map((tab) => processDynamicTab(tab, projectId));
 }
