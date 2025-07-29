@@ -180,7 +180,7 @@ function onAddNodeClick() {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 20px;
+	gap: var(--spacing-m);
 	max-width: 710px;
 }
 
@@ -271,19 +271,17 @@ function onAddNodeClick() {
 
 .suggestionPill {
 	display: flex;
-	height: 33px;
-	padding: 0 13px;
+	padding: var(--spacing-2xs) var(--spacing-xs);
 	justify-content: center;
 	align-items: center;
 	gap: var(--spacing-2xs);
 	border-radius: 56px;
-	border: 1px solid var(--color-foreground-base);
+	border: var(--border-base);
 	background: var(--color-background-xlight);
 	cursor: pointer;
 	transition: all 0.2s ease;
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
-	font-family: var(--font-family);
 	font-weight: var(--font-weight-regular);
 
 	&:hover {
