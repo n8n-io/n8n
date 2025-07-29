@@ -15,7 +15,7 @@ export function checkModuleAvailability(to?: RouteLocationNormalized): boolean {
 /**
  * Create a standardized middleware options object for module routes
  */
-export function createModuleMiddleware(moduleName: string) {
+export function createModuleMiddleware(_moduleName: string) {
 	return {
 		middleware: ['authenticated', 'custom'],
 		middlewareOptions: {

@@ -1,5 +1,5 @@
 import type { TabOptions } from '@n8n/design-system';
-import type { DynamicTabOptions } from '@/components/Projects/ProjectTabs.vue';
+import type { DynamicTabOptions } from '@/utils/module/tabUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 

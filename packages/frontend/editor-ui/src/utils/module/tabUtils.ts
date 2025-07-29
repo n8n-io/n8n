@@ -25,11 +25,10 @@ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): T
 		tabRoute.params = { projectId };
 	}
 
+	const { dynamicRoute, ...tabWithoutDynamic } = tab;
 	return {
-		...tab,
+		...tabWithoutDynamic,
 		to: tabRoute,
-		// Remove the dynamic route config after processing
-		dynamicRoute: undefined,
 	};
 }
 

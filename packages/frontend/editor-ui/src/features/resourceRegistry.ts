@@ -14,7 +14,7 @@
   	4. Import your resource type from the local types file in your components
  */
 
-interface ResourceMetadata {
+export interface ResourceMetadata {
 	key: string;
 	displayName: string;
 	i18nKeys?: Record<string, string>;

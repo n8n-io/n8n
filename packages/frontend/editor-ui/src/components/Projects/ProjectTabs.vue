@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { RouteRecordName, RouteLocationRaw } from 'vue-router';
+import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';

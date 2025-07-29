@@ -1,10 +1,10 @@
-import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
+import type { RouteRecordRaw } from 'vue-router';
 import {
 	DATA_STORE_DETAILS,
 	DATA_STORE_VIEW,
 	PROJECT_DATA_STORES,
 } from '@/features/dataStore/constants';
-import { checkModuleAvailability, createModuleMiddleware } from '@/utils/module/routeUtils';
+import { checkModuleAvailability } from '@/utils/module/routeUtils';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const DataStoreView = async () => await import('@/features/dataStore/DataStoreView.vue');
