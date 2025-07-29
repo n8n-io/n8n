@@ -676,13 +676,24 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
+	getParentMainInputNode(
+		node: INode | null | undefined,
+		visitedNodes: Set<string> = new Set(),
+	): INode | null | undefined {
 		if (!node) return node;
 
-		const nodeConnections = this.connectionsBySourceNode[node.name];
-		if (!nodeConnections) return node;
+		// Prevent infinite recursion by tracking visited nodes
+		if (visitedNodes.has(node.name)) {
+			return node;
+		}
+		visitedNodes.add(node.name);
 
-		// Get non-main connection types
+		const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!nodeConnections) {
+			return node;
+		}
+
+		// Get non-main connection types that this node connects TO (outgoing connections)
 		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
 			(type) => type !== NodeConnectionTypes.Main,
 		);
@@ -696,7 +707,7 @@ export class Workflow {
 						if (!returnNode) {
 							throw new ApplicationError(`Node "${connection.node}" not found`);
 						}
-						return this.getParentMainInputNode(returnNode);
+						return this.getParentMainInputNode(returnNode, visitedNodes);
 					}
 				}
 			}
