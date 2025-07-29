@@ -1,16 +1,16 @@
 import { type Router } from 'vue-router';
-import { insightsRoutes } from './insights/insights.router';
 import { VIEWS } from '@/constants';
 import { type FrontendModuleDescription } from './module.types';
 import { DataStoreModule } from '@/features/dataStore/module.descriptor';
 import { registerResource } from '@/features/resourceRegistry';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { InsightsModule } from './insights/module.descriptor';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
  */
-const modules: FrontendModuleDescription[] = [DataStoreModule];
+const modules: FrontendModuleDescription[] = [InsightsModule, DataStoreModule];
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts
@@ -46,6 +46,7 @@ export const registerModuleProjectTabs = () => {
 /**
  * Middleware function to check if a module is available
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const checkModuleAvailability = (options: any) => {
 	if (!options?.to?.meta?.moduleName || typeof options.to.meta.moduleName !== 'string') {
 		return true;
@@ -57,11 +58,6 @@ const checkModuleAvailability = (options: any) => {
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
-	// // Init insights module routes
-	insightsRoutes.forEach((route) => {
-		router.addRoute(route);
-	});
-
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability
