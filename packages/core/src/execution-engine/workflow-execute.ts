@@ -442,6 +442,12 @@ export class WorkflowExecute {
 			}
 
 			if (!startNode) {
+				// Check if this is a tool execution context to provide a more helpful error
+				if (agentRequest || NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
+					throw new UserError(
+						'Workflow used as tool is missing a trigger node. Please add an "Execute Workflow Trigger" node to your workflow and connect it to your other nodes.'
+					);
+				}
 				throw new UserError('Connect a trigger to run this node');
 			}
 
