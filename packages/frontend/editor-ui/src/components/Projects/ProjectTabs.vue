@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { RouteRecordName, RouteLocationRaw } from 'vue-router';
+import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
-
-// Extended tab type that supports dynamic route resolution
-export type DynamicTabOptions = TabOptions<string> & {
-	dynamicRoute?: {
-		name: string;
-		includeProjectId?: boolean;
-	};
-};
+import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
 
 type Props = {
 	showSettings?: boolean;
@@ -104,27 +97,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 	}
 
 	if (props.additionalTabs?.length) {
-		// Process additional tabs and resolve dynamic routes
-		const processedAdditionalTabs = props.additionalTabs.map((tab) => {
-			// Handle dynamic route resolution
-			if (tab.dynamicRoute) {
-				const tabRoute: RouteLocationRaw = {
-					name: tab.dynamicRoute.name,
-				};
-
-				if (tab.dynamicRoute.includeProjectId && projectId.value) {
-					tabRoute.params = { projectId: projectId.value };
-				}
-
-				return {
-					...tab,
-					to: tabRoute,
-					dynamicRoute: undefined, // Remove the dynamic route config after processing
-				};
-			}
-
-			return tab;
-		});
+		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);
 		tabs.push(...processedAdditionalTabs);
 	}
 
