@@ -1836,29 +1836,34 @@ watch(
 		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
 	},
 	(isReadOnlyOrLoading) => {
-		const defaultFallbackNodes: INodeUi[] = [
-			{
-				id: CanvasNodeRenderType.AddNodes,
-				name: CanvasNodeRenderType.AddNodes,
-				type: CanvasNodeRenderType.AddNodes,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		if (builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled) {
-			defaultFallbackNodes.unshift({
-				id: CanvasNodeRenderType.AIPrompt,
-				name: CanvasNodeRenderType.AIPrompt,
-				type: CanvasNodeRenderType.AIPrompt,
-				typeVersion: 1,
-				position: [-690, -15],
-				parameters: {},
-			});
+		if (isReadOnlyOrLoading) {
+			fallbackNodes.value = [];
+			return;
 		}
 
-		fallbackNodes.value = isReadOnlyOrLoading ? [] : defaultFallbackNodes;
+		const addNodesItem: INodeUi = {
+			id: CanvasNodeRenderType.AddNodes,
+			name: CanvasNodeRenderType.AddNodes,
+			type: CanvasNodeRenderType.AddNodes,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const aiPromptItem: INodeUi = {
+			id: CanvasNodeRenderType.AIPrompt,
+			name: CanvasNodeRenderType.AIPrompt,
+			type: CanvasNodeRenderType.AIPrompt,
+			typeVersion: 1,
+			position: [-690, -15],
+			parameters: {},
+			draggable: false,
+		};
+
+		fallbackNodes.value =
+			builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled
+				? [aiPromptItem]
+				: [addNodesItem];
 	},
 );
 
