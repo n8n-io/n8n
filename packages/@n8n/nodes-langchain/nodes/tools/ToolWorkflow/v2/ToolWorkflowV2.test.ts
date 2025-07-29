@@ -125,6 +125,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(context.addOutputData).toHaveBeenCalled();
 
 			// Here we validate that the runIndex is correctly updated
+			// Each tool execution should get a fresh runIndex from getNextRunIndex()
 			expect(context.cloneWith).toHaveBeenCalledWith({
 				runIndex: 0,
 				inputData: [[{ json: { query: 'test query' } }]],

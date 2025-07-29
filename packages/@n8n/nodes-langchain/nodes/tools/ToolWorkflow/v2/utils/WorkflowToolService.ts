@@ -74,11 +74,8 @@ export class WorkflowToolService {
 	}): Promise<DynamicTool | DynamicStructuredTool> {
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
-		// We get the runIndex from the context to handle multiple executions
-		// of the same tool when the tool is used in a loop or in a parallel execution.
 		const node = ctx.getNode();
 
-		let runIndex: number = ctx.getNextRunIndex();
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
@@ -94,6 +91,10 @@ export class WorkflowToolService {
 			}
 
 			let lastError: ExecutionError | undefined;
+
+			// Get a fresh runIndex for each tool execution to avoid shared state
+			// that could cause alternating execution behavior
+			let runIndex: number = ctx.getNextRunIndex();
 
 			for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 				const localRunIndex = runIndex++;
