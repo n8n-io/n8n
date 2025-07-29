@@ -48,6 +48,13 @@ export class DeprecationService {
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
 		{
+			envVar: 'DB_TYPE',
+			message: 'SQLite without a pool is deprecated. Please switch to using a connection pool.',
+			checkValue: (_: string) =>
+				'sqlite' === this.globalConfig.database.type &&
+				this.globalConfig.database.sqlite.poolSize === 0,
+		},
+		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},

@@ -139,19 +139,12 @@ export class ExecutionRecoveryService {
 
 		await this.executionRepository.markAsCrashed(executionId);
 
-		try {
-			const execution = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
-			return execution ?? null;
-		} catch (error) {
-			this.logger.warn(`[Recovery] failed to retrieve execution information for ${executionId}`, {
-				error,
-			});
-			return null;
-		}
+		return execution ?? null;
 	}
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
