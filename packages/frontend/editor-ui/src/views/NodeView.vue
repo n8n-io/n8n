@@ -111,6 +111,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import CanvasThinkingPill from '@n8n/design-system/components/CanvasThinkingPill/CanvasThinkingPill.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -291,7 +292,8 @@ const isCanvasReadOnly = computed(() => {
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived
+		editableWorkflow.value.isArchived ||
+		builderStore.streaming
 	);
 });
 
@@ -2130,6 +2132,8 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<CanvasThinkingPill v-if="builderStore.streaming" :class="$style.thinkingPill" />
+
 			<Suspense>
 				<LazyNodeCreation
 					v-if="!isCanvasReadOnly"
@@ -2235,5 +2239,13 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.thinkingPill {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 10;
 }
 </style>
