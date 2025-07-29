@@ -6,7 +6,7 @@ import type { ActionCreateElement, INodeCreateElement, INodeUi } from '@/Interfa
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { INodeParameters } from 'n8n-workflow';
+import { type INodeParameters } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 
 const { node } = defineProps<{
