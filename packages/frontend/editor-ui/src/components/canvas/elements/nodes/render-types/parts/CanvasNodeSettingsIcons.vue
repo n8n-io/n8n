@@ -11,6 +11,7 @@ const workflowHelpers = useWorkflowHelpers();
 
 const workflow = computed(() => workflowHelpers.getCurrentWorkflow());
 const node = computed(() => workflow.value.getNode(name.value));
+const size = 'medium';
 </script>
 
 <template>
@@ -18,7 +19,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 		<N8nTooltip v-if="node?.alwaysOutputData">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<N8nIcon icon="always-output-data" />
+					<N8nIcon icon="always-output-data" :size="size" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.alwaysOutputData.displayName')
 					}}</strong>
@@ -28,14 +29,14 @@ const node = computed(() => workflow.value.getNode(name.value));
 				</div>
 			</template>
 			<div data-test-id="canvas-node-status-always-output-data">
-				<N8nIcon icon="always-output-data" />
+				<N8nIcon icon="always-output-data" :size="size" />
 			</div>
 		</N8nTooltip>
 
 		<N8nTooltip v-if="node?.executeOnce">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<N8nIcon icon="execute-once" />
+					<N8nIcon icon="execute-once" :size="size" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.executeOnce.displayName')
 					}}</strong>
@@ -45,14 +46,14 @@ const node = computed(() => workflow.value.getNode(name.value));
 				</div>
 			</template>
 			<div data-test-id="canvas-node-status-execute-once">
-				<N8nIcon icon="execute-once" />
+				<N8nIcon icon="execute-once" :size="size" />
 			</div>
 		</N8nTooltip>
 
 		<N8nTooltip v-if="node?.retryOnFail">
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<N8nIcon icon="retry-on-fail" />
+					<N8nIcon icon="retry-on-fail" :size="size" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('nodeSettings.retryOnFail.displayName')
 					}}</strong>
@@ -62,7 +63,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 				</div>
 			</template>
 			<div data-test-id="canvas-node-status-retry-on-fail">
-				<N8nIcon icon="retry-on-fail" />
+				<N8nIcon icon="retry-on-fail" :size="size" />
 			</div>
 		</N8nTooltip>
 
@@ -71,7 +72,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 		>
 			<template #content>
 				<div :class="$style.tooltipHeader">
-					<N8nIcon icon="continue-on-error" />
+					<N8nIcon icon="continue-on-error" :size="size" />
 					<strong :class="$style.tooltipTitle">{{
 						i18n.baseText('node.settings.continuesOnError.title')
 					}}</strong>
@@ -81,7 +82,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 				</div>
 			</template>
 			<div data-test-id="canvas-node-status-continue-on-error">
-				<N8nIcon icon="continue-on-error" />
+				<N8nIcon icon="continue-on-error" :size="size" />
 			</div>
 		</N8nTooltip>
 	</div>

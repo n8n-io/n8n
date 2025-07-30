@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.103.0",
+  "version": "1.104.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -157,9 +157,9 @@
     "@types/sanitize-html": "^2.11.0",
     "@types/temp": "^0.9.1",
     "fast-glob": "catalog:",
+    "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",
-    "tsup": "catalog:",
-    "jest-mock-extended": "^3.0.4"
+    "tsup": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
@@ -190,6 +190,7 @@
     "@modelcontextprotocol/sdk": "1.12.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/errors": "workspace:^",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n/typescript-config": "workspace:*",
