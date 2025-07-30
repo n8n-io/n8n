@@ -1,4 +1,10 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	IDisplayOptions,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class AzureOpenAiApi implements ICredentialType {
 	name = 'azureOpenAiApi';
@@ -37,14 +43,50 @@ export class AzureOpenAiApi implements ICredentialType {
 			default: undefined,
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
+		{
+			displayName: 'Add Custom Header',
+			name: 'header',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
+		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				'api-key': '={{$credentials.apiKey}}',
-			},
-		},
-	};
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers = { 'api-key': credentials.apiKey };
+		if (credentials.header) {
+			requestOptions.headers = {
+				'api-key': credentials.apiKey,
+				[credentials.headerName as string]: credentials.headerValue,
+			};
+		}
+		return requestOptions;
+	}
 }
