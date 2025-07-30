@@ -142,6 +142,33 @@
 	--button-loading-background-color: var(--color-button-secondary-loading-background);
 }
 
+@mixin n8n-button-hover-highlight {
+	--button-font-color: var(--color-button-hover-highlight-font);
+	--button-border-color: var(--color-button-hover-highlight-border);
+	--button-background-color: var(--color-button-hover-highlight-background);
+
+	--button-hover-font-color: var(--color-button-hover-highlight-hover-active-focus-font);
+	--button-hover-border-color: var(--color-button-hover-highlight-hover-active-focus-border);
+	--button-hover-background-color: var(--color-button-hover-highlight-hover-background);
+
+	--button-active-font-color: var(--color-button-hover-highlight-hover-active-focus-font);
+	--button-active-border-color: var(--color-button-hover-highlight-hover-active-focus-border);
+	--button-active-background-color: var(--color-button-hover-highlight-active-focus-background);
+
+	--button-focus-font-color: var(--color-button-hover-highlight-hover-active-focus-font);
+	--button-focus-border-color: var(--color-button-hover-highlight-hover-active-focus-border);
+	--button-focus-background-color: var(--color-button-hover-highlight-active-focus-background);
+	--button-focus-outline-color: var(--color-button-hover-highlight-focus-outline);
+
+	--button-disabled-font-color: var(--color-button-hover-highlight-disabled-font);
+	--button-disabled-border-color: var(--color-button-hover-highlight-disabled-border);
+	--button-disabled-background-color: var(--color-button-hover-highlight-background);
+
+	--button-loading-font-color: var(--color-button-hover-highlight-loading-font);
+	--button-loading-border-color: var(--color-button-hover-highlight-loading-border);
+	--button-loading-background-color: var(--color-button-hover-highlight-loading-background);
+}
+
 @mixin n8n-button-success {
 	--button-font-color: var(--color-button-success-font);
 	--button-border-color: var(--color-success);
