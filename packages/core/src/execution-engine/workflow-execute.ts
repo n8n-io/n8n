@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { GlobalConfig } from '@n8n/config';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -424,9 +425,27 @@ export class WorkflowExecute {
 		}
 
 		// 1. Find the Trigger
-		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
+		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
 		if (trigger === undefined) {
-			throw new UserError('Connect a trigger to run this node');
+			// destination has parents but none of them are triggers, so find the closest
+			// parent node that has run data, and treat that parent as starting point
+
+			let startNode;
+
+			const parentNodes = workflow.getParentNodes(destinationNodeName);
+
+			for (const nodeName of parentNodes) {
+				if (runData[nodeName]) {
+					startNode = workflow.getNode(nodeName);
+					break;
+				}
+			}
+
+			if (!startNode) {
+				throw new UserError('Connect a trigger to run this node');
+			}
+
+			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
@@ -1160,7 +1179,6 @@ export class WorkflowExecute {
 			const newInputData: ITaskDataConnections = {};
 			for (const connectionType of Object.keys(inputData)) {
 				newInputData[connectionType] = inputData[connectionType].map((input) => {
-					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
 			}
@@ -1194,13 +1212,13 @@ export class WorkflowExecute {
 						: await nodeType.execute.call(context);
 			}
 
-			// If data is not json compatible then log it as incorrect output
-			// Does not block the execution from continuing
-			const jsonCompatibleResult = isJsonCompatible(data);
-			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error(
-					new UnexpectedError('node execution output incorrect data'),
-					{
+			if (Container.get(GlobalConfig).sentry.backendDsn) {
+				// If data is not json compatible then log it as incorrect output
+				// Does not block the execution from continuing
+				const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
+				if (!jsonCompatibleResult.isValid) {
+					Container.get(ErrorReporter).error('node execution returned incorrect data', {
+						shouldBeLogged: false,
 						extra: {
 							nodeName: node.name,
 							nodeType: node.type,
@@ -1211,8 +1229,8 @@ export class WorkflowExecute {
 							errorPath: jsonCompatibleResult.errorPath,
 							errorMessage: jsonCompatibleResult.errorMessage,
 						},
-					},
-				);
+					});
+				}
 			}
 
 			const closeFunctionsResults = await Promise.allSettled(
@@ -1540,7 +1558,7 @@ export class WorkflowExecute {
 								if (waitBetweenTries !== 0) {
 									// TODO: Improve that in the future and check if other nodes can
 									//       be executed in the meantime
-									// eslint-disable-next-line @typescript-eslint/no-shadow
+
 									await new Promise((resolve) => {
 										setTimeout(() => {
 											resolve(undefined);
@@ -1703,7 +1721,16 @@ export class WorkflowExecute {
 
 						// Send error to the response if necessary
 						await hooks?.runHook('sendChunk', [
-							{ type: 'error', content: executionError.description },
+							{
+								type: 'error',
+								content: executionError.description,
+								metadata: {
+									nodeId: executionNode.id,
+									nodeName: executionNode.name,
+									runIndex,
+									itemIndex: 0,
+								},
+							},
 						]);
 
 						if (
@@ -1749,14 +1776,11 @@ export class WorkflowExecute {
 								lineResult.json.$error !== undefined &&
 								lineResult.json.$json !== undefined
 							) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {
-									// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
 								};
 							} else if (lineResult.error !== undefined) {
-								// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 								lineResult.json = { error: lineResult.error.message };
 							}
 						}
@@ -1968,7 +1992,7 @@ export class WorkflowExecute {
 							const parentNodes = workflow.getParentNodes(nodeName);
 
 							// Check if input nodes (of same run) got already executed
-							// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 							const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
 							if (parentIsWaiting) {
 								// Execute node later as one of its dependencies is still outstanding
@@ -2109,12 +2133,11 @@ export class WorkflowExecute {
 
 					this.moveNodeMetadata();
 
-					await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
-						// eslint-disable-next-line @typescript-eslint/no-shadow
-						(error) => {
+					await hooks
+						.runHook('workflowExecuteAfter', [fullRunData, newStaticData])
+						.catch((error) => {
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
-						},
-					);
+						});
 
 					if (closeFunction) {
 						try {

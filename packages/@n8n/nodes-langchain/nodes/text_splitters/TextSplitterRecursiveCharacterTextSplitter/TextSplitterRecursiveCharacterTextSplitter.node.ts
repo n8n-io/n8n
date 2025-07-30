@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
 	RecursiveCharacterTextSplitterParams,
 	SupportedTextSplitterLanguage,
@@ -57,9 +56,9 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [

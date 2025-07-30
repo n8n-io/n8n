@@ -1,10 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
-import { DbConnection } from '@n8n/db';
+import { WorkflowRepository, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
@@ -69,9 +67,9 @@ test('should start a task runner when task runners are enabled', async () => {
 		}),
 	);
 
-	const cmd = new Execute([], {} as Config);
-	// @ts-expect-error Private property
-	cmd.parse = jest.fn().mockResolvedValue({ flags: { id: '123' } });
+	const cmd = new Execute();
+	// @ts-expect-error Protected property
+	cmd.flags = { id: '123' };
 
 	// act
 

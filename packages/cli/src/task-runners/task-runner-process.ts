@@ -59,13 +59,15 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 		'N8N_SENTRY_DSN',
-		'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
+		'N8N_RUNNERS_INSECURE_MODE',
 		// Metadata about the environment
 		'N8N_VERSION',
 		'ENVIRONMENT',
 		'DEPLOYMENT_NAME',
 		'NODE_PATH',
 	] as const;
+
+	private readonly mode: 'insecure' | 'secure' = 'secure';
 
 	constructor(
 		logger: Logger,
@@ -79,6 +81,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 			this.runnerConfig.mode !== 'external',
 			'Task Runner Process cannot be used in external mode',
 		);
+
+		this.mode = this.runnerConfig.insecureMode ? 'insecure' : 'secure';
 
 		this.logger = logger.scoped('task-runner');
 
@@ -109,13 +113,14 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
-		return spawn(
-			'node',
-			['--disallow-code-generation-from-strings', '--disable-proto=delete', startScript],
-			{
-				env: this.getProcessEnvVars(grantToken, taskBrokerUri),
-			},
-		);
+		const flags =
+			this.mode === 'secure'
+				? ['--disallow-code-generation-from-strings', '--disable-proto=delete']
+				: [];
+
+		return spawn('node', [...flags, startScript], {
+			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
+		});
 	}
 
 	@OnShutdown()

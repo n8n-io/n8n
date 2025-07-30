@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 
 const router = useRouter();
 const i18n = useI18n();
 
 const navigateTo = () => {
-	void router.push({ name: VIEWS.TEMPLATES });
+	void router.back();
 };
 </script>
 
 <template>
 	<div :class="$style.wrapper" @click="navigateTo">
-		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
+		<n8n-icon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>

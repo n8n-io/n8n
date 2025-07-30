@@ -261,8 +261,16 @@ const loadTimezones = async () => {
 	}
 };
 
-const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+const loadWorkflows = async (searchTerm?: string) => {
+	// Do not call the API if the search term is empty
+	// Call it if searchTerm is undefined for initial load
+	if (searchTerm === '') {
+		return;
+	}
+
+	const workflowsData = (await workflowsStore.searchWorkflows({
+		name: searchTerm,
+	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -519,7 +527,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -527,6 +535,9 @@ onMounted(async () => {
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
+							remote
+							remote-method="loadWorkflows"
+							remote-show-suffix
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
@@ -549,7 +560,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 
@@ -578,7 +589,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 						<el-col :span="14">
@@ -600,7 +611,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -629,7 +640,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -658,7 +669,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -687,7 +698,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -716,7 +727,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -745,7 +756,7 @@ onMounted(async () => {
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<n8n-icon icon="circle-help" />
 						</N8nTooltip>
 					</el-col>
 					<el-col :span="14">
@@ -772,7 +783,7 @@ onMounted(async () => {
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</el-col>
 						<el-col :span="4">
@@ -817,7 +828,7 @@ onMounted(async () => {
 								<template #content>
 									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip') }}
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<n8n-icon icon="circle-help" />
 							</N8nTooltip>
 						</label>
 					</el-col>

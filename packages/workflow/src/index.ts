@@ -5,6 +5,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './common';
 export * from './cron';
 export * from './deferred-promise';
 export * from './global-state';
@@ -12,8 +13,10 @@ export * from './interfaces';
 export * from './message-event-bus';
 export * from './execution-status';
 export * from './expression';
+export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';

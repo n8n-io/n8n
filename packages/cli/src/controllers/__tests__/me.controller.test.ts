@@ -1,10 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { PublicUser } from '@n8n/db';
-import { InvalidAuthTokenRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';

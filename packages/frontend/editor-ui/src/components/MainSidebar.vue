@@ -27,6 +27,8 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
+import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
+import { I18nT } from 'vue-i18n';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -86,7 +88,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
@@ -95,7 +97,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
@@ -108,15 +110,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'variables',
 		icon: 'variable',
 		label: i18n.baseText('mainSidebar.variables'),
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
 		id: 'insights',
-		icon: 'chart-bar',
+		icon: 'chart-column-decreasing',
 		label: 'Insights',
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
@@ -125,7 +125,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 	{
 		id: 'help',
-		icon: 'question',
+		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
@@ -206,7 +206,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			),
 			{
 				id: 'full-changelog',
-				icon: 'external-link-alt',
+				icon: 'external-link',
 				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 				link: {
 					href: RELEASE_NOTES_URL,
@@ -250,13 +250,6 @@ onBeforeUnmount(() => {
 	window.removeEventListener('resize', onResize);
 });
 
-const trackTemplatesClick = () => {
-	telemetry.track('User clicked on templates', {
-		role: cloudPlanStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
-	});
-};
-
 const trackHelpItemClick = (itemType: string) => {
 	telemetry.track('User clicked help resource', {
 		type: itemType,
@@ -297,7 +290,7 @@ const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
 			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick();
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			}
 			break;
 		case 'about': {
@@ -396,7 +389,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					placement="bottom"
 				>
 					<template #content>
-						<i18n-t keypath="readOnlyEnv.tooltip">
+						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
 								<N8nLink
 									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
@@ -405,7 +398,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
 								</N8nLink>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 					<N8nIcon
 						data-test-id="read-only-env-icon"

@@ -6,3 +6,5 @@ export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';
 export { ModulesConfig, ModuleName } from './modules/modules.config';
+export { isContainedWithin, safeJoinPath } from './utils/path-util';
+export { CliParser } from './cli-parser';
