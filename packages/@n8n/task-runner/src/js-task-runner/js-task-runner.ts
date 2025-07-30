@@ -384,36 +384,32 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
-		return new WorkflowDataProxy(
+		return new WorkflowDataProxy({
 			workflow,
-			data.runExecutionData,
-			data.runIndex,
+			runExecutionData: data.runExecutionData,
+			runIndex: data.runIndex,
 			itemIndex,
-			data.activeNodeName,
-			data.connectionInputData,
-			data.siblingParameters,
-			data.mode,
-			getAdditionalKeys(
+			activeNodeName: data.activeNodeName,
+			connectionInputData: data.connectionInputData,
+			siblingParameters: data.siblingParameters,
+			mode: data.mode,
+			additionalKeys: getAdditionalKeys(
 				data.additionalData as IWorkflowExecuteAdditionalData,
 				data.mode,
 				data.runExecutionData,
 			),
-			data.executeData,
-			data.defaultReturnRunIndex,
-			data.selfData,
-			data.contextNodeName,
+			executeData: data.executeData,
+			defaultReturnRunIndex: data.defaultReturnRunIndex,
+			selfData: data.selfData,
+			contextNodeName: data.contextNodeName,
 			// Make sure that even if we don't receive the envProviderState for
 			// whatever reason, we don't expose the task runner's env to the code
-			data.envProviderState ?? {
+			envProviderState: data.envProviderState ?? {
 				env: {},
 				isEnvAccessBlocked: false,
 				isProcessAvailable: true,
 			},
-			// Because we optimize the needed data, it can be partially available.
-			// We assign the available built-ins to the execution context, which
-			// means we run the getter for '$json', and by default $json throws
-			// if there is no data available.
-		).getDataProxy({ throwOnMissingExecutionData: false });
+		}).getDataProxy({ throwOnMissingExecutionData: false });
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
