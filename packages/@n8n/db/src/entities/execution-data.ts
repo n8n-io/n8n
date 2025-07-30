@@ -21,7 +21,9 @@ export class ExecutionData {
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
 
-	@OneToOne('ExecutionEntity', 'executionData')
+	@OneToOne('ExecutionEntity', 'executionData', {
+		onDelete: 'CASCADE',
+	})
 	@JoinColumn({
 		name: 'executionId',
 	})

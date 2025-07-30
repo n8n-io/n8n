@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionData, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import assert from 'assert';
 
 /**
  * Service for recovering executions that are missing execution data, this should only happen
@@ -9,27 +10,34 @@ import { Service } from '@n8n/di';
  */
 @Service()
 export class LegacySqliteExecutionRecoveryService {
-	private readonly legacySqlite: boolean;
-
+	private readonly logger: Logger;
 	constructor(
-		private readonly logger: Logger,
+		logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
-		this.legacySqlite = dbType === 'sqlite' && sqliteConfig.poolSize === 0;
+		this.logger = logger.scoped('legacy-sqlite-execution-recovery');
 	}
 
 	/**
-	 * Recover key properties of a truncated execution using event logs.
+	 * Remove workflow executions that are in the `new` state but have no associated execution data.
+	 * This is a legacy recovery operation for SQLite databases where executions might be left
+	 * in an inconsistent state due to missing execution data.
+	 * It marks these executions as `crashed` to prevent them from being processed further.
+	 * This method should only be called when we are in legacy SQLite mode.
 	 */
 	async cleanupWorkflowExecutions() {
-		if (!this.legacySqlite) {
-			return;
-		}
+		assert(this.globalConfig.database.isLegacySqlite, 'Only usable when on legacy SQLite driver');
+		assert(
+			this.executionRepository.manager.connection.isInitialized,
+			'The database connection must be initialized',
+		);
 
-		this.logger.info('Starting legacy SQLite execution recovery...');
+		this.logger.debug('Starting legacy SQLite execution recovery...');
 
+		// Find all executions that are in the 'new' state but do not have associated execution data.
+		// These executions are considered invalid and will be marked as 'crashed'.
+		// Since there is no join in this query the returned ids are unique.
 		const invalidExecutions = await this.executionRepository
 			.createQueryBuilder('execution')
 			.where('execution.status = :status', { status: 'new' })
@@ -48,11 +56,11 @@ export class LegacySqliteExecutionRecoveryService {
 
 		if (invalidExecutions.length > 0) {
 			await this.executionRepository.markAsCrashed(invalidExecutions.map((e) => e.id));
-			this.logger.info(
+			this.logger.debug(
 				`Marked ${invalidExecutions.length} executions as crashed due to missing execution data.`,
 			);
 		}
 
-		this.logger.info('Legacy SQLite execution recovery completed.');
+		this.logger.debug('Legacy SQLite execution recovery completed.');
 	}
 }

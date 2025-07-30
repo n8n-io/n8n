@@ -48,11 +48,10 @@ export class DeprecationService {
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
 		{
-			envVar: 'DB_TYPE',
-			message: 'SQLite without a pool is deprecated. Please switch to using a connection pool.',
-			checkValue: (_: string) =>
-				'sqlite' === this.globalConfig.database.type &&
-				this.globalConfig.database.sqlite.poolSize === 0,
+			envVar: 'DB_SQLITE_POOL_SIZE',
+			message:
+				'Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite',
+			checkValue: (_: string) => this.globalConfig.database.isLegacySqlite,
 		},
 		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
