@@ -652,8 +652,9 @@ function setReadonly(value: boolean) {
 }
 
 function onPaneMove({ event }: { event: unknown }) {
-	// The event object is either D3ZoomEvent or WheelEvent
-	// Ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event
+	// The event object is either D3ZoomEvent or WheelEvent.
+	// Here I'm ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event.
+	// This can be simplified once https://github.com/bcakmakoglu/vue-flow/issues/1908 is resolved
 	if (event instanceof WheelEvent) {
 		isPaneMoving.value = true;
 	}
