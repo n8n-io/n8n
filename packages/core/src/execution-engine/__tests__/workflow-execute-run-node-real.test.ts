@@ -14,7 +14,7 @@ jest.mock('@n8n/di', () => ({
 	Container: {
 		get: jest.fn(),
 	},
-	Service: () => (target: any) => target,
+	Service: () => (target: unknown) => target,
 }));
 
 jest.mock('@/errors/error-reporter', () => ({
@@ -308,7 +308,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockContextInstance = {
 				hints: mockHints,
 			};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -339,11 +339,11 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				requestDefaults: undefined,
 			};
 			(mockWorkflow.nodeTypes.getByNameAndVersion as jest.Mock).mockReturnValue(
-				nodeInstance as any,
+				nodeInstance as INodeType,
 			);
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -406,7 +406,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				) => {
 					// Add close functions to the array passed in
 					closeFunctions.push(closeFunction1, closeFunction2);
-					return mockContextInstance as any;
+					return mockContextInstance as unknown as ExecuteContext;
 				},
 			);
 
@@ -433,7 +433,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.execute = undefined;
 
 			const mockContextInstance = {};
-			mockPollContext.mockImplementation(() => mockContextInstance as any);
+			mockPollContext.mockImplementation(() => mockContextInstance as unknown as PollContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -562,10 +562,10 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockRoutingNodeInstance = {
 				runNode: jest.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as any);
+			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -594,10 +594,10 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockRoutingNodeInstance = {
 				runNode: jest.fn().mockResolvedValue(mockData),
 			};
-			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as any);
+			mockRoutingNode.mockImplementation(() => mockRoutingNodeInstance as unknown as RoutingNode);
 
 			const mockContextInstance = {};
-			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
@@ -630,7 +630,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: { result: 'test' } }]]);
 
 			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
