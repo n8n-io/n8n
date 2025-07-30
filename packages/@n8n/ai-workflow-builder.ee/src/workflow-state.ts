@@ -35,7 +35,7 @@ function operationsReducer(
 }
 
 // Creates a reducer that trims the message history to keep only the last `maxUserMessages` HumanMessage instances
-function createTrimMessagesReducer(maxUserMessages: number) {
+export function createTrimMessagesReducer(maxUserMessages: number) {
 	return (current: BaseMessage[]): BaseMessage[] => {
 		// Count HumanMessage instances and remember their indices
 		const humanMessageIndices: number[] = [];
