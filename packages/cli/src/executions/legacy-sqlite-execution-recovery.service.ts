@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionData, ExecutionRepository } from '@n8n/db';
+import { DbConnection, ExecutionData, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import assert from 'assert';
 
@@ -15,6 +15,7 @@ export class LegacySqliteExecutionRecoveryService {
 		logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly globalConfig: GlobalConfig,
+		private readonly dbConnection: DbConnection,
 	) {
 		this.logger = logger.scoped('legacy-sqlite-execution-recovery');
 	}
@@ -29,30 +30,13 @@ export class LegacySqliteExecutionRecoveryService {
 	async cleanupWorkflowExecutions() {
 		assert(this.globalConfig.database.isLegacySqlite, 'Only usable when on legacy SQLite driver');
 		assert(
-			this.executionRepository.manager.connection.isInitialized,
-			'The database connection must be initialized',
+			this.dbConnection.connectionState.connected && this.dbConnection.connectionState.migrated,
+			'The database connection must be connected and migrated before running cleanupWorkflowExecutions',
 		);
 
 		this.logger.debug('Starting legacy SQLite execution recovery...');
 
-		// Find all executions that are in the 'new' state but do not have associated execution data.
-		// These executions are considered invalid and will be marked as 'crashed'.
-		// Since there is no join in this query the returned ids are unique.
-		const invalidExecutions = await this.executionRepository
-			.createQueryBuilder('execution')
-			.where('execution.status = :status', { status: 'new' })
-			.andWhere(
-				'NOT EXISTS (' +
-					this.executionRepository.manager
-						.createQueryBuilder()
-						.select('1')
-						.from(ExecutionData, 'execution_data')
-						.where('execution_data.executionId = execution.id')
-						.getQuery() +
-					')',
-			)
-			.select('execution.id')
-			.getMany();
+		const invalidExecutions = await this.executionRepository.findQueuedExecutionsWithoutData();
 
 		if (invalidExecutions.length > 0) {
 			await this.executionRepository.markAsCrashed(invalidExecutions.map((e) => e.id));
