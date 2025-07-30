@@ -2,13 +2,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
-	type ExtractableSubgraphData,
-	type ExtractableErrorResult,
 	extractReferencesInNodeExpressions,
-	type IConnections,
-	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+} from 'n8n-workflow';
+import type {
+	ExtractableSubgraphData,
+	ExtractableErrorResult,
+	IConnections,
+	INode,
+	Workflow,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -44,7 +47,7 @@ export function useWorkflowExtraction() {
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
 
-	const workflowObject = computed(() => workflowsStore.workflowObject);
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -441,7 +444,7 @@ export function useWorkflowExtraction() {
 		const directAfterEndNodeNames = end
 			? workflowObject.value
 					.getChildNodes(end, 'main', 1)
-					.map((x) => workflowObject.getNode(x)?.name)
+					.map((x) => workflowObject.value.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 

@@ -77,7 +77,7 @@ export function useNodeHelpers() {
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
 
-	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');

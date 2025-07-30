@@ -67,7 +67,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
 	);
 
-	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function setMergeNodes(nodes: SimplifiedNodeType[]) {
 		mergedNodes.value = nodes;

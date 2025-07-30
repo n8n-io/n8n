@@ -3,7 +3,7 @@ import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, ref, watch } from 'vue';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -11,6 +11,7 @@ import type {
 	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
+	Workflow,
 } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
@@ -60,7 +61,7 @@ const nodeType = computed(() =>
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
 
-const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 const nodeInputIssues = computed(() => {
 	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [

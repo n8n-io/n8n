@@ -4,7 +4,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
@@ -50,7 +50,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const sourceControlStore = useSourceControlStore();
 	const i18n = useI18n();
 
-	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,

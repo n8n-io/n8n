@@ -824,7 +824,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowsStore).workflowsObject = workflow;
+			vi.mocked(workflowsStore).workflowObject = workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
@@ -853,7 +853,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowsStore).workflowsObject = workflow;
+			vi.mocked(workflowsStore).workflowObject = workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
@@ -873,7 +873,7 @@ describe('useRunWorkflow({ router })', () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 
-			vi.mocked(workflowsStore).workflowsObject = workflow;
+			vi.mocked(workflowsStore).workflowObject = workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: workflow.id,
 				nodes: [],
@@ -997,7 +997,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should invoke runWorkflow with expected arguments', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 
-			vi.mocked(workflowsStore).workflowsObject = {
+			vi.mocked(workflowsStore).workflowObject = {
 				id: 'workflowId',
 			} as unknown as Workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({

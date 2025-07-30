@@ -119,7 +119,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);

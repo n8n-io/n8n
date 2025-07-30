@@ -51,7 +51,7 @@ export function usePinnedData(
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
-	const workflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,

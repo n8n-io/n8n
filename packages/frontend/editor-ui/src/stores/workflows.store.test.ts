@@ -50,7 +50,7 @@ vi.mock('@/api/workflows', () => ({
 const getNodeType = vi.fn((): Partial<INodeTypeDescription> | null => ({
 	inputs: [],
 	group: [],
-	webhooks: false,
+	webhooks: [],
 	properties: [],
 }));
 vi.mock('@/stores/nodeTypes.store', () => ({
@@ -186,12 +186,15 @@ describe('useWorkflowsStore', () => {
 
 	describe('workflowTriggerNodes', () => {
 		it('should return only nodes that are triggers', () => {
-			getNodeType.mockImplementation((nodeTypeName: string) => ({
-				group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
-				inputs: [],
-				webhooks: false,
-				properties: [],
-			}));
+			getNodeType.mockImplementation(
+				(nodeTypeName: string) =>
+					({
+						group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
+						inputs: [],
+						webhooks: [],
+						properties: [],
+					}) as INodeTypeDescription,
+			);
 
 			workflowsStore.setNodes([
 				{ type: 'triggerNode', typeVersion: '1' },
@@ -1306,7 +1309,7 @@ describe('useWorkflowsStore', () => {
 	});
 });
 
-function getMockEditFieldsNode() {
+function getMockEditFieldsNode(): Partial<INodeTypeDescription> {
 	return {
 		displayName: 'Edit Fields (Set)',
 		name: 'n8n-nodes-base.set',

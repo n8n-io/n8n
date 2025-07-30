@@ -1,5 +1,4 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import * as ndvStore from '@/stores/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
