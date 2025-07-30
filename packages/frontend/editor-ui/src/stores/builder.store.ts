@@ -52,6 +52,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const {
 		processAssistantMessages,
 		createUserMessage,
+		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
 		mapAssistantMessageToUI,
@@ -169,11 +170,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 
+		if (e.name === 'AbortError') {
+			// Handle abort errors as they are expected when stopping streaming
+			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			chatMessages.value = [...chatMessages.value, userMsg];
+			return;
+		}
+
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
+
 		chatMessages.value = [...chatMessages.value, errorMessage];
 
 		telemetry.track('Workflow generation errored', {

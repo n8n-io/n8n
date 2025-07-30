@@ -47,9 +47,6 @@ async function onUserMessage(content: string) {
 	builderStore.sendChatMessage({ text: content });
 }
 
-async function onStopStream() {
-	builderStore.stopStreaming();
-}
 // Watch for workflow updates and apply them
 watch(
 	() => builderStore.workflowMessages,
@@ -138,7 +135,7 @@ watch(currentRoute, () => {
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
-			@stop="onStopStream"
+			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
 				<slot name="header" />

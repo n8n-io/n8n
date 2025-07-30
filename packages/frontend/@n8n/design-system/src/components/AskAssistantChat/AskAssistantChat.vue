@@ -255,21 +255,24 @@ watch(
 					@input.prevent="growInput"
 					@keydown.stop
 				/>
-				<N8nIconButton
+				<N8nButton
 					v-if="showStop && streaming"
 					:class="$style.stopButton"
 					icon="square"
 					size="large"
 					type="danger"
+					outline
+					square
 					data-test-id="send-message-button"
 					@click="emit('stop')"
 				/>
-				<N8nIconButton
+				<N8nButton
 					v-else
 					:class="$style.sendButton"
 					icon="send"
 					:text="true"
 					size="large"
+					square
 					data-test-id="send-message-button"
 					:disabled="sendDisabled"
 					@click="onSendMessage"
@@ -286,7 +289,9 @@ watch(
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 }
-
+:root .stopButton {
+	--button-border-color: transparent;
+}
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);
