@@ -651,8 +651,12 @@ function setReadonly(value: boolean) {
 	elementsSelectable.value = true;
 }
 
-function onPaneMoveStart() {
-	isPaneMoving.value = true;
+function onPaneMove({ event }: { event: unknown }) {
+	// The event object is either D3ZoomEvent or WheelEvent
+	// Ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event
+	if (event instanceof WheelEvent) {
+		isPaneMoving.value = true;
+	}
 }
 
 function onPaneMoveEnd() {
@@ -924,7 +928,7 @@ provide(CanvasKey, {
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@pane-context-menu="onOpenContextMenu"
-		@move-start="onPaneMoveStart"
+		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
