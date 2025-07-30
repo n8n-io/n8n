@@ -108,3 +108,142 @@ LongContent.args = {
 		buttonLabel: `Action ${i + 1}`,
 	})),
 };
+
+const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
+	setup() {
+		return { args };
+	},
+	props: Object.keys(argTypes),
+	components: {
+		N8nSuggestedActions,
+	},
+	template: `
+		<div style="padding: 50px;">
+			<N8nSuggestedActions 
+				v-bind="args" 
+				@action-click="onActionClick" 
+				@ignore-click="onIgnoreClick"
+				@ignore-all="onIgnoreAll"
+				@turn-off="onTurnOff"
+			/>
+		</div>
+	`,
+	methods: {
+		onActionClick(actionId: string) {
+			console.log('Action clicked:', actionId);
+			alert(`Action clicked: ${actionId}`);
+		},
+		onIgnoreClick(actionId: string) {
+			console.log('Ignore clicked:', actionId);
+			alert(`Ignore clicked: ${actionId}`);
+		},
+		onIgnoreAll() {
+			console.log('Ignore all clicked');
+			alert('Ignore all clicked');
+		},
+		onTurnOff() {
+			console.log('Turn off clicked');
+			alert('Turn off clicked');
+		},
+	},
+});
+
+export const WithTurnOffOption = TemplateWithEvents.bind({});
+WithTurnOffOption.args = {
+	showRedDot: true,
+	turnOffActionsLabel: 'Turn off suggestions',
+	actions: [
+		{
+			id: 'evaluate-workflow',
+			title: 'Evaluate your workflow with a dataset',
+			description: 'Set up an AI evaluation to be sure th WF is reliable.',
+			moreInfoLink: 'https://docs.n8n.io/evaluations',
+			buttonLabel: 'Go to evaluations',
+		},
+		{
+			id: 'track-errors',
+			title: 'Keep track of execution errors',
+			description: 'Setup a workflow error to track what is going on here.',
+			moreInfoLink: 'https://docs.n8n.io/error-workflows',
+			buttonLabel: 'Settings',
+		},
+	],
+};
+
+export const SingleActionWithTurnOff = TemplateWithEvents.bind({});
+SingleActionWithTurnOff.args = {
+	showRedDot: false,
+	turnOffActionsLabel: 'Disable all suggestions',
+	actions: [
+		{
+			id: 'single-action',
+			title: 'Single action with turn off option',
+			description: 'This shows how the turn off option appears even with a single action.',
+			buttonLabel: 'Take action',
+		},
+	],
+};
+
+const AlignmentTemplate: StoryFn = (args, { argTypes }) => ({
+	setup() {
+		return { args };
+	},
+	props: Object.keys(argTypes),
+	components: {
+		N8nSuggestedActions,
+	},
+	template: `
+		<div style="padding: 50px; display: flex; justify-content: space-between; width: 800px;">
+			<div>
+				<h4 style="margin-bottom: 10px;">Start Alignment</h4>
+				<N8nSuggestedActions v-bind="args" popoverAlignment="start" />
+			</div>
+			<div>
+				<h4 style="margin-bottom: 10px;">Center Alignment</h4>
+				<N8nSuggestedActions v-bind="args" popoverAlignment="center" />
+			</div>
+			<div>
+				<h4 style="margin-bottom: 10px;">End Alignment</h4>
+				<N8nSuggestedActions v-bind="args" popoverAlignment="end" />
+			</div>
+		</div>
+	`,
+});
+
+export const PopoverAlignments = AlignmentTemplate.bind({});
+PopoverAlignments.args = {
+	showRedDot: true,
+	actions: [
+		{
+			id: 'action1',
+			title: 'Test Alignment',
+			description: 'This demonstrates different popover alignments.',
+			buttonLabel: 'Action',
+		},
+	],
+};
+
+export const MultipleActionsWithIgnoreAll = TemplateWithEvents.bind({});
+MultipleActionsWithIgnoreAll.args = {
+	showRedDot: true,
+	actions: [
+		{
+			id: 'action1',
+			title: 'First action',
+			description: 'This is the first action that can be ignored.',
+			buttonLabel: 'Do first thing',
+		},
+		{
+			id: 'action2',
+			title: 'Second action',
+			description: 'This is the second action that can be ignored.',
+			buttonLabel: 'Do second thing',
+		},
+		{
+			id: 'action3',
+			title: 'Third action',
+			description: 'This is the third action that can be ignored.',
+			buttonLabel: 'Do third thing',
+		},
+	],
+};

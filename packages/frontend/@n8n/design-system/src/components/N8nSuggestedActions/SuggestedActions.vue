@@ -71,7 +71,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="328px" :align="popoverAlignment">
+	<N8nPopoverReka v-model:open="isOpen" width="328px" max-height="500px" :align="popoverAlignment">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
@@ -159,6 +159,7 @@ defineExpose({
 
 <style lang="scss" module>
 .triggerContainer {
+	display: inline-block;
 	position: relative;
 }
 
