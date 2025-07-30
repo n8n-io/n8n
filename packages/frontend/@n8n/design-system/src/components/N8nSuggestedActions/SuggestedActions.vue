@@ -76,7 +76,7 @@ defineExpose({
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
 					icon="circle-alert"
-					type="hover-highlight"
+					type="highlight"
 					size="medium"
 					icon-size="large"
 					data-test-id="suggested-actions-bell"

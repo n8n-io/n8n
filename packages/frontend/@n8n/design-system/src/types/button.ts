@@ -12,7 +12,7 @@ const BUTTON_TYPE = [
 	'success',
 	'warning',
 	'danger',
-	'hover-highlight',
+	'highlight',
 ] as const;
 export type ButtonType = (typeof BUTTON_TYPE)[number];
 
