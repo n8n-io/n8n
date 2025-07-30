@@ -46,7 +46,7 @@ const dataStoreRoute = computed(() => {
 				<template #header>
 					<div :class="$style['card-header']">
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
-							{{ dataStore.name }}
+							{{ props.dataStore.name }}
 						</N8nHeading>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
@@ -71,7 +71,7 @@ const dataStoreRoute = computed(() => {
 						>
 							{{
 								i18n.baseText('dataStore.card.row.count', {
-									interpolate: { count: dataStore.recordCount },
+									interpolate: { count: props.dataStore.recordCount },
 								})
 							}}
 						</N8nText>
@@ -83,7 +83,7 @@ const dataStoreRoute = computed(() => {
 						>
 							{{
 								i18n.baseText('dataStore.card.column.count', {
-									interpolate: { count: dataStore.columnCount },
+									interpolate: { count: props.dataStore.columnCount },
 								})
 							}}
 						</N8nText>
@@ -94,7 +94,7 @@ const dataStoreRoute = computed(() => {
 							data-test-id="data-store-card-last-updated"
 						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
-							<TimeAgo :date="String(dataStore.updatedAt)" />
+							<TimeAgo :date="String(props.dataStore.updatedAt)" />
 						</N8nText>
 						<N8nText
 							size="small"
@@ -103,7 +103,7 @@ const dataStoreRoute = computed(() => {
 							data-test-id="data-store-card-created"
 						>
 							{{ i18n.baseText('workflows.item.created') }}
-							<TimeAgo :date="String(dataStore.createdAt)" />
+							<TimeAgo :date="String(props.dataStore.createdAt)" />
 						</N8nText>
 					</div>
 				</template>
