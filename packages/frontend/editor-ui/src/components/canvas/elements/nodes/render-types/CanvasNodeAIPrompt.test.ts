@@ -346,7 +346,7 @@ describe('CanvasNodeAIPrompt', () => {
 	describe('event propagation', () => {
 		it.each(['click', 'dblclick', 'mousedown', 'scroll', 'wheel'])(
 			'should stop propagation of %s event on prompt container',
-			async (eventType) => {
+			(eventType) => {
 				const { container } = renderComponent();
 				const promptContainer = container.querySelector('.promptContainer');
 

@@ -45,7 +45,7 @@ export const WORKFLOW_SUGGESTIONS: WorkflowSuggestion[] = [
 		id: 'lead-qualification',
 		summary: 'Lead qualification and call scheduling',
 		prompt:
-			'Create a form with fields for email, company, and role. Build an automation that processes form submissions, enrich with company data from their website, uses AI to qualify the lead, sends data to Google Sheets. For high-score leads it should also schedule the 15-min call in a free slot in my calendar and send a confirmation email to both me and the lead.',
+			'Create a form with fields for email, company, and role. Build an automation that processes form submissions, enrich with company data from their website, uses AI to qualify the lead, sends data to Google Sheets. For high-score leads it should also schedule a 15-min call in a free slot in my calendar and send a confirmation email to both me and the lead.',
 	},
 	{
 		id: 'multi-agent-research',
