@@ -89,19 +89,34 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 
 	const req = this.getRequestObject();
 
-	const signature = req.header('x-slack-signature') as string;
-	const timestamp = req.header('x-slack-request-timestamp') as string;
+	const signature = req.header('x-slack-signature');
+	const timestamp = req.header('x-slack-request-timestamp');
 	if (!signature || !timestamp) {
 		throw new NodeOperationError(this.getNode(), 'Missing Slack signature or timestamp header');
 	}
 
 	const currentTime = Math.floor(Date.now() / 1000);
-	if (Math.abs(currentTime - parseInt(timestamp, 10)) > 60 * 5) {
-		throw new NodeOperationError(this.getNode(), 'Slack request timestamp is too old');
+	const timestampNum = parseInt(timestamp, 10);
+	if (isNaN(timestampNum) || Math.abs(currentTime - timestampNum) > 60 * 5) {
+		throw new NodeOperationError(this.getNode(), 'Slack request timestamp is invalid or too old');
 	}
 
-	const hmac = createHmac('sha256', credential.signatureSecret as string);
-	hmac.update(`v0:${currentTime}:${req.rawBody}`);
-	const computedSignature = `v0=${hmac.digest('hex')}`;
-	return timingSafeEqual(Buffer.from(computedSignature), Buffer.from(signature));
+	try {
+		const hmac = createHmac('sha256', credential.signatureSecret as string);
+		hmac.update(`v0:${timestamp}:${req.rawBody.toString()}`);
+		const computedSignature = `v0=${hmac.digest('hex')}`;
+
+		const computedBuffer = Buffer.from(computedSignature);
+		const providedBuffer = Buffer.from(signature);
+
+		return (
+			computedBuffer.length === providedBuffer.length &&
+			timingSafeEqual(computedBuffer, providedBuffer)
+		);
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Slack signature verification failed: ${(error as Error).message}`,
+		);
+	}
 }

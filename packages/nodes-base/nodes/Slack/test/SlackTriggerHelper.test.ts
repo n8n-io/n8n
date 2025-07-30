@@ -110,7 +110,7 @@ describe('SlackTriggerHelpers', () => {
 			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
 
 			await expect(verifySignature.call(mockWebhookFunctions)).rejects.toThrow(
-				'Slack request timestamp is too old',
+				'Slack request timestamp is invalid or too old',
 			);
 		});
 
