@@ -1,12 +1,18 @@
 import type { I18nClass } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { useResourcesListI18n } from './useResourcesListI18n';
+import { isBaseTextKey } from '@/utils/typeGuards';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: vi.fn(),
 }));
 
+vi.mock('@/utils/typeGuards', () => ({
+	isBaseTextKey: vi.fn(),
+}));
+
 const mockUseI18n = vi.mocked(useI18n);
+const mockIsBaseTextKey = vi.mocked(isBaseTextKey);
 
 describe('useResourcesListI18n', () => {
 	let mockBaseText: ReturnType<typeof vi.fn>;
@@ -26,14 +32,13 @@ describe('useResourcesListI18n', () => {
 		it('should return specific resource key translation when it exists', () => {
 			const resourceKey = 'projects';
 			const keySuffix = 'list.empty';
-			mockBaseText
-				.mockReturnValueOnce('No projects found') // first call to check if key exists
-				.mockReturnValueOnce('No projects found'); // second call to get the actual translation
+			mockIsBaseTextKey.mockReturnValueOnce(true); // specific key exists
+			mockBaseText.mockReturnValue('No projects found');
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
 
-			expect(mockBaseText).toHaveBeenCalledWith('projects.list.empty');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('projects.list.empty');
 			expect(mockBaseText).toHaveBeenCalledWith('projects.list.empty', { interpolate: undefined });
 			expect(result).toBe('No projects found');
 		});
@@ -41,16 +46,16 @@ describe('useResourcesListI18n', () => {
 		it('should return generic resource key translation when specific key does not exist', () => {
 			const resourceKey = 'workflows';
 			const keySuffix = 'list.empty';
-			mockBaseText
-				.mockReturnValueOnce('') // specific key doesn't exist
-				.mockReturnValueOnce('No resources found') // generic key exists (check)
-				.mockReturnValueOnce('No resources found'); // generic key exists (get value)
+			mockIsBaseTextKey
+				.mockReturnValueOnce(false) // specific key doesn't exist
+				.mockReturnValueOnce(true); // generic key exists
+			mockBaseText.mockReturnValue('No resources found');
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
 
-			expect(mockBaseText).toHaveBeenCalledWith('workflows.list.empty');
-			expect(mockBaseText).toHaveBeenCalledWith('resources.list.empty');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('workflows.list.empty');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('resources.list.empty');
 			expect(mockBaseText).toHaveBeenCalledWith('resources.list.empty', { interpolate: undefined });
 			expect(result).toBe('No resources found');
 		});
@@ -59,18 +64,18 @@ describe('useResourcesListI18n', () => {
 			const resourceKey = 'credentials';
 			const keySuffix = 'list.empty';
 			const fallbackKeySuffix = 'list.noItems';
-			mockBaseText
-				.mockReturnValueOnce('') // specific key doesn't exist
-				.mockReturnValueOnce('') // generic key doesn't exist
-				.mockReturnValueOnce('No items available') // fallback key exists (check)
-				.mockReturnValueOnce('No items available'); // fallback key exists (get value)
+			mockIsBaseTextKey
+				.mockReturnValueOnce(false) // specific key doesn't exist
+				.mockReturnValueOnce(false) // generic key doesn't exist
+				.mockReturnValueOnce(true); // fallback key exists
+			mockBaseText.mockReturnValue('No items available');
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix, fallbackKeySuffix);
 
-			expect(mockBaseText).toHaveBeenCalledWith('credentials.list.empty');
-			expect(mockBaseText).toHaveBeenCalledWith('resources.list.empty');
-			expect(mockBaseText).toHaveBeenCalledWith('resources.list.noItems');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('credentials.list.empty');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('resources.list.empty');
+			expect(mockIsBaseTextKey).toHaveBeenCalledWith('resources.list.noItems');
 			expect(mockBaseText).toHaveBeenCalledWith('resources.list.noItems', {
 				interpolate: undefined,
 			});
@@ -80,7 +85,7 @@ describe('useResourcesListI18n', () => {
 		it('should return formatted fallback text when no translation keys exist', () => {
 			const resourceKey = 'templates';
 			const keySuffix = 'list.emptyState';
-			mockBaseText.mockReturnValue(''); // all keys return empty
+			mockIsBaseTextKey.mockReturnValue(false); // all keys don't exist
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
@@ -91,7 +96,7 @@ describe('useResourcesListI18n', () => {
 		it('should return original keySuffix when formatting fails', () => {
 			const resourceKey = 'projects';
 			const keySuffix = 'complex.key.name';
-			mockBaseText.mockReturnValue('');
+			mockIsBaseTextKey.mockReturnValue(false); // all keys don't exist
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
@@ -102,7 +107,7 @@ describe('useResourcesListI18n', () => {
 		it('should return keySuffix when split result is empty', () => {
 			const resourceKey = 'projects';
 			const keySuffix = '';
-			mockBaseText.mockReturnValue('');
+			mockIsBaseTextKey.mockReturnValue(false); // all keys don't exist
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
@@ -114,6 +119,7 @@ describe('useResourcesListI18n', () => {
 			const resourceKey = 'projects';
 			const keySuffix = 'list.count';
 			const interpolateParams = { count: '5' };
+			mockIsBaseTextKey.mockReturnValue(true); // key exists
 			mockBaseText.mockReturnValue('Found 5 projects');
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
@@ -127,7 +133,7 @@ describe('useResourcesListI18n', () => {
 		it('should handle complex camelCase to readable format conversion', () => {
 			const resourceKey = 'workflows';
 			const keySuffix = 'status.isActiveAndRunning';
-			mockBaseText.mockReturnValue('');
+			mockIsBaseTextKey.mockReturnValue(false); // all keys don't exist
 
 			const { getResourceText } = useResourcesListI18n(resourceKey);
 			const result = getResourceText(keySuffix);
