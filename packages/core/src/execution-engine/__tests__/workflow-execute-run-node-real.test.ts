@@ -59,6 +59,7 @@ import type {
 	INode,
 	INodeType,
 	IRunExecutionData,
+	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
@@ -611,6 +612,74 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(mockRoutingNode).toHaveBeenCalledWith(mockContextInstance, mockNodeType);
 			expect(mockRoutingNodeInstance.runNode).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockData });
+		});
+	});
+
+	describe('executeOnce node handling', () => {
+		it('should slice input data to only first item when executeOnce is true', async () => {
+			const executeOnceNode = { ...mockNode, executeOnce: true };
+			// Create input data with multiple connection types to trigger the slice logic in line 1183
+			const inputData = {
+				main: [
+					[{ json: { item: 1 } }, { json: { item: 2 } }, { json: { item: 3 } }], // This should be sliced to only first item
+				],
+				ai_tool: [
+					[{ json: { tool: 'a' } }, { json: { tool: 'b' } }], // This should also be sliced to only first item
+				],
+			};
+			const executionData = {
+				...mockExecutionData,
+				node: executeOnceNode,
+				data: inputData,
+			};
+
+			let capturedInputData: ITaskDataConnections | undefined;
+
+			mockNodeType.execute = jest.fn().mockResolvedValue([[{ json: { result: 'executeOnce' } }]]);
+
+			const mockContextInstance = { hints: [] };
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					inputData,
+					_executionData,
+					_closeFunctions,
+				) => {
+					// Capture the inputData that was passed to ExecuteContext
+					capturedInputData = inputData;
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await workflowExecute.runNode(
+				mockWorkflow,
+				executionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			// Verify that the slice logic was applied correctly to ALL connection types
+			expect(capturedInputData).toBeDefined();
+			if (capturedInputData) {
+				// Main connection should be sliced to only first item
+				expect(capturedInputData.main).toHaveLength(1);
+				expect(capturedInputData.main[0]).toHaveLength(1);
+				expect(capturedInputData.main[0]![0]).toEqual({ json: { item: 1 } });
+
+				// AI tool connection should also be sliced to only first item
+				expect(capturedInputData.ai_tool).toHaveLength(1);
+				expect(capturedInputData.ai_tool[0]).toHaveLength(1);
+				expect(capturedInputData.ai_tool[0]![0]).toEqual({ json: { tool: 'a' } });
+			}
+			expect(mockNodeType.execute).toHaveBeenCalled();
 		});
 	});
 
