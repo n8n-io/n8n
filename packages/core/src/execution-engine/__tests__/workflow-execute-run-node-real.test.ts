@@ -55,6 +55,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
+	ExecutionBaseError,
 	IExecuteData,
 	INode,
 	INodeType,
@@ -304,7 +305,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				name: 'SomeCustomError',
 				message: 'Custom error message',
 				stack: 'Custom error stack trace',
-			};
+			} as unknown as ExecutionBaseError;
 			const runDataWithError = {
 				...mockRunExecutionData,
 				resultData: {
