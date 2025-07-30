@@ -624,6 +624,7 @@ export function useCanvasMapping({
 					position: { x: node.position[0], y: node.position[1] },
 					data,
 					...additionalNodePropertiesById.value[node.id],
+					draggable: node.draggable ?? true,
 				};
 			}),
 		];

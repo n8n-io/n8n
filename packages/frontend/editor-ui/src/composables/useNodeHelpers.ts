@@ -20,7 +20,6 @@ import type {
 	ITaskDataConnections,
 	IRunData,
 	IBinaryKeyData,
-	IDataObject,
 	INode,
 	INodePropertyOptions,
 	INodeCredentialsDetails,
@@ -722,8 +721,8 @@ export function useNodeHelpers() {
 				name: node.name,
 				properties: {
 					disabled: newDisabledState,
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+				},
+			};
 
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,
