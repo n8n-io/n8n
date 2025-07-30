@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -28,16 +28,11 @@ const emit = defineEmits<{
 const editableRoot = useTemplateRef('editableRoot');
 const measureSpan = useTemplateRef('measureSpan');
 
-// Internal editing value
-const editingValue = ref(props.modelValue);
+// Track current input value for resizing
+const currentInputValue = ref(props.modelValue);
 
 // Content for width calculation
-const displayContent = computed(() => editingValue.value || props.placeholder);
-
-// Sync when modelValue prop changes
-watchEffect(() => {
-	editingValue.value = props.modelValue;
-});
+const displayContent = computed(() => currentInputValue.value || props.placeholder);
 
 // Resize logic
 const { width: measuredWidth } = useElementSize(measureSpan);
@@ -59,29 +54,24 @@ function forceFocus() {
 
 function forceCancel() {
 	if (editableRoot.value) {
-		editingValue.value = props.modelValue;
 		editableRoot.value.cancel();
 	}
 }
 
 function onSubmit() {
-	const trimmed = editingValue.value.trim();
-	if (!trimmed) {
-		editingValue.value = props.modelValue;
-		return;
-	}
-	if (trimmed !== props.modelValue) {
+	const trimmed = (currentInputValue.value ?? '').trim();
+	if (trimmed && trimmed !== props.modelValue) {
 		emit('update:model-value', trimmed);
 	}
 }
 
 function onInput(value: string) {
-	editingValue.value = value;
+	currentInputValue.value = value;
 }
 
 function onStateChange(state: string) {
-	if (state === 'cancel') {
-		editingValue.value = props.modelValue;
+	if (state === 'edit' || state === 'cancel') {
+		currentInputValue.value = props.modelValue;
 	}
 }
 
@@ -92,7 +82,7 @@ defineExpose({ forceFocus, forceCancel });
 	<EditableRoot
 		ref="editableRoot"
 		:placeholder="placeholder"
-		:model-value="editingValue"
+		:model-value="props.modelValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
 		:title="props.modelValue"
