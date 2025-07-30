@@ -76,6 +76,7 @@ export async function jiraSoftwareCloudApiRequest(
 }
 
 export function handlePagination(
+	method: IHttpRequestMethods,
 	body: any,
 	query: IDataObject,
 	paginationType: 'offset' | 'token',
@@ -83,9 +84,15 @@ export function handlePagination(
 ): boolean {
 	if (!responseData) {
 		if (paginationType === 'offset') {
-			query.startAt = 0;
-			query.maxResults = 100;
+			if (method === 'GET') {
+				query.startAt = 0;
+				query.maxResults = 100;
+			} else {
+				body.startAt = 0;
+				body.maxResults = 100;
+			}
 		} else {
+			// token pagination is used only in POST requests
 			body.maxResults = 100;
 		}
 
@@ -94,7 +101,12 @@ export function handlePagination(
 
 	if (paginationType === 'offset') {
 		const nextStartAt = (responseData.startAt as number) + (responseData.maxResults as number);
-		query.startAt = nextStartAt;
+		if (method === 'GET') {
+			query.startAt = nextStartAt;
+		} else {
+			body.startAt = nextStartAt;
+		}
+
 		return nextStartAt < responseData.total;
 	} else {
 		body.nextPageToken = responseData.nextPageToken as string;
@@ -114,11 +126,11 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let hasNextPage = handlePagination(body, query, paginationType);
+	let hasNextPage = handlePagination(method, body, query, paginationType);
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		hasNextPage = handlePagination(body, query, paginationType, responseData);
+		hasNextPage = handlePagination(method, body, query, paginationType, responseData);
 	} while (hasNextPage);
 
 	return returnData;
