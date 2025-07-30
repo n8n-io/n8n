@@ -136,8 +136,6 @@ declare global {
 	}
 }
 
-export type Prettify<T> = { [K in keyof T]: T[K] } & {};
-
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
