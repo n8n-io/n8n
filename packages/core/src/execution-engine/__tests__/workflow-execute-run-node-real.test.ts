@@ -594,6 +594,8 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('should pass through input data for trigger nodes in non-manual mode', async () => {
 			mockNodeType.trigger = jest.fn();
 			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
 
 			const result = await workflowExecute.runNode(
 				mockWorkflow,
