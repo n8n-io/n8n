@@ -1,12 +1,5 @@
+import { isBaseTextKey } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
-import type { BaseTextKey } from '@n8n/i18n';
-
-// Type guard for BaseTextKey
-function isResourceBaseTextKey(key: string): key is BaseTextKey {
-	return (
-		typeof key === 'string' && key.startsWith('resources.') && key.length > 'resources.'.length
-	);
-}
 
 /**
  * Composable for handling i18n in ResourcesListLayout with dynamic resource keys
@@ -29,17 +22,17 @@ export function useResourcesListI18n(resourceKey: string) {
 		const fallbackKey = fallbackKeySuffix ? `resources.${fallbackKeySuffix}` : undefined;
 
 		// Check if the specific key exists
-		if (isResourceBaseTextKey(specificKey) && i18n.baseText(specificKey)) {
+		if (isBaseTextKey(specificKey)) {
 			return i18n.baseText(specificKey, { interpolate });
 		}
 
 		// Check if the generic key exists
-		if (isResourceBaseTextKey(genericKey) && i18n.baseText(genericKey)) {
+		if (isBaseTextKey(genericKey)) {
 			return i18n.baseText(genericKey, { interpolate });
 		}
 
 		// Use fallback key if provided
-		if (fallbackKey && isResourceBaseTextKey(fallbackKey) && i18n.baseText(fallbackKey)) {
+		if (fallbackKey && isBaseTextKey(fallbackKey)) {
 			return i18n.baseText(fallbackKey, { interpolate });
 		}
 
