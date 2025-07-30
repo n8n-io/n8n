@@ -129,7 +129,6 @@ const scrollRight = () => scroll(50);
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
 							[$style.noText]: !option.label,
-							[$style.tabWithRightIcon]: option.icon && option.iconPosition === 'right',
 							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						:data-test-id="`tab-${option.value}`"
@@ -141,14 +140,14 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<span v-if="option.label" :class="$style.notificationContainer"
-							>{{ option.label }}
-							<div v-if="option.notification" :class="$style.notification"><div></div></div
-						></span>
+						<span v-if="option.label" :class="$style.notificationContainer">
+							{{ option.label }}
+							<div v-if="option.notification" :class="$style.notification" />
+						</span>
 						<N8nIcon
 							v-if="option.icon && option.iconPosition === 'right'"
 							:icon="option.icon"
-							:class="[$style.icon, $style.iconRight]"
+							:class="$style.icon"
 							size="small"
 						/>
 					</div>
@@ -200,7 +199,9 @@ const scrollRight = () => scroll(50);
 
 .tab {
 	--active-tab-border-width: 2px;
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 	padding: 0 var(--spacing-s);
 	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
 	font-size: var(--font-size-s);
@@ -265,15 +266,6 @@ const scrollRight = () => scroll(50);
 	display: block;
 }
 
-.iconRight {
-	margin-left: var(--spacing-4xs);
-}
-
-.tabWithRightIcon {
-	display: flex;
-	align-items: center;
-}
-
 .dangerTab {
 	color: var(--color-danger);
 
@@ -305,7 +297,9 @@ const scrollRight = () => scroll(50);
 	align-items: center;
 	justify-content: center;
 
-	div {
+	&:after {
+		content: '';
+		display: block;
 		height: 0.3em;
 		width: 0.3em;
 		background-color: var(--color-primary);
