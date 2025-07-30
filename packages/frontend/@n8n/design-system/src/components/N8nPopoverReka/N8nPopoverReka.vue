@@ -21,6 +21,10 @@ interface Props {
 	 * Popover max height
 	 */
 	maxHeight?: string;
+	/**
+	 * The preferred alignment against the trigger. May change when collisions occur.
+	 */
+	align?: 'start' | 'center' | 'end';
 }
 
 interface Emits {
@@ -33,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	width: undefined,
 	enableScrolling: true,
 	scrollType: 'hover',
+	align: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -44,7 +49,7 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent side="bottom" :align="align" :side-offset="5" :class="$style.popoverContent">
 				<N8nScrollArea
 					v-if="enableScrolling"
 					:max-height="props.maxHeight"

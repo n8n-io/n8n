@@ -20,6 +20,7 @@ interface SuggestedActionsProps {
 	actions: SuggestedAction[];
 	showRedDot?: boolean;
 	turnOffActionsLabel?: string;
+	popoverAlignment?: 'start' | 'end' | 'center';
 }
 
 interface SuggestedActionsEmits {
@@ -34,6 +35,7 @@ defineOptions({ name: 'N8nSuggestedActions' });
 withDefaults(defineProps<SuggestedActionsProps>(), {
 	showRedDot: false,
 	turnOffActionsLabel: undefined,
+	popoverAlignment: undefined,
 });
 
 const emit = defineEmits<SuggestedActionsEmits>();
@@ -69,7 +71,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="328px">
+	<N8nPopoverReka v-model:open="isOpen" width="328px" :align="popoverAlignment">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton

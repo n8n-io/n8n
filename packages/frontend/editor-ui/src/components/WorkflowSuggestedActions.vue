@@ -175,6 +175,7 @@ defineExpose({
 	<N8nSuggestedActions
 		v-if="availableActions.length > 0"
 		ref="suggestedActionsComponent"
+		popover-alignment="end"
 		:actions="availableActions"
 		:show-red-dot="showRedDot"
 		:turn-off-actions-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
