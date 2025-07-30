@@ -24,7 +24,6 @@ export class LmChatAwsBedrock implements INodeType {
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
-			modelSource: 'onDemand',
 		},
 		codex: {
 			categories: ['AI'],
