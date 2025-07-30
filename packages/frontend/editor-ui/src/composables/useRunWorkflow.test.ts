@@ -24,7 +24,7 @@ import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { SLACK_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
@@ -43,7 +43,7 @@ vi.mock('@/stores/workflows.store', () => {
 		previousExecutionId: undefined,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
-		workflowObject: mock<Workflow>({ id: '123' }),
+		workflowObject: { id: '123' } as Workflow,
 		getNodeByName: vi
 			.fn()
 			.mockImplementation((name) =>

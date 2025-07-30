@@ -47,7 +47,7 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
-const getNodeType = vi.fn((): Partial<INodeTypeDescription> | null => ({
+const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
 	inputs: [],
 	group: [],
 	webhooks: [],
@@ -193,7 +193,7 @@ describe('useWorkflowsStore', () => {
 						inputs: [],
 						webhooks: [],
 						properties: [],
-					}) as INodeTypeDescription,
+					}) as Partial<INodeTypeDescription> | null,
 			);
 
 			workflowsStore.setNodes([
@@ -1106,6 +1106,8 @@ describe('useWorkflowsStore', () => {
 
 		it('should not update last parameter update time if parameters are set to the same value', () => {
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+
+			console.log(workflowsStore.workflow.nodes, workflowsStore.workflowObject.nodes);
 
 			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 

@@ -1295,14 +1295,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
 			const changed = !isEqual(existingData, nodeData);
 
-			Object.assign(node, nodeData);
-			workflow.value.nodes[nodeIndex] = node;
-
 			if (changed) {
+				Object.assign(node, nodeData);
+				workflow.value.nodes[nodeIndex] = node;
 				workflowObject.value.setNodes(workflow.value.nodes);
 			}
-
-			console.log(workflow.value.nodes[nodeIndex]);
 
 			return changed;
 		}

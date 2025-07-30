@@ -162,6 +162,7 @@ export class Workflow {
 
 	// Save nodes in workflow as object to be able to get the nodes easily by their name.
 	setNodes(nodes: INode[]): void {
+		this.nodes = {};
 		for (const node of nodes) {
 			this.nodes[node.name] = node;
 		}

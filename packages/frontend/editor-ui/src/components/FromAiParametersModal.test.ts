@@ -12,6 +12,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nextTick } from 'vue';
 import { mock } from 'vitest-mock-extended';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 const ModalStub = {
 	template: `
@@ -65,8 +66,12 @@ const mockRunData = {
 	},
 };
 
-const mockWorkflow = mock<Workflow>({
+const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
+});
+
+const mockWorkflowObject = mock<Workflow>({
+	id: mockWorkflow.id,
 	getChildNodes: () => ['Parent Node'],
 });
 
@@ -108,6 +113,7 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
+					workflowObject: mockWorkflowObject,
 					workflowExecutionData: mockRunData,
 				},
 			},
@@ -123,7 +129,6 @@ describe('FromAiParametersModal', () => {
 					return mockParentNode;
 			}
 		});
-		workflowsStore.workflowObject = mockWorkflow;
 		agentRequestStore = useAgentRequestStore();
 		agentRequestStore.clearAgentRequests = vi.fn();
 		agentRequestStore.setAgentRequestForNode = vi.fn();

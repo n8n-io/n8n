@@ -2670,13 +2670,13 @@ describe('useCanvasOperations', () => {
 			};
 
 			const nodes = buildImportNodes();
-			workflowsStore.workflow.nodes = nodes;
+			workflowsStore.setNodes(nodes);
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
 
 			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
 			workflowsStore.workflowObject = workflowObject;
-			workflowsStore.getWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
 
 			const canvasOperations = useCanvasOperations();
 			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
