@@ -18,7 +18,7 @@ jest.mock('@n8n/di', () => ({
 }));
 
 jest.mock('@/errors/error-reporter', () => ({
-	ErrorReporter: function () {
+	ErrorReporter() {
 		return {
 			error: jest.fn(),
 		};
@@ -51,25 +51,23 @@ jest.mock('@/node-execute-functions', () => ({
 }));
 
 // Now import the real classes
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteData,
 	INode,
-	INodeExecutionData,
 	INodeType,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
-	CloseFunction,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError, Node } from 'n8n-workflow';
-import { Container } from '@n8n/di';
-import { GlobalConfig } from '@n8n/config';
+import { NodeApiError, NodeOperationError, Node } from 'n8n-workflow';
 
-import { WorkflowExecute } from '../workflow-execute';
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
 import { TriggersAndPollers } from '../triggers-and-pollers';
+import { WorkflowExecute } from '../workflow-execute';
 
 const mockContainer = Container as jest.Mocked<typeof Container>;
 const mockExecuteContext = ExecuteContext as jest.MockedClass<typeof ExecuteContext>;
@@ -278,11 +276,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		});
 
 		it('should throw generic Error for other error types from previous execution', async () => {
-			const originalError = {
-				message: 'Generic error',
-				stack: 'error stack',
-				name: 'SomeOtherError',
-			};
+			const originalError = new NodeOperationError(mockNode, 'Generic error');
 			const runDataWithError = {
 				...mockRunExecutionData,
 				resultData: {
@@ -331,7 +325,8 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		it('should execute Node class instance with execute method', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
-			const nodeInstance = new Node();
+			// Create a mock that extends Node to trigger instanceof Node check
+			const nodeInstance = Object.create(Node.prototype);
 			nodeInstance.execute = jest.fn().mockResolvedValue(mockData);
 			nodeInstance.description = {
 				displayName: 'Node Instance',
@@ -343,7 +338,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				properties: [],
 				requestDefaults: undefined,
 			};
-			mockWorkflow.nodeTypes.getByNameAndVersion.mockReturnValue(nodeInstance as any);
+			(mockWorkflow.nodeTypes.getByNameAndVersion as jest.Mock).mockReturnValue(
+				nodeInstance as any,
+			);
 
 			const mockContextInstance = { hints: [] };
 			mockExecuteContext.mockImplementation(() => mockContextInstance as any);
@@ -396,15 +393,15 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			// Mock ExecuteContext constructor to capture closeFunctions array
 			mockExecuteContext.mockImplementation(
 				(
-					workflow,
-					node,
-					additionalData,
-					mode,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					inputData,
-					executionData,
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
 					closeFunctions,
 				) => {
 					// Add close functions to the array passed in
