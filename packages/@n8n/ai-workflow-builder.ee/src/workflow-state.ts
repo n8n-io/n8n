@@ -5,6 +5,7 @@ import type { BinaryOperator } from '@langchain/langgraph/dist/channels/binop';
 
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
+import { MAX_USER_MESSAGES } from '@/constants';
 
 /**
  * Reducer for collecting workflow operations from parallel tool executions.
@@ -68,7 +69,10 @@ function combineMessageReducers(...reducers: Array<BinaryOperator<BaseMessage[],
 
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
-		reducer: combineMessageReducers(messagesStateReducer, createTrimMessagesReducer(10)),
+		reducer: combineMessageReducers(
+			messagesStateReducer,
+			createTrimMessagesReducer(MAX_USER_MESSAGES),
+		),
 		default: () => [],
 	}),
 	// // The original prompt from the user.
