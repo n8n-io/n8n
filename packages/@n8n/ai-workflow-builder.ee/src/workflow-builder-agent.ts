@@ -1,6 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { ToolMessage, AIMessage } from '@langchain/core/messages';
-import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
@@ -180,19 +181,6 @@ export class WorkflowBuilderAgent {
 			: crypto.randomUUID();
 	}
 
-	private getStreamConfig(
-		threadConfig: { configurable: { thread_id: string } },
-		abortSignal?: AbortSignal,
-	) {
-		return {
-			...threadConfig,
-			streamMode: ['updates', 'custom'] as Array<'updates' | 'custom'>,
-			recursionLimit: 30,
-			signal: abortSignal,
-			callbacks: this.tracer ? [this.tracer] : undefined,
-		};
-	}
-
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
 		return (
 			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
@@ -202,62 +190,37 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	private createInitialState(payload: ChatPayload): typeof WorkflowState.State {
-		return {
-			messages: [new HumanMessage({ content: payload.message })],
-			workflowJSON: this.getDefaultWorkflowJSON(payload),
-			workflowOperations: [],
-			workflowContext: payload.workflowContext,
-		};
-	}
-
-	private createStateUpdate(payload: ChatPayload): Partial<typeof WorkflowState.State> {
-		const stateUpdate: Partial<typeof WorkflowState.State> = {
-			messages: [new HumanMessage({ content: payload.message })],
-			workflowOperations: [], // Clear any pending operations from previous message
-			workflowContext: payload.workflowContext,
-			workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
-		};
-
-		if (payload.workflowContext?.currentWorkflow) {
-			stateUpdate.workflowJSON = payload.workflowContext?.currentWorkflow as SimpleWorkflow;
-		}
-
-		return stateUpdate;
-	}
-
 	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
 		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-
-		// Configure thread for checkpointing
-		const threadConfig = {
+		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
 			},
 		};
+		const streamConfig = {
+			...threadConfig,
+			streamMode: ['updates', 'custom'],
+			recursionLimit: 30,
+			signal: abortSignal,
+			callbacks: this.tracer ? [this.tracer] : undefined,
+		} as RunnableConfig;
 
-		// Check if this is a subsequent message
-		// If so, update the workflowJSON with the current editor state
-		const existingCheckpoint = await this.checkpointer.getTuple(threadConfig);
+		const stream = await agent.stream(
+			{
+				messages: [new HumanMessage({ content: payload.message })],
+				workflowJSON: this.getDefaultWorkflowJSON(payload),
+				workflowOperations: [],
+				workflowContext: payload.workflowContext,
+			},
+			streamConfig,
+		);
 
-		// Stream and handle abort gracefully
 		try {
-			const streamState = !existingCheckpoint?.checkpoint
-				? // First message - use initial state
-					this.createInitialState(payload)
-				: // Subsequent message - update the state with current workflow
-					this.createStateUpdate(payload);
-
-			const stream = await agent.stream(
-				streamState,
-				this.getStreamConfig(threadConfig, abortSignal),
-			);
 			const streamProcessor = createStreamProcessor(stream);
-
 			for await (const output of streamProcessor) {
 				yield output;
 			}
@@ -267,6 +230,7 @@ export class WorkflowBuilderAgent {
 				typeof error === 'object' &&
 				'message' in error &&
 				typeof error.message === 'string' &&
+				// This is naive, but it's all we get from LangGraph AbortError
 				['Abort', 'Aborted'].includes(error.message)
 			) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -279,6 +243,7 @@ export class WorkflowBuilderAgent {
 					content: '[Task aborted]',
 					id: crypto.randomUUID(),
 				});
+				// TODO: Should we clear tool calls that are in progress?
 				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
 				return;
 			}
@@ -294,7 +259,7 @@ export class WorkflowBuilderAgent {
 
 		if (workflowId) {
 			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig = {
+			const threadConfig: RunnableConfig = {
 				configurable: {
 					thread_id: threadId,
 				},
