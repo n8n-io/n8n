@@ -7,7 +7,7 @@ import {
 	RenameDataStoreDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import { Body, Get, Param, Post, Query, RestController } from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
 import { DataStoreRows } from './data-store.types';
@@ -21,7 +21,6 @@ export class DataStoreController {
 	}
 
 	@Get('/', { skipAuth: true })
-	@ProjectScope('dataStore:list')
 	async listDataStores(
 		_req: AuthenticatedRequest,
 		_res: Response,
