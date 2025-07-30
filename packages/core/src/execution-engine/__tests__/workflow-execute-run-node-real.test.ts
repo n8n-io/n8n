@@ -298,6 +298,49 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			).rejects.toThrow('Generic error');
 		});
+
+		it('should create new Error with message and stack for non-n8n error types from previous execution', async () => {
+			const originalError = {
+				name: 'SomeCustomError',
+				message: 'Custom error message',
+				stack: 'Custom error stack trace',
+			};
+			const runDataWithError = {
+				...mockRunExecutionData,
+				resultData: {
+					...mockRunExecutionData.resultData,
+					lastNodeExecuted: mockNode.name,
+					error: originalError,
+				},
+			};
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					runDataWithError,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow(Error);
+
+			// Verify the error has the correct message and stack
+			try {
+				await workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					runDataWithError,
+					0,
+					mockAdditionalData,
+					'manual',
+				);
+			} catch (error) {
+				expect(error).toBeInstanceOf(Error);
+				expect((error as Error).message).toBe('Custom error message');
+				expect((error as Error).stack).toBe('Custom error stack trace');
+			}
+		});
 	});
 
 	describe('execute node type handling', () => {
