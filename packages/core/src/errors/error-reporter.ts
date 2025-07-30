@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
+import { eventLoopBlockIntegration } from '@sentry/node-native';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -146,6 +147,7 @@ export class ErrorReporter {
 						url: true,
 					},
 				}),
+				eventLoopBlockIntegration(),
 			],
 		});
 
