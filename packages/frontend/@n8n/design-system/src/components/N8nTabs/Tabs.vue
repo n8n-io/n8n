@@ -129,15 +129,28 @@ const scrollRight = () => scroll(50);
 							[$style.tab]: true,
 							[$style.activeTab]: modelValue === option.value,
 							[$style.noText]: !option.label,
+							[$style.tabWithRightIcon]: option.icon && option.iconPosition === 'right',
+							[$style.dangerTab]: option.variant === 'danger',
 						}"
 						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" :class="$style.icon" size="small" />
+						<N8nIcon
+							v-if="option.icon && option.iconPosition !== 'right'"
+							:icon="option.icon"
+							:class="$style.icon"
+							size="small"
+						/>
 						<span v-if="option.label" :class="$style.notificationContainer"
 							>{{ option.label }}
 							<div v-if="option.notification" :class="$style.notification"><div></div></div
 						></span>
+						<N8nIcon
+							v-if="option.icon && option.iconPosition === 'right'"
+							:icon="option.icon"
+							:class="[$style.icon, $style.iconRight]"
+							size="small"
+						/>
 					</div>
 				</N8nTooltip>
 			</div>
@@ -250,6 +263,23 @@ const scrollRight = () => scroll(50);
 
 .noText .icon {
 	display: block;
+}
+
+.iconRight {
+	margin-left: var(--spacing-4xs);
+}
+
+.tabWithRightIcon {
+	display: flex;
+	align-items: center;
+}
+
+.dangerTab {
+	color: var(--color-danger);
+
+	&:hover {
+		color: var(--color-danger);
+	}
 }
 
 .button {

@@ -14,6 +14,7 @@ defineProps<{
 	selectedTab: NodeSettingsTab;
 	includeAction: boolean;
 	includeCredential: boolean;
+	hasCredentialIssue?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -49,6 +50,7 @@ defineSlots<{ actions?: {} }>();
 			compact
 			:include-action="includeAction"
 			:include-credential="includeCredential"
+			:has-credential-issue="hasCredentialIssue"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
 	</div>

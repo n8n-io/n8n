@@ -25,6 +25,7 @@ type Props = {
 	tabsVariant?: 'modern' | 'legacy';
 	includeAction?: boolean;
 	includeCredential?: boolean;
+	hasCredentialIssue?: boolean;
 	compact?: boolean;
 };
 
@@ -33,6 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 	nodeType: undefined,
 	pushRef: '',
 	tabsVariant: undefined,
+	hasCredentialIssue: false,
 });
 const emit = defineEmits<{
 	'update:model-value': [tab: NodeSettingsTab];
@@ -82,6 +84,11 @@ const options = computed(() => {
 		ret.push({
 			label: i18n.baseText('nodeSettings.credential'),
 			value: 'credential',
+			...(props.hasCredentialIssue && {
+				icon: 'triangle-alert',
+				iconPosition: 'right',
+				variant: 'danger',
+			}),
 		});
 	}
 
