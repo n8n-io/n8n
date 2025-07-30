@@ -111,17 +111,12 @@ export function useWorkflowSettingsCache() {
 		);
 	}
 
-	function turnOffAllSuggestedActions() {
-		// todo
-	}
-
 	return {
 		getWorkflowSettings,
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
 		ignoreSuggestedAction,
 		ignoreAllSuggestedActions,
-		turnOffAllSuggestedActions,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
 		isCacheLoading,

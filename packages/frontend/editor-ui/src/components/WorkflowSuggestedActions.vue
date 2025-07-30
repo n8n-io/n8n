@@ -9,7 +9,12 @@ import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS } from '@/constants';
+import {
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	VIEWS,
+	LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS,
+} from '@/constants';
+import { useLocalStorage } from '@vueuse/core';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -21,6 +26,11 @@ const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
+
+const areAllSuggestionsTurnedOff = useLocalStorage(
+	LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS,
+	false,
+);
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -46,7 +56,11 @@ const hasTimeSaved = computed(() => {
 });
 
 const availableActions = computed(() => {
-	if (!props.workflow.active || workflowsCache.isCacheLoading.value) {
+	if (
+		!props.workflow.active ||
+		areAllSuggestionsTurnedOff.value ||
+		workflowsCache.isCacheLoading.value
+	) {
 		return [];
 	}
 
@@ -137,7 +151,7 @@ async function handleIgnoreAll() {
 }
 
 function handleTurnOffSuggestions() {
-	workflowsCache.turnOffAllSuggestedActions();
+	areAllSuggestionsTurnedOff.value = true;
 }
 
 function openSuggestedActions() {
