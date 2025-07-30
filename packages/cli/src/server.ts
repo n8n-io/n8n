@@ -292,8 +292,10 @@ export class Server extends AbstractServer {
 					serverName: process.env.DEPLOYMENT_NAME,
 					release: `n8n@${N8N_VERSION}`,
 				});
+
+				const basePath = this.globalConfig.path === '/' ? '/' : `/${this.globalConfig.path}/`;
 				const frontendConfig = [
-					`window.BASE_PATH = '${this.globalConfig.path}';`,
+					`window.BASE_PATH = '${basePath}';`,
 					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
 					`window.sentry = ${frontendSentryConfig};`,
 				].join('\n');
