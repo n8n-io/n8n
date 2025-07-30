@@ -21,7 +21,7 @@ export interface WorkflowSettings {
 export function useWorkflowSettingsCache() {
 	const isCacheLoading = ref<boolean>(true);
 	const cachePromise = ref(
-		indexedDbCache('workflows', 'settings').finally(() => {
+		indexedDbCache('config', 'workflows').finally(() => {
 			isCacheLoading.value = false;
 		}),
 	);
