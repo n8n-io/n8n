@@ -177,6 +177,9 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	validateExecutionWaitingToken() {
 		try {
+			// if execution was started before the validation was added then bypass
+			if (!this.runExecutionData?.validateSignature) return true;
+
 			const req = this.getRequestObject();
 			const token = req.query[WAITING_TOKEN_QUERY_PARAM];
 

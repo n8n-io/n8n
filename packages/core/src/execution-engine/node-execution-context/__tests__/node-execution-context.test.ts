@@ -370,6 +370,14 @@ describe('NodeExecutionContext', () => {
 	});
 
 	describe('getSignedResumeUrl', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			testContext = new TestContext(workflow, node, additionalData, mode, {
+				validateSignature: true,
+				resultData: { runData: {} },
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		});
 		it('should return a signed resume URL', () => {
 			additionalData.webhookWaitingBaseUrl = 'https://example.com/webhook';
 			additionalData.executionId = 'execution123';

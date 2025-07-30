@@ -162,6 +162,11 @@ describe('WebhookContext', () => {
 	});
 
 	describe('validateExecutionWaitingToken', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(webhookContext as any).runExecutionData = {
+			...(webhookContext.runExecutionData ?? {}),
+			validateSignature: true,
+		};
 		it('should return true for a valid token', () => {
 			additionalData.httpRequest!.query[WAITING_TOKEN_QUERY_PARAM] = 'aaabbbccc';
 			jest.spyOn(webhookContext, 'getExecutionWaitingToken').mockReturnValue('aaabbbccc');

@@ -212,6 +212,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getSignedResumeUrl() {
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+
+		if (this.runExecutionData) {
+			this.runExecutionData.validateSignature = true;
+		}
+
 		if (typeof executionId !== 'string') {
 			throw new ApplicationError('Execution id is missing');
 		}

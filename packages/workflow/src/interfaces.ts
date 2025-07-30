@@ -2251,6 +2251,11 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/**
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
+	 */
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 
