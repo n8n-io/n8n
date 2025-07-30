@@ -22,6 +22,8 @@ export default mergeConfig(
 								overrides: {
 									// disable a default plugin
 									cleanupIds: false,
+									// preserve viewBox for scalability
+									removeViewBox: false,
 								},
 							},
 						},

@@ -1,16 +1,14 @@
-import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
-export default defineConfig(
-	{
-		ignores: ['**/playwright-report/**'],
-	},
-	baseConfig,
+export default [
+	...baseConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
+		ignores: ['playwright-report/**/*'],
+	},
+	{
 		rules: {
-			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',
@@ -33,4 +31,4 @@ export default defineConfig(
 			],
 		},
 	},
-);
+];
