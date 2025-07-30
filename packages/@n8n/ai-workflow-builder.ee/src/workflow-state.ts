@@ -3,9 +3,10 @@ import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 import type { BinaryOperator } from '@langchain/langgraph/dist/channels/binop';
 
+import { MAX_USER_MESSAGES } from '@/constants';
+
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
-import { MAX_USER_MESSAGES } from '@/constants';
 
 /**
  * Reducer for collecting workflow operations from parallel tool executions.
