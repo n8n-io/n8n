@@ -105,14 +105,14 @@ function onFeedback(feedback: RatingFeedback) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
 			workflow_id: workflowsStore.workflowId,
-			session_id: builderStore.sessionId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
 			workflow_id: workflowsStore.workflowId,
-			session_id: builderStore.sessionId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 }
