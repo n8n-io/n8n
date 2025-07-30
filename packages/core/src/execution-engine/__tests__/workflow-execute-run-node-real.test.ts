@@ -550,6 +550,47 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(result).toEqual({ data: null });
 		});
 
+		it('should return null data and closeFunction when trigger response is empty in manual mode', async () => {
+			const mockCloseFunction = jest.fn();
+			const mockTriggerResponse = {
+				manualTriggerResponse: Promise.resolve([]), // Empty response to trigger line 1301
+				closeFunction: mockCloseFunction,
+			};
+
+			mockNodeType.trigger = jest.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
+
+			const mockTriggersAndPollersInstance = {
+				runTrigger: jest.fn().mockResolvedValue(mockTriggerResponse),
+			};
+			const mockGlobalConfigInstance = {
+				sentry: { backendDsn: '' },
+			};
+			mockContainer.get.mockImplementation((token) => {
+				if (token === GlobalConfig) {
+					return mockGlobalConfigInstance;
+				}
+				if (token === TriggersAndPollers) {
+					return mockTriggersAndPollersInstance;
+				}
+				return mockTriggersAndPollersInstance;
+			});
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(result).toEqual({ data: null, closeFunction: mockCloseFunction });
+		});
+
 		it('should pass through input data for trigger nodes in non-manual mode', async () => {
 			mockNodeType.trigger = jest.fn();
 			mockNodeType.execute = undefined;
