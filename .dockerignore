@@ -15,5 +15,5 @@ packages/**/*.test.*
 docker/compose
 docker/**/Dockerfile
 .vscode
+packages/testing
 cypress
-test-workflows

@@ -1054,7 +1054,10 @@ describe('useRunWorkflow({ router })', () => {
 			// Assert that markExecutionAsStopped() isn't called yet after a simulated delay
 			await new Promise((resolve) => setTimeout(resolve, 10));
 			expect(markStoppedSpy).not.toHaveBeenCalled();
-			expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id');
+			await waitFor(() => expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id'));
+
+			getExecutionSpy.mockReset();
+			expect(getExecutionSpy).toHaveBeenCalledTimes(0);
 
 			// Simulated executionFinished event
 			getExecutionSpy.mockResolvedValue({

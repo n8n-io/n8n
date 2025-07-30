@@ -24,13 +24,7 @@ import {
 } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -1311,8 +1305,8 @@ function enableNode() {
 			name: node.value.name,
 			properties: {
 				disabled: !node.value.disabled,
-			} as IDataObject,
-		} as INodeUpdatePropertiesInformation;
+			},
+		};
 
 		workflowsStore.updateNodeProperties(updateInformation);
 	}

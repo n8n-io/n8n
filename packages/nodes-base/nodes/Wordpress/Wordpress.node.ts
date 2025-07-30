@@ -187,6 +187,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.format) {
 							body.format = additionalFields.format as string;
 						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
@@ -238,6 +241,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
+						}
+						if (updateFields.date) {
+							body.date = updateFields.date as string;
 						}
 						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 					}

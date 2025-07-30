@@ -14,6 +14,9 @@ on:
         type: string
         default: 22.x
 
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
 jobs:
   lint:
     name: Lint

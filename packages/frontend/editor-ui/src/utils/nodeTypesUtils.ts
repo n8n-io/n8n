@@ -1,9 +1,4 @@
-import type {
-	AppliedThemeOption,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	NodeAuthenticationOption,
-} from '@/Interface';
+import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -386,8 +381,8 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 						...node.parameters,
 						[nodeAuthField.name]: type,
 					},
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+				},
+			};
 			useWorkflowsStore().updateNodeProperties(updateInformation);
 		}
 	}

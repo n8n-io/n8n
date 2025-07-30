@@ -4,6 +4,7 @@ import {
 	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
 	VERSIONS_MODAL_KEY,
+	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
@@ -19,6 +20,7 @@ import { useUsersStore } from './users.store';
 import { useStorage } from '@/composables/useStorage';
 import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useRoute } from 'vue-router';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
@@ -54,6 +56,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const route = useRoute();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
 	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
@@ -171,6 +174,11 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	};
 
 	const shouldShowWhatsNewCallout = (): boolean => {
+		// Never show if embedded, e.g. in executions iframe
+		if (route.name === VIEWS.DEMO) {
+			return false;
+		}
+
 		const createdAt = usersStore.currentUser?.createdAt;
 		let hasNewArticle = false;
 		if (createdAt) {

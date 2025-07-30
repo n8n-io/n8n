@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     strategy:
       matrix:
-        node-version: [20.x, 22.x, 24.x]
+        node-version: [20.x, 22.x, 24.3.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}

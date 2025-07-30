@@ -22,11 +22,22 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=4096'
+  NODE_OPTIONS: '--max-old-space-size=3072'
 
 jobs:
+  build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
   sqlite-pooled:
     name: SQLite Pooled
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
@@ -44,6 +55,7 @@ jobs:
 
   mariadb:
     name: MariaDB
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
@@ -67,6 +79,7 @@ jobs:
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     strategy:
@@ -93,6 +106,7 @@ jobs:
 
   postgres:
     name: Postgres
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:

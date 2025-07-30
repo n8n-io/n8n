@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.103.0",
+  "version": "1.104.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -27,6 +27,7 @@
     "bin"
   ],
   "devDependencies": {
+    "@n8n/errors": "workspace:^",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",

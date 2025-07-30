@@ -20,6 +20,7 @@ import type {
 	ListQuery,
 } from '../entities/types-db';
 import { isStringArray } from '../utils/is-string-array';
+import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -371,6 +372,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	@TimedQuery()
 	async getMany(workflowIds: string[], options: ListQuery.Options = {}) {
 		if (workflowIds.length === 0) {
 			return [];

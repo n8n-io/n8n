@@ -922,7 +922,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async getLiveExecutionRowsOnPostgres() {
 		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
-		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
+		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}' and schemaname = '${this.globalConfig.database.postgresdb.schema}';`;
 
 		try {
 			const rows = (await this.query(pgSql)) as Array<{ result: string }>;

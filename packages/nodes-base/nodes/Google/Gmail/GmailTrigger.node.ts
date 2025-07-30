@@ -33,7 +33,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -325,6 +325,10 @@ export class GmailTrigger implements INodeType {
 					if (fullMessage.labelIds?.includes('DRAFT')) {
 						continue;
 					}
+				}
+
+				if (node.typeVersion > 1.2 && fullMessage.labelIds?.includes('SENT')) {
+					continue;
 				}
 
 				if (!simple) {
