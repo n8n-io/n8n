@@ -42,17 +42,19 @@ defineSlots<{ actions?: {} }>();
 			</N8nText>
 			<slot name="actions" />
 		</div>
-		<NodeSettingsTabs
-			:model-value="selectedTab"
-			:node-type="nodeType"
-			:push-ref="pushRef"
-			tabs-variant="modern"
-			compact
-			:include-action="includeAction"
-			:include-credential="includeCredential"
-			:has-credential-issue="hasCredentialIssue"
-			@update:model-value="emit('tab-changed', $event)"
-		/>
+		<div :class="$style.tabsContainer">
+			<NodeSettingsTabs
+				:model-value="selectedTab"
+				:node-type="nodeType"
+				:push-ref="pushRef"
+				tabs-variant="modern"
+				compact
+				:include-action="includeAction"
+				:include-credential="includeCredential"
+				:has-credential-issue="hasCredentialIssue"
+				@update:model-value="emit('tab-changed', $event)"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -94,5 +96,9 @@ defineSlots<{ actions?: {} }>();
 	overflow: hidden;
 	text-overflow: ellipsis;
 	padding-top: var(--spacing-5xs);
+}
+
+.tabsContainer {
+	padding-inline: var(--spacing-2xs);
 }
 </style>

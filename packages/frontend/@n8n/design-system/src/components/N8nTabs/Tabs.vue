@@ -169,10 +169,6 @@ const scrollRight = () => scroll(50);
 		height: 26px;
 		min-height: 26px;
 	}
-
-	&.small {
-		padding-inline: var(--spacing-2xs);
-	}
 }
 
 .tabs {
@@ -192,10 +188,6 @@ const scrollRight = () => scroll(50);
 	/* Hide scrollbar for IE, Edge and Firefox */
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
-
-	.small & {
-		width: calc(100% - var(--spacing-2xs) * 2);
-	}
 }
 
 .tab {
