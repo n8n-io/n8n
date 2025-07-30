@@ -1,5 +1,6 @@
 import { indexedDbCache } from '@/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
+import { ref } from 'vue';
 
 const actionTypes = ['evaluations', 'errorWorkflow', 'timeSaved'] as const;
 
@@ -18,8 +19,15 @@ export interface WorkflowSettings {
 }
 
 export function useWorkflowSettingsCache() {
+	const isCacheLoading = ref<boolean>(true);
+	const cachePromise = ref(
+		indexedDbCache('workflows', 'settings').finally(() => {
+			isCacheLoading.value = false;
+		}),
+	);
+
 	async function getWorkflowsCache() {
-		return await indexedDbCache('workflows', 'settings');
+		return await cachePromise.value;
 	}
 
 	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
@@ -116,5 +124,6 @@ export function useWorkflowSettingsCache() {
 		turnOffAllSuggestedActions,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
+		isCacheLoading,
 	};
 }

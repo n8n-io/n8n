@@ -46,7 +46,7 @@ const hasTimeSaved = computed(() => {
 });
 
 const availableActions = computed(() => {
-	if (!props.workflow.active) {
+	if (!props.workflow.active || workflowsCache.isCacheLoading.value) {
 		return [];
 	}
 
