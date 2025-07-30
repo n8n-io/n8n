@@ -96,7 +96,7 @@ defineExpose({
 						<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
 					</div>
 					<div>
-						<N8nText size="small" color="text-light">
+						<N8nText size="small" color="text-base">
 							{{ action.description }}
 							<N8nLink
 								v-if="action.moreInfoLink"
@@ -104,6 +104,7 @@ defineExpose({
 								size="small"
 								theme="text"
 								new-window
+								underline
 							>
 								{{ t('generic.moreInfo') }}
 							</N8nLink>
