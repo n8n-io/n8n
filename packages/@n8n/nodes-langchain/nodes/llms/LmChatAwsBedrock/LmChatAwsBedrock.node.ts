@@ -76,7 +76,7 @@ export class LmChatAwsBedrock implements INodeType {
 						name: 'Inference Profiles',
 						value: 'inferenceProfile',
 						description:
-							'Cross-region inference profiles (required for some newer models like Claude 3.5 Sonnet v2)',
+							'Cross-region inference profiles (required for models like Claude Sonnet 4 and others)',
 					},
 				],
 				default: 'onDemand',
