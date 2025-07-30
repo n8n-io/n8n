@@ -256,7 +256,7 @@ watch(
 					@keydown.stop
 				/>
 				<N8nIconButton
-					v-if="showStop && sendDisabled"
+					v-if="showStop && streaming"
 					:class="$style.stopButton"
 					icon="square"
 					size="large"
