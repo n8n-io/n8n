@@ -1,10 +1,15 @@
-import type { User } from '@n8n/db';
-import type { ExecutionEntity } from '@n8n/db';
+import {
+	createTeamProject,
+	createManyWorkflows,
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User, ExecutionEntity } from '@n8n/db';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import {
 	createErrorExecution,
@@ -14,12 +19,6 @@ import {
 	createWaitingExecution,
 } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import {
-	createManyWorkflows,
-	createWorkflow,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 

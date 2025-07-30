@@ -1,5 +1,6 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -17,7 +18,7 @@ import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { assertNever } from '@/utils';
 
@@ -316,6 +317,9 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
+				case 'send-chunk':
+					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
+					break;
 				case 'respond-to-webhook':
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);

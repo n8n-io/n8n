@@ -2,7 +2,8 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
@@ -12,6 +13,7 @@ const props = withDefaults(
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
 		executionId?: string;
 		executionMode?: string;
+		nodeId?: string;
 		loaderType?: 'image' | 'spinner';
 		canOpenNDV?: boolean;
 		hideNodeIssues?: boolean;
@@ -23,6 +25,7 @@ const props = withDefaults(
 		workflow: undefined,
 		executionId: undefined,
 		executionMode: undefined,
+		nodeId: undefined,
 		loaderType: 'image',
 		canOpenNDV: true,
 		hideNodeIssues: false,
@@ -94,6 +97,7 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode ?? '',
+				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',

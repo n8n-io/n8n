@@ -12,6 +12,7 @@ export function createPage({
 	allowFileUploads,
 	allowedFilesMimeTypes,
 	customCss,
+	enableStreaming,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -26,6 +27,7 @@ export function createPage({
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
 	customCss?: string;
+	enableStreaming?: boolean;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -75,7 +77,7 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/n8n-chat-atekron@0.49.0/dist/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';
@@ -124,6 +126,7 @@ export function createPage({
 							${en ? `en: ${JSON.stringify(en)},` : ''}
 						},
 						${initialMessages.length ? `initialMessages: ${JSON.stringify(initialMessages)},` : ''}
+						enableStreaming: ${!!enableStreaming},
 					});
 				})();
 			</script>

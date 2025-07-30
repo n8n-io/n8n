@@ -1,8 +1,10 @@
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
 import {
+	type INode,
+	type IWorkflowBase,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -14,11 +16,8 @@ import { NodeTypes } from '@/node-types';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createUser } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.unmock('node:fs');
 

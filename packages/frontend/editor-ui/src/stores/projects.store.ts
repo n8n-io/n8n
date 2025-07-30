@@ -15,9 +15,10 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -126,12 +127,12 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		const { name, icon, description } = projectData;
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = name;
-			myProjects.value[projectIndex].icon = icon;
+			myProjects.value[projectIndex].icon = icon as IconOrEmoji;
 			myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
 			currentProject.value.name = name;
-			currentProject.value.icon = icon;
+			currentProject.value.icon = icon as IconOrEmoji;
 			currentProject.value.description = description;
 		}
 		if (projectData.relations) {

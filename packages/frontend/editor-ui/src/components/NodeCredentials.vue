@@ -295,7 +295,6 @@ function clearSelectedCredential(credentialType: string) {
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -412,7 +411,6 @@ function onCredentialSelected(
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -500,7 +498,7 @@ function setFilter(newFilter = '') {
 }
 
 function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle);
+	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
@@ -582,7 +580,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 									:items="getIssues(type.name)"
 								/>
 							</template>
-							<N8nIcon icon="exclamation-triangle" />
+							<N8nIcon icon="triangle-alert" />
 						</N8nTooltip>
 					</div>
 

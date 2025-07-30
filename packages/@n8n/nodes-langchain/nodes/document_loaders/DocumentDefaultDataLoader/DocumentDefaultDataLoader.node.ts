@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { RecursiveCharacterTextSplitter, type TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionTypes,
@@ -64,9 +63,9 @@ export class DocumentDefaultDataLoader implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [

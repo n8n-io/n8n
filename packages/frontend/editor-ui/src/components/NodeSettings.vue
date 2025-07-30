@@ -1,22 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
-	INodeTypeDescription,
 	INodeParameters,
-	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
-import {
-	NodeHelpers,
-	NodeConnectionTypes,
-	deepCopy,
-	isINodePropertyCollectionList,
-	isINodePropertiesList,
-	isINodePropertyOptionsList,
-	displayParameter,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
@@ -24,19 +15,23 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import {
+	collectSettings,
+	createCommonNodeSettings,
+	nameIsParameter,
+	getNodeSettingsInitialValues,
+} from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -44,6 +39,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -51,25 +48,28 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
-import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { N8nIconButton } from '@n8n/design-system';
+import { usePostHog } from '@/stores/posthog.store';
+import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
+import { useResizeObserver } from '@vueuse/core';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 
 const props = withDefaults(
 	defineProps<{
 		eventBus: EventBus;
 		dragging: boolean;
 		pushRef: string;
-		nodeType: INodeTypeDescription | null;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
 		executable: boolean;
 		inputSize: number;
 		activeNode?: INodeUi;
-		canExpand?: boolean;
-		hideConnections?: boolean;
+		isEmbeddedInCanvas?: boolean;
+		subTitle?: string;
 	}>(),
 	{
 		foreignCredentials: () => [],
@@ -78,55 +78,63 @@ const props = withDefaults(
 		inputSize: 0,
 		blockUI: false,
 		activeNode: undefined,
-		canExpand: false,
-		hideConnections: false,
+		isEmbeddedInCanvas: false,
+		subTitle: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	stopExecution: [];
-	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [
+		nodeName: string,
+		connectionType: NodeConnectionType,
+		connectionIndex?: number,
+	];
 	activate: [];
 	execute: [];
-	expand: [];
+	captureWheelBody: [WheelEvent];
 }>();
+
+const slots = defineSlots<{ actions?: {} }>();
+
+const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const canvasOperations = useCanvasOperations();
+const nodeSettingsParameters = useNodeSettingsParameters();
+
+const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
+const shouldShowStaticScrollbar = ref(false);
+
+if (props.isEmbeddedInCanvas) {
+	useResizeObserver(nodeParameterWrapper, () => {
+		shouldShowStaticScrollbar.value =
+			(nodeParameterWrapper.value?.scrollHeight ?? 0) >
+			(nodeParameterWrapper.value?.offsetHeight ?? 0);
+	});
+}
 
 const nodeValid = ref(true);
-const openPanel = ref<'params' | 'settings'>('params');
-const nodeValues = ref<INodeParameters>({
-	color: '#ff0000',
-	alwaysOutputData: false,
-	executeOnce: false,
-	notesInFlow: false,
-	onError: 'stopWorkflow',
-	retryOnFail: false,
-	maxTries: 3,
-	waitBetweenTries: 1000,
-	notes: '',
-	parameters: {},
-});
+const openPanel = ref<Tab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
 
 const hiddenIssuesInputs = ref<string[]>([]);
-const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
 const currentWorkflow = computed(() =>
@@ -141,31 +149,17 @@ const isReadOnly = computed(
 );
 const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
+const nodeType = computed(() =>
+	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+);
+
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
-const isExecutable = computed(() => {
-	if (props.nodeType && node.value) {
-		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
-		const inputs = NodeHelpers.getNodeInputs(
-			currentWorkflowInstance.value,
-			workflowNode!,
-			props.nodeType,
-		);
-		const inputNames = NodeHelpers.getConnectionTypes(inputs);
-
-		if (
-			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!isToolNode.value &&
-			!isTriggerNode.value
-		) {
-			return false;
-		}
-	}
-
-	return props.executable || props.foreignCredentials.length > 0;
-});
+const isExecutable = computed(() =>
+	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
+);
 
 const nodeTypeVersions = computed(() => {
 	if (!node.value) return [];
@@ -193,7 +187,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!props.nodeType || props.nodeType.hidden) {
+	if (!nodeType.value || nodeType.value.hidden) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -207,24 +201,26 @@ const nodeVersionTag = computed(() => {
 });
 
 const parameters = computed(() => {
-	if (props.nodeType === null) {
+	if (nodeType.value === null) {
 		return [];
 	}
 
-	return props.nodeType?.properties ?? [];
+	return nodeType.value?.properties ?? [];
 });
 
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
-const parametersNoneSetting = computed(() =>
+const parametersNoneSetting = computed(() => {
 	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
-	parameters.value.filter((item) => !item.isNodeSetting),
-);
+	const paramsToShow = parameters.value.filter((item) => !item.isNodeSetting);
+
+	return props.isEmbeddedInCanvas ? parameters.value.filter(shouldShowParameter) : paramsToShow;
+});
 
 const isDisplayingCredentials = computed(
 	() =>
 		credentialsStore
-			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.getCredentialTypesNodeDescriptions('', nodeType.value)
 			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
 		0,
 );
@@ -238,6 +234,7 @@ const showNoParametersNotice = computed(
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
+const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -257,125 +254,19 @@ const credentialOwnerName = computed(() => {
 	return credentialsStore.getCredentialOwnerName(credential);
 });
 
-const setValue = (name: string, value: NodeParameterValue) => {
-	const nameParts = name.split('.');
-	let lastNamePart: string | undefined = nameParts.pop();
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
 
-	let isArray = false;
-	if (lastNamePart !== undefined && lastNamePart.includes('[')) {
-		// It includes an index so we have to extract it
-		const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
-		if (lastNameParts) {
-			nameParts.push(lastNameParts[1]);
-			lastNamePart = lastNameParts[2];
-			isArray = true;
-		}
+const featureRequestUrl = computed(() => {
+	if (!nodeType.value) {
+		return '';
 	}
-
-	// Set the value so that everything updates correctly in the UI
-	if (nameParts.length === 0) {
-		// Data is on top level
-		if (value === null) {
-			// Property should be deleted
-			if (lastNamePart) {
-				const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = nodeValues.value;
-				nodeValues.value = remainingNodeValues;
-			}
-		} else {
-			// Value should be set
-			nodeValues.value = {
-				...nodeValues.value,
-				[lastNamePart as string]: value,
-			};
-		}
-	} else {
-		// Data is on lower level
-		if (value === null) {
-			// Property should be deleted
-			let tempValue = get(nodeValues.value, nameParts.join('.')) as
-				| INodeParameters
-				| INodeParameters[];
-
-			if (lastNamePart && !Array.isArray(tempValue)) {
-				const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
-				tempValue = remainingNodeValues;
-			}
-
-			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
-				// If a value from an array got delete and no values are left
-				// delete also the parent
-				lastNamePart = nameParts.pop();
-				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
-				if (lastNamePart) {
-					const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } = tempValue;
-					tempValue = remainingArrayNodeValues;
-				}
-			}
-		} else {
-			// Value should be set
-			if (typeof value === 'object') {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					deepCopy(value),
-				);
-			} else {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					value,
-				);
-			}
-		}
-	}
-
-	nodeValues.value = { ...nodeValues.value };
-};
-
-/**
- * Removes node values that are not valid options for the given parameter.
- * This can happen when there are multiple node parameters with the same name
- * but different options and display conditions
- * @param nodeType The node type description
- * @param nodeParameterValues Current node parameter values
- * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
- */
-const removeMismatchedOptionValues = (
-	nodeType: INodeTypeDescription,
-	nodeParameterValues: INodeParameters | null,
-	updatedParameter: { name: string; value: NodeParameterValue },
-) => {
-	nodeType.properties.forEach((prop) => {
-		const displayOptions = prop.displayOptions;
-		// Not processing parameters that are not set or don't have options
-		if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
-			return;
-		}
-		// Only process the parameters that depend on the updated parameter
-		const showCondition = displayOptions.show?.[updatedParameter.name];
-		const hideCondition = displayOptions.hide?.[updatedParameter.name];
-		if (showCondition === undefined && hideCondition === undefined) {
-			return;
-		}
-
-		let hasValidOptions = true;
-
-		// Every value should be a possible option
-		if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
-			hasValidOptions = Object.keys(nodeParameterValues).every(
-				(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-			);
-		} else if (isINodePropertyOptionsList(prop.options)) {
-			hasValidOptions = !!prop.options.find(
-				(option) => option.value === nodeParameterValues[prop.name],
-			);
-		}
-
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
-			unset(nodeParameterValues as object, prop.name);
-		}
-	});
-};
+	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
+});
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
@@ -401,11 +292,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		return;
 	}
 
-	if (parameterData.name === 'onError') {
-		// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
-		emit('redrawRequired');
-	}
-
 	if (parameterData.name === 'name') {
 		// Name of node changed so we have to set also the new node name as active
 
@@ -417,19 +303,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		};
 		emit('valueChanged', sendData);
 	} else if (parameterData.name === 'parameters') {
-		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
-		if (!nodeType) {
+		const _nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
+		if (!_nodeType) {
 			return;
 		}
 
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			_node.parameters,
 			false,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -439,37 +325,16 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		nodeParameters = deepCopy(nodeParameters);
 
 		if (parameterData.value && typeof parameterData.value === 'object') {
-			for (const parameterName of Object.keys(parameterData.value)) {
-				//@ts-ignore
-				newValue = parameterData.value[parameterName];
+			for (const [parameterName, parameterValue] of Object.entries(parameterData.value)) {
+				newValue = parameterValue;
 
-				// Remove the 'parameters.' from the beginning to just have the
-				// actual parameter name
-				const parameterPath = parameterName.split('.').slice(1).join('.');
-
-				// Check if the path is supposed to change an array and if so get
-				// the needed data like path and index
-				const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
-
-				// Apply the new value
-				//@ts-ignore
-				if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
-					// Delete array item
-					const path = parameterPathArray[1];
-					const index = parameterPathArray[2];
-					const data = get(nodeParameters, path);
-
-					if (Array.isArray(data)) {
-						data.splice(parseInt(index, 10), 1);
-						set(nodeParameters as object, path, data);
-					}
-				} else {
-					if (newValue === undefined) {
-						unset(nodeParameters as object, parameterPath);
-					} else {
-						set(nodeParameters as object, parameterPath, newValue);
-					}
-				}
+				const parameterPath = nodeSettingsParameters.updateParameterByPath(
+					parameterName,
+					newValue,
+					nodeParameters,
+					_nodeType,
+					_node.typeVersion,
+				);
 
 				void externalHooks.run('nodeSettings.valueChanged', {
 					parameterPath,
@@ -483,17 +348,21 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters
 		nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
+			_nodeType.properties,
 			nodeParameters as INodeParameters,
 			true,
 			false,
 			_node,
-			nodeType,
+			_nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
-			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
-				setValue(`parameters.${key}`, nodeParameters[key] as string);
+			if (nodeParameters?.[key] !== null && nodeParameters?.[key] !== undefined) {
+				nodeSettingsParameters.setValue(
+					nodeValues,
+					`parameters.${key}`,
+					nodeParameters[key] as string,
+				);
 			}
 		}
 
@@ -508,127 +377,15 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
 		}
-	} else if (parameterData.name.startsWith('parameters.')) {
+	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
-
-		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
-		if (!nodeType) {
-			return;
-		}
-
-		// Get only the parameters which are different to the defaults
-		let nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			_node.parameters,
-			false,
-			false,
-			_node,
-			nodeType,
-		);
-
-		const oldNodeParameters = Object.assign({}, nodeParameters);
-
-		// Copy the data because it is the data of vuex so make sure that
-		// we do not edit it directly
-		nodeParameters = deepCopy(nodeParameters);
-
-		// Remove the 'parameters.' from the beginning to just have the
-		// actual parameter name
-		const parameterPath = parameterData.name.split('.').slice(1).join('.');
-
-		// Check if the path is supposed to change an array and if so get
-		// the needed data like path and index
-		const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
-
-		// Apply the new value
-		if (parameterData.value === undefined && parameterPathArray !== null) {
-			// Delete array item
-			const path = parameterPathArray[1];
-			const index = parameterPathArray[2];
-			const data = get(nodeParameters, path);
-
-			if (Array.isArray(data)) {
-				data.splice(parseInt(index, 10), 1);
-				set(nodeParameters as object, path, data);
-			}
-		} else {
-			if (newValue === undefined) {
-				unset(nodeParameters as object, parameterPath);
-			} else {
-				set(nodeParameters as object, parameterPath, newValue);
-			}
-			// If value is updated, remove parameter values that have invalid options
-			// so getNodeParameters checks don't fail
-			removeMismatchedOptionValues(nodeType, nodeParameters, {
-				name: parameterPath,
-				value: newValue,
-			});
-		}
-
-		// Get the parameters with the now new defaults according to the
-		// from the user actually defined parameters
-		nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType.properties,
-			nodeParameters as INodeParameters,
-			true,
-			false,
-			_node,
-			nodeType,
-		);
-
-		if (isToolNode.value) {
-			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
-				props.nodeType,
-				nodeParameters,
-				node.value?.parameters,
-			);
-
-			if (updatedDescription && nodeParameters) {
-				nodeParameters.toolDescription = updatedDescription;
-			}
-		}
-
-		if (NodeHelpers.isDefaultNodeName(_node.name, nodeType, node.value?.parameters ?? {})) {
-			const newName = NodeHelpers.makeNodeName(nodeParameters ?? {}, nodeType);
-			// Account for unique-ified nodes with `<name><digit>`
-			if (!_node.name.startsWith(newName)) {
-				// We need a timeout here to support events reacting to the valueChange based on node names
-				setTimeout(async () => await canvasOperations.renameNode(_node.name, newName));
-			}
-		}
-
-		for (const key of Object.keys(nodeParameters as object)) {
-			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
-				setValue(`parameters.${key}`, nodeParameters[key] as string);
-			}
-		}
-
-		// Update the data in vuex
-		const updateInformation: IUpdateInformation = {
-			name: _node.name,
-			value: nodeParameters,
-		};
-
-		const connections = workflowsStore.allConnections;
-
-		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
-
-		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections, true);
-		}
-
-		workflowsStore.setNodeParameters(updateInformation);
-
-		void externalHooks.run('nodeSettings.valueChanged', {
-			parameterPath,
+		nodeSettingsParameters.updateNodeParameter(
+			nodeValues,
+			parameterData,
 			newValue,
-			parameters: parameters.value,
-			oldNodeParameters,
-		});
-
-		nodeHelpers.updateNodeParameterIssuesByName(_node.name);
-		nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
-		telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
+			_node,
+			isToolNode.value,
+		);
 	} else {
 		// A property on the node itself changed
 
@@ -663,8 +420,12 @@ const onSwitchSelectedNode = (node: string) => {
 	emit('switchSelectedNode', node);
 };
 
-const onOpenConnectionNodeCreator = (nodeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeName, connectionType);
+const onOpenConnectionNodeCreator = (
+	nodeName: string,
+	connectionType: NodeConnectionType,
+	connectionIndex: number = 0,
+) => {
+	emit('openConnectionNodeCreator', nodeName, connectionType, connectionIndex);
 };
 
 const populateHiddenIssuesSet = () => {
@@ -676,124 +437,9 @@ const populateHiddenIssuesSet = () => {
 	workflowsStore.setNodePristine(node.value.name, false);
 };
 
-const populateSettings = () => {
-	if (isExecutable.value && !isTriggerNode.value) {
-		nodeSettings.value.push(
-			...([
-				{
-					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
-					name: 'alwaysOutputData',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
-					name: 'executeOnce',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.executeOnce.description'),
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
-					name: 'retryOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.retryOnFail.description'),
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
-					name: 'maxTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 2,
-						maxValue: 5,
-					},
-					default: 3,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.maxTries.description'),
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
-					name: 'waitBetweenTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 5000,
-					},
-					default: 1000,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.onError.displayName'),
-					name: 'onError',
-					type: 'options',
-					options: [
-						{
-							name: i18n.baseText('nodeSettings.onError.options.stopWorkflow.displayName'),
-							value: 'stopWorkflow',
-							description: i18n.baseText('nodeSettings.onError.options.stopWorkflow.description'),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueRegularOutput.displayName'),
-							value: 'continueRegularOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueRegularOutput.description',
-							),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueErrorOutput.displayName'),
-							value: 'continueErrorOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueErrorOutput.description',
-							),
-						},
-					],
-					default: 'stopWorkflow',
-					description: i18n.baseText('nodeSettings.onError.description'),
-					noDataExpression: true,
-				},
-			] as INodeProperties[]),
-		);
-	}
-	nodeSettings.value.push(
-		...([
-			{
-				displayName: i18n.baseText('nodeSettings.notes.displayName'),
-				name: 'notes',
-				type: 'string',
-				typeOptions: {
-					rows: 5,
-				},
-				default: '',
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notes.description'),
-			},
-			{
-				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
-				name: 'notesInFlow',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notesInFlow.description'),
-			},
-		] as INodeProperties[]),
-	);
-};
+const nodeSettings = computed(() =>
+	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -841,126 +487,14 @@ const setNodeValues = () => {
 		return;
 	}
 
-	if (props.nodeType !== null) {
+	if (nodeType.value !== null) {
 		nodeValid.value = true;
-
-		const foundNodeSettings = [];
-		if (node.value.color) {
-			foundNodeSettings.push('color');
-			nodeValues.value = {
-				...nodeValues.value,
-				color: node.value.color,
-			};
-		}
-
-		if (node.value.notes) {
-			foundNodeSettings.push('notes');
-			nodeValues.value = {
-				...nodeValues.value,
-				notes: node.value.notes,
-			};
-		}
-
-		if (node.value.alwaysOutputData) {
-			foundNodeSettings.push('alwaysOutputData');
-			nodeValues.value = {
-				...nodeValues.value,
-				alwaysOutputData: node.value.alwaysOutputData,
-			};
-		}
-
-		if (node.value.executeOnce) {
-			foundNodeSettings.push('executeOnce');
-			nodeValues.value = {
-				...nodeValues.value,
-				executeOnce: node.value.executeOnce,
-			};
-		}
-
-		if (node.value.continueOnFail) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: 'continueRegularOutput',
-			};
-		}
-
-		if (node.value.onError) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: node.value.onError,
-			};
-		}
-
-		if (node.value.notesInFlow) {
-			foundNodeSettings.push('notesInFlow');
-			nodeValues.value = {
-				...nodeValues.value,
-				notesInFlow: node.value.notesInFlow,
-			};
-		}
-
-		if (node.value.retryOnFail) {
-			foundNodeSettings.push('retryOnFail');
-			nodeValues.value = {
-				...nodeValues.value,
-				retryOnFail: node.value.retryOnFail,
-			};
-		}
-
-		if (node.value.maxTries) {
-			foundNodeSettings.push('maxTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				maxTries: node.value.maxTries,
-			};
-		}
-
-		if (node.value.waitBetweenTries) {
-			foundNodeSettings.push('waitBetweenTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				waitBetweenTries: node.value.waitBetweenTries,
-			};
-		}
-
-		// Set default node settings
-		for (const nodeSetting of nodeSettings.value) {
-			if (!foundNodeSettings.includes(nodeSetting.name)) {
-				// Set default value
-				nodeValues.value = {
-					...nodeValues.value,
-					[nodeSetting.name]: nodeSetting.default,
-				};
-			}
-		}
-
-		nodeValues.value = {
-			...nodeValues.value,
-			parameters: deepCopy(node.value.parameters),
-		};
+		nodeValues.value = collectSettings(node.value, nodeSettings.value);
 	} else {
 		nodeValid.value = false;
 	}
 
 	nodeValuesInitialized.value = true;
-};
-
-const onMissingNodeTextClick = (event: MouseEvent) => {
-	if ((event.target as Element).localName === 'a') {
-		telemetry.track('user clicked cnr browse button', {
-			source: 'cnr missing node modal',
-		});
-	}
-};
-
-const onMissingNodeLearnMoreLinkClick = () => {
-	telemetry.track('user clicked cnr docs link', {
-		source: 'missing node modal source',
-		package_name: node.value?.type.split('.')[0],
-		node_type: node.value?.type,
-	});
 };
 
 const onStopExecution = () => {
@@ -971,24 +505,40 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: 'params' | 'settings') => {
+const onTabSelect = (tab: Tab) => {
 	openPanel.value = tab;
+};
+
+const onFeatureRequestClick = () => {
+	window.open(featureRequestUrl.value, '_blank');
+	if (node.value) {
+		telemetry.track('User clicked ndv link', {
+			node_type: node.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: props.pushRef,
+			pane: NodeConnectionTypes.Main,
+			type: 'i-wish-this-node-would',
+		});
+	}
 };
 
 watch(node, () => {
 	setNodeValues();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	populateHiddenIssuesSet();
-	populateSettings();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
-		nodeHelpers.updateNodeParameterIssues(node.value, props.nodeType);
+		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
+
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
+	}
 });
 
 onBeforeUnmount(() => {
@@ -1015,10 +565,26 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		:class="{
 			'node-settings': true,
 			dragging: dragging,
+			embedded: props.isEmbeddedInCanvas,
 		}"
 		@keydown.stop
 	>
-		<div :class="$style.header">
+		<ExperimentalEmbeddedNdvHeader
+			v-if="isEmbeddedInCanvas && node"
+			:node="node"
+			:selected-tab="openPanel"
+			:read-only="readOnly"
+			:node-type="nodeType"
+			:push-ref="pushRef"
+			:sub-title="subTitle"
+			@name-changed="nameChanged"
+			@tab-changed="onTabSelect"
+		>
+			<template #actions>
+				<slot name="actions" />
+			</template>
+		</ExperimentalEmbeddedNdvHeader>
+		<div v-else-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -1027,31 +593,19 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:node-type="nodeType"
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable || props.canExpand" :class="$style.headerActions">
-					<NodeExecuteButton
-						v-if="isExecutable && !blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@value-changed="valueChanged"
-					/>
-					<N8nIconButton
-						v-if="props.canExpand"
-						icon="expand"
-						type="secondary"
-						text
-						size="mini"
-						icon-size="large"
-						aria-label="Expand"
-						@click="emit('expand')"
-					/>
-				</div>
+				/>
+				<NodeExecuteButton
+					v-if="isExecutable && !blockUI && node && nodeValid"
+					data-test-id="node-execute-button"
+					:node-name="node.name"
+					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+					:tooltip="executeButtonTooltip"
+					size="small"
+					telemetry-source="parameters"
+					@execute="onNodeExecute"
+					@stop-execution="onStopExecution"
+					@value-changed="valueChanged"
+				/>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -1061,50 +615,36 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				@update:model-value="onTabSelect"
 			/>
 		</div>
-		<div v-if="node && !nodeValid" class="node-is-not-valid">
-			<p :class="$style.warningIcon">
-				<font-awesome-icon icon="exclamation-triangle" />
-			</p>
-			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
-			</div>
-			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
-				<div class="mb-l">
-					<i18n-t
-						keypath="nodeSettings.communityNodeUnknown.description"
-						tag="span"
-						@click="onMissingNodeTextClick"
-					>
-						<template #action>
-							<a
-								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
-								target="_blank"
-								>{{ node.type.split('.')[0] }}</a
-							>
-						</template>
-					</i18n-t>
-				</div>
-				<n8n-link
-					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-					@click="onMissingNodeLearnMoreLinkClick"
-				>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
-			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
-				<template #action>
-					<a
-						:href="CUSTOM_NODES_DOCS_URL"
-						target="_blank"
-						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
-					/>
-				</template>
-			</i18n-t>
-		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
-			<n8n-notice
+		<NodeSettingsHeader
+			v-else-if="node"
+			:selected-tab="openPanel"
+			:node-name="node.name"
+			:node-type="nodeType"
+			:execute-button-tooltip="executeButtonTooltip"
+			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
+			:hide-tabs="!nodeValid"
+			:push-ref="pushRef"
+			@execute="onNodeExecute"
+			@stop-execution="onStopExecution"
+			@value-changed="valueChanged"
+			@tab-changed="onTabSelect"
+		/>
+
+		<NodeSettingsInvalidNodeWarning v-if="node && !nodeValid" :node="node" />
+
+		<div
+			v-if="node && nodeValid"
+			ref="nodeParameterWrapper"
+			:class="[
+				'node-parameters-wrapper',
+				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				{ 'ndv-v2': isNDVV2 },
+			]"
+			data-test-id="node-parameters"
+			@wheel.capture="emit('captureWheelBody', $event)"
+		>
+			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
@@ -1124,11 +664,13 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
+					:node="props.activeNode"
 					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
+						v-if="!isEmbeddedInCanvas"
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
@@ -1139,9 +681,9 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					/>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" class="no-parameters">
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<div
@@ -1149,7 +691,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
-					<n8n-notice
+					<N8nNotice
 						:content="
 							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
@@ -1159,6 +701,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
+				<CommunityNodeUpdateInfo
+					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					data-test-id="update-available"
+				/>
 				<ParameterInputList
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
@@ -1191,15 +737,26 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
+			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
+				<a target="_blank" @click="onFeatureRequestClick">
+					<N8nIcon icon="lightbulb" />
+					{{ i18n.baseText('ndv.featureRequest') }}
+				</a>
+			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.hideConnections"
+			v-if="node && !props.isEmbeddedInCanvas"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<n8n-block-ui :show="blockUI" />
+		<N8nBlockUi :show="blockUI" />
+		<CommunityNodeFooter
+			v-if="openPanel === 'settings' && isCommunityNode"
+			:package-name="packageName"
+			:show-manage="useUsersStore().isInstanceOwner"
+		/>
 	</div>
 </template>
 
@@ -1208,20 +765,20 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 	background-color: var(--color-background-base);
 }
 
-.headerActions {
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
-}
+.featureRequest {
+	margin-top: auto;
+	align-self: center;
 
-.warningIcon {
-	color: var(--color-text-lighter);
-	font-size: var(--font-size-2xl);
-}
+	a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+		margin-top: var(--spacing-xl);
 
-.descriptionContainer {
-	display: flex;
-	flex-direction: column;
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-light);
+	}
 }
 </style>
 
@@ -1246,24 +803,42 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
+			margin-right: var(--spacing-s);
 		}
 	}
 
-	.node-is-not-valid {
-		height: 75%;
-		padding: 10px;
+	.node-parameters-wrapper {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		line-height: var(--font-line-height-regular);
-	}
-
-	.node-parameters-wrapper {
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
+
+		&.ndv-v2 {
+			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
+		}
+	}
+
+	&.embedded .node-parameters-wrapper {
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+	}
+
+	&.embedded .node-parameters-wrapper.with-static-scrollbar {
+		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
+
+		@supports not (selector(::-webkit-scrollbar)) {
+			scrollbar-width: thin;
+		}
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				width: var(--spacing-2xs);
+			}
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--spacing-2xs);
+				background: var(--color-foreground-dark);
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
+			}
+		}
 	}
 
 	&.dragging {

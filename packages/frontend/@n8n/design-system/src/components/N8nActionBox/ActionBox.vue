@@ -5,19 +5,20 @@ import type { ButtonType } from '@n8n/design-system/types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
+import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 
 interface ActionBoxProps {
-	emoji: string;
-	heading: string;
+	emoji?: string;
+	heading?: string;
 	buttonText?: string;
 	buttonType?: ButtonType;
 	buttonDisabled?: boolean;
-	buttonIcon?: string;
-	description: string;
+	buttonIcon?: IconName;
+	description?: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
-	calloutIcon?: string;
+	calloutIcon?: IconName;
 }
 
 defineOptions({ name: 'N8nActionBox' });

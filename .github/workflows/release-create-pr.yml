@@ -56,8 +56,10 @@ jobs:
         run: node .github/scripts/update-changelog.mjs
 
       - name: Push the base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
         run: |
-          git push -f origin refs/remotes/origin/${{ github.event.inputs.base-branch }}:refs/heads/release/${{ env.NEXT_RELEASE }}
+          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6

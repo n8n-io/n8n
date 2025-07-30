@@ -1,6 +1,6 @@
-import { LicenseState } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
+import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -14,17 +14,12 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { ModuleRegistry } from '@/modules/module-registry';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
-import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
-import * as testModules from '@test-integration/test-modules';
+import { LicenseMocker } from '@test-integration/license';
 
-import { mockInstance } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import { LicenseMocker } from '../license';
-import * as testDb from '../test-db';
 import type { SetupProps, TestServer } from '../types';
 
 /**
@@ -59,7 +54,11 @@ function createAgent(
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(options.user, browserId);
+		const token = Container.get(AuthService).issueJWT(
+			options.user,
+			options.user.mfaEnabled,
+			browserId,
+		);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;

@@ -36,6 +36,7 @@ import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '@/plugins/codemirror/expressionCloseBrackets';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -54,6 +55,7 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,6 +63,7 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -117,19 +120,21 @@ const {
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
+	focus,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue: () => props.modelValue,
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
+	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},
 });
 
-watch(editorHasFocus, (focus) => {
-	if (focus) {
+watch(editorHasFocus, (hasFocus) => {
+	if (hasFocus) {
 		isFocused.value = true;
 	}
 });
@@ -191,6 +196,10 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editor.value), event, value);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>

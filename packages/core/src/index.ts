@@ -7,6 +7,7 @@ export * from './data-deduplication-service';
 export * from './encryption';
 export * from './errors';
 export * from './execution-engine';
+export * from './html-sandbox';
 export * from './instance-settings';
 export * from './nodes-loader';
 export * from './utils';

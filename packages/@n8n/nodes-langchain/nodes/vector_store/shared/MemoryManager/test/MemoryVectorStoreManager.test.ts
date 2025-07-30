@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/dot-notation */
 import { Document } from '@langchain/core/documents';
 import type { OpenAIEmbeddings } from '@langchain/openai';
 import { mock } from 'jest-mock-extended';

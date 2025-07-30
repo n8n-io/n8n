@@ -1,3 +1,4 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import omit from 'lodash/omit';
@@ -40,7 +41,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const model = await getChatModel(this);
+			const model = (await getChatModel(this)) as BaseLanguageModel;
 			const memory = await getOptionalMemory(this);
 
 			const input = getPromptInputByType({

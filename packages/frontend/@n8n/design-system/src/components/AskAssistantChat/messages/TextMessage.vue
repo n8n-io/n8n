@@ -4,11 +4,12 @@ import { computed } from 'vue';
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
-import type { ChatUI } from '../../../types/assistant';
+import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
+import N8nButton from '../../N8nButton';
 
 interface Props {
-	message: ChatUI.TextMessage & { id: string; read: boolean; quickReplies?: ChatUI.QuickReply[] };
+	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
 	isFirstOfRole: boolean;
 	user?: {
 		firstName: string;
@@ -19,6 +20,10 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const emit = defineEmits<{
+	feedback: [RatingFeedback];
+}>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
 
@@ -37,7 +42,12 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 </script>
 
 <template>
-	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
+	<BaseMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		@feedback="(feedback) => emit('feedback', feedback)"
+	>
 		<div :class="$style.textMessage">
 			<span
 				v-if="message.role === 'user'"
@@ -55,15 +65,15 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				data-test-id="assistant-code-snippet"
 			>
 				<header v-if="isClipboardSupported">
-					<n8n-button
+					<N8nButton
 						type="tertiary"
-						text="true"
+						:text="true"
 						size="mini"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
 						{{ t('assistantChat.copy') }}
-					</n8n-button>
+					</N8nButton>
 				</header>
 				<div
 					v-n8n-html="renderMarkdown(message.codeSnippet).trim()"

@@ -9,8 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
-import * as promptsApi from '@n8n/rest-api-client/api/prompts';
-import { testHealthEndpoint } from '@/api/templates';
+import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
@@ -21,15 +20,10 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from './users.store';
-import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 import { useLocalStorage } from '@vueuse/core';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
-	const i18n = useI18n();
 	const initialized = ref(false);
 	const settings = ref<FrontendSettings>({} as FrontendSettings);
 	const moduleSettings = ref<FrontendModuleSettings>({});
@@ -55,6 +49,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveManualExecutions = ref(false);
 	const saveDataProgressExecution = ref(false);
+	const isMFAEnforced = ref(false);
 
 	const isDocker = computed(() => settings.value?.isDocker ?? false);
 
@@ -136,6 +131,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.telemetry && settings.value.telemetry.enabled,
 	);
 
+	const isMFAEnforcementLicensed = computed(() => {
+		return settings.value.enterprise?.mfaEnforcement ?? false;
+	});
+
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
@@ -174,12 +173,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
-
-	const isBelowUserQuota = computed(
-		(): boolean =>
-			userManagement.value.quota === -1 ||
-			userManagement.value.quota > useUsersStore().allUsers.length,
-	);
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
@@ -247,6 +240,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
 
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
 		rootStore.setEndpointForm(fetchedSettings.endpointForm);
@@ -263,7 +258,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
-		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
 
 		if (fetchedSettings.telemetry.enabled) {
 			void eventsApi.sessionStarted(rootStore.restApiContext);
@@ -275,21 +269,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			return;
 		}
 
-		const { showToast } = useToast();
-		try {
-			await getSettings();
+		await getSettings();
 
-			initialized.value = true;
-		} catch (e) {
-			showToast({
-				title: i18n.baseText('startupError'),
-				message: i18n.baseText('startupError.message'),
-				type: 'error',
-				duration: 0,
-			});
+		initialized.value = true;
 
-			throw e;
-		}
+		await getModuleSettings();
 	};
 
 	const stopShowingSetupPage = () => {
@@ -304,19 +288,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				enabled: false,
 			},
 		};
-	};
-
-	const submitContactInfo = async (email: string) => {
-		try {
-			const usersStore = useUsersStore();
-			return await promptsApi.submitContactInfo(
-				settings.value.instanceId,
-				usersStore.currentUserId || '',
-				email,
-			);
-		} catch (error) {
-			return;
-		}
 	};
 
 	const testTemplatesEndpoint = async () => {
@@ -405,7 +376,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
 		permanentlyDismissedBanners,
-		isBelowUserQuota,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
 		saveManualExecutions,
@@ -420,7 +390,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
-		submitContactInfo,
 		disableTemplates,
 		stopShowingSetupPage,
 		getSettings,
@@ -429,5 +398,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		getModuleSettings,
 		moduleSettings,
+		isMFAEnforcementLicensed,
+		isMFAEnforced,
 	};
 });
