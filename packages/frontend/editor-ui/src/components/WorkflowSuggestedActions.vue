@@ -115,7 +115,7 @@ async function handleActionClick(actionId: string) {
 		// Open workflow settings modal
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	}
-	suggestedActionsComponent.value?.openPopover();
+	suggestedActionsComponent.value?.closePopover();
 }
 
 function isValidAction(action: string): action is 'evaluations' | 'errorWorkflow' | 'timeSaved' {
