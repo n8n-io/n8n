@@ -85,6 +85,11 @@ const options: TabOptions<string>[] = [
 		iconPosition: 'right',
 	},
 	{
+		value: 'iconOnly',
+		tooltip: 'Icon only tab',
+		icon: 'circle',
+	},
+	{
 		label: 'Notification',
 		value: 'notification',
 		notification: true,
