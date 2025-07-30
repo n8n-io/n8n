@@ -1134,6 +1134,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				connections.splice(parseInt(index, 10), 1);
 			}
 		}
+
+		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
@@ -1142,6 +1144,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflow.value.connections = {};
+		workflowObject.value.setConnections({});
 	}
 
 	function removeAllNodeConnection(
@@ -1185,6 +1188,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				}
 			}
 		}
+
+		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
