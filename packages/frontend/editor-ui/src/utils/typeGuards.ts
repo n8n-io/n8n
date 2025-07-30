@@ -19,7 +19,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
-import { BaseTextKey, useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 /*
 	Type guards used in editor-ui project
