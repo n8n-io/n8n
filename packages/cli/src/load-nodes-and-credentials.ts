@@ -346,20 +346,26 @@ export class LoadNodesAndCredentials {
 				if (this.shouldAddDomainRestrictions(credential)) {
 					const clonedCredential = { ...credential };
 					clonedCredential.properties = this.injectDomainRestrictionFields(
-						clonedCredential.properties ?? [],
+						clonedCredential.properties ? [...clonedCredential.properties] : [],
 					);
-					return clonedCredential;
+					return {
+						...clonedCredential,
+						supportedNodes:
+							loader instanceof PackageDirectoryLoader
+								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+								: undefined,
+					};
 				}
-				return credential;
+				return {
+					...credential,
+					supportedNodes:
+						loader instanceof PackageDirectoryLoader
+							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+				};
 			});
 
-			this.types.credentials = this.types.credentials.concat(
-				processedCredentials.map(({ supportedNodes, ...rest }) => ({
-					...rest,
-					name: `${packageName}.${rest.name}`,
-					supportedNodes: supportedNodes?.map((name) => `${packageName}.${name}`),
-				})),
-			);
+			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in loader.credentialTypes) {
