@@ -7,43 +7,64 @@ import {
 	RenameDataStoreDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	RestController,
+} from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
 import { DataStoreRows } from './data-store.types';
-@RestController('/data-store')
+
+@RestController('/projects/:projectId/data-store')
 export class DataStoreController {
 	constructor(private readonly dataStoreService: DataStoreService) {}
 
-	@Post('/create', { skipAuth: true })
-	async createDataStore(_req: AuthenticatedRequest, _res: Response, @Body dto: CreateDataStoreDto) {
-		return await this.dataStoreService.createDataStore(dto);
+	@Post('/')
+	@ProjectScope('dataStore:create')
+	async createDataStore(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Body dto: CreateDataStoreDto,
+	) {
+		return await this.dataStoreService.createDataStore(req.params.projectId, dto);
 	}
 
-	@Get('/', { skipAuth: true })
+	@Get('/')
 	@ProjectScope('dataStore:list')
 	async listDataStores(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Query payload: ListDataStoreQueryDto,
+		@Body payload: Partial<ListDataStoreQueryDto> = {},
 	) {
-		const [data, count] = await this.dataStoreService.getManyAndCount(payload);
+		const providedFilter = payload?.filter ?? {};
+		const [data, count] = await this.dataStoreService.getManyAndCount({
+			...payload,
+			filter: { ...providedFilter, projectId: req.params.projectId },
+		});
 
 		return { count, data };
 	}
 
-	@Get('/:dataStoreId/get-columns', { skipAuth: true })
+	@Get('/:dataStoreId/get-columns')
+	@ProjectScope('dataStore:read')
 	async getColumns(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
 		return await this.dataStoreService.getColumns(dataStoreId);
 	}
 
-	@Post('/:dataStoreId/add-column', { skipAuth: true })
+	@Post('/:dataStoreId/column')
+	@ProjectScope('dataStore:update')
 	async addColumn(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreColumnDto,
@@ -51,9 +72,10 @@ export class DataStoreController {
 		return await this.dataStoreService.addColumn(dataStoreId, dto);
 	}
 
-	@Post('/:dataStoreId/delete-column', { skipAuth: true })
+	@Delete('/:dataStoreId/column')
+	@ProjectScope('dataStore:update')
 	async deleteColumn(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: DeleteDataStoreColumnDto,
@@ -61,9 +83,10 @@ export class DataStoreController {
 		return await this.dataStoreService.deleteColumn(dataStoreId, dto);
 	}
 
-	@Post('/:dataStoreId/rename', { skipAuth: true })
+	@Patch('/:dataStoreId/rename')
+	@ProjectScope('dataStore:update')
 	async renameDataStore(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: RenameDataStoreDto,
@@ -71,18 +94,20 @@ export class DataStoreController {
 		return await this.dataStoreService.renameDataStore(dataStoreId, dto);
 	}
 
-	@Post('/:dataStoreId/delete', { skipAuth: true })
+	@Delete('/:dataStoreId')
+	@ProjectScope('dataStore:delete')
 	async deleteDataStore(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
 		return await this.dataStoreService.deleteDataStore(dataStoreId);
 	}
 
-	@Get('/:dataStoreId/get-rows', { skipAuth: true })
+	@Get('/:dataStoreId/rows')
+	@ProjectScope('dataStore:readRow')
 	async getDataStoreRows(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: Partial<ListDataStoreContentQueryDto>,
@@ -90,9 +115,10 @@ export class DataStoreController {
 		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
 	}
 
-	@Post('/:dataStoreId/append', { skipAuth: true })
+	@Post('/:dataStoreId/append')
+	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
-		_req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: DataStoreRows,

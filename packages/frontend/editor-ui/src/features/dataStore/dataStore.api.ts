@@ -1,26 +1,38 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { CreateDataStoreDto, DataStore } from '@n8n/api-types';
+import type { CreateDataStoreDto, DataStore, ListDataStoreQueryDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { inferProjectIdFromRoute } from '@/utils/rbacUtils';
 import { getPersonalProject } from '@/api/projects.api';
 
 export const createDataStoreTable = async (
 	context: IRestApiContext,
+	projectId: string,
 	data: CreateDataStoreDto,
 ): Promise<DataStore | string> =>
-	await makeRestApiRequest(context, 'POST', '/data-store/create', data);
+	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/data-store`, data);
+
+export const listDataStoreTable = async (
+	context: IRestApiContext,
+	projectId: string,
+	data: Partial<ListDataStoreQueryDto> = {},
+): Promise<DataStore | string> =>
+	await makeRestApiRequest(context, 'GET', `/projects/${projectId}/data-store`, data);
 
 // dev util to run code
 export const playground = async () => {
 	const context = useRootStore().restApiContext;
 	const project = await getPersonalProject(context);
-	const result = await createDataStoreTable(context, {
-		name: 'myFirstTable',
-		columns: [],
-		projectId: project.id,
-	});
-	console.log(result);
+	{
+		const result = await listDataStoreTable(context, project.id);
+		console.log(result);
+	}
+	{
+		const result = await createDataStoreTable(context, project.id, {
+			name: 'myFirstTable' + Math.random(),
+			columns: [],
+		});
+		console.log(result);
+	}
 };
 
 // export const fetchInsightsSummary = async (

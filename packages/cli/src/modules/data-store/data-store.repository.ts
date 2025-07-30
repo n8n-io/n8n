@@ -21,17 +21,17 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	}
 
 	// ALL THE MANY STUFF
-	async getManyAndCount(options: DataStoreListOptions = {}) {
+	async getManyAndCount(options: DataStoreListOptions) {
 		const query = this.getManyQuery(options);
 		return await query.getManyAndCount();
 	}
 
-	async getMany(options: DataStoreListOptions = {}) {
+	async getMany(options: DataStoreListOptions) {
 		const query = this.getManyQuery(options);
 		return await query.getMany();
 	}
 
-	getManyQuery(options: DataStoreListOptions = {}): SelectQueryBuilder<DataStoreEntity> {
+	getManyQuery(options: DataStoreListOptions): SelectQueryBuilder<DataStoreEntity> {
 		const query = this.createQueryBuilder('dataStore');
 
 		this.applySelections(query);

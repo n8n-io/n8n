@@ -84,8 +84,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataStore:read',
 	'dataStore:update',
 	'dataStore:list',
-	'dataStore:readRecord',
-	'dataStore:writeRecord',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -107,6 +107,6 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'variable:read',
 	'dataStore:read',
 	'dataStore:list',
-	'dataStore:readRecord',
-	'dataStore:writeRecord',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];

@@ -36,15 +36,13 @@ describe('dataStore', () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
 
-		dataStore1 = (await dataStoreService.createDataStore({
+		dataStore1 = (await dataStoreService.createDataStore(project1.id, {
 			name: 'myDataStore1',
 			columns: [],
-			projectId: project1.id,
 		})) as DataStoreEntity;
-		dataStore2 = (await dataStoreService.createDataStore({
+		dataStore2 = (await dataStoreService.createDataStore(project2.id, {
 			name: 'myDataStore2',
 			columns: [],
-			projectId: project2.id,
 		})) as DataStoreEntity;
 	});
 
@@ -56,10 +54,9 @@ describe('dataStore', () => {
 	describe('createDataStore', () => {
 		it('should succeed with existing name in different project', async () => {
 			// ACT
-			const result = await dataStoreService.createDataStore({
+			const result = await dataStoreService.createDataStore(project1.id, {
 				name: 'myDataStore2',
 				columns: [],
-				projectId: project1.id,
 			});
 
 			// ASSERT
@@ -75,10 +72,9 @@ describe('dataStore', () => {
 		});
 		it('should return an error if name/project combination already exists', async () => {
 			// ACT
-			const result = await dataStoreService.createDataStore({
+			const result = await dataStoreService.createDataStore(project2.id, {
 				name: 'myDataStore2',
 				columns: [],
-				projectId: project2.id,
 			});
 
 			// ASSERT
@@ -106,10 +102,9 @@ describe('dataStore', () => {
 		it('should fail with renaming to taken name', async () => {
 			// ARRANGE
 			const name = 'myDataStore3';
-			await dataStoreService.createDataStore({
+			await dataStoreService.createDataStore(dataStore1.projectId, {
 				name,
 				columns: [],
-				projectId: dataStore1.projectId,
 			});
 
 			// ACT
@@ -235,7 +230,7 @@ describe('dataStore', () => {
 		it('should retrieve by name', async () => {
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
-				filter: { name: dataStore1.name },
+				filter: { projectId: project1.id, name: dataStore1.name },
 			});
 
 			// ASSERT
@@ -250,14 +245,20 @@ describe('dataStore', () => {
 			expect(result[1]).toEqual(1);
 		});
 		it('should retrieve by ids', async () => {
+			// ARRANGE
+			const dataStore3 = (await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore3',
+				columns: [],
+			})) as DataStoreEntity;
+
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
-				filter: { id: [dataStore1.id, dataStore2.id] },
+				filter: { projectId: project1.id, id: [dataStore1.id, dataStore3.id] },
 			});
 
 			// ASSERT
 			expect(result[0]).toHaveLength(2);
-			expect(result[0]).toContainEqual({ ...dataStore2, project: expect.any(Project) });
+			expect(result[0]).toContainEqual({ ...dataStore3, project: expect.any(Project) });
 			expect(result[0]).toContainEqual({ ...dataStore1, project: expect.any(Project) });
 			expect(result[1]).toEqual(2);
 		});
@@ -265,9 +266,8 @@ describe('dataStore', () => {
 			// ARRANGE
 			const names = [dataStore1.name];
 			for (let i = 0; i < 10; ++i) {
-				const ds = (await dataStoreService.createDataStore({
+				const ds = (await dataStoreService.createDataStore(project1.id, {
 					name: `anotherDataStore${i}`,
-					projectId: project1.id,
 					columns: [],
 				})) as DataStoreEntity;
 				names.push(ds.name);
@@ -286,9 +286,8 @@ describe('dataStore', () => {
 			// ARRANGE
 			const names = [dataStore1.name];
 			for (let i = 0; i < 10; ++i) {
-				const ds = (await dataStoreService.createDataStore({
+				const ds = (await dataStoreService.createDataStore(project1.id, {
 					name: `anotherDataStore${i}`,
-					projectId: project1.id,
 					columns: [],
 				})) as DataStoreEntity;
 				names.push(ds.name);
@@ -342,7 +341,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
-				filter: { id: dataStore1.id },
+				filter: { projectId: project1.id, id: dataStore1.id },
 			});
 
 			// ASSERT
@@ -373,48 +372,53 @@ describe('dataStore', () => {
 		it('sorts as expected', async () => {
 			// ARRANGE
 			await dataStoreService.deleteDataStoreAll();
-			const ds0 = (await dataStoreService.createDataStore({
+			const ds0 = (await dataStoreService.createDataStore(project1.id, {
 				name: 'ds0',
 				columns: [],
-				projectId: project1.id,
 			})) as DataStoreEntity;
 
-			const ds1 = (await dataStoreService.createDataStore({
+			const ds1 = (await dataStoreService.createDataStore(project1.id, {
 				name: 'ds3',
 				columns: [],
-				projectId: project1.id,
 			})) as DataStoreEntity;
-			const ds2 = (await dataStoreService.createDataStore({
+			const ds2 = (await dataStoreService.createDataStore(project1.id, {
 				name: 'ds2',
 				columns: [],
-				projectId: project1.id,
 			})) as DataStoreEntity;
 
 			await dataStoreService.renameDataStore(ds1.id, { name: 'ds1' });
 
 			// ACT
 			const createdAsc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'createdAt:asc',
 			});
 			const createdDesc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'createdAt:desc',
 			});
 			const nameAsc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'name:asc',
 			});
 			const nameDesc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'name:desc',
 			});
 			const sizeBytesAsc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'sizeBytes:asc',
 			});
 			const sizeBytesDesc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'sizeBytes:desc',
 			});
 			const updatedAsc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'updatedAt:asc',
 			});
 			const updatedDesc = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id },
 				sortBy: 'updatedAt:desc',
 			});
 

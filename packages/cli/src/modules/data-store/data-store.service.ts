@@ -61,11 +61,11 @@ export class DataStoreService {
 		await Promise.resolve();
 	}
 
-	async createDataStore(dto: CreateDataStoreDto) {
-		const dataStore = this.dataStoreRepository.create(dto);
+	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
+		const dataStore = this.dataStoreRepository.create({ ...dto, projectId });
 		const existingMatch = await this.dataStoreRepository.existsBy({
 			name: dto.name,
-			projectId: dto.projectId,
+			projectId,
 		});
 		if (existingMatch) {
 			return 'duplicate data store name in project';
@@ -97,6 +97,17 @@ export class DataStoreService {
 		await this.dataStoreRepository.update({ id: dataStoreId }, dto);
 
 		return true;
+	}
+
+	async deleteDataStoreByProjectId(projectId: string) {
+		const existingMatches = await this.dataStoreRepository.findBy({ projectId });
+		let changed = false;
+		for (const match of existingMatches) {
+			const result = await this.deleteDataStore(match.id);
+			changed = changed || true === result;
+		}
+
+		return changed;
 	}
 
 	async deleteDataStoreAll() {

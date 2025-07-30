@@ -48,9 +48,17 @@ export class DataStoreRowsRepository {
 		dto: Partial<ListDataStoreContentQueryDto>,
 	) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const result = await query.getRawMany();
-		const totalCount = (await countQuery.getRawOne())['COUNT(*)'] as number | undefined;
+		const result = await query.select('*').getRawMany();
+		const totalCount = (await countQuery.select('COUNT(*)').getRawOne())['COUNT(*)'] as
+			| number
+			| undefined;
 		return [totalCount ?? -1, result];
+	}
+
+	async getRowIds(dataStoreId: DataStoreUserTableName, dto: Partial<ListDataStoreContentQueryDto>) {
+		const [_, query] = this.getManyQuery(dataStoreId, dto);
+		const result = await query.select('dataStore.id').getRawMany();
+		return result as number[];
 	}
 
 	getManyQuery(
@@ -62,7 +70,6 @@ export class DataStoreRowsRepository {
 		query.from(dataStoreId, 'dataStore');
 		this.applyFilters(query, dto);
 		const countQuery = query.clone().select('COUNT(*)');
-		query.select('*');
 		this.applySorting(query, dto);
 		this.applyPagination(query, dto);
 

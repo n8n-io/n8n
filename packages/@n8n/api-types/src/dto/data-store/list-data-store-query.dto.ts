@@ -2,8 +2,6 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-const VALID_SELECT_FIELDS = ['id', 'name', 'createdAt', 'updatedAt', 'project', 'size'] as const;
-
 const VALID_SORT_OPTIONS = [
 	'name:asc',
 	'name:desc',
@@ -18,10 +16,9 @@ const VALID_SORT_OPTIONS = [
 export type ListDataStoreQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
 
 const FILTER_OPTIONS = {
-	id: z.string().optional(),
-	name: z.string().optional(),
-	projectId: z.string().optional(),
-	// todo: others seem valid here?
+	id: z.union([z.string(), z.array(z.string())]).optional(),
+	name: z.union([z.string(), z.array(z.string())]).optional(),
+	// todo: can probably include others here as well?
 };
 
 // Filter schema - only allow specific properties
