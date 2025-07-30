@@ -9,7 +9,7 @@ exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
     <form class="form">
       <div class="el-textarea el-input--large n8n-input formTextarea formTextarea">
         <!-- input -->
-        <!-- textarea --><textarea class="el-textarea__inner" name="aiBuilderPrompt" rows="15" title="" read-only="false" tabindex="0" autocomplete="off" placeholder="Ask n8n to build..."></textarea>
+        <!-- textarea --><textarea class="el-textarea__inner" name="aiBuilderPrompt" rows="15" title="" maxlength="1000" read-only="false" tabindex="0" autocomplete="off" placeholder="Ask n8n to build..."></textarea>
         <!--v-if-->
       </div>
       <footer class="formFooter"><button class="button button primary medium disabled" disabled="" aria-disabled="true" aria-live="polite" type="submit">

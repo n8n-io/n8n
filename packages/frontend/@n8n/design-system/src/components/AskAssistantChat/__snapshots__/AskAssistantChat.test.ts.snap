@@ -1173,6 +1173,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
+        maxlength="1000"
         placeholder="Enter your response..."
         rows="1"
         wrap="hard"
