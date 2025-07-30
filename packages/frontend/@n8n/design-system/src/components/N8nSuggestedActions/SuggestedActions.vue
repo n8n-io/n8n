@@ -119,6 +119,7 @@ defineExpose({
 							theme="text"
 							size="small"
 							data-test-id="suggested-action-ignore"
+							underline
 							@click.prevent="handleIgnoreClick(action.id)"
 						>
 							{{ t('generic.ignore') }}
