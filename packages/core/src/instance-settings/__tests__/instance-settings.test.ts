@@ -9,7 +9,6 @@ import { WorkerMissingEncryptionKey } from '../worker-missing-encryption-key.err
 
 describe('InstanceSettings', () => {
 	const userFolder = '/test';
-	const settingsFile = `${userFolder}/.n8n/config`;
 
 	const mockFs = mock(fs);
 	const logger = mock<Logger>();
