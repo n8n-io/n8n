@@ -150,11 +150,10 @@ watch(
 	async (isActive, wasActive) => {
 		if (isActive && !wasActive) {
 			// Check if this is the first activation
-			if (!cachedSettings.value?.firstActivatedAt && availableActions.value.length > 0) {
-				// Open suggested actions popover before updating firstActivatedAt
+			if (!cachedSettings.value?.firstActivatedAt) {
 				setTimeout(() => {
 					openSuggestedActions();
-				}, 500); // Small delay to ensure UI is ready
+				}, 0); // Ensure UI is ready and availableActions.length > 0
 			}
 
 			// Update firstActivatedAt after opening popover

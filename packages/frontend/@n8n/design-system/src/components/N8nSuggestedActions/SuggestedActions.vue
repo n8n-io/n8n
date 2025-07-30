@@ -55,11 +55,11 @@ const handleIgnoreClick = (actionId: string) => {
 };
 
 const openPopover = () => {
-	isOpen.value = false;
+	isOpen.value = true;
 };
 
 const closePopover = () => {
-	isOpen.value = true;
+	isOpen.value = false;
 };
 
 defineExpose({
