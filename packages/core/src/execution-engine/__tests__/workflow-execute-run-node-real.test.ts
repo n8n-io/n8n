@@ -515,6 +515,41 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(result).toEqual({ data: mockTriggerData });
 		});
 
+		it('should return null data when trigger response is undefined in manual mode', async () => {
+			mockNodeType.trigger = jest.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
+
+			const mockTriggersAndPollersInstance = {
+				runTrigger: jest.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
+			};
+			const mockGlobalConfigInstance = {
+				sentry: { backendDsn: '' },
+			};
+			mockContainer.get.mockImplementation((token) => {
+				if (token === GlobalConfig) {
+					return mockGlobalConfigInstance;
+				}
+				if (token === TriggersAndPollers) {
+					return mockTriggersAndPollersInstance;
+				}
+				return mockTriggersAndPollersInstance;
+			});
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(result).toEqual({ data: null });
+		});
+
 		it('should pass through input data for trigger nodes in non-manual mode', async () => {
 			mockNodeType.trigger = jest.fn();
 			mockNodeType.execute = undefined;
