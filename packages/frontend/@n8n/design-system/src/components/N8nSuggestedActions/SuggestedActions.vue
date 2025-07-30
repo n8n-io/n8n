@@ -73,9 +73,10 @@ defineExpose({
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
-					icon="bell"
+					icon="circle-alert"
 					type="hover-highlight"
 					size="medium"
+					icon-size="large"
 					data-test-id="suggested-actions-bell"
 				/>
 				<div v-if="showRedDot" :class="$style.redDot" data-test-id="suggested-actions-red-dot" />
@@ -159,11 +160,11 @@ defineExpose({
 
 .redDot {
 	position: absolute;
-	top: -2px;
-	right: -2px;
+	top: 4px;
+	right: 6px;
 	width: 8px;
 	height: 8px;
-	background-color: var(--color-danger);
+	background-color: var(--color-primary);
 	border-radius: 50%;
 	pointer-events: none;
 }
