@@ -345,6 +345,53 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	});
 
 	describe('execute node type handling', () => {
+		it('should execute custom operation when available', async () => {
+			const mockData = [[{ json: { result: 'custom operation result' } }]];
+			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+
+			// Create a node with parameters that match the custom operation
+			const customOpNode = {
+				...mockNode,
+				parameters: {
+					resource: 'testResource',
+					operation: 'testOperation',
+				},
+			};
+
+			// Create a nodeType with customOperations
+			const customOpNodeType = {
+				...mockNodeType,
+				customOperations: {
+					testResource: {
+						testOperation: mockCustomOperation,
+					},
+				},
+				execute: undefined, // Make sure execute is not defined so custom operation is used
+			};
+
+			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+
+			const customOpExecutionData = {
+				...mockExecutionData,
+				node: customOpNode,
+			};
+
+			const mockContextInstance = { hints: [] };
+			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				customOpExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockCustomOperation).toHaveBeenCalledWith();
+			expect(result).toEqual({ data: mockData, hints: [] });
+		});
+
 		it('should execute node with execute method and return data with hints', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const mockHints = [{ message: 'Test hint' }];
