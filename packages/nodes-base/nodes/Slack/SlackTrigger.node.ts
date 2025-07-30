@@ -11,9 +11,10 @@ import {
 	type IWebhookResponseData,
 	type IBinaryKeyData,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
+import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
 
 export class SlackTrigger implements INodeType {
@@ -53,7 +54,7 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>',
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. We also recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -321,8 +322,16 @@ export class SlackTrigger implements INodeType {
 		const binaryData: IBinaryKeyData = {};
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 		let eventChannel: string = '';
-		// Check if the request is a challenge request
+
+		if (!(await verifySignature.call(this))) {
+			throw new NodeOperationError(this.getNode(), 'Invalid Slack signature', {
+				description: 'The request signature does not match the expected signature.',
+				level: 'error',
+			});
+		}
+
 		if (req.body.type === 'url_verification') {
+			// Check if the request is a challenge request
 			const res = this.getResponseObject();
 			res.status(200).json({ challenge: req.body.challenge }).end();
 

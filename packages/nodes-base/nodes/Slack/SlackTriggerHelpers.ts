@@ -1,6 +1,8 @@
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { createHmac, timingSafeEqual } from 'crypto';
+
 import { slackApiRequest } from './V2/GenericFunctions';
 
 export async function getUserInfo(this: IWebhookFunctions, userId: string): Promise<any> {
@@ -77,4 +79,29 @@ export async function downloadFile(this: IWebhookFunctions, url: string): Promis
 		);
 	}
 	return response;
+}
+
+export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
+	const credential = await this.getCredentials('slackApi');
+	if (!credential?.signatureSecret) {
+		return true; // No signature secret provided, skip verification
+	}
+
+	const req = this.getRequestObject();
+
+	const signature = req.header('x-slack-signature') as string;
+	const timestamp = req.header('x-slack-request-timestamp') as string;
+	if (!signature || !timestamp) {
+		throw new NodeOperationError(this.getNode(), 'Missing Slack signature or timestamp header');
+	}
+
+	const currentTime = Math.floor(Date.now() / 1000);
+	if (Math.abs(currentTime - parseInt(timestamp, 10)) > 60 * 5) {
+		throw new NodeOperationError(this.getNode(), 'Slack request timestamp is too old');
+	}
+
+	const hmac = createHmac('sha256', credential.signatureSecret as string);
+	hmac.update(`v0:${currentTime}:${req.rawBody}`);
+	const computedSignature = `v0=${hmac.digest('hex')}`;
+	return timingSafeEqual(Buffer.from(computedSignature), Buffer.from(signature));
 }
