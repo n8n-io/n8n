@@ -1,13 +1,9 @@
 import { LegacySqliteExecutionRecoveryService } from '@/executions/legacy-sqlite-execution-recovery.service';
-import { createProject } from '@/public-api/v1/handlers/projects/projects.handler';
-import { createWorkflow } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { Logger } from '@n8n/backend-common';
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createUser } from '@test-integration/db/users';
-import { Workflow } from 'n8n-workflow';
 
 const globalConfig = Container.get(GlobalConfig);
 

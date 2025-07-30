@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, ExecutionData, ExecutionRepository } from '@n8n/db';
+import { DbConnection, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import assert from 'assert';
 
