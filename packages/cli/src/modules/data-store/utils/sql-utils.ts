@@ -1,16 +1,15 @@
+import {
+	DATA_STORE_COLUMN_REGEX,
+	type DataStoreCreateColumnSchema,
+} from '@n8n/api-types/src/schemas/data-store.schema';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type {
-	DataStoreColumn,
-	DataStoreColumnType,
-	DataStoreRows,
-	DataStoreUserTableName,
-} from '../data-store.types';
+import type { DataStoreRows, DataStoreUserTableName } from '../data-store.types';
 
-function dataStoreColumnTypeToSql(type: DataStoreColumnType) {
+function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 	switch (type) {
 		case 'string':
 			return 'TEXT';
@@ -25,7 +24,7 @@ function dataStoreColumnTypeToSql(type: DataStoreColumnType) {
 	}
 }
 
-function columnToWildcardAndType(column: DataStoreColumn) {
+function columnToWildcardAndType(column: DataStoreCreateColumnSchema) {
 	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`;
 }
 
@@ -49,41 +48,41 @@ function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
 
 export function createUserTableQuery(
 	tableName: DataStoreUserTableName,
-	columns: DataStoreColumn[],
+	columns: DataStoreCreateColumnSchema[],
 	dbType: DataSourceOptions['type'],
-): [string, string[]] {
+) {
+	if (columns.map((x) => x.name).some((name) => !isValidColumnName(name))) {
+		throw new UnexpectedError('bad column name');
+	}
 	const columnSql = columns.map(columnToWildcardAndType);
 	const columnsFieldQuery = columnSql.length > 0 ? `, ${columnSql.join(', ')}` : '';
 
 	const primaryKeyType = getPrimaryKeyAutoIncrement(dbType);
 
 	// The tableName here is selected by us based on the automatically generated id, not user input
-	// @Review: Any way to insert columns using wildcards?
-	return [
-		`CREATE TABLE IF NOT EXISTS ${tableName} (id ${primaryKeyType} ${columnsFieldQuery})`,
-		[],
-	];
+	return `CREATE TABLE IF NOT EXISTS ${tableName} (id ${primaryKeyType} ${columnsFieldQuery})`;
 }
 
 function isValidColumnName(name: string) {
 	// Only allow alphanumeric and underscore
-	return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+	return DATA_STORE_COLUMN_REGEX.test(name);
 }
 
 export function addColumnQuery(
 	tableName: DataStoreUserTableName,
-	column: DataStoreColumn,
-): [string, string[]] {
-	// @Review: What to do about sql injection here?
-	if (!isValidColumnName(column.name)) throw new Error('bad column name');
-	return [`ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column)}`, []];
+	column: DataStoreCreateColumnSchema,
+) {
+	console.log(isValidColumnName(column.name), column.name);
+	// API requests should already conform to this, but better safe than sorry
+	if (!isValidColumnName(column.name)) {
+		throw new UnexpectedError('bad column name');
+	}
+
+	return `ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column)}`;
 }
 
-export function deleteColumnQuery(
-	tableName: DataStoreUserTableName,
-	column: string,
-): [string, string[]] {
-	return [`ALTER TABLE ${tableName} DROP COLUMN \`${column}\``, []];
+export function deleteColumnQuery(tableName: DataStoreUserTableName, column: string): string {
+	return `ALTER TABLE ${tableName} DROP COLUMN \`${column}\``;
 }
 
 export function insertIntoQuery(

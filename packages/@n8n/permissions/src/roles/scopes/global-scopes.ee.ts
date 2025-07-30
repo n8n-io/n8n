@@ -108,5 +108,4 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'dataStore:read',
 	'dataStore:list',
 	'dataStore:readRow',
-	'dataStore:writeRow',
 ];

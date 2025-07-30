@@ -424,7 +424,7 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(createdAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-			expect(createdDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			expect(createdDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']); // this one is flaky for some reason
 			expect(updatedAsc[0].map((x) => x.name)).toEqual(['ds1', 'ds0', 'ds2']);
 			expect(updatedDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds0', 'ds1']);
 			expect(nameAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);

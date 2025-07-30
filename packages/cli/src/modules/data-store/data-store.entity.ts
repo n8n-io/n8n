@@ -22,7 +22,7 @@ export class DataStoreEntity extends WithTimestampsAndStringId {
 	)
 	columns: DataStoreColumnEntity[];
 
-	// @Review: No clue what I'm doing here
+	// @Review: No clue what I'm doing here, please double check this
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
 	project: Project;

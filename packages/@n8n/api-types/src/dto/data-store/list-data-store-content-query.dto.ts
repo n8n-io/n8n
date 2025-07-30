@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Z } from 'zod-class';
 
 import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
+import { paginationSchema } from 'dto/pagination/pagination.dto';
 
 const FilterConditionSchema = z.union([z.literal('eq'), z.literal('neq')]);
 export type ListDataStoreContentFilterConditionType = z.infer<typeof FilterConditionSchema>;
@@ -25,24 +26,6 @@ const filterValidator = z.object({
 	type: chainedFilterSchema.default('and'),
 	filters: z.array(filterRecord).default([]),
 });
-
-// Skip parameter validation
-const skipValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 0))
-	.refine((val) => !isNaN(val), {
-		message: 'Skip must be a valid number',
-	});
-
-// Take parameter validation
-const takeValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 10))
-	.refine((val) => !isNaN(val), {
-		message: 'Take must be a valid number',
-	});
 
 // SortBy parameter validation
 const sortByValidator = z
@@ -87,8 +70,7 @@ const sortByValidator = z
 	});
 
 export class ListDataStoreContentQueryDto extends Z.class({
+	...paginationSchema,
 	filter: filterValidator,
-	skip: skipValidator,
-	take: takeValidator,
 	sortBy: sortByValidator,
 }) {}

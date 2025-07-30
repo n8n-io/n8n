@@ -1,15 +1,13 @@
 import { ListDataStoreContentQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { BaseEntity, DataSource, Entity, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, SelectQueryBuilder } from '@n8n/typeorm';
+
 import { DataStoreRows, DataStoreUserTableName } from './data-store.types';
 import { insertIntoQuery } from './utils/sql-utils';
 
 // type QueryBuilder = SelectQueryBuilder<Record<PropertyKey, unknown>>;
 type QueryBuilder = SelectQueryBuilder<any>;
 // type QueryBuilder = ReturnType<EntityManager['createQueryBuilder']>;
-
-@Entity()
-class Emptity extends BaseEntity {}
 
 function valueToSQL(value: ListDataStoreContentQueryDto['filter']['filters'][number]['value']) {
 	if (value instanceof Date) {
@@ -42,7 +40,6 @@ export class DataStoreRowsRepository {
 		return true;
 	}
 
-	// ALL THE MANY STUFF
 	async getManyAndCount(
 		dataStoreId: DataStoreUserTableName,
 		dto: Partial<ListDataStoreContentQueryDto>,
@@ -61,7 +58,7 @@ export class DataStoreRowsRepository {
 		return result as number[];
 	}
 
-	getManyQuery(
+	private getManyQuery(
 		dataStoreId: DataStoreUserTableName,
 		dto: Partial<ListDataStoreContentQueryDto>,
 	): [QueryBuilder, QueryBuilder] {

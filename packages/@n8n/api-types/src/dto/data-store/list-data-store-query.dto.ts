@@ -1,3 +1,4 @@
+import { paginationSchema } from 'dto/pagination/pagination.dto';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
@@ -55,32 +56,13 @@ const filterValidator = z
 		}
 	});
 
-// Skip parameter validation
-const skipValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 0))
-	.refine((val) => !isNaN(val), {
-		message: 'Skip must be a valid number',
-	});
-
-// Take parameter validation
-const takeValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 10))
-	.refine((val) => !isNaN(val), {
-		message: 'Take must be a valid number',
-	});
-
 // SortBy parameter validation
 const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
 	.optional();
 
 export class ListDataStoreQueryDto extends Z.class({
+	...paginationSchema,
 	filter: filterValidator,
-	skip: skipValidator,
-	take: takeValidator,
 	sortBy: sortByValidator,
 }) {}

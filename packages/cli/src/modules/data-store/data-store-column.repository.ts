@@ -1,8 +1,9 @@
+import { DataStoreCreateColumnSchema } from '@n8n/api-types/src/schemas/data-store.schema';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
-import { DataStoreColumn, DataStoreUserTableName } from './data-store.types';
+import { DataStoreUserTableName } from './data-store.types';
 import { addColumnQuery, deleteColumnQuery } from './utils/sql-utils';
 
 @Service()
@@ -17,11 +18,11 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			.getMany();
 	}
 
-	async addColumn(dataStoreId: DataStoreUserTableName, column: DataStoreColumn) {
-		await this.manager.query(...addColumnQuery(dataStoreId, column));
+	async addColumn(dataStoreId: DataStoreUserTableName, column: DataStoreCreateColumnSchema) {
+		await this.manager.query(addColumnQuery(dataStoreId, column));
 	}
 
 	async deleteColumn(dataStoreId: DataStoreUserTableName, column: string) {
-		await this.manager.query(...deleteColumnQuery(dataStoreId, column));
+		await this.manager.query(deleteColumnQuery(dataStoreId, column));
 	}
 }

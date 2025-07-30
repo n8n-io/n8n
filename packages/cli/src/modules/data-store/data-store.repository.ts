@@ -1,8 +1,9 @@
+import { DataStoreCreateColumnSchema } from '@n8n/api-types/src/schemas/data-store.schema';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { DataStoreEntity } from './data-store.entity';
-import { DataStoreColumn, DataStoreListOptions, DataStoreUserTableName } from './data-store.types';
+import { DataStoreListOptions, DataStoreUserTableName } from './data-store.types';
 import { createUserTableQuery } from './utils/sql-utils';
 
 @Service()
@@ -11,16 +12,15 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
-	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreColumn[]) {
+	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreCreateColumnSchema[]) {
 		const dbType = this.manager.connection.options.type;
-		await this.manager.query(...createUserTableQuery(tableName, columns, dbType));
+		await this.manager.query(createUserTableQuery(tableName, columns, dbType));
 	}
 
 	async deleteUserTable(tableName: DataStoreUserTableName) {
 		await this.manager.query(`DROP TABLE ${tableName}`);
 	}
 
-	// ALL THE MANY STUFF
 	async getManyAndCount(options: DataStoreListOptions) {
 		const query = this.getManyQuery(options);
 		return await query.getManyAndCount();
@@ -31,7 +31,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		return await query.getMany();
 	}
 
-	getManyQuery(options: DataStoreListOptions): SelectQueryBuilder<DataStoreEntity> {
+	private getManyQuery(options: DataStoreListOptions): SelectQueryBuilder<DataStoreEntity> {
 		const query = this.createQueryBuilder('dataStore');
 
 		this.applySelections(query);
@@ -111,7 +111,6 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		query
 			.leftJoinAndSelect('dataStore.project', 'project')
 			.leftJoinAndSelect('dataStore.columns', 'data_store_column_entity')
-			// .leftJoinAndSelect('dataStore.sizeBytes', 'sizeBytes')
 			.select([
 				'dataStore',
 				...this.getDataStoreColumnFields('data_store_column_entity'),
