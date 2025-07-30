@@ -75,6 +75,10 @@ export class Telegram implements INodeType {
 						name: 'Message',
 						value: 'message',
 					},
+					{
+						name: 'Poll',
+						value: 'poll',
+					},
 				],
 				default: 'message',
 			},
@@ -214,6 +218,33 @@ export class Telegram implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
+						resource: ['poll'],
+					},
+				},
+				options: [
+					{
+						name: 'Send',
+						value: 'sendPoll',
+						description: 'Send a poll',
+						action: 'Send a poll',
+					},
+					{
+						name: 'Stop',
+						value: 'stopPoll',
+						description: 'Stop a poll',
+						action: 'Stop a poll',
+					},
+				],
+				default: 'send',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
 						resource: ['message'],
 					},
 				},
@@ -343,8 +374,10 @@ export class Telegram implements INodeType {
 							'sendSticker',
 							'sendVideo',
 							'unpinChatMessage',
+							'sendPoll',
+							'stopPoll',
 						],
-						resource: ['chat', 'message'],
+						resource: ['chat', 'message', 'poll'],
 					},
 				},
 				required: true,
@@ -620,6 +653,303 @@ export class Telegram implements INodeType {
 						description: "URL that will be opened by the user's client",
 					},
 				],
+			},
+
+			// ----------------------------------
+			//         poll
+			// ----------------------------------
+
+			// ----------------------------------
+			//         poll:send
+			// ----------------------------------
+
+			{
+			    displayName: 'Question',
+			    name: 'pollTitle',
+			    type: 'string',
+			    default: '',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    required: true,
+			    description: 'The poll title, aka the title of the poll',
+			},
+			{
+			    displayName: 'Answers',
+			    name: 'possibleAnswers',
+			    type: 'fixedCollection',
+			    typeOptions: {
+			        multipleValues: true,
+			        minValue: 2,
+			        maxValue: 10,
+			    },
+			    default: {
+			        answer: [
+			            { text: '' },
+			            { text: '' }
+			        ]
+			    },
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    options: [
+			        {
+			            name: 'answer',
+			            displayName: 'Answer',
+			            values: [
+			                {
+			                    displayName: 'Answer Text',
+			                    name: 'text',
+			                    type: 'string',
+			                    default: '',
+			                    required: true,
+			                    description: 'Poll answer option text, 1-100 characters',
+			                    typeOptions: {
+			                        maxValue: 100,
+			                    },
+			                },
+			            ],
+			        },
+			    ],
+			    required: true,
+			    description: 'List of answer options, 2-10 strings 1-100 characters each',
+			},
+			{
+			    displayName: 'Poll Type',
+			    name: 'type',
+			    type: 'options',
+			    options: [
+			        {
+			            name: 'Regular',
+			            value: 'regular',
+			            description: 'Regular poll allows multiple answers',
+			        },
+			        {
+			            name: 'Quiz',
+			            value: 'quiz',
+			            description: 'Quiz poll has only one correct answer',
+			        },
+			    ],
+			    default: 'regular',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Poll type',
+			},
+			{
+			    displayName: 'Allows Multiple Answers',
+			    name: 'allowsMultipleAnswers',
+			    type: 'boolean',
+			    default: false,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			            type: ['regular'],
+			        },
+			    },
+			    description: 'True, if the poll allows multiple answers, ignored for polls in quiz mode',
+			},
+			{
+			    displayName: 'Correct Option ID',
+			    name: 'correctOptionId',
+			    type: 'number',
+			    default: 0,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			            type: ['quiz'],
+			        },
+			    },
+			    description: '0-based identifier of the correct answer option, required for polls in quiz mode',
+			},
+			{
+			    displayName: 'Explanation',
+			    name: 'explanation',
+			    type: 'string',
+			    default: '',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			            type: ['quiz'],
+			        },
+			    },
+			    description: 'Text that is shown when a user chooses an incorrect answer or taps on the lamp icon in a quiz-style poll, 0-200 characters with at most 2 line feeds after entities parsing',
+			},
+			{
+			    displayName: 'Explanation Parse Mode',
+			    name: 'explanationParseMode',
+			    type: 'options',
+			    options: [
+			        {
+			            name: 'Markdown',
+			            value: 'Markdown',
+			        },
+			        {
+			            name: 'MarkdownV2',
+			            value: 'MarkdownV2',
+			        },
+			        {
+			            name: 'HTML',
+			            value: 'HTML',
+			        },
+			    ],
+			    default: 'HTML',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			            type: ['quiz'],
+			        },
+			    },
+			    description: 'Mode for parsing entities in the explanation',
+			},
+			{
+			    displayName: 'Is Anonymous',
+			    name: 'isAnonymous',
+			    type: 'boolean',
+			    default: true,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'True, if the poll needs to be anonymous, defaults to True',
+			},
+			{
+			    displayName: 'Open Period',
+			    name: 'openPeriod',
+			    type: 'number',
+			    default: 300,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Amount of time in seconds the poll will be active after creation, 5-600. Can\'t be used together with close_date',
+			},
+			{
+			    displayName: 'Close Date',
+			    name: 'closeDate',
+			    type: 'dateTime',
+			    default: '',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Point in time (Unix timestamp) when the poll will be automatically closed. Must be at least 5 and no more than 600 seconds in the future. Can\'t be used together with open_period',
+			},
+			{
+			    displayName: 'Is Closed',
+			    name: 'isClosed',
+			    type: 'boolean',
+			    default: false,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Pass True, if the poll needs to be immediately closed. This can be useful for poll preview',
+			},
+			{
+			    displayName: 'Disable Notification',
+			    name: 'disableNotification',
+			    type: 'boolean',
+			    default: false,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Sends the message silently. Users will receive a notification with no sound',
+			},
+			{
+			    displayName: 'Protect Content',
+			    name: 'protectContent',
+			    type: 'boolean',
+			    default: false,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Protects the contents of the sent message from forwarding and saving',
+			},
+			{
+			    displayName: 'Reply to Message ID',
+			    name: 'replyToMessageId',
+			    type: 'number',
+			    default: 0,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'If the message is a reply, ID of the original message',
+			},
+			{
+			    displayName: 'Allow Sending Without Reply',
+			    name: 'allowSendingWithoutReply',
+			    type: 'boolean',
+			    default: false,
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Pass True, if the message should be sent even if the specified replied-to message is not found',
+			},
+			{
+			    displayName: 'Reply Markup',
+			    name: 'replyMarkup',
+			    type: 'json',
+			    default: '',
+			    displayOptions: {
+			        show: {
+			            operation: ['sendPoll', 'stopPoll'],
+			            resource: ['poll'],
+			        },
+			    },
+			    description: 'Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard or to force a reply from the user',
+			},
+
+			// ----------------------------------
+			//         poll:send
+			// ----------------------------------
+
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['stopPoll'],
+						resource: ['poll'],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the poll to stop',
 			},
 
 			// ----------------------------------
@@ -1938,6 +2268,93 @@ export class Telegram implements INodeType {
 
 						body.file_id = this.getNodeParameter('fileId', i) as string;
 					}
+				} else if (resource === 'poll') {
+				    if (operation === 'sendPoll') {
+				        // ----------------------------------
+				        //         poll:sendPoll
+				        // ----------------------------------
+				        endpoint = 'sendPoll';
+
+				        // Poll question/title
+				        body.question = this.getNodeParameter('pollTitle', i) as string;
+
+				        // Poll options - convert collection to array of strings
+				        const answersCollection = this.getNodeParameter('possibleAnswers', i) as any;
+				        if (answersCollection && answersCollection.answer) {
+				            body.options = answersCollection.answer.map((answer: any) => answer.text);
+				        }
+
+				        // Poll type handling
+				        const pollType = this.getNodeParameter('type', i) as string;
+				        if (pollType === 'quiz') {
+				            body.type = 'quiz';
+				            body.correct_option_id = this.getNodeParameter('correctOptionId', i) as number;
+
+				            // Quiz explanation (optional)
+				            const explanation = this.getNodeParameter('explanation', i) as string;
+				            if (explanation) {
+				                body.explanation = explanation;
+				                body.explanation_parse_mode = this.getNodeParameter('explanationParseMode', i) as string;
+				            }
+				        } else {
+				            body.type = 'regular';
+				            body.allows_multiple_answers = this.getNodeParameter('allowsMultipleAnswers', i) as boolean;
+				        }
+
+				        // General poll options
+				        body.is_anonymous = this.getNodeParameter('isAnonymous', i) as boolean;
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+				        // Time management (openPeriod OR closeDate, mutually exclusive)
+				        const openPeriod = this.getNodeParameter('openPeriod', i) as number;
+				        const closeDate = this.getNodeParameter('closeDate', i) as string;
+
+				        if (closeDate) {
+				            body.close_date = Math.floor(new Date(closeDate).getTime() / 1000);
+				        } else if (openPeriod && openPeriod > 0) {
+				            body.open_period = openPeriod;
+				        }
+
+				        // Additional poll options
+				        body.is_closed = this.getNodeParameter('isClosed', i) as boolean;
+				        body.disable_notification = this.getNodeParameter('disableNotification', i) as boolean;
+				        body.protect_content = this.getNodeParameter('protectContent', i) as boolean;
+
+				        // Reply to message handling
+				        const replyToMessageId = this.getNodeParameter('replyToMessageId', i) as number;
+				        if (replyToMessageId) {
+				            body.reply_to_message_id = replyToMessageId;
+				            body.allow_sending_without_reply = this.getNodeParameter('allowSendingWithoutReply', i) as boolean;
+				        }
+
+				        // Reply markup (custom keyboard)
+				        const replyMarkup = this.getNodeParameter('replyMarkup', i) as string;
+				        if (replyMarkup) {
+				            try {
+				                body.reply_markup = JSON.parse(replyMarkup);
+				            } catch (error) {
+				                throw new NodeOperationError(this.getNode(), `Invalid JSON in Reply Markup: ${error.message}`, { itemIndex: i });
+				            }
+				        }
+				    } else if (operation === 'stopPoll') {
+				        // ----------------------------------
+				        //         poll:stop
+				        // ----------------------------------
+				        endpoint = 'stopPoll';
+
+				        // Required parameters
+				        body.chat_id = this.getNodeParameter('chatId', i) as string;
+				        body.message_id = this.getNodeParameter('messageId', i) as number;
+
+				        const replyMarkup = this.getNodeParameter('replyMarkup', i) as string;
+				        if (replyMarkup) {
+				            try {
+				                body.reply_markup = JSON.parse(replyMarkup);
+				            } catch (error) {
+				                throw new NodeOperationError(this.getNode(), `Invalid JSON in Reply Markup: ${error.message}`, { itemIndex: i });
+				            }
+				        }
+				    }
 				} else if (resource === 'message') {
 					if (operation === 'editMessageText') {
 						// ----------------------------------
