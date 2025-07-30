@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 				name: 'durationSeconds',
 				type: 'number',
 				default: 8,
-				description: 'Length of the generated video in seconds',
+				description: 'Length of the generated video in seconds. Supported only by certain models.',
 				typeOptions: {
 					minValue: 5,
 					maxValue: 8,
