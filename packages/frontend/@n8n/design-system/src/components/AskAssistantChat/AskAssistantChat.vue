@@ -249,6 +249,7 @@ watch(
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
+					maxlength="1000"
 					data-test-id="chat-input"
 					@keydown.enter.exact.prevent="onSendMessage"
 					@input.prevent="growInput"
