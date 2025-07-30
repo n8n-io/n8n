@@ -59,7 +59,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:foreign-credentials="[]"
 		:read-only="isReadOnly"
 		:block-u-i="false"
-		:executable="false"
+		:executable="!isReadOnly"
 		:input-size="0"
 		is-embedded-in-canvas
 		:sub-title="subTitle"
