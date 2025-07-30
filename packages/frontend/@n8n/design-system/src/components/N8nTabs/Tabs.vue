@@ -100,6 +100,7 @@ const scrollRight = () => scroll(50);
 						v-if="option.href"
 						target="_blank"
 						:href="option.href"
+						rel="noopener noreferrer"
 						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>

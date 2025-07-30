@@ -2,7 +2,7 @@ import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
 import N8nTabs from './Tabs.vue';
-import type { TabOptions } from '@n8n/design-system/types';
+import type { TabOptions } from '../../types/tabs';
 
 export default {
 	title: 'Atoms/Tabs',
@@ -58,7 +58,7 @@ Example.args = {
 	],
 };
 
-const options: TabOptions<string>[] = [
+const options: Array<TabOptions<string>> = [
 	{
 		label: 'First',
 		value: 'first',
