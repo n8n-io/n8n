@@ -50,7 +50,6 @@ if (globalConfig.database.isLegacySqlite) {
 
 		it('should recover executions without data', async () => {
 			// Arrange
-
 			let execution = executionRepository.create({
 				status: 'new',
 				mode: 'manual',
@@ -68,6 +67,12 @@ if (globalConfig.database.isLegacySqlite) {
 			// Assert
 			expect(executionMarkedAsCrashed?.id).toBe(execution.id);
 			expect(executionMarkedAsCrashed?.status).toBe('crashed');
+		});
+	});
+} else {
+	describe('Legacy SQLite Execution Recovery Service', () => {
+		it('should not run on non-legacy SQLite databases', () => {
+			// We need an empty test here to ensure that the test suite is not empty
 		});
 	});
 }
