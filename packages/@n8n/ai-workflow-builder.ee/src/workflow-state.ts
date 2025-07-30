@@ -68,7 +68,7 @@ function combineMessageReducers(...reducers: Array<BinaryOperator<BaseMessage[],
 
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
-		reducer: combineMessageReducers(messagesStateReducer, createTrimMessagesReducer(3)),
+		reducer: combineMessageReducers(messagesStateReducer, createTrimMessagesReducer(10)),
 		default: () => [],
 	}),
 	// // The original prompt from the user.
