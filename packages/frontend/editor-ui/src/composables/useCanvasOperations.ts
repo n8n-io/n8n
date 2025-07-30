@@ -172,7 +172,7 @@ export function useCanvasOperations() {
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
 	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
-	const editableWorkflowObject = computed<Workflow>(() => workflowsStore.workflowObject);
+	const editableWorkflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;

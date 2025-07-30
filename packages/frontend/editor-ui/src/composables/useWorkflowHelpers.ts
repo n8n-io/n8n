@@ -82,7 +82,7 @@ export function resolveParameter<T = IDataObject>(
 	if ('localResolve' in opts && opts.localResolve) {
 		return resolveParameterImpl(
 			parameter,
-			() => opts.workflow,
+			opts.workflow,
 			opts.connections,
 			opts.envVars,
 			opts.workflow.getNode(opts.nodeName),
@@ -116,7 +116,7 @@ export function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	getContextWorkflow: () => Workflow,
+	workflowObject: Workflow,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
@@ -126,8 +126,6 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
-
-	const workflow = getContextWorkflow();
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -147,7 +145,7 @@ function resolveParameterImpl<T = IDataObject>(
 
 	if (opts.isForCredential) {
 		// node-less expression resolution
-		return workflow.expression.getParameterValue(
+		return workflowObject.expression.getParameterValue(
 			parameter,
 			null,
 			0,
@@ -165,18 +163,18 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflow.getNode(opts.contextNodeName || '');
+	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
-		contextNode = workflow.getParentMainInputNode(activeNode) ?? null;
+		contextNode = workflowObject.getParentMainInputNode(activeNode) ?? null;
 	}
 
 	const workflowRunData = executionData?.data?.resultData.runData ?? null;
-	let parentNode = workflow.getParentNodes(contextNode!.name, inputName, 1);
+	let parentNode = workflowObject.getParentNodes(contextNode!.name, inputName, 1);
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
-	const nodeConnection = workflow.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
+	const nodeConnection = workflowObject.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
 	if (opts.targetItem && opts?.targetItem?.nodeName === contextNode!.name && executionData) {
 		const sourceItems = getSourceItems(executionData, opts.targetItem);
 		if (!sourceItems.length) {
@@ -295,7 +293,7 @@ function resolveParameterImpl<T = IDataObject>(
 		);
 	}
 
-	return workflow.expression.getParameterValue(
+	return workflowObject.expression.getParameterValue(
 		parameter,
 		runExecutionData,
 		runIndexCurrent,
@@ -370,11 +368,6 @@ function getConnectedNodes(
 
 	// Remove duplicates
 	return [...new Set(connectedNodes)];
-}
-
-// Returns a workflow instance.
-function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
 function getNodeTypes(): INodeTypes {
@@ -1076,7 +1069,6 @@ export function useWorkflowHelpers() {
 		resolveParameter,
 		resolveRequiredParameters,
 		getConnectedNodes,
-		getWorkflow,
 		getNodeTypes,
 		connectionInputData,
 		executeData,
