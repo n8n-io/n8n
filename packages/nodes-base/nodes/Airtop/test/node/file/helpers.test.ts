@@ -1,5 +1,4 @@
 import * as helpers from '../../../actions/file/helpers';
-import { BASE_URL } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -208,7 +207,7 @@ describe('Test Airtop file helpers', () => {
 			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
 
 			expect(apiRequestMock).toHaveBeenCalledTimes(1);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/files/file-123');
 		});
 
 		it('should timeout if file never becomes available in session', async () => {
@@ -248,7 +247,7 @@ describe('Test Airtop file helpers', () => {
 			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
 
 			expect(apiRequestMock).toHaveBeenCalledTimes(1);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/files/file-123');
 		});
 	});
 

@@ -18,7 +18,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to output the image as a binary file instead of a base64 encoded string',
 		name: 'outputImageAsBinary',
 		type: 'boolean',
-		default: false,
+		default: true,
 		displayOptions: {
 			show: {
 				resource: ['window'],
