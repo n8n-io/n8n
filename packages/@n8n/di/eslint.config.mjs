@@ -41,10 +41,10 @@ export default tseslint.config(
 				},
 			],
 
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'import-x/order': 'warn',
+			// Enforce consistent code quality standards
+			'@typescript-eslint/naming-convention': 'error',
+			'@typescript-eslint/no-unsafe-function-type': 'error',
+			'import-x/order': 'error',
 		},
 	},
 );

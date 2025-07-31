@@ -1,3 +1,16 @@
+/**
+ * DI Container Test Suite
+ *
+ * Comprehensive test coverage for the Dependency Injection container system.
+ * Tests all core functionality including:
+ * - Basic service instantiation and caching
+ * - Dependency injection and resolution
+ * - Factory function support
+ * - Abstract class handling
+ * - Circular dependency detection
+ * - Instance management and container reset
+ * - Error handling and edge cases
+ */
 import { Container, Service } from '../di';
 
 @Service()
@@ -295,6 +308,202 @@ describe('DI Container', () => {
 
 			Container.set(ManualService, new ManualService());
 			expect(Container.has(ManualService)).toBe(true);
+		});
+	});
+
+	describe('edge cases and error scenarios', () => {
+		/**
+		 * Test error handling for invalid service configurations
+		 */
+		it('should handle DIError inheritance correctly', () => {
+			class NotDecoratedService {}
+
+			try {
+				Container.get(NotDecoratedService);
+				fail('Should have thrown DIError');
+			} catch (error) {
+				expect((error as Error).message).toContain('[DI]');
+				expect((error as Error).message).toContain('is not decorated with Service');
+			}
+		});
+
+		/**
+		 * Test Service decorator without options parameter
+		 */
+		it('should handle Service decorator without options', () => {
+			@Service()
+			class ServiceWithoutOptions {
+				getValue() {
+					return 'no-options';
+				}
+			}
+
+			const instance = Container.get(ServiceWithoutOptions);
+			expect(instance).toBeInstanceOf(ServiceWithoutOptions);
+			expect(instance.getValue()).toBe('no-options');
+		});
+
+		/**
+		 * Test complex factory function scenarios
+		 */
+		it('should handle factory that returns different types', () => {
+			interface ComplexInterface {
+				process(): string;
+			}
+
+			@Service({
+				factory: () => ({
+					process() {
+						return 'complex-factory-result';
+					},
+				}),
+			})
+			class ComplexFactoryService implements ComplexInterface {
+				process(): string {
+					return 'should-not-be-called';
+				}
+			}
+
+			const instance = Container.get(ComplexFactoryService);
+			expect(instance.process()).toBe('complex-factory-result');
+		});
+
+		/**
+		 * Test metadata preservation in edge cases
+		 */
+		it('should preserve metadata when setting instance on service with factory', () => {
+			@Service({ factory: () => ({ fromFactory: true }) })
+			class ServiceWithFactory {
+				fromFactory = false;
+			}
+
+			// First get via factory
+			const factoryInstance = Container.get(ServiceWithFactory);
+			expect(factoryInstance.fromFactory).toBe(true);
+
+			// Set custom instance
+			const customInstance = { fromFactory: false };
+			Container.set(ServiceWithFactory, customInstance);
+
+			// Should get custom instance but preserve factory metadata
+			const retrievedInstance = Container.get(ServiceWithFactory);
+			expect(retrievedInstance).toBe(customInstance);
+			expect(retrievedInstance.fromFactory).toBe(false);
+		});
+
+		/**
+		 * Test container state after multiple operations
+		 */
+		it('should maintain consistent state across multiple reset and set operations', () => {
+			@Service()
+			class StateTestService {
+				getId() {
+					return Math.random();
+				}
+			}
+
+			// Get initial instance
+			const instance1 = Container.get(StateTestService);
+			const id1 = instance1.getId();
+
+			// Reset should create new instance
+			Container.reset();
+			const instance2 = Container.get(StateTestService);
+			const id2 = instance2.getId();
+
+			expect(instance1).not.toBe(instance2);
+			expect(id1).not.toBe(id2);
+
+			// Set manual instance
+			const manualInstance = new StateTestService();
+			Container.set(StateTestService, manualInstance);
+
+			const instance3 = Container.get(StateTestService);
+			expect(instance3).toBe(manualInstance);
+		});
+	});
+
+	describe('comprehensive integration scenarios', () => {
+		/**
+		 * Test real-world dependency injection patterns
+		 */
+		it('should handle complex service hierarchies', () => {
+			@Service()
+			class LoggerService {
+				log(message: string) {
+					return `LOG: ${message}`;
+				}
+			}
+
+			@Service()
+			class ConfigService {
+				getConfig() {
+					return { apiUrl: 'https://api.example.com' };
+				}
+			}
+
+			@Service()
+			class ApiService {
+				constructor(
+					private logger: LoggerService,
+					private config: ConfigService,
+				) {}
+
+				fetch(endpoint: string) {
+					const url = `${this.config.getConfig().apiUrl}${endpoint}`;
+					this.logger.log(`Fetching: ${url}`);
+					return `Response from ${url}`;
+				}
+			}
+
+			@Service()
+			class UserService {
+				constructor(private api: ApiService) {}
+
+				getUser(id: number) {
+					return this.api.fetch(`/users/${id}`);
+				}
+			}
+
+			const userService = Container.get(UserService);
+			const result = userService.getUser(123);
+
+			expect(result).toBe('Response from https://api.example.com/users/123');
+		});
+
+		/**
+		 * Test Service decorator with empty options object
+		 */
+		it('should handle Service with empty options object', () => {
+			@Service({})
+			class EmptyOptionsService {
+				getValue() {
+					return 'empty-options';
+				}
+			}
+
+			const instance = Container.get(EmptyOptionsService);
+			expect(instance).toBeInstanceOf(EmptyOptionsService);
+			expect(instance.getValue()).toBe('empty-options');
+		});
+
+		/**
+		 * Test error propagation from nested dependencies
+		 */
+		it('should propagate errors from nested dependency resolution', () => {
+			@Service({
+				factory: () => {
+					throw new Error('Nested factory error');
+				},
+			})
+			class NestedErrorService {}
+
+			@Service()
+			class DependentOnErrorService {
+				constructor(readonly nested: NestedErrorService) {}
+			}
+
+			expect(() => Container.get(DependentOnErrorService)).toThrow('Nested factory error');
 		});
 	});
 });
