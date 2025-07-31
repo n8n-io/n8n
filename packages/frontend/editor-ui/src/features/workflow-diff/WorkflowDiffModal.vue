@@ -507,11 +507,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 								</div>
@@ -551,11 +551,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
 									</template>
 								</div>
