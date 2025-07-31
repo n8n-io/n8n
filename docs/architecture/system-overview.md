@@ -1,5 +1,7 @@
 # n8n System Architecture Overview
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 ## Introduction
 
 n8n is a workflow automation platform built with a modular, scalable architecture. This document provides a high-level overview of the system components and their interactions.
@@ -24,21 +26,21 @@ graph TB
         COMP[composables<br/>Vue Composables]
         STORES[stores<br/>Pinia State Management]
     end
-    
+
     subgraph "Backend Layer"
         CLI[cli<br/>Main Server & Commands]
         CORE[core<br/>Execution Engine]
         WF[workflow<br/>Workflow Logic]
         NODES[nodes-base<br/>Built-in Nodes]
     end
-    
+
     subgraph "Infrastructure Layer"
-        DB[db<br/>Database Abstraction]
-        DI[di<br/>Dependency Injection]
-        CONFIG[config<br/>Configuration]
-        PERM[permissions<br/>RBAC System]
+        DB["@n8n/db<br/>Database Abstraction"]
+        DI["@n8n/di<br/>Dependency Injection"]
+        CONFIG["@n8n/config<br/>Configuration"]
+        PERM["@n8n/permissions<br/>RBAC System"]
     end
-    
+
     UI --> CLI
     CLI --> CORE
     CLI --> WF
@@ -46,111 +48,25 @@ graph TB
     CORE --> WF
     NODES --> CORE
     NODES --> WF
-    
+
     CLI --> DI
     CORE --> DI
     DB --> DI
 ```
 
-### Package Responsibilities
-
-| Package | Purpose | Key Components |
-|---------|---------|----------------|
-| `cli` | Main server process, API endpoints, command-line interface | Server, Controllers, Services, Commands |
-| `core` | Workflow execution engine, node handling, credentials | WorkflowExecute, NodeExecuteFunctions |
-| `workflow` | Workflow data structures, expression evaluation | Workflow class, Expression parser |
-| `nodes-base` | Collection of built-in nodes | 400+ node implementations |
-| `editor-ui` | Web-based workflow editor | Vue.js components, stores, views |
-| `db` | Database abstraction and repositories | TypeORM entities, repositories |
+For detailed package responsibilities, dependencies, and architectural patterns, see [Package Architecture](./package-architecture.md).
 
 ## Deployment Modes
 
 n8n supports two primary deployment modes to accommodate different scale and reliability requirements:
 
 ### 1. Regular Mode (Default)
-
-Single process handles all responsibilities:
-
-```mermaid
-graph LR
-    subgraph "n8n Main Process"
-        API[API Server<br/>:5678]
-        UI[UI Server<br/>:5678]
-        EXEC[Execution Engine]
-        WH[Webhook Handler]
-        CRON[Cron Jobs]
-    end
-    
-    subgraph "Storage"
-        DB[(Database)]
-        FS[File System<br/>Binary Data]
-    end
-    
-    CLIENT[Browser] --> UI
-    WEBHOOK[External Services] --> WH
-    API --> DB
-    EXEC --> DB
-    EXEC --> FS
-```
-
-**Characteristics:**
-- Simple deployment
-- All components in one process
-- Suitable for small to medium workloads
-- Port 5678 serves both API and UI
+A single process handles all responsibilities - API server, UI, execution engine, and webhook handling. This mode is ideal for personal use, small teams, and development environments where simplicity is preferred over scalability.
 
 ### 2. Queue Mode (Scalable)
+A distributed architecture with specialized processes (main, worker, webhook) communicating via Redis. This mode enables horizontal scaling, fault tolerance, and high availability for production workloads.
 
-Distributed architecture with specialized processes:
-
-```mermaid
-graph TB
-    subgraph "Main Process"
-        MAIN_API[API Server]
-        MAIN_UI[UI Server]
-        MAIN_ORCH[Orchestrator]
-    end
-    
-    subgraph "Worker Processes"
-        W1[Worker 1]
-        W2[Worker 2]
-        WN[Worker N]
-    end
-    
-    subgraph "Webhook Process"
-        WH_HANDLER[Webhook Handler]
-        WH_QUEUE[Queue Publisher]
-    end
-    
-    subgraph "Infrastructure"
-        REDIS[(Redis<br/>Job Queue)]
-        DB[(Database)]
-        S3[S3/MinIO<br/>Binary Data]
-    end
-    
-    CLIENT[Browser] --> MAIN_UI
-    EXTERNAL[External Services] --> WH_HANDLER
-    
-    MAIN_ORCH --> REDIS
-    WH_QUEUE --> REDIS
-    REDIS --> W1
-    REDIS --> W2
-    REDIS --> WN
-    
-    W1 --> DB
-    W2 --> DB
-    WN --> DB
-    
-    W1 --> S3
-    W2 --> S3
-    WN --> S3
-```
-
-**Characteristics:**
-- Horizontally scalable workers
-- Fault tolerance
-- Better resource utilization
-- Suitable for high-volume production workloads
+For detailed architecture diagrams, configuration options, and migration guides between modes, see [Execution Modes](./execution-modes.md).
 
 ## Service Architecture
 
@@ -164,7 +80,7 @@ graph TD
         CC[CredentialsController]
         UC[UserController]
     end
-    
+
     subgraph "Services Layer"
         WFS[WorkflowService]
         ES[ExecutionService]
@@ -173,19 +89,19 @@ graph TD
         PS[ProjectService]
         CMS[CommunityPackagesService]
     end
-    
+
     subgraph "Repository Layer"
         WFR[WorkflowRepository]
         ER[ExecutionRepository]
         CR[CredentialsRepository]
         UR[UserRepository]
     end
-    
+
     WFC --> WFS
     EC --> ES
     CC --> CS
     UC --> AS
-    
+
     WFS --> WFR
     ES --> ER
     CS --> CR
@@ -198,7 +114,9 @@ graph TD
 2. **ExecutionService**: Handles workflow execution lifecycle, recovery, and pruning
 3. **CredentialsService**: Manages encrypted credentials and access control
 4. **AuthService**: Handles authentication, JWT tokens, and session management
-5. **ProjectService**: Manages team collaboration and resource organization
+5. **ScalingService**: Manages queue mode operations and job distribution (Bull)
+6. **CommunityPackagesService**: Handles external node package installation
+7. **ProjectService**: Manages team collaboration and resource organization (Enterprise Edition)
 
 ## Data Flow
 
@@ -212,7 +130,7 @@ sequenceDiagram
     participant EX as ExecutionService
     participant Q as Queue/Runner
     participant DB as Database
-    
+
     C->>API: Start Execution
     API->>WS: Validate Workflow
     WS->>EX: Create Execution
@@ -237,17 +155,18 @@ n8n uses a layered configuration system:
 
 ## Security Architecture
 
-- **Authentication**: JWT-based with refresh tokens
-- **Authorization**: RBAC with projects and resource permissions
-- **Credentials**: AES-256 encryption at rest
+- **Authentication**: JWT-based with refresh tokens (implemented in `AuthService`)
+- **Authorization**: RBAC with projects and resource permissions via `@n8n/permissions`
+- **Credentials**: AES-256-GCM encryption at rest (see `packages/core/src/Cipher.ts`)
 - **API Security**: API key support, rate limiting
 - **Network**: HTTPS support, webhook signature validation
+- **Task Isolation**: Sandboxed execution for user code via `@n8n/task-runner`
 
 ## Monitoring & Observability
 
 - **Logging**: Winston-based structured logging
 - **Metrics**: Prometheus metrics endpoint
-- **Health Checks**: `/healthz` endpoints for each process type
+- **Health Checks**: `/healthz` and `/healthz/readiness` endpoints (implemented in `abstract-server.ts`)
 - **Event Bus**: Internal event system for audit and monitoring
 
 ## Next Steps
@@ -255,3 +174,7 @@ n8n uses a layered configuration system:
 - [Execution Modes](./execution-modes.md) - Detailed explanation of each deployment mode
 - [Data Flow](./data-flow.md) - How data moves through the system
 - [Package Architecture](./package-architecture.md) - Deep dive into package structure
+- [Task Runner](./task-runner.md) - Isolated code execution architecture
+- [Event System](./event-system.md) - Event-driven architecture and monitoring
+- [Community Packages](./community-packages.md) - External node package system
+- [Caching](./caching.md) - Performance optimization through caching

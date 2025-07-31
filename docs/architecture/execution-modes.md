@@ -1,5 +1,7 @@
 # n8n Execution Modes
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 n8n supports two execution modes to accommodate various deployment scenarios, from simple single-instance setups to highly scalable distributed systems.
 
 ## Overview
@@ -168,26 +170,26 @@ graph TD
         WH[Webhook Handler]
         AE[Active Executions]
     end
-    
+
     subgraph "External"
         BROWSER[Browser]
         WEBHOOK[Webhook Sources]
     end
-    
+
     subgraph "Storage"
         DB[(Database)]
         FS[File System]
     end
-    
+
     BROWSER --> UI
     BROWSER --> API
     WEBHOOK --> WH
-    
+
     API --> WM
     WM --> EE
     WH --> EE
     EE --> AE
-    
+
     EE --> DB
     AE --> DB
     EE --> FS
@@ -205,50 +207,50 @@ graph TD
 ```mermaid
 graph TB
     LB[Load Balancer]
-    
+
     subgraph "Main Processes"
         M1[Main 1]
         M2[Main 2]
     end
-    
+
     subgraph "Worker Pool"
         W1[Worker 1<br/>concurrency: 10]
         W2[Worker 2<br/>concurrency: 10]
         W3[Worker 3<br/>concurrency: 10]
     end
-    
+
     subgraph "Webhook Processors"
         WH1[Webhook 1]
         WH2[Webhook 2]
     end
-    
+
     subgraph "Redis"
         QUEUE[Bull Queue<br/>'bull:jobs']
         PUBSUB[Pub/Sub Channels]
     end
-    
+
     subgraph "Storage"
         DB[(Database)]
         S3[Binary Data Storage]
     end
-    
+
     LB --> M1
     LB --> M2
-    
+
     M1 --> QUEUE
     M2 --> QUEUE
-    
+
     WH1 --> QUEUE
     WH2 --> QUEUE
-    
+
     QUEUE --> W1
     QUEUE --> W2
     QUEUE --> W3
-    
+
     W1 --> DB
     W2 --> DB
     W3 --> DB
-    
+
     M1 -.-> PUBSUB
     M2 -.-> PUBSUB
     W1 -.-> PUBSUB
@@ -369,18 +371,18 @@ sequenceDiagram
     participant Redis as Redis
     participant Worker as Worker
     participant DB as Database
-    
+
     Main->>DB: Create Execution Record
     Main->>Redis: Queue Job
     Note over Redis: Job in 'waiting' state
-    
+
     Worker->>Redis: Poll for Jobs
     Redis->>Worker: Assign Job
     Note over Redis: Job in 'active' state
-    
+
     Worker->>Redis: Publish Progress
     Redis->>Main: Progress Event (Pub/Sub)
-    
+
     Worker->>DB: Save Execution Data
     Worker->>Redis: Mark Job Complete
     Redis->>Main: Completion Event (Pub/Sub)
@@ -526,7 +528,7 @@ During shutdown:
    ```bash
    # Install Redis (example for Ubuntu)
    sudo apt-get install redis-server
-   
+
    # Configure Redis persistence
    redis-cli CONFIG SET appendonly yes
    ```
@@ -543,13 +545,13 @@ During shutdown:
    ```bash
    # Stop existing regular mode process
    systemctl stop n8n
-   
+
    # Start main process
    n8n start &
-   
+
    # Start worker(s)
    n8n worker --concurrency=10 &
-   
+
    # Optional: Start webhook process
    n8n webhook &
    ```
@@ -592,7 +594,7 @@ During shutdown:
    ```bash
    # Test Redis connectivity
    redis-cli -h $QUEUE_BULL_REDIS_HOST ping
-   
+
    # Check for queued jobs
    redis-cli LLEN bull:jobs:wait
    redis-cli LLEN bull:jobs:active
@@ -602,7 +604,7 @@ During shutdown:
    ```bash
    # Check worker logs
    journalctl -u n8n-worker -f
-   
+
    # Check worker health endpoint (if enabled)
    curl http://worker-host:5678/healthz
    ```
@@ -638,7 +640,7 @@ During shutdown:
    ```bash
    # Check Redis memory usage
    redis-cli INFO memory
-   
+
    # Set memory limit
    redis-cli CONFIG SET maxmemory 2gb
    redis-cli CONFIG SET maxmemory-policy allkeys-lru
@@ -650,7 +652,7 @@ During shutdown:
    ```bash
    # Monitor queue depth over time
    watch -n 1 'redis-cli LLEN bull:jobs:wait'
-   
+
    # Check job processing time
    redis-cli --raw HGET bull:jobs:1 processedOn
    redis-cli --raw HGET bull:jobs:1 finishedOn

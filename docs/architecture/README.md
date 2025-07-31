@@ -1,5 +1,7 @@
 # n8n Architecture Documentation
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 Welcome to the n8n architecture documentation. This guide provides a comprehensive overview of n8n's system design, components, and architectural patterns.
 
 ## 🚀 Quick Start
@@ -42,14 +44,6 @@ If you're new to n8n's architecture, start here:
   - Node system architecture
   - Frontend architecture
 
-### Visual Diagrams
-
-All diagrams are created with Mermaid and can be found in the [`diagrams/`](./diagrams/) directory:
-
-- **[System Components](./diagrams/system-components.mmd)** - Overall system architecture
-- **[Execution Flow](./diagrams/execution-flow.mmd)** - Execution state machine
-- **[Package Dependencies](./diagrams/package-dependencies.mmd)** - Package relationship graph
-- **[Deployment Modes](./diagrams/deployment-modes.mmd)** - Deployment architecture options
 
 ## 🔑 Key Concepts
 
@@ -60,9 +54,11 @@ n8n uses a node-based execution model where workflows are directed acyclic graph
 - Outputs data for subsequent nodes
 
 ### Deployment Flexibility
-n8n supports two primary deployment modes:
-- **Regular Mode**: Simple, single-process deployment
-- **Queue Mode**: Scalable, distributed deployment with Redis
+n8n supports two deployment modes to accommodate different scale requirements:
+- **Regular Mode**: Simple, single-process deployment ideal for small to medium workloads
+- **Queue Mode**: Scalable, distributed deployment with Redis for high-volume production use
+
+For detailed architecture, configuration, and migration guides, see [Execution Modes](./execution-modes.md).
 
 ### Multi-tenancy & Collaboration
 - Projects for team organization
@@ -113,31 +109,29 @@ n8n supports two primary deployment modes:
 
 ## 🔒 Security Architecture
 
+For comprehensive security details, see [System Overview - Security](./system-overview.md#security-architecture):
 - **Authentication**: JWT tokens with refresh mechanism
-- **Authorization**: Project-based RBAC
-- **Encryption**: AES-256 for credentials, TLS for transport
-- **Audit**: Comprehensive event logging
+- **Authorization**: Project-based RBAC via `@n8n/permissions`
+- **Encryption**: AES-256-GCM for credentials, TLS for transport
+- **Audit**: Comprehensive event logging via event system
 
 ## 🚧 Troubleshooting
 
 ### Common Architecture Questions
 
 **Q: When should I use Queue mode?**
-A: Use Queue mode when you need high availability, horizontal scaling, or have high workflow volumes.
+A: Use Queue mode when you need high availability, horizontal scaling, or have high workflow volumes. See [Execution Modes](./execution-modes.md#when-to-use-each-mode) for detailed criteria.
 
 **Q: How does n8n handle large files?**
-A: Binary data is stored separately (filesystem/S3) with references in the database. Streaming is used for large files.
+A: Binary data is stored separately (filesystem/S3) with references in the database. See [Data Flow - Binary Data](./data-flow.md#binary-data-handling) for details.
 
 **Q: Can I run multiple main processes?**
-A: Yes, in Queue mode you can run multiple main processes behind a load balancer.
+A: Yes, in Queue mode you can run multiple main processes behind a load balancer. See [Queue Mode Architecture](./execution-modes.md#queue-mode-architecture).
 
 **Q: How are credentials secured?**
-A: Credentials are encrypted with AES-256 using the `N8N_ENCRYPTION_KEY` before storage.
+A: Credentials are encrypted with AES-256-GCM. See [Security Architecture](./system-overview.md#security-architecture) for details.
 
 ## 📈 Monitoring & Observability
 
-- Health endpoints: `/healthz` and `/healthz/readiness`
-- Prometheus metrics endpoint
-- Structured logging with Winston
-- Event bus for audit trails
+See [System Overview - Monitoring](./system-overview.md#monitoring--observability) for monitoring architecture and health check endpoints.
 

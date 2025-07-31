@@ -1,5 +1,7 @@
 # n8n Package Architecture
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 n8n uses a monorepo structure with pnpm workspaces. This document describes the package organization and their relationships.
 
 ## Package Overview
@@ -30,14 +32,14 @@ graph TD
     CLI --> WF[workflow]
     CLI --> DB["@n8n/db"]
     CLI --> NODES[nodes-base]
-    
+
     CORE --> WF
     NODES --> CORE
     NODES --> WF
-    
+
     EDITOR[editor-ui] --> WF
     EDITOR --> API["@n8n/rest-api-client"]
-    
+
     DB --> DI["@n8n/di"]
     CORE --> DI
     CLI --> DI
@@ -152,7 +154,7 @@ Nodes are defined in the `nodes-base` package and implement the `INodeType` inte
 ```typescript
 export class HttpRequest implements INodeType {
   description: INodeTypeDescription = { /* node metadata */ };
-  
+
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     // Node implementation
   }
