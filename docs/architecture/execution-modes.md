@@ -1,144 +1,177 @@
 # n8n Execution Modes
 
-n8n supports different execution modes to accommodate various deployment scenarios, from simple single-instance setups to highly scalable distributed systems.
+n8n supports two execution modes to accommodate various deployment scenarios, from simple single-instance setups to highly scalable distributed systems.
 
 ## Overview
 
-n8n can run in two primary modes:
+n8n can run in two execution modes:
 - **Regular Mode**: Single process handles everything (default)
 - **Queue Mode**: Distributed processes with Redis-based job queue
 
-Additionally, n8n has three process types:
-- **Main Process**: UI, API, and orchestration
-- **Worker Process**: Workflow execution (queue mode only)
-- **Webhook Process**: Webhook handling (queue mode only)
+These modes are configured via the `EXECUTIONS_MODE` environment variable:
+```bash
+# Regular mode (default)
+EXECUTIONS_MODE=regular
 
-## Process Types
-
-### Main Process (`n8n start`)
-
-The main process is the heart of n8n, serving the web UI and API.
-
-**Responsibilities:**
-- Serve the editor UI (default port: 5678)
-- Handle API requests (REST API)
-- Manage workflow activation/deactivation
-- Handle test webhooks
-- In regular mode: Execute workflows
-- In queue mode: Orchestrate execution via Redis
-
-**Key Components:**
-```typescript
-// packages/cli/src/commands/start.ts
-export class Start extends BaseCommand {
-  // Initializes:
-  - Server (Express application)
-  - ActiveWorkflowManager
-  - WebhookService
-  - EventBus
-  - Database connections
-}
+# Queue mode
+EXECUTIONS_MODE=queue
 ```
+
+## Regular Mode
+
+In regular mode, a single n8n process handles all responsibilities:
+
+**Characteristics:**
+- Single process architecture
+- All functionality in one process
+- Direct execution without queue overhead
+- Simpler deployment and debugging
+- Limited by single process resources
+
+**When to Use:**
+- Personal or small team deployments
+- Low to medium workflow volume
+- Development and testing environments
+- When simplicity is prioritized over scalability
 
 **Configuration:**
 ```bash
-# Basic start
+# Set execution mode (default is regular)
+EXECUTIONS_MODE=regular
+
+# Optional: Set concurrency limit
+N8N_CONCURRENCY_PRODUCTION_LIMIT=5  # Default: -1 (unlimited)
+
+# Start n8n
 n8n start
-
-# With tunnel for webhook development
-n8n start --tunnel
-
-# Custom port
-N8N_PORT=8080 n8n start
 ```
 
-### Worker Process (`n8n worker`)
+## Queue Mode
 
-Workers execute workflows in queue mode, enabling horizontal scaling.
+Queue mode distributes n8n functionality across multiple specialized processes, enabling horizontal scaling and high availability.
+
+**Characteristics:**
+- Multi-process architecture
+- Redis-based job queue (Bull)
+- Horizontal scalability
+- Process isolation for reliability
+- Higher infrastructure complexity
+
+**When to Use:**
+- High workflow volume
+- Need for high availability
+- Horizontal scaling requirements
+- Resource-intensive workflows
+- Multi-tenant environments
+
+### Process Types in Queue Mode
+
+#### 1. Main Process (`n8n start`)
+
+**Responsibilities:**
+- Serve the editor UI (default port: 5678)
+- Handle REST API requests
+- Manage workflow activation/deactivation
+- Queue workflow executions
+- Handle test webhooks
+- WebSocket connections for real-time updates
+
+**Configuration:**
+```bash
+# Required: Enable queue mode
+EXECUTIONS_MODE=queue
+
+# Redis configuration
+QUEUE_BULL_REDIS_HOST=localhost
+QUEUE_BULL_REDIS_PORT=6379
+QUEUE_BULL_REDIS_DB=0
+
+# Optional: Redis authentication
+QUEUE_BULL_REDIS_PASSWORD=yourpassword
+
+# Start main process
+n8n start
+```
+
+#### 2. Worker Process (`n8n worker`)
 
 **Responsibilities:**
 - Pull jobs from Redis queue
 - Execute workflows
-- Report execution status
+- Report execution progress and results
 - Handle execution timeouts
-- No UI or API serving
-
-**Key Components:**
-```typescript
-// packages/cli/src/commands/worker.ts
-export class Worker extends BaseCommand {
-  // Initializes:
-  - ScalingService (job processing)
-  - Queue connection (Bull/Redis)
-  - Node types and credentials
-  - Execution hooks
-}
-```
+- Process binary data
 
 **Configuration:**
 ```bash
-# Start worker with concurrency limit
+# Start worker with concurrency setting
 n8n worker --concurrency=10
 
-# Environment configuration
+# Or use environment variable (overrides --concurrency flag)
 N8N_CONCURRENCY_PRODUCTION_LIMIT=20 n8n worker
 ```
 
-**Scaling Considerations:**
-- Workers are stateless and can be scaled horizontally
-- Each worker processes `concurrency` number of jobs simultaneously
-- Workers compete for jobs using Redis atomic operations
-- Health endpoint available at `/healthz`
+**Concurrency:**
+- Default: 10 concurrent executions per worker
+- Set via `--concurrency` flag or `N8N_CONCURRENCY_PRODUCTION_LIMIT`
+- Each worker can process multiple executions simultaneously
+- Scale horizontally by adding more worker processes
 
-### Webhook Process (`n8n webhook`)
+**Health Monitoring:**
+```bash
+# Enable worker health endpoints
+QUEUE_HEALTH_CHECK_ACTIVE=true
+QUEUE_HEALTH_CHECK_PORT=5678
 
-Dedicated process for handling production webhooks in queue mode.
-
-**Responsibilities:**
-- Listen for webhook HTTP requests
-- Validate webhook authenticity
-- Queue webhook executions
-- Minimal memory footprint
-- No workflow execution
-
-**Key Components:**
-```typescript
-// packages/cli/src/commands/webhook.ts
-export class Webhook extends BaseCommand {
-  // Initializes:
-  - WebhookServer (Express application)
-  - Minimal webhook routing
-  - Queue publisher
-  - No execution engine
-}
+# Health endpoints:
+# GET /healthz - Basic health check
+# GET /healthz/readiness - Database and Redis connectivity
 ```
 
-**Why Separate Webhook Process?**
-- Webhook endpoints must be highly available
-- Prevents execution bottlenecks from affecting webhook reception
+#### 3. Webhook Process (`n8n webhook`)
+
+**Responsibilities:**
+- Handle production webhook requests
+- Validate webhook signatures
+- Queue webhook-triggered executions
+- Minimal resource footprint
+
+**Note:** Webhook process REQUIRES queue mode and will error if started in regular mode.
+
+**Configuration:**
+```bash
+# Same Redis configuration as main process
+EXECUTIONS_MODE=queue
+QUEUE_BULL_REDIS_HOST=localhost
+
+# Start webhook process
+n8n webhook
+```
+
+**Benefits:**
+- Isolates webhook handling from execution load
+- Ensures webhook availability during high execution load
 - Allows independent scaling of webhook capacity
-- Smaller memory footprint than full n8n instance
+- Smaller memory footprint than main process
 
-## Regular Mode Architecture
+## Architecture Comparison
 
-In regular mode, a single process handles all responsibilities:
+### Regular Mode Architecture
 
 ```mermaid
 graph TD
     subgraph "Single n8n Process"
-        UI[UI Server]
+        UI[Editor UI]
         API[REST API]
-        AUTH[Authentication]
         WM[Workflow Manager]
         EE[Execution Engine]
         WH[Webhook Handler]
-        CRON[Cron Scheduler]
+        AE[Active Executions]
     end
     
     subgraph "External"
         BROWSER[Browser]
         WEBHOOK[Webhook Sources]
-        TRIGGER[Other Triggers]
     end
     
     subgraph "Storage"
@@ -149,42 +182,33 @@ graph TD
     BROWSER --> UI
     BROWSER --> API
     WEBHOOK --> WH
-    TRIGGER --> EE
     
-    API --> AUTH
     API --> WM
     WM --> EE
-    CRON --> EE
+    WH --> EE
+    EE --> AE
     
     EE --> DB
-    WM --> DB
+    AE --> DB
     EE --> FS
 ```
 
-**Advantages:**
-- Simple deployment
-- No additional infrastructure (Redis)
-- Easy debugging
-- Lower latency
+**Execution Flow:**
+1. Workflow triggered (manual, webhook, or schedule)
+2. Execution registered in ActiveExecutions
+3. WorkflowExecute processes nodes directly
+4. Results saved to database
+5. UI updated via polling or events
 
-**Limitations:**
-- Single point of failure
-- Limited scalability
-- Memory constraints
-- Webhook processing affects execution
-
-## Queue Mode Architecture
-
-Queue mode separates concerns across multiple process types:
+### Queue Mode Architecture
 
 ```mermaid
 graph TB
-    subgraph "Main Process Cluster"
+    LB[Load Balancer]
+    
+    subgraph "Main Processes"
         M1[Main 1]
         M2[Main 2]
-        LB[Load Balancer]
-        LB --> M1
-        LB --> M2
     end
     
     subgraph "Worker Pool"
@@ -198,94 +222,146 @@ graph TB
         WH2[Webhook 2]
     end
     
-    subgraph "Message Queue"
-        REDIS[(Redis)]
-        subgraph "Queues"
-            EQ[Execution Queue]
-            WQ[Webhook Queue]
-        end
+    subgraph "Redis"
+        QUEUE[Bull Queue<br/>'bull:jobs']
+        PUBSUB[Pub/Sub Channels]
     end
     
-    subgraph "Shared Storage"
-        DB[(PostgreSQL)]
-        S3[S3/Binary Data]
+    subgraph "Storage"
+        DB[(Database)]
+        S3[Binary Data Storage]
     end
     
-    M1 --> REDIS
-    M2 --> REDIS
+    LB --> M1
+    LB --> M2
     
-    WH1 --> WQ
-    WH2 --> WQ
-    WQ --> EQ
+    M1 --> QUEUE
+    M2 --> QUEUE
     
-    EQ --> W1
-    EQ --> W2
-    EQ --> W3
+    WH1 --> QUEUE
+    WH2 --> QUEUE
+    
+    QUEUE --> W1
+    QUEUE --> W2
+    QUEUE --> W3
     
     W1 --> DB
     W2 --> DB
     W3 --> DB
     
-    W1 --> S3
-    W2 --> S3
-    W3 --> S3
+    M1 -.-> PUBSUB
+    M2 -.-> PUBSUB
+    W1 -.-> PUBSUB
+    W2 -.-> PUBSUB
+    W3 -.-> PUBSUB
 ```
 
-### Queue Mode Configuration
+**Execution Flow:**
+1. Workflow triggered via main or webhook process
+2. Job queued in Redis with execution data
+3. Worker pulls job from queue
+4. Worker executes workflow
+5. Progress updates sent via Redis pub/sub
+6. Results saved to database
+7. Main process notifies UI via WebSocket
 
-**Required Environment Variables:**
+## Redis Configuration
+
+### Basic Configuration
+
 ```bash
 # Enable queue mode
 EXECUTIONS_MODE=queue
 
-# Redis configuration
+# Redis connection
 QUEUE_BULL_REDIS_HOST=localhost
 QUEUE_BULL_REDIS_PORT=6379
 QUEUE_BULL_REDIS_DB=0
 
-# Optional: Redis password
+# Authentication
 QUEUE_BULL_REDIS_PASSWORD=yourpassword
+QUEUE_BULL_REDIS_USERNAME=default  # Redis 6.0+
 
-# Optional: Redis TLS
+# TLS/SSL
 QUEUE_BULL_REDIS_TLS=true
+
+# Connection options
+QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD=10000  # Max retry timeout (ms)
+QUEUE_BULL_REDIS_DUALSTACK=true  # Enable IPv4/IPv6
 ```
 
-### Job Queue Details
+### Redis Cluster Configuration
 
-n8n uses Bull (Redis-based queue) for job management:
+```bash
+# Comma-separated list of cluster nodes
+QUEUE_BULL_REDIS_CLUSTER_NODES=redis-1:6379,redis-2:6379,redis-3:6379
+```
 
-**Queue Features:**
-- Automatic retries with exponential backoff
-- Job priority levels
-- Delayed job scheduling
-- Job progress tracking
-- Graceful shutdown handling
+### Bull Queue Settings
 
-**Job Lifecycle:**
+```bash
+# Queue key prefix in Redis
+QUEUE_BULL_PREFIX=bull  # Results in keys like 'bull:jobs:*'
+
+# Job processing settings
+QUEUE_WORKER_LOCK_DURATION=30000      # Job lease time (ms)
+QUEUE_WORKER_LOCK_RENEW_TIME=15000    # Lease renewal interval (ms)
+QUEUE_WORKER_STALLED_INTERVAL=30000   # Check for stalled jobs (ms)
+QUEUE_WORKER_MAX_STALLED_COUNT=1      # Max stalled job retries
+```
+
+## Job Queue Implementation
+
+n8n uses Bull (Redis-based queue library) for job management. Jobs represent workflow executions that need to be processed.
+
+### Job Structure
+
+```typescript
+interface JobData {
+  executionId: string;
+  loadStaticData: boolean;
+}
+```
+
+### Job Lifecycle
+
 ```mermaid
 stateDiagram-v2
     [*] --> Queued: Job Created
     Queued --> Active: Worker Claims
     Active --> Completed: Success
     Active --> Failed: Error
-    Failed --> Queued: Retry
-    Failed --> Failed: Max Retries
+    Active --> Stalled: Worker Crash
+    Failed --> Queued: Retry (if < maxStalledCount)
+    Stalled --> Queued: Recovery
     Completed --> [*]
-    Failed --> [*]
+    Failed --> [*]: Max Retries Reached
 ```
+
+### Queue Features
+
+1. **Stalled Job Recovery**: Jobs are marked as stalled if a worker crashes or fails to renew the lock
+2. **Progress Updates**: Workers send real-time progress via Redis pub/sub
+3. **Graceful Shutdown**: Workers wait for active executions to complete (configurable timeout)
+4. **Queue Recovery**: Leader process periodically checks for orphaned executions
+5. **Concurrency Control**: Each worker limits concurrent executions
 
 ## Process Communication
 
 ### Regular Mode
-- Direct function calls
-- Shared memory
-- Event emitters
+- Direct function calls within single process
+- Shared memory for state
+- Node.js EventEmitter for internal events
+- No inter-process communication needed
 
 ### Queue Mode
-- Redis pub/sub for real-time updates
-- Job queues for work distribution
-- Database for persistent state
-- WebSocket for UI updates
+
+Queue mode uses multiple communication channels:
+
+1. **Bull Queue (Redis)**: Job distribution
+2. **Redis Pub/Sub**: Real-time event broadcasting
+3. **Database**: Persistent state and results
+4. **WebSocket**: UI real-time updates
 
 ```mermaid
 sequenceDiagram
@@ -296,125 +372,313 @@ sequenceDiagram
     participant DB as Database
     
     UI->>Main: Execute Workflow
-    Main->>DB: Create Execution
+    Main->>DB: Create Execution Record
     Main->>Redis: Queue Job
-    Redis->>Worker: Job Assignment
-    Worker->>Redis: Progress Updates
-    Redis->>Main: Progress Events
-    Main->>UI: WebSocket Updates
-    Worker->>DB: Save Results
-    Worker->>Redis: Job Complete
+    Note over Redis: Job in 'waiting' state
+    
+    Worker->>Redis: Poll for Jobs
+    Redis->>Worker: Assign Job
+    Note over Redis: Job in 'active' state
+    
+    Worker->>Redis: Publish Progress
+    Redis->>Main: Progress Event (Pub/Sub)
+    Main->>UI: WebSocket Update
+    
+    Worker->>DB: Save Execution Data
+    Worker->>Redis: Mark Job Complete
     Redis->>Main: Completion Event
     Main->>UI: Final Status
 ```
 
-## Choosing the Right Mode
+### Pub/Sub Channels
 
-### Use Regular Mode When:
-- Running n8n for personal use
-- Low to medium workflow volume
-- Simple deployment is priority
-- Testing and development
-- Memory and CPU are not constraints
+n8n uses Redis pub/sub for:
+- `n8n.commands`: Command broadcasting (e.g., reload credentials)
+- `n8n.worker-status`: Worker health updates
+- Execution progress events
 
-### Use Queue Mode When:
-- High workflow volume
-- Need high availability
-- Horizontal scaling required
-- Webhook reliability is critical
-- Running resource-intensive workflows
-- Multi-tenant environments
+## Scaling and Performance
 
-## Health Monitoring
+### Regular Mode Performance
 
-Each process type exposes health endpoints:
+**Concurrency Control:**
+```bash
+# Limit concurrent executions (default: -1 = unlimited)
+N8N_CONCURRENCY_PRODUCTION_LIMIT=5
+```
 
-**Main Process:**
-- `GET /healthz` - Basic health
-- `GET /healthz/readiness` - Ready to serve traffic
+**Considerations:**
+- All executions share process memory
+- CPU-bound workflows can block UI
+- Memory leaks affect entire application
+- Single process limits total throughput
 
-**Worker Process:**
-- `GET /healthz` - Worker health
-- Includes queue connection status
-- Reports current job count
+### Queue Mode Scaling
 
-**Webhook Process:**
-- `GET /healthz` - Webhook server health
-- Minimal dependencies check
+**Horizontal Scaling Strategy:**
+
+1. **Monitor Queue Metrics:**
+   - Queue depth (pending jobs)
+   - Job wait time
+   - Worker utilization
+   - Failed job rate
+
+2. **Scale Workers:**
+   ```bash
+   # Add more workers when queue depth increases
+   n8n worker --concurrency=10  # Worker 1
+   n8n worker --concurrency=10  # Worker 2
+   n8n worker --concurrency=20  # Worker 3 (higher capacity)
+   ```
+
+3. **Scale Main Processes:**
+   - Use load balancer for multiple main processes
+   - Ensures UI/API availability
+   - Distributes webhook load
+
+4. **Scale Webhook Processes:**
+   - Add webhook processes for high webhook volume
+   - Lightweight processes with minimal overhead
+
+## Queue Recovery and Reliability
+
+### Stalled Job Recovery
+
+When workers crash or lose connection, jobs can become stalled:
+
+```bash
+# Configure stalled job handling
+QUEUE_WORKER_STALLED_INTERVAL=30000   # Check interval (ms)
+QUEUE_WORKER_MAX_STALLED_COUNT=1      # Max recovery attempts
+```
+
+### Execution Recovery
+
+The leader main process periodically checks for orphaned executions:
+
+```bash
+# Queue recovery settings
+N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL=180  # Minutes between checks
+N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH=100     # Executions per batch
+```
+
+### Graceful Shutdown
+
+```bash
+# Worker shutdown timeout (seconds)
+N8N_GRACEFUL_SHUTDOWN_TIMEOUT=30
+
+# Deprecated (still works but use above instead)
+QUEUE_WORKER_TIMEOUT=30
+```
+
+During shutdown:
+1. Worker stops accepting new jobs
+2. Waits for active executions to complete
+3. Force terminates after timeout
 
 ## Best Practices
 
 ### Regular Mode
-1. Monitor memory usage
-2. Set execution timeouts
-3. Use execution pruning
-4. Limit concurrent executions
+
+1. **Resource Management:**
+   - Set `N8N_CONCURRENCY_PRODUCTION_LIMIT` to prevent overload
+   - Configure execution timeouts: `EXECUTIONS_TIMEOUT=300`
+   - Enable execution pruning to manage database size
+   - Monitor process memory usage
+
+2. **Performance:**
+   - Use external binary data storage for large files
+   - Avoid CPU-intensive operations in webhook nodes
+   - Consider queue mode if experiencing performance issues
 
 ### Queue Mode
+
 1. **Redis Configuration:**
-   - Use Redis persistence (AOF or RDB)
-   - Configure appropriate memory limits
-   - Monitor Redis memory usage
+   - **Enable persistence**: Use AOF (append-only file) or RDB snapshots
+   - **Set memory policy**: `maxmemory-policy allkeys-lru`
+   - **Configure connection pooling**: Bull handles this automatically
+   - **Monitor memory usage**: Set alerts for high memory usage
 
-2. **Worker Scaling:**
-   - Start with concurrency = CPU cores
-   - Monitor job wait times
-   - Scale workers based on queue depth
+2. **Worker Deployment:**
+   ```bash
+   # Recommended starting configuration
+   CPU_CORES=$(nproc)
+   n8n worker --concurrency=$CPU_CORES
+   ```
+   - Deploy workers on separate machines from Redis
+   - Use container orchestration (Kubernetes, ECS) for auto-scaling
+   - Set resource limits to prevent memory leaks from affecting other processes
 
-3. **Process Distribution:**
-   - Run main processes behind load balancer
-   - Distribute workers across nodes
-   - Separate webhook processes for reliability
+3. **High Availability:**
+   - Run multiple main processes behind a load balancer
+   - Use Redis Sentinel or Redis Cluster for Redis HA
+   - Deploy workers across availability zones
+   - Implement health checks and auto-restart
 
 4. **Monitoring:**
-   - Queue depth metrics
-   - Worker utilization
-   - Job failure rates
-   - Execution times
+   - **Queue metrics**: Depth, wait time, processing time
+   - **Worker metrics**: CPU, memory, active jobs
+   - **Redis metrics**: Memory, connections, operations/sec
+   - **Application metrics**: Execution success/failure rates
 
 ## Migration Between Modes
 
 ### Regular to Queue Mode
 
-1. Install and configure Redis
-2. Update environment variables:
+1. **Prepare Infrastructure:**
    ```bash
-   EXECUTIONS_MODE=queue
-   QUEUE_BULL_REDIS_HOST=your-redis-host
+   # Install Redis (example for Ubuntu)
+   sudo apt-get install redis-server
+   
+   # Configure Redis persistence
+   redis-cli CONFIG SET appendonly yes
    ```
-3. Start main process: `n8n start`
-4. Start workers: `n8n worker`
-5. (Optional) Start webhook process: `n8n webhook`
+
+2. **Update Configuration:**
+   ```bash
+   # Set environment variables
+   export EXECUTIONS_MODE=queue
+   export QUEUE_BULL_REDIS_HOST=localhost
+   export QUEUE_BULL_REDIS_PORT=6379
+   ```
+
+3. **Deploy Processes:**
+   ```bash
+   # Stop existing regular mode process
+   systemctl stop n8n
+   
+   # Start main process
+   n8n start &
+   
+   # Start worker(s)
+   n8n worker --concurrency=10 &
+   
+   # Optional: Start webhook process
+   n8n webhook &
+   ```
 
 ### Queue to Regular Mode
 
-1. Ensure no jobs in queue
-2. Stop all workers and webhook processes
-3. Update configuration:
+1. **Verify Queue is Empty:**
    ```bash
-   EXECUTIONS_MODE=regular
+   # Check Redis for pending jobs
+   redis-cli KEYS "bull:jobs:*"
    ```
-4. Restart main process
-5. Remove Redis (optional)
+
+2. **Stop Queue Mode Processes:**
+   ```bash
+   # Stop all workers and webhook processes
+   pkill -f "n8n worker"
+   pkill -f "n8n webhook"
+   ```
+
+3. **Update Configuration:**
+   ```bash
+   export EXECUTIONS_MODE=regular
+   # Remove Redis configuration variables
+   unset QUEUE_BULL_REDIS_HOST
+   unset QUEUE_BULL_REDIS_PORT
+   ```
+
+4. **Start Regular Mode:**
+   ```bash
+   n8n start
+   ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Queue Mode: Jobs not processing**
-- Check Redis connectivity
-- Verify worker processes are running
-- Check worker logs for errors
-- Ensure queue names match
+#### Jobs Not Processing
 
-**High Memory Usage**
-- Limit workflow data size
-- Enable execution pruning
-- Reduce worker concurrency
-- Use external binary data storage
+1. **Check Redis Connection:**
+   ```bash
+   # Test Redis connectivity
+   redis-cli -h $QUEUE_BULL_REDIS_HOST ping
+   
+   # Check for queued jobs
+   redis-cli LLEN bull:jobs:wait
+   redis-cli LLEN bull:jobs:active
+   ```
 
-**Webhook Delays**
-- Scale webhook processes
-- Check webhook process health
-- Monitor Redis queue depth
-- Verify network connectivity
+2. **Verify Worker Status:**
+   ```bash
+   # Check worker logs
+   journalctl -u n8n-worker -f
+   
+   # Check worker health endpoint (if enabled)
+   curl http://worker-host:5678/healthz
+   ```
+
+3. **Debug Job Data:**
+   ```bash
+   # Inspect job details in Redis
+   redis-cli --raw HGETALL bull:jobs:1
+   ```
+
+#### Stalled Executions
+
+1. **Check for Stalled Jobs:**
+   ```bash
+   redis-cli ZRANGE bull:jobs:stalled 0 -1
+   ```
+
+2. **Manual Recovery:**
+   - Stalled jobs are automatically recovered based on `QUEUE_WORKER_MAX_STALLED_COUNT`
+   - To force recovery, restart workers
+
+#### High Memory Usage
+
+1. **Worker Memory:**
+   - Reduce `--concurrency` value
+   - Enable execution pruning
+   - Use external binary data storage:
+     ```bash
+     N8N_DEFAULT_BINARY_DATA_MODE=s3
+     ```
+
+2. **Redis Memory:**
+   ```bash
+   # Check Redis memory usage
+   redis-cli INFO memory
+   
+   # Set memory limit
+   redis-cli CONFIG SET maxmemory 2gb
+   redis-cli CONFIG SET maxmemory-policy allkeys-lru
+   ```
+
+#### Performance Issues
+
+1. **Queue Bottlenecks:**
+   ```bash
+   # Monitor queue depth over time
+   watch -n 1 'redis-cli LLEN bull:jobs:wait'
+   
+   # Check job processing time
+   redis-cli --raw HGET bull:jobs:1 processedOn
+   redis-cli --raw HGET bull:jobs:1 finishedOn
+   ```
+
+2. **Worker Optimization:**
+   - Increase worker concurrency if CPU/memory allows
+   - Add more worker processes
+   - Distribute workers geographically closer to data sources
+
+### Debugging Tips
+
+1. **Enable Debug Logging:**
+   ```bash
+   N8N_LOG_LEVEL=debug
+   N8N_LOG_OUTPUT=console
+   ```
+
+2. **Monitor Bull Queue Events:**
+   - Workers emit events for job lifecycle
+   - Main process logs queue operations
+   - Check Redis for job data and state
+
+3. **Use Queue Monitoring Tools:**
+   - Bull Dashboard (for development)
+   - Redis monitoring tools
+   - Custom metrics via Prometheus
