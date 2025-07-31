@@ -116,6 +116,9 @@ The monorepo is organized into these key packages:
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-test-id must be a single value** (no spaces or multiple values)
 
+When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
+CSS variables and styling conventions.
+
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
 - **Mock all external dependencies** in unit tests
