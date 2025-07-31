@@ -1,7 +1,6 @@
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import {
 	type Dimensions,
 	type FitView,
@@ -12,18 +11,18 @@ import {
 	type ZoomTo,
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
+import { usePostHog } from '@/stores/posthog.store';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT } from '@/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
+	const postHogStore = usePostHog();
 	const isEnabled = computed(
 		() =>
-			!Number.isNaN(settingsStore.experimental__minZoomNodeSettingsInCanvas) &&
-			settingsStore.experimental__minZoomNodeSettingsInCanvas > 0,
+			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
+			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const maxCanvasZoom = computed(() =>
-		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
-	);
+	const maxCanvasZoom = computed(() => (isEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});

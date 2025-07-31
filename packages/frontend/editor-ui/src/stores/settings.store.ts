@@ -311,15 +311,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	};
 
 	/**
-	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
-	 */
-	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
-		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
-		0,
-		{ writeDefaults: false },
-	);
-
-	/**
 	 * (Experimental) If set to true, show node settings for a selected node in docked pane
 	 */
 	const experimental__dockedNodeSettingsEnabled = useLocalStorage(
@@ -384,7 +375,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		experimental__minZoomNodeSettingsInCanvas,
 		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
