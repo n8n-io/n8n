@@ -52,15 +52,12 @@ export class DataStore implements INodeType {
 	};
 
 	methods = {
+		listDataStores: {},
 		listSearch: {
 			async tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const baseUrl = this.getRestApiUrl().replace(/localhost/, '127.0.0.1');
-				const response = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: baseUrl + '/data-store',
-				})) as { data: { count: number; data: IDataObject[] } };
+				const [stores, _count] = await this.helpers.listDataStores();
 
-				const results = (response.data.data ?? []).map((row: IDataObject) => {
+				const results = stores.map((row: IDataObject) => {
 					return {
 						name: row.name as string,
 						value: row.id as string,
@@ -75,16 +72,11 @@ export class DataStore implements INodeType {
 		resourceMapping: {
 			async getColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 				const id = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
-				const baseUrl = this.getRestApiUrl().replace(/localhost/, '127.0.0.1');
-
-				const response = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: baseUrl + `/data-store/${id}/get-columns`,
-				})) as { data: IDataObject[] };
+				const columns = await this.helpers.getDataStoreColumns(id);
 
 				const fields: ResourceMapperField[] = [];
 
-				for (const field of response?.data ?? []) {
+				for (const field of columns ?? []) {
 					const type = field.type as keyof FieldTypeMap;
 
 					fields.push({

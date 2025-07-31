@@ -51,6 +51,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { DataStoreService } from './modules/data-store/data-store.service';
 
 export async function getRunData(
 	workflowData: IWorkflowBase,
@@ -401,6 +402,7 @@ export async function getBase(
 
 			return executionData?.data;
 		},
+		dataStoreService: Container.get(DataStoreService),
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,

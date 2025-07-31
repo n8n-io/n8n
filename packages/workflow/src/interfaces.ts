@@ -1023,6 +1023,13 @@ export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	): Promise<INodeExecutionData[]>;
 }
 
+export interface IDataStoreFunctions {
+	listDataStores(): Promise<[Array<{ id: string; name: string }>, number]>;
+	getDataStoreColumns(
+		dataStoreId: string,
+	): Promise<Array<{ name: string; type: string; index: number }>>;
+}
+
 export interface ILoadOptionsFunctions extends FunctionsBase {
 	getNodeParameter(
 		parameterName: string,
@@ -1035,7 +1042,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & IDataStoreFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
