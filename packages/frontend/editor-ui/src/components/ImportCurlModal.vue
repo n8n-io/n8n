@@ -24,7 +24,7 @@ onMounted(() => {
 		string,
 		string
 	>;
-	const nodeId = ndvStore.activeNode?.id as string;
+	const nodeId = ndvStore.activeNode?.id ?? '';
 	const command = curlCommands?.[nodeId];
 	curlCommand.value = command ?? '';
 	setTimeout(() => {
