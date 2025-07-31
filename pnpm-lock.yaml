@@ -635,6 +635,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/create-node:
+    dependencies:
+      '@n8n/node-cli':
+        specifier: workspace:*
+        version: link:../node-cli
+
   packages/@n8n/db:
     dependencies:
       '@n8n/api-types':
@@ -912,6 +918,25 @@ importers:
         specifier: 'catalog:'
         version: 3.25.67
 
+  packages/@n8n/node-cli:
+    dependencies:
+      '@oclif/core':
+        specifier: ^4.5.2
+        version: 4.5.2
+      prompts:
+        specifier: ^2.4.2
+        version: 2.4.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@oclif/test':
+        specifier: ^4.1.13
+        version: 4.1.13(@oclif/core@4.5.2)
+
   packages/@n8n/nodes-langchain:
     dependencies:
       '@aws-sdk/client-sso-oidc':
@@ -922,7 +947,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))
+        version: 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -949,7 +974,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.47(dc9073baf40e018f46d70486a38ca362)
+        version: 0.3.47(d020f0fdc951e6780c547ab03e43240e)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
@@ -1066,7 +1091,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.29
-        version: 0.3.29(e83255224da9386305dfb90eaf104268)
+        version: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1729,6 +1754,9 @@ importers:
         version: link:../@n8n/di
       '@sentry/node':
         specifier: 'catalog:'
+        version: 9.42.1
+      '@sentry/node-native':
+        specifier: ^9.42.1
         version: 9.42.1
       axios:
         specifier: 'catalog:'
@@ -5731,6 +5759,16 @@ packages:
     resolution: {integrity: sha512-sU4Dx+RXCWAkrMw8tQFYAL6VfcHYKLPxVC9iKfgTXr4aDhcCssDwrbgpx0Di1dnNxvQlDGUhuCEInZuIY/nNfw==}
     engines: {node: '>=18.0.0'}
 
+  '@oclif/core@4.5.2':
+    resolution: {integrity: sha512-eQcKyrEcDYeZJKu4vUWiu0ii/1Gfev6GF4FsLSgNez5/+aQyAUCjg3ZWlurf491WiYZTXCWyKAxyPWk8DKv2MA==}
+    engines: {node: '>=18.0.0'}
+
+  '@oclif/test@4.1.13':
+    resolution: {integrity: sha512-pulrTiJRhoAKizFf6y5WeHvM2JyoRiZKV0H8qqYEoE0UHDKqInNmfGJyp8Ip6lTVQeMv1U8YCAXOS/HiWPVWeg==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@oclif/core': '>= 3.0.0'
+
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
 
@@ -6314,6 +6352,10 @@ packages:
     resolution: {integrity: sha512-ocyN85ndnWRHMtS6kJpYbQiovvXT09UJLIzZfsyj/cIl/kBYaljDVoPHhSWMaMVUWQrP/Ut2Zuse9wnowDvXWg==}
     engines: {node: '>=18'}
 
+  '@sentry-internal/node-native-stacktrace@0.2.2':
+    resolution: {integrity: sha512-ZRS+a1Ik+w6awjp9na5vHBqLNkIxysfGDswLVAkjtVdBUxtfsEVI8OA6r8PijJC5Gm1oAJJap2e9H7TSiCUQIQ==}
+    engines: {node: '>=18'}
+
   '@sentry-internal/replay-canvas@9.42.1':
     resolution: {integrity: sha512-z2Pm7vl5SaK1k/MhYV/CRkDYT32Y6q/CLlV3toKphAK1gZFmJ8FGjYE6DU2Zju2upb9ulgyoU8bLU5DLLZCsZA==}
     engines: {node: '>=18'}
@@ -6341,6 +6383,10 @@ packages:
       '@opentelemetry/resources': ^1.30.1 || ^2.0.0
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.0.0
       '@opentelemetry/semantic-conventions': ^1.34.0
+
+  '@sentry/node-native@9.42.1':
+    resolution: {integrity: sha512-K64I5I5tqqLeH0CFJitoVP+mPOA558dxvC9Vm6x79fl/W8mgFCGiRROjdpeF0aUWghRGAJUbNREFbI3VrIlUOg==}
+    engines: {node: '>=18'}
 
   '@sentry/node@9.42.1':
     resolution: {integrity: sha512-6alU59CUp3NzRWt0zaHl3A1Rv9PeABhtj8cD9fdI5QYj5oFQnxbERY/Y/V9R+pNx3ejwCQRbd+SDApfYeQgejg==}
@@ -8035,6 +8081,10 @@ packages:
   ansi-styles@6.2.1:
     resolution: {integrity: sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==}
     engines: {node: '>=12'}
+
+  ansis@3.17.0:
+    resolution: {integrity: sha512-0qWUglt9JEqLFr3w1I1pbrChn1grhaiAR2ocX1PP/flRmxgtwTzPFFFnfIlD6aMOLQZgSuCRlidD70lvx8yhzg==}
+    engines: {node: '>=14'}
 
   ansis@3.2.0:
     resolution: {integrity: sha512-Yk3BkHH9U7oPyCN3gL5Tc7CpahG/+UFv/6UG03C311Vy9lzRmA5uoxDTpU9CO3rGHL6KzJz/pdDeXZCZ5Mu/Sg==}
@@ -12766,6 +12816,10 @@ packages:
 
   node-abi@3.54.0:
     resolution: {integrity: sha512-p7eGEiQil0YUV3ItH4/tBb781L5impVmmx2E9FRKF7d18XXzp4PGT2tdYMFY6wQqgxD0IwNZOiSJ0/K0fSi/OA==}
+    engines: {node: '>=10'}
+
+  node-abi@3.75.0:
+    resolution: {integrity: sha512-OhYaY5sDsIka7H7AtijtI9jwGYLyl29eQn/W623DiN/MIv5sUqc4g7BIDThX+gb7di9f6xK02nkp8sdfFWZLTg==}
     engines: {node: '>=10'}
 
   node-abort-controller@3.1.1:
@@ -18375,7 +18429,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.10.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.10.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.10.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -18678,7 +18732,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -18687,7 +18741,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
-      langchain: 0.3.29(e83255224da9386305dfb90eaf104268)
+      langchain: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
     transitivePeerDependencies:
       - encoding
 
@@ -19241,7 +19295,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.47(dc9073baf40e018f46d70486a38ca362)':
+  '@langchain/community@0.3.47(d020f0fdc951e6780c547ab03e43240e)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.53.0)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -19253,7 +19307,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.29(e83255224da9386305dfb90eaf104268)
+      langchain: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
       langsmith: 0.3.45(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
       openai: 5.8.1(ws@8.18.2)(zod@3.25.67)
       uuid: 10.0.0
@@ -19267,7 +19321,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -19827,6 +19881,35 @@ snapshots:
       widest-line: 3.1.0
       wordwrap: 1.0.0
       wrap-ansi: 7.0.0
+
+  '@oclif/core@4.5.2':
+    dependencies:
+      ansi-escapes: 4.3.2
+      ansis: 3.17.0
+      clean-stack: 3.0.1
+      cli-spinners: 2.9.2
+      debug: 4.4.1(supports-color@8.1.1)
+      ejs: 3.1.10
+      get-package-type: 0.1.0
+      indent-string: 4.0.0
+      is-wsl: 2.2.0
+      lilconfig: 3.1.3
+      minimatch: 9.0.5
+      semver: 7.7.2
+      string-width: 4.2.3
+      supports-color: 8.1.1
+      tinyglobby: 0.2.14
+      widest-line: 3.1.0
+      wordwrap: 1.0.0
+      wrap-ansi: 7.0.0
+
+  '@oclif/test@4.1.13(@oclif/core@4.5.2)':
+    dependencies:
+      '@oclif/core': 4.5.2
+      ansis: 3.17.0
+      debug: 4.4.1(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - supports-color
 
   '@one-ini/wasm@0.1.1': {}
 
@@ -20482,6 +20565,11 @@ snapshots:
     dependencies:
       '@sentry/core': 9.42.1
 
+  '@sentry-internal/node-native-stacktrace@0.2.2':
+    dependencies:
+      detect-libc: 2.0.4
+      node-abi: 3.75.0
+
   '@sentry-internal/replay-canvas@9.42.1':
     dependencies:
       '@sentry-internal/replay': 9.42.1
@@ -20514,6 +20602,14 @@ snapshots:
       '@sentry/core': 9.42.1
       '@sentry/opentelemetry': 9.42.1(@opentelemetry/api@1.9.0)(@opentelemetry/context-async-hooks@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.36.0)
       import-in-the-middle: 1.14.2
+
+  '@sentry/node-native@9.42.1':
+    dependencies:
+      '@sentry-internal/node-native-stacktrace': 0.2.2
+      '@sentry/core': 9.42.1
+      '@sentry/node': 9.42.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@sentry/node@9.42.1':
     dependencies:
@@ -22704,6 +22800,8 @@ snapshots:
 
   ansi-styles@6.2.1: {}
 
+  ansis@3.17.0: {}
+
   ansis@3.2.0: {}
 
   any-promise@1.3.0: {}
@@ -22967,11 +23065,6 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.7.2: {}
-
-  axios-retry@4.5.0(axios@1.10.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.10.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
@@ -25016,7 +25109,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -25040,7 +25133,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.8.3)
       eslint: 9.29.0(jiti@1.21.7)
@@ -25079,7 +25172,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -26016,7 +26109,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26358,7 +26451,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.1
       '@types/tough-cookie': 4.0.5
-      axios: 1.10.0(debug@4.4.1)
+      axios: 1.10.0
       camelcase: 6.3.0
       debug: 4.4.1(supports-color@8.1.1)
       dotenv: 16.5.0
@@ -26368,7 +26461,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.10.0)
+      retry-axios: 2.6.0(axios@1.10.0(debug@4.4.1))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -27582,7 +27675,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.29(e83255224da9386305dfb90eaf104268):
+  langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd):
     dependencies:
       '@langchain/core': 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
       '@langchain/openai': 0.5.16(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(ws@8.18.2)
@@ -28757,6 +28850,10 @@ snapshots:
     dependencies:
       semver: 7.7.2
 
+  node-abi@3.75.0:
+    dependencies:
+      semver: 7.7.2
+
   node-abort-controller@3.1.1: {}
 
   node-addon-api@7.1.0: {}
@@ -29349,7 +29446,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -30292,7 +30389,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.10.0):
+  retry-axios@2.6.0(axios@1.10.0(debug@4.4.1)):
     dependencies:
       axios: 1.10.0
 
@@ -30319,7 +30416,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
