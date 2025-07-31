@@ -7,6 +7,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 
 const emit = defineEmits<{
 	delete: [];
@@ -19,6 +20,8 @@ const emit = defineEmits<{
 
 const props = defineProps<{
 	readOnly?: boolean;
+	showStatusIcons: boolean;
+	itemsClass: string;
 }>();
 
 const $style = useCssModule();
@@ -118,7 +121,7 @@ function onFocusNode() {
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 	>
-		<div :class="$style.canvasNodeToolbarItems">
+		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"
@@ -178,6 +181,7 @@ function onFocusNode() {
 				@click="onOpenContextMenu"
 			/>
 		</div>
+		<CanvasNodeStatusIcons v-if="showStatusIcons" :class="$style.statusIcons" />
 	</div>
 </template>
 
@@ -189,7 +193,7 @@ function onFocusNode() {
 	width: 100%;
 
 	&.isExperimentalNdvActive {
-		justify-content: center;
+		justify-content: space-between;
 		padding-bottom: var(--spacing-3xs);
 	}
 }
@@ -205,12 +209,18 @@ function onFocusNode() {
 		--button-font-color: var(--color-text-light);
 	}
 
-	.isExperimentalNdvActive & {
-		transform: scale(var(--canvas-zoom-compensation-factor, 1));
+	.isExperimentalNdvActive & > * {
+		zoom: var(--canvas-zoom-compensation-factor, 1);
 	}
 }
 
 .forceVisible {
 	opacity: 1 !important;
+}
+
+.statusIcons {
+	.isExperimentalNdvActive & {
+		transform: scale(var(--canvas-zoom-compensation-factor, 1));
+	}
 }
 </style>
