@@ -1,8 +1,10 @@
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
+import { AuditEvent } from './audit-event';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
+import { ComplianceReport } from './compliance-report';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -17,6 +19,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { SecurityEvent } from './security-event';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -64,6 +67,9 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	AuditEvent,
+	ComplianceReport,
+	SecurityEvent,
 };
 
 export const entities = {
@@ -99,4 +105,7 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	AuditEvent,
+	ComplianceReport,
+	SecurityEvent,
 };
