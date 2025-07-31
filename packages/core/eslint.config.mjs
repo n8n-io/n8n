@@ -10,11 +10,11 @@ export default defineConfig(
 			complexity: ['error', 27],
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
-			// TODO: Remove these
+			// TODO: Remove these (upgraded safe rules to error)
 			'no-prototype-builtins': 'warn',
-			'no-empty': 'warn',
-			'no-ex-assign': 'warn',
-			'no-useless-escape': 'warn',
+			'no-empty': 'error',
+			'no-ex-assign': 'error',
+			'no-useless-escape': 'error',
 			'@typescript-eslint/no-require-imports': 'warn',
 			'@typescript-eslint/require-await': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
@@ -29,8 +29,8 @@ export default defineConfig(
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],
 		rules: {
-			// TODO: Remove these
-			'prefer-const': 'warn',
+			// TODO: Remove these (upgraded safe rules to error)
+			'prefer-const': 'error',
 			'import-x/no-duplicates': 'warn',
 			'import-x/no-default-export': 'warn',
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',

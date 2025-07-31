@@ -150,7 +150,9 @@ export class InstanceSettings {
 				cgroupV1.includes('containerd')
 			)
 				return true;
-		} catch {}
+		} catch {
+			// Ignore file read errors - fallback to non-container detection
+		}
 		try {
 			const cgroupV2 = readFileSync('/proc/self/mountinfo', 'utf8');
 			if (
@@ -159,7 +161,9 @@ export class InstanceSettings {
 				cgroupV2.includes('containerd')
 			)
 				return true;
-		} catch {}
+		} catch {
+			// Ignore file read errors - fallback to non-container detection
+		}
 		return false;
 	}
 

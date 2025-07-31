@@ -276,10 +276,12 @@ export async function getInputConnectionData(
 				nodes.push(supplyData);
 			} catch (error) {
 				// Propagate errors from sub-nodes
+				let nodeError: ExecutionBaseError;
 				if (error instanceof ExecutionBaseError) {
 					if (error.functionality === 'configuration-node') throw error;
+					nodeError = error;
 				} else {
-					error = new NodeOperationError(connectedNode, error, {
+					nodeError = new NodeOperationError(connectedNode, error, {
 						itemIndex,
 					});
 				}
@@ -292,7 +294,7 @@ export async function getInputConnectionData(
 				// Display the error on the node which is causing it
 				await context.addExecutionDataFunctions(
 					'input',
-					error,
+					nodeError,
 					connectionType,
 					parentNode.name,
 					currentNodeRunIndex,

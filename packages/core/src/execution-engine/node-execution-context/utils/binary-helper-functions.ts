@@ -203,7 +203,9 @@ export async function prepareBinaryData(
 				filePath =
 					binaryData.contentDisposition?.filename ??
 					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
-			} catch {}
+			} catch {
+				// Ignore URL parsing errors for optional file path extraction
+			}
 		}
 		if (!mimeType) {
 			mimeType = binaryData.contentType;

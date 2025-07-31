@@ -12,7 +12,7 @@ describe('retry', () => {
 
 	it('should resolve true when the function eventually returns true', async () => {
 		let callCount = 0;
-		const fn = vi.fn(async () => {
+		const fn = vi.fn(() => {
 			callCount++;
 			// Return true on the second attempt.
 			return callCount === 2;
@@ -36,7 +36,7 @@ describe('retry', () => {
 
 	it('should resolve false if maximum retries are reached with no success', async () => {
 		let callCount = 0;
-		const fn = vi.fn(async () => {
+		const fn = vi.fn(() => {
 			callCount++;
 			return false;
 		});
@@ -60,7 +60,7 @@ describe('retry', () => {
 	});
 
 	it('should reject if the function throws an error', async () => {
-		const fn = vi.fn(async () => {
+		const fn = vi.fn(() => {
 			throw new Error('Test error');
 		});
 
@@ -71,7 +71,7 @@ describe('retry', () => {
 
 	it('should use linear backoff strategy', async () => {
 		let callCount = 0;
-		const fn = vi.fn(async () => {
+		const fn = vi.fn(() => {
 			callCount++;
 			return callCount === 4; // Return true on the fourth attempt.
 		});
@@ -95,7 +95,7 @@ describe('retry', () => {
 
 	it('should use exponential backoff strategy', async () => {
 		let callCount = 0;
-		const fn = vi.fn(async () => {
+		const fn = vi.fn(() => {
 			callCount++;
 			return callCount === 5; // Return true on the fifth attempt.
 		});
