@@ -1,5 +1,7 @@
 # n8n Data Flow Architecture
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 This document explains how data flows through n8n, from workflow creation to execution completion, including data storage, transformation, and security considerations.
 
 ## Overview
@@ -22,12 +24,12 @@ sequenceDiagram
     participant NE as Node Executor
     participant DS as Data Store
     participant EH as Event Handlers
-    
+
     T->>API: Initiate Execution
     API->>API: Validate Request
     API->>DS: Create Execution Record
     API->>WE: Start Workflow
-    
+
     loop For Each Node
         WE->>NE: Execute Node
         NE->>NE: Process Input Data
@@ -35,7 +37,7 @@ sequenceDiagram
         NE->>WE: Return Results
         WE->>EH: Emit Progress Event
     end
-    
+
     WE->>DS: Finalize Execution
     WE->>EH: Emit Completion Event
     WE->>API: Return Results
@@ -55,13 +57,13 @@ graph LR
         EXEC --> TRANS[Output Transform]
         TRANS --> OUT[Output Data]
     end
-    
+
     subgraph "Data Types"
         JSON[JSON Data]
         BINARY[Binary Data]
         META[Metadata]
     end
-    
+
     IN -.-> JSON
     IN -.-> BINARY
     OUT -.-> JSON
@@ -83,7 +85,7 @@ erDiagram
         boolean active
         json settings
     }
-    
+
     EXECUTION {
         string id PK
         string workflowId FK
@@ -92,20 +94,20 @@ erDiagram
         datetime stoppedAt
         string mode
     }
-    
+
     EXECUTION_DATA {
         string executionId PK,FK
         json data
         string workflowData
     }
-    
+
     CREDENTIALS {
         string id PK
         string name
         string type
         string data_encrypted
     }
-    
+
     WEBHOOK {
         string id PK
         string workflowId FK
@@ -113,7 +115,7 @@ erDiagram
         string httpMethod
         string path
     }
-    
+
     WORKFLOW ||--o{ EXECUTION : has
     EXECUTION ||--|| EXECUTION_DATA : contains
     WORKFLOW ||--o{ WEBHOOK : defines
@@ -149,7 +151,7 @@ graph TD
         REF --> S3[S3 Bucket]
         REF --> DB[(Database BLOB)]
     end
-    
+
     subgraph "Configuration"
         MODE[BINARY_DATA_MODE]
         MODE -->|filesystem| FS
@@ -168,18 +170,18 @@ sequenceDiagram
     participant BE as Backend API
     participant ENG as Execution Engine
     participant DB as Database
-    
+
     UI->>BE: POST /workflows/{id}/run
     BE->>DB: Create Execution
     BE->>ENG: Execute(runData, pinData)
-    
+
     loop Process Nodes
         ENG->>ENG: Resolve Expressions
         ENG->>ENG: Execute Node
         ENG->>DB: Save Progress
         ENG-->>UI: SSE Progress Update
     end
-    
+
     ENG->>DB: Save Final Result
     ENG->>BE: Return Execution
     BE->>UI: Send Complete Result
@@ -194,22 +196,22 @@ sequenceDiagram
     participant Q as Queue (if queue mode)
     participant ENG as Execution Engine
     participant DB as Database
-    
+
     EXT->>WH: HTTP Request
     WH->>WH: Validate Request
     WH->>DB: Find Workflow
-    
+
     alt Queue Mode
         WH->>Q: Queue Execution
         Q->>ENG: Assign to Worker
     else Regular Mode
         WH->>ENG: Direct Execute
     end
-    
+
     ENG->>DB: Create Execution
     ENG->>ENG: Process Workflow
     ENG->>DB: Save Results
-    
+
     alt Response Required
         ENG->>WH: Return Data
         WH->>EXT: HTTP Response
@@ -224,15 +226,15 @@ graph TD
         PN1[Node 1] --> SUB[Execute Workflow Node]
         SUB --> PN2[Node 3]
     end
-    
+
     subgraph "Sub-workflow"
         SN1[Start] --> SN2[Process]
         SN2 --> SN3[End]
     end
-    
+
     SUB -.-> SN1
     SN3 -.-> SUB
-    
+
     subgraph "Data Flow"
         INPUT[Parent Data] --> SUB
         SUB --> OUTPUT[Combined Result]
@@ -250,14 +252,14 @@ graph LR
         COMPLEX["{{ $node['HTTP'].json.data[0].id }}"]
         JS["{{ Math.random() * 100 }}"]
     end
-    
+
     subgraph "Resolution Context"
         NODE[Current Node]
         PREV[Previous Nodes]
         ENV[Environment]
         VARS[Variables]
     end
-    
+
     SIMPLE --> NODE
     COMPLEX --> PREV
     JS --> ENV
@@ -294,35 +296,14 @@ graph LR
 
 ## Data Security
 
-### Credential Encryption
+For comprehensive security architecture including authentication, authorization, and encryption details, see [System Overview - Security Architecture](./system-overview.md#security-architecture).
 
-```mermaid
-graph TD
-    subgraph "Credential Storage"
-        PLAIN[Plain Credentials] --> ENC[AES-256 Encryption]
-        ENC --> DB[(Encrypted in DB)]
-        KEY[Encryption Key] --> ENC
-    end
-    
-    subgraph "Credential Usage"
-        DB --> DEC[Decryption]
-        KEY --> DEC
-        DEC --> MEM[Memory Only]
-        MEM --> NODE[Node Execution]
-    end
-    
-    subgraph "Security"
-        KEY -.-> ENV[N8N_ENCRYPTION_KEY]
-        AUDIT[Audit Log] -.-> NODE
-    end
-```
+### Key Security Measures in Data Flow
 
-### Data Privacy Considerations
-
-1. **Execution Data**: Contains potentially sensitive information
-2. **Binary Data**: May include files with PII
-3. **Credentials**: Always encrypted at rest
-4. **Logs**: Sanitized to remove sensitive data
+1. **Credential Encryption**: AES-256-GCM encryption at rest
+2. **Data Privacy**: Execution data sanitization and PII handling
+3. **Access Control**: RBAC via `@n8n/permissions` package
+4. **Audit Trail**: Event-based logging for data access
 
 ## Performance Optimization
 
@@ -336,13 +317,13 @@ graph LR
         BATCH --> B2[Batch 2<br/>100 items]
         BATCH --> BN[Batch N<br/>100 items]
     end
-    
+
     subgraph "Benefits"
         MEM[Lower Memory]
         PARALLEL[Parallel Processing]
         ERROR[Error Isolation]
     end
-    
+
     BATCH --> MEM
     BATCH --> PARALLEL
     BATCH --> ERROR
@@ -358,7 +339,7 @@ sequenceDiagram
     participant Node as n8n Node
     participant Buffer as Buffer
     participant Dest as Destination
-    
+
     Source->>Node: Stream Start
     loop Data Chunks
         Source->>Node: Data Chunk
@@ -382,7 +363,7 @@ stateDiagram-v2
     Success --> Pruned: After X Days
     Error --> Pruned: After Y Days
     Pruned --> [*]: Deleted
-    
+
     note right of Pruned
         Configurable via:
         - EXECUTIONS_DATA_MAX_AGE

@@ -1,5 +1,7 @@
 # Evaluation Feature - Technical Architecture
 
+> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 ## Overview
 
 The evaluation feature allows systematic testing of n8n workflows against datasets. It implements two distinct execution modes with different architectures and capabilities.
