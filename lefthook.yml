@@ -14,9 +14,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    sass_import_check:
-      glob: 'packages/**/*.{scss,sass}'
-      run: npm run lint:styles:import-check
+    styles_check:
+      glob: 'packages/**/*.{scss,sass,vue}'
+      run: npm run lint:styles
       skip:
         - merge
         - rebase
