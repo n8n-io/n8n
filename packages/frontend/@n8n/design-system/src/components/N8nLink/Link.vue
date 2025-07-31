@@ -42,10 +42,10 @@ withDefaults(defineProps<LinkProps>(), {
 @use '../../css/common/var';
 
 .primary {
-	color: $link-color;
+	color: var.$link-color;
 
 	&:active {
-		color: $link-color-active;
+		color: var.$link-color-active;
 	}
 }
 
@@ -53,11 +53,11 @@ withDefaults(defineProps<LinkProps>(), {
 	color: var(--color-text-base);
 
 	&:hover {
-		color: $link-color;
+		color: var.$link-color;
 	}
 
 	&:active {
-		color: $link-color-active;
+		color: var.$link-color-active;
 	}
 }
 
