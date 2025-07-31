@@ -431,7 +431,10 @@ onBeforeUnmount(() => {
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
+
+	& {
+		padding-bottom: 100px;
+	}
 }
 
 .header {

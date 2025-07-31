@@ -287,7 +287,9 @@ watch(
 	}
 
 	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
-	scroll-behavior: smooth;
+	& {
+		scroll-behavior: smooth;
+	}
 
 	& :global(.el-icon) {
 		display: none;
