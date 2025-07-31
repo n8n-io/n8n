@@ -1,17 +1,19 @@
-import {
-	AuditEvent,
-	ComplianceReport,
-	SecurityEvent,
-	type AuditEventType,
-	type AuditEventCategory,
-	type AuditEventSeverity,
-	type ComplianceStandard,
-	type ReportFormat,
-	type ReportStatus,
-	type SecurityEventType,
-	type SecurityEventSeverity,
-	type ThreatLevel,
-} from '@n8n/db';
+import { AuditEvent, ComplianceReport, SecurityEvent } from '@n8n/db';
+import type {
+	AuditEventType,
+	AuditEventCategory,
+	AuditEventSeverity,
+} from '@n8n/db/src/entities/audit-event';
+import type {
+	ComplianceStandard,
+	ReportFormat,
+	ReportStatus,
+} from '@n8n/db/src/entities/compliance-report';
+import type {
+	SecurityEventType,
+	SecurityEventSeverity,
+	ThreatLevel,
+} from '@n8n/db/src/entities/security-event';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, Put, RestController, Param, Query } from '@n8n/decorators';
 import { Response } from 'express';
@@ -20,7 +22,6 @@ import type { IDataObject } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Logger } from '@/logger';
 import { AuditLoggingService } from '@/services/audit-logging.service';
 import { ComplianceReportingService } from '@/services/compliance-reporting.service';
 import { SecurityMonitoringService } from '@/services/security-monitoring.service';
@@ -109,7 +110,6 @@ export interface ManualAuditEventDto {
 @RestController('/audit')
 export class AuditController {
 	constructor(
-		private readonly logger: Logger,
 		private readonly auditLoggingService: AuditLoggingService,
 		private readonly complianceReportingService: ComplianceReportingService,
 		private readonly securityMonitoringService: SecurityMonitoringService,
@@ -123,7 +123,7 @@ export class AuditController {
 	async getAuditEvents(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: AuditEventsQueryDto,
+		@Query query: AuditEventsQueryDto,
 	): Promise<{ events: AuditEvent[]; total: number; page: number; pageSize: number }> {
 		try {
 			// Parse query parameters
@@ -181,7 +181,7 @@ export class AuditController {
 				pageSize: options.limit,
 			};
 		} catch (error) {
-			this.logger.error('Failed to retrieve audit events', {
+			console.error('Failed to retrieve audit events', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				query,
@@ -198,7 +198,7 @@ export class AuditController {
 	async getAuditStatistics(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: { startDate?: string; endDate?: string },
+		@Query query: { startDate?: string; endDate?: string },
 	): Promise<any> {
 		try {
 			const startDate = query.startDate
@@ -222,7 +222,7 @@ export class AuditController {
 
 			return statistics;
 		} catch (error) {
-			this.logger.error('Failed to retrieve audit statistics', {
+			console.error('Failed to retrieve audit statistics', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				query,
@@ -254,7 +254,7 @@ export class AuditController {
 				userAgent: req.get('User-Agent') || null,
 			});
 
-			this.logger.info('Manual audit event created', {
+			console.log('Manual audit event created', {
 				eventId: auditEvent.id,
 				eventType: eventData.eventType,
 				createdBy: req.user.id,
@@ -262,7 +262,7 @@ export class AuditController {
 
 			return auditEvent;
 		} catch (error) {
-			this.logger.error('Failed to create audit event', {
+			console.error('Failed to create audit event', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				eventData,
@@ -285,7 +285,7 @@ export class AuditController {
 		try {
 			await this.auditLoggingService.markAsReviewed(eventId, req.user.id, reviewData.notes);
 
-			this.logger.info('Audit event reviewed', {
+			console.log('Audit event reviewed', {
 				eventId,
 				reviewedBy: req.user.id,
 				notes: reviewData.notes,
@@ -293,7 +293,7 @@ export class AuditController {
 
 			return { success: true };
 		} catch (error) {
-			this.logger.error('Failed to review audit event', {
+			console.error('Failed to review audit event', {
 				error: error instanceof Error ? error.message : String(error),
 				eventId,
 				userId: req.user.id,
@@ -310,7 +310,7 @@ export class AuditController {
 	async getSecurityEvents(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: SecurityEventsQueryDto,
+		@Query query: SecurityEventsQueryDto,
 	): Promise<{ events: SecurityEvent[]; total: number; page: number; pageSize: number }> {
 		try {
 			const options = {
@@ -361,7 +361,7 @@ export class AuditController {
 				pageSize: options.limit,
 			};
 		} catch (error) {
-			this.logger.error('Failed to retrieve security events', {
+			console.error('Failed to retrieve security events', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				query,
@@ -378,7 +378,7 @@ export class AuditController {
 	async getSecurityMetrics(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: { startDate?: string; endDate?: string },
+		@Query query: { startDate?: string; endDate?: string },
 	): Promise<any> {
 		try {
 			const startDate = query.startDate
@@ -402,7 +402,7 @@ export class AuditController {
 
 			return metrics;
 		} catch (error) {
-			this.logger.error('Failed to retrieve security metrics', {
+			console.error('Failed to retrieve security metrics', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				query,
@@ -429,7 +429,7 @@ export class AuditController {
 				acknowledgeData.notes,
 			);
 
-			this.logger.info('Security event acknowledged', {
+			console.log('Security event acknowledged', {
 				eventId,
 				acknowledgedBy: req.user.id,
 				notes: acknowledgeData.notes,
@@ -437,7 +437,7 @@ export class AuditController {
 
 			return { success: true };
 		} catch (error) {
-			this.logger.error('Failed to acknowledge security event', {
+			console.error('Failed to acknowledge security event', {
 				error: error instanceof Error ? error.message : String(error),
 				eventId,
 				userId: req.user.id,
@@ -468,7 +468,7 @@ export class AuditController {
 				resolveData.resolutionNotes,
 			);
 
-			this.logger.info('Security event resolved', {
+			console.log('Security event resolved', {
 				eventId,
 				resolvedBy: req.user.id,
 				resolutionNotes: resolveData.resolutionNotes,
@@ -476,7 +476,7 @@ export class AuditController {
 
 			return { success: true };
 		} catch (error) {
-			this.logger.error('Failed to resolve security event', {
+			console.error('Failed to resolve security event', {
 				error: error instanceof Error ? error.message : String(error),
 				eventId,
 				userId: req.user.id,
@@ -493,7 +493,7 @@ export class AuditController {
 	async getComplianceReports(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: ComplianceReportsQueryDto,
+		@Query query: ComplianceReportsQueryDto,
 	): Promise<{ reports: ComplianceReport[]; total: number; page: number; pageSize: number }> {
 		try {
 			const options = {
@@ -531,7 +531,7 @@ export class AuditController {
 				pageSize: options.limit,
 			};
 		} catch (error) {
-			this.logger.error('Failed to retrieve compliance reports', {
+			console.error('Failed to retrieve compliance reports', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				query,
@@ -572,7 +572,7 @@ export class AuditController {
 				generatedBy: req.user.id,
 			});
 
-			this.logger.info('Compliance report generation started', {
+			console.log('Compliance report generation started', {
 				reportId: report.id,
 				complianceStandard: reportRequest.complianceStandard,
 				generatedBy: req.user.id,
@@ -580,7 +580,7 @@ export class AuditController {
 
 			return report;
 		} catch (error) {
-			this.logger.error('Failed to generate compliance report', {
+			console.error('Failed to generate compliance report', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 				reportRequest,
@@ -628,13 +628,13 @@ export class AuditController {
 			// Send file (in a real implementation, you'd stream the file from storage)
 			res.sendFile(report.filePath);
 
-			this.logger.info('Compliance report downloaded', {
+			console.log('Compliance report downloaded', {
 				reportId,
 				downloadedBy: req.user.id,
 				filePath: report.filePath,
 			});
 		} catch (error) {
-			this.logger.error('Failed to download compliance report', {
+			console.error('Failed to download compliance report', {
 				error: error instanceof Error ? error.message : String(error),
 				reportId,
 				userId: req.user.id,
@@ -674,7 +674,7 @@ export class AuditController {
 				},
 			});
 
-			this.logger.info('Audit data cleanup completed', {
+			console.log('Audit data cleanup completed', {
 				auditEventsDeleted,
 				reportsArchived,
 				performedBy: req.user.id,
@@ -682,7 +682,7 @@ export class AuditController {
 
 			return { auditEventsDeleted, reportsArchived };
 		} catch (error) {
-			this.logger.error('Failed to cleanup audit data', {
+			console.error('Failed to cleanup audit data', {
 				error: error instanceof Error ? error.message : String(error),
 				userId: req.user.id,
 			});
