@@ -1,3 +1,4 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
@@ -195,17 +196,70 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('getWebhookMethods()', () => {
+		beforeEach(() => {
+			registrations.toKey.mockImplementation(
+				(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) => {
+					const { webhookId, httpMethod, path: webhookPath } = webhook;
+					console.log('webhookId', webhookId, 'httpMethod', httpMethod, 'webhookPath', webhookPath);
+					if (!webhookId) return [httpMethod, webhookPath].join('|');
+
+					let path = webhookPath;
+					if (path.startsWith(webhookId)) {
+						const cutFromIndex = path.indexOf('/') + 1;
+
+						path = path.slice(cutFromIndex);
+					}
+					return [httpMethod, webhookId, path.split('/').length].join('|');
+				},
+			);
+		});
+
 		test('should normalize trailing slash', async () => {
 			const METHOD = 'POST';
 			const PATH_WITH_SLASH = 'register/';
 			const PATH_WITHOUT_SLASH = 'register';
-			registrations.getAllKeys.mockResolvedValue([`${METHOD}|${PATH_WITHOUT_SLASH}`]);
+
+			registrations.get.mockImplementation(async (key: string) => {
+				if (!key.startsWith(METHOD)) {
+					return undefined;
+				}
+				return {
+					workflowEntity: mock<WorkflowEntity>(),
+					webhook: mock<IWebhookData>({
+						httpMethod: METHOD,
+						path: PATH_WITH_SLASH.endsWith('/') ? PATH_WITH_SLASH.slice(0, -1) : PATH_WITH_SLASH,
+					}),
+				};
+			});
 
 			const resultWithSlash = await testWebhooks.getWebhookMethods(PATH_WITH_SLASH);
 			const resultWithoutSlash = await testWebhooks.getWebhookMethods(PATH_WITHOUT_SLASH);
 
 			expect(resultWithSlash).toEqual([METHOD]);
 			expect(resultWithoutSlash).toEqual([METHOD]);
+		});
+
+		test('should return methods for webhooks with dynamic paths', async () => {
+			const METHOD = 'POST';
+			const PATH = '12345/register/:id';
+
+			registrations.get.mockImplementation(async (key: string) => {
+				if (!key.startsWith(METHOD)) {
+					return undefined;
+				}
+				return {
+					workflowEntity: mock<WorkflowEntity>(),
+					webhook: mock<IWebhookData>({
+						webhookId: '12345',
+						httpMethod: METHOD,
+						path: PATH,
+					}),
+				};
+			});
+
+			const result = await testWebhooks.getWebhookMethods(PATH);
+
+			expect(result).toEqual([METHOD]);
 		});
 	});
 });
