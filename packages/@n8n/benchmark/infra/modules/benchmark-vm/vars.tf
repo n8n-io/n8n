@@ -1,6 +1,6 @@
 variable "location" {
   description = "Region to deploy resources"
-  default     = "East US"
+  default     = "swedencentral"
 }
 
 variable "resource_group_name" {
