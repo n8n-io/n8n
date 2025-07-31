@@ -218,7 +218,7 @@ describe('OwnershipService', () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'global:owner' },
+				where: { role: { slug: 'global:owner' } },
 			});
 		});
 	});

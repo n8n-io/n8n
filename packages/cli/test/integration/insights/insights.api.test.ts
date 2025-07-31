@@ -20,9 +20,9 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const owner = await createUser({ role: 'global:owner' });
-	const admin = await createUser({ role: 'global:admin' });
-	const member = await createUser({ role: 'global:member' });
+	const owner = await createUser({ role: { slug: 'global:owner' } });
+	const admin = await createUser({ role: { slug: 'global:admin' } });
+	const member = await createUser({ role: { slug: 'global:member' } });
 	agents.owner = testServer.authAgentFor(owner);
 	agents.admin = testServer.authAgentFor(admin);
 	agents.member = testServer.authAgentFor(member);

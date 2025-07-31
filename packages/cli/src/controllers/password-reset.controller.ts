@@ -71,7 +71,7 @@ export class PasswordResetController {
 			return;
 		}
 
-		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
+		if (user.role.slug !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
@@ -147,7 +147,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
-		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
+		if (user.role.slug !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },

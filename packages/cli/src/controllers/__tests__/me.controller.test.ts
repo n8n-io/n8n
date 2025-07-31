@@ -38,7 +38,7 @@ describe('MeController', () => {
 				email: 'valid@email.com',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: { slug: 'global:owner' },
 				mfaEnabled: false,
 			});
 			const payload = new UserUpdateRequestDto({
@@ -88,7 +88,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: { slug: 'global:owner' },
 				mfaEnabled: false,
 			});
 			const req = mock<AuthenticatedRequest>({ user });
@@ -115,7 +115,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: { slug: 'global:owner' },
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -139,7 +139,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: { slug: 'global:owner' },
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -165,7 +165,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: { slug: 'global:owner' },
 					mfaEnabled: true,
 					mfaSecret: 'secret',
 				});

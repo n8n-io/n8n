@@ -564,7 +564,7 @@ export class WorkflowsController {
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
-			const hasPermission = req.user.role === ROLE.Owner || req.user.role === ROLE.Admin;
+			const hasPermission = req.user.role.slug === ROLE.Owner || req.user.role.slug === ROLE.Admin;
 
 			if (!hasPermission) {
 				res.json({ data: [], count: 0 });

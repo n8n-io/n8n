@@ -65,7 +65,7 @@ describe('OwnerController', () => {
 		it('should setup the instance owner successfully', async () => {
 			const user = mock<User>({
 				id: 'userId',
-				role: 'global:owner',
+				role: { slug: 'global:owner' },
 				authIdentities: [],
 			});
 			const browserId = 'test-browser-id';
@@ -85,7 +85,7 @@ describe('OwnerController', () => {
 			const result = await controller.setupOwner(req, res, payload);
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'global:owner' },
+				where: { role: { slug: 'global:owner' } },
 			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, false, browserId);

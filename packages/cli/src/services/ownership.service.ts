@@ -106,7 +106,7 @@ export class OwnershipService {
 
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
-			where: { role: 'global:owner' },
+			where: { role: { slug: 'global:owner' } },
 		});
 	}
 }
