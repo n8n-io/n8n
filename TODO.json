@@ -171,7 +171,7 @@
       "description": "Identify any failing tests in the monorepo and resolve test failures to ensure all tests pass consistently.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "in_progress",
+      "status": "completed",
       "success_criteria": [
         "All tests pass consistently",
         "No flaky or intermittent test failures",
@@ -753,7 +753,7 @@
       "description": "Add advanced execution control endpoints for cancellation, retry, and detailed execution data retrieval. Extends existing ExecutionsController.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/executions/:id/cancel endpoint implemented",
         "POST /api/v1/executions/:id/retry endpoint functional",
@@ -1106,8 +1106,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 59,
-  "last_hook_activation": 1753979851517,
+  "execution_count": 61,
+  "last_hook_activation": 1753982171876,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 30
