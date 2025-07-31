@@ -1,0 +1,68 @@
+name: Claude PR Assistant
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude-code-action:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude PR Action
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          timeout_minutes: '60'
+          mode: agent
+          direct_prompt: |
+            You are reviewing a pull request to identify necessary documentation updates. Follow the guidelines in ./docs/CLAUDE.md for all documentation decisions.
+
+            **Your Task:**
+            1. Analyze the code changes in this PR to understand what has been modified
+            2. Review existing documentation in ./docs/architecture/ that may be affected
+            3. Identify documentation that needs to be created, updated, or removed
+
+            **Analysis Process:**
+            - Start by examining the actual code changes - code is the source of truth
+            - Check if changes affect any existing documentation
+            - Determine if new features/systems require documentation
+            - Verify that any referenced documentation is still accurate
+
+            **What to Document:**
+            - New architectural patterns or significant design changes
+            - New features or subsystems that developers need to understand
+            - Breaking changes that affect how systems interact
+            - Configuration changes that impact system behavior
+
+            **What NOT to Document:**
+            - Minor bug fixes without architectural impact
+            - Internal refactoring that doesn't change interfaces
+            - Code style or formatting changes
+            - Changes already clear from well-written code
+
+            **Response Format:**
+            If documentation updates are needed, provide:
+            1. A summary of what documentation needs updating and why
+            2. Specific files that need to be created/modified with paths
+            3. Key points that must be covered in each documentation update
+            4. Any code references (with file paths and line numbers) that should be included
+            5. Suggested Mermaid diagrams if they would clarify complex changes
+
+            If no updates needed, respond: "No documentation updates needed" with a brief explanation.
+
+            **Important:** 
+            - Only suggest documentation changes, do not modify files directly
+            - Focus on architecture documentation that helps developers understand the system
+            - Ensure all suggestions follow the standards in ./docs/CLAUDE.md
+            - Flag any uncertainties or areas needing human clarification
+
