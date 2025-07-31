@@ -263,6 +263,8 @@ watch(
 
 .tree {
 	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
+	scroll-behavior: smooth;
 
 	.container:not(.staticScrollBar) & {
 		scroll-padding-block: var(--spacing-3xs);
@@ -284,11 +286,6 @@ watch(
 				background: var(--color-foreground-dark);
 			}
 		}
-	}
-
-	/* For programmatically triggered scroll in useVirtualList to animate, make it scroll smoothly */
-	& {
-		scroll-behavior: smooth;
 	}
 
 	& :global(.el-icon) {

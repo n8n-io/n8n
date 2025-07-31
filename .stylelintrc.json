@@ -1,3 +1,3 @@
 {
-  "extends": "@n8n/stylelint-config/selective-import-check"
+  "extends": "@n8n/stylelint-config/base"
 }

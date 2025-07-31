@@ -727,9 +727,6 @@ const modifiers = [
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--color-node-icon-green);
 	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
-	}
 }
 .equal {
 	opacity: 0.5;

@@ -31,31 +31,18 @@
 
 			.el-slider__button {
 				border-color: var.$slider-disable-color;
-			}
 
-			.el-slider__button-wrapper {
-				&:hover,
-				&.hover {
-					cursor: not-allowed;
-				}
-
-				&.dragging {
-					cursor: not-allowed;
-				}
-			}
-
-			.el-slider__button {
 				&:hover,
 				&.hover,
 				&.dragging {
 					transform: scale(1);
-				}
-
-				&:hover,
-				&.hover {
 					cursor: not-allowed;
 				}
+			}
 
+			.el-slider__button-wrapper {
+				&:hover,
+				&.hover,
 				&.dragging {
 					cursor: not-allowed;
 				}

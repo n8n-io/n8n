@@ -158,7 +158,7 @@
 			cursor: pointer;
 			opacity: 0.75;
 			color: var(--color-text-dark);
-			//transform: scale(.7);
+			// transform: scale(.7);
 
 			&:hover {
 				opacity: 1;
@@ -553,6 +553,11 @@
 
 			i {
 				margin-top: 0;
+				color: var.$color-white;
+				display: block;
+				font-size: 24px;
+				line-height: inherit;
+				margin: 0 auto 5px;
 			}
 
 			span {
@@ -570,14 +575,6 @@
 				span {
 					opacity: 1;
 				}
-			}
-
-			i {
-				color: var.$color-white;
-				display: block;
-				font-size: 24px;
-				line-height: inherit;
-				margin: 0 auto 5px;
 			}
 		}
 	}

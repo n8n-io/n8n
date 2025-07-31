@@ -26,7 +26,8 @@
     "stylelint": "^16.8.1",
     "stylelint-config-standard-scss": "^13.1.0",
     "stylelint-scss": "^6.5.1",
-    "postcss-html": "^1.7.0"
+    "postcss-html": "^1.8.0",
+    "postcss-scss": "^4.0.9"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

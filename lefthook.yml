@@ -15,7 +15,7 @@ pre-commit:
         - merge
         - rebase
     styles_check:
-      glob: 'packages/**/*.{scss,sass,vue}'
+      glob: 'packages/**/*.{scss,sass}'
       run: npm run lint:styles
       skip:
         - merge

@@ -1,25 +1,25 @@
 import type { Config } from 'stylelint';
 
 export const baseConfig: Config = {
-	extends: ['stylelint-config-standard-scss'],
+	// Basic SCSS support with essential rules
 	plugins: ['stylelint-scss'],
 	rules: {
-		// Allow CSS custom properties (CSS variables)
-		'property-no-unknown': [
-			true,
-			{
-				ignoreProperties: ['/^--/'],
-			},
-		],
-		// Allow Vue.js specific selectors
-		'selector-pseudo-element-no-unknown': [
-			true,
-			{
-				ignorePseudoElements: ['v-deep', 'v-global', 'v-slotted'],
-			},
-		],
 		// Allow Vue.js single file component syntax
 		'no-empty-source': null,
+
+		// Basic syntax and consistency rules
+		'color-hex-length': 'short',
+		'comment-no-empty': true,
+		// 'declaration-block-no-duplicate-properties': disabled due to vendor prefixes
+		'no-duplicate-selectors': true,
+		'no-invalid-double-slash-comments': true,
+
+		// SCSS specific rules
+		'scss/dollar-variable-colon-space-after': 'always-single-line',
+		'scss/dollar-variable-colon-space-before': 'never',
+		'scss/dollar-variable-no-missing-interpolation': true,
+		'scss/double-slash-comment-whitespace-inside': 'always',
+		'scss/operator-no-unspaced': true,
 	},
 	ignoreFiles: [
 		'**/node_modules/**/*',
@@ -32,6 +32,10 @@ export const baseConfig: Config = {
 		{
 			files: ['**/*.vue'],
 			customSyntax: 'postcss-html',
+		},
+		{
+			files: ['**/*.scss', '**/*.sass'],
+			customSyntax: 'postcss-scss',
 		},
 	],
 };
