@@ -11,7 +11,6 @@ import {
 	type IWebhookResponseData,
 	type IBinaryKeyData,
 	NodeConnectionTypes,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
@@ -324,10 +323,11 @@ export class SlackTrigger implements INodeType {
 		let eventChannel: string = '';
 
 		if (!(await verifySignature.call(this))) {
-			throw new NodeOperationError(this.getNode(), 'Invalid Slack signature', {
-				description: 'The request signature does not match the expected signature.',
-				level: 'error',
-			});
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
 		}
 
 		if (req.body.type === 'url_verification') {

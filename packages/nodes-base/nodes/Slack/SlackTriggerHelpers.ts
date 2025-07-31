@@ -92,13 +92,13 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 	const signature = req.header('x-slack-signature');
 	const timestamp = req.header('x-slack-request-timestamp');
 	if (!signature || !timestamp) {
-		throw new NodeOperationError(this.getNode(), 'Missing Slack signature or timestamp header');
+		return false;
 	}
 
 	const currentTime = Math.floor(Date.now() / 1000);
 	const timestampNum = parseInt(timestamp, 10);
 	if (isNaN(timestampNum) || Math.abs(currentTime - timestampNum) > 60 * 5) {
-		throw new NodeOperationError(this.getNode(), 'Slack request timestamp is invalid or too old');
+		return false;
 	}
 
 	try {
@@ -114,9 +114,6 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 			timingSafeEqual(computedBuffer, providedBuffer)
 		);
 	} catch (error) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Slack signature verification failed: ${(error as Error).message}`,
-		);
+		return false;
 	}
 }

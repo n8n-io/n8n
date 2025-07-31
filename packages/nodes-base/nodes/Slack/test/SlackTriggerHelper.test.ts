@@ -1,4 +1,3 @@
-import { NodeOperationError } from 'n8n-workflow';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { verifySignature } from '../SlackTriggerHelpers';
 
@@ -66,7 +65,7 @@ describe('SlackTriggerHelpers', () => {
 			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
 		});
 
-		it('should throw error when signature header is missing', async () => {
+		it('should return false when signature header is missing', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				signatureSecret: testSignatureSecret,
 			});
@@ -79,11 +78,12 @@ describe('SlackTriggerHelpers', () => {
 				rawBody: testBody,
 			});
 
-			await expect(verifySignature.call(mockWebhookFunctions)).rejects.toThrow(NodeOperationError);
-			expect(mockWebhookFunctions.getRequestObject).toHaveBeenCalled();
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(false);
 		});
 
-		it('should throw error when timestamp header is missing', async () => {
+		it('should return false when timestamp header is missing', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				signatureSecret: testSignatureSecret,
 			});
@@ -96,11 +96,12 @@ describe('SlackTriggerHelpers', () => {
 				rawBody: testBody,
 			});
 
-			await expect(verifySignature.call(mockWebhookFunctions)).rejects.toThrow(NodeOperationError);
-			expect(mockWebhookFunctions.getRequestObject).toHaveBeenCalled();
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(false);
 		});
 
-		it('should throw error when timestamp is too old', async () => {
+		it('should return false when timestamp is too old', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				signatureSecret: testSignatureSecret,
 			});
@@ -109,9 +110,9 @@ describe('SlackTriggerHelpers', () => {
 			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
 			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
 
-			await expect(verifySignature.call(mockWebhookFunctions)).rejects.toThrow(
-				'Slack request timestamp is invalid or too old',
-			);
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(false);
 		});
 
 		it('should return true when signature is valid', async () => {
