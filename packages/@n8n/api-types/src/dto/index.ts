@@ -90,6 +90,27 @@ export { GenerateCredentialNameRequestQuery } from './credentials/generate-crede
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export {
+	BatchTransferWorkflowsRequestDto,
+	BatchTransferWorkflowsResponseDto,
+	TransferWorkflowResponseDto,
+} from './workflows/batch-transfer.dto';
+
+export {
+	TransferCredentialBodyDto,
+	BatchTransferCredentialsRequestDto,
+	TransferCredentialResponseDto,
+	BatchTransferCredentialsResponseDto,
+} from './credentials/transfer-credential.dto';
+
+export {
+	ProjectResourceTransferRequestDto,
+	ProjectResourceTransferResponseDto,
+	TransferDependencyAnalysisDto,
+	TransferDependencyResponseDto,
+	TransferPreviewRequestDto,
+	TransferPreviewResponseDto,
+} from './projects/resource-transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
