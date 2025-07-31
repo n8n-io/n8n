@@ -10,7 +10,6 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
 
 const { t } = useI18n();
 

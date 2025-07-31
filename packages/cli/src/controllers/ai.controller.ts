@@ -49,9 +49,9 @@ export class AiController {
 			const abortController = new AbortController();
 			const { signal } = abortController;
 
-			res.on('close', () => {
-				abortController.abort();
-			});
+			const handleClose = () => abortController.abort();
+
+			res.on('close', handleClose);
 
 			const { text, workflowContext } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
@@ -91,6 +91,9 @@ export class AiController {
 					],
 				};
 				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			} finally {
+				// Clean up event listener
+				res.off('close', handleClose);
 			}
 
 			res.end();
@@ -104,7 +107,7 @@ export class AiController {
 					message: e.message,
 				});
 			} else {
-				// If headers were already sent dont't send a second error response
+				// If headers were already sent don't send a second error response
 				res.end();
 			}
 		}

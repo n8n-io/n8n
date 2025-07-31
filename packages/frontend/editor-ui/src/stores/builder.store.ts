@@ -414,6 +414,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		toolMessages,
 		workflowMessages,
 		trackingSessionId,
+		streamingAbortController,
 
 		// Methods
 		updateWindowWidth,
