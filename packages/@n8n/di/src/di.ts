@@ -31,21 +31,16 @@ const instances = new Map<ServiceIdentifier, Metadata>();
  * @returns A class decorator to be applied to the target class
  */
 
+// Decorator overloads for Service
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export function Service<TUnused = unknown>(): (
-	target: Constructable<TUnused>,
-) => Constructable<TUnused>;
-
+export function Service(): ClassDecorator;
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export function Service<T = unknown>(
-	options: Options<T>,
-): (target: Constructable<T>) => Constructable<T>;
+export function Service<T>(options: Options<T>): ClassDecorator;
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export function Service<T>({ factory }: Options<T> = {}) {
-	return function (target: Constructable<T>) {
+export function Service<T>({ factory }: Options<T> = {}): ClassDecorator {
+	return function (target: ServiceIdentifier<T>): void {
 		instances.set(target, { factory });
-		return target;
-	};
+	} as ClassDecorator;
 }
 
 class DIError extends Error {
