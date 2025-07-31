@@ -35,6 +35,8 @@ function getShouldShowInputPanel() {
 	// TODO: find a way to implement this without depending on test ID
 	return (
 		!!active.closest('[data-test-id=inline-expression-editor-input]') ||
+		((active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) &&
+			active.value === '') ||
 		!!inputPanelRef.value?.$el.contains(active)
 	);
 }
