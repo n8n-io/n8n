@@ -882,7 +882,6 @@ watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, 
 	// setTimeout() so that this happens after layout recalculation with the node to be focused
 	setTimeout(() => {
 		experimentalNdvStore.focusNode(toFocusNode, {
-			collapseOthers: false,
 			canvasViewport: viewport.value,
 			canvasDimensions: dimensions.value,
 			setCenter,

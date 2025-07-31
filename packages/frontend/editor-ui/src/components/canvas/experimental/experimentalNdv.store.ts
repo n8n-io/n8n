@@ -58,7 +58,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	interface FocusNodeOptions {
-		collapseOthers?: boolean;
 		canvasViewport: ViewportTransform;
 		canvasDimensions: Dimensions;
 		setCenter: SetCenter;
@@ -66,14 +65,9 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	function focusNode(
 		node: GraphNode<CanvasNodeData>,
-		{ collapseOthers = true, canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
+		{ canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
 	) {
-		collapsedNodes.value = collapseOthers
-			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, n) => {
-					acc[n.id] = n.id !== node.id;
-					return acc;
-				}, {})
-			: { ...collapsedNodes.value, [node.id]: false };
+		collapsedNodes.value = { ...collapsedNodes.value, [node.id]: false };
 
 		const topMargin = 80; // pixels
 		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
@@ -124,7 +118,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			)[0];
 
 		if (toFocus) {
-			focusNode(toFocus, { ...options, collapseOthers: false });
+			focusNode(toFocus, options);
 			return;
 		}
 
