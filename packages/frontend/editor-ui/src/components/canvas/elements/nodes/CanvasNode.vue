@@ -445,7 +445,7 @@ onBeforeUnmount(() => {
 	position: absolute;
 	top: 0;
 	left: 50%;
-	transform: translate(-50%, -100%) scale(var(--canvas-zoom-compensation-factor, 1));
+	transform: translate(-50%, -100%);
 	opacity: 0;
 	z-index: 1;
 

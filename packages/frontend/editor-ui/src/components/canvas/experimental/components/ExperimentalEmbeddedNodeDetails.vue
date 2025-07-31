@@ -134,7 +134,6 @@ watchOnce(isVisible, (visible) => {
 		]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
-			'--node-width-scaler': isConfigurable ? 1 : 1.5,
 			'--max-height-on-focus': `${(vf.dimensions.value.height * 0.8) / experimentalNdvStore.maxCanvasZoom}px`,
 			pointerEvents: isPaneMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
@@ -188,7 +187,6 @@ watchOnce(isVisible, (visible) => {
 	justify-content: stretch;
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
-	width: calc(var(--canvas-node--width) * var(--node-width-scaler)) !important;
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color-text-lighter);

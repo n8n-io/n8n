@@ -204,6 +204,10 @@ function onFocusNode() {
 	:global(.button) {
 		--button-font-color: var(--color-text-light);
 	}
+
+	.isExperimentalNdvActive & {
+		transform: scale(var(--canvas-zoom-compensation-factor, 1));
+	}
 }
 
 .forceVisible {
