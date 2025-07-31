@@ -1,4 +1,3 @@
-import type { AddDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -139,17 +138,43 @@ describe('dataStore', () => {
 				{ name: 'myColumn4', type: 'date' },
 			] as const;
 			for (const column of columns) {
-				// ARRANGE
-				const dto: AddDataStoreColumnDto = {
-					column,
-				};
-
 				// ACT
-				const result = await dataStoreService.addColumn(dataStore1.id, dto);
+				const result = await dataStoreService.addColumn(dataStore1.id, column);
 
 				// ASSERT
 				expect(result).toEqual(true);
 			}
+			const columnResult = await dataStoreService.getColumns(dataStore1.id);
+			expect(columnResult).toEqual([
+				{
+					columnIndex: 0,
+					dataStoreId: dataStore1.id,
+					id: expect.any(String),
+					name: 'myColumn1',
+					type: 'string',
+				},
+				{
+					columnIndex: 1,
+					dataStoreId: dataStore1.id,
+					id: expect.any(String),
+					name: 'myColumn2',
+					type: 'number',
+				},
+				{
+					columnIndex: 2,
+					dataStoreId: dataStore1.id,
+					id: expect.any(String),
+					name: 'myColumn3',
+					type: 'number',
+				},
+				{
+					columnIndex: 3,
+					dataStoreId: dataStore1.id,
+					id: expect.any(String),
+					name: 'myColumn4',
+					type: 'date',
+				},
+			]);
 		});
 		it('should fail with adding two columns of the same name', async () => {
 			// ARRANGE
@@ -186,7 +211,10 @@ describe('dataStore', () => {
 				name: 'myColumn1',
 				type: 'string',
 			});
-
+			await dataStoreService.addColumn(dataStore1.id, {
+				name: 'myColumn2',
+				type: 'number',
+			});
 			// ACT
 			const result = await dataStoreService.deleteColumn(dataStore1.id, {
 				columnName: 'myColumn1',
@@ -194,6 +222,17 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(result).toEqual(true);
+
+			const columns = await dataStoreService.getColumns(dataStore1.id);
+			expect(columns).toEqual([
+				{
+					columnIndex: 0,
+					dataStoreId: dataStore1.id,
+					id: expect.any(String),
+					name: 'myColumn2',
+					type: 'number',
+				},
+			]);
 		});
 		it('should fail when deleting unknown column', async () => {
 			// ARRANGE
@@ -336,7 +375,7 @@ describe('dataStore', () => {
 				{ name: 'myColumn4', type: 'date' },
 			] as const;
 			for (const column of columns) {
-				await dataStoreService.addColumn(dataStore1.id, { column });
+				await dataStoreService.addColumn(dataStore1.id, column);
 			}
 
 			// ACT
@@ -518,7 +557,7 @@ describe('dataStore', () => {
 		});
 		it('fails on type mismatch', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
 
 			// ACT
 			const result = await dataStoreService.appendRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);

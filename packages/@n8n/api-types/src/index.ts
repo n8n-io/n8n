@@ -46,4 +46,9 @@ export {
 	usersListSchema,
 } from './schemas/user.schema';
 
-export type { DataStore, DataStoreColumn } from './schemas/data-store.schema';
+export {
+	type DataStore,
+	type DataStoreColumn,
+	DATA_STORE_COLUMN_REGEX,
+	type DataStoreCreateColumnSchema,
+} from './schemas/data-store.schema';

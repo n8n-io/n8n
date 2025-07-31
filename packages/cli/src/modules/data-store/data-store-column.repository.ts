@@ -1,4 +1,4 @@
-import { DataStoreCreateColumnSchema } from '@n8n/api-types/src/schemas/data-store.schema';
+import { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 

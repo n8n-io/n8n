@@ -1,7 +1,4 @@
-import {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStoreCreateColumnSchema,
-} from '@n8n/api-types/src/schemas/data-store.schema';
+import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 

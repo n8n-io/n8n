@@ -11,7 +11,7 @@ export const dataStoreColumnNameSchema = z
 	.min(1)
 	.max(128)
 	.regex(
-		DATA_STORE_COLUMN_REGEX,
+		/^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
 		'Only alphanumeric characters and non-leading dashes are allowed for column names',
 	);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
