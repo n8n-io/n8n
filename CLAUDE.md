@@ -82,7 +82,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Cypress (E2E)
+- **Testing:** Jest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL/MySQL support
 - **Code Quality:** Biome + ESLint + lefthook git hooks
 
@@ -125,6 +125,12 @@ CSS variables and styling conventions.
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
+
+What we use for testing and writing tests:
+- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
+- We use `nock` for server mocking
+- For frontend we use `vitest`
+- For e2e tests we use `Playwright` and `pnpm dev:e2e`.
 
 ### Common Development Tasks
 
