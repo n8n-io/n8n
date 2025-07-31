@@ -135,9 +135,8 @@ export function getMappedSamlAttributesFromFlowResult(
 		attributes: undefined,
 		missingAttributes: [] as string[],
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 	if (flowResult?.extract?.attributes) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const attributes = flowResult.extract.attributes as { [key: string]: string };
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
 		const email = attributes[attributeMapping.email];

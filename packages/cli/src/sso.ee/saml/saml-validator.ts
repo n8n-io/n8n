@@ -99,7 +99,6 @@ export class SamlValidator {
 				);
 			}
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.logger.warn(error);
 		}
 		return false;

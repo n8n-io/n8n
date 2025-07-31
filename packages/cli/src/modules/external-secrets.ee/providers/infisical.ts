@@ -113,7 +113,6 @@ export class InfisicalProvider implements SecretsProvider {
 
 	async getEnvironment(): Promise<string> {
 		const serviceTokenData = (await getServiceTokenData(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.client.clientConfig,
 		)) as InfisicalServiceToken;
 		if (serviceTokenData.environment) {

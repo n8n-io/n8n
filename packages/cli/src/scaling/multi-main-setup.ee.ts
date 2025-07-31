@@ -138,7 +138,6 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		for (const { eventHandlerClass, methodName, eventName } of handlers) {
 			const instance = Container.get(eventHandlerClass);
 			this.on(eventName, async () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				return instance[methodName].call(instance);
 			});
 		}

@@ -79,7 +79,7 @@ export class CommandRegistry {
 			ignore: ['**/__tests__/**'],
 			cwd: __dirname,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		await Promise.all(commandFiles.map(async (filePath) => await import(filePath)));
 
 		// Load/List module commands after legacy commands

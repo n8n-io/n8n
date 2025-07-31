@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
@@ -166,7 +165,6 @@ export function send<T, R extends Request, S extends Response>(
 				}
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};

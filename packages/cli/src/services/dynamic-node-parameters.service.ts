@@ -71,7 +71,7 @@ export class DynamicNodeParametersService {
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 		// enabled in `tsconfig.json`
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return method.call(thisArgs);
 	}
 
@@ -172,7 +172,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return method.call(thisArgs, filter, paginationToken);
 	}
 
@@ -189,7 +189,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return method.call(thisArgs);
 	}
 
@@ -203,7 +203,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return method.call(thisArgs);
 	}
 
@@ -221,7 +221,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return method.call(thisArgs, payload);
 	}
 

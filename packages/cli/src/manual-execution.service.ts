@@ -46,7 +46,6 @@ export class ManualExecutionService {
 		return startNode;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	runManually(
 		data: IWorkflowExecutionDataProcess,
 		workflow: Workflow,

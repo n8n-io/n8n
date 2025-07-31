@@ -80,7 +80,6 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 		// @ts-ignore
 		options.headers = data;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON

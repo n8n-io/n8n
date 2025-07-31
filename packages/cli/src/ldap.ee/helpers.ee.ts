@@ -73,7 +73,7 @@ export const createFilter = (filter: string, userFilter: string) => {
 
 export const escapeFilter = (filter: string): string => {
 	//@ts-ignore
-	return new Filter().escape(filter); /* eslint-disable-line */
+	return new Filter().escape(filter);
 };
 
 /**

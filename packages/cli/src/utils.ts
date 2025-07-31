@@ -40,7 +40,6 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
 export const toError = (maybeError: unknown) =>
-	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);

@@ -37,7 +37,6 @@ export class WorkflowStaticDataService {
 				} catch (error) {
 					this.errorReporter.error(error);
 					this.logger.error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
 						{ workflowId: workflow.id },
 					);

@@ -94,7 +94,6 @@ if (!isMainThread) {
 	// * This part runs in the Worker Thread ! *
 	// -----------------------------------------
 	parentPort?.on('message', async (msg: { command: string; data: any }) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const { command, data } = msg;
 		try {
 			switch (command) {

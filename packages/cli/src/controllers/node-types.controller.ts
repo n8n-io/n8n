@@ -42,7 +42,7 @@ export class NodeTypesController {
 
 			try {
 				const translation = await readFile(translationPath, 'utf8');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				description.translation = JSON.parse(translation);
 			} catch {
 				// ignore - no translation exists at path

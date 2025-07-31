@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
@@ -220,7 +219,7 @@ export class ActiveWorkflowManager {
 					error = new WebhookPathTakenError(webhook.node, error);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 					error.message = error.detail;
 				}
 
@@ -485,11 +484,10 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
 
 			// do not keep trying to activate on authorization error
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 			if (error.message.includes('Authorization')) return;
 
 			this.addQueuedWorkflowActivation('init', dbWorkflow);

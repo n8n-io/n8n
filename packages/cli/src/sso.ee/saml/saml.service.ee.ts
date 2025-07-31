@@ -36,7 +36,6 @@ import { isSsoJustInTimeProvisioningEnabled } from '../sso-helpers';
 export class SamlService {
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	private samlify: typeof import('samlify') | undefined;
 
 	private _samlPreferences: SamlPreferences = {

@@ -222,7 +222,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			if (!resolveProperties.includes(dependantName)) {
 				let conditionalValue;
 				if (typeof dependantValue === 'object' && dependantValue._cnd) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
 
 					if (key === 'eq') {

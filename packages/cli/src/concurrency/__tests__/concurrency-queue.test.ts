@@ -11,7 +11,6 @@ describe('ConcurrencyQueue', () => {
 		const queue = new ConcurrencyQueue(1);
 		const state: Record<string, 'started' | 'finished'> = {};
 
-		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		const sleepSpy = jest.fn(() => sleep(500));
 
 		const testFn = async (item: { executionId: string }) => {
@@ -66,7 +65,6 @@ describe('ConcurrencyQueue', () => {
 		const emitSpy = jest.fn();
 		queue.on('concurrency-check', emitSpy);
 
-		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		Array.from({ length: 10 }, (_, i) => i).forEach(() => queue.enqueue('1'));
 
 		expect(queue.currentCapacity).toBe(0);

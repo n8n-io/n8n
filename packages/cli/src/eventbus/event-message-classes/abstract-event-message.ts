@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DateTime } from 'luxon';
 import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -29,7 +28,6 @@ function modifyUnderscoredKeys(
 					if (typeof item === 'object' && !Array.isArray(item)) {
 						return modifyUnderscoredKeys(item, modifier);
 					} else {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return item;
 					}
 				});
@@ -37,7 +35,6 @@ function modifyUnderscoredKeys(
 				result[key] = modifyUnderscoredKeys(input[key], modifier);
 			}
 		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			result[key] = input[key];
 		}
 	});

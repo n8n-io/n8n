@@ -11,7 +11,6 @@ import type { IWebhookResponseData, WebhookResponseData } from 'n8n-workflow';
  * @returns The response body
  */
 export function extractWebhookOnReceivedResponse(
-	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 	responseData: Extract<WebhookResponseData, 'noData'> | string | undefined,
 	webhookResultData: IWebhookResponseData,
 ): unknown {

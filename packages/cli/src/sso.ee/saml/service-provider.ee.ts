@@ -22,7 +22,7 @@ export function getServiceProviderConfigTestReturnUrl(): string {
 // TODO:SAML: make these configurable for the end user
 export function getServiceProviderInstance(
 	prefs: SamlPreferences,
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+
 	samlify: typeof import('samlify'),
 ): ServiceProviderInstance {
 	if (serviceProviderInstance === undefined) {

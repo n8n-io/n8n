@@ -3,9 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
@@ -56,7 +54,6 @@ export interface MessageEventBusInitializeOptions {
 
 @Service()
 // TODO: Convert to TypedEventEmitter
-// eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
@@ -106,7 +103,6 @@ export class MessageEventBus extends EventEmitter {
 						await this.addDestination(destination, false);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.message) this.logger.debug(error.message as string);
 				}
 			}

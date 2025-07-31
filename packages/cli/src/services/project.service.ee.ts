@@ -13,9 +13,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, rolesWithScope, type Scope, type ProjectRole } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
@@ -71,14 +69,12 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		// eslint-disable-next-line import-x/no-cycle
 		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		// eslint-disable-next-line import-x/no-cycle
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);

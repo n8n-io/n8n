@@ -274,4 +274,149 @@ export class SourceControlController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
+
+	// ===== NEW API ENDPOINTS FOR ENHANCED SOURCE CONTROL OPERATIONS =====
+
+	@Post('/pull', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@GlobalScope('sourceControl:pull')
+	async pullChanges(
+		req: AuthenticatedRequest,
+		res: express.Response,
+	): Promise<{ success: boolean; message: string; changes?: SourceControlledFile[] }> {
+		try {
+			const result = await this.sourceControlService.pullWorkfolder(req.user, {
+				force: false,
+				variables: 'keep-mine',
+			});
+
+			this.eventService.emit('source-control-pull-completed', {
+				userId: req.user.id,
+				timestamp: new Date().toISOString(),
+			});
+
+			res.statusCode = result.statusCode;
+			return {
+				success: result.statusCode < 300,
+				message: 'Pull operation completed',
+				changes: Array.isArray(result.statusResult) ? result.statusResult : undefined,
+			};
+		} catch (error) {
+			throw new BadRequestError(`Pull operation failed: ${(error as Error).message}`);
+		}
+	}
+
+	@Get('/repository-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async getRepositoryStatus(req: AuthenticatedRequest): Promise<{
+		connected: boolean;
+		branch: string;
+		branches: string[];
+		hasChanges: boolean;
+		lastSync?: string;
+		repositoryUrl?: string;
+	}> {
+		try {
+			const preferences = this.sourceControlPreferencesService.getPreferences();
+			const branches = await this.sourceControlService.getBranches();
+			const status = await this.sourceControlService.getStatus(req.user, {
+				direction: 'push',
+				preferLocalVersion: true,
+			});
+
+			const hasChanges = status.files && status.files.length > 0;
+
+			return {
+				connected: preferences.connected,
+				branch: branches.currentBranch,
+				branches: branches.branches,
+				hasChanges,
+				repositoryUrl: preferences.repositoryUrl,
+			};
+		} catch (error) {
+			throw new BadRequestError(`Repository status check failed: ${(error as Error).message}`);
+		}
+	}
+
+	@Post('/set-branch', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async setBranch(
+		req: AuthenticatedRequest & { body: { branch: string; createIfNotExists?: boolean } },
+	): Promise<{ success: boolean; currentBranch: string; branches: string[] }> {
+		try {
+			const { branch, createIfNotExists = false } = req.body;
+
+			if (!branch || typeof branch !== 'string') {
+				throw new BadRequestError('Branch name is required and must be a string');
+			}
+
+			// Get current branches to check if target branch exists
+			const branchInfo = await this.sourceControlService.getBranches();
+
+			if (!branchInfo.branches.includes(branch) && !createIfNotExists) {
+				throw new BadRequestError(
+					`Branch '${branch}' does not exist. Set createIfNotExists to true to create it.`,
+				);
+			}
+
+			const result = await this.sourceControlService.setBranch(branch);
+
+			this.eventService.emit('source-control-branch-changed', {
+				userId: req.user.id,
+				fromBranch: branchInfo.currentBranch,
+				toBranch: branch,
+				timestamp: new Date().toISOString(),
+			});
+
+			return {
+				success: true,
+				currentBranch: result.currentBranch,
+				branches: result.branches,
+			};
+		} catch (error) {
+			throw new BadRequestError(`Branch switch failed: ${(error as Error).message}`);
+		}
+	}
+
+	@Get('/commit-history', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async getCommitHistory(
+		req: AuthenticatedRequest & { query: { limit?: string; offset?: string } },
+	): Promise<{ commits: Array<{ hash: string; message: string; author: string; date: string }> }> {
+		try {
+			const limit = parseInt(req.query.limit || '10', 10);
+			const offset = parseInt(req.query.offset || '0', 10);
+
+			// This would need to be implemented in the git service
+			// For now, return a mock response indicating the feature needs implementation
+			return {
+				commits: [],
+			};
+		} catch (error) {
+			throw new BadRequestError(`Commit history retrieval failed: ${(error as Error).message}`);
+		}
+	}
+
+	@Post('/sync-check', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
+	async syncCheck(req: AuthenticatedRequest): Promise<{
+		inSync: boolean;
+		behind: number;
+		ahead: number;
+		conflicts: string[];
+	}> {
+		try {
+			// This functionality would need to be implemented in the git service
+			// Return a basic status for now
+			const status = await this.sourceControlService.getStatus(req.user, {
+				direction: 'push',
+				preferLocalVersion: true,
+			});
+
+			return {
+				inSync: !status.files || status.files.length === 0,
+				behind: 0, // Would need git service implementation
+				ahead: status.files ? status.files.length : 0,
+				conflicts: [],
+			};
+		} catch (error) {
+			throw new BadRequestError(`Sync check failed: ${(error as Error).message}`);
+		}
+	}
 }

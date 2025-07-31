@@ -410,7 +410,7 @@ describe('GET /workflows/:workflowId', () => {
 		});
 
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		expect((responseWorkflow as any).shared).toBeUndefined();
 	});
 

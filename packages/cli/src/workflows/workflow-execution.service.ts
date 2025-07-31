@@ -375,7 +375,6 @@ export class WorkflowExecutionService {
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 				{ workflowId: workflowErrorData.workflow.id },
 			);

@@ -181,7 +181,6 @@ describe('TaskBroker', () => {
 
 			const taskId = 'task1';
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const failSpy = jest.spyOn(taskBroker as any, 'failTask');
 			const rejectSpy = jest.spyOn(taskBroker, 'handleRunnerReject');
 

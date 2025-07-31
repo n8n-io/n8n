@@ -510,7 +510,7 @@ export class CommunityPackagesService {
 			// Strip dev, optional, and peer dependencies before running `npm install`
 			const packageJsonPath = `${packageDirectory}/package.json`;
 			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 			const {
 				devDependencies,
 				peerDependencies,

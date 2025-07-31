@@ -23,7 +23,6 @@ describe('apiKeyHasScope', () => {
 
 		middlewares.apiKeyHasScope('credential:create');
 
-		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(publicApiKeyService.getApiKeyScopeMiddleware).toHaveBeenCalledWith('credential:create');
 	});
 

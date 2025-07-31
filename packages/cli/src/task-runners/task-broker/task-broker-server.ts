@@ -157,7 +157,7 @@ export class TaskBrokerServer {
 		this.app.use(
 			this.upgradeEndpoint,
 			createRateLimiter(),
-			// eslint-disable-next-line @typescript-eslint/unbound-method
+
 			this.authController.authMiddleware,
 			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
 				this.taskBrokerWsServer.handleRequest(req, res),
@@ -206,7 +206,7 @@ export class TaskBrokerServer {
 			};
 
 			// @ts-expect-error Delegate the request to the express app. This function is not exposed
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 			this.app.handle(request, response);
 		});
 	};

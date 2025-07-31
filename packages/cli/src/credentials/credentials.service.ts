@@ -11,7 +11,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
 	type EntityManager,
@@ -38,7 +37,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line import-x/no-cycle
+
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
@@ -539,21 +538,16 @@ export class CredentialsService {
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
 			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (
 				typeof value === 'object' &&
 				value !== null &&
 				key in replacement &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				typeof replacement[key] === 'object' &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				replacement[key] !== null
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				this.unredactRestoreValues(value, replacement[key]);
 			}
 		}

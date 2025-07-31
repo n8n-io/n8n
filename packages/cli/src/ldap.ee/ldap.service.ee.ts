@@ -5,7 +5,6 @@ import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
@@ -70,7 +69,7 @@ export class LdapService {
 		} catch (error) {
 			this.logger.warn(
 				`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				error,
 			);
 		}

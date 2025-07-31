@@ -27,7 +27,6 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		if (this.capacity < 0) {
 			this.emit('execution-throttled', { executionId });
 
-			// eslint-disable-next-line @typescript-eslint/return-await
 			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
 		}
 	}

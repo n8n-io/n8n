@@ -5,7 +5,6 @@ import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';

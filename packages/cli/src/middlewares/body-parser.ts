@@ -54,10 +54,8 @@ export const parseBody = async (req: Request) => {
 	if (rawBody?.length) {
 		try {
 			if (contentType === 'application/json') {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				req.body = jsonParse(rawBody.toString(encoding));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
 				req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {

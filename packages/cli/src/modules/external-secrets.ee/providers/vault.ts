@@ -420,11 +420,11 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
 			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
 				url,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				method,
 			});
 		} catch {

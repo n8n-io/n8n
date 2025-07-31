@@ -69,21 +69,16 @@ export class ExternalSecretsService {
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
 			if (value === CREDENTIAL_BLANKING_VALUE) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (
 				typeof value === 'object' &&
 				value !== null &&
 				key in replacement &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				typeof replacement[key] === 'object' &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				replacement[key] !== null
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				this.unredactRestoreValues(value, replacement[key]);
 			}
 		}

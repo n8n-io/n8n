@@ -8,7 +8,6 @@ import {
 	type WorkflowSharingRole,
 	type Scope,
 } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';

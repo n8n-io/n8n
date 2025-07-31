@@ -1,14 +1,105 @@
-node_modules
-.DS_Store
-.tmp
-tmp
-dist
-coverage
-npm-debug.log*
-yarn.lock
-google-generated-credentials.json
-_START_PACKAGE
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+*.pyc
+*.pyi
+*.pyz
+*.pyw
+
+# Compiled C extensions
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.manifest
+*.spec
+MANIFEST
+
+# Python project metadata
+.python-version
+.Python
+site/
+.mypy_cache/
+.pyre/
+.pytype/
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# PEP 582 support (e.g. `pdm`)
+__pypackages__/
+
+# =========================
+# Environment Files
+# =========================
 .env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.env
+*.env.*
+
+# =========================
+# Notebook / Data Science
+# =========================
+.ipynb_checkpoints/
+*.ipynb
+*.feather
+*.parquet
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.h5
+*.db
+*.sqlite
+*.sqlite3
+*.sav
+*.rds
+*.dta
+*.pkl
+*.joblib
+*.log
+
+# =========================
+# Logs and Reports
+# =========================
+*.log
+*.out
+*.err
+*.history
+*.pid
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.default.json
@@ -20,18 +111,151 @@ packages/**/.turbo
 *.tsbuildinfo
 .stylelintcache
 *.swp
-CHANGELOG-*.md
-*.mdx
-build-storybook.log
-*.junit.xml
-junit.xml
-test-results.json
-*.0x
-packages/testing/playwright/playwright-report
-packages/testing/playwright/test-results
-packages/testing/playwright/ms-playwright-cache
-test-results/
-compiled_app_output
-trivy_report*
-compiled
-packages/cli/src/modules/my-feature
+*.swo
+*~
+
+# =========================
+# Test Artifacts
+# =========================
+.tox/
+.cache/
+junit*.xml
+*.prof
+*.lprof
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+.pytest_cache/*
+
+# =========================
+# Editors and IDEs
+# =========================
+
+# VSCode
+.vscode/
+.history/
+.code-workspace
+
+# JetBrains (PyCharm, IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Eclipse / Java IDEs
+.project
+.classpath
+.settings/
+
+# Atom
+.atom/
+*.cson
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Vim
+*.swp
+*.swo
+*.un~
+.netrwhist
+
+# CodeSpaces
+*.code-search
+
+# Other Editor junk
+*.bak
+*.tmp
+*.orig
+*.rej
+
+# =========================
+# GitHub & CI
+# =========================
+.github/
+.gitattributes
+.gitmodules
+.gitlab/
+.gitea/
+.githooks/
+*.patch
+*.diff
+
+# =========================
+# OS Generated
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+Icon?
+.LSOverride
+
+# Linux / Unix / Mac
+.fuse_hidden*
+.nfs*
+.AppleDouble
+.apdisk
+
+# Windows
+$RECYCLE.BIN/
+*.lnk
+
+# =========================
+# Virtualenvwrapper
+# =========================
+.venv/
+pip-delete-this-directory.txt
+pip-log.txt
+
+# =========================
+# Pre-commit / Linting / Formatters
+# =========================
+.pre-commit-config.yaml
+.pre-commit-hooks.yaml
+.pre-commit/
+ruff_cache/
+.dmypy.json
+noxfile.py
+.pylint.d/
+.pdm.toml
+pdm.lock
+pdm-build/
+poetry.lock
+poetry.toml
+
+# =========================
+# Node / JS tooling (if hybrid project)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-store/
+
+# =========================
+# Project-Specific
+# =========================
+.aidd/
+.uv/
+*.sqlite3
+db.sqlite3
+local_settings.py
+
+TODO.json.*
+
+*.log

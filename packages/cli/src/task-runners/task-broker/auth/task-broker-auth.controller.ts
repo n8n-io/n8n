@@ -15,7 +15,6 @@ import { ForbiddenError } from '../../../errors/response-errors/forbidden.error'
 @Service()
 export class TaskBrokerAuthController {
 	constructor(private readonly authService: TaskBrokerAuthService) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
 	}
 

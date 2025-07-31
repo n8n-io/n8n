@@ -67,7 +67,7 @@ export class LoadNodesAndCredentials {
 		process.env.NODE_PATH = module.paths.join(delimiter);
 
 		// @ts-ignore
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 		module.constructor._initPaths();
 
 		if (!inE2ETests) {

@@ -62,10 +62,8 @@ export class SecurityAuditService {
 				NodesRiskReporter: 'nodes-risk-reporter',
 			};
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const RiskReporterModule = await import(`./risk-reporters/${toFilename[className]}`);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const RiskReporterClass = RiskReporterModule[className] as { new (): RiskReporter };
 
 			this.reporters[category] = Container.get(RiskReporterClass);

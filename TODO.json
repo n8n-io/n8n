@@ -15,26 +15,92 @@
     {
       "id": "linter_task_active",
       "title": "Fix Linter Errors - IMMEDIATE",
-      "description": "Fix 0 errors and 0 warnings found in recently edited files: linter-errors.md",
+      "description": "Fix 1 error and 0 warnings found in recently edited files: eslint.config.mjs",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "completed",
+      "status": "pending",
       "important_files": [
-        "development/linter-errors.md"
+        "development/linter-errors.md",
+        "packages/cli/eslint.config.mjs"
       ],
       "success_criteria": [
         "All linter errors in edited files resolved",
         "development/linter-errors.md shows no issues for edited files",
         "Code passes linting without warnings or errors"
       ],
-      "created_at": "2025-07-31T01:07:50.945Z",
+      "created_at": "2025-07-31T01:14:12.665Z",
       "is_linter_task": true,
       "linter_summary": {
-        "total_violations": 0,
-        "errors": 0,
+        "total_violations": 1,
+        "errors": 1,
         "warnings": 0,
         "files_affected": 1
-      }
+      },
+      "subtasks": [
+        {
+          "id": "linter-subtask-1-plugins",
+          "title": "Install Missing ESLint Plugins",
+          "description": "Install eslint-plugin-import-x and configure n8n-local-rules plugin to resolve missing rule definitions",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "eslint-plugin-import-x installed and configured",
+            "n8n-local-rules plugin properly set up or alternative rules configured",
+            "ESLint can parse all configuration files without missing rule errors",
+            "Package dependencies updated in package.json"
+          ],
+          "important_files": [
+            "packages/cli/package.json",
+            "packages/cli/eslint.config.mjs",
+            "package.json"
+          ],
+          "estimate": "1-2 hours",
+          "parent_task": "linter_task_active"
+        },
+        {
+          "id": "linter-subtask-2-rules",
+          "title": "Configure ESLint Rules and Fix Violations",
+          "description": "Update ESLint configuration with proper rules and fix all 45+ linting violations across the codebase",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "All custom rule definitions resolved",
+            "ESLint configuration works without missing rule errors",
+            "All linting violations fixed or properly configured",
+            "Zero linting errors when running npm run lint"
+          ],
+          "important_files": [
+            "packages/cli/eslint.config.mjs",
+            "packages/cli/src/**/*.ts",
+            "development/linter-errors.md"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "linter_task_active"
+        },
+        {
+          "id": "linter-subtask-3-validation",
+          "title": "Validate ESLint Configuration Across Monorepo",
+          "description": "Ensure ESLint configuration works correctly across all packages and CI/CD processes",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "ESLint runs successfully from root directory",
+            "All packages have consistent linting configuration",
+            "Linting passes in CI/CD environment",
+            "Linter errors documentation updated"
+          ],
+          "important_files": [
+            "eslint.config.js",
+            "packages/cli/eslint.config.mjs",
+            "development/linter-errors.md"
+          ],
+          "estimate": "1 hour",
+          "parent_task": "linter_task_active"
+        }
+      ]
     },
     {
       "id": "phase1-source-1753924007917-nrdhcsqca",
@@ -42,7 +108,7 @@
       "description": "Add REST endpoints for source control operations including git pull, branch management, and repository status. Extends existing SourceControlService with new API endpoints.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "in_progress",
       "success_criteria": [
         "POST /api/v1/source-control/pull endpoint implemented",
         "Source control status endpoints functional",
@@ -62,7 +128,93 @@
         "task-1"
       ],
       "estimate": "6-8 hours",
-      "requires_research": false
+      "requires_research": false,
+      "subtasks": [
+        {
+          "id": "source-subtask-1-config",
+          "title": "Fix ESLint Configuration Issues",
+          "description": "Resolve ESLint v9 configuration errors by creating proper eslint.config.js at root level with correct import syntax and configuration structure.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "ESLint configuration loads without errors",
+            "Linting passes on modified source control files",
+            "Configuration follows ESLint v9 flat config format",
+            "Ignores patterns set correctly for monorepo structure"
+          ],
+          "important_files": [
+            "eslint.config.js",
+            "packages/cli/eslint.config.mjs",
+            "development/linter-errors.md"
+          ],
+          "estimate": "1-2 hours",
+          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
+        },
+        {
+          "id": "source-subtask-2-endpoints",
+          "title": "Complete Source Control API Endpoints Implementation",
+          "description": "Finalize the implementation of new source control API endpoints including proper error handling, response formatting, and integration with existing services.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "All new endpoints functional and tested",
+            "POST /source-control/pull endpoint working",
+            "GET /source-control/repository-status endpoint working",
+            "POST /source-control/set-branch endpoint working",
+            "Proper error handling and status codes implemented",
+            "Event emission for tracking working correctly"
+          ],
+          "important_files": [
+            "packages/cli/src/environments.ee/source-control/source-control.controller.ee.ts",
+            "packages/cli/src/environments.ee/source-control/source-control.service.ee.ts"
+          ],
+          "estimate": "3-4 hours",
+          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
+        },
+        {
+          "id": "source-subtask-3-tests",
+          "title": "Create API Tests for Source Control Endpoints",
+          "description": "Write comprehensive unit and integration tests for the new source control API endpoints to ensure functionality and prevent regressions.",
+          "mode": "testing",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "Unit tests for all new controller methods",
+            "Integration tests for API endpoints",
+            "Test coverage >90% for new code",
+            "Mock services properly for isolated testing",
+            "Error scenarios covered in tests"
+          ],
+          "important_files": [
+            "packages/cli/src/environments.ee/source-control/__tests__/source-control.controller.ee.test.ts",
+            "packages/cli/src/environments.ee/source-control/__tests__/"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
+        },
+        {
+          "id": "source-subtask-4-docs",
+          "title": "Update API Documentation",
+          "description": "Update OpenAPI specification and documentation to include the new source control endpoints with proper request/response schemas and examples.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "OpenAPI spec updated with new endpoints",
+            "Request/response schemas documented",
+            "Authentication requirements specified",
+            "Example requests and responses provided",
+            "API documentation builds without errors"
+          ],
+          "important_files": [
+            "packages/cli/src/public-api/v1/openapi.yml"
+          ],
+          "estimate": "1-2 hours",
+          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
+        }
+      ]
     },
     {
       "id": "phase1-user-1753924007917-mak3jif26",
@@ -345,8 +497,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 6,
-  "last_hook_activation": 1753924070945,
+  "execution_count": 14,
+  "last_hook_activation": 1753935914437,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 13

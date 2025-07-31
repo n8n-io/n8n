@@ -30,7 +30,6 @@ if (inE2ETests) {
 import { schema } from './schema';
 const config = convict(schema, { args: [] });
 
-// eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
 
 const logger = Container.get(Logger);
@@ -46,10 +45,8 @@ if (!inE2ETests && !inTest) {
 			if (!configFile) continue;
 			// NOTE: This is "temporary" code until we have migrated all config to the new package
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const data = JSON.parse(readFileSync(configFile, 'utf8'));
 				for (const prefix in data) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 					const innerData = data[prefix];
 					if (prefix in globalConfig) {
 						// @ts-ignore
@@ -74,14 +71,13 @@ if (!inE2ETests && !inTest) {
 		if (envName.endsWith('_FILE') && fileName) {
 			const configEnvName = envName.replace(/_FILE$/, '');
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 			const key = config._env[configEnvName]?.[0] as string;
 			if (key) {
 				let value: string;
 				try {
 					value = readFileSync(fileName, 'utf8');
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
 						throw new UserError('File not found', { extra: { fileName } });
 					}
