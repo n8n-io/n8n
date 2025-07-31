@@ -11,7 +11,6 @@ import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {

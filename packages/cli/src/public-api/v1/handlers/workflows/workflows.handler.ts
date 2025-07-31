@@ -209,7 +209,7 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
-			const selectFields: (keyof WorkflowEntity)[] = [
+			const selectFields: Array<keyof WorkflowEntity> = [
 				'id',
 				'name',
 				'active',

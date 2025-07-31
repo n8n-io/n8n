@@ -15,13 +15,12 @@ import type {
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { RoleService } from '@/services/role.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
+import type { RoleService } from '@/services/role.service';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { ResourceTransferService } from '../resource-transfer.service';
 

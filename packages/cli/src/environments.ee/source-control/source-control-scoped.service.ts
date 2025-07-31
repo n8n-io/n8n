@@ -11,9 +11,9 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { SourceControlContext } from './types/source-control-context';
-
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
+import { SourceControlContext } from './types/source-control-context';
 
 @Service()
 export class SourceControlScopedService {

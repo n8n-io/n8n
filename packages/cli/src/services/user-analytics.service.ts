@@ -1,13 +1,10 @@
 import type {
 	UserAnalyticsQueryDto,
-	UserActivityQueryDto,
 	UserMetricsResponseDto,
 	SystemUserAnalyticsResponseDto,
-	UserActivityRecordDto,
 	UserEngagementAnalyticsDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
 import {
 	UserRepository,
 	WorkflowRepository,
@@ -15,8 +12,9 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { CacheService } from '@/services/cache/cache.service';
+
 import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 interface UserActivityEvent {
 	userId: string;
@@ -199,7 +197,7 @@ export class UserAnalyticsService {
 		const user = await this.userRepository.findOneBy({ id: event.userId });
 		if (user) {
 			this.eventService.emit('user-updated', {
-				user: user,
+				user,
 				fieldsChanged: ['activity'],
 			});
 		}

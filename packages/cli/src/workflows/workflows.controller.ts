@@ -33,16 +33,8 @@ import {
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	IWorkflowExecutionDataProcess,
-	IWorkflowBase,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import { UnexpectedError, Workflow, ApplicationError } from 'n8n-workflow';
+import type { INodeExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import { UnexpectedError, ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -63,7 +55,6 @@ import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';

@@ -1,6 +1,3 @@
-import { PerformanceMonitoringService } from '../performance-monitoring.service';
-import { ExecutionService } from '@/executions/execution.service';
-import { ActiveExecutions } from '@/active-executions';
 import {
 	ExecutionStatus,
 	BottleneckSeverity,
@@ -9,6 +6,11 @@ import {
 } from '@n8n/api-types';
 import { ApplicationError } from 'n8n-workflow';
 import type { IRunData, IRunExecutionData } from 'n8n-workflow';
+
+import type { ActiveExecutions } from '@/active-executions';
+import type { ExecutionService } from '@/executions/execution.service';
+
+import { PerformanceMonitoringService } from '../performance-monitoring.service';
 
 // Mock logger
 jest.mock('n8n-workflow', () => ({

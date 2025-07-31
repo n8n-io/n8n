@@ -27,7 +27,7 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		if (this.capacity < 0) {
 			this.emit('execution-throttled', { executionId });
 
-			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
+			return await new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
 		}
 	}
 

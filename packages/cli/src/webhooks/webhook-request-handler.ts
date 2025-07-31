@@ -9,8 +9,6 @@ import {
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
-import { WebhookService } from './webhook.service';
-
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
 import type {
@@ -30,6 +28,8 @@ import type {
 	WebhookRequest,
 	WebhookResponseHeaders,
 } from '@/webhooks/webhook.types';
+
+import { WebhookService } from './webhook.service';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 

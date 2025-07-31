@@ -1,6 +1,7 @@
-import { SystemResourcesService } from '../system-resources.service';
-import { cpus, freemem, totalmem, loadavg } from 'node:os';
 import { promises as fs } from 'node:fs';
+import { cpus, freemem, totalmem, loadavg } from 'node:os';
+
+import { SystemResourcesService } from '../system-resources.service';
 
 // Mock Node.js modules
 jest.mock('node:os');

@@ -14,4 +14,78 @@ export type CollaboratorsChanged = {
 	};
 };
 
-export type CollaborationPushMessage = CollaboratorsChanged;
+export type WorkflowEditOperation =
+	| {
+			action: 'addNode';
+			nodeData: {
+				id: string;
+				name: string;
+				type: string;
+				typeVersion: number;
+				position: [number, number];
+				parameters?: Record<string, any>;
+			};
+			position?: number;
+	  }
+	| {
+			action: 'removeNode';
+			nodeId: string;
+			position?: number;
+	  }
+	| {
+			action: 'updateNode';
+			nodeId: string;
+			changes: Record<string, any>;
+			position?: number;
+	  }
+	| {
+			action: 'addConnection';
+			connection: {
+				source: string;
+				sourceIndex: number;
+				destination: string;
+				destinationIndex: number;
+				type?: string;
+			};
+			position?: number;
+	  }
+	| {
+			action: 'removeConnection';
+			connection: {
+				source: string;
+				sourceIndex: number;
+				destination: string;
+				destinationIndex: number;
+			};
+			position?: number;
+	  };
+
+export type WorkflowEditBroadcast = {
+	type: 'workflowEditBroadcast';
+	data: {
+		workflowId: string;
+		operation: WorkflowEditOperation;
+		userId: string;
+		operationId: string;
+		timestamp: number;
+	};
+};
+
+export type WorkflowCursorBroadcast = {
+	type: 'workflowCursorBroadcast';
+	data: {
+		workflowId: string;
+		userId: string;
+		position?: {
+			x: number;
+			y: number;
+		};
+		selectedNodeId?: string;
+		timestamp: number;
+	};
+};
+
+export type CollaborationPushMessage =
+	| CollaboratorsChanged
+	| WorkflowEditBroadcast
+	| WorkflowCursorBroadcast;

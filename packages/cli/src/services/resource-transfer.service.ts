@@ -20,13 +20,13 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { RoleService } from '@/services/role.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 @Service()
 export class ResourceTransferService {
@@ -141,7 +141,7 @@ export class ResourceTransferService {
 
 				// Emit event for audit trail
 				this.eventService.emit('user-updated', {
-					user: user,
+					user,
 					fieldsChanged: ['workflow_transferred'],
 				});
 			} catch (error) {
@@ -261,7 +261,7 @@ export class ResourceTransferService {
 
 				// Emit event for audit trail
 				this.eventService.emit('user-updated', {
-					user: user,
+					user,
 					fieldsChanged: ['credential_transferred'],
 				});
 			} catch (error) {

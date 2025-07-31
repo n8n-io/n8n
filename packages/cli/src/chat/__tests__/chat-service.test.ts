@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 import { WebSocket } from 'ws';
 
 import type { ChatExecutionManager } from '../chat-execution-manager';
 import { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
-import type { ErrorReporter } from 'n8n-core';
 
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;

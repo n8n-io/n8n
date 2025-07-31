@@ -1,15 +1,15 @@
-import type { User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
-import type { UserManagementMailer } from '@/user-management/email';
-import type { PublicApiKeyService } from '@/services/public-api-key.service';
 import type {
 	BulkInviteUsersRequestDto,
 	BulkUpdateRolesRequestDto,
 	BulkStatusUpdateRequestDto,
 	BulkDeleteUsersRequestDto,
 } from '@n8n/api-types';
+import type { User, UserRepository } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+
+import type { EventService } from '@/events/event.service';
+import type { PublicApiKeyService } from '@/services/public-api-key.service';
+import type { UserManagementMailer } from '@/user-management/email';
 
 import { UserService } from '../user.service';
 

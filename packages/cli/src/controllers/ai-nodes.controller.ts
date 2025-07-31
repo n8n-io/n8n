@@ -10,11 +10,10 @@ import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import type {
 	IDataObject,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, Workflow } from 'n8n-workflow';
+import { ApplicationError, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

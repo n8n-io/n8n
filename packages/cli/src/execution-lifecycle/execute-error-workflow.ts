@@ -7,7 +7,6 @@ import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
-
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 /**

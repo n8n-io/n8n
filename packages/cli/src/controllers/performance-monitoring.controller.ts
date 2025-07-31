@@ -1,5 +1,3 @@
-import { Response } from 'express';
-import { Get, RestController, Param, Query } from '@/decorators';
 import {
 	ExecutionProfileDto,
 	ExecutionProfileRequestDto,
@@ -8,13 +6,17 @@ import {
 	PerformanceMetricsDto,
 	PerformanceMetricsRequestDto,
 } from '@n8n/api-types';
+import { Response } from 'express';
+import { Container } from 'typedi';
+
+import type { AuthenticatedRequest } from '@/requests';
 import { PerformanceMonitoringService } from '@/services/performance-monitoring.service';
 import { SystemResourcesService } from '@/services/system-resources.service';
-import type { AuthenticatedRequest } from '@/requests';
-import { InternalHooks } from '@/internal-hooks';
-import { Container } from 'typedi';
-import { Logger } from '@/logger';
+
+import { Get, RestController, Param, Query } from '@/decorators';
 import { BadRequestError, NotFoundError } from '@/errors/response-errors';
+import { InternalHooks } from '@/internal-hooks';
+import { Logger } from '@/logger';
 
 @RestController('/performance-monitoring')
 export class PerformanceMonitoringController {

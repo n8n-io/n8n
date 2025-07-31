@@ -9,7 +9,6 @@ import {
 	BulkDeleteUsersRequestDto,
 	BulkOperationResponseDto,
 	UserAnalyticsQueryDto,
-	UserActivityQueryDto,
 	UserMetricsResponseDto,
 	SystemUserAnalyticsResponseDto,
 	UserEngagementAnalyticsDto,
@@ -38,6 +37,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -50,10 +50,9 @@ import { ExternalHooks } from '@/external-hooks';
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UserService } from '@/services/user.service';
 import { UserAnalyticsService } from '@/services/user-analytics.service';
+import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/users')
 export class UsersController {

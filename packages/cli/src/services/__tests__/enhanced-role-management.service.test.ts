@@ -9,12 +9,12 @@ import type {
 import type { User, UserRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
+import type { CacheService } from '@/services/cache/cache.service';
+import type { RoleService } from '@/services/role.service';
 
 import { EnhancedRoleManagementService } from '../enhanced-role-management.service';
 

@@ -1,8 +1,3 @@
-import { Service } from 'typedi';
-import type { Logger } from '@/logger';
-import { LoggerProxy } from 'n8n-workflow';
-import { ExecutionService } from '@/executions/execution.service';
-import { ActiveExecutions } from '@/active-executions';
 import {
 	type ExecutionProfileDto,
 	type BottleneckDto,
@@ -13,13 +8,14 @@ import {
 	BottleneckIssue,
 	NodeExecutionStatus,
 } from '@n8n/api-types';
-import type {
-	IRunData,
-	IRunExecutionData,
-	INodeExecutionData,
-	IExecutionResponse,
-} from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import type { IRunData, IRunExecutionData } from 'n8n-workflow';
+import { LoggerProxy, ApplicationError } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import { ActiveExecutions } from '@/active-executions';
+import { ExecutionService } from '@/executions/execution.service';
+
+import type { Logger } from '@/logger';
 
 @Service()
 export class PerformanceMonitoringService {

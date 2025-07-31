@@ -5,6 +5,10 @@ import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+
 import {
 	EXTERNAL_SECRETS_DB_KEY,
 	EXTERNAL_SECRETS_INITIAL_BACKOFF,
@@ -13,10 +17,6 @@ import {
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
-
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ExternalSecretsManager implements IExternalSecretsManager {

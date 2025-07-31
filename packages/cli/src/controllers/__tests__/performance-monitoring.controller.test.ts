@@ -1,17 +1,20 @@
-import type { Response } from 'express';
-import { PerformanceMonitoringController } from '../performance-monitoring.controller';
-import { PerformanceMonitoringService } from '@/services/performance-monitoring.service';
-import { SystemResourcesService } from '@/services/system-resources.service';
-import { InternalHooks } from '@/internal-hooks';
-import { Logger } from '@/logger';
-import { BadRequestError, NotFoundError } from '@/errors/response-errors';
 import {
 	ExecutionStatus,
 	BottleneckSeverity,
 	BottleneckIssue,
 	NodeExecutionStatus,
 } from '@n8n/api-types';
+import type { Response } from 'express';
+
 import type { AuthenticatedRequest } from '@/requests';
+import type { PerformanceMonitoringService } from '@/services/performance-monitoring.service';
+import type { SystemResourcesService } from '@/services/system-resources.service';
+
+import { PerformanceMonitoringController } from '../performance-monitoring.controller';
+
+import { BadRequestError, NotFoundError } from '@/errors/response-errors';
+import type { InternalHooks } from '@/internal-hooks';
+import type { Logger } from '@/logger';
 
 describe('PerformanceMonitoringController', () => {
 	let controller: PerformanceMonitoringController;

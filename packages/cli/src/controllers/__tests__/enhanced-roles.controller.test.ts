@@ -1,5 +1,3 @@
-import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	CreateCustomRoleRequestDto,
 	UpdateCustomRoleRequestDto,
@@ -14,11 +12,13 @@ import type {
 	BulkRoleOperationResponseDto,
 	RoleUsageAnalyticsDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+import type { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';
 
 import { EnhancedRolesController } from '../enhanced-roles.controller';
 

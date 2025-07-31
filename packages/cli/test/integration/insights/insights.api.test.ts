@@ -2,8 +2,8 @@ import type { InsightsDateRange } from '@n8n/api-types';
 import { mockInstance, createWorkflow, createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { DateTime } from 'luxon';
 
-import { Telemetry } from '@/telemetry';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';

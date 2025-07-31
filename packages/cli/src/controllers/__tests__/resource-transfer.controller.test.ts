@@ -1,5 +1,3 @@
-import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import type {
 	BatchTransferWorkflowsRequestDto,
 	BatchTransferCredentialsRequestDto,
@@ -8,10 +6,13 @@ import type {
 	TransferPreviewRequestDto,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import type { Request, Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { ResourceTransferService } from '@/services/resource-transfer.service';
+import type { EventService } from '@/events/event.service';
+import type { ResourceTransferService } from '@/services/resource-transfer.service';
+
 import { ResourceTransferController } from '../resource-transfer.controller';
 
 describe('ResourceTransferController', () => {

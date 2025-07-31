@@ -7,9 +7,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { SourceControlController } from '../source-control.controller.ee';
 import type { SourceControlService } from '../source-control.service.ee';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { SourceControlRequest } from '../types/requests';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
 

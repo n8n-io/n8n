@@ -11,7 +11,7 @@ describe('ConcurrencyQueue', () => {
 		const queue = new ConcurrencyQueue(1);
 		const state: Record<string, 'started' | 'finished'> = {};
 
-		const sleepSpy = jest.fn(() => sleep(500));
+		const sleepSpy = jest.fn(async () => await sleep(500));
 
 		const testFn = async (item: { executionId: string }) => {
 			await queue.enqueue(item.executionId);
@@ -65,7 +65,7 @@ describe('ConcurrencyQueue', () => {
 		const emitSpy = jest.fn();
 		queue.on('concurrency-check', emitSpy);
 
-		Array.from({ length: 10 }, (_, i) => i).forEach(() => queue.enqueue('1'));
+		Array.from({ length: 10 }, (_, i) => i).forEach(async () => await queue.enqueue('1'));
 
 		expect(queue.currentCapacity).toBe(0);
 		await jest.advanceTimersByTimeAsync(1000);

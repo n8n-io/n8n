@@ -1,10 +1,3 @@
-import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { UserService } from '@/services/user.service';
-import type { UserAnalyticsService } from '@/services/user-analytics.service';
 import type {
 	BulkInviteUsersRequestDto,
 	BulkUpdateRolesRequestDto,
@@ -16,7 +9,14 @@ import type {
 	SystemUserAnalyticsResponseDto,
 	UserEngagementAnalyticsDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { UserAnalyticsService } from '@/services/user-analytics.service';
+import type { UserService } from '@/services/user.service';
 
 import { UsersController } from '../users.controller';
 

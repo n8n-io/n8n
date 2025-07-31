@@ -9,11 +9,8 @@ import {
 	BulkRoleAssignmentRequestDto,
 	PermissionCheckRequestDto,
 	PermissionCheckResponseDto,
-	RoleHierarchyDto,
-	RoleHierarchyRequestDto,
 	EnhancedRoleQueryDto,
 	RoleUsageAnalyticsDto,
-	PermissionAuditDto,
 	BulkRoleOperationResponseDto,
 	PermissionValidationDto,
 } from '@n8n/api-types';
@@ -34,7 +31,6 @@ import {
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';

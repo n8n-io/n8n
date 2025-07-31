@@ -1,4 +1,10 @@
 import type {
+	UserAnalyticsQueryDto,
+	UserMetricsResponseDto,
+	SystemUserAnalyticsResponseDto,
+	UserEngagementAnalyticsDto,
+} from '@n8n/api-types';
+import type {
 	User,
 	UserRepository,
 	WorkflowRepository,
@@ -7,14 +13,8 @@ import type {
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { EventService } from '@/events/event.service';
-import type {
-	UserAnalyticsQueryDto,
-	UserMetricsResponseDto,
-	SystemUserAnalyticsResponseDto,
-	UserEngagementAnalyticsDto,
-} from '@n8n/api-types';
+import type { EventService } from '@/events/event.service';
+import type { CacheService } from '@/services/cache/cache.service';
 
 import { UserAnalyticsService } from '../user-analytics.service';
 

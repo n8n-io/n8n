@@ -10,10 +10,8 @@ import type {
 	PermissionCheckRequestDto,
 	PermissionCheckResponseDto,
 	RoleHierarchyDto,
-	RoleHierarchyRequestDto,
 	EnhancedRoleQueryDto,
 	RoleUsageAnalyticsDto,
-	PermissionAuditDto,
 	BulkRoleOperationResponseDto,
 	PermissionValidationDto,
 } from '@n8n/api-types';
@@ -21,12 +19,13 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { CacheService } from '@/services/cache/cache.service';
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { RoleService } from '@/services/role.service';
 
 interface CustomRole {
 	id: string;

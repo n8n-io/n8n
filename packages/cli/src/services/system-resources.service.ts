@@ -1,13 +1,10 @@
-import { Service } from 'typedi';
-import { cpus, freemem, totalmem, loadavg } from 'node:os';
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
-import type { Logger } from '@/logger';
-import { LoggerProxy } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
 import type { SystemResourcesDto } from '@n8n/api-types';
-import { Queue } from '@/scaling/scaling.types';
-import Container from 'typedi';
+import { LoggerProxy, ApplicationError } from 'n8n-workflow';
+import { promises as fs } from 'node:fs';
+import { cpus, freemem, totalmem, loadavg } from 'node:os';
+import Container, { Service } from 'typedi';
+
+import type { Logger } from '@/logger';
 
 interface SystemStats {
 	cpu: {
@@ -116,7 +113,7 @@ export class SystemResourcesService {
 	 * Get CPU usage percentage
 	 */
 	private async getCpuUsage(): Promise<number> {
-		return new Promise((resolve) => {
+		return await new Promise((resolve) => {
 			const currentUsage = process.cpuUsage(this.lastCpuUsage);
 			const currentTimestamp = Date.now();
 

@@ -20,6 +20,7 @@ import type {
 	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
@@ -32,7 +33,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
