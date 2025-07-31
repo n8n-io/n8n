@@ -788,8 +788,8 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-background-medium);
-	color: var(--color-text-dark);
+	background-color: var(--color-primary);
+	color: var(--color-text-xlight);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
