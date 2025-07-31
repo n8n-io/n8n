@@ -666,13 +666,13 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
 		color: var(--color-text-xlight);
-		font-family: var(--font-family-monospace);
-		font-size: 8px;
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
 		font-weight: 700;
 		z-index: 1;
 		width: 16px;
