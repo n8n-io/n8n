@@ -80,7 +80,18 @@ describe('Jira -> GenericFunctions', () => {
 			expect(query).toEqual({});
 		});
 
-		it('should initialize token pagination parameters when responseData is not provided', () => {
+		it('should initialize token pagination parameters with GET when responseData is not provided', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+
+			const result = handlePagination('GET', body, query, 'token');
+
+			expect(result).toBe(true);
+			expect(query.maxResults).toBe(100);
+			expect(body).toEqual({});
+		});
+
+		it('should initialize token pagination parameters with POST when responseData is not provided', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 
@@ -155,7 +166,21 @@ describe('Jira -> GenericFunctions', () => {
 			expect(query).toEqual({});
 		});
 
-		it('should handle token pagination with more pages available', () => {
+		it('should handle token pagination with GET and more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: 'someToken123',
+			};
+
+			const result = handlePagination('GET', body, query, 'token', responseData);
+
+			expect(result).toBe(true);
+			expect(query.nextPageToken).toBe('someToken123');
+			expect(body).toEqual({});
+		});
+
+		it('should handle token pagination with POST and more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {
@@ -169,7 +194,21 @@ describe('Jira -> GenericFunctions', () => {
 			expect(query).toEqual({});
 		});
 
-		it('should handle token pagination with no more pages available', () => {
+		it('should handle token pagination with GET and no more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: '',
+			};
+
+			const result = handlePagination('GET', body, query, 'token', responseData);
+
+			expect(result).toBe(false);
+			expect(query.nextPageToken).toBe('');
+			expect(body).toEqual({});
+		});
+
+		it('should handle token pagination with POST and no more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {

@@ -92,8 +92,11 @@ export function handlePagination(
 				body.maxResults = 100;
 			}
 		} else {
-			// token pagination is used only in POST requests
-			body.maxResults = 100;
+			if (method === 'GET') {
+				query.maxResults = 100;
+			} else {
+				body.maxResults = 100;
+			}
 		}
 
 		return true;
@@ -109,7 +112,12 @@ export function handlePagination(
 
 		return nextStartAt < responseData.total;
 	} else {
-		body.nextPageToken = responseData.nextPageToken as string;
+		if (method === 'GET') {
+			query.nextPageToken = responseData.nextPageToken as string;
+		} else {
+			body.nextPageToken = responseData.nextPageToken as string;
+		}
+
 		return !!responseData.nextPageToken;
 	}
 }
