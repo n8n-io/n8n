@@ -4,7 +4,7 @@ import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';

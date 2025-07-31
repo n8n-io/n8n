@@ -8,7 +8,7 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import * as auth from '@/auth';
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
 import { LdapService } from '@/ldap.ee/ldap.service.ee';

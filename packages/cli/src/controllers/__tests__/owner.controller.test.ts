@@ -10,7 +10,7 @@ import type {
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthenticationService } from '@/auth/authentication-service';
+import type { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

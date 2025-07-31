@@ -29,7 +29,7 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

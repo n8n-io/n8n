@@ -8,7 +8,7 @@ import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
 import { handleEmailLogin } from '@/auth';
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

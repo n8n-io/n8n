@@ -4,7 +4,7 @@ import { AuthenticatedRequest, SettingsRepository, UserRepository } from '@n8n/d
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';

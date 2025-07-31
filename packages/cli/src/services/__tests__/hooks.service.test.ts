@@ -10,7 +10,7 @@ import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthenticationService } from '@/auth/authentication-service';
+import type { AuthenticationService } from '@/auth/authentication.service';
 import type { Invitation } from '@/interfaces';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';

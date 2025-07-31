@@ -10,7 +10,7 @@ import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';

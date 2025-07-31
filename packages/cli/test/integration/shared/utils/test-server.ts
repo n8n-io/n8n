@@ -8,7 +8,7 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';

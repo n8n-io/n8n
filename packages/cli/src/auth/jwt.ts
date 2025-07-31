@@ -2,7 +2,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { AuthenticationService } from './authentication-service';
+import { AuthenticationService } from './authentication.service';
 
 // This method is still used by cloud hooks.
 // DO NOT DELETE until the hooks have been updated

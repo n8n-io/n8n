@@ -11,7 +11,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';

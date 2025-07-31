@@ -9,7 +9,7 @@ import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

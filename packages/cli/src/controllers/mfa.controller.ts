@@ -2,7 +2,7 @@ import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';

@@ -14,7 +14,7 @@ import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';

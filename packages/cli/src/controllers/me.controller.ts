@@ -11,7 +11,7 @@ import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';

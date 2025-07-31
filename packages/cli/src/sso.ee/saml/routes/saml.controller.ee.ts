@@ -6,7 +6,7 @@ import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
-import { AuthenticationService } from '@/auth/authentication-service';
+import { AuthenticationService } from '@/auth/authentication.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';

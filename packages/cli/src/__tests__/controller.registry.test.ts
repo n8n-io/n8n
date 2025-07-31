@@ -12,7 +12,7 @@ import express from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 
-import type { AuthenticationService } from '@/auth/authentication-service';
+import type { AuthenticationService } from '@/auth/authentication.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
