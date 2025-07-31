@@ -136,7 +136,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} else if (model.includes('imagen')) {
 		// Imagen models use a different endpoint and request/response structure
 		const sampleCount = this.getNodeParameter('options.sampleCount', i, 1) as number;
-		const aspectRatio: string = this.getNodeParameter('options.aspectRatio', i, '1:1');
+		const aspectRatio = this.getNodeParameter('options.aspectRatio', i, '1:1') as string;
 		const body = {
 			instances: [
 				{
