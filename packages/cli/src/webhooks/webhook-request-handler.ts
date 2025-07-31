@@ -151,7 +151,7 @@ class WebhookRequestHandler {
 		} else {
 			const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
 			if (needsSandbox) {
-				res.send(sandboxHtmlResponse(JSON.stringify(body)));
+				res.send(sandboxHtmlResponse(body));
 			} else {
 				res.json(body);
 			}

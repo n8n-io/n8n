@@ -1,10 +1,11 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import type { ReportingOptions } from '@n8n/errors';
+import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import type { ErrorEvent, EventHint } from '@sentry/types';
+import { eventLoopBlockIntegration } from '@sentry/node-native';
 import { AxiosError } from 'axios';
-import type { ReportingOptions } from 'n8n-workflow';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
@@ -104,7 +105,7 @@ export class ErrorReporter {
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					this.report = this.defaultReport;
 				} else {
-					setTimeout(checkForExpiration, ONE_DAY_IN_MS);
+					this.expirationTimer = setTimeout(checkForExpiration, ONE_DAY_IN_MS);
 				}
 			};
 			checkForExpiration();
@@ -130,7 +131,7 @@ export class ErrorReporter {
 			dsn,
 			release,
 			environment,
-			enableTracing: false,
+			tracesSampleRate: 0,
 			serverName,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
@@ -144,9 +145,9 @@ export class ErrorReporter {
 						headers: false,
 						query_string: false,
 						url: true,
-						user: false,
 					},
 				}),
+				eventLoopBlockIntegration(),
 			],
 		});
 

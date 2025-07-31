@@ -1,4 +1,5 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { CliParser } from '@n8n/backend-common';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -17,6 +18,7 @@ describe('CommandRegistry', () => {
 	const logger = mock<Logger>();
 	let originalProcessArgv: string[];
 	let mockProcessExit: jest.SpyInstance;
+	const cliParser = new CliParser(logger);
 
 	class TestCommand {
 		flags: any;
@@ -64,7 +66,7 @@ describe('CommandRegistry', () => {
 	it('should execute the specified command', async () => {
 		process.argv = ['node', 'n8n', 'test-command'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		expect(moduleRegistry.loadModules).toHaveBeenCalled();
@@ -83,7 +85,7 @@ describe('CommandRegistry', () => {
 		const commandInstance = Container.get(commandClass);
 		commandInstance.run = jest.fn().mockRejectedValue(error);
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		expect(commandInstance.catch).toHaveBeenCalledWith(error);
@@ -93,7 +95,7 @@ describe('CommandRegistry', () => {
 	it('should parse and apply command flags', async () => {
 		process.argv = ['node', 'n8n', 'test-command', '--flag1', 'value1', '--flag2', '-s', '123'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		const commandInstance = Container.get(commandMetadata.get('test-command')!.class);
@@ -107,7 +109,7 @@ describe('CommandRegistry', () => {
 	it('should handle alias flags', async () => {
 		process.argv = ['node', 'n8n', 'test-command', '--flag1', 'value1', '-s', '123'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		const commandInstance = Container.get(commandMetadata.get('test-command')!.class);
@@ -120,7 +122,7 @@ describe('CommandRegistry', () => {
 	it('should exit with error when command not found', async () => {
 		process.argv = ['node', 'n8n', 'non-existent-command'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not found'));
@@ -130,7 +132,7 @@ describe('CommandRegistry', () => {
 	it('should display help when --help flag is used', async () => {
 		process.argv = ['node', 'n8n', 'test-command', '--help'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('USAGE'));
@@ -143,7 +145,7 @@ describe('CommandRegistry', () => {
 	it('should list all commands when global help is requested', async () => {
 		process.argv = ['node', 'n8n', '--help'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();
 
 		expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Available commands'));
@@ -153,7 +155,7 @@ describe('CommandRegistry', () => {
 	it('should display proper command usage with printCommandUsage', () => {
 		process.argv = ['node', 'n8n', 'test-command'];
 
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger);
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		const commandEntry = commandMetadata.get('test-command')!;
 		commandRegistry.printCommandUsage(commandEntry);
 
