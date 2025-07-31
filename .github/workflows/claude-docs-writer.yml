@@ -3,6 +3,7 @@ name: Claude PR Assistant
 on:
   pull_request_review:
     types: [submitted]
+  workflow_dispatch:  # Allows manual triggering for testing
 
 jobs:
   claude-code-action:
