@@ -47,6 +47,14 @@ export {
 	BulkDeleteUsersRequestDto,
 	BulkOperationResponseDto,
 } from './user/bulk-user-operations.dto';
+export {
+	UserAnalyticsQueryDto,
+	UserActivityQueryDto,
+	UserMetricsResponseDto,
+	SystemUserAnalyticsResponseDto,
+	UserActivityRecordDto,
+	UserEngagementAnalyticsDto,
+} from './user/user-analytics.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 

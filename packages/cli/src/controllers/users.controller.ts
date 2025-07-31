@@ -8,6 +8,11 @@ import {
 	BulkStatusUpdateRequestDto,
 	BulkDeleteUsersRequestDto,
 	BulkOperationResponseDto,
+	UserAnalyticsQueryDto,
+	UserActivityQueryDto,
+	UserMetricsResponseDto,
+	SystemUserAnalyticsResponseDto,
+	UserEngagementAnalyticsDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
@@ -46,6 +51,7 @@ import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import { UserAnalyticsService } from '@/services/user-analytics.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { hasGlobalScope } from '@n8n/permissions';
 
@@ -59,6 +65,7 @@ export class UsersController {
 		private readonly userRepository: UserRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
+		private readonly userAnalyticsService: UserAnalyticsService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
@@ -405,5 +412,66 @@ export class UsersController {
 		const result = await this.userService.bulkDeleteUsers(req.user, payload);
 
 		return result;
+	}
+
+	@Get('/:id/analytics')
+	@GlobalScope('user:read')
+	async getUserAnalytics(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Param('id') userId: string,
+		@Query query: UserAnalyticsQueryDto,
+	): Promise<UserMetricsResponseDto> {
+		// Users can only access their own analytics unless they're admin/owner
+		if (userId !== req.user.id && !['global:admin', 'global:owner'].includes(req.user.role)) {
+			throw new ForbiddenError('Access denied to user analytics');
+		}
+
+		this.logger.debug(`Fetching analytics for user ${userId}`, {
+			requesterId: req.user.id,
+			dateRange: { startDate: query.startDate, endDate: query.endDate },
+		});
+
+		return await this.userAnalyticsService.getUserMetrics(userId, query);
+	}
+
+	@Get('/analytics/overview')
+	@GlobalScope('user:list')
+	async getSystemUserAnalytics(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Query query: UserAnalyticsQueryDto,
+	): Promise<SystemUserAnalyticsResponseDto> {
+		// Only admin/owner can access system-wide analytics
+		if (!['global:admin', 'global:owner'].includes(req.user.role)) {
+			throw new ForbiddenError('Access denied to system analytics');
+		}
+
+		this.logger.debug('Fetching system user analytics', {
+			requesterId: req.user.id,
+			groupBy: query.groupBy,
+			dateRange: { startDate: query.startDate, endDate: query.endDate },
+		});
+
+		return await this.userAnalyticsService.getSystemUserAnalytics(query);
+	}
+
+	@Get('/:id/engagement')
+	@GlobalScope('user:read')
+	async getUserEngagement(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Param('id') userId: string,
+	): Promise<UserEngagementAnalyticsDto> {
+		// Users can only access their own engagement data unless they're admin/owner
+		if (userId !== req.user.id && !['global:admin', 'global:owner'].includes(req.user.role)) {
+			throw new ForbiddenError('Access denied to user engagement data');
+		}
+
+		this.logger.debug(`Fetching engagement analytics for user ${userId}`, {
+			requesterId: req.user.id,
+		});
+
+		return await this.userAnalyticsService.getUserEngagementAnalytics(userId);
 	}
 }
