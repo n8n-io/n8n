@@ -218,7 +218,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-@use '@/styles/variables';
+@use '@/styles/variables' as vars;
 
 .container {
 	flex-grow: 1;
@@ -302,7 +302,7 @@ watch(
 	margin: var(--spacing-4xs) var(--spacing-2xs);
 	visibility: hidden;
 	opacity: 0;
-	transition: opacity 0.3s $ease-out-expo;
+	transition: opacity 0.3s vars.$ease-out-expo;
 
 	.content:hover & {
 		visibility: visible;
