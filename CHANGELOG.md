@@ -1,3 +1,17 @@
+## [1.104.2](https://github.com/n8n-io/n8n/compare/n8n@1.104.1...n8n@1.104.2) (2025-07-31)
+
+
+### Bug Fixes
+
+* **Webhook Node:** Don't wrap response in an iframe if it doesn't have HTML ([#17671](https://github.com/n8n-io/n8n/issues/17671)) ([5a7b3c4](https://github.com/n8n-io/n8n/commit/5a7b3c427a4669e5db0b4cba5107ba59acda612e))
+
+
+### Features
+
+* Env to disable webhook response iframe sandboxing ([#17851](https://github.com/n8n-io/n8n/issues/17851)) ([c9e291a](https://github.com/n8n-io/n8n/commit/c9e291a9d3f66ced7e160a11c59ae52182195525))
+
+
+
 ## [1.104.1](https://github.com/n8n-io/n8n/compare/n8n@1.104.0...n8n@1.104.1) (2025-07-23)
 
 
