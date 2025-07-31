@@ -91,6 +91,7 @@ const emit = defineEmits<{
 	activate: [];
 	execute: [];
 	captureWheelBody: [WheelEvent];
+	dblclickHeader: [MouseEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -575,6 +576,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			:sub-title="subTitle"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
+			@dblclick="emit('dblclickHeader', $event)"
 		>
 			<template #actions>
 				<slot name="actions" />

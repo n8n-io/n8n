@@ -58,6 +58,12 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 	// Otherwise, let it scroll the settings pane
 	event.stopImmediatePropagation();
 }
+
+function handleDoubleClickHeader() {
+	if (activeNode.value) {
+		ndvStore.setActiveNodeName(activeNode.value.name);
+	}
+}
 </script>
 
 <template>
@@ -73,6 +79,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:sub-title="subTitle"
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
+		@dblclick-header="handleDoubleClickHeader"
 	>
 		<template #actions>
 			<slot name="actions" />

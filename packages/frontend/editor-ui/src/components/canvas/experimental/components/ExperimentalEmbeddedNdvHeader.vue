@@ -16,13 +16,17 @@ defineProps<{
 const emit = defineEmits<{
 	'name-changed': [value: string];
 	'tab-changed': [tab: Tab];
+	dblclick: [event: MouseEvent];
 }>();
 
 defineSlots<{ actions?: {} }>();
 </script>
 
 <template>
-	<div :class="[$style.component, node.disabled ? $style.disabled : '']">
+	<div
+		:class="[$style.component, node.disabled ? $style.disabled : '']"
+		@dblclick="emit('dblclick', $event)"
+	>
 		<div :class="$style.title">
 			<NodeIcon :node-type="nodeType" :size="16" />
 			<div :class="$style.titleText">
