@@ -320,9 +320,10 @@ export class SourceControlController {
 			const status = await this.sourceControlService.getStatus(req.user, {
 				direction: 'push',
 				preferLocalVersion: true,
+				verbose: false,
 			});
 
-			const hasChanges = status.files && status.files.length > 0;
+			const hasChanges = Array.isArray(status) && status.length > 0;
 
 			return {
 				connected: preferences.connected,
@@ -384,11 +385,9 @@ export class SourceControlController {
 			const limit = parseInt(req.query.limit || '10', 10);
 			const offset = parseInt(req.query.offset || '0', 10);
 
-			// This would need to be implemented in the git service
-			// For now, return a mock response indicating the feature needs implementation
-			return {
-				commits: [],
-			};
+			const commits = await this.sourceControlService.getCommitHistory({ limit, offset });
+
+			return { commits };
 		} catch (error) {
 			throw new BadRequestError(`Commit history retrieval failed: ${(error as Error).message}`);
 		}
@@ -402,18 +401,20 @@ export class SourceControlController {
 		conflicts: string[];
 	}> {
 		try {
-			// This functionality would need to be implemented in the git service
-			// Return a basic status for now
 			const status = await this.sourceControlService.getStatus(req.user, {
 				direction: 'push',
 				preferLocalVersion: true,
+				verbose: false,
 			});
 
+			const statusArray = Array.isArray(status) ? status : [];
+			const conflicts = statusArray.filter((file) => file.conflict).map((file) => file.name);
+
 			return {
-				inSync: !status.files || status.files.length === 0,
-				behind: 0, // Would need git service implementation
-				ahead: status.files ? status.files.length : 0,
-				conflicts: [],
+				inSync: statusArray.length === 0,
+				behind: 0, // Would need git service enhancement to track behind/ahead counts
+				ahead: statusArray.length,
+				conflicts,
 			};
 		} catch (error) {
 			throw new BadRequestError(`Sync check failed: ${(error as Error).message}`);

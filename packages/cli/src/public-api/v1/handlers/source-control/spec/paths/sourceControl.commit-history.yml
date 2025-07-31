@@ -1,0 +1,57 @@
+get:
+  x-eov-operation-id: getCommitHistory
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Get commit history
+  description: Retrieves the commit history for the current branch.
+  parameters:
+    - name: limit
+      in: query
+      description: Maximum number of commits to return
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    - name: offset
+      in: query
+      description: Number of commits to skip
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  responses:
+    '200':
+      description: Commit history
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              commits:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    hash:
+                      type: string
+                      description: Commit hash
+                      example: "abc123def456"
+                    message:
+                      type: string
+                      description: Commit message
+                      example: "Initial commit"
+                    author:
+                      type: string
+                      description: Commit author
+                      example: "John Doe"
+                    date:
+                      type: string
+                      format: date-time
+                      description: Commit date
+                      example: "2025-07-31T12:00:00Z"
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'

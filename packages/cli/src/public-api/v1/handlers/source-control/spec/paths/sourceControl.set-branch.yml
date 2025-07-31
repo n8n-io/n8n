@@ -1,0 +1,46 @@
+post:
+  x-eov-operation-id: setBranch
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Switch to a different branch
+  description: Changes the active branch in the source control repository.
+  requestBody:
+    description: Branch switching options
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - branch
+          properties:
+            branch:
+              type: string
+              description: Name of the target branch
+              example: "develop"
+            createIfNotExists:
+              type: boolean
+              description: Whether to create the branch if it doesn't exist
+              default: false
+  responses:
+    '200':
+      description: Branch switch result
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the operation was successful
+              currentBranch:
+                type: string
+                description: Current active branch after the operation
+              branches:
+                type: array
+                items:
+                  type: string
+                description: List of available branches
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'

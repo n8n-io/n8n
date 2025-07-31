@@ -1087,4 +1087,14 @@ export class SourceControlService {
 				throw new BadRequestError(`Unsupported file type: ${type}`);
 		}
 	}
+
+	async getCommitHistory(
+		options: {
+			limit?: number;
+			offset?: number;
+		} = {},
+	): Promise<Array<{ hash: string; message: string; author: string; date: string }>> {
+		await this.sanityCheck();
+		return await this.gitService.getCommitHistory(options);
+	}
 }

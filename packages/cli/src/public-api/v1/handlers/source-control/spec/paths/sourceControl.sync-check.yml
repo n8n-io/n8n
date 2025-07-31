@@ -1,0 +1,33 @@
+post:
+  x-eov-operation-id: syncCheck
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Check synchronization status
+  description: Checks the synchronization status between local and remote repository.
+  responses:
+    '200':
+      description: Synchronization status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              inSync:
+                type: boolean
+                description: Whether local and remote are in sync
+              behind:
+                type: integer
+                description: Number of commits behind remote
+                minimum: 0
+              ahead:
+                type: integer
+                description: Number of commits ahead of remote
+                minimum: 0
+              conflicts:
+                type: array
+                items:
+                  type: string
+                description: List of files with conflicts
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'

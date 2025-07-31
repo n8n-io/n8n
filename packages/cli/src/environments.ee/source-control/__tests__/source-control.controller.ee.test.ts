@@ -24,7 +24,7 @@ describe('SourceControlController', () => {
 		sourceControlService = {
 			pushWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200, statusResult: [] }),
 			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200, statusResult: [] }),
-			getStatus: jest.fn().mockResolvedValue({ files: [] }),
+			getStatus: jest.fn().mockResolvedValue([]),
 			setGitUserDetails: jest.fn(),
 			getBranches: jest
 				.fn()
@@ -32,6 +32,14 @@ describe('SourceControlController', () => {
 			setBranch: jest
 				.fn()
 				.mockResolvedValue({ currentBranch: 'main', branches: ['main', 'develop'] }),
+			getCommitHistory: jest.fn().mockResolvedValue([
+				{
+					hash: 'abc123',
+					message: 'Initial commit',
+					author: 'John Doe',
+					date: '2025-07-31T12:00:00Z',
+				},
+			]),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = {
@@ -174,6 +182,7 @@ describe('SourceControlController', () => {
 			expect(sourceControlService.getStatus).toHaveBeenCalledWith(req.user, {
 				direction: 'push',
 				preferLocalVersion: true,
+				verbose: false,
 			});
 		});
 
@@ -182,9 +191,9 @@ describe('SourceControlController', () => {
 				user: { id: 'user123' },
 			});
 
-			(sourceControlService.getStatus as jest.Mock).mockResolvedValue({
-				files: [{ name: 'workflow.json', status: 'modified' }],
-			});
+			(sourceControlService.getStatus as jest.Mock).mockResolvedValue([
+				{ name: 'workflow.json', status: 'modified' },
+			]);
 
 			const result = await controller.getRepositoryStatus(req);
 
@@ -234,7 +243,7 @@ describe('SourceControlController', () => {
 	});
 
 	describe('getCommitHistory', () => {
-		it('should return empty commit history (placeholder implementation)', async () => {
+		it('should return commit history with correct parameters', async () => {
 			const req = mock<AuthenticatedRequest & { query: { limit?: string; offset?: string } }>({
 				user: { id: 'user123' },
 				query: { limit: '5', offset: '0' },
@@ -242,7 +251,15 @@ describe('SourceControlController', () => {
 
 			const result = await controller.getCommitHistory(req);
 
-			expect(result.commits).toEqual([]);
+			expect(sourceControlService.getCommitHistory).toHaveBeenCalledWith({ limit: 5, offset: 0 });
+			expect(result.commits).toEqual([
+				{
+					hash: 'abc123',
+					message: 'Initial commit',
+					author: 'John Doe',
+					date: '2025-07-31T12:00:00Z',
+				},
+			]);
 		});
 
 		it('should handle default pagination parameters', async () => {
@@ -276,14 +293,31 @@ describe('SourceControlController', () => {
 				user: { id: 'user123' },
 			});
 
-			(sourceControlService.getStatus as jest.Mock).mockResolvedValue({
-				files: [{ name: 'workflow.json', status: 'modified' }],
-			});
+			(sourceControlService.getStatus as jest.Mock).mockResolvedValue([
+				{ name: 'workflow.json', status: 'modified', conflict: false },
+			]);
 
 			const result = await controller.syncCheck(req);
 
 			expect(result.inSync).toBe(false);
 			expect(result.ahead).toBe(1);
+		});
+
+		it('should detect conflicts', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: { id: 'user123' },
+			});
+
+			(sourceControlService.getStatus as jest.Mock).mockResolvedValue([
+				{ name: 'workflow1.json', status: 'modified', conflict: true },
+				{ name: 'workflow2.json', status: 'modified', conflict: false },
+			]);
+
+			const result = await controller.syncCheck(req);
+
+			expect(result.inSync).toBe(false);
+			expect(result.ahead).toBe(2);
+			expect(result.conflicts).toEqual(['workflow1.json']);
 		});
 	});
 });

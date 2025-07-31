@@ -74,6 +74,14 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
   /source-control/pull:
     $ref: './handlers/source-control/spec/paths/sourceControl.yml'
+  /source-control/repository-status:
+    $ref: './handlers/source-control/spec/paths/sourceControl.repository-status.yml'
+  /source-control/set-branch:
+    $ref: './handlers/source-control/spec/paths/sourceControl.set-branch.yml'
+  /source-control/commit-history:
+    $ref: './handlers/source-control/spec/paths/sourceControl.commit-history.yml'
+  /source-control/sync-check:
+    $ref: './handlers/source-control/spec/paths/sourceControl.sync-check.yml'
   /variables:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:

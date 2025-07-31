@@ -403,4 +403,34 @@ export class SourceControlGitService {
 			);
 		}
 	}
+
+	async getCommitHistory(
+		options: {
+			limit?: number;
+			offset?: number;
+		} = {},
+	): Promise<Array<{ hash: string; message: string; author: string; date: string }>> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getCommitHistory)');
+		}
+		try {
+			const { limit = 10, offset = 0 } = options;
+			const log = await this.git.log({
+				maxCount: limit,
+				from: offset > 0 ? `HEAD~${offset}` : undefined,
+			});
+
+			return log.all.map((commit) => ({
+				hash: commit.hash,
+				message: commit.message,
+				author: commit.author_name,
+				date: commit.date,
+			}));
+		} catch (error) {
+			this.logger.error('Failed to get commit history', { error });
+			throw new UnexpectedError(`Could not get commit history: ${(error as Error)?.message}`, {
+				cause: error,
+			});
+		}
+	}
 }
