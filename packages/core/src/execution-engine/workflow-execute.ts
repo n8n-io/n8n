@@ -1188,6 +1188,99 @@ export class WorkflowExecute {
 		return inputData;
 	}
 
+	/**
+	 * Validates execution data for JSON compatibility and reports issues to Sentry
+	 */
+	private validateExecutionData(
+		data: INodeExecutionData[][] | null,
+		workflow: Workflow,
+		node: INode,
+	): void {
+		if (Container.get(GlobalConfig).sentry.backendDsn) {
+			// If data is not json compatible then log it as incorrect output
+			// Does not block the execution from continuing
+			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
+			if (!jsonCompatibleResult.isValid) {
+				Container.get(ErrorReporter).error('node execution returned incorrect data', {
+					shouldBeLogged: false,
+					extra: {
+						nodeName: node.name,
+						nodeType: node.type,
+						nodeVersion: node.typeVersion,
+						workflowId: workflow.id,
+						workflowName: workflow.name ?? 'Unnamed workflow',
+						executionId: this.additionalData.executionId ?? 'unsaved-execution',
+						errorPath: jsonCompatibleResult.errorPath,
+						errorMessage: jsonCompatibleResult.errorMessage,
+					},
+				});
+			}
+		}
+	}
+
+	private async executeNode(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeType,
+		customOperation: ReturnType<WorkflowExecute['getCustomOperation']>,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
+		abortSignal?: AbortSignal,
+	): Promise<IRunNodeResponse> {
+		const closeFunctions: CloseFunction[] = [];
+		const context = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executionData,
+			closeFunctions,
+			abortSignal,
+		);
+
+		let data: INodeExecutionData[][] | null = null;
+
+		if (customOperation) {
+			data = await customOperation.call(context);
+		} else if (nodeType.execute) {
+			data =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
+		}
+
+		this.validateExecutionData(data, workflow, node);
+
+		const closeFunctionsResults = await Promise.allSettled(
+			closeFunctions.map(async (fn) => await fn()),
+		);
+
+		const closingErrors = closeFunctionsResults
+			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			.map((result) => result.reason);
+
+		if (closingErrors.length > 0) {
+			if (closingErrors[0] instanceof Error) throw closingErrors[0];
+			throw new ApplicationError("Error on execution node's close function(s)", {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+				cause: closingErrors,
+			});
+		}
+
+		return { data, hints: context.hints };
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1226,10 +1319,11 @@ export class WorkflowExecute {
 		inputData = this.handleExecuteOnce(node, inputData);
 
 		if (nodeType.execute || customOperation) {
-			const closeFunctions: CloseFunction[] = [];
-			const context = new ExecuteContext(
+			return await this.executeNode(
 				workflow,
 				node,
+				nodeType,
+				customOperation,
 				additionalData,
 				mode,
 				runExecutionData,
@@ -1237,61 +1331,8 @@ export class WorkflowExecute {
 				connectionInputData,
 				inputData,
 				executionData,
-				closeFunctions,
 				abortSignal,
 			);
-
-			let data;
-
-			if (customOperation) {
-				data = await customOperation.call(context);
-			} else if (nodeType.execute) {
-				data =
-					nodeType instanceof Node
-						? await nodeType.execute(context)
-						: await nodeType.execute.call(context);
-			}
-
-			if (Container.get(GlobalConfig).sentry.backendDsn) {
-				// If data is not json compatible then log it as incorrect output
-				// Does not block the execution from continuing
-				const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
-				if (!jsonCompatibleResult.isValid) {
-					Container.get(ErrorReporter).error('node execution returned incorrect data', {
-						shouldBeLogged: false,
-						extra: {
-							nodeName: node.name,
-							nodeType: node.type,
-							nodeVersion: node.typeVersion,
-							workflowId: workflow.id,
-							workflowName: workflow.name ?? 'Unnamed workflow',
-							executionId: this.additionalData.executionId ?? 'unsaved-execution',
-							errorPath: jsonCompatibleResult.errorPath,
-							errorMessage: jsonCompatibleResult.errorMessage,
-						},
-					});
-				}
-			}
-
-			const closeFunctionsResults = await Promise.allSettled(
-				closeFunctions.map(async (fn) => await fn()),
-			);
-
-			const closingErrors = closeFunctionsResults
-				.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				.map((result) => result.reason);
-
-			if (closingErrors.length > 0) {
-				if (closingErrors[0] instanceof Error) throw closingErrors[0];
-				throw new ApplicationError("Error on execution node's close function(s)", {
-					extra: { nodeName: node.name },
-					tags: { nodeType: node.type },
-					cause: closingErrors,
-				});
-			}
-
-			return { data, hints: context.hints };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
