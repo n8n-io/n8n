@@ -876,6 +876,10 @@ function handleSelectAction(params: INodeParameters) {
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
+		& > :not(.action-tab) {
+			margin-inline-end: var(--spacing-4xs);
+		}
+
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;
 		}
