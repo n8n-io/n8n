@@ -5,7 +5,7 @@ import {
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 } from '@n8n/api-types';
-import { RenameDataStoreDto } from '@n8n/api-types/src/dto/data-store/rename-data-store.dto';
+import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -74,25 +74,32 @@ export class DataStoreService {
 		return dataStore;
 	}
 
-	async renameDataStore(dataStoreId: string, dto: RenameDataStoreDto) {
+	// Currently only renames data stores
+	async updateDataStore(dataStoreId: string, dto: UpdateDataStoreDto) {
+		const name = dto.name.trim();
+
+		if (!name) {
+			throw new UserError('Data store name must not be empty');
+		}
+
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			id: dataStoreId,
 		});
 
 		if (existingTable === null) {
-			throw new UserError('tried to rename non-existent data store');
+			throw new UserError('Cannot rename a non-existent data store');
 		}
 
 		const hasNameClash = await this.dataStoreRepository.existsBy({
-			name: dto.name,
+			name,
 			projectId: existingTable.projectId,
 		});
 
 		if (hasNameClash) {
-			throw new UserError(`name '${dto.name}' is already taken in this project`);
+			throw new UserError(`The name '${name}' is already taken within this project`);
 		}
 
-		await this.dataStoreRepository.update({ id: dataStoreId }, dto);
+		await this.dataStoreRepository.update({ id: dataStoreId }, { name });
 
 		return true;
 	}
@@ -173,7 +180,7 @@ export class DataStoreService {
 		return column;
 	}
 
-	async moveColumn(dataStoreId: string, dto: MoveDataStoreColumnDto) {
+	async moveColumn(dataStoreId: string, columnId: string, dto: MoveDataStoreColumnDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			id: dataStoreId,
 		});
@@ -184,16 +191,16 @@ export class DataStoreService {
 
 		const columnCount = await this.dataStoreColumnRepository.countBy({ dataStoreId });
 
-		if (dto.columnIndex >= columnCount) {
+		if (dto.targetIndex >= columnCount) {
 			throw new UserError('tried to move column to index larger than column count');
 		}
 
-		if (dto.columnIndex < 0) {
+		if (dto.targetIndex < 0) {
 			throw new UserError('tried to move column to negative index');
 		}
 
 		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
-			id: dto.columnId,
+			id: columnId,
 			dataStoreId,
 		});
 
@@ -202,10 +209,10 @@ export class DataStoreService {
 		}
 
 		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, existingColumn.columnIndex, -1);
-		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.columnIndex, 1);
+		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.targetIndex, 1);
 		await this.dataStoreColumnRepository.update(
 			{ id: existingColumn.id },
-			{ columnIndex: dto.columnIndex },
+			{ columnIndex: dto.targetIndex },
 		);
 
 		return true;

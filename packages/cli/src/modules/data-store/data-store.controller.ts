@@ -5,7 +5,7 @@ import {
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
-	RenameDataStoreDto,
+	UpdateDataStoreDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -22,7 +22,7 @@ import {
 import { DataStoreService } from './data-store.service';
 import { DataStoreRows } from './data-store.types';
 
-@RestController('/projects/:projectId/data-store')
+@RestController('/projects/:projectId/data-stores')
 export class DataStoreController {
 	constructor(private readonly dataStoreService: DataStoreService) {}
 
@@ -52,58 +52,15 @@ export class DataStoreController {
 		return { count, data };
 	}
 
-	@Get('/:dataStoreId/get-columns')
-	@ProjectScope('dataStore:read')
-	async getColumns(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-	) {
-		return await this.dataStoreService.getColumns(dataStoreId);
-	}
-
-	@Post('/:dataStoreId/column')
+	@Patch('/:dataStoreId')
 	@ProjectScope('dataStore:update')
-	async addColumn(
+	async updateDataStore(
 		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: AddDataStoreColumnDto,
+		@Body dto: UpdateDataStoreDto,
 	) {
-		return await this.dataStoreService.addColumn(dataStoreId, dto);
-	}
-
-	@Delete('/:dataStoreId/column')
-	@ProjectScope('dataStore:update')
-	async deleteColumn(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: DeleteDataStoreColumnDto,
-	) {
-		return await this.dataStoreService.deleteColumn(dataStoreId, dto);
-	}
-
-	@Patch('/:dataStoreId/move-column')
-	@ProjectScope('dataStore:update')
-	async moveColumn(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: MoveDataStoreColumnDto,
-	) {
-		return await this.dataStoreService.moveColumn(dataStoreId, dto);
-	}
-
-	@Patch('/:dataStoreId/rename')
-	@ProjectScope('dataStore:update')
-	async renameDataStore(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: RenameDataStoreDto,
-	) {
-		return await this.dataStoreService.renameDataStore(dataStoreId, dto);
+		return await this.dataStoreService.updateDataStore(dataStoreId, dto);
 	}
 
 	@Delete('/:dataStoreId')
@@ -114,6 +71,50 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 	) {
 		return await this.dataStoreService.deleteDataStore(dataStoreId);
+	}
+
+	@Get('/:dataStoreId/columns')
+	@ProjectScope('dataStore:read')
+	async getColumns(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+	) {
+		return await this.dataStoreService.getColumns(dataStoreId);
+	}
+
+	@Post('/:dataStoreId/columns')
+	@ProjectScope('dataStore:update')
+	async addColumn(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Body dto: AddDataStoreColumnDto,
+	) {
+		return await this.dataStoreService.addColumn(dataStoreId, dto);
+	}
+
+	@Delete('/:dataStoreId/columns')
+	@ProjectScope('dataStore:update')
+	async deleteColumn(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Body dto: DeleteDataStoreColumnDto,
+	) {
+		return await this.dataStoreService.deleteColumn(dataStoreId, dto);
+	}
+
+	@Patch('/:dataStoreId/columns/:columnId/move')
+	@ProjectScope('dataStore:update')
+	async moveColumn(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Param('columnId') columnId: string,
+		@Body dto: MoveDataStoreColumnDto,
+	) {
+		return await this.dataStoreService.moveColumn(dataStoreId, columnId, dto);
 	}
 
 	@Get('/:dataStoreId/rows')
