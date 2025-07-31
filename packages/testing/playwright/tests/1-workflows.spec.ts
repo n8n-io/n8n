@@ -105,7 +105,7 @@ test.describe('Workflows', () => {
 		await expect(workflow).toBeHidden();
 	});
 
-	test('should filter workflows by tag', async ({ n8n }) => {
+	test('should filter workflows by tag @db:reset', async ({ n8n }) => {
 		const taggedWorkflow =
 			await n8n.workflowComposer.createWorkflowFromJsonFile('Test_workflow_1.json');
 		await n8n.workflowComposer.createWorkflowFromJsonFile('Test_workflow_2.json');
@@ -116,7 +116,7 @@ test.describe('Workflows', () => {
 		await expect(n8n.workflows.getWorkflowByName(taggedWorkflow.workflowName)).toBeVisible();
 	});
 
-	test('should preserve search and filters in URL', async ({ n8n }) => {
+	test('should preserve search and filters in URL @db:reset', async ({ n8n }) => {
 		const date = Date.now();
 		await n8n.workflowComposer.createWorkflowFromJsonFile(
 			'Test_workflow_2.json',
