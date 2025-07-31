@@ -109,6 +109,31 @@ export const customResourceDescription: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['custom'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:get                                  */
@@ -166,7 +191,7 @@ export const customResourceDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -184,6 +209,16 @@ export const customResourceDescription: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
 					loadOptionsDependsOn: ['customResource'],
+				},
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
 				},
 			},
 		],
@@ -282,6 +317,7 @@ export const customResourceDescription: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:update                               */
 	/* -------------------------------------------------------------------------- */
@@ -338,6 +374,60 @@ export const customResourceDescription: INodeProperties[] = [
 						default: '',
 					},
 				],
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['custom'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                custom:delete                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['custom'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
 			},
 		],
 	},
