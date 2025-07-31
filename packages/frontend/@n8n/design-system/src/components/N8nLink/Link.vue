@@ -38,8 +38,8 @@ withDefaults(defineProps<LinkProps>(), {
 </template>
 
 <style lang="scss" module>
-@import '../../utils';
-@import '../../css/common/var';
+@use '../../utils';
+@use '../../css/common/var';
 
 .primary {
 	color: $link-color;

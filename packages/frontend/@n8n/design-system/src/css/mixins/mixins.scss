@@ -4,6 +4,10 @@
 @use '../common/var';
 @use 'config';
 
+// Global variables to avoid new-global warnings
+$B: null !global;
+$E: null !global;
+
 /* Break-points
  -------------------------- */
 @mixin res($key, $map: var.$breakpoints) {

@@ -78,7 +78,7 @@ const alertBoxClassNames = computed(() => {
 </template>
 
 <style lang="scss" module>
-@import '../../css/common/var.scss';
+@use '../../css/common/var.scss';
 
 .alert {
 	display: flex;

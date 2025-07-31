@@ -81,7 +81,7 @@ const classes = computed(() => {
 </template>
 
 <style lang="scss">
-@import './Button';
+@use './Button';
 
 .el-button {
 	@include n8n-button(true);
@@ -102,9 +102,9 @@ const classes = computed(() => {
 </style>
 
 <style lang="scss" module>
-@import './Button';
-@import '../../css/mixins/utils';
-@import '../../css/common/var';
+@use './Button';
+@use '../../css/mixins/utils';
+@use '../../css/common/var';
 
 .button {
 	@include n8n-button;

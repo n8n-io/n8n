@@ -218,7 +218,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
+@use '@/styles/variables';
 
 .container {
 	flex-grow: 1;
