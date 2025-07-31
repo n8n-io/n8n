@@ -293,7 +293,6 @@ export class Server extends AbstractServer {
 					release: `n8n@${N8N_VERSION}`,
 				});
 				const frontendConfig = [
-					`window.BASE_PATH = '${this.globalConfig.path}';`,
 					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
 					`window.sentry = ${frontendSentryConfig};`,
 				].join('\n');
