@@ -1281,6 +1281,26 @@ export class WorkflowExecute {
 		return { data, hints: context.hints };
 	}
 
+	/**
+	 * Executes a poll node
+	 */
+	private async executePollNode(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeType,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		inputData: ITaskDataConnections,
+	): Promise<IRunNodeResponse> {
+		if (mode === 'manual') {
+			// In manual mode run the poll function
+			const context = new PollContext(workflow, node, additionalData, mode, 'manual');
+			return { data: await nodeType.poll!.call(context) };
+		}
+		// In any other mode pass data through as it already contains the result of the poll
+		return { data: inputData.main as INodeExecutionData[][] };
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1334,13 +1354,7 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 		} else if (nodeType.poll) {
-			if (mode === 'manual') {
-				// In manual mode run the poll function
-				const context = new PollContext(workflow, node, additionalData, mode, 'manual');
-				return { data: await nodeType.poll.call(context) };
-			}
-			// In any other mode pass data through as it already contains the result of the poll
-			return { data: inputData.main as INodeExecutionData[][] };
+			return await this.executePollNode(workflow, node, nodeType, additionalData, mode, inputData);
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
