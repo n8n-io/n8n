@@ -101,6 +101,7 @@ async function onImport() {
 						:model-value="curlCommand"
 						type="textarea"
 						:rows="5"
+						data-test-id="import-curl-modal-input"
 						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
 						@update:model-value="onInput"
 						@focus="$event.target.select()"
@@ -118,6 +119,7 @@ async function onImport() {
 					<N8nButton
 						float="right"
 						:label="i18n.baseText('importCurlModal.button.label')"
+						data-test-id="import-curl-modal-button"
 						@click="onImport"
 					/>
 				</div>
