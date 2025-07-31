@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "4935a0cf-b455-4d27-8f8b-407512723919",
+			"position": [-272, 64],
+			"id": "852d5569-78ec-4d61-8b9c-8bdbe963fe6e",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -13,7 +13,7 @@
 				"authentication": "oAuth2",
 				"resource": "goal",
 				"operation": "create",
-				"slug": "test3333",
+				"slug": "test333",
 				"title": "test title",
 				"gunits": "unit",
 				"additionalFields": {
@@ -23,9 +23,46 @@
 			},
 			"type": "n8n-nodes-base.beeminder",
 			"typeVersion": 1,
-			"position": [208, 0],
-			"id": "8d9a989b-269f-44e6-af93-b566e67b011e",
+			"position": [-64, 64],
+			"id": "0fbc833e-f4fb-430e-a130-9fd6655a35f1",
 			"name": "Create a new goal",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"goalName": "={{ $json.slug }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [144, 64],
+			"id": "b143d8f4-399c-47e9-9497-002497d0a2b3",
+			"name": "Create datapoint for goal",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "delete",
+				"goalName": "={{ $('Create a new goal').item.json.slug }}",
+				"datapointId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [352, 64],
+			"id": "69ef60fd-c66b-4cba-aaf6-96e4fd453ac2",
+			"name": "Delete a datapoint",
 			"credentials": {
 				"beeminderOAuth2Api": {
 					"id": "tXjFNZhKeJFjFOl7",
@@ -47,10 +84,28 @@
 			]
 		},
 		"Create a new goal": {
-			"main": [[]]
+			"main": [
+				[
+					{
+						"node": "Create datapoint for goal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create datapoint for goal": {
+			"main": [
+				[
+					{
+						"node": "Delete a datapoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
-	"pinData": {},
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "f0e9801eba0feea6a9ddf9beeabe34b0843eae42a1dbc62eaadd68e8f576be64"
