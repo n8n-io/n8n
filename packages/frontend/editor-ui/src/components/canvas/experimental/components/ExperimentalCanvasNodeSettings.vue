@@ -77,6 +77,8 @@ function handleDoubleClickHeader() {
 		:executable="!isReadOnly"
 		is-embedded-in-canvas
 		:sub-title="subTitle"
+		extra-tabs-class-name="nodrag"
+		extra-parameter-wrapper-class-name="nodrag"
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
 		@dblclick-header="handleDoubleClickHeader"

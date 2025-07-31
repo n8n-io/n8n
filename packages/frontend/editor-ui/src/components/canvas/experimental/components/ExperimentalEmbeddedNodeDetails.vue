@@ -130,7 +130,6 @@ watchOnce(isVisible, (visible) => {
 			$style.component,
 			isExpanded ? $style.expanded : $style.collapsed,
 			node?.disabled ? $style.disabled : '',
-			isExpanded ? 'nodrag' : '',
 		]"
 		:style="{
 			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,

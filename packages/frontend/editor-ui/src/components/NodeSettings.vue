@@ -70,6 +70,8 @@ const props = withDefaults(
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		subTitle?: string;
+		extraTabsClassName?: string;
+		extraParameterWrapperClassName?: string;
 	}>(),
 	{
 		inputSize: 0,
@@ -574,9 +576,10 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
+			:extra-tabs-class-name="extraTabsClassName"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
-			@dblclick="emit('dblclickHeader', $event)"
+			@dblclick-title="emit('dblclickHeader', $event)"
 		>
 			<template #actions>
 				<slot name="actions" />
@@ -638,6 +641,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				{ 'ndv-v2': isNDVV2 },
+				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
