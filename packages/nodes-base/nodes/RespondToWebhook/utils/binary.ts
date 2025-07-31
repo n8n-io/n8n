@@ -1,4 +1,4 @@
-import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
+import { isHtmlRenderedContentType, sandboxHtmlResponse, isIframeSandboxDisabled } from 'n8n-core';
 import type { IBinaryData, IDataObject, IN8nHttpResponse } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -16,9 +16,15 @@ const setContentLength = (responseBody: IN8nHttpResponse | Readable, headers: ID
  */
 export const getBinaryResponse = (binaryData: IBinaryData, headers: IDataObject) => {
 	const contentType = headers['content-type'] as string;
-	const shouldSandboxResponseData =
-		isHtmlRenderedContentType(binaryData.mimeType) ||
-		(contentType && isHtmlRenderedContentType(contentType));
+
+	let shouldSandboxResponseData;
+	if (isIframeSandboxDisabled()) {
+		shouldSandboxResponseData = false;
+	} else {
+		shouldSandboxResponseData =
+			isHtmlRenderedContentType(binaryData.mimeType) ||
+			(contentType && isHtmlRenderedContentType(contentType));
+	}
 
 	let responseBody: IN8nHttpResponse | Readable;
 
