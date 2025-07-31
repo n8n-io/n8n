@@ -710,6 +710,11 @@ const modifiers = [
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--color-node-icon-red);
 	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--color-node-icon-red) !important;
+	}
 }
 .added {
 	--canvas-node--border-color: var(--color-node-icon-green);
@@ -727,8 +732,10 @@ const modifiers = [
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--color-node-icon-green);
 	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--color-node-icon-green) !important;
 	}
 }
 .equal {
@@ -759,6 +766,11 @@ const modifiers = [
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--color-node-icon-orange);
 	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--color-node-icon-orange) !important;
+	}
 }
 
 .edge-deleted {
@@ -770,6 +782,9 @@ const modifiers = [
 	--edge-highlight-color: rgba(14, 171, 84, 0.2);
 }
 .edge-equal {
+	opacity: 0.5;
+}
+.edge-modified {
 	opacity: 0.5;
 }
 
