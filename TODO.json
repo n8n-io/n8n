@@ -2,6 +2,85 @@
   "project": "n8n-monorepo",
   "tasks": [
     {
+      "id": "build-fix-typescript-errors-1753956505476",
+      "title": "Fix TypeScript Compilation Errors in Custom Services",
+      "description": "Resolve TypeScript compilation errors in enhanced-role-management.service.ts, resource-transfer.service.ts, and user-analytics.service.ts",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "All TypeScript compilation errors resolved",
+        "Build command runs successfully without errors",
+        "Custom services properly typed and functional"
+      ],
+      "important_files": [
+        "packages/cli/src/services/enhanced-role-management.service.ts",
+        "packages/cli/src/services/resource-transfer.service.ts",
+        "packages/cli/src/services/user-analytics.service.ts"
+      ],
+      "created_at": "2025-07-31T10:08:25.476Z",
+      "requires_research": true
+    },
+    {
+      "id": "lint-fix-core-errors-1753956505476",
+      "title": "Fix ESLint Errors in n8n-core Package",
+      "description": "Resolve 5 ESLint errors in n8n-core including jest.config.cjs parsing issues and unsafe any usage",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "All ESLint errors in n8n-core package resolved",
+        "jest.config.cjs properly configured for ESLint",
+        "Unsafe any usage replaced with proper types"
+      ],
+      "important_files": [
+        "packages/core/jest.config.cjs",
+        "packages/core/src/errors/error-reporter.ts",
+        "packages/core/eslint.config.mjs"
+      ],
+      "created_at": "2025-07-31T10:08:25.476Z"
+    },
+    {
+      "id": "test-fix-di-failures-1753956505476",
+      "title": "Fix Failing Tests in @n8n/di Package",
+      "description": "Investigate and resolve test failures in @n8n/di package to restore test suite functionality",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "All tests in @n8n/di package pass successfully",
+        "Test suite runs without errors",
+        "Proper test coverage maintained"
+      ],
+      "important_files": [
+        "packages/@n8n/di/src/**/*.test.ts",
+        "packages/@n8n/di/jest.config.js",
+        "packages/@n8n/di/package.json"
+      ],
+      "created_at": "2025-07-31T10:08:25.476Z",
+      "requires_research": true
+    },
+    {
+      "id": "coverage-setup-reporting-1753956505476",
+      "title": "Set Up Comprehensive Test Coverage Reporting",
+      "description": "Configure proper test coverage reporting across all packages with HTML reports and coverage thresholds",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "Coverage reporting configured for all packages",
+        "HTML coverage reports generated",
+        "Coverage thresholds defined and enforced",
+        "test:coverage:html script working properly"
+      ],
+      "important_files": [
+        "package.json",
+        "packages/*/jest.config.js",
+        "turbo.json"
+      ],
+      "created_at": "2025-07-31T10:08:25.476Z"
+    },
+    {
       "id": "build-fix-typescript-1753952694054",
       "title": "Fix TypeScript compilation errors in @n8n/api-types package",
       "description": "Resolve TypeScript errors in user-analytics.dto.ts preventing build completion. The errors are related to Zod schema class extensions and StaticProperties type mismatches.",
@@ -1023,9 +1102,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 47,
-  "last_hook_activation": 1753954303907,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 48,
+  "last_hook_activation": 1753955511639,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 24

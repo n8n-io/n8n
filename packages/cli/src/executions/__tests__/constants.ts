@@ -27,7 +27,7 @@ export const OOM_WORKFLOW: Partial<IWorkflowBase> = {
 		},
 	],
 	connections: {
-		'When clicking "Execute workflow"': {
+		when_clicking_execute_workflow: {
 			main: [
 				[
 					{
@@ -49,7 +49,7 @@ export const IN_PROGRESS_EXECUTION_DATA = {
 	startData: {},
 	resultData: {
 		runData: {
-			'When clicking "Execute workflow"': [
+			when_clicking_execute_workflow: [
 				{
 					hints: [],
 					startTime: 1716138610153,

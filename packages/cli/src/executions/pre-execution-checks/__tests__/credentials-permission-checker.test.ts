@@ -36,7 +36,7 @@ describe('CredentialsPermissionChecker', () => {
 		disabled: false,
 	});
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		jest.resetAllMocks();
 
 		node.credentials!.someCredential.id = credentialId;

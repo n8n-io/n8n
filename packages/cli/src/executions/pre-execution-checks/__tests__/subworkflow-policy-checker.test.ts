@@ -175,7 +175,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} <a href=\"${instanceUrl}/workflow/subworkflow-id\" target=\"_blank\">Update sub-workflow settings</a> to allow other workflows to call it.`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} <a href="${instanceUrl}/workflow/subworkflow-id" target="_blank">Update sub-workflow settings</a> to allow other workflows to call it.`,
 			});
 		});
 
