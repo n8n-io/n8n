@@ -1301,6 +1301,62 @@ export class WorkflowExecute {
 		return { data: inputData.main as INodeExecutionData[][] };
 	}
 
+	/**
+	 * Executes a trigger node
+	 */
+	private async executeTriggerNode(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		inputData: ITaskDataConnections,
+		abortSignal?: AbortSignal,
+	): Promise<IRunNodeResponse> {
+		if (mode === 'manual') {
+			// In manual mode start the trigger
+			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+				workflow,
+				node,
+				NodeExecuteFunctions.getExecuteTriggerFunctions,
+				additionalData,
+				mode,
+				'manual',
+			);
+
+			if (triggerResponse === undefined) {
+				return { data: null };
+			}
+
+			let closeFunction;
+			if (triggerResponse.closeFunction) {
+				// In manual mode we return the trigger closeFunction. That allows it to be called directly
+				// but we do not have to wait for it to finish. That is important for things like queue-nodes.
+				// There the full close will may be delayed till a message gets acknowledged after the execution.
+				// If we would not be able to wait for it to close would it cause problems with "own" mode as the
+				// process would be killed directly after it and so the acknowledge would not have been finished yet.
+				closeFunction = triggerResponse.closeFunction;
+
+				// Manual testing of Trigger nodes creates an execution. If the execution is cancelled, `closeFunction` should be called to cleanup any open connections/consumers
+				abortSignal?.addEventListener('abort', closeFunction);
+			}
+
+			if (triggerResponse.manualTriggerFunction !== undefined) {
+				// If a manual trigger function is defined call it and wait till it did run
+				await triggerResponse.manualTriggerFunction();
+			}
+
+			const response = await triggerResponse.manualTriggerResponse!;
+
+			if (response.length === 0) {
+				return { data: null, closeFunction };
+			}
+
+			return { data: response, closeFunction };
+		}
+		// For trigger nodes in any mode except "manual" do we simply pass the data through
+		return { data: inputData.main as INodeExecutionData[][] };
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1356,49 +1412,14 @@ export class WorkflowExecute {
 		} else if (nodeType.poll) {
 			return await this.executePollNode(workflow, node, nodeType, additionalData, mode, inputData);
 		} else if (nodeType.trigger) {
-			if (mode === 'manual') {
-				// In manual mode start the trigger
-				const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
-					workflow,
-					node,
-					NodeExecuteFunctions.getExecuteTriggerFunctions,
-					additionalData,
-					mode,
-					'manual',
-				);
-
-				if (triggerResponse === undefined) {
-					return { data: null };
-				}
-
-				let closeFunction;
-				if (triggerResponse.closeFunction) {
-					// In manual mode we return the trigger closeFunction. That allows it to be called directly
-					// but we do not have to wait for it to finish. That is important for things like queue-nodes.
-					// There the full close will may be delayed till a message gets acknowledged after the execution.
-					// If we would not be able to wait for it to close would it cause problems with "own" mode as the
-					// process would be killed directly after it and so the acknowledge would not have been finished yet.
-					closeFunction = triggerResponse.closeFunction;
-
-					// Manual testing of Trigger nodes creates an execution. If the execution is cancelled, `closeFunction` should be called to cleanup any open connections/consumers
-					abortSignal?.addEventListener('abort', closeFunction);
-				}
-
-				if (triggerResponse.manualTriggerFunction !== undefined) {
-					// If a manual trigger function is defined call it and wait till it did run
-					await triggerResponse.manualTriggerFunction();
-				}
-
-				const response = await triggerResponse.manualTriggerResponse!;
-
-				if (response.length === 0) {
-					return { data: null, closeFunction };
-				}
-
-				return { data: response, closeFunction };
-			}
-			// For trigger nodes in any mode except "manual" do we simply pass the data through
-			return { data: inputData.main as INodeExecutionData[][] };
+			return await this.executeTriggerNode(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				inputData,
+				abortSignal,
+			);
 		} else if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
 			// else for webhook nodes always simply pass the data through
