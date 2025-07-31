@@ -20,6 +20,7 @@ export const LOG_SCOPES = [
 	'workflow-activation',
 	'ssh-client',
 	'cron',
+	'community-nodes',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

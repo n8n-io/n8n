@@ -1,6 +1,6 @@
 import { inProduction } from '@n8n/backend-common';
 
-import { getCommunityNodeTypes } from '../../utils/community-node-types-utils';
+import { getCommunityNodeTypes } from '../community-node-types-utils';
 import { CommunityNodeTypesService } from '../community-node-types.service';
 
 jest.mock('@n8n/backend-common', () => ({
@@ -8,13 +8,13 @@ jest.mock('@n8n/backend-common', () => ({
 	inProduction: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../utils/community-node-types-utils', () => ({
+jest.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 }));
 
 describe('CommunityNodeTypesService', () => {
 	let service: CommunityNodeTypesService;
-	let globalConfigMock: any;
+	let configMock: any;
 	let communityPackagesServiceMock: any;
 	let loggerMock: any;
 
@@ -24,21 +24,13 @@ describe('CommunityNodeTypesService', () => {
 		delete process.env.ENVIRONMENT;
 
 		loggerMock = { error: jest.fn() };
-		globalConfigMock = {
-			nodes: {
-				communityPackages: {
-					enabled: true,
-					verifiedEnabled: true,
-				},
-			},
+		configMock = {
+			enabled: true,
+			verifiedEnabled: true,
 		};
 		communityPackagesServiceMock = {};
 
-		service = new CommunityNodeTypesService(
-			loggerMock,
-			globalConfigMock,
-			communityPackagesServiceMock,
-		);
+		service = new CommunityNodeTypesService(loggerMock, configMock, communityPackagesServiceMock);
 	});
 
 	describe('fetchNodeTypes', () => {
