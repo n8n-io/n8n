@@ -21,31 +21,38 @@ sequenceDiagram
     Frontend->>EvalTrigger: Execute (row 0)
     EvalTrigger->>EvalTrigger: Read row from GSheet
     EvalTrigger->>Workflow: Return row + _rowsLeft
-    Workflow->>Frontend: Execution complete
+    Workflow->>Frontend: Execution complete event
 
     loop While _rowsLeft > 0
-        Frontend->>Frontend: Check _rowsLeft
-        Frontend->>EvalTrigger: Re-execute (row n+1)
+        Frontend->>Frontend: executionFinished handler
+        Frontend->>Frontend: continueEvaluationLoop()
+        Frontend->>Frontend: Check _rowsLeft from trigger output
+        Frontend->>EvalTrigger: Re-execute with previous trigger data
         EvalTrigger->>EvalTrigger: Read next row
         EvalTrigger->>Workflow: Return row + _rowsLeft
-        Workflow->>Frontend: Execution complete
+        Workflow->>Frontend: Execution complete event
     end
 ```
 
 **Implementation Details:**
-- Frontend orchestration in `packages/editor-ui/src/composables/useRunWorkflow.ts`:
+- Frontend orchestration happens in the `executionFinished` event handler:
+  - Location: `packages/frontend/editor-ui/src/composables/usePushConnection/handlers/executionFinished.ts`
+  - The `continueEvaluationLoop()` function is called when execution status is 'success'
+  - Only the trigger node's output data is passed between iterations:
   ```typescript
-  // continueEvaluationLoop() checks for _rowsLeft
-  const rowsLeft = mainData?.[0]?.json?._rowsLeft as number;
-  if (rowsLeft > 0) {
+  // From executionFinished.ts:146-157
+  const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+  if (rowsLeft && rowsLeft > 0) {
+    const { runWorkflow } = useRunWorkflow({ router });
     void runWorkflow({
       triggerNode: evaluationTrigger.name,
+      // pass output of previous trigger run to next iteration
       nodeData: triggerRunData[0],
       rerunTriggerNode: true,
     });
   }
   ```
-- Each execution is independent, passing previous output as input
+- Each execution is independent, passing only the trigger node's previous output as input (NOT the entire workflow output)
 - No metrics collection or test run records
 
 ### 2. Test Runner Mode (Metric-based Evaluation)
@@ -57,16 +64,15 @@ sequenceDiagram
     participant UI
     participant TestRunner
     participant Engine
-    participant Trigger
     participant DB
 
     UI->>TestRunner: POST /test-runs/new
     TestRunner->>DB: Create TestRun
-    TestRunner->>Trigger: Force dataset.getRows
-    Trigger->>TestRunner: Return all rows
+    TestRunner->>Engine: Execute Evaluation Trigger's getRows
+    Engine->>TestRunner: Return all dataset rows
 
     loop For each row
-        TestRunner->>Engine: Execute with pinned data
+        TestRunner->>Engine: Execute entire WF with pinned data on trigger
         Engine->>Engine: mode = 'evaluation'
         Engine->>TestRunner: Execution result
         TestRunner->>TestRunner: Extract metrics
@@ -93,7 +99,7 @@ sequenceDiagram
 ### Evaluation Nodes
 
 #### EvaluationTrigger Node
-Location: `packages/nodes-base/nodes/n8n/evaluation/EvaluationTrigger.node.ee.ts`
+Location: `packages/nodes-base/nodes/Evaluation/EvaluationTrigger/EvaluationTrigger.node.ee.ts`
 
 Two execution paths:
 1. **Normal execution (`execute` method)**:
@@ -107,7 +113,7 @@ Two execution paths:
    - Used by test runner
 
 #### Evaluation Node
-Location: `packages/nodes-base/nodes/n8n/evaluation/Evaluation.node.ee.ts`
+Location: `packages/nodes-base/nodes/Evaluation/Evaluation.node.ee.ts`
 
 Operations:
 - `setOutputs` (Set outputs): Updates Google Sheet row using trigger's row_number
@@ -140,7 +146,7 @@ erDiagram
 
 ### Frontend State Management
 
-Pinia store: `packages/editor-ui/src/stores/evaluation.store.ee.ts`
+Pinia store: `packages/frontend/editor-ui/src/stores/evaluation.store.ee.ts`
 
 Key features:
 - Polling mechanism for running tests:
@@ -184,8 +190,9 @@ Key characteristics:
 The loop mechanism is a workaround because:
 - n8n doesn't support true loops in workflows
 - Each "iteration" is a complete workflow execution
-- Frontend coordinates the loop, not the backend
-- `_rowsLeft` is a hidden communication channel
+- Frontend coordinates the loop through the `executionFinished` event handler, not the backend
+- `_rowsLeft` is a hidden communication channel embedded in the trigger node's output
+- The loop only continues if the execution was successful and there's no `destinationNode` specified
 
 ### Dataset Fetching
 The test runner can't use normal node execution because:
@@ -224,5 +231,5 @@ Environment variables:
 3. **Sequential execution**: Canvas mode executes sequentially, can't parallelize
 4. **Memory limitations**: Large datasets can cause memory issues in test runner mode
 5. **No recovery**: Interrupted test runs can't be resumed
-6. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported
+6. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported (note: non-numeric data columns can be displayed in test results, but only numeric values can be used as metrics)
 7. **Average-only aggregation**: Test run metrics are calculated as simple averages of test case metrics
