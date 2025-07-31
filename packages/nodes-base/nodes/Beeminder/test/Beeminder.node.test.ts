@@ -140,7 +140,7 @@ describe('Execute Beeminder Node', () => {
 	const testHarness = new NodeTestHarness();
 
 	beforeEach(() => {
-		nock('https://beeminder.com').post('/api/v1/users/me/goals.json').reply(200, newGoal);
+		nock('https://www.beeminder.com').post('/api/v1/users/me/goals.json').reply(200, newGoal);
 	});
 
 	const testData: WorkflowTestData = {
