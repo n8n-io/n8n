@@ -196,15 +196,18 @@ const classes = computed(() => ({
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
+const isInPanningMode = ref(isMobileDevice);
 
 function switchToPanningMode() {
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
+	isInPanningMode.value = true;
 }
 
 function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+	isInPanningMode.value = false;
 }
 
 onKeyDown(panningKeyCode.value, switchToPanningMode, {
@@ -655,7 +658,7 @@ function onPaneMove({ event }: { event: unknown }) {
 	// The event object is either D3ZoomEvent or WheelEvent.
 	// Here I'm ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event.
 	// This can be simplified once https://github.com/bcakmakoglu/vue-flow/issues/1908 is resolved
-	if (event instanceof WheelEvent) {
+	if (isInPanningMode.value || event instanceof WheelEvent) {
 		isPaneMoving.value = true;
 	}
 }
