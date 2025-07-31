@@ -31,9 +31,16 @@ const instances = new Map<ServiceIdentifier, Metadata>();
  * @returns A class decorator to be applied to the target class
  */
 
-export function Service<_ = unknown>(): Function;
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export function Service<TUnused = unknown>(): (
+	target: Constructable<TUnused>,
+) => Constructable<TUnused>;
 
-export function Service<T = unknown>(options: Options<T>): Function;
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export function Service<T = unknown>(
+	options: Options<T>,
+): (target: Constructable<T>) => Constructable<T>;
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function Service<T>({ factory }: Options<T> = {}) {
 	return function (target: Constructable<T>) {
 		instances.set(target, { factory });
@@ -140,4 +147,5 @@ class ContainerClass {
  * Global dependency injection container instance
  * Used to retrieve and manage class instances and their dependencies
  */
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export const Container = new ContainerClass();
