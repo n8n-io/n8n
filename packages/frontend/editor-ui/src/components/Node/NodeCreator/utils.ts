@@ -15,20 +15,23 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
+	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MICROSOFT_TEAMS_NODE_TYPE,
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { NodeViewItemSection } from './viewsData';
-import { i18n } from '@/plugins/i18n';
-import { sortBy } from 'lodash-es';
+import { i18n } from '@n8n/i18n';
+import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '../../../utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
+import { useNodeTypesStore } from '../../../stores/nodeTypes.store';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -264,6 +267,8 @@ export function prepareCommunityNodeDetailsViewStack(
 ): ViewStack {
 	const installed = !isNodePreviewKey(item.key);
 	const packageName = removePreviewToken(item.key.split('.')[0]);
+	const nodeTypesStore = useNodeTypesStore();
+	const nodeType = nodeTypesStore.communityNodeType(removePreviewToken(item.key));
 
 	const communityNodeDetails: CommunityNodeDetails = {
 		title: item.properties.displayName,
@@ -271,7 +276,9 @@ export function prepareCommunityNodeDetailsViewStack(
 		key: item.key,
 		nodeIcon,
 		installed,
+		official: nodeType?.isOfficialNode ?? false,
 		packageName,
+		companyName: nodeType?.companyName,
 	};
 
 	if (nodeActions.length) {
@@ -299,4 +306,60 @@ export function prepareCommunityNodeDetailsViewStack(
 		mode: 'community-node',
 		communityNodeDetails,
 	};
+}
+
+export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false }) {
+	const results: INodeCreateElement[] = [];
+
+	const ragKeywords = ['rag', 'vec', 'know'];
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+		results.push({
+			uuid: 'rag-starter-template',
+			key: 'rag-starter-template',
+			type: 'openTemplate',
+			properties: {
+				key: 'rag-starter-template',
+				title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
+				icon: 'database',
+				description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
+				tag: {
+					type: 'info',
+					text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				},
+			},
+		});
+	}
+	return results;
+}
+
+export const shouldShowCommunityNodeDetails = (communityNode: boolean, viewStack: ViewStack) => {
+	if (viewStack.rootView === 'AI Other' && viewStack.title === 'Tools') {
+		return false;
+	}
+
+	return communityNode && !viewStack.communityNodeDetails;
+};
+
+export function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
+	const actions = nodeActions.filter((action) => action.actionKey === SEND_AND_WAIT_OPERATION);
+
+	if (actions.length) {
+		const name = actions[0].name;
+		if (name === DISCORD_NODE_TYPE) {
+			actions[0].values = {
+				...actions[0].values,
+				resource: 'message',
+				operation: SEND_AND_WAIT_OPERATION,
+			};
+		}
+		if (name === MICROSOFT_TEAMS_NODE_TYPE) {
+			actions[0].values = {
+				...actions[0].values,
+				resource: 'chatMessage',
+				operation: SEND_AND_WAIT_OPERATION,
+			};
+		}
+	}
+
+	return actions;
 }

@@ -5,12 +5,10 @@ import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-const uiStore = useUIStore();
 const usersStore = useUsersStore();
 
 const toast = useToast();
@@ -127,7 +125,7 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 
 		if (values.agree === true) {
 			try {
-				await uiStore.submitContactEmail(values.email.toString(), values.agree);
+				await usersStore.submitContactEmail(values.email.toString(), values.agree);
 			} catch {}
 		}
 

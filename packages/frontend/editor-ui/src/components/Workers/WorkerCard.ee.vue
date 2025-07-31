@@ -8,9 +8,9 @@ import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
-let interval: NodeJS.Timer;
+let interval: NodeJS.Timeout;
 
 const orchestrationStore = useOrchestrationStore();
 

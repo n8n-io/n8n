@@ -111,13 +111,17 @@ export type RelayEventMap = {
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	'node-post-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	// #endregion
@@ -234,7 +238,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -270,7 +275,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -489,6 +495,49 @@ export type RelayEventMap = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
+	};
+
+	// #endregion
+
+	// #region runner
+
+	'runner-task-requested': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	'runner-response-received': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	// #endregion
+
+	// #region queue
+
+	'job-enqueued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-dequeued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-stalled': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
 	};
 
 	// #endregion

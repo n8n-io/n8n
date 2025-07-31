@@ -6,7 +6,7 @@ import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 import { Wait } from '../Wait.node';
 
 describe('Execute Wait Node', () => {
-	let timer: NodeJS.Timer;
+	let timer: NodeJS.Timeout;
 	const { clearInterval, setInterval } = global;
 	const nextDay = DateTime.now().startOf('day').plus({ days: 1 });
 

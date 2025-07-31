@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { BinaryDataService, FileNotFoundError } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { Readable } from 'node:stream';
@@ -5,7 +6,6 @@ import { Readable } from 'node:stream';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.mock('fs/promises');
 
@@ -14,7 +14,7 @@ const throwFileNotFound = () => {
 };
 
 const binaryDataService = mockInstance(BinaryDataService);
-let testServer = setupTestServer({ endpointGroups: ['binaryData'] });
+const testServer = setupTestServer({ endpointGroups: ['binaryData'] });
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {

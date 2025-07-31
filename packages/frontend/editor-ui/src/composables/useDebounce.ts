@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { debounce as _debounce, type DebouncedFunc } from 'lodash-es';
+import _debounce from 'lodash/debounce';
 
 export interface DebounceOptions {
 	debounceTime: number;
@@ -8,6 +8,7 @@ export interface DebounceOptions {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFunction = (...args: any) => any;
+type DebouncedFunc<T extends AnyFunction> = ReturnType<typeof _debounce<T>>;
 
 export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.

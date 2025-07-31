@@ -3,6 +3,7 @@ export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
+export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -28,6 +29,8 @@ export { ChangePasswordRequestDto } from './password-reset/change-password-reque
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
+export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
+export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -69,3 +72,10 @@ export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
+export {
+	UsersListFilterDto,
+	type UsersListSortOptions,
+	USERS_LIST_SORT_OPTIONS,
+} from './user/users-list-filter.dto';
+
+export { OidcConfigDto } from './oidc/config.dto';

@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -11,6 +11,9 @@ import { jsonParse, randomString, type IWorkflowExecutionDataProcess } from 'n8n
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
+import { z } from 'zod';
+
+import { BaseCommand } from './base-command';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -22,7 +25,7 @@ import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
@@ -30,38 +33,34 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
-import { BaseCommand } from './base-command';
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
 
-export class Start extends BaseCommand {
-	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
+const flagsSchema = z.object({
+	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
+	tunnel: z
+		.boolean()
+		.describe(
+			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+		)
+		.optional(),
+	reinstallMissingPackages: z
+		.boolean()
+		.describe(
+			'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
+		)
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n start',
-		'$ n8n start --tunnel',
-		'$ n8n start -o',
-		'$ n8n start --tunnel -o',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		open: Flags.boolean({
-			char: 'o',
-			description: 'opens the UI automatically in browser',
-		}),
-		tunnel: Flags.boolean({
-			description:
-				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		}),
-		reinstallMissingPackages: Flags.boolean({
-			description:
-				'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
-		}),
-	};
-
+@Command({
+	name: 'start',
+	description: 'Starts n8n. Makes Web-UI available and starts active workflows',
+	examples: ['', '--tunnel', '-o', '--tunnel -o'],
+	flagsSchema,
+})
+export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
@@ -128,7 +127,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
-		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
 		if (hooksUrls) {
@@ -149,7 +148,6 @@ export class Start extends BaseCommand {
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
-					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
@@ -166,9 +164,8 @@ export class Start extends BaseCommand {
 			}
 		};
 
-		await compileFile('index.html');
 		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
-		await Promise.all(files.map(compileFile));
+		await Promise.all([compileFile('index.html'), ...files.map(compileFile)]);
 	}
 
 	async init() {
@@ -181,20 +178,24 @@ export class Start extends BaseCommand {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
-		const { flags } = await this.parse(Start);
-		const { communityPackages } = this.globalConfig.nodes;
+		const { flags } = this;
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		// cli flag overrides the config env variable
 		if (flags.reinstallMissingPackages) {
-			if (communityPackages.enabled) {
+			if (communityPackagesConfig.enabled) {
 				this.logger.warn(
 					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
 				);
-				communityPackages.reinstallMissing = true;
+				communityPackagesConfig.reinstallMissing = true;
 			} else {
 				this.logger.warn(
 					'`--reinstallMissingPackages` was passed, but community packages are disabled',
 				);
 			}
+		}
+
+		if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
+			this.needsTaskRunner = false;
 		}
 
 		await super.init();
@@ -232,8 +233,6 @@ export class Start extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
@@ -246,13 +245,17 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		await this.loadModules();
+		await this.moduleRegistry.initModules();
+
+		if (this.instanceSettings.isMultiMain) {
+			Container.get(MultiMainSetup).registerEventHandlers();
+		}
 	}
 
 	async initOrchestration() {
 		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe('n8n.commands');
@@ -266,7 +269,7 @@ export class Start extends BaseCommand {
 	}
 
 	async run() {
-		const { flags } = await this.parse(Start);
+		const { flags } = this;
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({

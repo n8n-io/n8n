@@ -1,10 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
-import { FROM_AI_PARAMETERS_MODAL_KEY, STORES, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
+import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
+import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useRouter } from 'vue-router';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -123,8 +124,8 @@ describe('FromAiParametersModal', () => {
 		workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
 		agentRequestStore = useAgentRequestStore();
 		agentRequestStore.clearAgentRequests = vi.fn();
-		agentRequestStore.addAgentRequests = vi.fn();
-		agentRequestStore.generateAgentRequest = vi.fn();
+		agentRequestStore.setAgentRequestForNode = vi.fn();
+		agentRequestStore.getAgentRequest = vi.fn();
 		nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue(mockTools);
 	});
@@ -213,9 +214,11 @@ describe('FromAiParametersModal', () => {
 
 		await userEvent.click(getByTestId('execute-workflow-button'));
 
-		expect(agentRequestStore.addAgentRequests).toHaveBeenCalledWith('test-workflow', 'id1', {
-			'query.testBoolean': true,
-			'query.testParam': 'override',
+		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
+			query: {
+				testBoolean: true,
+				testParam: 'override',
+			},
 		});
 	});
 
@@ -265,9 +268,11 @@ describe('FromAiParametersModal', () => {
 		);
 		await userEvent.click(getByTestId('execute-workflow-button'));
 
-		expect(agentRequestStore.addAgentRequests).toHaveBeenCalledWith('test-workflow', 'id1', {
-			'query.testBoolean': false,
-			'query.testParam': 'given value',
+		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
+			query: {
+				testBoolean: false,
+				testParam: 'given value',
+			},
 		});
 	});
 });

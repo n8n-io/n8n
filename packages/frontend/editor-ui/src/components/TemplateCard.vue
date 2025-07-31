@@ -2,9 +2,9 @@
 import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 const i18n = useI18n();
 
@@ -61,7 +61,7 @@ function onCardClick(e: MouseEvent) {
 			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
-						<font-awesome-icon icon="eye" />
+						<n8n-icon icon="eye" size="xsmall" />
 						{{ abbreviateNumber(workflow.totalViews) }}
 					</n8n-text>
 				</span>

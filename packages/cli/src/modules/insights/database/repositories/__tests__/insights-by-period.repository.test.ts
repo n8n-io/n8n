@@ -1,17 +1,63 @@
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { InsightsConfig } from '@/modules/insights/insights.config';
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
+		await testModules.loadModules(['insights']);
 		await testDb.init();
+	});
+
+	describe('getInsightsByTime', () => {
+		test.each([
+			'2023-10-01T00:00:00Z',
+			'2023-10-01T00:00:00.000Z',
+			'2023-10-01T00:00:00+00:00',
+			'2023-10-01T00:00:00.000+00:00',
+			'2023-10-01 00:00:00',
+			'2023-10-01 00:00:00.000',
+			'2023-10-01 00:00:00+00',
+			'2023-10-01 00:00:00-02',
+			'2023-10-01 00:00:00-00',
+		])(
+			'should parse correctly valid date %s when calling insights by time',
+			async (periodStart) => {
+				// ARRANGE
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				// Mock the manager.queryBuilder.getRawMany to return a mocked value
+				const mockResult = [{ periodStart, runTime: 0, succeeded: 0, failed: 0, timeSaved: 0 }];
+
+				const queryBuilderMock = {
+					addCommonTableExpression: jest.fn().mockReturnThis(),
+					select: jest.fn().mockReturnThis(),
+					innerJoin: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					groupBy: jest.fn().mockReturnThis(),
+					orderBy: jest.fn().mockReturnThis(),
+					getRawMany: jest.fn().mockResolvedValue(mockResult),
+				};
+
+				jest
+					.spyOn(insightsByPeriodRepository.manager, 'createQueryBuilder')
+					.mockReturnValueOnce(queryBuilderMock as any);
+
+				const result = await insightsByPeriodRepository.getInsightsByTime({
+					maxAgeInDays: 1,
+					periodUnit: 'day',
+					insightTypes: ['success', 'failure', 'time_saved_min'],
+				});
+
+				// ASSERT
+				expect(result[0]?.periodStart).not.toBeNull();
+				expect(new Date(result[0]?.periodStart).toString()).not.toBe('Invalid Date');
+			},
+		);
 	});
 
 	describe('Avoid deadlock error', () => {

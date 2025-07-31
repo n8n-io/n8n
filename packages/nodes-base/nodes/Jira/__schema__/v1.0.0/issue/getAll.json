@@ -7,9 +7,6 @@
         "fields": {
             "type": "object",
             "properties": {
-                "created": {
-                    "type": "string"
-                },
                 "issuetype": {
                     "type": "object",
                     "properties": {
@@ -42,12 +39,6 @@
                         }
                     }
                 },
-                "labels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "priority": {
                     "type": "object",
                     "properties": {
@@ -62,57 +53,6 @@
                         },
                         "self": {
                             "type": "string"
-                        }
-                    }
-                },
-                "progress": {
-                    "type": "object",
-                    "properties": {
-                        "progress": {
-                            "type": "integer"
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "project": {
-                    "type": "object",
-                    "properties": {
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                },
-                                "48x48": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "key": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "projectTypeKey": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "simplified": {
-                            "type": "boolean"
                         }
                     }
                 },
@@ -171,5 +111,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

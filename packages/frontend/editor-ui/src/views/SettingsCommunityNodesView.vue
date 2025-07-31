@@ -15,7 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -73,7 +73,7 @@ const getEmptyStateButtonText = computed(() => {
 const actionBoxConfig = computed(() => {
 	return {
 		calloutText: '',
-		calloutTheme: '',
+		calloutTheme: undefined,
 		hideButton: false,
 	};
 });

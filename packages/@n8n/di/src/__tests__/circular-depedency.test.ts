@@ -1,6 +1,6 @@
-import { ServiceA } from './fixtures/ServiceA';
-import { ServiceB } from './fixtures/ServiceB';
 import { Container } from '../di';
+import { ServiceA } from './fixtures/service-a';
+import { ServiceB } from './fixtures/service-b';
 
 describe('DI Container', () => {
 	describe('circular dependency', () => {

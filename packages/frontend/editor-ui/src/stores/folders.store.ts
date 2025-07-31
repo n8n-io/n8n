@@ -1,15 +1,17 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	ChangeLocationSearchResult,
 	FolderCreateResponse,
 	FolderShortInfo,
 	FolderTreeResponseItem,
+	IUsedCredential,
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
-import { useRootStore } from './root.store';
+import * as workflowsEEApi from '@/api/workflows.ee';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
@@ -131,24 +133,82 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			name?: string;
 		},
 	): Promise<ChangeLocationSearchResult[]> {
-		const folders = await workflowsApi.getProjectFolders(
-			rootStore.restApiContext,
-			projectId,
-			{
-				sortBy: 'updatedAt:desc',
-			},
-			{
-				excludeFolderIdAndDescendants: folderId,
-				name: filter?.name ? filter.name : undefined,
-			},
-		);
-		const forCache: FolderShortInfo[] = folders.map((folder) => ({
+		const PAGE_SIZE = 100;
+		let skip = 0;
+		let totalAvailable = 0;
+		let allFolders: ChangeLocationSearchResult[] = [];
+
+		do {
+			const { data: folders, count } = await workflowsApi.getProjectFolders(
+				rootStore.restApiContext,
+				projectId,
+				{
+					skip,
+					take: PAGE_SIZE,
+					sortBy: 'updatedAt:desc',
+				},
+				{
+					excludeFolderIdAndDescendants: folderId,
+					name: filter?.name,
+				},
+				[
+					'id',
+					'name',
+					'createdAt',
+					'updatedAt',
+					'project',
+					'tags',
+					'parentFolder',
+					'workflowCount',
+					'subFolderCount',
+					'path',
+				],
+			);
+
+			allFolders = allFolders.concat(
+				folders.map((folder) => ({
+					...folder,
+					resource: 'folder',
+				})),
+			);
+			totalAvailable = count;
+			skip += folders.length;
+		} while (allFolders.length < totalAvailable && skip < totalAvailable);
+
+		const forCache: FolderShortInfo[] = allFolders.map((folder) => ({
 			id: folder.id,
 			name: folder.name,
 			parentFolder: folder.parentFolder?.id,
 		}));
 		cacheFolders(forCache);
-		return folders;
+
+		allFolders.sort((a, b) => {
+			// Shorter paths first
+			if (a.path.length !== b.path.length) return a.path.length - b.path.length;
+
+			for (let i = 0; i < a.path.length; i++) {
+				// Each segment of the path is compared
+				const cmp = a.path[i].localeCompare(b.path[i]);
+				if (cmp !== 0) return cmp;
+			}
+
+			return 0;
+		});
+
+		return allFolders;
+	}
+
+	async function fetchFolderUsedCredentials(
+		projectId: string,
+		folderId: string,
+	): Promise<IUsedCredential[]> {
+		const usedCredentials = await workflowsApi.getFolderUsedCredentials(
+			rootStore.restApiContext,
+			projectId,
+			folderId,
+		);
+
+		return usedCredentials;
 	}
 
 	async function moveFolder(
@@ -159,12 +219,26 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
-		if (parentFolderId) {
-			const folder = breadcrumbsCache.value[folderId];
-			if (folder) {
-				folder.parentFolder = parentFolderId;
-			}
-		}
+	}
+
+	async function moveFolderToProject(
+		projectId: string,
+		folderId: string,
+		destinationProjectId: string,
+		destinationParentFolderId?: string,
+		shareCredentials?: string[],
+	): Promise<void> {
+		await workflowsEEApi.moveFolderToProject(
+			rootStore.restApiContext,
+			projectId,
+			folderId,
+			destinationProjectId,
+			destinationParentFolderId,
+			shareCredentials,
+		);
+
+		// Update the cache after moving the folder
+		delete breadcrumbsCache.value[folderId];
 	}
 
 	async function fetchFolderContent(
@@ -280,9 +354,11 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		fetchProjectFolders,
 		fetchFoldersAvailableForMove,
 		moveFolder,
+		moveFolderToProject,
 		fetchFolderContent,
 		getHiddenBreadcrumbsItems,
 		draggedElement,
 		activeDropTarget,
+		fetchFolderUsedCredentials,
 	};
 });

@@ -5,7 +5,7 @@ import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecret
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
@@ -133,11 +133,8 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</n8n-text>
 			</div>
-			<div v-if="provider.name === 'infisical'">
-				<font-awesome-icon
-					:class="$style['warningTriangle']"
-					icon="exclamation-triangle"
-				></font-awesome-icon>
+			<div v-if="provider.name === 'infisical'" :class="$style.deprecationWarning">
+				<n8n-icon :class="$style['warningTriangle']" icon="triangle-alert" />
 				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
 					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
 				</N8nBadge>
@@ -191,6 +188,10 @@ async function onActionDropdownClick(id: string) {
 	flex-direction: row;
 	align-items: center;
 	margin-left: var(--spacing-s);
+}
+
+.deprecationWarning {
+	display: flex;
 }
 
 .warningTriangle {

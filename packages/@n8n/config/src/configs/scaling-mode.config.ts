@@ -16,7 +16,7 @@ class HealthConfig {
 
 	/** IP address for worker server to listen on. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
-	address: string = '0.0.0.0';
+	address: string = '::';
 }
 
 @Config

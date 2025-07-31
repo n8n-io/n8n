@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RouteLocationNamedRaw } from 'vue-router';
 import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
 
 const props = withDefaults(

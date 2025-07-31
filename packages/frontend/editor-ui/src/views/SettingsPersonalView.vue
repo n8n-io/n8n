@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { ROLE, type Role } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
@@ -13,10 +14,12 @@ import {
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useSSOStore } from '@/stores/sso.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -26,6 +29,11 @@ type UserBasicDetailsForm = {
 
 type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
 	mfaCode?: string;
+};
+
+type RoleContent = {
+	name: string;
+	description: string;
 };
 
 const i18n = useI18n();
@@ -55,32 +63,70 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ssoStore = useSSOStore();
+const cloudPlanStore = useCloudPlanStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
+
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
-		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
-	const isSamlEnabled =
-		settingsStore.isSamlLoginEnabled && settingsStore.isDefaultAuthenticationSaml;
-	return isLdapEnabled || isSamlEnabled;
+		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
+	const isOidcEnabled =
+		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
+	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
+
 const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
 });
+
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
+});
+const mfaEnforced = computed((): boolean => {
+	return settingsStore.isMFAEnforced;
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
+
 const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
+
+const roles = computed<Record<Role, RoleContent>>(() => ({
+	[ROLE.Default]: {
+		name: i18n.baseText('auth.roles.default'),
+		description: i18n.baseText('settings.personal.role.tooltip.default'),
+	},
+	[ROLE.Member]: {
+		name: i18n.baseText('auth.roles.member'),
+		description: i18n.baseText('settings.personal.role.tooltip.member'),
+	},
+	[ROLE.Admin]: {
+		name: i18n.baseText('auth.roles.admin'),
+		description: i18n.baseText('settings.personal.role.tooltip.admin'),
+	},
+	[ROLE.Owner]: {
+		name: i18n.baseText('auth.roles.owner'),
+		description: i18n.baseText('settings.personal.role.tooltip.owner', {
+			interpolate: {
+				cloudAccess: cloudPlanStore.hasCloudPlan
+					? i18n.baseText('settings.personal.role.tooltip.cloud')
+					: '',
+			},
+		}),
+	},
+}));
+
+const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
@@ -150,7 +196,8 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	}
 }
 
-async function onSubmit(form: UserBasicDetailsForm) {
+async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
+	const form = data as UserBasicDetailsForm;
 	const emailChanged = usersStore.currentUser?.email !== form.email;
 
 	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
@@ -260,7 +307,13 @@ onBeforeUnmount(() => {
 			}}</n8n-heading>
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
-					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
+					<n8n-text color="text-base" bold>{{ currentUser.fullName }}</n8n-text>
+					<N8nTooltip placement="bottom">
+						<template #content>{{ currentUserRole.description }}</template>
+						<n8n-text :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
+							currentUserRole.name
+						}}</n8n-text>
+					</N8nTooltip>
 				</span>
 				<n8n-avatar
 					:first-name="currentUser.firstName"
@@ -311,6 +364,11 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice
+					v-if="mfaDisabled && mfaEnforced"
+					:content="i18n.baseText('settings.personal.mfa.enforced')"
+				/>
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"
@@ -395,14 +453,19 @@ onBeforeUnmount(() => {
 }
 
 .username {
+	display: grid;
+	grid-template-columns: 1fr;
 	margin-right: var(--spacing-s);
-	text-align: right;
 
 	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+}
+
+.tooltip {
+	justify-self: start;
 }
 
 .disableMfaButton {

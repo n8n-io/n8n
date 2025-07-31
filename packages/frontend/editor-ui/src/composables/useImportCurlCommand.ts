@@ -5,9 +5,9 @@ import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { importCurlEventBus } from '@/event-bus';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import type { CurlToJSONResponse } from '@/Interface';
 

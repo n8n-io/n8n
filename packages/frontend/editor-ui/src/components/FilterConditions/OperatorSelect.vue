@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';

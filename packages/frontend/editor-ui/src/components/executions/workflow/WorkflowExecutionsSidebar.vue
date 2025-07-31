@@ -11,8 +11,8 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { isComponentPublicInstance } from '@/utils/typeGuards';
-import { getResourcePermissions } from '@/permissions';
-import { useI18n } from '@/composables/useI18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -211,7 +211,7 @@ const goToUpgrade = () => {
 			>
 				{{ i18n.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionsFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
+			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
 			ref="executionListRef"

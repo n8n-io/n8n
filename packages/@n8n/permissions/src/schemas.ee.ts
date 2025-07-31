@@ -8,12 +8,13 @@ export const assignableGlobalRoleSchema = globalRoleSchema.exclude([
 	'global:owner', // Owner cannot be changed
 ]);
 
-export const projectRoleSchema = z.enum([
+export const personalRoleSchema = z.enum([
 	'project:personalOwner', // personalOwner is only used for personal projects
-	'project:admin',
-	'project:editor',
-	'project:viewer',
 ]);
+
+export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer']);
+
+export const projectRoleSchema = z.enum([...personalRoleSchema.options, ...teamRoleSchema.options]);
 
 export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credential:user']);
 

@@ -6,6 +6,9 @@ import type {
 	Iso8601DateTimeString,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
+	ROLE,
+	Role,
+	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -38,28 +41,36 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
-	INodeCredentialsDetails,
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
 } from 'n8n-workflow';
+import type { Version } from '@n8n/rest-api-client/api/versions';
+import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
+import type {
+	WorkflowMetadata,
+	WorkflowData,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export * from '@n8n/design-system/types';
 
@@ -121,7 +132,6 @@ declare global {
 				disallowReturnToOpener?: boolean;
 			}) => Promise<Window>;
 		};
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
 }
@@ -150,10 +160,7 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: {
-		position: XYPosition;
-		[key: string]: IDataObject | XYPosition;
-	};
+	properties: Partial<INodeUi>;
 }
 
 export type XYPosition = [number, number];
@@ -167,6 +174,7 @@ export interface INodeUi extends INode {
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
+	draggable?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -174,15 +182,6 @@ export interface INodeTypesMaxCount {
 		exist: number;
 		max: number;
 		nodeNames: string[];
-	};
-}
-
-export interface INodeTranslationHeaders {
-	data: {
-		[key: string]: {
-			displayName: string;
-			description: string;
-		};
 	};
 }
 
@@ -208,7 +207,7 @@ export interface IAiData {
 }
 
 export interface IStartRunData {
-	workflowData: IWorkflowData;
+	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
@@ -235,49 +234,17 @@ export interface ITableData {
 	};
 }
 
-// Simple version of n8n-workflow.Workflow
-export interface IWorkflowData {
-	id?: string;
-	name?: string;
-	active?: boolean;
-	nodes: INode[];
-	connections: IConnections;
-	settings?: IWorkflowSettings;
-	tags?: string[];
-	pinData?: IPinData;
-	versionId?: string;
-	meta?: WorkflowMetadata;
-}
-
-export interface IWorkflowDataUpdate {
-	id?: string;
-	name?: string;
-	nodes?: INode[];
-	connections?: IConnections;
-	settings?: IWorkflowSettings;
-	active?: boolean;
-	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: IPinData;
-	versionId?: string;
-	meta?: WorkflowMetadata;
-	parentFolderId?: string;
-}
-
-export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
-	projectId?: string;
-}
-
 /**
  * Workflow data with mandatory `templateId`
  * This is used to identify sample workflows that we create for onboarding
  */
-export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+export interface WorkflowDataWithTemplateId extends Omit<WorkflowDataCreate, 'meta'> {
 	meta: WorkflowMetadata & {
 		templateId: Required<WorkflowMetadata>['templateId'];
 	};
 }
 
-export interface IWorkflowToShare extends IWorkflowDataUpdate {
+export interface IWorkflowToShare extends WorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
@@ -286,36 +253,8 @@ export interface NewWorkflowResponse {
 	defaultSettings: IWorkflowSettings;
 }
 
-export interface IWorkflowTemplateNode
-	extends Pick<
-		INodeUi,
-		'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId' | 'id' | 'disabled'
-	> {
-	// The credentials in a template workflow have a different type than in a regular workflow
-	credentials?: IWorkflowTemplateNodeCredentials;
-}
-
-export interface IWorkflowTemplateNodeCredentials {
-	[key: string]: string | INodeCredentialsDetails;
-}
-
-export interface IWorkflowTemplate {
-	id: number;
-	name: string;
-	workflow: Pick<IWorkflowData, 'connections' | 'settings' | 'pinData'> & {
-		nodes: IWorkflowTemplateNode[];
-	};
-}
-
 export interface INewWorkflowData {
 	name: string;
-}
-
-export interface WorkflowMetadata {
-	onboardingId?: string;
-	templateId?: string;
-	instanceId?: string;
-	templateCredsSetupCompleted?: boolean;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -352,6 +291,68 @@ export type BaseResource = {
 	name: string;
 };
 
+export type FolderResource = BaseFolderItem & {
+	resourceType: 'folder';
+};
+
+export type WorkflowResource = BaseResource & {
+	resourceType: 'workflow';
+	updatedAt: string;
+	createdAt: string;
+	active: boolean;
+	isArchived: boolean;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	tags?: ITag[] | string[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	parentFolder?: ResourceParentFolder;
+};
+
+export type VariableResource = BaseResource & {
+	resourceType: 'variable';
+	key?: string;
+	value?: string;
+};
+
+export type CredentialsResource = BaseResource & {
+	resourceType: 'credential';
+	updatedAt: string;
+	createdAt: string;
+	type: string;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	needsSetup: boolean;
+};
+
+// Base resource types that are always available
+export type CoreResource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource;
+
+// This interface can be extended by modules to add their own resource types
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ModuleResources {}
+
+// The Resource type is the union of core resources and any module resources
+export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
+
+export type BaseFilters = {
+	search: string;
+	homeProject: string;
+	[key: string]: boolean | string | string[];
+};
+
+export type SortingAndPaginationUpdates = {
+	page?: number;
+	pageSize?: number;
+	sort?: string;
+};
+
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
@@ -372,7 +373,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 
@@ -386,11 +386,15 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
-export interface ChangeLocationSearchResult extends BaseFolderItem {
-	resource: 'folder' | 'project';
+export interface ChangeLocationSearchResponseItem extends BaseFolderItem {
+	path: string[];
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
+
+export interface ChangeLocationSearchResult extends ChangeLocationSearchResponseItem {
+	resource: 'folder' | 'project';
+}
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
@@ -571,22 +575,12 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV3
 	| IPersonalizationSurveyAnswersV4;
 
-export type Roles = typeof ROLE;
-export type IRole = Roles[keyof Roles];
-export type InvitableRoleName = Roles['Member' | 'Admin'];
+export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
-export interface IUserResponse {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email?: string;
-	createdAt?: string;
-	role?: IRole;
+export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	isPending: boolean;
-	signInType?: SignInType;
-	settings?: IUserSettings;
+	settings?: IUserSettings | null;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -600,6 +594,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	mfaAuthenticated?: boolean;
 }
 
 export interface IUserListAction {
@@ -608,21 +603,16 @@ export interface IUserListAction {
 	guard?: (user: IUser) => boolean;
 }
 
-export interface IN8nPrompts {
-	message?: string;
-	title?: string;
-	showContactPrompt?: boolean;
-}
-
 export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
+	Oidc = 'oidc',
 }
 
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
-	role?: IRole[];
+	role?: Role[];
 }
 
 export interface IPermissionAllowGroup extends IPermissionGroup {
@@ -642,93 +632,6 @@ export interface IUserPermissions {
 	[category: string]: {
 		[permission: string]: IPermissions;
 	};
-}
-
-export interface ITemplatesCollection {
-	id: number;
-	name: string;
-	nodes: ITemplatesNode[];
-	workflows: Array<{ id: number }>;
-}
-
-interface ITemplatesImage {
-	id: number;
-	url: string;
-}
-
-interface ITemplatesCollectionExtended extends ITemplatesCollection {
-	description: string | null;
-	image: ITemplatesImage[];
-	categories: ITemplatesCategory[];
-	createdAt: string;
-}
-
-export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
-	full: true;
-}
-
-export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
-	workflows: ITemplatesWorkflow[];
-}
-
-/**
- * A template without the actual workflow definition
- */
-export interface ITemplatesWorkflow {
-	id: number;
-	createdAt: string;
-	name: string;
-	nodes: ITemplatesNode[];
-	totalViews: number;
-	user: {
-		username: string;
-	};
-}
-
-export interface ITemplatesWorkflowInfo {
-	nodeCount: number;
-	nodeTypes: {
-		[key: string]: {
-			count: number;
-		};
-	};
-}
-
-export type TemplateSearchFacet = {
-	field_name: string;
-	sampled: boolean;
-	stats: {
-		total_values: number;
-	};
-	counts: Array<{
-		count: number;
-		highlighted: string;
-		value: string;
-	}>;
-};
-
-export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
-	description: string | null;
-	image: ITemplatesImage[];
-	categories: ITemplatesCategory[];
-	workflowInfo: ITemplatesWorkflowInfo;
-}
-
-/**
- * A template with also the full workflow definition
- */
-export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
-	full: true;
-}
-
-export interface ITemplatesQuery {
-	categories: string[];
-	search: string;
-}
-
-export interface ITemplatesCategory {
-	id: number;
-	name: string;
 }
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
@@ -776,7 +679,7 @@ export type SimplifiedNodeType = Pick<
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
-	icon?: string;
+	icon?: IconName;
 	iconProps?: {
 		color?: string;
 	};
@@ -806,6 +709,15 @@ export interface LinkItemProps {
 	icon: string;
 	tag?: NodeCreatorTag;
 }
+
+export interface OpenTemplateItemProps {
+	key: 'rag-starter-template';
+	title: string;
+	description: string;
+	icon: string;
+	tag?: NodeCreatorTag;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -868,6 +780,11 @@ export interface LinkCreateElement extends CreateElementBase {
 	properties: LinkItemProps;
 }
 
+export interface OpenTemplateElement extends CreateElementBase {
+	type: 'openTemplate';
+	properties: OpenTemplateItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -882,17 +799,19 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
-	| LinkCreateElement;
+	| LinkCreateElement
+	| OpenTemplateElement;
+
+export type NodeTypeSelectedPayload = {
+	type: string;
+	parameters?: {
+		resource?: string;
+		operation?: string;
+	};
+};
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
-}
-export interface ITag {
-	id: string;
-	name: string;
-	usageCount?: number;
-	createdAt?: string;
-	updatedAt?: string;
 }
 
 export interface ITagRow {
@@ -903,37 +822,6 @@ export interface ITagRow {
 	update?: boolean;
 	delete?: boolean;
 	canDelete?: boolean;
-}
-
-export interface IVersion {
-	name: string;
-	nodes: IVersionNode[];
-	createdAt: string;
-	description: string;
-	documentationUrl: string;
-	hasBreakingChange: boolean;
-	hasSecurityFix: boolean;
-	hasSecurityIssue: boolean;
-	securityIssueFixVersion: string;
-}
-
-export interface IVersionNode {
-	name: string;
-	displayName: string;
-	icon: string;
-	iconUrl?: string;
-	defaults: INodeParameters;
-	iconData: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
-	typeVersion?: number;
-}
-
-export interface ITemplatesNode extends IVersionNode {
-	id: number;
-	categories?: ITemplatesCategory[];
 }
 
 export interface INodeMetadata {
@@ -968,33 +856,6 @@ export interface WorkflowsState {
 	workflowsById: IWorkflowsMap;
 	chatMessages: string[];
 	isInDebugMode?: boolean;
-}
-
-export interface RootState {
-	baseUrl: string;
-	restEndpoint: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointMcp: string;
-	endpointMcpTest: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: {
-		[key: string]: string | number | undefined;
-	};
-	pushRef: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
 export interface NodeMetadataMap {
@@ -1097,6 +958,11 @@ export interface NDVState {
 	highlightDraggables: boolean;
 }
 
+export type TargetNodeParameterContext = {
+	nodeName: string;
+	parameterPath: string;
+};
+
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
 }
@@ -1106,7 +972,8 @@ export type NodeFilterType =
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
-	| typeof AI_UNCATEGORIZED_CATEGORY;
+	| typeof AI_UNCATEGORIZED_CATEGORY
+	| typeof AI_EVALUATION;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1119,7 +986,9 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
-	| 'add_node_button';
+	| 'add_node_button'
+	| 'add_evaluation_trigger_button'
+	| 'add_evaluation_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1169,32 +1038,10 @@ export interface INodeTypesState {
 	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
-export interface ITemplateState {
-	categories: ITemplatesCategory[];
-	collections: { [id: string]: ITemplatesCollection };
-	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
-	workflowSearches: {
-		[search: string]: {
-			workflowIds: string[];
-			totalWorkflows: number;
-			loadingMore?: boolean;
-			categories?: ITemplatesCategory[];
-		};
-	};
-	collectionSearches: {
-		[search: string]: {
-			collectionIds: string[];
-		};
-	};
-	currentSessionId: string;
-	previousSessionId: string;
-	currentN8nPath: string;
-}
-
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
-	nextVersions: IVersion[];
-	currentVersion: IVersion | undefined;
+	nextVersions: Version[];
+	currentVersion: Version | undefined;
 }
 
 export interface IWorkflowsMap {
@@ -1204,11 +1051,6 @@ export interface IWorkflowsMap {
 export interface CommunityNodesState {
 	availablePackageCount: number;
 	installedPackages: CommunityPackageMap;
-}
-
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1232,7 +1074,7 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
-		role: IRole;
+		role: Role;
 	};
 	error?: string;
 }
@@ -1241,9 +1083,10 @@ export interface ITab<Value extends string | number = string | number> {
 	value: Value;
 	label?: string;
 	href?: string;
-	icon?: string;
+	icon?: IconName;
 	align?: 'right';
 	tooltip?: string;
+	notification?: boolean;
 }
 
 export interface ITabBarItem {
@@ -1291,49 +1134,6 @@ export type SchemaType =
 	| 'null'
 	| 'undefined';
 
-export interface ILdapSyncData {
-	id: number;
-	startedAt: string;
-	endedAt: string;
-	created: number;
-	updated: number;
-	disabled: number;
-	scanned: number;
-	status: string;
-	error: string;
-	runMode: string;
-}
-
-export interface ILdapSyncTable {
-	status: string;
-	endedAt: string;
-	runTime: string;
-	runMode: string;
-	details: string;
-}
-
-export interface ILdapConfig {
-	loginEnabled: boolean;
-	loginLabel: string;
-	connectionUrl: string;
-	allowUnauthorizedCerts: boolean;
-	connectionSecurity: string;
-	connectionPort: number;
-	baseDn: string;
-	bindingAdminDn: string;
-	bindingAdminPassword: string;
-	firstNameAttribute: string;
-	lastNameAttribute: string;
-	emailAttribute: string;
-	loginIdAttribute: string;
-	ldapIdAttribute: string;
-	userFilter: string;
-	synchronizationEnabled: boolean;
-	synchronizationInterval: number; // minutes
-	searchPageSize: number;
-	searchTimeout: number;
-}
-
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
@@ -1344,6 +1144,10 @@ export type UsageState = {
 				limit: number; // -1 for unlimited, from license
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
+			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
 			};
 		};
 		license: {
@@ -1369,6 +1173,7 @@ export interface EnvironmentVariable {
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
+	exactMatch?: boolean;
 };
 
 export type ExecutionFilterVote = AnnotationVote | 'all';
@@ -1397,55 +1202,11 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export type SamlPreferencesExtractedData = {
-	entityID: string;
-	returnUrl: string;
-};
-
-export declare namespace Cloud {
-	export interface PlanData {
-		planId: number;
-		monthlyExecutionsLimit: number;
-		activeWorkflowsLimit: number;
-		credentialsLimit: number;
-		isActive: boolean;
-		displayName: string;
-		expirationDate: string;
-		metadata: PlanMetadata;
-	}
-
-	export interface PlanMetadata {
-		version: 'v1';
-		group: 'opt-out' | 'opt-in' | 'trial';
-		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-		trial?: Trial;
-	}
-
-	interface Trial {
-		length: number;
-		gracePeriod: number;
-	}
-
-	export type UserAccount = {
-		confirmed: boolean;
-		username: string;
-		email: string;
-		hasEarlyAccess?: boolean;
-		role?: string;
-	};
-}
-
 export interface CloudPlanState {
 	initialized: boolean;
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
 	loadingPlan: boolean;
-}
-
-export interface InstanceUsage {
-	timeframe?: string;
-	executions: number;
-	activeWorkflows: number;
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
@@ -1493,7 +1254,8 @@ export type CloudUpdateLinkSourceType =
 	| 'external-secrets'
 	| 'rbac'
 	| 'debug'
-	| 'insights';
+	| 'insights'
+	| 'evaluations';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1517,7 +1279,8 @@ export type UTMCampaign =
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
-	| 'upgrade-insights';
+	| 'upgrade-insights'
+	| 'upgrade-evaluations';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1560,6 +1323,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'LogStreaming'
 	| 'Variables'
 	| 'Saml'
+	| 'Oidc'
 	| 'SourceControl'
 	| 'ExternalSecrets'
 	| 'AuditLogs'
@@ -1567,13 +1331,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes';
+	| 'ApiKeyScopes'
+	| 'EnforceMFA';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
-
-export interface IN8nPromptResponse {
-	updated: boolean;
-}
 
 export type InputPanel = {
 	nodeName?: string;

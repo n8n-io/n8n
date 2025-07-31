@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes, type Project } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { IUser } from 'n8n-workflow';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -41,7 +42,7 @@ const TEST_FOLDER_CHILD: FolderShortInfo = {
 	parentFolder: TEST_FOLDER.id,
 };
 
-const TEST_ACTIONS: UserAction[] = [
+const TEST_ACTIONS: Array<UserAction<IUser>> = [
 	{ label: 'Action 1', value: 'action1', disabled: false },
 	{ label: 'Action 2', value: 'action2', disabled: true },
 ];
@@ -122,5 +123,20 @@ describe('FolderBreadcrumbs', () => {
 		expect(getByTestId('home-project')).toBeVisible();
 		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(2);
 		expect(queryByTestId('ellipsis')).not.toBeInTheDocument();
+	});
+
+	it('should render personal project as fallback', () => {
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = TEST_PROJECT;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER_CHILD,
+			},
+		});
+		// Now, parent folder should also be visible
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(getByTestId('home-project')).toBeVisible();
 	});
 });

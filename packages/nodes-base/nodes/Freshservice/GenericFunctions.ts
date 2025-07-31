@@ -1,4 +1,4 @@
-import { omit } from 'lodash';
+import omit from 'lodash/omit';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -13,6 +13,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
+	LoadedResource,
 	LoadedUser,
 	RolesParameter,
 } from './types';

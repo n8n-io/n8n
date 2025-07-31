@@ -5,7 +5,7 @@ import type {
 	INodeParameterResourceLocator,
 	ResourceMapperValue,
 	FilterValue,
-} from './Interfaces';
+} from './interfaces';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(

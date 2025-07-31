@@ -3,11 +3,11 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
-import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -23,7 +23,10 @@ import { MfaService } from '@/mfa/mfa.service';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import {
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -76,17 +79,15 @@ export class PasswordResetController {
 		}
 
 		if (
-			isSamlCurrentAuthenticationMethod() &&
-			!(
-				user &&
-				(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
-			)
+			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 		) {
+			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 			this.logger.debug(
-				'Request to send password reset email failed because login is handled by SAML',
+				`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
 			);
 			throw new ForbiddenError(
-				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
+				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
 			);
 		}
 
@@ -188,7 +189,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, req.browserId);
+		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

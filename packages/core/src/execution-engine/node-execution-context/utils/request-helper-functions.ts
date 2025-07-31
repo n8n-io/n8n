@@ -5,7 +5,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
+import { Logger } from '@n8n/backend-common';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -18,12 +19,24 @@ import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { IncomingMessage } from 'http';
-import { Agent, type AgentOptions } from 'https';
+import { IncomingMessage, Agent as HttpAgent } from 'http';
+import { HttpProxyAgent } from 'http-proxy-agent';
+import { type AgentOptions, Agent as HttpsAgent } from 'https';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
+import {
+	NodeApiError,
+	NodeOperationError,
+	NodeSslError,
+	isObjectEmpty,
+	ExecutionBaseError,
+	jsonParse,
+	ApplicationError,
+	sleep,
+} from 'n8n-workflow';
 import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
@@ -48,24 +61,13 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	NodeApiError,
-	NodeOperationError,
-	NodeSslError,
-	isObjectEmpty,
-	ExecutionBaseError,
-	jsonParse,
-	ApplicationError,
-	sleep,
-} from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+import proxyFromEnv from 'proxy-from-env';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
-import url, { URL, URLSearchParams } from 'url';
 
 import type { IResponseError } from '@/interfaces';
-import { Logger } from '@/logging/logger';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
@@ -81,15 +83,11 @@ axios.defaults.paramsSerializer = (params) => {
 	}
 	return stringify(params, { arrayFormat: 'indices' });
 };
-axios.interceptors.request.use((config) => {
-	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
-	}
-	return config;
-});
+// Disable axios proxy, we handle it ourselves
+// Axios proxy option has problems: https://github.com/axios/axios/issues/4531
+axios.defaults.proxy = false;
 
-const validateUrl = (url?: string): boolean => {
+function validateUrl(url?: string): boolean {
 	if (!url) return false;
 
 	try {
@@ -98,7 +96,105 @@ const validateUrl = (url?: string): boolean => {
 	} catch (error) {
 		return false;
 	}
+}
+
+function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
+	if (typeof proxyConfig === 'string') {
+		if (!validateUrl(proxyConfig)) {
+			return null;
+		}
+		return proxyConfig;
+	}
+
+	if (!proxyConfig?.host) {
+		return null;
+	}
+
+	const { protocol, host, port, auth } = proxyConfig;
+	const safeProtocol = protocol?.endsWith(':') ? protocol.replace(':', '') : (protocol ?? 'http');
+
+	try {
+		const url = new URL(`${safeProtocol}://${host}`);
+
+		if (port !== undefined) {
+			url.port = String(port);
+		}
+
+		if (auth?.username) {
+			url.username = auth.username;
+			url.password = auth.password ?? '';
+		}
+
+		return url.href;
+	} catch (error) {
+		return null;
+	}
+}
+
+function getTargetUrlFromAxiosConfig(axiosConfig: AxiosRequestConfig): string {
+	const { url, baseURL } = axiosConfig;
+
+	try {
+		return new URL(url ?? '', baseURL).href;
+	} catch {
+		return '';
+	}
+}
+
+type AgentInfo = { protocol: 'http' | 'https'; agent: HttpAgent };
+
+export function getAgentWithProxy({
+	agentOptions,
+	proxyConfig,
+	targetUrl,
+}: {
+	agentOptions?: AgentOptions;
+	proxyConfig?: IHttpRequestOptions['proxy'] | string;
+	targetUrl: string;
+}): AgentInfo {
+	// If no proxy is set in config, use HTTP_PROXY/HTTPS_PROXY/ALL_PROXY from env depending on target URL
+	// Also respect NO_PROXY to disable the proxy for certain hosts
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig) ?? proxyFromEnv.getProxyForUrl(targetUrl);
+	const protocol = targetUrl.startsWith('https://') ? 'https' : 'http';
+
+	if (proxyUrl) {
+		const ProxyAgent = protocol === 'http' ? HttpProxyAgent : HttpsProxyAgent;
+		return { protocol, agent: new ProxyAgent(proxyUrl, agentOptions) };
+	}
+
+	const Agent = protocol === 'http' ? HttpAgent : HttpsAgent;
+	return { protocol, agent: new Agent(agentOptions) };
+}
+
+const applyAgentToAxiosConfig = (
+	config: AxiosRequestConfig,
+	{ agent, protocol }: AgentInfo,
+): AxiosRequestConfig => {
+	if (protocol === 'http') {
+		config.httpAgent = agent;
+	} else {
+		config.httpsAgent = agent;
+	}
+
+	return config;
 };
+
+axios.interceptors.request.use((config) => {
+	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.data === undefined) {
+		config.headers.setContentType(false, false);
+	}
+
+	if (!config.httpsAgent && !config.httpAgent) {
+		const agent = getAgentWithProxy({
+			targetUrl: getTargetUrlFromAxiosConfig(config),
+		});
+
+		applyAgentToAxiosConfig(config, agent);
+	}
+
+	return config;
+});
 
 function searchForHeader(config: AxiosRequestConfig, headerName: string) {
 	if (config.headers === undefined) {
@@ -126,20 +222,31 @@ const getHostFromRequestObject = (
 };
 
 const getBeforeRedirectFn =
-	(agentOptions: AgentOptions, axiosConfig: AxiosRequestConfig) =>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(
+		agentOptions: AgentOptions,
+		axiosConfig: AxiosRequestConfig,
+		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	) =>
 	(redirectedRequest: Record<string, any>) => {
-		const redirectAgent = new Agent({
+		const redirectAgentOptions = {
 			...agentOptions,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 			servername: redirectedRequest.hostname,
+		};
+		const redirectAgent = getAgentWithProxy({
+			agentOptions: redirectAgentOptions,
+			proxyConfig,
+			targetUrl: redirectedRequest.href,
 		});
-		redirectedRequest.agent = redirectAgent;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		redirectedRequest.agents.https = redirectAgent;
+
+		redirectedRequest.agent = redirectAgent.agent;
+		if (redirectAgent.protocol === 'http') {
+			redirectedRequest.agents.http = redirectAgent.agent;
+		} else {
+			redirectedRequest.agents.https = redirectAgent.agent;
+		}
 
 		if (axiosConfig.headers?.Authorization) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
 		}
 		if (axiosConfig.auth) {
@@ -171,8 +278,8 @@ function digestAuthAxiosConfig(
 			.createHash('md5')
 			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
 			.digest('hex');
-		const urlURL = new url.URL(axios.getUri(axiosConfig));
-		const path = urlURL.pathname + urlURL.search;
+		const url = new URL(axios.getUri(axiosConfig));
+		const path = url.pathname + url.search;
 		const ha2 = crypto
 			.createHash('md5')
 			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
@@ -218,11 +325,8 @@ export async function invokeAxios(
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 		form.append(key, value.value, value.options);
 	} else {
 		form.append(key, value);
@@ -252,7 +356,6 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	}
 	try {
 		const length = await new Promise<number>((res, rej) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			config.data.getLength((error: Error | null, dataLength: number) => {
 				if (error) rej(error);
 				else res(dataLength);
@@ -263,7 +366,6 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 			'content-length': length,
 		};
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		Container.get(Logger).error('Unable to calculate form data length', { error });
 	}
 }
@@ -307,7 +409,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		if (typeof requestObject.body === 'string') {
 			axiosConfig.data = requestObject.body;
 		} else {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
 				string,
 				string
@@ -332,9 +433,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// replace the existing header with a new one that
 		// contains the boundary property.
 		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
 		const headers = axiosConfig.data.getHeaders();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-nullish-coalescing
+
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
 		await generateContentLengthHeader(axiosConfig);
 	} else {
@@ -373,16 +474,16 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
 			}
 			// Mix in headers as FormData creates the boundary.
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
 			const headers = axiosConfig.data.getHeaders();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-nullish-coalescing
+
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
 			await generateContentLengthHeader(axiosConfig);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined && requestObject.body) {
 				// merge both objects when exist.
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				requestObject.body = Object.assign(requestObject.body, requestObject.form);
 			}
 			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
@@ -450,7 +551,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
@@ -458,9 +558,8 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				username: (authObj.user || authObj.username) as string,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 				password: (authObj.password || authObj.pass) as string,
 			};
 		}
@@ -477,7 +576,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 						.map((headerKey) => headerKey.toLowerCase())
 						.includes('accept');
 		if (!acceptHeaderExists) {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Accept: 'application/json',
 			});
@@ -485,7 +583,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	}
 	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		axiosConfig.transformResponse = (res) => res;
 	}
 
@@ -511,77 +609,19 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
 
-	axiosConfig.httpsAgent = new Agent(agentOptions);
-
-	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
-
 	if (requestObject.timeout !== undefined) {
 		axiosConfig.timeout = requestObject.timeout;
 	}
 
-	if (requestObject.proxy !== undefined) {
-		// try our best to parse the url provided.
-		if (typeof requestObject.proxy === 'string') {
-			try {
-				const url = new URL(requestObject.proxy);
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
-				axiosConfig.proxy = {
-					host,
-					port: parseInt(url.port, 10),
-					protocol: url.protocol,
-				};
-				if (!url.port) {
-					// Sets port to a default if not informed
-					if (url.protocol === 'http') {
-						axiosConfig.proxy.port = 80;
-					} else if (url.protocol === 'https') {
-						axiosConfig.proxy.port = 443;
-					}
-				}
-				if (url.username || url.password) {
-					axiosConfig.proxy.auth = {
-						username: url.username,
-						password: url.password,
-					};
-				}
-			} catch (error) {
-				// Not a valid URL. We will try to simply parse stuff
-				// such as user:pass@host:port without protocol (we'll assume http)
-				if (requestObject.proxy.includes('@')) {
-					const [userpass, hostport] = requestObject.proxy.split('@');
-					const [username, password] = userpass.split(':');
-					const [hostname, port] = hostport.split(':');
-					// eslint-disable-next-line @typescript-eslint/no-shadow
-					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
-					axiosConfig.proxy = {
-						host,
-						port: parseInt(port, 10),
-						protocol: 'http',
-						auth: {
-							username,
-							password,
-						},
-					};
-				} else if (requestObject.proxy.includes(':')) {
-					const [hostname, port] = requestObject.proxy.split(':');
-					axiosConfig.proxy = {
-						host: hostname,
-						port: parseInt(port, 10),
-						protocol: 'http',
-					};
-				} else {
-					axiosConfig.proxy = {
-						host: requestObject.proxy,
-						port: 80,
-						protocol: 'http',
-					};
-				}
-			}
-		} else {
-			axiosConfig.proxy = requestObject.proxy;
-		}
-	}
+	const agent = getAgentWithProxy({
+		agentOptions,
+		proxyConfig: requestObject.proxy,
+		targetUrl: getTargetUrlFromAxiosConfig(axiosConfig),
+	});
+
+	applyAgentToAxiosConfig(axiosConfig, agent);
+
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
 
 	if (requestObject.useStream) {
 		axiosConfig.responseType = 'stream';
@@ -596,7 +636,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	// as the service returns XML unless requested otherwise.
 	const allHeaders = axiosConfig.headers ? Object.keys(axiosConfig.headers) : [];
 	if (!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'accept')) {
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
@@ -610,7 +649,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// If we don't specify this here, axios will add
 		// application/json; charset=utf-8
 		// and this breaks a lot of stuff
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 			'content-type': 'application/json',
 		});
@@ -720,7 +759,6 @@ export async function proxyRequestToAxios(
 	}
 }
 
-// eslint-disable-next-line complexity
 export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -730,7 +768,6 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 		method,
 		timeout,
 		auth,
-		proxy,
 		url,
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
@@ -762,9 +799,14 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	axiosRequest.httpsAgent = new Agent(agentOptions);
+	const agent = getAgentWithProxy({
+		agentOptions,
+		proxyConfig: proxy,
+		targetUrl: getTargetUrlFromAxiosConfig(axiosRequest),
+	});
+	applyAgentToAxiosConfig(axiosRequest, agent);
 
-	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -938,7 +980,7 @@ export async function requestOAuth2(
 		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentials(
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
@@ -1019,7 +1061,7 @@ export async function requestOAuth2(
 					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
@@ -1099,7 +1141,7 @@ export async function requestOAuth2(
 				const nodeCredentials = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,

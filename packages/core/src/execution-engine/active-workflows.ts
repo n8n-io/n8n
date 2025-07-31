@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
 	INode,
@@ -18,7 +19,6 @@ import {
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
@@ -149,7 +149,7 @@ export class ActiveWorkflows {
 		};
 
 		// Get all the trigger times
-		const cronTimes = (pollTimes.item || []).map(toCronExpression);
+		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
 			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
@@ -177,15 +177,15 @@ export class ActiveWorkflows {
 		// Execute the trigger directly to be able to know if it works
 		await executeTrigger(true);
 
-		for (const cronTime of cronTimes) {
-			const cronTimeParts = cronTime.split(' ');
+		for (const expression of cronExpressions) {
+			const cronTimeParts = expression.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
 				throw new ApplicationError(
 					'The polling interval is too short. It has to be at least a minute.',
 				);
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, cronTime, executeTrigger);
+			this.scheduledTaskManager.registerCron(workflow, { expression }, executeTrigger);
 		}
 	}
 

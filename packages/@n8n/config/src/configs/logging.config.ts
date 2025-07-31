@@ -18,9 +18,23 @@ export const LOG_SCOPES = [
 	'task-runner',
 	'insights',
 	'workflow-activation',
+	'ssh-client',
+	'cron',
+	'community-nodes',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
+
+@Config
+export class CronLoggingConfig {
+	/**
+	 * Interval in minutes to log currently active cron jobs. Set to `0` to disable.
+	 *
+	 * @example `N8N_LOG_CRON_ACTIVE_INTERVAL=30` will log active crons every 30 minutes.
+	 */
+	@Env('N8N_LOG_CRON_ACTIVE_INTERVAL')
+	activeInterval: number = 0;
+}
 
 @Config
 class FileLoggingConfig {
@@ -66,8 +80,20 @@ export class LoggingConfig {
 	@Env('N8N_LOG_OUTPUT')
 	outputs: CommaSeparatedStringArray<'console' | 'file'> = ['console'];
 
+	/**
+	 * What format the logs should have.
+	 * `text` is only printing the human readable messages.
+	 * `json` is printing one JSON object per line containing the message, level,
+	 * timestamp and all the metadata.
+	 */
+	@Env('N8N_LOG_FORMAT')
+	format: 'text' | 'json' = 'text';
+
 	@Nested
 	file: FileLoggingConfig;
+
+	@Nested
+	cron: CronLoggingConfig;
 
 	/**
 	 * Scopes to filter logs by. Nothing is filtered by default.

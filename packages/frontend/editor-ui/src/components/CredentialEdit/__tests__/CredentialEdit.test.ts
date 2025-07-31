@@ -1,7 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { CREDENTIAL_EDIT_MODAL_KEY, STORES } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { cleanupAppModals, createAppModals, retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ICredentialsResponse } from '@/Interface';
@@ -179,7 +180,7 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-vi.mock('@/permissions', () => ({
+vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: vi.fn(() => ({
 		credential: {
 			create: true,

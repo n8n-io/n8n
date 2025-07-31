@@ -4,11 +4,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -161,11 +162,11 @@ function closeDialog() {
 
 				<div class="mb-s">
 					<n8n-text>
-						<i18n-t :keypath="`chatEmbed.paste.${currentTab}`">
+						<I18nT :keypath="`chatEmbed.paste.${currentTab}`" scope="global">
 							<template #code>
 								<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</n8n-text>
 				</div>
 

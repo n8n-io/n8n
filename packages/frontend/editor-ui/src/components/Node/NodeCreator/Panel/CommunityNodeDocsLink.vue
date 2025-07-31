@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { N8nText, N8nLink } from '@n8n/design-system';
 
@@ -18,14 +18,14 @@ const openCommunityNodeDocsPage = () => {
 <template>
 	<N8nLink
 		theme="text"
-		@click="openCommunityNodeDocsPage"
 		:class="$style.container"
 		:title="i18n.baseText('communityNodesDocsLink.link.title')"
+		@click="openCommunityNodeDocsPage"
 	>
 		<N8nText size="small" bold style="margin-right: 5px">
 			{{ i18n.baseText('communityNodesDocsLink.title') }}
 		</N8nText>
-		<FontAwesomeIcon icon="external-link-alt" />
+		<N8nIcon icon="external-link" />
 	</N8nLink>
 </template>
 

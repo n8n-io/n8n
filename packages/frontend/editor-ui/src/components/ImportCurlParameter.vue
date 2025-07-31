@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 

@@ -13,6 +13,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 
 @Service()
@@ -73,6 +74,8 @@ export class WaitingForms extends WaitingWebhooks {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];

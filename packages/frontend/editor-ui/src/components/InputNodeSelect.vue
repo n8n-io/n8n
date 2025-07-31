@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -84,7 +84,7 @@ function getMultipleNodesText(nodeName: string): string {
 		return '';
 
 	const activeNodeConnections =
-		props.workflow.connectionsByDestinationNode[activeNode.value.name].main || [];
+		workflowsStore.connectionsByDestinationNode[activeNode.value.name].main || [];
 	// Collect indexes of connected nodes
 	const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
 		if (node?.[0] && node[0].node === nodeName) return [...acc, index];

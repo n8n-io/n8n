@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -10,6 +8,7 @@ import type {
 	SupplyData,
 	ISupplyDataFunctions,
 	INodeType,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -26,7 +25,18 @@ import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types'
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
 
-// Import operation handlers
+const ragStarterCallout: INodeProperties = {
+	displayName: 'Tip: Get a feel for vector stores in n8n with our',
+	name: 'ragStarterCallout',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'RAG starter template',
+			type: 'openRagStarterTemplate',
+		},
+	},
+	default: '',
+};
 
 /**
  * Creates a vector store node with the given configuration
@@ -43,14 +53,17 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			icon: args.meta.icon,
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
-			version: [1, 1.1],
+			// 1.2 has changes to VectorStoreInMemory node.
+			// 1.3 drops `toolName` and uses node name as the tool name.
+			version: [1, 1.1, 1.2, 1.3],
 			defaults: {
 				name: args.meta.displayName,
 			},
 			codex: {
-				categories: ['AI'],
-				subcategories: {
+				categories: args.meta.categories ?? ['AI'],
+				subcategories: args.meta.subcategories ?? {
 					AI: ['Vector Stores', 'Tools', 'Root Nodes'],
+					'Vector Stores': ['Other Vector Stores'],
 					Tools: ['Other Tools'],
 				},
 				resources: {
@@ -62,11 +75,16 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			credentials: args.meta.credentials,
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
+				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
+
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
+					inputs.push({ displayName: "Reranker", type: "${NodeConnectionTypes.AiReranker}", required: true, maxConnections: 1})
+				}
 
 				if (mode === 'retrieve-as-tool') {
 					return inputs;
@@ -97,6 +115,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			})($parameter)
 		}}`,
 			properties: [
+				ragStarterCallout,
 				{
 					displayName: 'Operation Mode',
 					name: 'mode',
@@ -124,6 +143,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					validateType: 'string-alphanumeric',
 					displayOptions: {
 						show: {
+							'@version': [{ _cnd: { lte: 1.2 } }],
 							mode: ['retrieve-as-tool'],
 						},
 					},
@@ -198,6 +218,18 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						},
 					},
 				},
+				{
+					displayName: 'Rerank Results',
+					name: 'useReranker',
+					type: 'boolean',
+					default: false,
+					description: 'Whether or not to rerank results',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve', 'retrieve-as-tool'],
+						},
+					},
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',
@@ -229,7 +261,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
-
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionTypes.AiEmbedding,

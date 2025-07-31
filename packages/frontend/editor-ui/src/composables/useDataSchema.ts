@@ -1,4 +1,4 @@
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/utils/mappingUtils';
@@ -6,7 +6,7 @@ import { isObject } from '@/utils/objectUtils';
 import { isObj } from '@/utils/typeGuards';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import {
 	type IDataObject,
 	type INodeExecutionData,
@@ -15,6 +15,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function useDataSchema() {
 	function getSchema(
@@ -242,7 +243,7 @@ export type SchemaNode = {
 export type RenderItem = {
 	type: 'item';
 	id: string;
-	icon: string;
+	icon: IconName;
 	title?: string;
 	path?: string;
 	level?: number;
@@ -271,7 +272,7 @@ export type RenderHeader = {
 export type RenderIcon = {
 	id: string;
 	type: 'icon';
-	icon: string;
+	icon: IconName;
 	tooltip: string;
 };
 
@@ -292,20 +293,20 @@ export type RenderEmpty = {
 
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
-const icons = {
-	object: 'cube',
+const icons: { [key: string]: IconName } = {
+	object: 'box',
 	array: 'list',
-	['string']: 'font',
-	null: 'font',
-	['number']: 'hashtag',
-	['boolean']: 'check-square',
+	['string']: 'case-upper',
+	null: 'case-upper',
+	['number']: 'hash',
+	['boolean']: 'square-check',
 	function: 'code',
 	bigint: 'calculator',
 	symbol: 'sun',
 	['undefined']: 'ban',
 } as const;
 
-const getIconBySchemaType = (type: Schema['type']): string => icons[type];
+const getIconBySchemaType = (type: Schema['type']): IconName => icons[type];
 
 const emptyItem = (
 	key: RenderEmpty['key'],
@@ -321,7 +322,7 @@ const emptyItem = (
 const moreFieldsItem = (): RenderIcon => ({
 	id: `moreFields-${window.crypto.randomUUID()}`,
 	type: 'icon',
-	icon: 'ellipsis-h',
+	icon: 'ellipsis',
 	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 
@@ -347,6 +348,7 @@ export const useFlattenSchema = () => {
 	};
 
 	const flattenSchema = ({
+		isDataEmpty,
 		schema,
 		nodeType,
 		nodeName,
@@ -356,6 +358,7 @@ export const useFlattenSchema = () => {
 		level = 0,
 		preview,
 	}: {
+		isDataEmpty: boolean;
 		schema: Schema;
 		expressionPrefix?: string;
 		nodeType?: string;
@@ -367,7 +370,7 @@ export const useFlattenSchema = () => {
 	}): Renders[] => {
 		// only show empty item for the first level
 		if (isEmptySchema(schema) && level < 0) {
-			return [emptyItem('emptyData')];
+			return [emptyItem(isDataEmpty ? 'emptyData' : 'emptySchema')];
 		}
 
 		const expression = `{{ ${expressionPrefix ? expressionPrefix + schema.path : schema.path.slice(1)} }}`;
@@ -403,6 +406,7 @@ export const useFlattenSchema = () => {
 					.map((item) => {
 						const itemPrefix = schema.type === 'array' ? schema.key : '';
 						return flattenSchema({
+							isDataEmpty,
 							schema: item,
 							expressionPrefix,
 							nodeType,
@@ -474,6 +478,7 @@ export const useFlattenSchema = () => {
 
 			acc = acc.concat(
 				flattenSchema({
+					isDataEmpty: item.isDataEmpty,
 					schema: item.schema,
 					depth: item.depth,
 					nodeType: item.node.type,

@@ -1,8 +1,9 @@
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
-import type { ICredentialsResponse, IRestApiContext } from '@/Interface';
+import type { ICredentialsResponse } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
-import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -78,5 +79,20 @@ export async function claimFreeAiCredits(
 ): Promise<ICredentialsResponse> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', {
 		projectId,
+	} as IDataObject);
+}
+
+export async function getAiSessions(
+	ctx: IRestApiContext,
+	workflowId?: string,
+): Promise<{
+	sessions: Array<{
+		sessionId: string;
+		messages: ChatRequest.MessageResponse[];
+		lastUpdated: string;
+	}>;
+}> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', {
+		workflowId,
 	} as IDataObject);
 }

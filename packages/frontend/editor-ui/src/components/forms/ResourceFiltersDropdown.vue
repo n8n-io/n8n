@@ -4,8 +4,8 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import type { BaseFilters } from '../layouts/ResourcesListLayout.vue';
-import { useI18n } from '@/composables/useI18n';
+import type { BaseFilters } from '@/Interface';
+import { useI18n } from '@n8n/i18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
@@ -111,7 +111,7 @@ onBeforeMount(async () => {
 	<n8n-popover trigger="click" width="304" size="large">
 		<template #reference>
 			<n8n-button
-				icon="filter"
+				icon="funnel"
 				type="tertiary"
 				size="small"
 				:active="hasFilters"

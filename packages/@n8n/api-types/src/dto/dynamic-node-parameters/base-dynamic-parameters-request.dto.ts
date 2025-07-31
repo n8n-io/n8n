@@ -2,7 +2,7 @@ import type { INodeCredentials, INodeParameters, INodeTypeNameVersion } from 'n8
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { nodeVersionSchema } from '../../schemas/nodeVersion.schema';
+import { nodeVersionSchema } from '../../schemas/node-version.schema';
 
 export class BaseDynamicParametersRequestDto extends Z.class({
 	path: z.string(),

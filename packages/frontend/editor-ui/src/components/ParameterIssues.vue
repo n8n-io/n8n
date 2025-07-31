@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TitledList from '@/components/TitledList.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nTooltip, N8nIcon } from '@n8n/design-system';
 
 defineProps<{
@@ -16,7 +16,7 @@ const i18n = useI18n();
 			<template #content>
 				<TitledList :title="`${i18n.baseText('parameterInput.issues')}:`" :items="issues" />
 			</template>
-			<N8nIcon icon="exclamation-triangle" />
+			<N8nIcon icon="triangle-alert" />
 		</N8nTooltip>
 	</div>
 </template>

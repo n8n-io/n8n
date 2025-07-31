@@ -1,10 +1,15 @@
 <script lang="ts" setup>
 import type { AllRolesMap } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import { useI18n } from '@n8n/i18n';
+import {
+	ProjectTypes,
+	type ProjectListItem,
+	type ProjectSharingData,
+} from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const locale = useI18n();
 
@@ -45,6 +50,19 @@ const filteredProjects = computed(() =>
 		),
 	),
 );
+
+const projectIcon = computed<IconOrEmoji>(() => {
+	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
+	const project = props.projects.find((p) => p.id === selectedProject.value);
+
+	if (project?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (project?.type === ProjectTypes.Team) {
+		return isIconOrEmoji(project.icon) ? project.icon : defaultIcon;
+	}
+
+	return defaultIcon;
+});
 
 const setFilter = (query: string) => {
 	filter.value = query;
@@ -109,13 +127,16 @@ watch(
 			@update:model-value="onProjectSelected"
 		>
 			<template #prefix>
-				<n8n-icon icon="search" />
+				<N8nIcon v-if="projectIcon.type === 'icon'" :icon="projectIcon.value" color="text-dark" />
+				<N8nText v-else-if="projectIcon.type === 'emoji'" color="text-light" :class="$style.emoji">
+					{{ projectIcon.value }}
+				</N8nText>
 			</template>
 			<N8nOption
 				v-for="project in filteredProjects"
 				:key="project.id"
 				:value="project.id"
-				:label="project.name"
+				:label="project.name ?? ''"
 			>
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
@@ -150,7 +171,7 @@ watch(
 					type="tertiary"
 					native-type="button"
 					square
-					icon="trash"
+					icon="trash-2"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"
 					@click="onRoleAction(project, 'remove')"
@@ -186,5 +207,9 @@ watch(
 
 .projectRoleSelect {
 	width: auto;
+}
+
+.emoji {
+	font-size: var(--font-size-s);
 }
 </style>

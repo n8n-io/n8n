@@ -39,7 +39,6 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 		// Move the apiKey from the users table to the new table
 		await Promise.all(
 			usersWithApiKeys.map(
-				// @ts-expect-error Tech debt
 				async (user: { id: string; apiKey: string }) =>
 					await runQuery(
 						`INSERT INTO ${userApiKeysTable} (${idColumn}, ${userIdColumn}, ${apiKeyColumn}, ${labelColumn}) VALUES (:id, :userId, :apiKey, :label)`,
@@ -97,7 +96,6 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 
 		await Promise.all(
 			oldestApiKeysPerUser.map(
-				// @ts-expect-error Tech debt
 				async (user: { userId: string; apiKey: string }) =>
 					await runQuery(
 						`UPDATE ${userTable} SET ${apiKeyColumn} = :apiKey WHERE ${idColumn} = :userId`,

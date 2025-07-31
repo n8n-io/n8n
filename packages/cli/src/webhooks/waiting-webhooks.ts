@@ -1,8 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { Logger } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -18,6 +18,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -88,6 +89,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
@@ -207,13 +210,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		const runExecutionData = execution.data;
 
 		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,
 				workflowStartNode,
-				executionMode,
+				execution.mode,
 				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,

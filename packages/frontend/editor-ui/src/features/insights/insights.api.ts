@@ -1,5 +1,5 @@
-import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IRestApiContext } from '@/Interface';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InsightsSummary,
 	InsightsByTime,
@@ -19,6 +19,12 @@ export const fetchInsightsByTime = async (
 	filter?: { dateRange: InsightsDateRange['key'] },
 ): Promise<InsightsByTime[]> =>
 	await makeRestApiRequest(context, 'GET', '/insights/by-time', filter);
+
+export const fetchInsightsTimeSaved = async (
+	context: IRestApiContext,
+	filter?: { dateRange: InsightsDateRange['key'] },
+): Promise<InsightsByTime[]> =>
+	await makeRestApiRequest(context, 'GET', '/insights/by-time/time-saved', filter);
 
 export const fetchInsightsByWorkflow = async (
 	context: IRestApiContext,

@@ -31,6 +31,9 @@
                 }
             }
         },
+        "sessionId": {
+            "type": "string"
+        },
         "warnings": {
             "type": "array",
             "items": {
@@ -41,7 +44,10 @@
                     }
                 }
             }
+        },
+        "windowId": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

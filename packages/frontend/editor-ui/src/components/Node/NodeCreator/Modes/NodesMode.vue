@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { computed } from 'vue';
 import type {
 	ActionTypeDescription,
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
+	NodeTypeSelectedPayload,
 } from '@/Interface';
 import {
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -17,7 +18,7 @@ import {
 	HITL_SUBCATEGORY,
 } from '@/constants';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
@@ -26,35 +27,41 @@ import {
 	filterAndSearchNodes,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
+	getRootSearchCallouts,
+	shouldShowCommunityNodeDetails,
+	getHumanInTheLoopActions,
 } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
 import { useActions } from '../composables/useActions';
-import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
+import { type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
 const emit = defineEmits<{
-	nodeTypeSelected: [nodeTypes: string[]];
+	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 
 const i18n = useI18n();
 
+const calloutHelpers = useCalloutHelpers();
+
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
-const { setAddedNodeActionParameters } = useActions();
+const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
@@ -75,7 +82,10 @@ const moreFromCommunity = computed(() => {
 const isSearchResultEmpty = computed(() => {
 	return (
 		(activeViewStack.value.items || []).length === 0 &&
-		globalSearchItemsDiff.value.length + moreFromCommunity.value.length === 0
+		globalCallouts.value.length +
+			globalSearchItemsDiff.value.length +
+			moreFromCommunity.value.length ===
+			0
 	);
 });
 
@@ -91,14 +101,6 @@ function getFilteredActions(
 		return activeViewStack.value.actionsFilter(nodeActions);
 	}
 	return nodeActions;
-}
-
-function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
-	return nodeActions.filter((action) => action.actionKey === SEND_AND_WAIT_OPERATION);
-}
-
-function selectNodeType(nodeTypes: string[]) {
-	emit('nodeTypeSelected', nodeTypes);
 }
 
 function onSelected(item: INodeCreateElement) {
@@ -136,7 +138,7 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'node') {
 		let nodeActions = getFilteredActions(item, actions);
 
-		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
@@ -152,9 +154,11 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
+
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
-			selectNodeType([item.key]);
+			emit('nodeTypeSelected', [payload]);
 			setAddedNodeActionParameters({
 				name: nodeActions[0].defaults.name ?? item.properties.displayName,
 				key: item.key,
@@ -165,7 +169,7 @@ function onSelected(item: INodeCreateElement) {
 
 		// Only show actions if there are more than one or if the view is not an AI subcategory
 		if (nodeActions.length === 0 || activeViewStack.value.hideActions) {
-			selectNodeType([item.key]);
+			emit('nodeTypeSelected', [payload]);
 			return;
 		}
 
@@ -217,6 +221,12 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
 	}
+
+	if (item.type === 'openTemplate') {
+		if (item.properties.key === 'rag-starter-template') {
+			void calloutHelpers.openRagStarterTemplate();
+		}
+	}
 }
 
 function subcategoriesMapper(item: INodeCreateElement) {
@@ -255,12 +265,19 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 	return hasActions || !hasTriggerGroup;
 }
 
+const globalCallouts = computed<INodeCreateElement[]>(() =>
+	getRootSearchCallouts(activeViewStack.value.search ?? '', {
+		isRagStarterCalloutVisible: calloutHelpers.isRagStarterCalloutVisible.value,
+	}),
+);
+
 function arrowLeft() {
 	popViewStack();
 }
 
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
+		...(globalCallouts.value ?? []),
 		...(activeViewStack.value.items ?? []),
 		...(globalSearchItemsDiff.value ?? []),
 		...(moreFromCommunity.value ?? []),
@@ -274,19 +291,22 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
 	handler: arrowLeft,
 });
 </script>
 
 <template>
 	<span>
+		<!-- Global Callouts-->
+		<ItemsRenderer :elements="globalCallouts" :class="$style.items" @selected="onSelected" />
+
 		<!-- Main Node Items -->
 		<ItemsRenderer
 			v-memo="[activeViewStack.search]"
@@ -299,8 +319,8 @@ registerKeyHook('MainViewArrowLeft', {
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
-					@add-webhook-node="selectNodeType([WEBHOOK_NODE_TYPE])"
-					@add-http-node="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
+					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
+					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>
 			</template>
 		</ItemsRenderer>
@@ -310,8 +330,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 
@@ -320,8 +340,8 @@ registerKeyHook('MainViewArrowLeft', {
 			v-if="moreFromCommunity.length > 0"
 			:elements="moreFromCommunity"
 			:category="i18n.baseText('nodeCreator.categoryNames.moreFromCommunity')"
-			@selected="onSelected"
 			:expanded="true"
+			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
 	</span>

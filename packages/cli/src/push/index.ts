@@ -1,12 +1,13 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
-import { InstanceSettings, Logger } from 'n8n-core';
+import pick from 'lodash/pick';
+import { InstanceSettings } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
@@ -89,12 +90,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		}
 	}
 
-	/** Sets up the push endppoint that the frontend connects to. */
+	/** Sets up the push endpoint that the frontend connects to. */
 	setupPushHandler(restEndpoint: string, app: Application) {
 		app.use(
 			`/${restEndpoint}/push`,
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.authService.authMiddleware,
+
+			this.authService.createAuthMiddleware(false),
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
 				this.handleRequest(req, res),
 		);
@@ -109,13 +110,28 @@ export class Push extends TypedEmitter<PushEvents> {
 		} = req;
 
 		let connectionError = '';
+
+		// Extract host domain from origin
+		const originHost = headers.origin?.replace(/^https?:\/\//, '');
+
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (
-			inProduction &&
-			!(headers.origin === `http://${headers.host}` || headers.origin === `https://${headers.host}`)
-		) {
+		} else if (!originHost) {
+			this.logger.warn('Origin header is missing');
+
 			connectionError = 'Invalid origin!';
+		} else if (inProduction) {
+			const expectedHost =
+				typeof headers['x-forwarded-host'] === 'string'
+					? headers['x-forwarded-host']
+					: headers.host;
+			if (expectedHost !== originHost) {
+				this.logger.warn(
+					`Origin header does NOT match the expected origin. (Origin: "${originHost}", Expected: "${expectedHost}")`,
+					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
+				);
+				connectionError = 'Invalid origin!';
+			}
 		}
 
 		if (connectionError) {
@@ -187,6 +203,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		const { isWorker, isMultiMain } = this.instanceSettings;
 
 		return isWorker || (isMultiMain && !this.hasPushRef(pushRef));
+	}
+
+	@OnPubSubEvent('relay-execution-lifecycle-event', { instanceType: 'main' })
+	handleRelayExecutionLifecycleEvent({ pushRef, ...pushMsg }: PushMessage & { pushRef: string }) {
+		if (!this.hasPushRef(pushRef)) return;
+		this.send(pushMsg, pushRef);
 	}
 
 	/**

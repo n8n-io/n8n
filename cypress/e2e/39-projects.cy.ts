@@ -1,9 +1,11 @@
 import { createResource } from '../composables/create';
+import { transferWorkflow } from '../composables/folders';
 import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
 	clickCreateNewCredential,
 	getNdvContainer,
-	selectResourceLocatorItem,
+	selectResourceLocatorAddResourceItem,
+	clickGetBackToCanvas,
 } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
@@ -37,6 +39,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		beforeEach(() => {
 			cy.resetDatabase();
 			cy.enableFeature('sharing');
+			cy.enableFeature('folders');
 			cy.enableFeature('advancedPermissions');
 			cy.enableFeature('projectRole:admin');
 			cy.enableFeature('projectRole:editor');
@@ -154,7 +157,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				expect(interception.request.query).not.to.have.property('projectId');
 				expect(interception.request.query).to.have.property('workflowId');
 			});
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -179,7 +182,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -208,7 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -246,21 +249,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getProjectSettingsSaveButton().click();
 
 			// Move the workflow from Home to Project 1
-			projects.getHomeButton().click();
+			projects.getPersonalProjectsButton().click();
 			workflowsPage.getters.workflowCards().should('have.length', 1);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
 			workflowsPage.getters.workflowCardActions('My workflow').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 4);
-			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			transferWorkflow('My workflow', 'Project 1', 'No folder (project root)');
+
+			projects.getMenuItems().filter(':contains("Project 1")').click();
 
 			clearNotifications();
 			cy.wait('@getResources');
@@ -284,7 +280,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
@@ -299,12 +295,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
-			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
+			cy.interceptNewTab();
+			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 
-			selectResourceLocatorItem('workflowId', 0, 'Create a');
-			// Need to wait for the trigger node to auto-open after a delay
+			cy.visitInterceptedTab();
 			getNdvContainer().should('be.visible');
-			cy.get('body').type('{esc}');
+			clickGetBackToCanvas();
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
 			setCredentialValues({
@@ -346,14 +342,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should set and update project icon', () => {
-			const DEFAULT_ICON = 'fa-layer-group';
+			const DEFAULT_ICON = 'layers';
 			const NEW_PROJECT_NAME = 'Test Project';
 
 			cy.signinAsAdmin();
 			cy.visit(workflowsPage.url);
 			projects.createProject(NEW_PROJECT_NAME);
 			// New project should have default icon
-			projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+			projects.getIconPickerButton().find('svg').should('have.attr', 'data-icon', DEFAULT_ICON);
 			// Choose another icon
 			projects.getIconPickerButton().click();
 			projects.getIconPickerTab('Emojis').click();
@@ -394,6 +390,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		before(() => {
 			cy.resetDatabase();
 			cy.enableFeature('sharing');
+			cy.enableFeature('folders');
 			cy.enableFeature('advancedPermissions');
 			cy.enableFeature('projectRole:admin');
 			cy.enableFeature('projectRole:editor');
@@ -451,93 +448,35 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
+			projects.getPersonalProjectsButton().click();
+			workflowsPage.getters.workflowCards().should('have.length', 1);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			transferWorkflow('Workflow in Home project', 'Project 2', 'No folder (project root)');
 			clearNotifications();
-			cy.wait('@getResources');
 
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('not.exist');
+			workflowsPage.getters.workflowCards().should('have.length', 0);
 
 			cy.log('Move the workflow from Project 1 to Project 2');
 			projects.getMenuItems().first().click();
-			workflowsPage.getters.workflowCards().should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCardActions('Workflow in Project 1').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			transferWorkflow('Workflow in Project 1', 'Project 2', 'No folder (project root)');
 			clearNotifications();
 
 			cy.log('Move the workflow from Project 2 to a member user');
 			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			transferWorkflow('Workflow in Home project', INSTANCE_MEMBERS[0].email);
+			clearNotifications();
+
 			workflowsPage.getters.workflowCards().should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_MEMBERS[0].email}")`).click();
-
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-
-			cy.log('Move the workflow from member user back to Home');
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters
-				.workflowCards()
-				.filter(':has([data-test-id="card-badge"]:contains("Project"))')
-				.should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
-
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters
-				.workflowCards()
-				.filter(':contains("Personal")')
-				.should('have.length', 1);
 		});
 
 		it('should move the credential to expected projects', () => {

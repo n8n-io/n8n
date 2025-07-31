@@ -13,7 +13,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { ndvEventBus } from '@/event-bus';
@@ -85,31 +85,21 @@ const filter = ref('');
 const listeningForAuthChange = ref(false);
 const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
+const credentialTypesNodeDescriptions = computed(() =>
+	credentialsStore.getCredentialTypesNodeDescriptions(props.overrideCredType, nodeType.value),
+);
+
 const credentialTypesNode = computed(() =>
-	credentialTypesNodeDescription.value.map(
+	credentialTypesNodeDescriptions.value.map(
 		(credentialTypeDescription) => credentialTypeDescription.name,
 	),
 );
 
 const credentialTypesNodeDescriptionDisplayed = computed(() =>
-	credentialTypesNodeDescription.value
+	credentialTypesNodeDescriptions.value
 		.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription))
 		.map((type) => ({ type, options: getCredentialOptions(getAllRelatedCredentialTypes(type)) })),
 );
-const credentialTypesNodeDescription = computed(() => {
-	if (typeof props.overrideCredType !== 'string') return [];
-
-	const credType = credentialsStore.getCredentialTypeByName(props.overrideCredType);
-
-	if (credType) return [credType];
-
-	const activeNodeType = nodeType.value;
-	if (activeNodeType?.credentials) {
-		return activeNodeType.credentials;
-	}
-
-	return [];
-});
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
@@ -305,7 +295,6 @@ function clearSelectedCredential(credentialType: string) {
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -422,7 +411,6 @@ function onCredentialSelected(
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -510,7 +498,7 @@ function setFilter(newFilter = '') {
 }
 
 function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle);
+	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
@@ -592,7 +580,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 									:items="getIssues(type.name)"
 								/>
 							</template>
-							<N8nIcon icon="exclamation-triangle" />
+							<N8nIcon icon="triangle-alert" />
 						</N8nTooltip>
 					</div>
 

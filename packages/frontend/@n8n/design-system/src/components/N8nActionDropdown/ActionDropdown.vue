@@ -8,10 +8,12 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types/icon';
+import type { ActionDropdownItem, IconSize, ButtonSize } from '@n8n/design-system/types';
 
-import type { ActionDropdownItem } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
@@ -19,8 +21,8 @@ const TRIGGER = ['click', 'hover'] as const;
 interface ActionDropdownProps {
 	items: ActionDropdownItem[];
 	placement?: Placement;
-	activatorIcon?: string;
-	activatorSize?: IconSize;
+	activatorIcon?: IconName;
+	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
@@ -30,7 +32,7 @@ interface ActionDropdownProps {
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
-	activatorIcon: 'ellipsis-h',
+	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',
@@ -56,6 +58,12 @@ const emit = defineEmits<{
 	select: [action: string];
 	visibleChange: [open: boolean];
 }>();
+
+defineSlots<{
+	activator: {};
+	menuItem: (props: ActionDropdownItem) => void;
+}>();
+
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
@@ -90,7 +98,7 @@ defineExpose({ open, close });
 			@visible-change="onVisibleChange"
 		>
 			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
+			<N8nIconButton
 				v-else
 				type="tertiary"
 				text
@@ -115,8 +123,11 @@ defineExpose({ open, close });
 								<N8nIcon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
-								{{ item.label }}
+								<slot name="menuItem" v-bind="item">
+									{{ item.label }}
+								</slot>
 							</span>
+							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}

@@ -50,7 +50,7 @@ type NumericPath = CollectPathsByType<number>;
 
 type BooleanPath = CollectPathsByType<boolean>;
 
-type StringLiteralArrayPath = CollectPathsByType<Readonly<string[]>>;
+type StringLiteralArrayPath = CollectPathsByType<readonly string[]>;
 
 type StringPath = CollectPathsByType<string>;
 

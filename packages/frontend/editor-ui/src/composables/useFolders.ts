@@ -4,7 +4,7 @@ import {
 	FOLDER_NAME_ONLY_DOTS_REGEX,
 	ILLEGAL_FOLDER_CHARACTERS,
 } from '@/constants';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { computed } from 'vue';
 

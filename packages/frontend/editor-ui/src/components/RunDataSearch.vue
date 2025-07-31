@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, type StyleValue, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useDebounce } from '@/composables/useDebounce';
 
@@ -116,7 +116,7 @@ watch(
 		@blur="onBlur"
 	>
 		<template #prefix>
-			<n8n-icon :class="$style.ioSearchIcon" icon="search" />
+			<n8n-icon :class="$style.ioSearchIcon" icon="search" size="large" />
 		</template>
 	</n8n-input>
 </template>
@@ -130,6 +130,7 @@ watch(
 	.ioSearchIcon {
 		color: var(--color-foreground-xdark);
 		cursor: pointer;
+		vertical-align: middle;
 	}
 
 	:global(.el-input__prefix) {

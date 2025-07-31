@@ -5,7 +5,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/types/assistant.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';

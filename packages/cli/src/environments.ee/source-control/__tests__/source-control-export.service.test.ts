@@ -1,12 +1,15 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import type { SharedCredentials } from '@n8n/db';
-import type { SharedWorkflow } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { TagRepository } from '@n8n/db';
-import type { WorkflowTagMappingRepository } from '@n8n/db';
-import type { SharedCredentialsRepository } from '@n8n/db';
-import type { SharedWorkflowRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import { User } from '@n8n/db';
+import type {
+	SharedCredentials,
+	SharedWorkflow,
+	FolderRepository,
+	TagRepository,
+	WorkflowTagMappingRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
@@ -14,8 +17,16 @@ import fsp from 'node:fs/promises';
 
 import type { VariablesService } from '../../variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SourceControlContext } from '../types/source-control-context';
 
 describe('SourceControlExportService', () => {
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), {
+			role: 'global:admin',
+		}),
+	);
+
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -24,6 +35,7 @@ describe('SourceControlExportService', () => {
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
 	const folderRepository = mock<FolderRepository>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -34,6 +46,7 @@ describe('SourceControlExportService', () => {
 		workflowRepository,
 		workflowTagMappingRepository,
 		folderRepository,
+		sourceControlScopedService,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 
@@ -172,7 +185,7 @@ describe('SourceControlExportService', () => {
 			workflowTagMappingRepository.find.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportTagsToWorkFolder();
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -184,7 +197,7 @@ describe('SourceControlExportService', () => {
 			tagRepository.find.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportTagsToWorkFolder();
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -201,7 +214,7 @@ describe('SourceControlExportService', () => {
 			workflowRepository.find.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportFoldersToWorkFolder();
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -213,7 +226,7 @@ describe('SourceControlExportService', () => {
 			folderRepository.find.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportFoldersToWorkFolder();
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
 			expect(result.count).toBe(0);

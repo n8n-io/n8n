@@ -3,10 +3,7 @@
     "properties": {
         "date": {
             "type": "string"
-        },
-        "sessions": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

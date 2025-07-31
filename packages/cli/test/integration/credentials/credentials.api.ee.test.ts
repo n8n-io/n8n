@@ -1,8 +1,15 @@
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import {
+	createWorkflow,
+	shareWorkflowWithUsers,
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import { ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
@@ -11,16 +18,13 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
-import { mockInstance } from '../../shared/mocking';
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import {
 	createAdmin,
 	createManyUsers,
@@ -28,13 +32,7 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import {
-	randomCredentialPayload,
-	randomCredentialPayloadWithOauthTokenData,
-} from '../shared/random';
-import * as testDb from '../shared/test-db';
-import type { SaveCredentialFunction } from '../shared/types';
-import type { SuperAgentTest } from '../shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
 const testServer = utils.setupTestServer({
@@ -231,7 +229,7 @@ describe('GET /credentials', () => {
 		// ARRANGE
 		//
 		const project1 = await projectService.createTeamProject(member, { name: 'Team Project' });
-		await projectService.addUser(project1.id, anotherMember.id, 'project:editor');
+		await projectService.addUser(project1.id, { userId: anotherMember.id, role: 'project:editor' });
 		// anotherMember should see this one
 		const credential1 = await saveCredential(randomCredentialPayload(), { project: project1 });
 

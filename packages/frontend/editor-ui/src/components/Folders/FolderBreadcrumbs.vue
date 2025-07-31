@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
@@ -7,11 +7,12 @@ import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
+import type { IUser } from 'n8n-workflow';
 
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
-	actions?: UserAction[];
+	actions?: Array<UserAction<IUser>>;
 	hiddenItemsTrigger?: 'hover' | 'click';
 	currentFolderAsLink?: boolean;
 	visibleLevels?: 1 | 2;
@@ -42,7 +43,9 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 // This will be used to filter out items that are already visible in the breadcrumbs
 const visibleIds = ref<Set<string>>(new Set());
 
-const currentProject = computed(() => projectsStore.currentProject);
+const currentProject = computed(
+	() => projectsStore.currentProject ?? projectsStore.personalProject,
+);
 
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
@@ -74,7 +77,7 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		items.push({
 			id: parent.id,
 			label: parent.name,
-			href: `/projects/${projectsStore.currentProjectId}/folders/${parent.id}/workflows`,
+			href: `/projects/${currentProject.value?.id}/folders/${parent.id}/workflows`,
 			parentFolder: parent.parentFolder,
 		});
 		visibleIds.value.add(parent.id);
@@ -84,11 +87,11 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		label: props.currentFolder.name,
 		parentFolder: props.currentFolder.parentFolder,
 		href: props.currentFolderAsLink
-			? `/projects/${projectsStore.currentProjectId}/folders/${props.currentFolder.id}/workflows`
+			? `/projects/${currentProject.value?.id}/folders/${props.currentFolder.id}/workflows`
 			: undefined,
 	});
-	if (projectsStore.currentProjectId) {
-		visibleIds.value.add(projectsStore.currentProjectId);
+	if (currentProject.value) {
+		visibleIds.value.add(currentProject.value.id);
 	}
 	visibleIds.value.add(props.currentFolder.id);
 
@@ -96,12 +99,12 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 });
 
 const fetchHiddenBreadCrumbsItems = async () => {
-	if (!projectName.value || !props.currentFolder?.parentFolder || !projectsStore.currentProjectId) {
+	if (!projectName.value || !props.currentFolder?.parentFolder || !currentProject.value) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
 		try {
 			const loadedItems = foldersStore.getHiddenBreadcrumbsItems(
-				{ id: projectsStore.currentProjectId, name: projectName.value },
+				{ id: currentProject.value.id, name: projectName.value },
 				props.currentFolder.parentFolder,
 				{ addLinks: true },
 			);

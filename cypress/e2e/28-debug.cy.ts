@@ -87,28 +87,14 @@ describe('Debug', () => {
 		confirmDialog.get('.btn--confirm').click();
 		cy.url().should('include', '/debug');
 
-		cy.ifCanvasVersion(
-			() => {
-				workflowPage.getters
-					.canvasNodes()
-					.first()
-					.should('have.descendants', '.node-pin-data-icon');
-				workflowPage.getters
-					.canvasNodes()
-					.not(':first')
-					.should('not.have.descendants', '.node-pin-data-icon');
-			},
-			() => {
-				workflowPage.getters
-					.canvasNodes()
-					.first()
-					.should('have.descendants', '[data-test-id="canvas-node-status-pinned"]');
-				workflowPage.getters
-					.canvasNodes()
-					.not(':first')
-					.should('not.have.descendants', '[data-test-id="canvas-node-status-pinned"]');
-			},
-		);
+		workflowPage.getters
+			.canvasNodes()
+			.first()
+			.should('have.descendants', '[data-test-id="canvas-node-status-pinned"]');
+		workflowPage.getters
+			.canvasNodes()
+			.not(':first')
+			.should('not.have.descendants', '[data-test-id="canvas-node-status-pinned"]');
 
 		cy.reload(true);
 		cy.wait(['@getExecution']);
@@ -131,18 +117,7 @@ describe('Debug', () => {
 		confirmDialog.get('.btn--confirm').click();
 		cy.url().should('include', '/debug');
 
-		cy.ifCanvasVersion(
-			() => {
-				workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
-			},
-			() => {
-				workflowPage.getters
-					.canvasNodes()
-					.last()
-					.find('[class*="statusIcons"]')
-					.should('not.exist');
-			},
-		);
+		workflowPage.getters.canvasNodes().last().find('[class*="statusIcons"]').should('not.exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
 		ndv.actions.unPinData();

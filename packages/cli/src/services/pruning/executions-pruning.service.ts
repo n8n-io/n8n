@@ -1,13 +1,12 @@
+import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import { ExecutionRepository } from '@n8n/db';
+import { Time } from '@n8n/constants';
+import { ExecutionRepository, DbConnection } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
-
-import { Time } from '@/constants';
-import { DbConnection } from '@/databases/db-connection';
 
 /**
  * Responsible for deleting old executions from the database and deleting their
@@ -25,7 +24,7 @@ import { DbConnection } from '@/databases/db-connection';
 @Service()
 export class ExecutionsPruningService {
 	/** Timer for soft-deleting executions on a rolling basis. */
-	private softDeletionInterval: NodeJS.Timer | undefined;
+	private softDeletionInterval: NodeJS.Timeout | undefined;
 
 	/** Timeout for next hard-deletion of soft-deleted executions. */
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;

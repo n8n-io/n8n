@@ -1,6 +1,6 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export async function workflowFailedToActivate({ data }: WorkflowFailedToActivate) {

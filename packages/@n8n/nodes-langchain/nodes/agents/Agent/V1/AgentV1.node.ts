@@ -67,9 +67,7 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -102,6 +100,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
 				},
 			},
@@ -277,7 +276,6 @@ export class AgentV1 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 					name: 'mySql',
 					required: true,
 					testedBy: 'mysqlConnectionTest',
@@ -303,8 +301,8 @@ export class AgentV1 implements INodeType {
 				{
 					displayName:
 						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'notice_tip',
-					type: 'notice',
+					name: 'aiAgentStarterCallout',
+					type: 'callout',
 					default: '',
 					displayOptions: {
 						show: {

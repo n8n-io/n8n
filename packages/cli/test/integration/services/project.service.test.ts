@@ -1,12 +1,11 @@
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { testDb } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole, Scope } from '@n8n/permissions';
 
 import { ProjectService } from '@/services/project.service.ee';
 
 import { createMember } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
@@ -52,7 +51,7 @@ describe('ProjectService', () => {
 				//
 				// ACT
 				//
-				await projectService.addUser(project.id, member.id, role);
+				await projectService.addUser(project.id, { userId: member.id, role });
 
 				//
 				// ASSERT
@@ -74,7 +73,7 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			await projectService.addUser(project.id, member.id, 'project:viewer');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:viewer' });
 
 			await projectRelationRepository.findOneOrFail({
 				where: { userId: member.id, projectId: project.id, role: 'project:viewer' },
@@ -83,7 +82,7 @@ describe('ProjectService', () => {
 			//
 			// ACT
 			//
-			await projectService.addUser(project.id, member.id, 'project:admin');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:admin' });
 
 			//
 			// ASSERT
@@ -117,7 +116,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectOwner.id, role);
+				await projectService.addUser(project.id, { userId: projectOwner.id, role });
 
 				//
 				// ACT
@@ -157,7 +156,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectViewer.id, role);
+				await projectService.addUser(project.id, { userId: projectViewer.id, role });
 
 				//
 				// ACT
@@ -198,6 +197,46 @@ describe('ProjectService', () => {
 			// ASSERT
 			//
 			expect(projectFromService).toBeNull();
+		});
+	});
+
+	describe('deleteUserFromProject', () => {
+		it('should not allow project owner to be removed from the project', async () => {
+			const role = 'project:personalOwner';
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrowError(
+				/^Project owner cannot be removed from the project$/,
+			);
+		});
+
+		it('should remove user from project if not owner', async () => {
+			const role = 'project:editor';
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await projectService.deleteUserFromProject(project.id, user.id);
+
+			const relations = await projectRelationRepository.findOne({
+				where: { userId: user.id, projectId: project.id, role },
+			});
+
+			expect(relations).toBeNull();
 		});
 	});
 });

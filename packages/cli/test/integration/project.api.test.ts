@@ -1,9 +1,24 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	getPersonalProject,
+	findProject,
+	getProjectRelations,
+	createWorkflow,
+	shareWorkflowWithProjects,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
@@ -18,19 +33,8 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
-import {
-	createTeamProject,
-	linkUserToProject,
-	getPersonalProject,
-	findProject,
-	getProjectRelations,
-} from './shared/db/projects';
 import { createMember, createOwner, createUser } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -432,6 +436,43 @@ describe('POST /projects/', () => {
 
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
+
+	const globalConfig = Container.get(GlobalConfig);
+	// Preventing this relies on transactions and we can't use them with the
+	// sqlite legacy driver due to data loss risks.
+	if (!globalConfig.database.isLegacySqlite) {
+		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			const maxTeamProjects = 3;
+			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
+			const ownerUser = await createOwner();
+			const ownerAgent = testServer.authAgentFor(ownerUser);
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(0);
+
+			await Promise.all([
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+			]);
+
+			// Some of the calls above will interleave and may fail with a deadlock
+			// error on MySQL (this is not an issue on PG or MariaDB).
+			// That can lead to less projects being created than the quota allows.
+			// So we're only checking here that we didn't create more projects than
+			// are allowed instead of checking for a specific number.
+			// We only want to prevent that this endpoint is exploited. A normal user
+			// using the FE would almost never hit this and if they do they can retry
+			// the action. No need to implement rety logic in the controller.
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBeLessThanOrEqual(maxTeamProjects);
+		});
+	}
 });
 
 describe('PATCH /projects/:projectId', () => {
@@ -472,7 +513,7 @@ describe('PATCH /projects/:projectId', () => {
 		const resp = await ownerAgent
 			.patch(`/projects/${personalProject.id}`)
 			.send({ name: 'New Name' });
-		expect(resp.status).toBe(403);
+		expect(resp.status).toBe(404);
 
 		const updatedProject = await findProject(personalProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');

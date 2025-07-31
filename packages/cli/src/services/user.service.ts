@@ -1,9 +1,9 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
-import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -61,15 +61,16 @@ export class UserService {
 			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
+			mfaAuthenticated?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
 
-		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: ldapIdentity ? 'ldap' : 'email',
+			signInType: providerType ?? 'email',
 			isOwner: user.role === 'global:owner',
 		};
 
@@ -89,6 +90,8 @@ export class UserService {
 		if (options?.withScopes) {
 			publicUser.globalScopes = getGlobalScopes(user);
 		}
+
+		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
 	}

@@ -17,14 +17,17 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -40,6 +43,9 @@ export async function executionFinished(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
+
+	workflowsStore.lastAddedExecutingNode = null;
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
@@ -55,12 +61,14 @@ export async function executionFinished(
 		const easyAiWorkflowJson = getEasyAiWorkflowJson();
 		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 		if (isEasyAIWorkflow) {
-			telemetry.track(
-				'User executed test AI workflow',
-				{
-					status: data.status,
-				},
-				{ withPostHog: true },
+			telemetry.track('User executed test AI workflow', {
+				status: data.status,
+			});
+		}
+		if (workflow.meta.templateId.startsWith('035_template_onboarding')) {
+			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
+				workflow.meta.templateId.split('-').pop() ?? '',
+				data.status,
 			);
 		}
 	}
@@ -83,7 +91,7 @@ export async function executionFinished(
 		};
 	} else {
 		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId, options);
+			handleExecutionFinishedSuccessfully(data.workflowId);
 			successToastAlreadyShown = true;
 		}
 
@@ -100,12 +108,53 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown, options);
+		handleExecutionFinishedWithOther(successToastAlreadyShown);
 	}
 
 	setRunExecutionData(execution, runExecutionData);
+
+	continueEvaluationLoop(execution, options.router);
+}
+
+/**
+ * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
+ * @param execution
+ * @param router
+ */
+export function continueEvaluationLoop(
+	execution: SimplifiedExecution,
+	router: ReturnType<typeof useRouter>,
+) {
+	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
+		return;
+	}
+
+	// check if we have an evaluation trigger in our workflow and whether it has any run data
+	const evaluationTrigger = execution.workflowData.nodes.find(
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+	);
+	const triggerRunData = evaluationTrigger
+		? execution?.data?.resultData?.runData[evaluationTrigger.name]
+		: undefined;
+
+	if (!evaluationTrigger || triggerRunData === undefined) {
+		return;
+	}
+
+	const mainData = triggerRunData[0]?.data?.main[0];
+	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+	if (rowsLeft && rowsLeft > 0) {
+		const { runWorkflow } = useRunWorkflow({ router });
+		void runWorkflow({
+			triggerNode: evaluationTrigger.name,
+			// pass output of previous node run to trigger next run
+			nodeData: triggerRunData[0],
+			rerunTriggerNode: true,
+		});
+	}
 }
 
 /**
@@ -192,7 +241,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 }) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowSaving = useWorkflowSaving(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	const workflowSettings = workflowsStore.workflowSettings;
@@ -205,7 +255,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowHelpers.saveAsNewWorkflow();
+				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});
@@ -221,13 +271,12 @@ export function handleExecutionFinishedWithWaitTill(options: {
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	options: { router: ReturnType<typeof useRouter> },
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
@@ -268,9 +317,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				}
 			}
 
-			telemetry.track('Instance FE emitted paired item error', eventData, {
-				withPostHog: true,
-			});
+			telemetry.track('Instance FE emitted paired item error', eventData);
 		});
 	}
 
@@ -297,12 +344,9 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(
-	workflowId: string,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedSuccessfully(workflowId: string) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 	const i18n = useI18n();
 
@@ -317,14 +361,11 @@ export function handleExecutionFinishedSuccessfully(
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(
-	successToastAlreadyShown: boolean,
-	options: { router: ReturnType<typeof useRouter> },
-) {
+export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const workflowHelpers = useWorkflowHelpers(options);
+	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
