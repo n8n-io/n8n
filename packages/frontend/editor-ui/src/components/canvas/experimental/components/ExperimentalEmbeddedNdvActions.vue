@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 import { N8nIconButton } from '@n8n/design-system';
 
 defineProps<{ isExpanded: boolean }>();
@@ -9,9 +8,6 @@ const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
 
 <template>
 	<div :class="$style.actions">
-		<div :class="$style.icon">
-			<CanvasNodeStatusIcons size="small" spinner-scrim />
-		</div>
 		<N8nIconButton
 			icon="maximize-2"
 			type="secondary"
@@ -42,9 +38,5 @@ const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
 	& > button {
 		color: var(--color-text-light);
 	}
-}
-
-.icon {
-	margin-inline: var(--spacing-2xs);
 }
 </style>

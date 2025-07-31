@@ -4,11 +4,13 @@ import { useCanvas } from '@/composables/useCanvas';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement } from '@vueuse/core';
 import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
 import { ref, useTemplateRef, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 const { node, container, inputNodeName } = defineProps<{
 	workflow: Workflow;
@@ -20,6 +22,7 @@ const { node, container, inputNodeName } = defineProps<{
 const ndvStore = useNDVStore();
 const vf = useVueFlow();
 const { isPaneMoving, viewport } = useCanvas();
+const i18n = useI18n();
 const activeElement = useActiveElement();
 
 const inputPanelRef = useTemplateRef('inputPanel');
@@ -91,9 +94,21 @@ watch(viewport, () => {
 			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 			:focused-mappable-input="ndvStore.focusedMappableInput"
 		>
-			<template #header>
-				<N8nText :class="$style.inputPanelTitle" :bold="true" color="text-light" size="small">
-					Input
+			<template v-if="inputNodeName" #node-not-run>
+				<N8nText color="text-base" size="small">
+					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+						<template #link>
+							<NodeExecuteButton
+								:class="$style.executeButton"
+								size="medium"
+								:node-name="inputNodeName"
+								:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+								text
+								telemetry-source="inputs"
+								hide-icon
+							/>
+						</template>
+					</I18nT>
 				</N8nText>
 			</template>
 		</InputPanel>
@@ -122,5 +137,9 @@ watch(viewport, () => {
 .inputPanelTitle {
 	text-transform: uppercase;
 	letter-spacing: 3px;
+}
+
+.executeButton {
+	padding: 0;
 }
 </style>
