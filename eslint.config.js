@@ -11,6 +11,7 @@ export default [
 			'**/dist/**',
 			'**/build/**',
 			'**/coverage/**',
+			'**/coverage-overview.html',
 			'**/.turbo/**',
 			'**/bin/**',
 			'**/templates/**',
