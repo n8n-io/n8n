@@ -56,4 +56,17 @@ describe('loadClassInIsolation', () => {
 
 		expect(() => loadClassInIsolation(filePath, className)).toThrow('Script execution failed');
 	});
+
+	it('should throw if the loaded class does not have the requested method', () => {
+		// Mock a class without getValue
+		class IncompleteClass {}
+		runInContext.mockImplementationOnce(() => new IncompleteClass());
+
+		const instance = loadClassInIsolation(filePath, className);
+
+		expect(() => {
+			// @ts-expect-error
+			instance.getValue();
+		}).toThrow();
+	});
 });
