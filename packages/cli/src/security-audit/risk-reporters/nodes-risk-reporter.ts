@@ -1,5 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
@@ -14,14 +13,14 @@ import {
 } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { getNodeTypes } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async report(workflows: IWorkflowBase[]) {
@@ -87,7 +86,7 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!this.globalConfig.nodes.communityPackages.enabled) return [];
+		if (!Container.get(CommunityPackagesConfig).enabled) return [];
 
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 

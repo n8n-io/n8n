@@ -1,8 +1,7 @@
+import * as helpers from '@utils/helpers';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import * as helpers from '@utils/helpers';
 
 import * as audio from './actions/audio';
 import * as file from './actions/file';
@@ -1006,6 +1005,72 @@ describe('GoogleGemini Node', () => {
 			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/video.mp4', 'video/mp4', {
 				key: 'test-api-key',
 			});
+		});
+
+		it('should not pass durationSeconds if not provided', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/veo-3.0-generate-002';
+					case 'prompt':
+						return 'Panning wide shot of a calico kitten sleeping in the sunshine';
+					case 'options':
+						return {
+							aspectRatio: '16:9',
+							personGeneration: 'dont_allow',
+							sampleCount: 1,
+						};
+					case 'returnAs':
+						return 'url';
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			apiRequestMock.mockResolvedValue({
+				name: 'operations/123',
+				done: true,
+				response: {
+					generateVideoResponse: {
+						generatedSamples: [
+							{
+								video: {
+									uri: 'https://example.com/video.mp4',
+								},
+							},
+						],
+					},
+				},
+			});
+
+			const result = await video.generate.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						url: 'https://example.com/video.mp4',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				'/v1beta/models/veo-3.0-generate-002:predictLongRunning',
+				{
+					body: {
+						instances: [
+							{
+								prompt: 'Panning wide shot of a calico kitten sleeping in the sunshine',
+							},
+						],
+						parameters: {
+							aspectRatio: '16:9',
+							personGeneration: 'dont_allow',
+							sampleCount: 1,
+						},
+					},
+				},
+			);
 		});
 
 		it('should handle errors from video generation', async () => {
