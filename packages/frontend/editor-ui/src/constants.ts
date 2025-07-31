@@ -575,6 +575,7 @@ export const enum VIEWS {
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
 	PROJECTS = 'Projects',
+	PROJECT_DETAILS = 'ProjectDetails',
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
