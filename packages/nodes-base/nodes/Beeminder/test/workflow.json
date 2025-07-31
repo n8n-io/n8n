@@ -1,0 +1,58 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "4935a0cf-b455-4d27-8f8b-407512723919",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "goal",
+				"operation": "create",
+				"slug": "test3333",
+				"title": "test title",
+				"gunits": "unit",
+				"additionalFields": {
+					"goalval": 1000,
+					"rate": 1
+				}
+			},
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [208, 0],
+			"id": "8d9a989b-269f-44e6-af93-b566e67b011e",
+			"name": "Create a new goal",
+			"credentials": {
+				"beeminderOAuth2Api": {
+					"id": "tXjFNZhKeJFjFOl7",
+					"name": "Beeminder account 3"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create a new goal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a new goal": {
+			"main": [[]]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "f0e9801eba0feea6a9ddf9beeabe34b0843eae42a1dbc62eaadd68e8f576be64"
+	}
+}
