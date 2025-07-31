@@ -47,7 +47,15 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import type { ExecutionRequest, StopResult } from './execution.types';
+import type {
+	ExecutionRequest,
+	StopResult,
+	CancelResult,
+	RetryAdvancedResult,
+	ExecutionProgress,
+	ExecutionFullContext,
+	BulkCancelResult,
+} from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -537,5 +545,406 @@ export class ExecutionService {
 		if (updateData.tags) {
 			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
+	}
+
+	// ----------------------------------
+	//        Advanced Execution Control
+	// ----------------------------------
+
+	async cancel(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.Cancel,
+	): Promise<CancelResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info(`Unable to cancel execution "${executionId}" as it was not found`, {
+				executionId,
+			});
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		// Check if execution is already finished
+		if (execution.finished) {
+			throw new WorkflowOperationError(
+				`Execution ${executionId} is already finished and cannot be cancelled`,
+			);
+		}
+
+		const cancelledAt = new Date();
+		let cancelled = false;
+
+		try {
+			// Try graceful cancellation first
+			if (this.activeExecutions.has(executionId)) {
+				this.activeExecutions.stopExecution(executionId);
+				cancelled = true;
+			}
+
+			if (this.waitTracker.has(executionId)) {
+				this.waitTracker.stopExecution(executionId);
+				cancelled = true;
+			}
+
+			// Handle concurrency control
+			if (this.concurrencyControl.has(executionId)) {
+				this.concurrencyControl.remove({ mode: execution.mode, executionId });
+				cancelled = true;
+			}
+
+			// Force cancellation if requested and graceful didn't work
+			if (options.force && !cancelled) {
+				cancelled = true;
+			}
+
+			// Update execution status if cancelled
+			if (cancelled) {
+				await this.executionRepository.stopDuringRun(execution);
+			}
+
+			this.logger.debug('Execution cancelled successfully', {
+				executionId,
+				cancelled,
+				force: options.force,
+				reason: options.reason,
+			});
+		} catch (error) {
+			this.logger.error('Failed to cancel execution', {
+				executionId,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to cancel execution: ${error}`);
+		}
+
+		return {
+			executionId,
+			status: 'canceled',
+			cancelled,
+			force: options.force ?? false,
+			reason: options.reason,
+			cancelledAt,
+		};
+	}
+
+	async retryAdvanced(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.RetryAdvanced,
+	): Promise<RetryAdvancedResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		if (execution.status === 'new') throw new QueuedExecutionRetryError();
+		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
+
+		const executionMode = 'retry';
+		execution.workflowData.active = false;
+
+		// Prepare execution data
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode,
+			executionData: execution.data,
+			retryOf: executionId,
+			workflowData: execution.workflowData,
+			userId: (execution.userId as string) ?? '',
+		};
+
+		// Handle advanced retry options
+		if (options.fromNodeName) {
+			// Modify execution data to start from specific node
+			const startNode = execution.workflowData.nodes.find(
+				(node) => node.name === options.fromNodeName,
+			);
+			if (!startNode) {
+				throw new WorkflowOperationError(`Node "${options.fromNodeName}" not found in workflow`);
+			}
+
+			// Clear execution data after the specified node
+			const runData = data.executionData!.resultData.runData;
+			const nodeNames = execution.workflowData.nodes.map((node) => node.name);
+			const startIndex = nodeNames.indexOf(options.fromNodeName);
+
+			// Remove run data for nodes after the start node
+			for (let i = startIndex; i < nodeNames.length; i++) {
+				delete runData[nodeNames[i]];
+			}
+
+			data.executionData!.resultData.lastNodeExecuted = options.fromNodeName;
+		}
+
+		// Apply modified parameters if provided
+		if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
+			// Merge modified parameters into workflow data
+			for (const node of data.workflowData.nodes) {
+				const nodeModifications = options.modifiedParameters[node.name];
+				if (nodeModifications && typeof nodeModifications === 'object') {
+					node.parameters = {
+						...node.parameters,
+						...nodeModifications,
+					};
+				}
+			}
+		}
+
+		// Handle retry from start option
+		if (options.retryFromStart) {
+			delete data.executionData!.resultData.error;
+			data.executionData!.resultData.runData = {};
+			data.executionData!.resultData.lastNodeExecuted = undefined;
+		}
+
+		const newExecutionId = await this.workflowRunner.run(data);
+		const startedAt = new Date();
+
+		this.logger.debug('Advanced retry started', {
+			originalExecutionId: executionId,
+			newExecutionId,
+			fromNodeName: options.fromNodeName,
+			retryFromStart: options.retryFromStart,
+		});
+
+		return {
+			newExecutionId,
+			originalExecutionId: executionId,
+			fromNodeName: options.fromNodeName,
+			startedAt,
+			mode: executionMode,
+		};
+	}
+
+	async getFullContext(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.QueryParams.GetFullContext,
+	): Promise<ExecutionFullContext> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const result: ExecutionFullContext = {
+			executionId,
+			execution,
+		};
+
+		// Include performance metrics if requested
+		if (options.includePerformanceMetrics === 'true') {
+			const performanceMetrics = this.calculatePerformanceMetrics(execution);
+			result.performanceMetrics = performanceMetrics;
+		}
+
+		// Include execution data if requested
+		if (options.includeExecutionData === 'true' && execution.data?.executionData) {
+			result.executionData = execution.data.executionData as IDataObject;
+		}
+
+		// Include workflow context if requested
+		if (options.includeWorkflowContext === 'true') {
+			result.workflowContext = {
+				variables: (execution.workflowData.settings?.variables as IDataObject) ?? {},
+				expressions: this.extractExpressionsFromWorkflow(execution.workflowData),
+				connections: execution.workflowData.connections as IDataObject,
+			};
+		}
+
+		return result;
+	}
+
+	async getExecutionProgress(
+		executionId: string,
+		sharedWorkflowIds: string[],
+	): Promise<ExecutionProgress> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const totalNodes = execution.workflowData.nodes.length;
+		let completedNodes = 0;
+		let currentNodeName: string | undefined;
+		const runningNodes: string[] = [];
+		const failedNodes: string[] = [];
+
+		// Calculate progress based on run data
+		const runData = execution.data?.resultData?.runData || {};
+
+		for (const nodeName of Object.keys(runData)) {
+			const nodeRunData = runData[nodeName];
+			if (nodeRunData && nodeRunData.length > 0) {
+				const lastRun = nodeRunData[nodeRunData.length - 1];
+				if (lastRun.error) {
+					failedNodes.push(nodeName);
+				} else {
+					completedNodes++;
+				}
+			}
+		}
+
+		// Check for currently running nodes in active executions
+		if (this.activeExecutions.has(executionId)) {
+			try {
+				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
+				if (activeExecution.executionData?.resultData) {
+					currentNodeName = activeExecution.executionData.resultData.lastNodeExecuted;
+					if (currentNodeName && !runData[currentNodeName]) {
+						runningNodes.push(currentNodeName);
+					}
+				}
+			} catch {
+				// Execution not found in active executions, skip
+			}
+		}
+
+		const percent = totalNodes > 0 ? Math.round((completedNodes / totalNodes) * 100) : 0;
+
+		// Estimate time remaining based on average node execution time
+		let estimatedTimeRemaining: number | undefined;
+		if (!execution.finished && completedNodes > 0) {
+			const startTime = execution.startedAt.getTime();
+			const currentTime = Date.now();
+			const elapsedTime = currentTime - startTime;
+			const avgTimePerNode = elapsedTime / completedNodes;
+			const remainingNodes = totalNodes - completedNodes;
+			estimatedTimeRemaining = Math.round(avgTimePerNode * remainingNodes);
+		}
+
+		return {
+			executionId,
+			status: execution.status,
+			finished: execution.finished,
+			progress: {
+				percent,
+				completedNodes,
+				totalNodes,
+				currentNodeName,
+				runningNodes,
+				failedNodes,
+			},
+			startedAt: execution.startedAt,
+			stoppedAt: execution.stoppedAt,
+			estimatedTimeRemaining,
+		};
+	}
+
+	async bulkCancel(
+		executionIds: string[],
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.BulkCancel,
+	): Promise<BulkCancelResult> {
+		const results: BulkCancelResult['results'] = [];
+		let successCount = 0;
+		let errorCount = 0;
+
+		// Process executions in parallel but with concurrency limit
+		const concurrencyLimit = 10;
+		const chunks = [];
+		for (let i = 0; i < executionIds.length; i += concurrencyLimit) {
+			chunks.push(executionIds.slice(i, i + concurrencyLimit));
+		}
+
+		for (const chunk of chunks) {
+			const chunkPromises = chunk.map(async (executionId) => {
+				try {
+					const cancelResult = await this.cancel(executionId, sharedWorkflowIds, options);
+
+					results.push({
+						executionId,
+						success: true,
+						cancelledAt: cancelResult.cancelledAt,
+					});
+					successCount++;
+				} catch (error) {
+					results.push({
+						executionId,
+						success: false,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					errorCount++;
+				}
+			});
+
+			await Promise.all(chunkPromises);
+		}
+
+		this.logger.debug('Bulk cancellation completed', {
+			totalRequested: executionIds.length,
+			successCount,
+			errorCount,
+		});
+
+		return {
+			successCount,
+			errorCount,
+			results,
+		};
+	}
+
+	// ----------------------------------
+	//             Private Methods
+	// ----------------------------------
+
+	private calculatePerformanceMetrics(execution: IExecutionResponse) {
+		const runData = execution.data?.resultData?.runData || {};
+		const nodeExecutionTimes: Record<string, number> = {};
+		let totalExecutionTime = 0;
+
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			if (nodeRuns && nodeRuns.length > 0) {
+				const lastRun = nodeRuns[nodeRuns.length - 1];
+				if (lastRun.executionTime !== undefined) {
+					nodeExecutionTimes[nodeName] = lastRun.executionTime;
+					totalExecutionTime += lastRun.executionTime;
+				}
+			}
+		}
+
+		// Calculate overall execution time if available
+		if (execution.startedAt && execution.stoppedAt) {
+			totalExecutionTime = execution.stoppedAt.getTime() - execution.startedAt.getTime();
+		}
+
+		return {
+			totalExecutionTime,
+			nodeExecutionTimes,
+			// Note: Memory and CPU usage would require additional monitoring
+			// These would be populated by a monitoring service if available
+			memoryUsage: undefined,
+			cpuUsage: undefined,
+		};
+	}
+
+	private extractExpressionsFromWorkflow(workflowData: IWorkflowBase): string[] {
+		const expressions: string[] = [];
+		const expressionRegex = /\{\{.*?\}\}/g;
+
+		// Extract expressions from node parameters
+		for (const node of workflowData.nodes) {
+			const nodeStr = JSON.stringify(node.parameters);
+			const matches = nodeStr.match(expressionRegex);
+			if (matches) {
+				expressions.push(...matches);
+			}
+		}
+
+		// Remove duplicates
+		return [...new Set(expressions)];
 	}
 }

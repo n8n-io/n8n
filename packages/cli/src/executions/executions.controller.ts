@@ -1,9 +1,12 @@
+import { Logger } from '@n8n/backend-common';
 import type { User, ExecutionSummaries } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
 
+import { ActiveExecutions } from '@/active-executions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -17,10 +20,13 @@ import { validateExecutionUpdatePayload } from './validation';
 @RestController('/executions')
 export class ExecutionsController {
 	constructor(
+		private readonly logger: Logger,
 		private readonly executionService: ExecutionService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly eventService: EventService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -136,5 +142,147 @@ export class ExecutionsController {
 		await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
 
 		return await this.executionService.findOne(req, workflowIds);
+	}
+
+	// Advanced Execution Control Endpoints
+
+	@Post('/:id/cancel')
+	async cancel(req: ExecutionRequest.Cancel) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Advanced execution cancellation requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+			force: req.body.force,
+		});
+
+		const result = await this.executionService.cancel(req.params.id, workflowIds, req.body);
+
+		this.eventService.emit('execution-cancelled', {
+			executionId: req.params.id,
+			userId: req.user.id,
+			force: req.body.force,
+			reason: req.body.reason,
+		});
+
+		return result;
+	}
+
+	@Post('/:id/retry-advanced')
+	async retryAdvanced(req: ExecutionRequest.RetryAdvanced) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Advanced execution retry requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+			fromNodeName: req.body.fromNodeName,
+			modifiedParameters: Object.keys(req.body.modifiedParameters ?? {}).length,
+		});
+
+		const result = await this.executionService.retryAdvanced(req.params.id, workflowIds, req.body);
+
+		this.eventService.emit('execution-retry-advanced', {
+			executionId: req.params.id,
+			originalExecutionId: req.params.id,
+			userId: req.user.id,
+			fromNodeName: req.body.fromNodeName,
+		});
+
+		return result;
+	}
+
+	@Get('/:id/full-context')
+	async getFullContext(req: ExecutionRequest.GetFullContext) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Full execution context requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+			includePerformanceMetrics: req.query.includePerformanceMetrics,
+		});
+
+		return await this.executionService.getFullContext(req.params.id, workflowIds, req.query);
+	}
+
+	@Get('/:id/progress')
+	async getProgress(req: ExecutionRequest.GetProgress) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const executionId = req.params.id;
+
+		// Check if execution is currently active
+		if (!this.activeExecutions.has(executionId)) {
+			// Return completed execution status
+			const execution = await this.executionService.findOne(req, workflowIds);
+			return {
+				executionId,
+				status: execution.status,
+				finished: execution.finished,
+				progress: {
+					percent: execution.finished ? 100 : 0,
+					completedNodes: execution.finished ? execution.workflowData?.nodes?.length || 0 : 0,
+					totalNodes: execution.workflowData?.nodes?.length || 0,
+				},
+				startedAt: execution.startedAt,
+				stoppedAt: execution.stoppedAt,
+			};
+		}
+
+		return await this.executionService.getExecutionProgress(executionId, workflowIds);
+	}
+
+	@Post('/bulk-cancel')
+	async bulkCancel(req: ExecutionRequest.BulkCancel) {
+		if (!req.body.executionIds || req.body.executionIds.length === 0) {
+			throw new BadRequestError('At least one execution ID is required');
+		}
+
+		if (req.body.executionIds.length > 50) {
+			throw new BadRequestError('Maximum 50 executions can be cancelled at once');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('No accessible workflows found');
+
+		this.logger.debug('Bulk execution cancellation requested', {
+			executionCount: req.body.executionIds.length,
+			userId: req.user.id,
+			force: req.body.force,
+		});
+
+		const result = await this.executionService.bulkCancel(
+			req.body.executionIds,
+			workflowIds,
+			req.body,
+		);
+
+		this.eventService.emit('executions-bulk-cancelled', {
+			executionIds: req.body.executionIds,
+			userId: req.user.id,
+			successCount: result.successCount,
+			errorCount: result.errorCount,
+		});
+
+		return result;
 	}
 }
