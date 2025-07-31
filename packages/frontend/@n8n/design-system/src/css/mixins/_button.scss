@@ -79,16 +79,20 @@
 }
 
 @mixin button-size($padding-vertical, $padding-horizontal, $font-size) {
-	padding: $padding-vertical $padding-horizontal;
-	font-size: $font-size;
-
 	&.is-round {
 		padding: $padding-vertical $padding-horizontal;
+	}
+
+	& {
+		padding: $padding-vertical $padding-horizontal;
+		font-size: $font-size;
 	}
 }
 
 @mixin button-round() {
-	--button-border-radius: 20px;
+	& {
+		--button-border-radius: 20px;
+	}
 }
 
 // ignore plain overrides
