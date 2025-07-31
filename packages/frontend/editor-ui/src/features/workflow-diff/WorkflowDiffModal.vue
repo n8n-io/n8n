@@ -340,7 +340,7 @@ const modifiers = [
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
-						class="mr-xs"
+						:class="[$style.backButton, 'mr-xs']"
 						@click="closeDialog"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
@@ -840,5 +840,9 @@ const modifiers = [
 .navigationButton {
 	height: 34px !important;
 	width: 34px !important;
+}
+
+.backButton {
+	border: none !important;
 }
 </style>
