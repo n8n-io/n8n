@@ -1,4 +1,9 @@
-import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+	IAuthenticateGeneric,
+} from 'n8n-workflow';
 
 export class OllamaApi implements ICredentialType {
 	name = 'ollamaApi';
@@ -15,12 +20,29 @@ export class OllamaApi implements ICredentialType {
 			type: 'string',
 			default: 'http://localhost:11434',
 		},
+		{
+			displayName: 'API Key (If Required)',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			required: false,
+		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',
-			url: '/',
+			url: '/api/tags',
 			method: 'GET',
 		},
 	};
