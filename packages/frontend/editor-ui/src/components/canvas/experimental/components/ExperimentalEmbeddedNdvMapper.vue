@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
+import { useCanvas } from '@/composables/useCanvas';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nText } from '@n8n/design-system';
@@ -7,7 +8,7 @@ import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement } from '@vueuse/core';
 import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
-import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 const { node, container } = defineProps<{
 	workflow: Workflow;
@@ -18,22 +19,11 @@ const { node, container } = defineProps<{
 
 const ndvStore = useNDVStore();
 const vf = useVueFlow();
+const { isPaneMoving, viewport } = useCanvas();
 const activeElement = useActiveElement();
 
 const inputPanelRef = useTemplateRef('inputPanel');
 const shouldShowInputPanel = ref(false);
-
-const moveStartListener = vf.onMoveStart(() => {
-	shouldShowInputPanel.value = false;
-});
-
-const moveEndListener = vf.onMoveEnd(() => {
-	shouldShowInputPanel.value = getShouldShowInputPanel();
-});
-
-const viewportChangeListener = vf.onViewportChange(() => {
-	shouldShowInputPanel.value = false;
-});
 
 function getShouldShowInputPanel() {
 	const active = activeElement.value;
@@ -59,10 +49,12 @@ watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
 	}
 });
 
-onBeforeUnmount(() => {
-	moveStartListener.off();
-	moveEndListener.off();
-	viewportChangeListener.off();
+watch(isPaneMoving, (moving) => {
+	shouldShowInputPanel.value = !moving && getShouldShowInputPanel();
+});
+
+watch(viewport, () => {
+	shouldShowInputPanel.value = false;
 });
 </script>
 
