@@ -55,6 +55,26 @@ export {
 	UserActivityRecordDto,
 	UserEngagementAnalyticsDto,
 } from './user/user-analytics.dto';
+export {
+	PermissionDefinitionDto,
+	CustomRoleDefinitionDto,
+	RoleAssignmentRequestDto,
+	EnhancedRoleDto,
+	UserRoleAssignmentDto,
+	CreateCustomRoleRequestDto,
+	UpdateCustomRoleRequestDto,
+	BulkRoleAssignmentRequestDto,
+	PermissionCheckRequestDto,
+	PermissionCheckResponseDto,
+	RoleHierarchyDto,
+	RoleHierarchyRequestDto,
+	EnhancedRoleQueryDto,
+	RoleUsageAnalyticsDto,
+	PermissionAuditDto,
+	RoleTemplateDto,
+	BulkRoleOperationResponseDto,
+	PermissionValidationDto,
+} from './user/enhanced-roles.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
