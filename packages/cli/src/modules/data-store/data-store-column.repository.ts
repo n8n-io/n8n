@@ -25,4 +25,17 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 	async deleteColumn(dataStoreId: DataStoreUserTableName, column: string) {
 		await this.manager.query(deleteColumnQuery(dataStoreId, column));
 	}
+
+	async shiftColumns(dataStoreId: string, lowestIndex: number, delta: -1 | 1) {
+		await this.createQueryBuilder()
+			.update()
+			.set({
+				columnIndex: () => `columnIndex + ${delta}`,
+			})
+			.where('dataStoreId = :dataStoreId AND columnIndex > :thresholdValue', {
+				dataStoreId,
+				thresholdValue: lowestIndex,
+			})
+			.execute();
+	}
 }

@@ -145,19 +145,26 @@ export class DataStoreService {
 			return 'tried to add column to non-existent table';
 		}
 
-		const column = this.dataStoreColumnRepository.create({
-			...dto.column,
-			dataStoreId,
-		});
-
 		const existingColumnMatch = await this.dataStoreColumnRepository.findBy({
-			name: column.name,
+			name: dto.name,
 			dataStoreId,
 		});
 
 		if (isNonEmpty(existingColumnMatch)) {
 			return 'tried to add column with name already present in this data store';
 		}
+
+		if (dto.columnIndex === undefined) {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+			dto.columnIndex = columns.length;
+		} else {
+			await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.columnIndex, 1);
+		}
+
+		const column = this.dataStoreColumnRepository.create({
+			...dto,
+			dataStoreId,
+		});
 
 		await this.dataStoreColumnRepository.insert(column);
 		await this.dataStoreColumnRepository.addColumn(toTableName(dataStoreId), column);
@@ -185,6 +192,11 @@ export class DataStoreService {
 
 		await this.dataStoreColumnRepository.remove(existingColumnMatch);
 		await this.dataStoreColumnRepository.deleteColumn(toTableName(dataStoreId), dto.columnName);
+		await this.dataStoreColumnRepository.shiftColumns(
+			dataStoreId,
+			existingColumnMatch[0].columnIndex,
+			-1,
+		);
 		// should we update the main table entry's `updatedAt` field here?
 
 		return true;

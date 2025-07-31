@@ -154,15 +154,14 @@ describe('dataStore', () => {
 		it('should fail with adding two columns of the same name', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, {
-				column: { name: 'myColumn1', type: 'string' },
+				name: 'myColumn1',
+				type: 'string',
 			});
 
 			// ACT
 			const result = await dataStoreService.addColumn(dataStore1.id, {
-				column: {
-					name: 'myColumn1',
-					type: 'number',
-				},
+				name: 'myColumn1',
+				type: 'number',
 			});
 
 			// ASSERT
@@ -172,10 +171,8 @@ describe('dataStore', () => {
 		it('should fail with adding column of non-existent table', async () => {
 			// ACT
 			const result = await dataStoreService.addColumn('this is not an id', {
-				column: {
-					name: 'myColumn1',
-					type: 'number',
-				},
+				name: 'myColumn1',
+				type: 'number',
 			});
 
 			// ASSERT
@@ -186,7 +183,8 @@ describe('dataStore', () => {
 		it('should succeed with deleting a column', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, {
-				column: { name: 'myColumn1', type: 'string' },
+				name: 'myColumn1',
+				type: 'string',
 			});
 
 			// ACT
@@ -200,7 +198,8 @@ describe('dataStore', () => {
 		it('should fail when deleting unknown column', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, {
-				column: { name: 'myColumn1', type: 'string' },
+				name: 'myColumn1',
+				type: 'string',
 			});
 
 			// ACT
@@ -214,7 +213,8 @@ describe('dataStore', () => {
 		it('should fail when deleting column from unknown table', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, {
-				column: { name: 'myColumn1', type: 'string' },
+				name: 'myColumn1',
+				type: 'string',
 			});
 
 			// ACT
@@ -436,10 +436,10 @@ describe('dataStore', () => {
 	describe('appendRows', () => {
 		it('appends a row to an existing table', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
 			const result = await dataStoreService.appendRows(dataStore1.id, [
@@ -454,10 +454,10 @@ describe('dataStore', () => {
 
 		it('rejects a mismatched row with extra column', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
 			const result = await dataStoreService.appendRows(dataStore1.id, [
@@ -470,10 +470,10 @@ describe('dataStore', () => {
 		});
 		it('rejects a mismatched row with missing column', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
 			const result = await dataStoreService.appendRows(dataStore1.id, [
@@ -486,10 +486,10 @@ describe('dataStore', () => {
 		});
 		it('rejects a mismatched row with replaced column', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
 			const result = await dataStoreService.appendRows(dataStore1.id, [
@@ -502,10 +502,10 @@ describe('dataStore', () => {
 		});
 		it('rejects unknown data store id', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
 			const result = await dataStoreService.appendRows('this is not an id', [
@@ -530,10 +530,10 @@ describe('dataStore', () => {
 	describe('getManyRowsAndCount', () => {
 		it('retrieves rows correctly', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c1', type: 'number' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c2', type: 'boolean' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c3', type: 'date' } });
-			await dataStoreService.addColumn(dataStore1.id, { column: { name: 'c4', type: 'string' } });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			await dataStoreService.appendRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },

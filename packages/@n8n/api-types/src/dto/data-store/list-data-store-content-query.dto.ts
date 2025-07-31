@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Z } from 'zod-class';
 
 import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
-import { paginationSchema } from 'dto/pagination/pagination.dto';
+import { paginationSchema } from '../pagination/pagination.dto';
 
 const FilterConditionSchema = z.union([z.literal('eq'), z.literal('neq')]);
 export type ListDataStoreContentFilterConditionType = z.infer<typeof FilterConditionSchema>;
