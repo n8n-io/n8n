@@ -85,16 +85,20 @@ export function handlePagination(
 	if (!responseData) {
 		if (paginationType === 'offset') {
 			if (method === 'GET') {
+				// Example: https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-issue-search/#api-rest-api-2-search-get
 				query.startAt = 0;
 				query.maxResults = 100;
 			} else {
+				// Example: https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-issue-search/#api-rest-api-2-search-post
 				body.startAt = 0;
 				body.maxResults = 100;
 			}
 		} else {
 			if (method === 'GET') {
+				// Example: https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-issue-search/#api-rest-api-2-search-jql-get
 				query.maxResults = 100;
 			} else {
+				// Example: https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-issue-search/#api-rest-api-2-search-jql-post
 				body.maxResults = 100;
 			}
 		}
