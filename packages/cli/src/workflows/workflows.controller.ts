@@ -33,7 +33,16 @@ import {
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import { UnexpectedError, Workflow, ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -54,6 +63,7 @@ import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -473,6 +483,136 @@ export class WorkflowsController {
 			req.headers['push-ref'],
 			query.partialExecutionVersion,
 		);
+	}
+
+	@Post('/:workflowId/execute-partial')
+	@ProjectScope('workflow:execute')
+	async executePartial(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{
+				startNodes?: string[];
+				endNodes?: string[];
+				inputData?: Record<string, INodeExecutionData[]>;
+				mode?: WorkflowExecuteMode;
+			}
+		>,
+	) {
+		const { workflowId } = req.params;
+		const { startNodes = [], endNodes = [], inputData = {}, mode = 'manual' } = req.body;
+
+		this.logger.debug('Partial workflow execution requested', {
+			workflowId,
+			userId: req.user.id,
+			startNodes,
+			endNodes,
+			inputDataCount: Object.keys(inputData).length,
+		});
+
+		try {
+			// Find the workflow
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+				'workflow:execute',
+			]);
+
+			if (!workflow) {
+				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			}
+
+			// Validate start and end nodes exist
+			const workflowNodeNames = workflow.nodes.map((node) => node.name);
+			for (const nodeName of [...startNodes, ...endNodes]) {
+				if (!workflowNodeNames.includes(nodeName)) {
+					throw new BadRequestError(`Node "${nodeName}" does not exist in workflow`);
+				}
+			}
+
+			// Prepare the workflow data for execution similar to manual run
+			const workflowData: IWorkflowBase = {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				active: workflow.active,
+				settings: workflow.settings || {},
+				createdAt: workflow.createdAt,
+				updatedAt: workflow.updatedAt,
+			};
+
+			// Create manual run data structure like the existing manual run method
+			const manualRunData = {
+				workflowData,
+				runData: {},
+				pinData: {},
+				startNodes,
+				destinationNode: endNodes.length > 0 ? endNodes[0] : undefined,
+			};
+
+			// If input data is provided, add it to runData
+			if (Object.keys(inputData).length > 0) {
+				for (const [nodeName, data] of Object.entries(inputData)) {
+					manualRunData.runData[nodeName] = [
+						{
+							hints: {},
+							startTime: Date.now(),
+							executionTime: -1,
+							source: [],
+							data: {
+								main: [data],
+							},
+						},
+					];
+				}
+			}
+
+			// Execute using the existing executeManually method pattern
+			const executionResult = await this.workflowExecutionService.executeManually(
+				manualRunData,
+				req.user,
+				req.headers['push-ref'],
+			);
+
+			this.logger.debug('Partial workflow execution completed', {
+				workflowId,
+				userId: req.user.id,
+				executionId: executionResult?.executionId,
+			});
+
+			// Format execution result
+			const result = {
+				success: true,
+				workflowId,
+				executionId: executionResult?.executionId,
+				startNodes,
+				endNodes,
+				data: executionResult?.data,
+				runData: executionResult?.runData,
+				metadata: {
+					executedAt: new Date(),
+					mode,
+					startNodesCount: startNodes.length,
+					endNodesCount: endNodes.length,
+					totalNodes: workflow.nodes.length,
+				},
+			};
+
+			return result;
+		} catch (error) {
+			this.logger.error('Partial workflow execution failed', {
+				workflowId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Partial execution failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	@Licensed('feat:sharing')
