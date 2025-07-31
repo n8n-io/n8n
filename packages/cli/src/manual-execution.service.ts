@@ -46,7 +46,7 @@ export class ManualExecutionService {
 		return startNode;
 	}
 
-	runManually(
+	async runManually(
 		data: IWorkflowExecutionDataProcess,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -101,7 +101,7 @@ export class ManualExecutionService {
 				data.executionMode,
 				executionData,
 			);
-			return workflowExecute.processRunExecutionData(workflow);
+			return await workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||
 			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0)) ||
@@ -157,7 +157,7 @@ export class ManualExecutionService {
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return workflowExecute.run(
+			return await workflowExecute.run(
 				workflow,
 				startNode,
 				data.destinationNode,
@@ -171,7 +171,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
 			if (data.partialExecutionVersion === 2) {
-				return workflowExecute.runPartialWorkflow2(
+				return await workflowExecute.runPartialWorkflow2(
 					workflow,
 					data.runData,
 					data.pinData,
@@ -180,7 +180,7 @@ export class ManualExecutionService {
 					data.agentRequest,
 				);
 			} else {
-				return workflowExecute.runPartialWorkflow(
+				return await workflowExecute.runPartialWorkflow(
 					workflow,
 					data.runData,
 					data.startNodes ?? [],

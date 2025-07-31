@@ -18,6 +18,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	IDataObject,
 	INode,
 	IRunExecutionData,
 	IWorkflowBase,
@@ -802,9 +803,11 @@ export class ExecutionService {
 		if (this.activeExecutions.has(executionId)) {
 			try {
 				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
-				if (activeExecution.executionData?.resultData) {
-					currentNodeName = activeExecution.executionData.resultData.lastNodeExecuted;
-					if (currentNodeName && !runData[currentNodeName]) {
+				const executionData = activeExecution.executionData;
+				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
+					const lastNodeExecuted = executionData.executionData.resultData.lastNodeExecuted;
+					if (typeof lastNodeExecuted === 'string' && !runData[lastNodeExecuted]) {
+						currentNodeName = lastNodeExecuted;
 						runningNodes.push(currentNodeName);
 					}
 				}

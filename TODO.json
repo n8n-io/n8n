@@ -924,6 +924,89 @@
       "strike_number": 2
     },
     {
+      "id": "build-optimization-1753955460689",
+      "title": "Optimize Build Performance and Reliability",
+      "description": "Improve build system performance, add build validation, and ensure consistent build success across environments",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "Build completes successfully in under 5 minutes",
+        "Build validation scripts added",
+        "Build cache optimization implemented",
+        "No build failures on clean install"
+      ],
+      "important_files": [
+        "package.json",
+        "turbo.json",
+        "packages/*/package.json"
+      ],
+      "requires_research": true,
+      "created_at": "2025-07-31T09:51:00.689Z"
+    },
+    {
+      "id": "lint-standards-1753955460689",
+      "title": "Enhance Code Quality Standards",
+      "description": "Strengthen ESLint rules, add pre-commit hooks, and improve code quality across the monorepo",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "Zero critical ESLint errors across all packages",
+        "Pre-commit hooks configured for linting",
+        "Code quality metrics improved",
+        "Consistent code style enforced"
+      ],
+      "important_files": [
+        "eslint.config.js",
+        "packages/*/eslint.config.mjs",
+        ".lefthook.yml"
+      ],
+      "requires_research": false,
+      "created_at": "2025-07-31T09:51:00.689Z"
+    },
+    {
+      "id": "test-coverage-1753955460689",
+      "title": "Improve Test Coverage and Reliability",
+      "description": "Increase test coverage, fix failing tests, and implement comprehensive test reporting",
+      "mode": "TESTING",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "Test coverage above 80% for critical packages",
+        "All test suites pass consistently",
+        "Comprehensive test reporting implemented",
+        "Integration tests cover key workflows"
+      ],
+      "important_files": [
+        "packages/cli/test/**/*.test.ts",
+        "jest.config.js",
+        "packages/*/jest.config.js"
+      ],
+      "requires_research": true,
+      "created_at": "2025-07-31T09:51:00.689Z"
+    },
+    {
+      "id": "performance-monitoring-1753955460689",
+      "title": "Implement Performance Monitoring",
+      "description": "Add performance monitoring for build, test, and lint processes to track quality metrics",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "Build time tracking implemented",
+        "Test execution time monitoring",
+        "Lint performance metrics collected",
+        "Quality trend analysis available"
+      ],
+      "important_files": [
+        "scripts/**/*.mjs",
+        "package.json"
+      ],
+      "requires_research": true,
+      "created_at": "2025-07-31T09:51:00.689Z"
+    },
+    {
       "id": "review-strike-3",
       "mode": "REVIEWER",
       "description": "Review Strike 3: Confirm test coverage is 100% on important modules and 90%+ on others, with all tests passing",
@@ -941,8 +1024,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 46,
-  "last_hook_activation": 1753953647974,
+  "execution_count": 47,
+  "last_hook_activation": 1753954303907,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 24

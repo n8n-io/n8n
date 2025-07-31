@@ -375,7 +375,7 @@ export class WorkflowExecutionService {
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(
-				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
+				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error instanceof Error ? error.message : String(error)}"`,
 				{ workflowId: workflowErrorData.workflow.id },
 			);
 		}
