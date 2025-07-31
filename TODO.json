@@ -834,7 +834,7 @@
       "description": "Add endpoints for performance profiling, resource monitoring, and system analytics. Enhances existing metrics collection.",
       "mode": "DEVELOPMENT",
       "priority": "low",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "GET /api/v1/executions/:id/profile endpoint implemented",
         "GET /api/v1/system/resources monitoring endpoint functional",
@@ -861,7 +861,7 @@
       "description": "Add WebSocket-based real-time collaboration endpoints for workflow editing, comments, activity feeds, and team coordination. Essential for team productivity and enterprise workflows.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "WebSocket endpoints for real-time workflow editing implemented",
         "Collaborative editing with conflict resolution working",
@@ -882,7 +882,169 @@
         "task-1"
       ],
       "estimate": "12-15 hours",
-      "requires_research": false
+      "requires_research": false,
+      "subtasks": [
+        {
+          "id": "collab-subtask-1-realtime-editing",
+          "title": "Implement Real-time Collaborative Workflow Editing",
+          "description": "Add WebSocket message handlers for real-time collaborative editing with operational transforms, conflict resolution, and multi-user synchronization for workflow modifications.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "WebSocket handlers for workflow edit operations (add/remove/modify nodes)",
+            "Operational transform algorithm for conflict resolution implemented",
+            "Real-time synchronization of workflow changes across connected users",
+            "Prevention of conflicting edits with proper user notification",
+            "Integration with existing collaboration state management",
+            "Comprehensive error handling for network issues and conflicts",
+            "Performance optimization for large workflows with many collaborators"
+          ],
+          "important_files": [
+            "packages/cli/src/collaboration/collaboration.service.ts",
+            "packages/cli/src/collaboration/collaboration.message.ts",
+            "packages/cli/src/push/websocket.push.ts",
+            "@n8n/api-types/src/collaboration/",
+            "packages/workflow/src/"
+          ],
+          "estimate": "4-6 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        },
+        {
+          "id": "collab-subtask-2-comments-annotations",
+          "title": "Implement Workflow Comments and Annotations System",
+          "description": "Create a comprehensive comments and annotations system for workflows, allowing users to add contextual comments, discussions, and notes on workflow elements.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Database schema for workflow comments and annotations",
+            "REST API endpoints for CRUD operations on comments",
+            "WebSocket real-time comment synchronization",
+            "Comment threading and reply functionality",
+            "User mentions and notification system for comments",
+            "Comments attached to specific workflow nodes or connections",
+            "Rich text support with markdown formatting",
+            "Comment moderation and deletion permissions"
+          ],
+          "important_files": [
+            "@n8n/db/src/entities/",
+            "packages/cli/src/controllers/",
+            "packages/cli/src/collaboration/collaboration.service.ts",
+            "@n8n/api-types/src/dto/collaboration/",
+            "packages/cli/src/services/"
+          ],
+          "estimate": "3-4 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        },
+        {
+          "id": "collab-subtask-3-activity-feeds",
+          "title": "Implement Team Activity Feeds and Notifications",
+          "description": "Create real-time activity feeds showing team member actions, workflow changes, executions, and system events with configurable notification preferences.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "Activity feed data model and storage system",
+            "Real-time activity broadcasting via WebSocket",
+            "Configurable notification preferences per user",
+            "Activity filtering by workflow, user, action type",
+            "Integration with existing execution and workflow events",
+            "Push notifications for mobile/desktop clients",
+            "Activity feed pagination and search functionality",
+            "Privacy controls for sensitive workflow activities"
+          ],
+          "important_files": [
+            "@n8n/db/src/entities/",
+            "packages/cli/src/events/",
+            "packages/cli/src/collaboration/collaboration.service.ts",
+            "packages/cli/src/services/",
+            "@n8n/api-types/src/dto/collaboration/"
+          ],
+          "estimate": "3-4 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        },
+        {
+          "id": "collab-subtask-4-cursor-tracking",
+          "title": "Implement Multi-user Presence and Cursor Tracking",
+          "description": "Add real-time cursor position tracking, user presence indicators, and visual feedback for collaborative editing sessions with user avatars and status.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "Real-time cursor position synchronization via WebSocket",
+            "User presence indicators with avatars and status",
+            "Visual feedback for active editing areas",
+            "Cursor position persistence across workflow pan/zoom",
+            "Performance optimization for high-frequency cursor updates",
+            "User identification with color coding and names",
+            "Inactive user cleanup and timeout handling",
+            "Integration with existing collaboration state management"
+          ],
+          "important_files": [
+            "packages/cli/src/collaboration/collaboration.service.ts",
+            "packages/cli/src/collaboration/collaboration.message.ts",
+            "packages/cli/src/collaboration/collaboration.state.ts",
+            "@n8n/api-types/src/collaboration/",
+            "packages/cli/src/push/"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        },
+        {
+          "id": "collab-subtask-5-execution-status",
+          "title": "Implement Real-time Workflow Execution Status Updates",
+          "description": "Enhance existing execution tracking with real-time collaborative updates, showing execution progress, node status, and results to all connected collaborators.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Real-time execution progress broadcasting to all collaborators",
+            "Node-level execution status updates with visual indicators",
+            "Execution results sharing across collaborative sessions",
+            "Integration with existing execution lifecycle events",
+            "Performance optimization for long-running workflows",
+            "Error state broadcasting and collaborative debugging",
+            "Execution history sharing and replay functionality",
+            "Resource usage and performance metrics sharing"
+          ],
+          "important_files": [
+            "packages/cli/src/collaboration/collaboration.service.ts",
+            "packages/cli/src/executions/",
+            "packages/cli/src/execution-lifecycle/",
+            "packages/cli/src/workflows/",
+            "packages/cli/src/push/"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        },
+        {
+          "id": "collab-subtask-6-comprehensive-testing",
+          "title": "Create Comprehensive Collaboration API Tests",
+          "description": "Develop extensive test coverage for all collaboration features including WebSocket communication, conflict resolution, real-time synchronization, and multi-user scenarios.",
+          "mode": "testing",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Unit tests for all collaboration service methods >90% coverage",
+            "WebSocket communication integration tests",
+            "Multi-user collaboration scenario tests",
+            "Conflict resolution algorithm tests with edge cases",
+            "Real-time synchronization stress tests",
+            "Comment system CRUD operation tests",
+            "Activity feed and notification delivery tests",
+            "Performance tests for large collaborative sessions"
+          ],
+          "important_files": [
+            "packages/cli/src/collaboration/__tests__/",
+            "packages/cli/src/push/__tests__/",
+            "packages/cli/src/controllers/__tests__/",
+            "packages/cli/src/services/__tests__/"
+          ],
+          "estimate": "3-4 hours",
+          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
+        }
+      ]
     },
     {
       "id": "phase1-audit-1753924007917-eal5n7qjp",
@@ -1105,9 +1267,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 63,
-  "last_hook_activation": 1753983137626,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 64,
+  "last_hook_activation": 1753985153762,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 30

@@ -141,3 +141,16 @@ export {
 } from './user/users-list-filter.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
+
+export {
+	ExecutionProfileDto,
+	ExecutionProfileRequestDto,
+	SystemResourcesDto,
+	SystemResourcesRequestDto,
+	PerformanceMetricsDto,
+	PerformanceMetricsRequestDto,
+	ExecutionStatus,
+	NodeExecutionStatus,
+	BottleneckSeverity,
+	BottleneckIssue,
+} from './performance';
