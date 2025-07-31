@@ -169,12 +169,3 @@ n8n uses a layered configuration system:
 - **Health Checks**: `/healthz` and `/healthz/readiness` endpoints (implemented in `abstract-server.ts`)
 - **Event Bus**: Internal event system for audit and monitoring
 
-## Next Steps
-
-- [Execution Modes](./execution-modes.md) - Detailed explanation of each deployment mode
-- [Data Flow](./data-flow.md) - How data moves through the system
-- [Package Architecture](./package-architecture.md) - Deep dive into package structure
-- [Task Runner](./task-runner.md) - Isolated code execution architecture
-- [Event System](./event-system.md) - Event-driven architecture and monitoring
-- [Community Packages](./community-packages.md) - External node package system
-- [Caching](./caching.md) - Performance optimization through caching
