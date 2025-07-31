@@ -22,7 +22,7 @@
       "description": "Fix 0 errors and 0 warnings found in recently edited files: package.json",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "important_files": [
         "development/linter-errors.md",
         "package.json"
@@ -47,7 +47,7 @@
       "description": "Ensure all package build dependencies are correctly configured in turbo.json and package.json files. Some packages may have missing or incorrect dependency specifications.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All package builds complete in correct order",
         "No dependency resolution errors",
@@ -941,8 +941,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 44,
-  "last_hook_activation": 1753953092640,
+  "execution_count": 45,
+  "last_hook_activation": 1753953527526,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 24
