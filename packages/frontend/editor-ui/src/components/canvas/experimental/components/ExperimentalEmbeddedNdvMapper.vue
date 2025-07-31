@@ -10,7 +10,7 @@ import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
 import { ref, useTemplateRef, watch } from 'vue';
 
-const { node, container } = defineProps<{
+const { node, container, inputNodeName } = defineProps<{
 	workflow: Workflow;
 	node: INodeUi;
 	container: HTMLDivElement | null;
@@ -28,7 +28,7 @@ const shouldShowInputPanel = ref(false);
 function getShouldShowInputPanel() {
 	const active = activeElement.value;
 
-	if (!active || !container || !container.contains(active)) {
+	if (!inputNodeName || !active || !container || !container.contains(active)) {
 		return false;
 	}
 
