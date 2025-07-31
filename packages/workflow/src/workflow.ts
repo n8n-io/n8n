@@ -71,6 +71,8 @@ export class Workflow {
 
 	nodeTypes: INodeTypes;
 
+	expression: Expression;
+
 	active: boolean;
 
 	settings: IWorkflowSettings = {};
@@ -130,6 +132,8 @@ export class Workflow {
 		});
 
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
+
+		this.expression = new Expression(this);
 	}
 
 	_connectionsByDestinationNodeCacheMap = new WeakMap<IConnections, IConnections>();
@@ -142,20 +146,6 @@ export class Workflow {
 
 		const result = mapConnectionsByDestination(this.connectionsBySourceNode);
 		this._connectionsByDestinationNodeCacheMap.set(this.connectionsBySourceNode, result);
-
-		return result;
-	}
-
-	_expressionCacheMap = new WeakMap<INodes, Expression>();
-
-	get expression(): Expression {
-		const cached = this._expressionCacheMap.get(this.nodes);
-		if (cached) {
-			return cached;
-		}
-
-		const result = new Expression(this);
-		this._expressionCacheMap.set(this.nodes, result);
 
 		return result;
 	}

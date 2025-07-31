@@ -189,8 +189,6 @@ export function useCanvasMapping({
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
 
-			// console.log(workflowObject.value.nodes);
-
 			acc[node.id] =
 				workflowObjectNode && nodeTypeDescription
 					? mapLegacyEndpointsToCanvasConnectionPort(
