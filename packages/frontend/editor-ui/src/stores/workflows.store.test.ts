@@ -477,6 +477,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', () => {
+			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
@@ -485,6 +486,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should not modify active workflows when workflow is already active', () => {
@@ -497,6 +499,15 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+		});
+
+		it('should not set current workflow as active when it is not the target', () => {
+			uiStore.stateIsDirty = true;
+			workflowsStore.workflow.id = '1';
+			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsStore.setWorkflowActive('2');
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
 

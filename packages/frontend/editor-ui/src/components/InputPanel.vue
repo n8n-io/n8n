@@ -10,7 +10,6 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import uniqBy from 'lodash/uniqBy';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -22,7 +21,6 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
-import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -31,6 +29,7 @@ import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
+import { I18nT } from 'vue-i18n';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -38,6 +37,7 @@ export type Props = {
 	runIndex: number;
 	workflow: Workflow;
 	pushRef: string;
+	activeNodeName: string;
 	currentNodeName?: string;
 	canLinkRuns?: boolean;
 	linkedRuns?: boolean;
@@ -45,6 +45,10 @@ export type Props = {
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	displayMode: IRunDataDisplayMode;
+	compact?: boolean;
+	disableDisplayModeSelection?: boolean;
+	focusedMappableInput: string;
+	isMappingOnboarded: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -84,21 +88,17 @@ const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
 
 const mappedNode = ref<string | null>(null);
+const collapsingColumnName = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const posthogStore = usePostHog();
 
-const {
-	activeNode,
-	focusedMappableInput,
-	isMappingOnboarded: isUserOnboarded,
-} = storeToRefs(ndvStore);
+const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
@@ -127,7 +127,7 @@ const showDraggableHint = computed(() => {
 		return false;
 	}
 
-	return !!focusedMappableInput.value && !isUserOnboarded.value;
+	return !!props.focusedMappableInput && !props.isMappingOnboarded;
 });
 
 const isActiveNodeConfig = computed(() => {
@@ -365,11 +365,15 @@ function onConnectionHelpClick() {
 function activatePane() {
 	emit('activatePane');
 }
+
+function handleChangeCollapsingColumn(columnName: string | null) {
+	collapsingColumnName.value = columnName;
+}
 </script>
 
 <template>
 	<RunData
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
@@ -390,6 +394,9 @@ function activatePane() {
 		pane-type="input"
 		data-test-id="ndv-input-panel"
 		:disable-ai-content="true"
+		:collapsing-table-column-name="collapsingColumnName"
+		:compact="compact"
+		:disable-display-mode-selection="disableDisplayModeSelection"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -398,12 +405,18 @@ function activatePane() {
 		@table-mounted="onTableMounted"
 		@search="onSearch"
 		@display-mode-change="emit('displayModeChange', $event)"
+		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
 			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
-				<span :class="[$style.title, { [$style.titleV2]: isNDVV2 }]">{{
-					i18n.baseText('ndv.input')
-				}}</span>
+				<N8nText
+					:bold="true"
+					color="text-light"
+					:size="compact ? 'small' : 'medium'"
+					:class="[$style.title, { [$style.titleV2]: isNDVV2 }]"
+				>
+					{{ i18n.baseText('ndv.input') }}
+				</N8nText>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -451,7 +464,7 @@ function activatePane() {
 							<N8nIcon icon="arrow-right-to-line" size="xlarge" />
 						</template>
 						<template #description>
-							<i18n-t tag="span" keypath="ndv.input.noOutputData.v2.description">
+							<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
 								<template #link>
 									<NodeExecuteButton
 										hide-icon
@@ -467,7 +480,7 @@ function activatePane() {
 									/>
 									<br />
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
@@ -481,7 +494,7 @@ function activatePane() {
 						</template>
 
 						<template #description>
-							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -491,7 +504,7 @@ function activatePane() {
 										{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}
 									</a>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</template>
 					</NDVEmptyState>
 				</template>
@@ -507,7 +520,7 @@ function activatePane() {
 							i18n.baseText('ndv.input.rootNodeHasNotRun.title')
 						}}</N8nText>
 						<N8nText tag="div" color="text-dark" size="medium">
-							<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
 								<template #link>
 									<a
 										href="#"
@@ -516,11 +529,26 @@ function activatePane() {
 										>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
 									>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</N8nText>
 					</template>
-					<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
-						<template #content>
+					<NodeExecuteButton
+						v-if="!readOnly"
+						type="secondary"
+						hide-icon
+						:transparent="true"
+						:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+						class="mt-m"
+						telemetry-source="inputs"
+						data-test-id="execute-previous-node"
+						tooltip-placement="bottom"
+						@execute="onNodeExecute"
+					>
+						<template
+							v-if="showDraggableHint && showDraggableHintWithDelay"
+							#persistentTooltipContent
+						>
 							<div
 								v-n8n-html="
 									i18n.baseText('dataMapping.dragFromPreviousHint', {
@@ -529,20 +557,9 @@ function activatePane() {
 								"
 							></div>
 						</template>
-						<NodeExecuteButton
-							type="secondary"
-							hide-icon
-							:transparent="true"
-							:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
-							:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-							class="mt-m"
-							telemetry-source="inputs"
-							data-test-id="execute-previous-node"
-							@execute="onNodeExecute"
-						/>
-					</N8nTooltip>
+					</NodeExecuteButton>
 					<N8nText v-if="!readOnly" tag="div" size="small">
-						<i18n-t keypath="ndv.input.noOutputData.hint">
+						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
 							<template #info>
 								<N8nTooltip placement="bottom">
 									<template #content>
@@ -551,7 +568,7 @@ function activatePane() {
 									<N8nIcon icon="circle-help" />
 								</N8nTooltip>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</N8nText>
 				</template>
 			</div>
@@ -561,7 +578,7 @@ function activatePane() {
 						<WireMeUp />
 					</template>
 					<template #description>
-						<i18n-t tag="span" keypath="ndv.input.notConnected.v2.description">
+						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
 							<template #link>
 								<a
 									href="https://docs.n8n.io/workflows/connections/"
@@ -571,7 +588,7 @@ function activatePane() {
 									{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
 								</a>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 				</NDVEmptyState>
 
@@ -627,6 +644,10 @@ function activatePane() {
 	background-color: var(--color-run-data-background);
 }
 
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
+}
+
 .mappedNode {
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }
@@ -679,10 +700,7 @@ function activatePane() {
 
 .title {
 	text-transform: uppercase;
-	color: var(--color-text-light);
 	letter-spacing: 3px;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 }
 
 .titleV2 {

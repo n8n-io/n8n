@@ -23,6 +23,8 @@ import { SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import type { GraphNode } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 describe('getGenericHints', () => {
 	let mockWorkflowNode: MockProxy<INode>;
@@ -34,6 +36,9 @@ describe('getGenericHints', () => {
 	let hasNodeRun: boolean;
 
 	beforeEach(() => {
+		const pinia = createTestingPinia({});
+		setActivePinia(pinia);
+
 		mockWorkflowNode = mock<INode>();
 		mockNode = mock<INodeUi>({ type: 'test' });
 		mockNodeType = mock<INodeTypeDescription>();
@@ -55,8 +60,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -80,8 +86,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -118,8 +125,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -142,8 +150,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -166,8 +175,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -191,8 +201,9 @@ describe('getGenericHints', () => {
 			nodeType: mockNodeType,
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
-			workflow: mockWorkflow,
 			hasNodeRun,
+			nodes: {},
+			connections: {},
 		});
 
 		expect(hints).toEqual([
@@ -483,21 +494,21 @@ describe('calculateNodeSize', () => {
 		const nonMainInputCount = 5;
 		const mainInputCount = 3;
 		const mainOutputCount = 2;
-		// width = max(4, 5) * 2 * 16 * 2 = 5 * 2 * 16 * 2 + offset = 336
+		// width = 80 + 0 + (max(4, 5) - 1) * 16 * 3 = 272
 		// height = DEFAULT_NODE_SIZE[1] + max(0, max(3,2,1) - 2) * 16 * 2
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
 		expect(
 			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount),
-		).toEqual({ width: 336, height: 128 });
+		).toEqual({ width: 272, height: 128 });
 	});
 
 	it('should return configurable configuration node size when both isConfigurable and isConfiguration are true', () => {
 		const nonMainInputCount = 2;
-		// width = max(4, 2) * 2 * 16 * 2 = 4 * 2 * 16 * 2 + offset = 272
+		// width = 80 + 16 + (max(4, 2) - 1) * 16 * 3 = 240
 		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
 		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount)).toEqual({
-			width: 272,
+			width: 240,
 			height: 80,
 		});
 	});
@@ -524,12 +535,12 @@ describe('calculateNodeSize', () => {
 
 	it('should respect the minimum width for configurable nodes', () => {
 		const nonMainInputCount = 2; // less than NODE_MIN_INPUT_ITEMS_COUNT
-		// width = 4 * 2 * 16 * 2 + offset = 272
+		// width = 80 + 0 + (max(2, 4) - 1) * 16 * 3 = 224
 		// height = default path, mainInputCount = 1, mainOutputCount = 1
 		// maxVerticalHandles = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
 		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount)).toEqual({
-			width: 272,
+			width: 224,
 			height: 96,
 		});
 	});
@@ -544,7 +555,10 @@ describe('calculateNodeSize', () => {
 function createTestGraphNode(data: Partial<GraphNode> = {}): GraphNode {
 	return {
 		computedPosition: { z: 0, ...(data.position ?? { x: 0, y: 0 }) },
-		handleBounds: {},
+		handleBounds: {
+			source: null,
+			target: null,
+		},
 		dimensions: { width: 0, height: 0 },
 		isParent: true,
 		selected: false,

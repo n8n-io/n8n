@@ -13,6 +13,8 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
+import { BaseCommand } from './base-command';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
@@ -32,9 +34,7 @@ import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
-import { BaseCommand } from './base-command';
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
 
 const flagsSchema = z.object({
@@ -126,7 +126,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
-		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
 		if (hooksUrls) {
@@ -164,9 +164,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		};
 
-		await compileFile('index.html');
 		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
-		await Promise.all(files.map(compileFile));
+		await Promise.all([compileFile('index.html'), ...files.map(compileFile)]);
 	}
 
 	async init() {

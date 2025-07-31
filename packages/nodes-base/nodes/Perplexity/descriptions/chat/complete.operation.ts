@@ -130,9 +130,9 @@ const properties: INodeProperties[] = [
 				displayName: 'Frequency Penalty',
 				name: 'frequencyPenalty',
 				type: 'number',
-				default: 1,
+				default: 0,
 				typeOptions: {
-					minValue: 1,
+					minValue: 0,
 				},
 				description:
 					"Values greater than 1.0 penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",

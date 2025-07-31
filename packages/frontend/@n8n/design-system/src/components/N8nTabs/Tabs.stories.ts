@@ -2,6 +2,7 @@ import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
 import N8nTabs from './Tabs.vue';
+import type { TabOptions } from '../../types/tabs';
 
 export default {
 	title: 'Atoms/Tabs',
@@ -55,4 +56,72 @@ Example.args = {
 			align: 'right',
 		},
 	],
+};
+
+const options: Array<TabOptions<string>> = [
+	{
+		label: 'First',
+		value: 'first',
+	},
+	{
+		label: 'Second',
+		value: 'second',
+	},
+	{
+		label: 'External Link',
+		value: 'external',
+		href: 'https://github.com/',
+	},
+	{
+		label: 'Danger',
+		value: 'danger',
+		variant: 'danger',
+		icon: 'triangle-alert',
+	},
+	{
+		label: 'Right Icon',
+		value: 'rightIcon',
+		icon: 'circle',
+		iconPosition: 'right',
+	},
+	{
+		value: 'iconOnly',
+		tooltip: 'Icon only tab',
+		icon: 'circle',
+	},
+	{
+		label: 'Notification',
+		value: 'notification',
+		notification: true,
+	},
+	{
+		label: 'Settings',
+		value: 'settings',
+		icon: 'cog',
+		align: 'right',
+	},
+];
+
+export const TabVariants = Template.bind({});
+TabVariants.args = {
+	options,
+};
+
+export const WithSmallSize = Template.bind({});
+WithSmallSize.args = {
+	options,
+	size: 'small',
+};
+
+export const WithModernVariant = Template.bind({});
+WithModernVariant.args = {
+	variant: 'modern',
+	options,
+};
+
+export const WithSmallAndModern = Template.bind({});
+WithSmallAndModern.args = {
+	variant: 'modern',
+	options,
+	size: 'small',
 };

@@ -13,14 +13,14 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks

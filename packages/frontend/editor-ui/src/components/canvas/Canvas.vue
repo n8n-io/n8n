@@ -14,12 +14,13 @@ import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
 	CanvasNode,
+	CanvasNodeData,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
-	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { isOutsideSelected } from '@/utils/htmlUtils';
+import { getMousePosition, GRID_SIZE, updateViewportToContainNodes } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -49,12 +50,11 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
+import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
-import { useViewportAutoAdjust } from './composables/useViewportAutoAdjust';
-import { isOutsideSelected } from '@/utils/htmlUtils';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 
 const $style = useCssModule();
@@ -138,7 +138,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 
-const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
+const vueFlow = useVueFlow(props.id);
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -160,6 +160,7 @@ const {
 	nodesSelectionActive,
 	userSelectionRect,
 	setViewport,
+	setCenter,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -179,9 +180,12 @@ const experimentalNdvStore = useExperimentalNdvStore();
 
 const isPaneReady = ref(false);
 
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
+	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
 /**
@@ -282,6 +286,18 @@ function selectUpstreamNodes(id: string) {
 	onSelectNodes({ ids: [...upstreamNodes.map((node) => node.id), id] });
 }
 
+function onToggleZoomMode() {
+	experimentalNdvStore.toggleZoomMode({
+		canvasViewport: viewport.value,
+		canvasDimensions: dimensions.value,
+		selectedNodes: selectedNodes.value,
+		setViewport,
+		fitView,
+		zoomTo,
+		setCenter,
+	});
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -305,6 +321,7 @@ const keyMap = computed(() => {
 		l: () => emit('update:logs-open'),
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
+		z: onToggleZoomMode,
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -428,7 +445,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, { duration: 200 });
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
@@ -450,6 +467,18 @@ function onUpdateNodeInputs(id: string) {
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+}
+
+function onFocusNode(id: string) {
+	const node = vueFlow.nodeLookup.value.get(id);
+
+	if (node) {
+		experimentalNdvStore.focusNode(node, {
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	}
 }
 
 /**
@@ -714,7 +743,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 	}
 }
 
-async function onTidyUp(payload: { source: CanvasLayoutSource }) {
+async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
+	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
+		clearSelectedNodes();
+		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
+	}
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
@@ -829,6 +862,26 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
+watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
+	const toFocusNode =
+		toFocusName &&
+		(nodes as Array<GraphNode<CanvasNodeData>>).find((n) => n.data.name === toFocusName);
+
+	if (!toFocusNode) {
+		return;
+	}
+
+	// setTimeout() so that this happens after layout recalculation with the node to be focused
+	setTimeout(() => {
+		experimentalNdvStore.focusNode(toFocusNode, {
+			collapseOthers: false,
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	});
+});
+
 /**
  * Provide
  */
@@ -840,6 +893,7 @@ provide(CanvasKey, {
 	isExecuting,
 	initialized,
 	viewport,
+	isExperimentalNdvActive,
 });
 </script>
 
@@ -862,6 +916,7 @@ provide(CanvasKey, {
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
+		:delete-key-code="null"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
@@ -900,6 +955,7 @@ provide(CanvasKey, {
 					@update:outputs="onUpdateNodeOutputs"
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
+					@focus="onFocusNode"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
@@ -909,16 +965,18 @@ provide(CanvasKey, {
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
-			<Edge
-				v-bind="edgeProps"
-				:marker-end="`url(#${arrowHeadMarkerId})`"
-				:read-only="readOnly"
-				:hovered="edgesHoveredById[edgeProps.id]"
-				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
-				@add="onClickConnectionAdd"
-				@delete="onDeleteConnection"
-				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
-			/>
+			<slot name="edge" v-bind="{ edgeProps, arrowHeadMarkerId }">
+				<Edge
+					v-bind="edgeProps"
+					:marker-end="`url(#${arrowHeadMarkerId})`"
+					:read-only="readOnly"
+					:hovered="edgesHoveredById[edgeProps.id]"
+					:bring-to-front="edgesBringToFrontById[edgeProps.id]"
+					@add="onClickConnectionAdd"
+					@delete="onDeleteConnection"
+					@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
+				/>
+			</slot>
 		</template>
 
 		<template #connection-line="connectionLineProps">
@@ -927,7 +985,9 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<CanvasBackground :viewport="viewport" :striped="readOnly" />
+		<slot name="canvas-background" v-bind="{ viewport }">
+			<CanvasBackground :viewport="viewport" :striped="readOnly" />
+		</slot>
 
 		<Transition name="minimap">
 			<MiniMap
@@ -953,11 +1013,13 @@ provide(CanvasKey, {
 			:show-interactive="false"
 			:zoom="viewport.zoom"
 			:read-only="readOnly"
+			:is-experimental-ndv-active="isExperimentalNdvActive"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@toggle-zoom-mode="onToggleZoomMode"
 		/>
 
 		<Suspense>
@@ -987,6 +1049,10 @@ provide(CanvasKey, {
 		&:global(.dragging) {
 			cursor: grabbing;
 		}
+	}
+
+	&.isExperimentalNdvActive {
+		--canvas-zoom-compensation-factor: 0.5;
 	}
 }
 </style>

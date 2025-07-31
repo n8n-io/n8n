@@ -24,7 +24,7 @@ export default defineConfig(frontendConfig, {
 		'@typescript-eslint/dot-notation': 'warn',
 		'@stylistic/lines-between-class-members': 'warn',
 		'@stylistic/member-delimiter-style': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
+		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-empty-interface': 'warn',
 		'@typescript-eslint/no-for-in-array': 'warn',
 		'@typescript-eslint/no-loop-func': 'warn',

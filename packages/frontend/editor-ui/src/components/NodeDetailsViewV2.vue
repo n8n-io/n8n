@@ -25,7 +25,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
-	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
@@ -35,7 +34,6 @@ import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
@@ -77,7 +75,6 @@ const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -85,7 +82,6 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = ref(-1);
 const isLinkingEnabled = ref(true);
@@ -310,25 +306,9 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
-const foreignCredentials = computed(() => {
-	const credentials = activeNode.value?.credentials;
-	const usedCredentials = workflowsStore.usedCredentials;
-
-	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-		Object.values(credentials).forEach((credential) => {
-			if (
-				credential.id &&
-				usedCredentials[credential.id] &&
-				!usedCredentials[credential.id].currentUserHasAccess
-			) {
-				foreignCredentialsArray.push(credential.id);
-			}
-		});
-	}
-
-	return foreignCredentialsArray;
-});
+const foreignCredentials = computed(() =>
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+);
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
@@ -717,7 +697,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport v-if="activeNode && activeNodeType" :to="`#${APP_MODALS_ELEMENT_ID}`">
+	<Teleport
+		v-if="activeNode && activeNodeType && !isActiveStickyNode"
+		:to="`#${APP_MODALS_ELEMENT_ID}`"
+	>
 		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
 
 		<dialog
@@ -759,6 +742,7 @@ onBeforeUnmount(() => {
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
+							:active-node-name="activeNode.name"
 							:current-node-name="inputNodeName"
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"
@@ -766,6 +750,8 @@ onBeforeUnmount(() => {
 							:is-pane-active="isInputPaneActive"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
+							:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+							:focused-mappable-input="ndvStore.focusedMappableInput"
 							@activate-pane="activateInputPane"
 							@link-run="onLinkRunToInput"
 							@unlink-run="() => onUnlinkRun('input')"
@@ -815,7 +801,6 @@ onBeforeUnmount(() => {
 								:class="$style.settings"
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
-								@redraw-required="redrawRequired = true"
 								@activate="onWorkflowActivate"
 								@switch-selected-node="onSwitchSelectedNode"
 								@open-connection-node-creator="onOpenConnectionNodeCreator"
@@ -860,7 +845,8 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .backdrop {
-	position: fixed;
+	position: absolute;
+	z-index: var(--z-index-ndv);
 	top: 0;
 	left: 0;
 	right: 0;
@@ -869,9 +855,10 @@ onBeforeUnmount(() => {
 }
 
 .dialog {
-	position: fixed;
-	width: calc(100vw - var(--spacing-2xl));
-	height: calc(100vh - var(--spacing-2xl));
+	position: absolute;
+	z-index: var(--z-index-ndv);
+	width: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-2xl));
 	top: var(--spacing-l);
 	left: var(--spacing-l);
 	border: none;

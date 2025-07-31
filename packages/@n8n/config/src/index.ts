@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AiAssistantConfig } from './configs/ai-assistant.config';
+import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -21,10 +22,12 @@ import { NodesConfig } from './configs/nodes.config';
 import { PartialExecutionsConfig } from './configs/partial-executions.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
+import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -47,6 +50,8 @@ export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
+export { NodesConfig } from './configs/nodes.config';
+export { CronLoggingConfig } from './configs/logging.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -167,6 +172,9 @@ export class GlobalConfig {
 	@Nested
 	personalization: PersonalizationConfig;
 
+	@Nested
+	sso: SsoConfig;
+
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
@@ -190,4 +198,14 @@ export class GlobalConfig {
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
+
+	/** URLs to external frontend hooks files, separated by semicolons. */
+	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
+	externalFrontendHooksUrls: string = '';
+
+	@Nested
+	redis: RedisConfig;
+
+	@Nested
+	ai: AiConfig;
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-use-before-define */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable prefer-spread */
@@ -7,7 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -835,12 +835,15 @@ export function getNodeParameters(
 					// Multiple can be set so will be an array
 
 					const tempArrayValue: INodeParameters[] = [];
+					// Collection values should always be an object
+					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
+						continue;
+					}
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
 					] as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties.options!.find(
-							// eslint-disable-next-line @typescript-eslint/no-shadow
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
 
@@ -875,7 +878,7 @@ export function getNodeParameters(
 					tempNodeParameters = {};
 
 					// Get the options of the current item
-					// eslint-disable-next-line @typescript-eslint/no-shadow
+
 					const nodePropertyOptions = nodeProperties.options!.find(
 						(data) => data.name === itemName,
 					);

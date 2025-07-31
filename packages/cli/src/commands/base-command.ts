@@ -282,7 +282,8 @@ export abstract class BaseCommand<F = never> {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
 		}
-		process.exit();
+		const exitCode = error ? 1 : 0;
+		process.exit(exitCode);
 	}
 
 	protected onTerminationSignal(signal: string) {

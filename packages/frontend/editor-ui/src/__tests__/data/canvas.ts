@@ -92,7 +92,10 @@ export function createCanvasGraphNode({
 		isParent: false,
 		selected: false,
 		resizing: false,
-		handleBounds: {},
+		handleBounds: {
+			source: null,
+			target: null,
+		},
 		events: {},
 		data: createCanvasNodeData({ id, type, ...data }),
 		...rest,
@@ -138,6 +141,7 @@ export function createCanvasProvide({
 			isExecuting: ref(isExecuting),
 			connectingHandle: ref(connectingHandle),
 			viewport: ref(viewport),
+			isExperimentalNdvActive: computed(() => false),
 		} satisfies CanvasInjectionData,
 	};
 }

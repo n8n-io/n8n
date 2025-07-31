@@ -13,6 +13,7 @@ import type { IUser } from '@/Interface';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from '@/components/SettingsUsers/SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
+import SettingsUsersLastActiveCell from '@/components/SettingsUsers/SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
@@ -53,6 +54,17 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
+	},
+	{
+		title: i18n.baseText('settings.users.table.header.lastActive'),
+		key: 'lastActiveAt',
+		value(row) {
+			return {
+				...row,
+				// TODO: Fix N8nDataTableServer so it doesn't break sorting when `value` is of mixed type (for example, string or null)
+				lastActiveAt: row.lastActiveAt ?? '',
+			};
+		},
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.2fa'),
@@ -159,6 +171,9 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					@update:role="onRoleChange"
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default].label }}</N8nText>
+			</template>
+			<template #[`item.lastActiveAt`]="{ item }">
+				<SettingsUsersLastActiveCell :data="item" />
 			</template>
 			<template #[`item.projects`]="{ item }">
 				<SettingsUsersProjectsCell :data="item" />

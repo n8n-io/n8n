@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';

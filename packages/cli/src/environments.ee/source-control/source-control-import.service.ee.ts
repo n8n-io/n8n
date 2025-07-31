@@ -163,11 +163,14 @@ export class SourceControlImportService {
 					return false;
 				}
 				return (
-					context.hasAccessToAllProjects() || findOwnerProject(remote.owner, accessibleProjects)
+					context.hasAccessToAllProjects() ||
+					(remote.owner && findOwnerProject(remote.owner, accessibleProjects))
 				);
 			})
 			.map((remote) => {
-				const project = findOwnerProject(remote.owner, accessibleProjects);
+				const project = remote.owner
+					? findOwnerProject(remote.owner, accessibleProjects)
+					: undefined;
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
