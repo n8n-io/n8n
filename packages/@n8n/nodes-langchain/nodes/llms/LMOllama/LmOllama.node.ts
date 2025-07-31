@@ -64,6 +64,11 @@ export class LmOllama implements INodeType {
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			headers: credentials.apiKey
+				? {
+						Authorization: `Bearer ${credentials.apiKey as string}`,
+					}
+				: undefined,
 		});
 
 		return {

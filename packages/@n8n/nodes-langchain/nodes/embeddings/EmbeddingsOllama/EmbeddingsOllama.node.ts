@@ -53,6 +53,11 @@ export class EmbeddingsOllama implements INodeType {
 		const embeddings = new OllamaEmbeddings({
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
+			headers: credentials.apiKey
+				? {
+						Authorization: `Bearer ${credentials.apiKey as string}`,
+					}
+				: undefined,
 		});
 
 		return {

@@ -66,6 +66,11 @@ export class LmChatOllama implements INodeType {
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			headers: credentials.apiKey
+				? {
+						Authorization: `Bearer ${credentials.apiKey as string}`,
+					}
+				: undefined,
 		});
 
 		return {
