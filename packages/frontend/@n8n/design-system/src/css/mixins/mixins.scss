@@ -75,7 +75,7 @@ $E: null;
 /* BEM
  -------------------------- */
 @mixin b($block) {
-	$B: config.$namespace + '-' + $block;
+	$B: config.$namespace + '-' + $block !global;
 
 	.#{$B} {
 		@content;
@@ -83,7 +83,7 @@ $E: null;
 }
 
 @mixin e($element) {
-	$E: $element;
+	$E: $element !global;
 	$selector: &;
 	$currentSelector: '';
 	@each $unit in $element {
