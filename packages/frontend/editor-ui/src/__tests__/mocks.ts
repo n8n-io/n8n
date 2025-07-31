@@ -40,6 +40,7 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
+	draggable = true,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -49,7 +50,9 @@ export const mockNode = ({
 	issues?: INodeIssues;
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
+	draggable?: INodeUi['draggable'];
+}) =>
+	mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters, draggable });
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
