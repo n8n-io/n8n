@@ -35,6 +35,8 @@
     "lint:styles:fix": "turbo run lint:styles:fix",
     "lint:affected": "turbo run lint --affected",
     "lint:fix": "turbo run lint:fix",
+    "lint:fast": "eslint --config eslint.config.js --cache --ext .js,.mjs,.cjs,.ts --max-warnings 0 .",
+    "lint:perf": "ESLINT_NO_PROJECT_SERVICE=true eslint --config eslint.config.js --cache --no-eslintrc --ext .js,.mjs,.cjs .",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
