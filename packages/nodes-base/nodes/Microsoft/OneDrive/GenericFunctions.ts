@@ -10,6 +10,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export async function getGraphEndpoint(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+): Promise<string> {
+	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	return (credentials.graphEndpoint as string) || 'https://graph.microsoft.com';
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -21,6 +28,7 @@ export async function microsoftApiRequest(
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ): Promise<any> {
+	const graphEndpoint = await getGraphEndpoint.call(this);
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -28,7 +36,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `${graphEndpoint}/v1.0/me${resource}`,
 	};
 	try {
 		Object.assign(options, option);
@@ -145,13 +153,15 @@ export async function getPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	itemId: string,
 ): Promise<string> {
+	const graphEndpoint = await getGraphEndpoint.call(this);
+
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
 		'',
 		{},
 		{},
-		`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`,
+		`${graphEndpoint}/v1.0/me/drive/items/${itemId}`,
 	)) as IDataObject;
 	if (responseData.folder) {
 		return (responseData?.parentReference as IDataObject)?.path + `/${responseData?.name}`;
