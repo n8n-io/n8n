@@ -206,10 +206,10 @@ describe('telemetry', () => {
 
 		it('should include the posthog session id in the parameters', () => {
 			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
-			window.posthog = {
+			vi.stubGlobal('posthog', {
 				init: vi.fn(),
 				get_session_id: vi.fn().mockReturnValue('test_session_id'),
-			};
+			});
 
 			const event = 'testEvent';
 			const properties = { test: '1' };
@@ -224,6 +224,8 @@ describe('telemetry', () => {
 				}),
 				expect.any(Object),
 			);
+
+			vi.unstubAllGlobals();
 		});
 	});
 });
