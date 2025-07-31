@@ -79,6 +79,7 @@ describe('MongoDB CRUD Node', () => {
 			buildWorkflow({
 				parameters: {
 					operation: 'createSearchIndex',
+					resource: 'searchIndexes',
 					collection: 'foo',
 					indexType: 'vectorSearch',
 					indexDefinition: JSON.stringify({ mappings: {} }),
@@ -109,6 +110,7 @@ describe('MongoDB CRUD Node', () => {
 			testHarness.setupTest(
 				buildWorkflow({
 					parameters: {
+						resource: 'searchIndexes',
 						operation: 'listSearchIndexes',
 						collection: 'foo',
 					},
@@ -136,6 +138,7 @@ describe('MongoDB CRUD Node', () => {
 			testHarness.setupTest(
 				buildWorkflow({
 					parameters: {
+						resource: 'searchIndexes',
 						operation: 'listSearchIndexes',
 						collection: 'foo',
 						indexName: 'my-index',
@@ -165,6 +168,7 @@ describe('MongoDB CRUD Node', () => {
 				buildWorkflow({
 					parameters: {
 						operation: 'listSearchIndexes',
+						resource: 'searchIndexes',
 						collection: 'foo',
 						indexName: 'my-index',
 					},
@@ -193,6 +197,7 @@ describe('MongoDB CRUD Node', () => {
 			buildWorkflow({
 				parameters: {
 					operation: 'dropSearchIndex',
+					resource: 'searchIndexes',
 					collection: 'foo',
 					indexNameRequired: 'my-index',
 				},
@@ -217,6 +222,7 @@ describe('MongoDB CRUD Node', () => {
 			buildWorkflow({
 				parameters: {
 					operation: 'updateSearchIndex',
+					resource: 'searchIndexes',
 					collection: 'foo',
 					indexNameRequired: 'my-index',
 					indexDefinition: JSON.stringify({

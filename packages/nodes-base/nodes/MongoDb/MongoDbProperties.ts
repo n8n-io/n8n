@@ -2,10 +2,32 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const nodeProperties: INodeProperties[] = [
 	{
+		displayName: 'Resource',
+		name: 'resource',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Search Index',
+				value: 'searchIndexes',
+			},
+			{
+				name: 'Document',
+				value: 'document',
+			},
+		],
+		default: 'document',
+	},
+	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['document'],
+			},
+		},
 		options: [
 			{
 				name: 'Aggregate',
@@ -14,22 +36,10 @@ export const nodeProperties: INodeProperties[] = [
 				action: 'Aggregate documents',
 			},
 			{
-				name: 'CreateSearchIndex',
-				value: 'createSearchIndex',
-				description: 'Create Search Index',
-				action: 'Create Search Index',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete documents',
 				action: 'Delete documents',
-			},
-			{
-				name: 'DropSearchIndex',
-				value: 'dropSearchIndex',
-				description: 'Drop Search Index',
-				action: 'Drop Search Index',
 			},
 			{
 				name: 'Find',
@@ -56,27 +66,48 @@ export const nodeProperties: INodeProperties[] = [
 				action: 'Insert documents',
 			},
 			{
-				name: 'ListSearchIndexes',
-				value: 'listSearchIndexes',
-				description: 'List Search Indexes',
-				action: 'List Search Indexes',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update documents',
 				action: 'Update documents',
 			},
-			{
-				name: 'UpdateSearchIndex',
-				value: 'updateSearchIndex',
-				description: 'Update Search Index',
-				action: 'Update Search Index',
-			},
 		],
 		default: 'find',
 	},
-
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['searchIndexes'],
+			},
+		},
+		options: [
+			{
+				name: 'Create Search Index',
+				value: 'createSearchIndex',
+				action: 'Create Search Index',
+			},
+			{
+				name: 'Drop Search Index',
+				value: 'dropSearchIndex',
+				action: 'Drop Search Index',
+			},
+			{
+				name: 'List Search Indexes',
+				value: 'listSearchIndexes',
+				action: 'List Search Indexes',
+			},
+			{
+				name: 'Update Search Index',
+				value: 'updateSearchIndex',
+				action: 'Update Search Index',
+			},
+		],
+		default: 'createSearchIndex',
+	},
 	{
 		displayName: 'Collection',
 		name: 'collection',
@@ -99,6 +130,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['aggregate'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -121,6 +153,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['delete'],
+				resource: ['document'],
 			},
 		},
 		default: '{}',
@@ -139,6 +172,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['find'],
+				resource: ['document'],
 			},
 		},
 		default: {},
@@ -199,6 +233,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['find'],
+				resource: ['document'],
 			},
 		},
 		default: '{}',
@@ -217,6 +252,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['insert'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -234,6 +270,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: 'id',
@@ -249,6 +286,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -262,6 +300,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: false,
@@ -274,6 +313,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		placeholder: 'Add option',
@@ -302,6 +342,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['listSearchIndexes'],
+				resource: ['searchIndexes'],
 			},
 		},
 		default: '',
@@ -314,6 +355,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['createSearchIndex', 'dropSearchIndex', 'updateSearchIndex'],
+				resource: ['searchIndexes'],
 			},
 		},
 		default: '',
@@ -327,6 +369,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['createSearchIndex', 'updateSearchIndex'],
+				resource: ['searchIndexes'],
 			},
 		},
 		typeOptions: {
@@ -345,6 +388,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['createSearchIndex'],
+				resource: ['searchIndexes'],
 			},
 		},
 		default: 'vectorSearch',
