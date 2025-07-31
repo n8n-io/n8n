@@ -120,24 +120,22 @@ describe('Google Sheet - Append or Update v4.6 vs v4.7 Behavior', () => {
 			},
 		]);
 
-		mockExecuteFunctions.getNodeParameter.mockImplementation(
-			(parameterName: string, itemIndex?: number) => {
-				const params: { [key: string]: any } = {
-					'options.cellFormat': 'USER_ENTERED',
-					options: {},
-					'columns.mappingMode': 'defineBelow',
-					'columns.schema': [],
-					'columns.matchingColumns': ['id'],
-					'columns.value': {
-						id: 1,
-						name: 'John',
-						// email field is NOT present here because user typed '' in UI
-						// and v4.6 frontend filtered it out (allowEmptyValues: false)
-					},
-				};
-				return params[parameterName];
-			},
-		);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: any } = {
+				'options.cellFormat': 'USER_ENTERED',
+				options: {},
+				'columns.mappingMode': 'defineBelow',
+				'columns.schema': [],
+				'columns.matchingColumns': ['id'],
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					// email field is NOT present here because user typed '' in UI
+					// and v4.6 frontend filtered it out (allowEmptyValues: false)
+				},
+			};
+			return params[parameterName];
+		});
 
 		mockGoogleSheet.getData.mockResolvedValueOnce([
 			['id', 'name', 'email'],
@@ -192,23 +190,21 @@ describe('Google Sheet - Append or Update v4.6 vs v4.7 Behavior', () => {
 			},
 		]);
 
-		mockExecuteFunctions.getNodeParameter.mockImplementation(
-			(parameterName: string, itemIndex?: number) => {
-				const params: { [key: string]: any } = {
-					'options.cellFormat': 'USER_ENTERED',
-					options: {},
-					'columns.mappingMode': 'defineBelow',
-					'columns.schema': [],
-					'columns.matchingColumns': ['id'],
-					'columns.value': {
-						id: 1,
-						name: 'John',
-						email: '', // Empty string is preserved in v4.7 (allowEmptyValues: true)
-					},
-				};
-				return params[parameterName];
-			},
-		);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+			const params: { [key: string]: any } = {
+				'options.cellFormat': 'USER_ENTERED',
+				options: {},
+				'columns.mappingMode': 'defineBelow',
+				'columns.schema': [],
+				'columns.matchingColumns': ['id'],
+				'columns.value': {
+					id: 1,
+					name: 'John',
+					email: '', // Empty string is preserved in v4.7 (allowEmptyValues: true)
+				},
+			};
+			return params[parameterName];
+		});
 
 		mockGoogleSheet.getData.mockResolvedValueOnce([
 			['id', 'name', 'email'],
