@@ -300,6 +300,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			disableIframeSandboxing: false,
 		},
 		executions: {
 			pruneData: true,
