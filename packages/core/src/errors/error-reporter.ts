@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { eventLoopBlockIntegration } from '@sentry/node-native';
+// eventLoopBlockIntegration import moved to conditional import in init method
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -127,6 +127,21 @@ export class ErrorReporter {
 			'ContextLines',
 		];
 
+		// Try to import eventLoopBlockIntegration conditionally
+		let eventLoopBlockIntegration: any = null;
+		try {
+			const sentryNative = await import('@sentry/node-native');
+			eventLoopBlockIntegration = sentryNative.eventLoopBlockIntegration;
+		} catch (error) {
+			this.logger.debug(
+				'Sentry native integration not available, skipping eventLoopBlockIntegration',
+				{
+					nodeVersion: process.version,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
+
 		init({
 			dsn,
 			release,
@@ -147,7 +162,8 @@ export class ErrorReporter {
 						url: true,
 					},
 				}),
-				eventLoopBlockIntegration(),
+				// Only add eventLoopBlockIntegration if it's available
+				...(eventLoopBlockIntegration ? [eventLoopBlockIntegration()] : []),
 			],
 		});
 
