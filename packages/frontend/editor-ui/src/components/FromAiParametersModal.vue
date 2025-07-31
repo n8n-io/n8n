@@ -298,7 +298,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 				<el-col :span="5" :offset="19">
 					<n8n-button
 						data-test-id="execute-workflow-button"
-						icon="flask"
+						icon="flask-conical"
 						:label="i18n.baseText('fromAiParametersModal.execute')"
 						@click="onExecute"
 					/>

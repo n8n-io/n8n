@@ -71,6 +71,7 @@ import {
 } from '@/utils/canvasUtils';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import {
+	GRID_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -111,6 +112,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -154,6 +156,7 @@ export function useCanvasOperations() {
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
+	const experimentalNdvStore = useExperimentalNdvStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -188,15 +191,11 @@ export function useCanvasOperations() {
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track(
-			'User tidied up canvas',
-			{
-				source,
-				target,
-				nodes_count: result.nodes.length,
-			},
-			{ withPostHog: true },
-		);
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
 	}
 
 	function updateNodesPosition(
@@ -696,7 +695,7 @@ export function useCanvasOperations() {
 
 			// When we're adding multiple nodes, increment the X position for the next one
 			insertPosition = [
-				lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
+				lastAddedNode.position[0] + DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE,
 				lastAddedNode.position[1],
 			];
 		}
@@ -792,7 +791,11 @@ export function useCanvasOperations() {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
 				if (options.openNDV && !preventOpeningNDV) {
-					ndvStore.setActiveNodeName(nodeData.name);
+					if (experimentalNdvStore.isEnabled) {
+						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
+					} else {
+						ndvStore.setActiveNodeName(nodeData.name);
+					}
 				}
 			}
 		});
@@ -1033,7 +1036,7 @@ export function useCanvasOperations() {
 
 		const nodeSize =
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
-		let pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
+		const pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
 		let position: XYPosition | undefined = node.position;
 		if (position) {
@@ -1112,8 +1115,8 @@ export function useCanvasOperations() {
 				if (lastInteractedWithNodeMainOutputs.length > 1) {
 					const yOffsetValues = generateOffsets(
 						lastInteractedWithNodeMainOutputs.length,
-						NodeViewUtils.NODE_SIZE,
-						NodeViewUtils.GRID_SIZE,
+						DEFAULT_NODE_SIZE[1],
+						GRID_SIZE,
 					);
 
 					yOffset = yOffsetValues[connectionIndex];
@@ -1134,7 +1137,17 @@ export function useCanvasOperations() {
 				} catch (e) {}
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				pushOffsets = [100, 0];
+				/**
+				 * Custom Y offsets for specific connection types when adding them using the plus button:
+				 * - AI Language Model: Moved left by 2 node widths
+				 * - AI Memory: Moved left by 1 node width
+				 */
+				const CUSTOM_Y_OFFSETS: Record<string, number> = {
+					[NodeConnectionTypes.AiLanguageModel]: nodeSize[0] * 2,
+					[NodeConnectionTypes.AiMemory]: nodeSize[0],
+				};
+
+				const customOffset: number = CUSTOM_Y_OFFSETS[connectionType as string] ?? 0;
 
 				if (
 					outputTypes.length > 0 &&
@@ -1156,7 +1169,8 @@ export function useCanvasOperations() {
 						lastInteractedWithNode.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
 								(scopedConnectionIndex + 1) -
-							nodeSize[0] / 2,
+							nodeSize[0] / 2 -
+							customOffset,
 						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
@@ -1165,7 +1179,7 @@ export function useCanvasOperations() {
 
 					let pushOffset = PUSH_NODES_OFFSET;
 					if (
-						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
+						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
@@ -1356,7 +1370,7 @@ export function useCanvasOperations() {
 									target: connectionDataNode.id,
 									targetHandle: createCanvasConnectionHandleString({
 										mode: CanvasConnectionMode.Input,
-										type: connectionData.type as NodeConnectionType,
+										type: connectionData.type,
 										index: connectionData.index,
 									}),
 								},
@@ -1531,7 +1545,10 @@ export function useCanvasOperations() {
 			if (inputType !== targetConnection.type) return false;
 
 			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
-			if (filter?.nodes.length && !filter.nodes.includes(sourceNode.type)) {
+			if (
+				(filter?.nodes?.length && !filter.nodes?.includes(sourceNode.type)) ||
+				(filter?.excludedNodes?.length && filter.excludedNodes?.includes(sourceNode.type))
+			) {
 				toast.showToast({
 					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
@@ -1824,10 +1841,12 @@ export function useCanvasOperations() {
 			trackBulk = true,
 			trackHistory = true,
 			viewport,
+			regenerateIds = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
 			trackHistory?: boolean;
+			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
@@ -1873,8 +1892,10 @@ export function useCanvasOperations() {
 					// Set all new ids when pasting/importing workflows
 					if (node.id) {
 						const previousId = node.id;
-						const newId = nodeHelpers.assignNodeId(node);
-						nodeIdMap[newId] = previousId;
+						if (regenerateIds) {
+							const newId = nodeHelpers.assignNodeId(node);
+							nodeIdMap[newId] = previousId;
+						}
 					} else {
 						nodeHelpers.assignNodeId(node);
 					}
@@ -2115,7 +2136,7 @@ export function useCanvasOperations() {
 		deleteNodes(ids);
 	}
 
-	async function openExecution(executionId: string) {
+	async function openExecution(executionId: string, nodeId?: string) {
 		let data: IExecutionResponse | undefined;
 		try {
 			data = await workflowsStore.getExecution(executionId);
@@ -2142,6 +2163,18 @@ export function useCanvasOperations() {
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});
+		}
+
+		if (nodeId) {
+			const node = workflowsStore.getNodeById(nodeId);
+			if (node) {
+				ndvStore.activeNodeName = node.name;
+			} else {
+				toast.showError(
+					new Error(`Node with id "${nodeId}" could not be found!`),
+					i18n.baseText('nodeView.showError.openExecution.node'),
+				);
+			}
 		}
 
 		uiStore.stateIsDirty = false;

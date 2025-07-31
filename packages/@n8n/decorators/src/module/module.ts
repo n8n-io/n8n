@@ -22,7 +22,8 @@ export type ModuleSettings = Record<string, unknown>;
 
 export interface ModuleInterface {
 	init?(): Promise<void>;
-	entities?(): EntityClass[];
+	shutdown?(): Promise<void>;
+	entities?(): Promise<EntityClass[]>;
 	settings?(): Promise<ModuleSettings>;
 }
 

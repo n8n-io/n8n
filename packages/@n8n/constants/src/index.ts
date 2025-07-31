@@ -9,6 +9,7 @@ export const LICENSE_FEATURES = {
 	LDAP: 'feat:ldap',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
+	MFA_ENFORCEMENT: 'feat:mfaEnforcement',
 	LOG_STREAMING: 'feat:logStreaming',
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
@@ -103,3 +104,7 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 };
 
 export { Time } from './time';
+
+export const MIN_PASSWORD_CHAR_LENGTH = 8;
+
+export const MAX_PASSWORD_CHAR_LENGTH = 64;

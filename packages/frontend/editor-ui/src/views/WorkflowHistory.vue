@@ -345,7 +345,7 @@ watchEffect(async () => {
 				{{ i18n.baseText('workflowHistory.title') }}
 			</n8n-heading>
 			<router-link :to="editorRoute" data-test-id="workflow-history-close-button">
-				<n8n-button type="tertiary" icon="times" size="small" text square />
+				<n8n-button type="tertiary" icon="x" size="small" text square />
 			</router-link>
 		</div>
 		<div :class="$style.listComponentWrapper">

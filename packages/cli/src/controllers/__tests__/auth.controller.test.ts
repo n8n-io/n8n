@@ -1,6 +1,7 @@
 import type { LoginRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -14,9 +15,7 @@ import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
-import type { AuthenticatedRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 
 import { AuthController } from '../auth.controller';
 
@@ -87,13 +86,14 @@ describe('AuthController', () => {
 				body.password,
 			);
 
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, browserId);
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user: member,
 				authenticationMethod: 'ldap',
 			});
 
 			expect(userService.toPublic).toHaveBeenCalledWith(member, {
+				mfaAuthenticated: false,
 				posthog: postHog,
 				withScopes: true,
 			});

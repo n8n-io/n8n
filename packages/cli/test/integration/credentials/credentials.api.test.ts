@@ -1,10 +1,15 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload as payload,
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+	randomName,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -24,15 +29,7 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
-import {
-	randomCredentialPayload as payload,
-	randomCredentialPayload,
-	randomCredentialPayloadWithOauthTokenData,
-	randomName,
-} from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 

@@ -1,0 +1,117 @@
+{
+	"createdAt": "2021-02-25T12:44:44.483Z",
+	"updatedAt": "2021-02-25T12:44:52.927Z",
+	"id": "68",
+	"name": "CircleCI:Pipeline:getAll get trigger",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "ccd210e8-4155-4e27-bcda-8ecde0543afe"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"vcs": "github",
+				"projectSlug": "nodemationqa/nodeQA",
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "CircleCI",
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"circleCiApi": {
+					"id": "59",
+					"name": "CircleCI creds"
+				}
+			},
+			"id": "72b39f65-9aef-4dd2-9887-a68e247e5c0d"
+		},
+		{
+			"parameters": {
+				"vcs": "github",
+				"projectSlug": "nodemationqa/nodeQA"
+			},
+			"name": "CircleCI1",
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"circleCiApi": {
+					"id": "59",
+					"name": "CircleCI creds"
+				}
+			},
+			"id": "094f3916-c071-47af-9d66-d54d88a826ff"
+		},
+		{
+			"parameters": {
+				"operation": "trigger",
+				"vcs": "github",
+				"projectSlug": "nodemationqa/nodeQA",
+				"additionalFields": {
+					"branch": "main"
+				}
+			},
+			"name": "CircleCI2",
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"circleCiApi": {
+					"id": "59",
+					"name": "CircleCI creds"
+				}
+			},
+			"id": "eeb564f3-d08d-4fdb-8c7a-19937bcb2817"
+		}
+	],
+	"connections": {
+		"CircleCI": {
+			"main": [
+				[
+					{
+						"node": "CircleCI1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"CircleCI1": {
+			"main": [
+				[
+					{
+						"node": "CircleCI2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "CircleCI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

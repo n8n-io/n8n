@@ -15,7 +15,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import type { IUpdateInformation, NotificationOptions } from '@/Interface';
+import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
@@ -26,6 +26,7 @@ import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -33,6 +34,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -173,7 +175,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect);
+			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -305,7 +307,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
-	): Promise<boolean> {
+	): Promise<IWorkflowDb['id'] | null> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
@@ -346,6 +348,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			workflowsStore.addWorkflow(workflowData);
 
+			focusPanelStore.onNewWorkflowSave(workflowData.id);
+
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
@@ -353,7 +357,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
-				return true;
+				return workflowData.id;
 			}
 
 			// workflow should not be active if there is live webhook with the same path
@@ -411,7 +415,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			getCurrentWorkflow(true); // refresh cache
-			return true;
+			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
 
@@ -421,7 +425,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				type: 'error',
 			});
 
-			return false;
+			return null;
 		}
 	}
 

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
@@ -16,7 +17,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import { mockInstance } from '@test/mocking';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -225,6 +225,8 @@ describe('ActiveExecutions', () => {
 				metadata: {
 					nodeName: 'testNode',
 					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
 					timestamp: Date.now(),
 				},
 			};
@@ -242,6 +244,8 @@ describe('ActiveExecutions', () => {
 				metadata: {
 					nodeName: 'testNode',
 					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
 					timestamp: Date.now(),
 				},
 			};

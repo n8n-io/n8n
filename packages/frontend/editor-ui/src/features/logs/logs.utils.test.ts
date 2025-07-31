@@ -14,13 +14,11 @@ import {
 	getTreeNodeData,
 	mergeStartData,
 	restoreChatHistory,
+	processFiles,
+	extractBotResponse,
 } from './logs.utils';
-import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	NodeConnectionTypes,
-	type ExecutionError,
-	type ITaskStartedData,
-} from 'n8n-workflow';
+import { AGENT_LANGCHAIN_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import type { ExecutionError, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
 import {
 	aiAgentNode,
 	aiChatWorkflow,
@@ -79,15 +77,13 @@ describe(getTreeNodeData, () => {
 
 		expect(logTree.length).toBe(1);
 
-		expect(logTree[0].id).toBe('test-wf-id:A:test-execution-id:0');
-		expect(logTree[0].depth).toBe(0);
+		expect(logTree[0].id).toBe('test-wf-id:test-node-id-a:0');
 		expect(logTree[0].runIndex).toBe(0);
 		expect(logTree[0].parent).toBe(undefined);
 		expect(logTree[0].runData?.startTime).toBe(1740528000000);
 		expect(logTree[0].children.length).toBe(2);
 
-		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
-		expect(logTree[0].children[0].depth).toBe(1);
+		expect(logTree[0].children[0].id).toBe('test-wf-id:test-node-id-b:0:0');
 		expect(logTree[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].parent?.node.name).toBe('A');
 		expect(logTree[0].children[0].runData?.startTime).toBe(1740528000001);
@@ -95,23 +91,20 @@ describe(getTreeNodeData, () => {
 		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
 		expect(logTree[0].children[0].children.length).toBe(1);
 
-		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:C:test-execution-id:0');
-		expect(logTree[0].children[0].children[0].depth).toBe(2);
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:test-node-id-c:0:0:0');
 		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
 		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
 		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
 
-		expect(logTree[0].children[1].id).toBe('test-wf-id:B:test-execution-id:1');
-		expect(logTree[0].children[1].depth).toBe(1);
+		expect(logTree[0].children[1].id).toBe('test-wf-id:test-node-id-b:0:1');
 		expect(logTree[0].children[1].runIndex).toBe(1);
 		expect(logTree[0].children[1].parent?.node.name).toBe('A');
 		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
 		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
 		expect(logTree[0].children[1].children.length).toBe(1);
 
-		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:C:test-execution-id:1');
-		expect(logTree[0].children[1].children[0].depth).toBe(2);
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:test-node-id-c:0:1:1');
 		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
 		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
 		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
@@ -554,14 +547,15 @@ describe(getTreeNodeData, () => {
 });
 
 describe(findSelectedLogEntry, () => {
-	function find(state: LogEntrySelection, response: IExecutionResponse) {
+	function find(state: LogEntrySelection, response: IExecutionResponse, isExecuting: boolean) {
 		return findSelectedLogEntry(
 			state,
 			createLogTree(createTestWorkflowObject(response.workflowData), response),
+			isExecuting,
 		);
 	}
 
-	describe('when log is not manually selected', () => {
+	describe('when execution is finished and log is not manually selected', () => {
 		it('should return undefined if no execution data exists', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
@@ -574,7 +568,7 @@ describe(findSelectedLogEntry, () => {
 				data: { resultData: { runData: {} } },
 			});
 
-			expect(find({ type: 'initial' }, response)).toBe(undefined);
+			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
 		});
 
 		it('should return first log entry with error', () => {
@@ -589,19 +583,27 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -625,19 +627,27 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 3,
+								}),
+								createTestTaskData({
+									error: {} as ExecutionError,
+									executionStatus: 'error',
+									startTime: 4,
+								}),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
 			);
 		});
@@ -654,24 +664,55 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
+			expect(find({ type: 'initial' }, response, false)).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			);
 		});
 
-		it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+		it('should return first log entry with error when it appears after a log entry for AI agent', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
+							C: [
+								createTestTaskData({
+									executionStatus: 'success',
+									error: {} as ExecutionError,
+									startTime: 2,
+								}),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 0 }),
+			);
+		});
+
+		it('should return last log entry if there is no log entry with error nor executed AI agent node', () => {
 			const response = createTestWorkflowExecutionResponse({
 				workflowData: createTestWorkflow({
 					nodes: [
@@ -683,47 +724,97 @@ describe(findSelectedLogEntry, () => {
 				data: {
 					resultData: {
 						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ executionStatus: 'success' })],
+							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
+							B: [createTestTaskData({ executionStatus: 'success', startTime: 1 })],
 							C: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'success', startTime: 2 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 3 }),
+								createTestTaskData({ executionStatus: 'success', startTime: 4 }),
 							],
 						},
 					},
 				},
 			});
 
-			expect(find({ type: 'initial' }, response)).toEqual(
-				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			expect(find({ type: 'initial' }, response, false)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 2 }),
 			);
 		});
 	});
 
 	describe('when log is manually selected', () => {
-		it('should return manually selected log', () => {
-			const response = createTestWorkflowExecutionResponse({
-				id: 'my-exec-id',
-				workflowData: createTestWorkflow({
-					id: 'test-wf-id',
-					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
-				}),
-				data: {
-					resultData: {
-						runData: {
-							A: [createTestTaskData({ executionStatus: 'success' })],
-							B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
-						},
+		const nodeA = createTestNode({ name: 'A', id: 'a' });
+		const nodeB = createTestNode({ name: 'B', id: 'b' });
+		const workflowData = createTestWorkflow({
+			id: 'test-wf-id',
+			nodes: [nodeA, nodeB],
+		});
+		const response = createTestWorkflowExecutionResponse({
+			workflowData,
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+						],
+						B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
 					},
 				},
-			});
+			},
+		});
 
-			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
+		it('should return manually selected log', () => {
+			const result = find(
+				{ type: 'selected', entry: createTestLogEntry({ id: 'test-wf-id:a:0' }) },
+				response,
+				false,
+			);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			);
+		});
+
+		it('should return the log with same node and closest run index as selected if the exact run index is not found in logs', () => {
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				false,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 2 }),
+			);
+		});
+
+		it('should not fallback to the closest run index while executing', () => {
+			const result = find(
+				{
+					type: 'selected',
+					entry: createTestLogEntry({
+						id: 'test-wf-id:a:4',
+						executionId: response.id,
+						node: nodeA,
+						runIndex: 4,
+						workflow: createTestWorkflowObject(workflowData),
+					}),
+				},
+				response,
+				true,
+			);
+
+			expect(result).toBe(undefined);
 		});
 	});
 });
@@ -909,28 +1000,24 @@ describe(createLogTree, () => {
 		expect(logs).toHaveLength(2);
 
 		expect(logs[0].node.name).toBe('A');
-		expect(logs[0].depth).toBe(0);
 		expect(logs[0].workflow).toBe(workflow);
 		expect(logs[0].execution).toBe(rootExecutionData.data);
 		expect(logs[0].executionId).toBe('root-exec-id');
 		expect(logs[0].children).toHaveLength(0);
 
 		expect(logs[1].node.name).toBe('B');
-		expect(logs[1].depth).toBe(0);
 		expect(logs[1].workflow).toBe(workflow);
 		expect(logs[1].execution).toBe(rootExecutionData.data);
 		expect(logs[1].executionId).toBe('root-exec-id');
 		expect(logs[1].children).toHaveLength(2);
 
 		expect(logs[1].children[0].node.name).toBe('C');
-		expect(logs[1].children[0].depth).toBe(1);
 		expect(logs[1].children[0].workflow).toBe(subWorkflow);
 		expect(logs[1].children[0].execution).toBe(subExecutionData);
 		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[0].children).toHaveLength(0);
 
 		expect(logs[1].children[1].node.name).toBe('C');
-		expect(logs[1].children[1].depth).toBe(1);
 		expect(logs[1].children[1].workflow).toBe(subWorkflow);
 		expect(logs[1].children[1].execution).toBe(subExecutionData);
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
@@ -1080,6 +1167,115 @@ describe(createLogTree, () => {
 		expect(logs[0].runData).toBe(undefined);
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should process files correctly', async () => {
+		const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
+		const result = await processFiles([mockFile]);
+
+		expect(result).toEqual([
+			{
+				name: 'test.txt',
+				type: 'text/plain',
+				data: 'data:text/plain;base64,dGVzdCBjb250ZW50',
+			},
+		]);
+	});
+
+	it('should return an empty array if no files are provided', async () => {
+		expect(await processFiles(undefined)).toEqual([]);
+		expect(await processFiles([])).toEqual([]);
+	});
+});
+
+describe('extractBotResponse', () => {
+	it('should extract a successful bot response', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						data: {
+							main: [[{ json: { message: 'Test output' } }]],
+						},
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: 'Test output',
+			sender: 'bot',
+			id: executionId,
+		});
+	});
+
+	it('should extract an error bot response', () => {
+		const resultData: IRunExecutionData['resultData'] = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+						error: {
+							message: 'Test error',
+						} as unknown as ExecutionError,
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toEqual({
+			text: '[ERROR: Test error]',
+			sender: 'bot',
+			id: 'test-exec-id',
+		});
+	});
+
+	it('should return undefined if no response data is available', () => {
+		const resultData = {
+			lastNodeExecuted: 'nodeA',
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined if lastNodeExecuted is not available', () => {
+		const resultData = {
+			runData: {
+				nodeA: [
+					{
+						executionTime: 1,
+						startTime: 1,
+						executionIndex: 1,
+						source: [],
+					},
+				],
+			},
+		};
+		const executionId = 'test-exec-id';
+		const result = extractBotResponse(resultData, executionId);
+		expect(result).toBeUndefined();
 	});
 });
 

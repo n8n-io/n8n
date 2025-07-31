@@ -17,7 +17,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { isWorkflowIdValid } from '@/utils';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
@@ -45,7 +45,7 @@ class ModulesHooksRegistry {
 							runData,
 							newStaticData,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -58,7 +58,7 @@ class ModulesHooksRegistry {
 							nodeName,
 							taskData,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -72,7 +72,7 @@ class ModulesHooksRegistry {
 							taskData,
 							executionData,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -85,7 +85,7 @@ class ModulesHooksRegistry {
 							workflowInstance,
 							executionData,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
 					});
 					break;

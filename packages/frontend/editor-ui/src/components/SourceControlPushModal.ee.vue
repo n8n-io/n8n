@@ -3,15 +3,19 @@ import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
+import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ResourceType } from '@/utils/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
+import type { SourceControlledFile } from '@n8n/api-types';
 import {
-	type SourceControlledFile,
+	ROLE,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
@@ -19,6 +23,7 @@ import {
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -32,7 +37,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { refDebounced } from '@vueuse/core';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
@@ -40,7 +46,6 @@ import { useRoute } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
-import { type WorkflowResource } from '@/Interface';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -54,9 +59,23 @@ const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const telemetry = useTelemetry();
+const usersStore = useUsersStore();
+
+const projectAdminCalloutDismissed = useStorage(
+	'SOURCE_CONTROL_PROJECT_ADMIN_CALLOUT_DISMISSED',
+	false,
+	localStorage,
+);
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
+});
+
+const projectsForFilters = computed(() => {
+	return projectsStore.availableProjects.filter(
+		// global admins role is empty...
+		(project) => !project.role || project.role === 'project:admin',
+	);
 });
 
 const concatenateWithAnd = (messages: string[]) =>
@@ -172,11 +191,31 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) 
 
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
+const currentProject = computed(() => {
+	if (!route.params.projectId) {
+		return null;
+	}
+
+	const project = projectsStore.availableProjects.find(
+		(project) => project.id === route.params.projectId?.toString(),
+	);
+
+	if (!project) {
+		return null;
+	}
+
+	if (!project.role || project.role === 'project:admin') {
+		return project;
+	}
+
+	return null;
+});
+
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: null,
+	project: currentProject.value,
 });
 const filtersApplied = computed(
-	() => Boolean(search.value) || Boolean(Object.keys(filters.value).length),
+	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
 );
 const resetFilters = () => {
 	filters.value = { project: null };
@@ -242,6 +281,10 @@ const filteredCredentials = computed(() => {
 	return changes.value.credential.filter((credential) => {
 		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
+		}
+
+		if (credential.project && filters.value.project) {
+			return credential.project.id === filters.value.project.id;
 		}
 
 		return !(filters.value.status && filters.value.status !== credential.status);
@@ -417,16 +460,23 @@ const allVisibleItemsSelected = computed(() => {
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		const workflowsSet = new Set(sortedWorkflows.value.map(({ id }) => id));
+
+		if (!workflowsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = workflowsSet.difference(toRaw(activeSelection.value));
 
-		return !Boolean(notSelectedVisibleItems.size);
+		return !notSelectedVisibleItems.size;
 	}
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		const credentialsSet = new Set(sortedCredentials.value.map(({ id }) => id));
+		if (!credentialsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = credentialsSet.difference(toRaw(activeSelection.value));
 
-		return !Boolean(notSelectedVisibleItems.size);
+		return !notSelectedVisibleItems.size;
 	}
 
 	return false;
@@ -460,6 +510,14 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
+const activeEntityLocale = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return 'generic.workflows';
+	}
+
+	return 'generic.credentials';
+});
+
 const activeSelection = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return selectedWorkflows;
@@ -487,11 +545,11 @@ const tabs = computed(() => {
 	];
 });
 
-const filtersActiveText = computed(() => {
+const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return i18n.baseText('workflows.filters.active');
+		return i18n.baseText('workflows.noResults');
 	}
-	return i18n.baseText('credentials.filters.active');
+	return i18n.baseText('credentials.noResults');
 });
 
 function castType(type: string): ResourceType {
@@ -503,6 +561,19 @@ function castType(type: string): ResourceType {
 
 function castProject(project: ProjectListItem) {
 	return { homeProject: project } as unknown as WorkflowResource;
+}
+
+const workflowDiffEventBus = createEventBus();
+
+function openDiffModal(id: string) {
+	telemetry.track('User clicks compare workflows', {
+		workflow_id: id,
+		context: 'source_control_push',
+	});
+	uiStore.openModalWithData({
+		name: WORKFLOW_DIFF_MODAL_KEY,
+		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'push' },
+	});
 }
 </script>
 
@@ -519,7 +590,11 @@ function castProject(project: ProjectListItem) {
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
 
-			<div v-if="changes.workflow.length" :class="[$style.filtersRow]" class="mt-l">
+			<div
+				v-if="changes.workflow.length || changes.credential.length"
+				:class="[$style.filtersRow]"
+				class="mt-l"
+			>
 				<div :class="[$style.filters]">
 					<N8nInput
 						v-model="search"
@@ -535,7 +610,7 @@ function castProject(project: ProjectListItem) {
 					<N8nPopover trigger="click" width="304" style="align-self: normal">
 						<template #reference>
 							<N8nButton
-								icon="filter"
+								icon="funnel"
 								type="tertiary"
 								style="height: 100%"
 								:active="Boolean(filterCount)"
@@ -563,8 +638,7 @@ function castProject(project: ProjectListItem) {
 								:key="option.label"
 								data-test-id="source-control-status-filter-option"
 								v-bind="option"
-							>
-							</N8nOption>
+							/>
 						</N8nSelect>
 						<N8nInputLabel
 							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
@@ -576,7 +650,7 @@ function castProject(project: ProjectListItem) {
 						<ProjectSharing
 							v-model="filters.project"
 							data-test-id="source-control-push-modal-project-search"
-							:projects="projectsStore.availableProjects"
+							:projects="projectsForFilters"
 							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 						/>
@@ -588,6 +662,26 @@ function castProject(project: ProjectListItem) {
 					</N8nPopover>
 				</div>
 			</div>
+			<template v-if="usersStore.currentUser && usersStore.currentUser.role">
+				<template
+					v-if="
+						usersStore.currentUser.role !== ROLE.Owner && usersStore.currentUser.role !== ROLE.Admin
+					"
+				>
+					<N8nCallout v-if="!projectAdminCalloutDismissed" theme="secondary" class="mt-s">
+						{{ i18n.baseText('settings.sourceControl.modals.push.projectAdmin.callout') }}
+						<template #trailingContent>
+							<N8nIcon
+								icon="x"
+								title="Dismiss"
+								size="medium"
+								type="secondary"
+								@click="projectAdminCalloutDismissed = true"
+							/>
+						</template>
+					</N8nCallout>
+				</template>
+			</template>
 		</template>
 		<template #content>
 			<div style="display: flex; height: 100%">
@@ -601,8 +695,8 @@ function castProject(project: ProjectListItem) {
 						>
 							<div>{{ tab.label }}</div>
 							<N8nText tag="div" color="text-light">
-								{{ tab.selected }} / {{ tab.total }} selected</N8nText
-							>
+								{{ tab.selected }} / {{ tab.total }} selected
+							</N8nText>
 						</button>
 					</template>
 				</div>
@@ -614,18 +708,25 @@ function castProject(project: ProjectListItem) {
 								:indeterminate="selectAllIndeterminate"
 								:model-value="allVisibleItemsSelected"
 								data-test-id="source-control-push-modal-toggle-all"
+								:disabled="activeDataSourceFiltered.length === 0"
 								@update:model-value="onToggleSelectAll"
 							>
 								<N8nText> Title </N8nText>
 							</N8nCheckbox>
-						</div>
-						<div style="flex: 1; overflow: hidden">
 							<N8nInfoTip
-								v-if="filtersApplied && activeDataSource.length && !activeDataSourceFiltered.length"
+								v-if="filtersApplied"
 								class="p-xs"
 								:bold="false"
+								:class="$style.filtersApplied"
 							>
-								{{ filtersActiveText }}
+								{{
+									i18n.baseText('settings.sourceControl.modals.push.filter', {
+										interpolate: {
+											count: `${activeDataSourceFiltered.length} / ${activeDataSource.length}`,
+											entity: i18n.baseText(activeEntityLocale).toLowerCase(),
+										},
+									})
+								}}
 								<N8nLink
 									size="small"
 									data-test-id="source-control-filters-reset"
@@ -633,6 +734,11 @@ function castProject(project: ProjectListItem) {
 								>
 									{{ i18n.baseText('workflows.filters.active.reset') }}
 								</N8nLink>
+							</N8nInfoTip>
+						</div>
+						<div style="flex: 1; overflow: hidden">
+							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
+								{{ filtersNoResultText }}
 							</N8nInfoTip>
 							<DynamicScroller
 								v-if="activeDataSourceFiltered.length"
@@ -717,6 +823,14 @@ function castProject(project: ProjectListItem) {
 												<N8nBadge :theme="getStatusTheme(file.status)">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
+												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+													<N8nIconButton
+														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+														icon="git-branch"
+														type="secondary"
+														@click="openDiffModal(file.id)"
+													/>
+												</EnvFeatureFlag>
 											</span>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
@@ -733,8 +847,8 @@ function castProject(project: ProjectListItem) {
 				<N8nText bold size="medium">Changes to variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
-					<N8nText bold size="small">{{ title }}</N8nText>
-					<N8nText size="small">: {{ content }}. </N8nText>
+					<N8nText bold size="small"> {{ title }}</N8nText>
+					<N8nText size="small"> : {{ content }}. </N8nText>
 				</template>
 			</N8nNotice>
 
@@ -750,7 +864,7 @@ function castProject(project: ProjectListItem) {
 					:placeholder="
 						i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 					"
-					@keydown.enter="onCommitKeyDownEnter"
+					@keydown.enter.stop="onCommitKeyDownEnter"
 				/>
 				<N8nButton
 					data-test-id="source-control-push-modal-submit"
@@ -784,6 +898,11 @@ function castProject(project: ProjectListItem) {
 .selectAll {
 	flex-shrink: 0;
 	margin-bottom: 0;
+	padding: 10px 16px;
+}
+
+.filtersApplied {
+	border-top: var(--border-base);
 }
 
 .scroller {
@@ -863,7 +982,8 @@ function castProject(project: ProjectListItem) {
 
 .tableHeader {
 	border-bottom: var(--border-base);
-	padding: 10px 16px;
+	display: flex;
+	flex-direction: column;
 }
 
 .tabs {

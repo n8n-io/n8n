@@ -40,6 +40,7 @@ function onDelete() {
 			data-test-id="add-connection-button"
 			type="tertiary"
 			size="small"
+			icon-size="medium"
 			icon="plus"
 			:title="i18n.baseText('node.add')"
 			@click="onAdd"
@@ -49,7 +50,8 @@ function onDelete() {
 			class="canvas-edge-toolbar-button"
 			type="tertiary"
 			size="small"
-			icon="trash"
+			icon-size="medium"
+			icon="trash-2"
 			:title="i18n.baseText('node.delete')"
 			@click="onDelete"
 		/>
@@ -64,6 +66,7 @@ function onDelete() {
 	gap: var(--spacing-2xs);
 	pointer-events: all;
 	padding: var(--spacing-2xs);
+	transform: scale(var(--canvas-zoom-compensation-factor, 1));
 }
 </style>
 

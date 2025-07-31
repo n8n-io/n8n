@@ -72,6 +72,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 
@@ -121,6 +122,7 @@ export class JobProcessor {
 			undefined,
 			executionTimeoutTimestamp,
 		);
+		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;
 
@@ -168,6 +170,11 @@ export class JobProcessor {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
 				`Queued worker execution status for execution ${executionId} (job ${job.id}) is "${status}"`,
+				{
+					executionId,
+					workflowId,
+					jobId: job.id,
+				},
 			);
 		};
 
@@ -241,6 +248,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 

@@ -14,6 +14,7 @@ import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -164,7 +165,7 @@ const openCommunityRegisterModal = () => {
 		}}</n8n-heading>
 		<div v-if="!usageStore.isLoading">
 			<n8n-heading tag="h3" :class="$style.title" size="large">
-				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
+				<I18nT keypath="settings.usageAndPlan.description" tag="span" scope="global">
 					<template #name>{{ badgedPlanName.name ?? usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -172,15 +173,16 @@ const openCommunityRegisterModal = () => {
 						}}</span>
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
-				</i18n-t>
+				</I18nT>
 				<span v-if="badgedPlanName.badge && badgedPlanName.name" :class="$style.titleTooltip">
 					<N8nTooltip placement="top">
 						<template #content>
-							<i18n-t
+							<I18nT
 								v-if="isCommunityEditionRegistered"
 								keypath="settings.usageAndPlan.license.communityRegistered.tooltip"
+								scope="global"
 							>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<N8nBadge>{{ badgedPlanName.badge }}</N8nBadge>
 					</N8nTooltip>
@@ -188,7 +190,7 @@ const openCommunityRegisterModal = () => {
 			</n8n-heading>
 
 			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
-				<i18n-t keypath="settings.usageAndPlan.callOut">
+				<I18nT keypath="settings.usageAndPlan.callOut" scope="global">
 					<template #link>
 						<N8nButton
 							class="pl-0 pr-0"
@@ -197,7 +199,7 @@ const openCommunityRegisterModal = () => {
 							@click="openCommunityRegisterModal"
 						/>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nNotice>
 
 			<div :class="$style.quota">
@@ -211,10 +213,11 @@ const openCommunityRegisterModal = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n-t
+					<I18nT
 						tag="span"
 						:class="$style.count"
 						keypath="settings.usageAndPlan.activeWorkflows.count"
+						scope="global"
 					>
 						<template #count>{{ usageStore.activeWorkflowTriggersCount }}</template>
 						<template #limit>
@@ -223,7 +226,7 @@ const openCommunityRegisterModal = () => {
 							}}</span>
 							<span v-else>{{ usageStore.activeWorkflowTriggersLimit }}</span>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
 			</div>
 

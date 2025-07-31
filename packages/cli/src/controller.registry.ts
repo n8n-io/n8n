@@ -1,6 +1,7 @@
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -15,7 +16,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
@@ -57,7 +57,7 @@ export class ControllerRegistry {
 				controller,
 				handlerName,
 			) as unknown[];
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
 				for (let index = 0; index < route.args.length; index++) {
@@ -83,11 +83,11 @@ export class ControllerRegistry {
 				...(inProduction && route.rateLimit
 					? [this.createRateLimitMiddleware(route.rateLimit)]
 					: []),
-				// eslint-disable-next-line @typescript-eslint/unbound-method
+
 				...(route.skipAuth
 					? []
 					: ([
-							this.authService.authMiddleware.bind(this.authService),
+							this.authService.createAuthMiddleware(route.allowSkipMFA),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),

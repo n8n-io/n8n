@@ -13,6 +13,104 @@
         "properties": {
             "type": "object",
             "properties": {
+                "amount": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "createdate": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "dealname": {
                     "type": "object",
                     "properties": {
@@ -42,11 +140,17 @@
                                     "sourceId": {
                                         "type": "string"
                                     },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
                                     "timestamp": {
                                         "type": "integer"
                                     },
                                     "updatedByUserId": {
                                         "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
                                     },
                                     "value": {
                                         "type": "string"
@@ -60,9 +164,6 @@
                     "type": "object",
                     "properties": {
                         "source": {
-                            "type": "string"
-                        },
-                        "sourceId": {
                             "type": "string"
                         },
                         "timestamp": {
@@ -88,6 +189,64 @@
                                     "sourceId": {
                                         "type": "string"
                                     },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hubspot_owner_id": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
                                     "timestamp": {
                                         "type": "integer"
                                     },
@@ -106,21 +265,7 @@
                     }
                 }
             }
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                }
-            }
         }
     },
-    "version": 4
+    "version": 5
 }

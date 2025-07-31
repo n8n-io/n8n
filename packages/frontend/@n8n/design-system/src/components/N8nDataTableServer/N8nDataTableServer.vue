@@ -14,6 +14,11 @@ export type TableHeader<T> = {
 	| { key: string; value: AccessorFn<T> }
 );
 export type TableSortBy = SortingState;
+export type TableOptions = {
+	page: number;
+	itemsPerPage: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+};
 </script>
 
 <script setup lang="ts" generic="T extends Record<string, any>">
@@ -32,6 +37,7 @@ import type {
 	Updater,
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
+import { useThrottleFn } from '@vueuse/core';
 import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
@@ -68,17 +74,12 @@ const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
+	cover?: () => void;
 }>();
 
 const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'update:options': [
-		payload: {
-			page: number;
-			itemsPerPage: number;
-			sortBy: Array<{ id: string; desc: boolean }>;
-		},
-	];
+	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'click:row': [event: MouseEvent, payload: { item: T }];
 }>();
@@ -205,10 +206,7 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => {
-	page.value = 0;
-	table.setPageSize(itemsPerPage.value);
-});
+watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
 
 const pagination = computed<PaginationState>({
 	get() {
@@ -314,6 +312,20 @@ const rowSelection = ref(
 	}, {}),
 );
 
+const emitUpdateOptions = useThrottleFn(
+	(payload: TableOptions) => emit('update:options', payload),
+	100,
+);
+
+function handlePageSizeChange(newPageSize: number) {
+	// Calculate the maximum available page (0-based indexing)
+	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
+	const newPage = Math.min(page.value, maxPage);
+
+	page.value = newPage;
+	itemsPerPage.value = newPageSize;
+}
+
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
@@ -335,12 +347,13 @@ const table = useVueTable({
 	getCoreRowModel: getCoreRowModel(),
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
-		pagination.value =
+		const newValue =
 			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
 
-		emit('update:options', {
-			page: page.value,
-			itemsPerPage: itemsPerPage.value,
+		// prevent duplicate events from being fired
+		void emitUpdateOptions({
+			page: newValue.pageIndex,
+			itemsPerPage: newValue.pageSize,
 			sortBy: sortBy.value,
 		});
 	},
@@ -421,6 +434,13 @@ const table = useVueTable({
 						</tr>
 					</thead>
 					<tbody>
+						<template v-if="slots.cover">
+							<tr>
+								<td class="cover" :colspan="table.getVisibleFlatColumns().length">
+									<slot name="cover" />
+								</td>
+							</tr>
+						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
 							<tr v-for="item in itemsPerPage" :key="item">
 								<td
@@ -475,6 +495,7 @@ const table = useVueTable({
 					class="table-pagination__sizes__select"
 					size="small"
 					:teleported="false"
+					@update:model-value="handlePageSizeChange"
 				>
 					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
 				</ElSelect>
@@ -553,6 +574,14 @@ const table = useVueTable({
 		}
 		&:last-child {
 			padding-right: 16px;
+		}
+
+		&.cover {
+			width: 0;
+			height: 0;
+			padding: 0;
+			border: 0;
+			overflow: visible;
 		}
 	}
 }

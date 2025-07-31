@@ -1,5 +1,6 @@
 import type { GlobalRole, Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
+import type express from 'express';
 import type {
 	ICredentialsEncrypted,
 	IRunExecutionData,
@@ -113,6 +114,7 @@ export interface PublicUser {
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
+	mfaAuthenticated?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -290,7 +292,6 @@ export type TestRunErrorCode =
 	| 'EVALUATION_TRIGGER_NOT_FOUND'
 	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
 	| 'EVALUATION_TRIGGER_DISABLED'
-	| 'SET_OUTPUTS_NODE_NOT_FOUND'
 	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
 	| 'SET_METRICS_NODE_NOT_FOUND'
 	| 'SET_METRICS_NODE_NOT_CONFIGURED'
@@ -355,4 +356,31 @@ export type WorkflowFolderUnionFull = (
 	| FolderWithWorkflowAndSubFolderCount
 ) & {
 	resource: ResourceType;
+};
+
+export type APIRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
+
+export type AuthenticationInformation = {
+	usedMfa: boolean;
+};
+
+export type AuthenticatedRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
+	user: User;
+	authInfo?: AuthenticationInformation;
+	cookies: Record<string, string | undefined>;
+	headers: express.Request['headers'] & {
+		'push-ref': string;
+	};
 };

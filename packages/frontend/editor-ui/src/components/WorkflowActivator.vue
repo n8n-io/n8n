@@ -143,7 +143,7 @@ async function activeChanged(newActiveState: boolean) {
 			uiStore.openModalWithData({
 				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 				data: {
-					triggerName: trigger.name,
+					triggerType: trigger.type,
 					workflowName: conflictingWorkflow.name,
 					...conflict,
 				},
@@ -262,7 +262,7 @@ watch(
 						@click="displayActivationError"
 					></div>
 				</template>
-				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
+				<n8n-icon icon="triangle-alert" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>

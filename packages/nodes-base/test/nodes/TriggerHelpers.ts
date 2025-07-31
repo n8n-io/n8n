@@ -24,6 +24,17 @@ import {
 	type Workflow,
 } from 'n8n-workflow';
 
+const logger = mock({
+	scoped: jest.fn().mockReturnValue(
+		mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
+	),
+});
+
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
 
 type TestTriggerNodeOptions = {
@@ -70,7 +81,11 @@ export async function testTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
@@ -130,7 +145,11 @@ export async function testWebhookTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>

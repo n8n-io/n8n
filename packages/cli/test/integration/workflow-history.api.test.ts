@@ -1,9 +1,8 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 

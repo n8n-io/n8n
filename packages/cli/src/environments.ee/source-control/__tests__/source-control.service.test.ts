@@ -1,10 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import type { Variables } from '@n8n/db';
-import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
-import type { TagEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { TagRepository } from '@n8n/db';
+import type {
+	Variables,
+	FolderWithWorkflowAndSubFolderCount,
+	TagEntity,
+	User,
+	FolderRepository,
+	TagRepository,
+	WorkflowEntity,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -13,7 +16,9 @@ import { SourceControlPreferencesService } from '@/environments.ee/source-contro
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
+import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
@@ -26,14 +31,17 @@ describe('SourceControlService', () => {
 		mock(),
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const tagRepository = mock<TagRepository>();
 	const folderRepository = mock<FolderRepository>();
+	const gitService = mock<SourceControlGitService>();
 	const sourceControlService = new SourceControlService(
 		mock(),
-		mock(),
+		gitService,
 		preferencesService,
 		mock(),
 		sourceControlImportService,
+		sourceControlScopedService,
 		tagRepository,
 		folderRepository,
 		mock(),
@@ -139,6 +147,119 @@ describe('SourceControlService', () => {
 	});
 
 	describe('getStatus', () => {
+		it('ensure updatedAt field for last deleted tag', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:admin';
+
+			sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
+			sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+
+			tagRepository.find.mockResolvedValue([]);
+
+			// Define a tag that does only exist remotely.
+			// Pushing this means it was deleted.
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [
+					{
+						id: 'tag-id',
+						name: 'some name',
+					} as TagEntity,
+				],
+				mappings: [],
+			});
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+
+			folderRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [],
+			});
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+
+			if (!Array.isArray(pushResult)) {
+				fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'tags')?.updatedAt).toBeDefined();
+		});
+
+		it('ensure updatedAt field for last deleted folder', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:admin';
+
+			sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([]);
+			sourceControlImportService.getRemoteVariablesFromFile.mockResolvedValue([]);
+			sourceControlImportService.getLocalVariablesFromDb.mockResolvedValue([]);
+
+			tagRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [],
+				mappings: [],
+			});
+
+			// Define a folder that does only exist remotely.
+			// Pushing this means it was deleted.
+			folderRepository.find.mockResolvedValue([]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [
+					{
+						id: 'test-folder',
+						name: 'test folder name',
+						homeProjectId: 'some-id',
+						parentFolderId: null,
+						createdAt: '',
+						updatedAt: '',
+					},
+				],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [],
+			});
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+
+			if (!Array.isArray(pushResult)) {
+				fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'folders')?.updatedAt).toBeDefined();
+		});
+
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
 			const user = mock<User>();
@@ -258,6 +379,67 @@ describe('SourceControlService', () => {
 					preferLocalVersion: false,
 				}),
 			).rejects.toThrowError(ForbiddenError);
+		});
+	});
+
+	describe('getFileContent', () => {
+		it.each([{ type: 'workflow' as SourceControlledFile['type'], id: '1234', content: '{}' }])(
+			'should return file content for $type',
+			async ({ type, id, content }) => {
+				jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
+				const user = mock<User>({ id: 'user-id', role: 'global:admin' });
+
+				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
+
+				expect(result).toEqual(JSON.parse(content));
+			},
+		);
+
+		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
+			'should throw an error if the file type is not handled',
+			async (type) => {
+				const user = mock<User>({ id: 'user-id', role: 'global:admin' });
+				await expect(
+					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
+				).rejects.toThrow(`Unsupported file type: ${type}`);
+			},
+		);
+
+		it('should fail if the git service fails to get the file content', async () => {
+			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
+			const user = mock<User>({ id: 'user-id', role: 'global:admin' });
+
+			await expect(
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
+			).rejects.toThrow('Git service error');
+		});
+
+		it('should throw an error if the user does not have access to the project', async () => {
+			const user = mock<User>({
+				id: 'user-id',
+				role: 'global:member',
+			});
+			jest
+				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
+				.mockResolvedValue([]);
+
+			await expect(
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
+			).rejects.toThrow('You are not allowed to access workflow with id 1234');
+		});
+
+		it('should return content for an authorized workflow', async () => {
+			const user = mock<User>({ id: 'user-id', role: 'global:member' });
+			jest
+				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
+				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
+			jest.spyOn(gitService, 'getFileContent').mockResolvedValue('{}');
+			const result = await sourceControlService.getRemoteFileEntity({
+				user,
+				type: 'workflow',
+				id: '1234',
+			});
+			expect(result).toEqual({});
 		});
 	});
 });

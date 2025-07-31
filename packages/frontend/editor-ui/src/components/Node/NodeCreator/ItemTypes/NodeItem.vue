@@ -212,7 +212,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="cube" />
+				<n8n-icon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>
@@ -232,6 +232,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 .nodeItem {
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--canvas-node-icon-color: var(--color-foreground-xdark);
 	margin-left: 15px;
 	margin-right: 12px;
 	user-select: none;

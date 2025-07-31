@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';

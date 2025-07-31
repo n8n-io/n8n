@@ -24,12 +24,20 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
+
+import type { VueScanOptions } from 'z-vue-scan';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
 app.use(SentryPlugin);
+
+// Register module routes
+// We do this here so landing straight on a module page works
+registerModuleRoutes(router);
+
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(FontAwesomePlugin);
@@ -39,6 +47,13 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+if (import.meta.env.VUE_SCAN) {
+	const { default: VueScan } = await import('z-vue-scan');
+	app.use<VueScanOptions>(VueScan, {
+		enable: true,
+	});
+}
 
 app.mount('#app');
 
