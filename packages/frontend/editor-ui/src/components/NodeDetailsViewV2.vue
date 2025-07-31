@@ -25,7 +25,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
-	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
@@ -35,7 +34,6 @@ import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
@@ -77,7 +75,6 @@ const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -309,25 +306,9 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
-const foreignCredentials = computed(() => {
-	const credentials = activeNode.value?.credentials;
-	const usedCredentials = workflowsStore.usedCredentials;
-
-	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-		Object.values(credentials).forEach((credential) => {
-			if (
-				credential.id &&
-				usedCredentials[credential.id] &&
-				!usedCredentials[credential.id].currentUserHasAccess
-			) {
-				foreignCredentialsArray.push(credential.id);
-			}
-		});
-	}
-
-	return foreignCredentialsArray;
-});
+const foreignCredentials = computed(() =>
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+);
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
