@@ -196,7 +196,7 @@ const classes = computed(() => ({
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
-const isInPanningMode = ref(isMobileDevice);
+const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
 	selectionKeyCode.value = null;
