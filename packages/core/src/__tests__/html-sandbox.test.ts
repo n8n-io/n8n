@@ -362,4 +362,14 @@ describe('sandboxHtmlResponse > sandboxing disabled', () => {
 		const data = true;
 		expect(sandboxHtmlResponse(data)).toEqual(data);
 	});
+
+	it('should return unchanged text data', () => {
+		const data = 'string data';
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+
+	it('should return unchanged html data', () => {
+		const data = '<p>html data</p>';
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
 });
