@@ -4,9 +4,9 @@
 @use '../common/var';
 @use 'config';
 
-// Global variables to avoid new-global warnings
-$B: null !global;
-$E: null !global;
+// Module-level variables for BEM mixins
+$B: null;
+$E: null;
 
 /* Break-points
  -------------------------- */
@@ -75,7 +75,7 @@ $E: null !global;
 /* BEM
  -------------------------- */
 @mixin b($block) {
-	$B: config.$namespace + '-' + $block !global;
+	$B: config.$namespace + '-' + $block;
 
 	.#{$B} {
 		@content;
@@ -83,7 +83,7 @@ $E: null !global;
 }
 
 @mixin e($element) {
-	$E: $element !global;
+	$E: $element;
 	$selector: &;
 	$currentSelector: '';
 	@each $unit in $element {
