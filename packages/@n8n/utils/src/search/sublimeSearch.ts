@@ -203,7 +203,7 @@ function fuzzyMatch(pattern: string, target: string): { matched: boolean; outSco
 // prop = 'key1.key2'
 // prop = ['key1', 'key2']
 function getValue<T extends object>(obj: T, prop: string): unknown {
-	if (obj.hasOwnProperty(prop)) {
+	if (Object.prototype.hasOwnProperty.call(obj, prop)) {
 		return obj[prop as keyof T];
 	}
 

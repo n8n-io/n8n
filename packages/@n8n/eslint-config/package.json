@@ -16,6 +16,10 @@
       "types": "./dist/configs/node.d.js",
       "default": "./dist/configs/node.js"
     },
+    "./strict": {
+      "default": "./dist/configs/strict.js",
+      "types": "./dist/configs/strict.d.js"
+    },
     "./plugin": {
       "types": "./dist/plugin.d.js",
       "default": "./dist/plugin.js"

@@ -20,3 +20,10 @@ pre-commit:
       skip:
         - merge
         - rebase
+    eslint_check:
+      glob: 'packages/**/*.{js,ts,vue}'
+      run: pnpm eslint --fix --max-warnings 10 {staged_files}
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase

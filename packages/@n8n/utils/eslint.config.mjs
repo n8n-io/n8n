@@ -3,8 +3,8 @@ import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(nodeConfig, {
 	rules: {
-		// TODO: Remove this
-		'no-prototype-builtins': 'warn',
-		'@typescript-eslint/require-await': 'warn',
+		// Upgraded from warn to error - demonstrating strict rule approach
+		'no-prototype-builtins': 'error',
+		'@typescript-eslint/require-await': 'error',
 	},
 });
