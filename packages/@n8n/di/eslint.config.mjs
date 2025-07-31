@@ -9,6 +9,7 @@ export default tseslint.config(
 	globalIgnores([
 		'node_modules/**',
 		'dist/**',
+		'coverage/**', // Ignore Jest coverage files
 		'eslint.config.mjs',
 		'jest.config.js', // Ignore Jest config file
 	]),

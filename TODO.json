@@ -27,7 +27,7 @@
       "description": "Resolve 5 ESLint errors in n8n-core including jest.config.cjs parsing issues and unsafe any usage",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All ESLint errors in n8n-core package resolved",
         "jest.config.cjs properly configured for ESLint",
@@ -46,7 +46,7 @@
       "description": "Investigate and resolve test failures in @n8n/di package to restore test suite functionality",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All tests in @n8n/di package pass successfully",
         "Test suite runs without errors",
@@ -1103,8 +1103,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 50,
-  "last_hook_activation": 1753957283432,
+  "execution_count": 53,
+  "last_hook_activation": 1753977689478,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 24

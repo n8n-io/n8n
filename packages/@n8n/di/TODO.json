@@ -1,0 +1,32 @@
+{
+	"tasks": [
+		{
+			"id": "linter_task_active",
+			"title": "Fix Linter Errors - IMMEDIATE",
+			"description": "Fix 0 errors and 7 warnings found in recently edited files: eslint.config.mjs",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"important_files": ["development/linter-errors.md", "eslint.config.mjs"],
+			"success_criteria": [
+				"All linter errors in edited files resolved",
+				"development/linter-errors.md shows no issues for edited files",
+				"Code passes linting without warnings or errors"
+			],
+			"created_at": "2025-07-31T16:03:05.144Z",
+			"is_linter_task": true,
+			"linter_summary": {
+				"total_violations": 7,
+				"errors": 0,
+				"warnings": 7,
+				"files_affected": 1
+			}
+		}
+	],
+	"__removedLinterTasks": {
+		"removedCount": 0,
+		"finalTaskCount": 0
+	},
+	"execution_count": 1,
+	"last_hook_activation": 1753977785144
+}

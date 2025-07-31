@@ -1,6 +1,5 @@
-// eslint-disable-next-line import-x/no-cycle
-import { ServiceB } from './service-b';
 import { Service } from '../../di';
+import { ServiceB } from './service-b';
 
 @Service()
 export class ServiceA {
