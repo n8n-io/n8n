@@ -59,24 +59,20 @@ import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNode
 
 const props = withDefaults(
 	defineProps<{
-		eventBus: EventBus;
+		eventBus?: EventBus;
 		dragging: boolean;
 		pushRef: string;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
 		executable: boolean;
-		inputSize: number;
+		inputSize?: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		subTitle?: string;
 	}>(),
 	{
-		foreignCredentials: () => [],
-		readOnly: false,
-		executable: true,
 		inputSize: 0,
-		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
