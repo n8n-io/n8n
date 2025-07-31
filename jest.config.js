@@ -50,6 +50,14 @@ const config = {
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
+	coverageThreshold: isCoverageEnabled ? {
+		global: {
+			branches: 80,
+			functions: 80,
+			lines: 80,
+			statements: 80,
+		},
+	} : undefined,
 	workerIdleMemoryLimit: '1MB',
 };
 
