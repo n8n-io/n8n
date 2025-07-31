@@ -87,6 +87,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
+		:disable-settings-hint="true"
 		:display-mode="displayMode"
 		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"

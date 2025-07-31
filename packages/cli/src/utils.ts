@@ -89,6 +89,6 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&
-		!nodeType.methods
+		(!nodeType.methods || isDeclarativeNode)
 	);
 };

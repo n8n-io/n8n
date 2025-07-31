@@ -105,6 +105,7 @@ describe('AskAssistantBuild', () => {
 		builderStore.workflowMessages = [];
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
+		builderStore.trackingSessionId = 'app_session_id';
 
 		workflowsStore.workflowId = 'abc123';
 	});
@@ -187,6 +188,7 @@ describe('AskAssistantBuild', () => {
 				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
 					helpful: true,
 					workflow_id: 'abc123',
+					session_id: 'app_session_id',
 				});
 			});
 
@@ -203,6 +205,7 @@ describe('AskAssistantBuild', () => {
 
 				expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
 					helpful: false,
+					session_id: 'app_session_id',
 					workflow_id: 'abc123',
 				});
 			});

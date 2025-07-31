@@ -59,6 +59,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
+	const trackingSessionId = computed(() => rootStore.pushRef);
+
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
 			(msg) => msg.role === 'user' && msg.type === 'text',
@@ -173,6 +175,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		telemetry.track('Workflow generation errored', {
 			error: e.message,
+			session_id: trackingSessionId.value,
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
@@ -228,6 +231,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('User submitted builder message', {
 			source,
 			message: text,
+			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 		});
@@ -388,6 +392,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowPrompt,
 		toolMessages,
 		workflowMessages,
+		trackingSessionId,
 
 		// Methods
 		updateWindowWidth,
