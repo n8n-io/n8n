@@ -16,17 +16,15 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 vi.mock('@/composables/useImportCurlCommand', () => ({
-	useImportCurlCommand: vi.fn(
-		(options: {
-			onImportSuccess: () => void;
-			onAfterImport: () => void;
-		}) => ({
-			importCurlCommand: () => {
-				options.onImportSuccess();
-				options.onAfterImport();
-			},
-		}),
-	),
+	useImportCurlCommand: (options: {
+		onImportSuccess: () => void;
+		onAfterImport: () => void;
+	}) => ({
+		importCurlCommand: () => {
+			options.onImportSuccess();
+			options.onAfterImport();
+		},
+	}),
 }));
 
 const renderModal = createComponentRenderer(ImportCurlModal, {
