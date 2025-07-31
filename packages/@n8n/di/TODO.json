@@ -1,6 +1,49 @@
 {
 	"tasks": [
 		{
+			"id": "fix-typescript-build-errors-1753996515662",
+			"title": "Fix TypeScript Build Errors in CLI Package",
+			"description": "Resolve critical TypeScript compilation errors in workflows.controller.ts preventing successful build",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"All TypeScript compilation errors in workflows.controller.ts resolved",
+				"n8n CLI package builds successfully without errors",
+				"Full monorepo build completes for all 42 packages",
+				"No regression in existing workflow functionality"
+			],
+			"important_files": [
+				"packages/cli/src/workflows/workflows.controller.ts",
+				"packages/workflow/src/Interfaces.ts"
+			],
+			"addresses_strike": "strike1",
+			"is_quality_improvement": true,
+			"created_at": "2025-07-31T21:15:15.662Z"
+		},
+		{
+			"id": "fix-test-failures-coverage-1753996515662",
+			"title": "Fix Test Failures and Coverage Issues",
+			"description": "Resolve failing tests and improve coverage to meet quality standards across monorepo",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"All failing test suites fixed and passing",
+				"Test coverage meets minimum 95% requirement",
+				"Coverage check passes in CI/CD pipeline",
+				"No test dependency or compilation failures"
+			],
+			"important_files": [
+				"packages/**/test/**/*.test.ts",
+				"jest.config.cjs",
+				"packages/**/package.json"
+			],
+			"addresses_strike": "strike3",
+			"is_quality_improvement": true,
+			"created_at": "2025-07-31T21:15:15.662Z"
+		},
+		{
 			"id": "fix-decorator-compilation-1753991738823",
 			"title": "Fix TypeScript Decorator Compilation Errors in @n8n/api-types",
 			"description": "Resolve TS1240 errors in execution-profile.dto.ts preventing successful build compilation",
