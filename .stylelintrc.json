@@ -1,0 +1,3 @@
+{
+  "extends": "@n8n/stylelint-config/selective-import-check"
+}
