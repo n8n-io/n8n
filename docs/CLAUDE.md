@@ -33,6 +33,10 @@ This document defines the principles and standards for maintaining technical arc
 - **Up-to-date** - Documentation must reflect the current state of the codebase
 - **No speculation** - Never guess or make assumptions about implementation details
 
+### AI-generated content disclaimer
+- **Add a notice** at the top of AI-generated documents indicating they were created by AI:
+	> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+
 ## Information Gathering Methodology
 
 ### Primary Sources (in order of priority)
