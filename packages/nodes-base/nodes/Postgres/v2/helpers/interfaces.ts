@@ -28,6 +28,7 @@ export type EnumInfo = {
 export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
 export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;
 export type PgpConnectionParameters = pg.IConnectionParameters<pg.IClient>;
+export type PgpSSLConfig = pg.ISSLConfig;
 export type PgpConnection = pgPromise.IConnected<{}, pg.IClient>;
 export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
@@ -59,11 +60,23 @@ export type PostgresNodeCredentials = {
 	user: string;
 	password: string;
 	maxConnections: number;
-	allowUnauthorizedCerts?: boolean;
-	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
 } & (
-	| { sshTunnel: false }
+	| { ssl?: 'disable' }
 	| ({
-			sshTunnel: true;
-	  } & SSHCredentials)
-);
+			ssl: 'require';
+	  } & PostgresNodeSSLOptions)
+) &
+	(
+		| { sshTunnel: false }
+		| ({
+				sshTunnel: true;
+		  } & SSHCredentials)
+	);
+
+export type PostgresNodeSSLOptions = {
+	allowUnauthorizedCerts?: boolean;
+	servername?: string;
+	caCert?: string;
+	clientCert?: string;
+	clientKey?: string;
+};
