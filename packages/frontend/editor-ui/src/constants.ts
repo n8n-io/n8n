@@ -945,6 +945,9 @@ export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window
 export const ExpressionLocalResolveContextSymbol = Symbol(
 	'ExpressionLocalResolveContext',
 ) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
+export const IsInExperimentalEmbeddedNdvKey = Symbol(
+	'IsInExperimentalEmbeddedNdv',
+) as InjectionKey<boolean>;
 
 /** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
