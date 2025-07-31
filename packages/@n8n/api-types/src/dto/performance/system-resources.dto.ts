@@ -1,145 +1,66 @@
-import {
-	IsString,
-	IsNumber,
-	IsOptional,
-	IsArray,
-	ValidateNested,
-	IsDateString,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { z } from 'zod';
+import { Z } from 'zod-class';
 
-export class CpuMetricsDto {
-	@IsNumber()
-	usage: number;
+export class CpuMetricsDto extends Z.class({
+	usage: z.number(),
+	cores: z.number(),
+	load: z.tuple([z.number(), z.number(), z.number()]),
+}) {}
 
-	@IsNumber()
-	cores: number;
+export class MemoryMetricsDto extends Z.class({
+	total: z.number(),
+	used: z.number(),
+	free: z.number(),
+	usagePercent: z.number(),
+}) {}
 
-	@IsArray()
-	@IsNumber({ allowNaN: false }, { each: true })
-	load: [number, number, number];
-}
+export class DiskMetricsDto extends Z.class({
+	total: z.number(),
+	used: z.number(),
+	free: z.number(),
+	usagePercent: z.number(),
+}) {}
 
-export class MemoryMetricsDto {
-	@IsNumber()
-	total: number;
+export class SystemMetricsDto extends Z.class({
+	cpu: z.instanceof(CpuMetricsDto),
+	memory: z.instanceof(MemoryMetricsDto),
+	disk: z.instanceof(DiskMetricsDto),
+}) {}
 
-	@IsNumber()
-	used: number;
+export class ProcessMetricsDto extends Z.class({
+	pid: z.number(),
+	memory: z.number(),
+	cpu: z.number(),
+	uptime: z.number(),
+}) {}
 
-	@IsNumber()
-	free: number;
+export class WorkerProcessDto extends Z.class({
+	pid: z.number(),
+	memory: z.number(),
+	cpu: z.number(),
+	type: z.enum(['worker', 'task-runner']),
+}) {}
 
-	@IsNumber()
-	usagePercent: number;
-}
+export class ProcessesDto extends Z.class({
+	main: z.instanceof(ProcessMetricsDto),
+	workers: z.array(z.instanceof(WorkerProcessDto)).optional(),
+}) {}
 
-export class DiskMetricsDto {
-	@IsNumber()
-	total: number;
+export class QueueMetricsDto extends Z.class({
+	waiting: z.number(),
+	active: z.number(),
+	completed: z.number(),
+	failed: z.number(),
+}) {}
 
-	@IsNumber()
-	used: number;
+export class SystemResourcesDto extends Z.class({
+	timestamp: z.string().datetime(),
+	system: z.instanceof(SystemMetricsDto),
+	processes: z.instanceof(ProcessesDto),
+	queue: z.instanceof(QueueMetricsDto).optional(),
+}) {}
 
-	@IsNumber()
-	free: number;
-
-	@IsNumber()
-	usagePercent: number;
-}
-
-export class SystemMetricsDto {
-	@ValidateNested()
-	@Type(() => CpuMetricsDto)
-	cpu: CpuMetricsDto;
-
-	@ValidateNested()
-	@Type(() => MemoryMetricsDto)
-	memory: MemoryMetricsDto;
-
-	@ValidateNested()
-	@Type(() => DiskMetricsDto)
-	disk: DiskMetricsDto;
-}
-
-export class ProcessMetricsDto {
-	@IsNumber()
-	pid: number;
-
-	@IsNumber()
-	memory: number;
-
-	@IsNumber()
-	cpu: number;
-
-	@IsNumber()
-	uptime: number;
-}
-
-export class WorkerProcessDto {
-	@IsNumber()
-	pid: number;
-
-	@IsNumber()
-	memory: number;
-
-	@IsNumber()
-	cpu: number;
-
-	@IsString()
-	type: 'worker' | 'task-runner';
-}
-
-export class ProcessesDto {
-	@ValidateNested()
-	@Type(() => ProcessMetricsDto)
-	main: ProcessMetricsDto;
-
-	@IsOptional()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => WorkerProcessDto)
-	workers?: WorkerProcessDto[];
-}
-
-export class QueueMetricsDto {
-	@IsNumber()
-	waiting: number;
-
-	@IsNumber()
-	active: number;
-
-	@IsNumber()
-	completed: number;
-
-	@IsNumber()
-	failed: number;
-}
-
-export class SystemResourcesDto {
-	@IsDateString()
-	timestamp: string;
-
-	@ValidateNested()
-	@Type(() => SystemMetricsDto)
-	system: SystemMetricsDto;
-
-	@ValidateNested()
-	@Type(() => ProcessesDto)
-	processes: ProcessesDto;
-
-	@IsOptional()
-	@ValidateNested()
-	@Type(() => QueueMetricsDto)
-	queue?: QueueMetricsDto;
-}
-
-export class SystemResourcesRequestDto {
-	@IsOptional()
-	@IsString()
-	includeWorkers?: string; // 'true' | 'false'
-
-	@IsOptional()
-	@IsString()
-	includeQueue?: string; // 'true' | 'false'
-}
+export class SystemResourcesRequestDto extends Z.class({
+	includeWorkers: z.string().optional(), // 'true' | 'false'
+	includeQueue: z.string().optional(), // 'true' | 'false'
+}) {}

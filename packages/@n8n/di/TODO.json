@@ -1,6 +1,67 @@
 {
 	"tasks": [
 		{
+			"id": "fix-decorator-compilation-1753991738823",
+			"title": "Fix TypeScript Decorator Compilation Errors in @n8n/api-types",
+			"description": "Resolve TS1240 errors in execution-profile.dto.ts preventing successful build compilation",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "completed",
+			"success_criteria": [
+				"@n8n/api-types package builds successfully without TypeScript errors",
+				"All decorator signature issues resolved",
+				"Build process completes for all 42 packages",
+				"No regression in existing functionality"
+			],
+			"important_files": [
+				"packages/@n8n/api-types/src/dto/performance/execution-profile.dto.ts",
+				"packages/@n8n/api-types/tsconfig.build.json"
+			],
+			"addresses_strike": "strike1",
+			"is_quality_improvement": true,
+			"created_at": "2025-07-31T19:55:38.823Z"
+		},
+		{
+			"id": "fix-utils-lint-errors-1753991738823",
+			"title": "Fix Linting Errors in @n8n/utils Package",
+			"description": "Resolve linting violations in @n8n/utils package to achieve 100% lint compliance",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"@n8n/utils package passes linting without errors",
+				"All ESLint rule violations resolved",
+				"Lint process completes successfully for all 44 packages",
+				"Code quality standards maintained"
+			],
+			"important_files": [
+				"packages/@n8n/utils/src/**/*.ts",
+				"packages/@n8n/utils/eslint.config.mjs"
+			],
+			"addresses_strike": "strike2",
+			"is_quality_improvement": true,
+			"created_at": "2025-07-31T19:55:38.823Z"
+		},
+		{
+			"id": "verify-test-execution-1753991738823",
+			"title": "Verify and Fix Test Execution After Build Resolution",
+			"description": "Ensure all test suites execute successfully after build and lint issues are resolved",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"All test suites execute without build dependency failures",
+				"Test coverage meets or exceeds 95% requirements",
+				"No test failures due to compilation issues",
+				"Complete test execution across all 42 packages"
+			],
+			"important_files": ["jest.config.cjs", "packages/**/package.json", "packages/**/*.test.ts"],
+			"addresses_strike": "strike3",
+			"is_quality_improvement": true,
+			"created_at": "2025-07-31T19:55:38.823Z",
+			"dependencies": []
+		},
+		{
 			"id": "quality-improvement-1753977847490",
 			"title": "Create Quality Improvement Tasks",
 			"description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
@@ -417,14 +478,50 @@
 				"Compliance reporting framework created"
 			],
 			"created_at": "2025-07-31T18:23:44.973Z"
+		},
+		{
+			"id": "quality-improvement-1753991908115",
+			"title": "Create Quality Improvement Tasks",
+			"description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 100%\n- Strike 2 (Lint): 70%  \n- Strike 3 (Tests): 80%\n\nIssues Found:\n- Lint and Code Quality: No ESLint configuration found\n- Test Coverage and Success: No coverage script defined\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
+			"success_criteria": [
+				"All quality issues identified and analyzed",
+				"Specific improvement tasks created for each quality gap",
+				"Tasks properly prioritized and ordered before strikes",
+				"Clear path to 100% quality established"
+			],
+			"important_files": ["package.json", "eslint.config.js", "**/*.test.js"],
+			"requires_research": true,
+			"is_quality_improvement_task": true,
+			"quality_analysis": {
+				"strike1": {
+					"name": "Build Verification",
+					"quality": 100,
+					"issues": []
+				},
+				"strike2": {
+					"name": "Lint and Code Quality",
+					"quality": 70,
+					"issues": ["No ESLint configuration found"]
+				},
+				"strike3": {
+					"name": "Test Coverage and Success",
+					"quality": 80,
+					"issues": ["No coverage script defined"]
+				},
+				"overallReady": false
+			}
 		}
 	],
 	"__removedLinterTasks": {
 		"removedCount": 1,
 		"finalTaskCount": 5
 	},
-	"execution_count": 13,
-	"last_hook_activation": 1753979520840,
+	"execution_count": 14,
+	"last_hook_activation": 1753991908118,
 	"project": "unnamed-project",
 	"review_strikes": 0,
 	"strikes_completed_last_run": false,

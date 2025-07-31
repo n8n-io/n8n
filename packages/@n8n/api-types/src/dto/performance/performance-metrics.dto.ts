@@ -1,142 +1,62 @@
-import {
-	IsString,
-	IsNumber,
-	IsOptional,
-	IsArray,
-	ValidateNested,
-	IsDateString,
-	IsEnum,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { z } from 'zod';
+import { Z } from 'zod-class';
 import { ExecutionStatus } from './execution-profile.dto';
 
-export class TimeRangeDto {
-	@IsDateString()
-	start: string;
+export class TimeRangeDto extends Z.class({
+	start: z.string().datetime(),
+	end: z.string().datetime(),
+}) {}
 
-	@IsDateString()
-	end: string;
-}
+export class MetricFiltersDto extends Z.class({
+	workflowId: z.string().optional(),
+	status: z.array(z.nativeEnum(ExecutionStatus)).optional(),
+}) {}
 
-export class MetricFiltersDto {
-	@IsOptional()
-	@IsString()
-	workflowId?: string;
+export class ExecutionCountsDto extends Z.class({
+	total: z.number(),
+	success: z.number(),
+	failed: z.number(),
+	running: z.number(),
+}) {}
 
-	@IsOptional()
-	@IsArray()
-	@IsEnum(ExecutionStatus, { each: true })
-	status?: ExecutionStatus[];
-}
+export class TimingMetricsDto extends Z.class({
+	averageDuration: z.number(),
+	medianDuration: z.number(),
+	p95Duration: z.number(),
+	p99Duration: z.number(),
+}) {}
 
-export class ExecutionCountsDto {
-	@IsNumber()
-	total: number;
+export class ResourceUsageMetricsDto extends Z.class({
+	averageMemory: z.number(),
+	peakMemory: z.number(),
+	averageCpu: z.number(),
+}) {}
 
-	@IsNumber()
-	success: number;
+export class TrendDataPointDto extends Z.class({
+	timestamp: z.string().datetime(),
+	executionCount: z.number(),
+	averageDuration: z.number(),
+	errorRate: z.number(),
+}) {}
 
-	@IsNumber()
-	failed: number;
+export class PerformanceDataDto extends Z.class({
+	executionCounts: z.instanceof(ExecutionCountsDto),
+	timing: z.instanceof(TimingMetricsDto),
+	resourceUsage: z.instanceof(ResourceUsageMetricsDto),
+	trends: z.array(z.instanceof(TrendDataPointDto)),
+}) {}
 
-	@IsNumber()
-	running: number;
-}
+export class PerformanceMetricsDto extends Z.class({
+	timeRange: z.instanceof(TimeRangeDto),
+	filters: z.instanceof(MetricFiltersDto),
+	metrics: z.instanceof(PerformanceDataDto),
+}) {}
 
-export class TimingMetricsDto {
-	@IsNumber()
-	averageDuration: number;
-
-	@IsNumber()
-	medianDuration: number;
-
-	@IsNumber()
-	p95Duration: number;
-
-	@IsNumber()
-	p99Duration: number;
-}
-
-export class ResourceUsageMetricsDto {
-	@IsNumber()
-	averageMemory: number;
-
-	@IsNumber()
-	peakMemory: number;
-
-	@IsNumber()
-	averageCpu: number;
-}
-
-export class TrendDataPointDto {
-	@IsDateString()
-	timestamp: string;
-
-	@IsNumber()
-	executionCount: number;
-
-	@IsNumber()
-	averageDuration: number;
-
-	@IsNumber()
-	errorRate: number;
-}
-
-export class PerformanceDataDto {
-	@ValidateNested()
-	@Type(() => ExecutionCountsDto)
-	executionCounts: ExecutionCountsDto;
-
-	@ValidateNested()
-	@Type(() => TimingMetricsDto)
-	timing: TimingMetricsDto;
-
-	@ValidateNested()
-	@Type(() => ResourceUsageMetricsDto)
-	resourceUsage: ResourceUsageMetricsDto;
-
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => TrendDataPointDto)
-	trends: TrendDataPointDto[];
-}
-
-export class PerformanceMetricsDto {
-	@ValidateNested()
-	@Type(() => TimeRangeDto)
-	timeRange: TimeRangeDto;
-
-	@ValidateNested()
-	@Type(() => MetricFiltersDto)
-	filters: MetricFiltersDto;
-
-	@ValidateNested()
-	@Type(() => PerformanceDataDto)
-	metrics: PerformanceDataDto;
-}
-
-export class PerformanceMetricsRequestDto {
-	@IsOptional()
-	@IsString()
-	timeRange?: string; // '1h', '24h', '7d', '30d'
-
-	@IsOptional()
-	@IsString()
-	workflowId?: string;
-
-	@IsOptional()
-	@IsString()
-	status?: string; // comma-separated ExecutionStatus values
-
-	@IsOptional()
-	@IsString()
-	startDate?: string; // ISO date string
-
-	@IsOptional()
-	@IsString()
-	endDate?: string; // ISO date string
-
-	@IsOptional()
-	@IsString()
-	granularity?: string; // 'hour', 'day', 'minute'
-}
+export class PerformanceMetricsRequestDto extends Z.class({
+	timeRange: z.string().optional(), // '1h', '24h', '7d', '30d'
+	workflowId: z.string().optional(),
+	status: z.string().optional(), // comma-separated ExecutionStatus values
+	startDate: z.string().optional(), // ISO date string
+	endDate: z.string().optional(), // ISO date string
+	granularity: z.string().optional(), // 'hour', 'day', 'minute'
+}) {}

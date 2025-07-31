@@ -1,13 +1,5 @@
-import {
-	IsString,
-	IsOptional,
-	IsNumber,
-	IsArray,
-	ValidateNested,
-	IsEnum,
-	IsDateString,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { z } from 'zod';
+import { Z } from 'zod-class';
 
 export enum ExecutionStatus {
 	NEW = 'new',
@@ -37,120 +29,52 @@ export enum BottleneckIssue {
 	LARGE_DATASET = 'large_dataset',
 }
 
-export class ExecutionTimingDto {
-	@IsDateString()
-	startedAt: string;
+export class ExecutionTimingDto extends Z.class({
+	startedAt: z.string().datetime(),
+	finishedAt: z.string().datetime().optional(),
+	duration: z.number().optional(),
+	queueTime: z.number().optional(),
+}) {}
 
-	@IsOptional()
-	@IsDateString()
-	finishedAt?: string;
+export class ResourceUtilizationDto extends Z.class({
+	cpuPercent: z.number().optional(),
+	memoryMB: z.number().optional(),
+	ioOperations: z.number().optional(),
+}) {}
 
-	@IsOptional()
-	@IsNumber()
-	duration?: number;
+export class NodeExecutionDto extends Z.class({
+	nodeId: z.string(),
+	nodeType: z.string(),
+	duration: z.number(),
+	memoryUsage: z.number().optional(),
+	inputItems: z.number(),
+	outputItems: z.number(),
+	status: z.nativeEnum(NodeExecutionStatus),
+}) {}
 
-	@IsOptional()
-	@IsNumber()
-	queueTime?: number;
-}
+export class ExecutionPerformanceDto extends Z.class({
+	nodeExecutions: z.array(z.instanceof(NodeExecutionDto)),
+	totalMemoryPeak: z.number().optional(),
+	resourceUtilization: z.instanceof(ResourceUtilizationDto),
+}) {}
 
-export class ResourceUtilizationDto {
-	@IsOptional()
-	@IsNumber()
-	cpuPercent?: number;
+export class BottleneckDto extends Z.class({
+	nodeId: z.string(),
+	issue: z.nativeEnum(BottleneckIssue),
+	severity: z.nativeEnum(BottleneckSeverity),
+	suggestion: z.string(),
+}) {}
 
-	@IsOptional()
-	@IsNumber()
-	memoryMB?: number;
+export class ExecutionProfileDto extends Z.class({
+	executionId: z.string(),
+	workflowId: z.string(),
+	status: z.nativeEnum(ExecutionStatus),
+	timing: z.instanceof(ExecutionTimingDto),
+	performance: z.instanceof(ExecutionPerformanceDto),
+	bottlenecks: z.array(z.instanceof(BottleneckDto)),
+}) {}
 
-	@IsOptional()
-	@IsNumber()
-	ioOperations?: number;
-}
-
-export class NodeExecutionDto {
-	@IsString()
-	nodeId: string;
-
-	@IsString()
-	nodeType: string;
-
-	@IsNumber()
-	duration: number;
-
-	@IsOptional()
-	@IsNumber()
-	memoryUsage?: number;
-
-	@IsNumber()
-	inputItems: number;
-
-	@IsNumber()
-	outputItems: number;
-
-	@IsEnum(NodeExecutionStatus)
-	status: NodeExecutionStatus;
-}
-
-export class ExecutionPerformanceDto {
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => NodeExecutionDto)
-	nodeExecutions: NodeExecutionDto[];
-
-	@IsOptional()
-	@IsNumber()
-	totalMemoryPeak?: number;
-
-	@ValidateNested()
-	@Type(() => ResourceUtilizationDto)
-	resourceUtilization: ResourceUtilizationDto;
-}
-
-export class BottleneckDto {
-	@IsString()
-	nodeId: string;
-
-	@IsEnum(BottleneckIssue)
-	issue: BottleneckIssue;
-
-	@IsEnum(BottleneckSeverity)
-	severity: BottleneckSeverity;
-
-	@IsString()
-	suggestion: string;
-}
-
-export class ExecutionProfileDto {
-	@IsString()
-	executionId: string;
-
-	@IsString()
-	workflowId: string;
-
-	@IsEnum(ExecutionStatus)
-	status: ExecutionStatus;
-
-	@ValidateNested()
-	@Type(() => ExecutionTimingDto)
-	timing: ExecutionTimingDto;
-
-	@ValidateNested()
-	@Type(() => ExecutionPerformanceDto)
-	performance: ExecutionPerformanceDto;
-
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => BottleneckDto)
-	bottlenecks: BottleneckDto[];
-}
-
-export class ExecutionProfileRequestDto {
-	@IsOptional()
-	@IsString()
-	includeBottlenecks?: string; // 'true' | 'false'
-
-	@IsOptional()
-	@IsString()
-	includeResourceMetrics?: string; // 'true' | 'false'
-}
+export class ExecutionProfileRequestDto extends Z.class({
+	includeBottlenecks: z.string().optional(), // 'true' | 'false'
+	includeResourceMetrics: z.string().optional(), // 'true' | 'false'
+}) {}
