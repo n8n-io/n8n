@@ -635,6 +635,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/create-node:
+    dependencies:
+      '@n8n/node-cli':
+        specifier: workspace:*
+        version: link:../node-cli
+
   packages/@n8n/db:
     dependencies:
       '@n8n/api-types':
@@ -911,6 +917,25 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.67
+
+  packages/@n8n/node-cli:
+    dependencies:
+      '@oclif/core':
+        specifier: ^4.5.2
+        version: 4.5.2
+      prompts:
+        specifier: ^2.4.2
+        version: 2.4.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@oclif/test':
+        specifier: ^4.1.13
+        version: 4.1.13(@oclif/core@4.5.2)
 
   packages/@n8n/nodes-langchain:
     dependencies:
@@ -5734,6 +5759,16 @@ packages:
     resolution: {integrity: sha512-sU4Dx+RXCWAkrMw8tQFYAL6VfcHYKLPxVC9iKfgTXr4aDhcCssDwrbgpx0Di1dnNxvQlDGUhuCEInZuIY/nNfw==}
     engines: {node: '>=18.0.0'}
 
+  '@oclif/core@4.5.2':
+    resolution: {integrity: sha512-eQcKyrEcDYeZJKu4vUWiu0ii/1Gfev6GF4FsLSgNez5/+aQyAUCjg3ZWlurf491WiYZTXCWyKAxyPWk8DKv2MA==}
+    engines: {node: '>=18.0.0'}
+
+  '@oclif/test@4.1.13':
+    resolution: {integrity: sha512-pulrTiJRhoAKizFf6y5WeHvM2JyoRiZKV0H8qqYEoE0UHDKqInNmfGJyp8Ip6lTVQeMv1U8YCAXOS/HiWPVWeg==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@oclif/core': '>= 3.0.0'
+
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
 
@@ -8046,6 +8081,10 @@ packages:
   ansi-styles@6.2.1:
     resolution: {integrity: sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==}
     engines: {node: '>=12'}
+
+  ansis@3.17.0:
+    resolution: {integrity: sha512-0qWUglt9JEqLFr3w1I1pbrChn1grhaiAR2ocX1PP/flRmxgtwTzPFFFnfIlD6aMOLQZgSuCRlidD70lvx8yhzg==}
+    engines: {node: '>=14'}
 
   ansis@3.2.0:
     resolution: {integrity: sha512-Yk3BkHH9U7oPyCN3gL5Tc7CpahG/+UFv/6UG03C311Vy9lzRmA5uoxDTpU9CO3rGHL6KzJz/pdDeXZCZ5Mu/Sg==}
@@ -19843,6 +19882,35 @@ snapshots:
       wordwrap: 1.0.0
       wrap-ansi: 7.0.0
 
+  '@oclif/core@4.5.2':
+    dependencies:
+      ansi-escapes: 4.3.2
+      ansis: 3.17.0
+      clean-stack: 3.0.1
+      cli-spinners: 2.9.2
+      debug: 4.4.1(supports-color@8.1.1)
+      ejs: 3.1.10
+      get-package-type: 0.1.0
+      indent-string: 4.0.0
+      is-wsl: 2.2.0
+      lilconfig: 3.1.3
+      minimatch: 9.0.5
+      semver: 7.7.2
+      string-width: 4.2.3
+      supports-color: 8.1.1
+      tinyglobby: 0.2.14
+      widest-line: 3.1.0
+      wordwrap: 1.0.0
+      wrap-ansi: 7.0.0
+
+  '@oclif/test@4.1.13(@oclif/core@4.5.2)':
+    dependencies:
+      '@oclif/core': 4.5.2
+      ansis: 3.17.0
+      debug: 4.4.1(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - supports-color
+
   '@one-ini/wasm@0.1.1': {}
 
   '@open-draft/deferred-promise@2.2.0': {}
@@ -22731,6 +22799,8 @@ snapshots:
   ansi-styles@5.2.0: {}
 
   ansi-styles@6.2.1: {}
+
+  ansis@3.17.0: {}
 
   ansis@3.2.0: {}
 
