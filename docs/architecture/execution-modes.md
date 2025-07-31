@@ -365,13 +365,11 @@ Queue mode uses multiple communication channels:
 
 ```mermaid
 sequenceDiagram
-    participant UI as Browser
-    participant Main as Main Process
+    participant Main as Main/Webhook Process
     participant Redis as Redis
     participant Worker as Worker
     participant DB as Database
     
-    UI->>Main: Execute Workflow
     Main->>DB: Create Execution Record
     Main->>Redis: Queue Job
     Note over Redis: Job in 'waiting' state
@@ -382,12 +380,10 @@ sequenceDiagram
     
     Worker->>Redis: Publish Progress
     Redis->>Main: Progress Event (Pub/Sub)
-    Main->>UI: WebSocket Update
     
     Worker->>DB: Save Execution Data
     Worker->>Redis: Mark Job Complete
-    Redis->>Main: Completion Event
-    Main->>UI: Final Status
+    Redis->>Main: Completion Event (Pub/Sub)
 ```
 
 ### Pub/Sub Channels
