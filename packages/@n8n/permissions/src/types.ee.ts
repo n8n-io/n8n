@@ -11,6 +11,11 @@ import type {
 	workflowSharingRoleSchema,
 } from './schemas.ee';
 
+export type ScopeInformation = {
+	displayName: string;
+	description?: string | null;
+};
+
 /** Represents a resource that can have permissions applied to it */
 export type Resource = keyof typeof RESOURCES;
 
@@ -59,6 +64,7 @@ export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | Cred
 type RoleObject<T extends AllRoleTypes> = {
 	role: T;
 	name: string;
+	description?: string | null;
 	scopes: Scope[];
 	licensed: boolean;
 };
@@ -70,12 +76,21 @@ export type AllRolesMap = {
 	workflow: Array<RoleObject<WorkflowSharingRole>>;
 };
 
+export type DbScope = {
+	slug: Scope;
+};
+
+export type DbRole = {
+	slug: string;
+	scopes: DbScope[];
+};
+
 /**
  * Represents an authenticated entity in the system that can have specific permissions via a role.
  * @property role - The global role this principal has
  */
 export type AuthPrincipal = {
-	role: GlobalRole;
+	role: DbRole;
 };
 
 // #region Public API

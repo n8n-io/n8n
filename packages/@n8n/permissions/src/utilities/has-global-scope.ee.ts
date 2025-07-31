@@ -1,4 +1,3 @@
-import { getGlobalScopes } from './get-global-scopes.ee';
 import { hasScope } from './has-scope.ee';
 import type { AuthPrincipal, Scope, ScopeOptions } from '../types.ee';
 
@@ -12,6 +11,6 @@ export const hasGlobalScope = (
 	scope: Scope | Scope[],
 	scopeOptions?: ScopeOptions,
 ): boolean => {
-	const global = getGlobalScopes(principal);
+	const global = principal.role.scopes.map((scope) => scope.slug) ?? [];
 	return hasScope(scope, { global }, undefined, scopeOptions);
 };

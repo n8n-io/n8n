@@ -1,4 +1,11 @@
-import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	Project,
+	User,
+	SharedCredentials,
+	ProjectRepository,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -253,7 +260,11 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 
 		if (!userId) {
-			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
+			const owner = await this.transactionManager.findOneBy(User, {
+				role: {
+					slug: GLOBAL_OWNER_ROLE.slug,
+				},
+			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}

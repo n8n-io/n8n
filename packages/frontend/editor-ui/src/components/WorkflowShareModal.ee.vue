@@ -108,11 +108,12 @@ const workflowRoleTranslations = computed(() => ({
 }));
 
 const workflowRoles = computed(() =>
-	rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed }) => ({
+	rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed, description }) => ({
 		role,
 		name: workflowRoleTranslations.value[role],
 		scopes,
 		licensed,
+		description,
 	})),
 );
 

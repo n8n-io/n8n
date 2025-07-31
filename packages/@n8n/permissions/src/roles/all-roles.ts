@@ -26,6 +26,7 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(roles: Record<T, Sco
 		role,
 		name: ROLE_NAMES[role],
 		scopes: getRoleScopes(role),
+		description: ROLE_NAMES[role],
 		licensed: false,
 	}));
 
