@@ -2,7 +2,37 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 
-const newGoal = {
+const userInfo = {
+	username: 'test',
+	timezone: 'Europe/Zurich',
+	goals: ['test3333', 'test333'],
+	created_at: 1520089425,
+	updated_at: 1753992556,
+	urgency_load: 43,
+	deadbeat: false,
+	has_authorized_fitbit: false,
+	default_leadtime: 0,
+	default_alertstart: 34200,
+	default_deadline: -43260,
+	subscription: 'infinibee',
+	subs_downto: 'infinibee',
+	subs_freq: 24,
+	subs_lifetime: null,
+	remaining_subs_credit: 31,
+	id: '35555555555',
+};
+
+const chargeInfo = {
+	amount: 10,
+	id: {
+		$oid: '688bcd7cf0168a11bee246ffff',
+	},
+	note: 'Created by test-test-oauth2',
+	status: null,
+	username: 'test',
+};
+
+const goalInfo = {
 	slug: 'test3333',
 	title: 'test title',
 	description: null,
@@ -56,12 +86,19 @@ describe('Execute Beeminder Node', () => {
 	const testHarness = new NodeTestHarness();
 
 	beforeEach(() => {
-		nock('https://www.beeminder.com').post('/api/v1/users/me/goals.json').reply(200, newGoal);
-		nock('https://www.beeminder.com')
-			.post(`/api/v1/users/me/goals/${newGoal.slug}/datapoints.json`)
+		const beeminderNock = nock('https://www.beeminder.com');
+		beeminderNock.get('/api/v1/users/me.json').reply(200, userInfo);
+		beeminderNock.post('/api/v1/charges.json').reply(200, chargeInfo);
+		beeminderNock.get('/api/v1/users/me/goals.json').reply(200, [goalInfo]);
+		beeminderNock.post('/api/v1/users/me/goals.json').reply(200, goalInfo);
+		beeminderNock
+			.post(`/api/v1/users/me/goals/${goalInfo.slug}/datapoints.json`)
 			.reply(200, newDatapoint);
-		nock('https://www.beeminder.com')
-			.delete(`/api/v1/users/me/goals/${newGoal.slug}/datapoints/${newDatapoint.id}.json`)
+		beeminderNock
+			.put(`/api/v1/users/me/goals/${goalInfo.slug}/datapoints/${newDatapoint.id}.json`)
+			.reply(200, newDatapoint);
+		beeminderNock
+			.delete(`/api/v1/users/me/goals/${goalInfo.slug}/datapoints/${newDatapoint.id}.json`)
 			.reply(200, newDatapoint);
 	});
 
@@ -72,8 +109,12 @@ describe('Execute Beeminder Node', () => {
 		},
 		output: {
 			nodeData: {
-				'Create a new goal': [[{ json: newGoal }]],
+				'Get user information': [[{ json: userInfo }]],
+				'Create a charge': [[{ json: chargeInfo }]],
+				'Get many goals': [[{ json: goalInfo }]],
+				'Create a new goal': [[{ json: goalInfo }]],
 				'Create datapoint for goal': [[{ json: newDatapoint }]],
+				'Update a datapoint': [[{ json: newDatapoint }]],
 				'Delete a datapoint': [[{ json: newDatapoint }]],
 			},
 		},
