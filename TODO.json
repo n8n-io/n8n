@@ -13,12 +13,82 @@
       "subtasks": []
     },
     {
+      "id": "build-fix-1753936283521",
+      "title": "Fix Build Dependencies and Extension SDK Issues",
+      "description": "Resolve build failures specifically in @n8n/extension-sdk package and ensure complete monorepo build success",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "npm run build completes successfully across all packages",
+        "@n8n/extension-sdk package builds without node_modules errors",
+        "All TypeScript compilation errors resolved",
+        "Turbo build cache works correctly for all packages"
+      ],
+      "important_files": [
+        "packages/@n8n/extension-sdk/package.json",
+        "packages/@n8n/extension-sdk/tsconfig.json",
+        "pnpm-lock.yaml",
+        "turbo.json"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false
+    },
+    {
+      "id": "test-setup-1753936293869",
+      "title": "Fix Test Suite and Coverage Reporting",
+      "description": "Resolve test execution failures and implement comprehensive test coverage reporting across the monorepo",
+      "mode": "TESTING",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "npm run test executes successfully across all packages",
+        "Jest test suites run without build dependency errors",
+        "Test coverage reporting configured and working",
+        "Coverage threshold of 80% minimum established",
+        "Test results properly aggregated across monorepo"
+      ],
+      "important_files": [
+        "jest.config.js",
+        "packages/cli/src/__tests__/**",
+        "packages/core/src/**/__tests__/**",
+        "package.json",
+        "turbo.json"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false
+    },
+    {
+      "id": "lint-validation-1753936302916",
+      "title": "Validate and Optimize Linting Configuration",
+      "description": "Ensure comprehensive linting works across all packages and optimize ESLint configuration for monorepo structure",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "npm run lint executes successfully across all packages",
+        "All packages have consistent ESLint configuration",
+        "No linting errors or warnings in codebase",
+        "Linting integrates properly with CI/CD processes",
+        "development/linter-errors.md reflects accurate status"
+      ],
+      "important_files": [
+        "eslint.config.js",
+        "packages/cli/eslint.config.mjs",
+        "packages/*/eslint.config.mjs",
+        "development/linter-errors.md",
+        ".eslintignore"
+      ],
+      "estimate": "1-2 hours",
+      "requires_research": false
+    },
+    {
       "id": "linter_task_active",
       "title": "Fix Linter Errors - IMMEDIATE",
       "description": "Fix 1 error and 0 warnings found in recently edited files: eslint.config.mjs",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "important_files": [
         "development/linter-errors.md",
         "packages/cli/eslint.config.mjs"
@@ -497,8 +567,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 14,
-  "last_hook_activation": 1753935914437,
+  "execution_count": 15,
+  "last_hook_activation": 1753936098050,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 13
