@@ -37,7 +37,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { isEmpty } from '@/utils/typesUtils';
-import { useNodeCredentialOptions } from '@/components/useNodeCredentialOptions';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 
 type Props = {
 	node: INodeUi;

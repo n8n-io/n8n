@@ -58,7 +58,7 @@ import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/comp
 import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 import NodeActionsList from '@/components/NodeActionsList.vue';
-import { useNodeCredentialOptions } from '@/components/useNodeCredentialOptions';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 
 const props = withDefaults(
 	defineProps<{
