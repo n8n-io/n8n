@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { evaluate } from './helpers';
 import { arrayExtensions } from '../../src/extensions/array-extensions';
+import { evaluate } from './helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {

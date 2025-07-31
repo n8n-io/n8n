@@ -1,7 +1,7 @@
-import { NodeError } from './abstract/node.error';
 import { ApplicationError } from '@n8n/errors';
-import type { NodeOperationErrorOptions } from './node-api.error';
 import type { INode, JsonObject } from '../interfaces';
+import { NodeError } from './abstract/node.error';
+import type { NodeOperationErrorOptions } from './node-api.error';
 
 /**
  * Class for instantiating an operational error, e.g. an invalid credentials error.

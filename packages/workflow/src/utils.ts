@@ -3,8 +3,8 @@ import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 
-import { ALPHABET } from './constants';
 import { ApplicationError } from '@n8n/errors';
+import { ALPHABET } from './constants';
 import { ExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 
@@ -31,7 +31,7 @@ export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
 	hash = new WeakMap(),

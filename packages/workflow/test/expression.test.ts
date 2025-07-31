@@ -2,14 +2,14 @@
 
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { workflow } from './ExpressionExtensions/helpers';
-import { baseFixtures } from './ExpressionFixtures/base';
-import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
-import * as Helpers from './helpers';
 import { ExpressionError } from '../src/errors/expression.error';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
+import { workflow } from './ExpressionExtensions/helpers';
+import { baseFixtures } from './ExpressionFixtures/base';
+import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
+import * as Helpers from './helpers';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {

@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { AxiosError } from 'axios';
 import { parseString } from 'xml2js';
 
-import { NodeError } from './abstract/node.error';
 import type { ErrorLevel } from '@n8n/errors';
 import {
 	NO_OP_NODE_TYPE,
@@ -20,6 +17,7 @@ import type {
 	RelatedExecution,
 } from '../interfaces';
 import { removeCircularRefs } from '../utils';
+import { NodeError } from './abstract/node.error';
 
 export interface NodeOperationErrorOptions {
 	message?: string;

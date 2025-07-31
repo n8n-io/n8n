@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { evaluate } from './helpers';
 import { booleanExtensions } from '../../src/extensions/boolean-extensions';
+import { evaluate } from './helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Boolean Data Transformation Functions', () => {

@@ -1,11 +1,11 @@
 import isEqual from 'lodash/isEqual';
 import uniqWith from 'lodash/uniqWith';
 
-import type { Extension, ExtensionMap } from './extensions';
-import { compact as oCompact } from './object-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 import { randomInt } from '../utils';
+import { compact as oCompact } from './object-extensions';
+import type { Extension, ExtensionMap } from './extensions';
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -152,13 +152,13 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 			'smartJoin(): expected two string args, e.g. .smartJoin("name", "value")',
 		);
 	}
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return value.reduce<any>((o, v) => {
 		if (typeof v === 'object' && v !== null && keyField in v && valueField in v) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			o[(v as any)[keyField]] = (v as any)[valueField];
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return o;
 	}, {});
 }
@@ -187,18 +187,17 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 		if (typeof v !== 'object' || v === null) {
 			return v;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const newObj = { ...(v as any) };
 		const chunkedArgs = chunk(extraArgs, [2]) as string[][];
 		chunkedArgs.forEach(([from, to]) => {
 			if (from in newObj) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				newObj[to] = newObj[from];
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 				delete newObj[from];
 			}
 		});
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return newObj;
 	});
 }

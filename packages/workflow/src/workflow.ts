@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-for-in-array */
+import { ApplicationError } from '@n8n/errors';
 import {
 	getNodeByName,
 	getConnectedNodes,
@@ -17,7 +15,6 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
-import { ApplicationError } from '@n8n/errors';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
 import type {

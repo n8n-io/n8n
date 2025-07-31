@@ -1,5 +1,5 @@
-import { ALPHABET } from '../src/constants';
 import { ApplicationError } from '@n8n/errors';
+import { ALPHABET } from '../src/constants';
 import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,

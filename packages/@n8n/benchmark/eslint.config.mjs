@@ -1,13 +1,35 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import { globalIgnores } from 'eslint/config';
+import globals from 'globals';
+import unicornPlugin from 'eslint-plugin-unicorn';
+import importPlugin from 'eslint-plugin-import-x';
 
-export default defineConfig(
-	nodeConfig,
-	globalIgnores(['scenarios/**', 'scripts/**']),
+export default tseslint.config(
+	globalIgnores([
+		'node_modules/**',
+		'dist/**',
+		'eslint.config.mjs',
+		'scenarios/**',
+		'scripts/**',
+	]),
+	eslint.configs.recommended,
+	...tseslint.configs.recommended,
+	importPlugin.flatConfigs.recommended,
+	importPlugin.flatConfigs.typescript,
 	{
+		plugins: {
+			unicorn: unicornPlugin,
+		},
+		languageOptions: {
+			ecmaVersion: 2024,
+			globals: globals.node,
+			parserOptions: {
+				projectService: true,
+			},
+		},
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-			'n8n-local-rules/no-plain-errors': 'off',
 			complexity: 'error',
 			'@typescript-eslint/naming-convention': 'warn',
 			'no-empty': 'warn',

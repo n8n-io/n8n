@@ -5,10 +5,10 @@ import MD5 from 'md5';
 import { titleCase } from 'title-case';
 import { transliterate } from 'transliteration';
 
-import type { Extension, ExtensionMap } from './extensions';
-import { toDateTime as numberToDateTime } from './number-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { tryToParseDateTime } from '../type-validation';
+import type { Extension, ExtensionMap } from './extensions';
+import { toDateTime as numberToDateTime } from './number-extensions';
 
 export const SupportedHashAlgorithms = [
 	'md5',

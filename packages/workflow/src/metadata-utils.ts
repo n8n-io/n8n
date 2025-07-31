@@ -1,5 +1,5 @@
-import type { ITaskMetadata } from '.';
 import { hasKey } from './utils';
+import type { ITaskMetadata } from '.';
 
 function responseHasSubworkflowData(
 	response: unknown,

@@ -1,3 +1,4 @@
+import { mock } from 'vitest-mock-extended';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -24,7 +25,6 @@ import {
 	getNodeWebhookPath,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
-import { mock } from 'vitest-mock-extended';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -4482,7 +4482,6 @@ describe('NodeHelpers', () => {
 			test(testData.description, () => {
 				// If this test has a custom mock return value, configure it
 				if (testData.mockReturnValue) {
-					// eslint-disable-next-line @typescript-eslint/unbound-method
 					vi.mocked(workflowMock.expression.getSimpleParameterValue).mockReturnValueOnce(
 						testData.mockReturnValue,
 					);

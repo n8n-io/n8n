@@ -1,7 +1,12 @@
-import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { baseConfig } from '@n8n/eslint-config/base';
 
-export default defineConfig(nodeConfig, {
-	files: ['./src/commands/*.ts'],
-	rules: { 'import-x/no-default-export': 'off' },
-});
+export default [
+	...baseConfig,
+	{
+		files: ['./src/commands/*.ts'],
+		rules: { 'import-x/no-default-export': 'off' },
+	},
+	{
+		ignores: ['src/commands/create.test.ts'], // Test file not in project service
+	},
+];

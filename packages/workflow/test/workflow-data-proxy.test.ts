@@ -1,6 +1,5 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
-import * as Helpers from './helpers';
 import { ensureError } from '../src/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
 import {
@@ -15,6 +14,7 @@ import {
 } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
+import * as Helpers from './helpers';
 
 const loadFixture = (fixture: string) => {
 	const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
@@ -52,12 +52,12 @@ const getProxyFromFixture = (
 		};
 	}
 
-	let pinData: IPinData = {};
+	const pinData: IPinData = {};
 	if (workflow.pinData) {
 		// json key is stored as part of workflow
 		// but dropped when copy/pasting
 		// so adding here to keep updating tests simple
-		for (let nodeName in workflow.pinData) {
+		for (const nodeName in workflow.pinData) {
 			pinData[nodeName] = workflow.pinData[nodeName].map((item) => ({ json: item }));
 		}
 	}

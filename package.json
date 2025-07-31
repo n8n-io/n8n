@@ -2,6 +2,7 @@
   "name": "n8n-monorepo",
   "version": "1.106.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=22.16",
     "pnpm": ">=10.2.1"

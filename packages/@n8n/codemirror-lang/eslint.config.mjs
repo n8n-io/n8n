@@ -1,11 +1,31 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import { globalIgnores } from 'eslint/config';
+import globals from 'globals';
 
-export default defineConfig(baseConfig, globalIgnores(['src/expressions/grammar*.ts']), {
-	rules: {
-		// TODO: Remove this
-		'@typescript-eslint/naming-convention': 'warn',
-		'no-useless-escape': 'warn',
-		'@typescript-eslint/unbound-method': 'warn',
+export default tseslint.config(
+	globalIgnores([
+		'node_modules/**',
+		'dist/**',
+		'eslint.config.mjs',
+		'jest.config.js',
+		'src/expressions/grammar*.ts',
+	]),
+	eslint.configs.recommended,
+	...tseslint.configs.recommended,
+	{
+		languageOptions: {
+			ecmaVersion: 2024,
+			globals: globals.node,
+			parserOptions: {
+				projectService: true,
+			},
+		},
+		rules: {
+			// TODO: Remove this
+			'@typescript-eslint/naming-convention': 'warn',
+			'no-useless-escape': 'warn',
+			'@typescript-eslint/unbound-method': 'warn',
+		},
 	},
-});
+);

@@ -139,7 +139,7 @@ export function handleSummary(data) {
 
 		try {
 			return JSON.parse(summaryReport) as K6EndOfTestSummary;
-		} catch (error) {
+		} catch {
 			throw new Error(`Failed to parse the summary report at ${summaryReportPath}`);
 		}
 	}

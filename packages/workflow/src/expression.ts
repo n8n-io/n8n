@@ -256,13 +256,13 @@ export class Expression {
 		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
 
 		// Text
-		// eslint-disable-next-line id-denylist
+
 		data.String = String;
 		data.RegExp = RegExp;
 
 		// Math
 		data.Math = Math;
-		// eslint-disable-next-line id-denylist
+
 		data.Number = Number;
 		data.BigInt = typeof BigInt !== 'undefined' ? BigInt : {};
 		data.Infinity = Infinity;
@@ -285,7 +285,7 @@ export class Expression {
 		data.decodeURIComponent = decodeURIComponent;
 
 		// Other
-		// eslint-disable-next-line id-denylist
+
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 

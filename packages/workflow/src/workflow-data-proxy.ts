@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-this-alias */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
+import { ApplicationError } from '@n8n/errors';
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import {
 	ExpressionError,
 	type ExpressionErrorOptions,

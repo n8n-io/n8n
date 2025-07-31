@@ -1,9 +1,9 @@
-import { NodeTypes } from './helpers';
 import { ExpressionError } from '../src/errors/expression.error';
 import type { IExecuteData, INode, IWorkflowBase, IRun, IConnections } from '../src/interfaces';
 import { NodeConnectionTypes } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
+import { NodeTypes } from './helpers';
 
 describe('Paired Item Path Detection', () => {
 	/**

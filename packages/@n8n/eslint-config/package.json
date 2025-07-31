@@ -15,6 +15,10 @@
     "./node": {
       "types": "./dist/configs/node.d.js",
       "default": "./dist/configs/node.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.js",
+      "default": "./dist/plugin.js"
     }
   },
   "scripts": {

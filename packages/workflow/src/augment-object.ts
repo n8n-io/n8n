@@ -2,7 +2,6 @@ import type { IDataObject } from './interfaces';
 
 const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
 
-// eslint-disable-next-line @typescript-eslint/unbound-method
 const { hasOwnProperty } = Object.prototype;
 
 const augmentedObjects = new WeakSet<object>();

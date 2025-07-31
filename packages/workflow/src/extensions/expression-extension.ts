@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { ExpressionKind } from 'ast-types/gen/kinds';
 import type { Config as EsprimaConfig } from 'esprima-next';
 import { parse as esprimaParse } from 'esprima-next';
@@ -6,6 +5,7 @@ import { DateTime } from 'luxon';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
 
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { arrayExtensions } from './array-extensions';
 import { booleanExtensions } from './boolean-extensions';
 import { dateExtensions } from './date-extensions';
@@ -16,7 +16,6 @@ import { numberExtensions } from './number-extensions';
 import { objectExtensions } from './object-extensions';
 import { stringExtensions } from './string-extensions';
 import { checkIfValueDefinedOrThrow } from './utils';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -38,7 +37,6 @@ export const EXTENSION_OBJECTS: ExtensionMap[] = [
 	booleanExtensions,
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-restricted-types
 const genericExtensions: Record<string, Function> = {
 	isEmpty,
 	isNotEmpty,
@@ -418,11 +416,11 @@ export const extendTransform = (expression: string): { code: string } | undefine
 
 					path.replace(
 						types.builders.conditionalExpression(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							test as any,
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							consequent as any,
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							alternative as any,
 						),
 					);
@@ -449,12 +447,11 @@ function isDate(input: unknown): boolean {
 
 interface FoundFunction {
 	type: 'native' | 'extended';
-	// eslint-disable-next-line @typescript-eslint/no-restricted-types
+
 	function: Function;
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
-	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
@@ -483,7 +480,6 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
 		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			return { type: 'native', function: inputAny[functionName] };
 		}
 
@@ -533,19 +529,13 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	}
 
 	if (foundFunction.type === 'native') {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return foundFunction.function.apply(input, args);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return foundFunction.function(input, args);
 }
 
-export function extendOptional(
-	input: unknown,
-	functionName: string,
-	// eslint-disable-next-line @typescript-eslint/no-restricted-types
-): Function | undefined {
+export function extendOptional(input: unknown, functionName: string): Function | undefined {
 	const foundFunction = findExtendedFunction(input, functionName);
 
 	if (!foundFunction) {
@@ -553,12 +543,10 @@ export function extendOptional(
 	}
 
 	if (foundFunction.type === 'native') {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return foundFunction.function.bind(input);
 	}
 
 	return (...args: unknown[]) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return foundFunction.function(input, args);
 	};
 }

@@ -1,8 +1,6 @@
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { nodeTypes } from './ExpressionExtensions/helpers';
-import type { NodeTypes } from './node-types';
 import { STICKY_NODE_TYPE } from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
@@ -28,6 +26,8 @@ import {
 	userInInstanceRanOutOfFreeAiCredits,
 } from '../src/telemetry-helpers';
 import { randomInt } from '../src/utils';
+import type { NodeTypes } from './node-types';
+import { nodeTypes } from './ExpressionExtensions/helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {

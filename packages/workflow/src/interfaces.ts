@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PathLike } from 'fs';
+import type { IncomingHttpHeaders } from 'http';
+import type { Readable } from 'stream';
+import type { SecureContextOptions } from 'tls';
+import type { URLSearchParams } from 'url';
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
-import type { PathLike } from 'fs';
-import type { IncomingHttpHeaders } from 'http';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
-import type { Readable } from 'stream';
-import type { SecureContextOptions } from 'tls';
-import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
 import type { IDeferredPromise } from './deferred-promise';
@@ -2830,11 +2830,10 @@ export type FormFieldsParameter = Array<{
 }>;
 
 export type FieldTypeMap = {
-	// eslint-disable-next-line id-denylist
 	boolean: boolean;
-	// eslint-disable-next-line id-denylist
+
 	number: number;
-	// eslint-disable-next-line id-denylist
+
 	string: string;
 	'string-alphanumeric': string;
 	dateTime: string;

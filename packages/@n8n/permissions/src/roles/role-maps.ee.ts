@@ -1,3 +1,10 @@
+import type {
+	CredentialSharingRole,
+	GlobalRole,
+	ProjectRole,
+	Scope,
+	WorkflowSharingRole,
+} from '../types.ee';
 import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
@@ -17,13 +24,6 @@ import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 } from './scopes/workflow-sharing-scopes.ee';
-import type {
-	CredentialSharingRole,
-	GlobalRole,
-	ProjectRole,
-	Scope,
-	WorkflowSharingRole,
-} from '../types.ee';
 
 export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,

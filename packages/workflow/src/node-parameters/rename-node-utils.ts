@@ -12,10 +12,9 @@ export function renameFormFields(
 		'values' in formFields &&
 		typeof formFields.values === 'object' &&
 		// TypeScript thinks this is `Array.values` and gets very confused here
-		// eslint-disable-next-line @typescript-eslint/unbound-method
+
 		Array.isArray(formFields.values)
-			? // eslint-disable-next-line @typescript-eslint/unbound-method
-				(formFields.values ?? [])
+			? (formFields.values ?? [])
 			: [];
 
 	for (const formFieldValue of values) {

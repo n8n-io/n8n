@@ -1,12 +1,48 @@
-import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import { globalIgnores } from 'eslint/config';
+import globals from 'globals';
+import unicornPlugin from 'eslint-plugin-unicorn';
+import importPlugin from 'eslint-plugin-import-x';
 
-export default defineConfig(
-	baseConfig,
+export default tseslint.config(
+	globalIgnores([
+		'node_modules/**',
+		'dist/**',
+		'eslint.config.mjs',
+	]),
+	eslint.configs.recommended,
+	...tseslint.configs.recommended,
+	importPlugin.flatConfigs.recommended,
+	importPlugin.flatConfigs.typescript,
 	{
+		plugins: {
+			unicorn: unicornPlugin,
+		},
+		languageOptions: {
+			ecmaVersion: 2024,
+			globals: globals.node,
+			parserOptions: {
+				projectService: true,
+			},
+		},
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			complexity: ['error', 23],
+
+			// Allow unused variables that start with underscore or common patterns
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{
+					argsIgnorePattern: '^(_.*|e|error)$',
+					varsIgnorePattern: '^(_.*|e|error)$',
+					caughtErrorsIgnorePattern: '^(_.*|e|error)$',
+					destructuredArrayIgnorePattern: '^_',
+				},
+			],
+
+			// Allow namespaces (legacy code)
+			'@typescript-eslint/no-namespace': 'off',
 
 			// TODO: remove these
 			'no-empty': 'warn',

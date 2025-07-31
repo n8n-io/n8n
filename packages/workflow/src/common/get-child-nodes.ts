@@ -1,6 +1,6 @@
-import { getConnectedNodes } from './get-connected-nodes';
 import { NodeConnectionTypes } from '../interfaces';
 import type { IConnections, NodeConnectionType } from '../interfaces';
+import { getConnectedNodes } from './get-connected-nodes';
 
 export function getChildNodes(
 	connectionsBySourceNode: IConnections,

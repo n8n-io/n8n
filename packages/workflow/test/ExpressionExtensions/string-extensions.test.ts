@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
-import { evaluate } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors';
+import { evaluate } from './helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {

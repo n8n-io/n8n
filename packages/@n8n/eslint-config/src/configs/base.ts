@@ -1,7 +1,6 @@
 import { globalIgnores } from 'eslint/config';
 import eslint from '@eslint/js';
 import importPlugin from 'eslint-plugin-import-x';
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 import stylisticPlugin from '@stylistic/eslint-plugin';
 import unicornPlugin from 'eslint-plugin-unicorn';
@@ -35,7 +34,6 @@ export const baseConfig = tseslint.config(
 			'@stylistic': stylisticPlugin,
 			lodash: lodashPlugin,
 			unicorn: unicornPlugin,
-			'@typescript-eslint': typescriptPlugin,
 		},
 		languageOptions: {
 			parserOptions: {

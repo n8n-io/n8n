@@ -7,10 +7,10 @@ import type {
 	WeekdayNumbers,
 } from 'luxon';
 
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { ExtensionMap } from './extensions';
 import { toDateTime as stringToDateTime } from './string-extensions';
 import { convertToDateTime } from './utils';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 const durationUnits = [
 	'milliseconds',

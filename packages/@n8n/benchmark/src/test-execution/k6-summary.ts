@@ -160,7 +160,7 @@ Example JSON:
  */
 
 type TrendStat = 'avg' | 'min' | 'med' | 'max' | 'p(90)' | 'p(95)';
-type MetricType = 'trend' | 'rate' | 'counter';
+// type MetricType = 'trend' | 'rate' | 'counter';
 type MetricContains = 'time' | 'default' | 'data';
 
 interface TrendValues {
@@ -247,6 +247,7 @@ interface RootGroup {
 	checks: K6Check[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface K6EndOfTestSummary {
 	options: Options;
 	state: State;

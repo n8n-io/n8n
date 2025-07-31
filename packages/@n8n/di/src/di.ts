@@ -31,7 +31,7 @@ const instances = new Map<ServiceIdentifier, Metadata>();
  * @returns A class decorator to be applied to the target class
  */
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
-export function Service<T = unknown>(): Function;
+export function Service<_ = unknown>(): Function;
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
 export function Service<T = unknown>(options: Options<T>): Function;
 export function Service<T>({ factory }: Options<T> = {}) {

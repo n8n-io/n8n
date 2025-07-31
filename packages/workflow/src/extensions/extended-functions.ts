@@ -1,6 +1,6 @@
-import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
+import { average as aAverage } from './array-extensions';
 
 const min = Math.min;
 const max = Math.max;
@@ -26,7 +26,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 		throw new ExpressionExtensionError('keys and values not of equal length');
 	}
 	return keys.reduce((p, c, i) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(p as any)[c as any] = values[i];
 		return p;
 	}, {});

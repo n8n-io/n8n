@@ -1,5 +1,5 @@
-import type { ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import type { ExtensionMap } from './extensions';
 
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
@@ -26,7 +26,7 @@ function removeField(value: object, extraArgs: string[]): object {
 	const [name] = extraArgs;
 	if (name in value) {
 		const newObject = { ...value };
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		delete (newObject as any)[name];
 		return newObject;
 	}
@@ -41,7 +41,7 @@ function removeFieldsContaining(value: object, extraArgs: string[]): object {
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
 		if (typeof val === 'string' && val.includes(match)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
 		}
 	}
@@ -58,7 +58,7 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
 		if (typeof val !== 'string' || (typeof val === 'string' && !val.includes(match))) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
 		}
 	}
@@ -72,15 +72,14 @@ export function compact(value: object): object {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
 				if (Object.keys(val as object).length === 0) continue;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+
 				newObj[key] = compact(val);
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				newObj[key] = val;
 			}
 		}
 	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 	return newObj;
 }
 

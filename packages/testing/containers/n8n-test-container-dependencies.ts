@@ -302,7 +302,7 @@ export async function pollContainerHttpEndpoint(
 			if (response.status === 200) {
 				return;
 			}
-		} catch (error) {
+		} catch {
 			// Don't log errors, just retry
 		}
 

@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -22,7 +23,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,

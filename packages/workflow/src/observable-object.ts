@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 import type { IDataObject, IObservableObject } from './interfaces';
 
 interface IObservableOptions {
@@ -59,7 +57,6 @@ export function create(
 					depth === 0 &&
 					target[name.toString()] === undefined &&
 					typeof value === 'object' &&
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					Object.keys(value).length === 0
 				) {
 				} else {
