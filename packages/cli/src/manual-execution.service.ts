@@ -101,7 +101,7 @@ export class ManualExecutionService {
 				data.executionMode,
 				executionData,
 			);
-			return await workflowExecute.processRunExecutionData(workflow);
+			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||
 			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0)) ||

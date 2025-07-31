@@ -2,9 +2,7 @@ import type { SystemResourcesDto } from '@n8n/api-types';
 import { LoggerProxy, ApplicationError } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import { cpus, freemem, totalmem, loadavg } from 'node:os';
-import Container, { Service } from 'typedi';
-
-import type { Logger } from '@/logger';
+import { Service } from '@n8n/di';
 
 interface SystemStats {
 	cpu: {
@@ -35,7 +33,7 @@ interface ProcessStats {
 
 @Service()
 export class SystemResourcesService {
-	private logger: Logger = LoggerProxy;
+	private logger = LoggerProxy;
 
 	private lastCpuUsage = process.cpuUsage();
 	private lastTimestamp = Date.now();
@@ -242,10 +240,11 @@ export class SystemResourcesService {
 			// This depends on the specific queue implementation used by n8n
 
 			// Check if we're in scaling mode and have access to queue
-			const scalingService = Container.get('ScalingService', false);
-			if (scalingService && typeof scalingService.getQueueStats === 'function') {
-				return await scalingService.getQueueStats();
-			}
+			// TODO: Implement proper scaling service integration
+			// const scalingService = Container.get('ScalingService', false);
+			// if (scalingService && typeof scalingService.getQueueStats === 'function') {
+			//	return await scalingService.getQueueStats();
+			// }
 
 			// If no scaling service or queue, return basic stats
 			return {
