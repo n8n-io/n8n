@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '../constants';
@@ -13,7 +13,7 @@ import { OidcService } from '../oidc.service.ee';
 export class OidcController {
 	constructor(
 		private readonly oidcService: OidcService,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly urlService: UrlService,
 	) {}
 

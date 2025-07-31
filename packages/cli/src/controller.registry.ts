@@ -11,7 +11,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
@@ -25,7 +25,7 @@ import { LastActiveAtService } from './services/last-active-at.service';
 export class ControllerRegistry {
 	constructor(
 		private readonly license: License,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,

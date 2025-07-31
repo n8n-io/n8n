@@ -14,7 +14,7 @@ import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
@@ -35,7 +35,7 @@ const externalHooks = mockInstance(ExternalHooks);
 const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
 const testServer = setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
-let authService: AuthService;
+let authService: AuthenticationService;
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
@@ -43,7 +43,7 @@ beforeEach(async () => {
 	member = await createUser({ role: 'global:member' });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
-	authService = Container.get(AuthService);
+	authService = Container.get(AuthenticationService);
 });
 
 describe('POST /forgot-password', () => {

@@ -10,7 +10,7 @@ import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service';
+import type { AuthenticationService } from '@/auth/authentication-service';
 import type { Invitation } from '@/interfaces';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';
@@ -20,7 +20,7 @@ jest.mock('@rudderstack/rudder-sdk-node');
 describe('HooksService', () => {
 	const mockedUser = mock<User>();
 	const userService = mock<UserService>();
-	const authService = mock<AuthService>();
+	const authService = mock<AuthenticationService>();
 	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();

@@ -12,7 +12,7 @@ import express from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 
-import type { AuthService } from '@/auth/auth.service';
+import type { AuthenticationService } from '@/auth/authentication-service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
@@ -20,7 +20,7 @@ import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
-	const authService = mock<AuthService>();
+	const authService = mock<AuthenticationService>();
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();

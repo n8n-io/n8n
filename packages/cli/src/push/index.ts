@@ -12,7 +12,7 @@ import { deepCopy } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -53,7 +53,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		private readonly config: PushConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly publisher: Publisher,
 	) {
 		super();

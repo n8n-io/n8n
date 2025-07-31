@@ -18,7 +18,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
 import type { NextFunction, Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import type { Invitation } from '@/interfaces';
 import { UserService } from '@/services/user.service';
 
@@ -36,7 +36,7 @@ export class HooksService {
 
 	constructor(
 		private readonly userService: UserService,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly userRepository: UserRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,

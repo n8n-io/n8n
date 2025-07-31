@@ -10,7 +10,7 @@ import type {
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service';
+import type { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -25,7 +25,7 @@ describe('OwnerController', () => {
 
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
-	const authService = mock<AuthService>();
+	const authService = mock<AuthenticationService>();
 	const bannerService = mock<BannerService>();
 	const userService = mock<UserService>();
 	const userRepository = mock<UserRepository>();

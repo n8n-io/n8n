@@ -4,7 +4,7 @@ import { AuthenticatedRequest, SettingsRepository, UserRepository } from '@n8n/d
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
@@ -20,7 +20,7 @@ export class OwnerController {
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly bannerService: BannerService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,

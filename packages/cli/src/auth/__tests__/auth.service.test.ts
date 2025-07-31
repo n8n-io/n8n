@@ -10,7 +10,7 @@ import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
@@ -35,7 +35,7 @@ describe('AuthService', () => {
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
-	const authService = new AuthService(
+	const authService = new AuthenticationService(
 		globalConfig,
 		mock(),
 		mock(),

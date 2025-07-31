@@ -39,7 +39,7 @@ interface PasswordResetToken {
 }
 
 @Service()
-export class AuthService {
+export class AuthenticationService {
 	// The browser-id check needs to be skipped on these endpoints
 	private skipBrowserIdCheckEndpoints: string[];
 

@@ -5,7 +5,7 @@ import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,7 +24,7 @@ export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,

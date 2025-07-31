@@ -8,7 +8,7 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -54,7 +54,7 @@ function createAgent(
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(
+		const token = Container.get(AuthenticationService).issueJWT(
 			options.user,
 			options.user.mfaEnabled,
 			browserId,

@@ -8,7 +8,7 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import * as auth from '@/auth';
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
 import { LdapService } from '@/ldap.ee/ldap.service.ee';
@@ -26,7 +26,7 @@ const mockedAuth = auth as jest.Mocked<typeof auth>;
 describe('AuthController', () => {
 	mockInstance(Logger);
 	mockInstance(EventService);
-	mockInstance(AuthService);
+	mockInstance(AuthenticationService);
 	mockInstance(MfaService);
 	mockInstance(UserService);
 	mockInstance(UserRepository);
@@ -35,7 +35,7 @@ describe('AuthController', () => {
 	const ldapService = mockInstance(LdapService);
 	const controller = Container.get(AuthController);
 	const userService = Container.get(UserService);
-	const authService = Container.get(AuthService);
+	const authService = Container.get(AuthenticationService);
 	const eventsService = Container.get(EventService);
 	const postHog = Container.get(PostHogClient);
 

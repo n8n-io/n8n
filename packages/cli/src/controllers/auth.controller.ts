@@ -8,7 +8,7 @@ import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
 import { handleEmailLogin } from '@/auth';
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -29,7 +29,7 @@ import {
 export class AuthController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,

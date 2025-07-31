@@ -9,7 +9,7 @@ import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -35,7 +35,7 @@ export class PasswordResetController {
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly mailer: UserManagementMailer,
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
 		private readonly license: License,

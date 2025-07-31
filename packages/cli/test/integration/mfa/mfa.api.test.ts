@@ -4,7 +4,7 @@ import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -251,7 +251,8 @@ describe('Change password with MFA enabled', () => {
 
 		config.set('userManagement.jwtSecret', randomString(5, 10));
 
-		const resetPasswordToken = Container.get(AuthService).generatePasswordResetToken(user);
+		const resetPasswordToken =
+			Container.get(AuthenticationService).generatePasswordResetToken(user);
 
 		const mfaCode = new TOTPService().generateTOTP(rawSecret);
 

@@ -6,7 +6,7 @@ import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthenticationService } from '@/auth/authentication-service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
@@ -30,7 +30,7 @@ import { getInitSSOFormView } from '../views/init-sso-post';
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(
-		private readonly authService: AuthService,
+		private readonly authService: AuthenticationService,
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
