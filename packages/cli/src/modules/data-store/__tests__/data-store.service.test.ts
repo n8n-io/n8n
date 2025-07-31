@@ -4,7 +4,6 @@ import { Container } from '@n8n/di';
 
 import type { DataStoreEntity } from '../data-store.entity';
 import { DataStoreService } from '../data-store.service';
-import { DataStoreColumnEntity } from '../data-store-column.entity';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -36,14 +35,14 @@ describe('dataStore', () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
 
-		dataStore1 = (await dataStoreService.createDataStore(project1.id, {
+		dataStore1 = await dataStoreService.createDataStore(project1.id, {
 			name: 'myDataStore1',
 			columns: [],
-		})) as DataStoreEntity;
-		dataStore2 = (await dataStoreService.createDataStore(project2.id, {
+		});
+		dataStore2 = await dataStoreService.createDataStore(project2.id, {
 			name: 'myDataStore2',
 			columns: [],
-		})) as DataStoreEntity;
+		});
 	});
 
 	afterEach(async () => {
@@ -72,13 +71,15 @@ describe('dataStore', () => {
 		});
 		it('should return an error if name/project combination already exists', async () => {
 			// ACT
-			const result = await dataStoreService.createDataStore(project2.id, {
+			const result = dataStoreService.createDataStore(project2.id, {
 				name: 'myDataStore2',
 				columns: [],
 			});
 
 			// ASSERT
-			expect(result).toEqual('duplicate data store name in project');
+			await expect(result).rejects.toThrow(
+				"data store name 'myDataStore2' already exists in this project",
+			);
 		});
 	});
 
@@ -92,12 +93,12 @@ describe('dataStore', () => {
 		});
 		it('should fail with renaming non-existent id', async () => {
 			// ACT
-			const result = await dataStoreService.renameDataStore('this is not an id', {
+			const result = dataStoreService.renameDataStore('this is not an id', {
 				name: 'aNewName',
 			});
 
 			// ASSERT
-			expect(result).toEqual('tried to rename non-existent table');
+			await expect(result).rejects.toThrow('tried to rename non-existent data store');
 		});
 		it('should fail with renaming to taken name', async () => {
 			// ARRANGE
@@ -108,10 +109,10 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			const result = await dataStoreService.renameDataStore(dataStore1.id, { name });
+			const result = dataStoreService.renameDataStore(dataStore1.id, { name });
 
 			// ASSERT
-			expect(result).toEqual('tried to rename to name that is already taken in this project');
+			await expect(result).rejects.toThrow("name 'myDataStore3' is already taken in this project");
 		});
 	});
 	describe('deleteDataStore', () => {
@@ -124,10 +125,10 @@ describe('dataStore', () => {
 		});
 		it('should fail with deleting non-existent id', async () => {
 			// ACT
-			const result = await dataStoreService.deleteDataStore('this is not an id');
+			const result = dataStoreService.deleteDataStore('this is not an id');
 
 			// ASSERT
-			expect(result).toEqual('tried to delete non-existent table');
+			await expect(result).rejects.toThrow('tried to delete non-existent data store');
 		});
 	});
 	describe('addColumn', () => {
@@ -185,37 +186,39 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			const result = await dataStoreService.addColumn(dataStore1.id, {
+			const result = dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'number',
 			});
 
 			// ASSERT
-			expect(result).toEqual('tried to add column with name already present in this data store');
+			await expect(result).rejects.toThrow(
+				"column name 'myColumn1' already taken in data store 'myDataStore1'",
+			);
 		});
 
 		it('should fail with adding column of non-existent table', async () => {
 			// ACT
-			const result = await dataStoreService.addColumn('this is not an id', {
+			const result = dataStoreService.addColumn('this is not an id', {
 				name: 'myColumn1',
 				type: 'number',
 			});
 
 			// ASSERT
-			expect(result).toEqual('tried to add column to non-existent table');
+			await expect(result).rejects.toThrow('tried to add column to non-existent data store');
 		});
 	});
 	describe('deleteColumn', () => {
 		it('should succeed with deleting a column', async () => {
 			// ARRANGE
-			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
+			const c1 = await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'string',
-			})) as DataStoreColumnEntity;
-			const c2 = (await dataStoreService.addColumn(dataStore1.id, {
+			});
+			const c2 = await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn2',
 				type: 'number',
-			})) as DataStoreColumnEntity;
+			});
 			// ACT
 			const result = await dataStoreService.deleteColumn(dataStore1.id, {
 				columnId: c1.id,
@@ -243,40 +246,42 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			const result = await dataStoreService.deleteColumn(dataStore1.id, {
+			const result = dataStoreService.deleteColumn(dataStore1.id, {
 				columnId: 'thisIsNotAnId',
 			});
 
 			// ASSERT
-			expect(result).toEqual('tried to delete column with name not present in this data store');
+			await expect(result).rejects.toThrow(
+				"tried to delete column with name not present in data store 'myDataStore1'",
+			);
 		});
 		it('should fail when deleting column from unknown table', async () => {
 			// ARRANGE
-			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
+			const c1 = await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'string',
-			})) as DataStoreColumnEntity;
+			});
 
 			// ACT
-			const result = await dataStoreService.deleteColumn('this is not an id', {
+			const result = dataStoreService.deleteColumn('this is not an id', {
 				columnId: c1.id,
 			});
 
 			// ASSERT
-			expect(result).toEqual('tried to delete columns from non-existent table');
+			await expect(result).rejects.toThrow('tried to delete column from non-existent table');
 		});
 	});
 	describe('moveColumn', () => {
 		it('should succeed with moving a column', async () => {
 			// ARRANGE
-			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
+			const c1 = await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'string',
-			})) as DataStoreColumnEntity;
-			const c2 = (await dataStoreService.addColumn(dataStore1.id, {
+			});
+			const c2 = await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn2',
 				type: 'number',
-			})) as DataStoreColumnEntity;
+			});
 			// ACT
 			const result = await dataStoreService.moveColumn(dataStore1.id, {
 				columnId: c2.id,
@@ -325,10 +330,10 @@ describe('dataStore', () => {
 		});
 		it('should retrieve by ids', async () => {
 			// ARRANGE
-			const dataStore3 = (await dataStoreService.createDataStore(project1.id, {
+			const dataStore3 = await dataStoreService.createDataStore(project1.id, {
 				name: 'myDataStore3',
 				columns: [],
-			})) as DataStoreEntity;
+			});
 
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
@@ -345,10 +350,10 @@ describe('dataStore', () => {
 			// ARRANGE
 			const names = [dataStore1.name];
 			for (let i = 0; i < 10; ++i) {
-				const ds = (await dataStoreService.createDataStore(project1.id, {
+				const ds = await dataStoreService.createDataStore(project1.id, {
 					name: `anotherDataStore${i}`,
 					columns: [],
-				})) as DataStoreEntity;
+				});
 				names.push(ds.name);
 			}
 
@@ -365,10 +370,10 @@ describe('dataStore', () => {
 			// ARRANGE
 			const names = [dataStore1.name];
 			for (let i = 0; i < 10; ++i) {
-				const ds = (await dataStoreService.createDataStore(project1.id, {
+				const ds = await dataStoreService.createDataStore(project1.id, {
 					name: `anotherDataStore${i}`,
 					columns: [],
-				})) as DataStoreEntity;
+				});
 				names.push(ds.name);
 			}
 
@@ -451,19 +456,19 @@ describe('dataStore', () => {
 		it('sorts as expected', async () => {
 			// ARRANGE
 			await dataStoreService.deleteDataStoreAll();
-			const ds0 = (await dataStoreService.createDataStore(project1.id, {
+			await dataStoreService.createDataStore(project1.id, {
 				name: 'ds0',
 				columns: [],
-			})) as DataStoreEntity;
+			});
 
-			const ds1 = (await dataStoreService.createDataStore(project1.id, {
+			const ds1 = await dataStoreService.createDataStore(project1.id, {
 				name: 'ds3',
 				columns: [],
-			})) as DataStoreEntity;
-			const ds2 = (await dataStoreService.createDataStore(project1.id, {
+			});
+			await dataStoreService.createDataStore(project1.id, {
 				name: 'ds2',
 				columns: [],
-			})) as DataStoreEntity;
+			});
 
 			await dataStoreService.renameDataStore(ds1.id, { name: 'ds1' });
 
@@ -539,13 +544,13 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = await dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.appendRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c1: 4, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
 
 			// ASSERT
-			expect(result).toBe('mismatched key count');
+			await expect(result).rejects.toThrow('mismatched key count');
 		});
 		it('rejects a mismatched row with missing column', async () => {
 			// ARRANGE
@@ -555,13 +560,13 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = await dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.appendRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ c2: true, c3: new Date(), c4: 'hello?' },
 			]);
 
 			// ASSERT
-			expect(result).toBe('mismatched key count');
+			await expect(result).rejects.toThrow('mismatched key count');
 		});
 		it('rejects a mismatched row with replaced column', async () => {
 			// ARRANGE
@@ -571,13 +576,13 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = await dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.appendRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
 
 			// ASSERT
-			expect(result).toBe('unknown column name');
+			await expect(result).rejects.toThrow('unknown column name');
 		});
 		it('rejects unknown data store id', async () => {
 			// ARRANGE
@@ -587,23 +592,36 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = await dataStoreService.appendRows('this is not an id', [
+			const result = dataStoreService.appendRows('this is not an id', [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
 
 			// ASSERT
-			expect(result).toBe('no columns found for id');
+			await expect(result).rejects.toThrow(
+				'no columns found for this data store or data store not found',
+			);
+		});
+		it('rejects on empty column list', async () => {
+			// ARRANGE
+
+			// ACT
+			const result = dataStoreService.appendRows('this is not an id', [{}, {}]);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(
+				'no columns found for this data store or data store not found',
+			);
 		});
 		it('fails on type mismatch', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
 
 			// ACT
-			const result = await dataStoreService.appendRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);
+			const result = dataStoreService.appendRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);
 
 			// ASSERT
-			expect(result).toBe('type mismatch');
+			await expect(result).rejects.toThrow("value 'true' does not match column type 'number'");
 		});
 	});
 	describe('getManyRowsAndCount', () => {

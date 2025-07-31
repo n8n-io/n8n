@@ -12,4 +12,6 @@ export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
 
-export type DataStoreRows = Array<Record<PropertyKey, unknown>>;
+export type DataStoreColumnJsType = string | number | boolean | Date;
+
+export type DataStoreRows = Array<Record<PropertyKey, DataStoreColumnJsType | null>>;
