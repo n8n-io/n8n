@@ -379,10 +379,11 @@ async function copySessionId() {
 		transition: border-color 200ms ease-in-out;
 		border: var(--input-border-color, var(--border-color-base))
 			var(--input-border-style, var(--border-style-base))
-		var(--input-border-width, var(--border-width-base));
+			var(--input-border-width, var(--border-width-base));
 
-	&:focus-within {
-		--input-border-color: #4538a3;
+		&:focus-within {
+			--input-border-color: #4538a3;
+		}
 	}
 }
 
