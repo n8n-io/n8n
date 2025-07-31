@@ -3,6 +3,7 @@ import {
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
 	ListDataStoreContentQueryDto,
+	MoveDataStoreColumnDto,
 } from '@n8n/api-types';
 import { RenameDataStoreDto } from '@n8n/api-types/src/dto/data-store/rename-data-store.dto';
 import { Logger } from '@n8n/backend-common';
@@ -169,6 +170,46 @@ export class DataStoreService {
 		await this.dataStoreColumnRepository.insert(column);
 		await this.dataStoreColumnRepository.addColumn(toTableName(dataStoreId), column);
 
+		return column;
+	}
+
+	async moveColumn(dataStoreId: string, dto: MoveDataStoreColumnDto) {
+		const existingTable = await this.dataStoreRepository.findOneBy({
+			id: dataStoreId,
+		});
+
+		if (existingTable === null) {
+			return 'tried to move columns from non-existent table';
+		}
+
+		if (dto.columnIndex >= existingTable.columns.length) {
+			return 'index out of bounds';
+		}
+
+		if (dto.columnIndex < 0) {
+			return 'index negative';
+		}
+
+		const existingColumnMatch = await this.dataStoreColumnRepository.findBy({
+			id: dto.columnId,
+			dataStoreId,
+		});
+
+		if (existingColumnMatch.length === 0) {
+			return 'tried to move column with name not present in this data store';
+		}
+
+		await this.dataStoreColumnRepository.shiftColumns(
+			dataStoreId,
+			existingColumnMatch[0].columnIndex,
+			-1,
+		);
+		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.columnIndex, 1);
+		await this.dataStoreColumnRepository.update(
+			{ id: existingColumnMatch[0].id },
+			{ columnIndex: dto.columnIndex },
+		);
+
 		return true;
 	}
 
@@ -182,7 +223,7 @@ export class DataStoreService {
 		}
 
 		const existingColumnMatch = await this.dataStoreColumnRepository.findBy({
-			name: dto.columnName,
+			id: dto.columnId,
 			dataStoreId,
 		});
 
@@ -191,7 +232,10 @@ export class DataStoreService {
 		}
 
 		await this.dataStoreColumnRepository.remove(existingColumnMatch);
-		await this.dataStoreColumnRepository.deleteColumn(toTableName(dataStoreId), dto.columnName);
+		await this.dataStoreColumnRepository.deleteColumn(
+			toTableName(dataStoreId),
+			existingColumnMatch[0].name,
+		);
 		await this.dataStoreColumnRepository.shiftColumns(
 			dataStoreId,
 			existingColumnMatch[0].columnIndex,

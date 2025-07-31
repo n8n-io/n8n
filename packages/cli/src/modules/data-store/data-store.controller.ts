@@ -4,6 +4,7 @@ import {
 	DeleteDataStoreColumnDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
+	MoveDataStoreColumnDto,
 	RenameDataStoreDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -81,6 +82,17 @@ export class DataStoreController {
 		@Body dto: DeleteDataStoreColumnDto,
 	) {
 		return await this.dataStoreService.deleteColumn(dataStoreId, dto);
+	}
+
+	@Patch('/:dataStoreId/move-column')
+	@ProjectScope('dataStore:update')
+	async moveColumn(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Body dto: MoveDataStoreColumnDto,
+	) {
+		return await this.dataStoreService.moveColumn(dataStoreId, dto);
 	}
 
 	@Patch('/:dataStoreId/rename')

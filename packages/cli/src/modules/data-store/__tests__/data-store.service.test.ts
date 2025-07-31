@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 
 import type { DataStoreEntity } from '../data-store.entity';
 import { DataStoreService } from '../data-store.service';
+import { DataStoreColumnEntity } from '../data-store-column.entity';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -142,7 +143,7 @@ describe('dataStore', () => {
 				const result = await dataStoreService.addColumn(dataStore1.id, column);
 
 				// ASSERT
-				expect(result).toEqual(true);
+				expect(result).toMatchObject(column);
 			}
 			const columnResult = await dataStoreService.getColumns(dataStore1.id);
 			expect(columnResult).toEqual([
@@ -207,17 +208,17 @@ describe('dataStore', () => {
 	describe('deleteColumn', () => {
 		it('should succeed with deleting a column', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, {
+			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'string',
-			});
-			await dataStoreService.addColumn(dataStore1.id, {
+			})) as DataStoreColumnEntity;
+			const c2 = (await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn2',
 				type: 'number',
-			});
+			})) as DataStoreColumnEntity;
 			// ACT
 			const result = await dataStoreService.deleteColumn(dataStore1.id, {
-				columnName: 'myColumn1',
+				columnId: c1.id,
 			});
 
 			// ASSERT
@@ -228,7 +229,7 @@ describe('dataStore', () => {
 				{
 					columnIndex: 0,
 					dataStoreId: dataStore1.id,
-					id: expect.any(String),
+					id: c2.id,
 					name: 'myColumn2',
 					type: 'number',
 				},
@@ -243,7 +244,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.deleteColumn(dataStore1.id, {
-				columnName: 'myColumn2',
+				columnId: 'thisIsNotAnId',
 			});
 
 			// ASSERT
@@ -251,18 +252,57 @@ describe('dataStore', () => {
 		});
 		it('should fail when deleting column from unknown table', async () => {
 			// ARRANGE
-			await dataStoreService.addColumn(dataStore1.id, {
+			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
 				name: 'myColumn1',
 				type: 'string',
-			});
+			})) as DataStoreColumnEntity;
 
 			// ACT
 			const result = await dataStoreService.deleteColumn('this is not an id', {
-				columnName: 'myColumn1',
+				columnId: c1.id,
 			});
 
 			// ASSERT
 			expect(result).toEqual('tried to delete columns from non-existent table');
+		});
+	});
+	describe('moveColumn', () => {
+		it('should succeed with moving a column', async () => {
+			// ARRANGE
+			const c1 = (await dataStoreService.addColumn(dataStore1.id, {
+				name: 'myColumn1',
+				type: 'string',
+			})) as DataStoreColumnEntity;
+			const c2 = (await dataStoreService.addColumn(dataStore1.id, {
+				name: 'myColumn2',
+				type: 'number',
+			})) as DataStoreColumnEntity;
+			// ACT
+			const result = await dataStoreService.moveColumn(dataStore1.id, {
+				columnId: c2.id,
+				columnIndex: 0,
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const columns = await dataStoreService.getColumns(dataStore1.id);
+			expect(columns).toMatchObject([
+				{
+					columnIndex: 1,
+					dataStoreId: dataStore1.id,
+					id: c1.id,
+					name: 'myColumn1',
+					type: 'string',
+				},
+				{
+					columnIndex: 0,
+					dataStoreId: dataStore1.id,
+					id: c2.id,
+					name: 'myColumn2',
+					type: 'number',
+				},
+			]);
 		});
 	});
 	describe('getManyAndCount', () => {

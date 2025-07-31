@@ -22,18 +22,18 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		await this.manager.query(addColumnQuery(dataStoreId, column));
 	}
 
-	async deleteColumn(dataStoreId: DataStoreUserTableName, column: string) {
-		await this.manager.query(deleteColumnQuery(dataStoreId, column));
+	async deleteColumn(dataStoreId: DataStoreUserTableName, columnName: string) {
+		await this.manager.query(deleteColumnQuery(dataStoreId, columnName));
 	}
 
-	async shiftColumns(dataStoreId: string, lowestIndex: number, delta: -1 | 1) {
+	async shiftColumns(rawDataStoreId: string, lowestIndex: number, delta: -1 | 1) {
 		await this.createQueryBuilder()
 			.update()
 			.set({
 				columnIndex: () => `columnIndex + ${delta}`,
 			})
-			.where('dataStoreId = :dataStoreId AND columnIndex > :thresholdValue', {
-				dataStoreId,
+			.where('dataStoreId = :dataStoreId AND columnIndex >= :thresholdValue', {
+				dataStoreId: rawDataStoreId,
 				thresholdValue: lowestIndex,
 			})
 			.execute();
