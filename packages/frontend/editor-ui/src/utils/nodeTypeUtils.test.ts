@@ -89,24 +89,18 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test-name')).toBe(true);
 	});
 
-	// Hyphenated scoped names
-	it('should identify scoped community node package names with hyphens', () => {
-		expect(isCommunityPackageName('@user-name/n8n-nodes-example')).toBe(true);
-		expect(isCommunityPackageName('@org-team/n8n-nodes-custom')).toBe(true);
-		expect(isCommunityPackageName('@hyphen-ated/n8n-nodes-with-hyphens')).toBe(true);
-	});
-
-	// Add these new test cases for underscore support
-	it('should identify packages with underscores', () => {
+	it('should identify scoped packages with other characters', () => {
 		expect(isCommunityPackageName('n8n-nodes-my_package')).toBe(true);
 		expect(isCommunityPackageName('@user/n8n-nodes-with_underscore')).toBe(true);
 		expect(isCommunityPackageName('@user_name/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('@n8n-io/n8n-nodes-test')).toBe(true);
+		expect(isCommunityPackageName('@n8n.io/n8n-nodes-test')).toBe(true);
 	});
 
-	it('should handle mixed underscore and hyphen cases', () => {
+	it('should handle mixed cases', () => {
 		expect(isCommunityPackageName('@user-name_org/n8n-nodes-mixed-case_example')).toBe(true);
 		expect(isCommunityPackageName('@mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+		expect(isCommunityPackageName('@my.mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
 	});
 
 	// Official n8n packages that should not be identified as community packages
