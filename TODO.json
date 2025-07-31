@@ -18,7 +18,7 @@
       "description": "Fix 0 errors and 0 warnings found in recently edited files: sourceControl.sync-check.yml",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "important_files": [
         "development/linter-errors.md",
         "packages/cli/src/public-api/v1/handlers/source-control/spec/paths/sourceControl.sync-check.yml"
@@ -227,7 +227,7 @@
       "description": "Add advanced user management endpoints including role updates, bulk operations, and user analytics. Extends existing UserController with enhanced functionality.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "in_progress",
       "success_criteria": [
         "PATCH /api/v1/users/:id/role endpoint implemented",
         "Bulk user operations endpoints functional",
@@ -246,7 +246,152 @@
         "task-1"
       ],
       "estimate": "4-6 hours",
-      "requires_research": false
+      "requires_research": false,
+      "subtasks": [
+        {
+          "id": "user-subtask-1-bulk-ops",
+          "title": "Implement Bulk User Operations API",
+          "description": "Add endpoints for bulk user operations including bulk invite, bulk role updates, bulk enable/disable, and bulk deletion with proper validation and transaction support.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "POST /users/bulk/invite endpoint implemented with validation",
+            "PATCH /users/bulk/roles endpoint for bulk role updates",
+            "PATCH /users/bulk/status endpoint for bulk enable/disable",
+            "DELETE /users/bulk endpoint for bulk deletion with proper safeguards",
+            "All bulk operations use database transactions",
+            "Comprehensive error handling for partial failures",
+            "Rate limiting implemented for bulk operations"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/users.controller.ts",
+            "packages/cli/src/services/user.service.ts",
+            "@n8n/api-types/src/dto/user/"
+          ],
+          "estimate": "4-6 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        },
+        {
+          "id": "user-subtask-2-analytics",
+          "title": "Implement User Analytics and Activity Tracking",
+          "description": "Add comprehensive user analytics endpoints including user activity metrics, login patterns, workflow usage statistics, and user engagement analytics.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "GET /users/:id/analytics endpoint for individual user metrics",
+            "GET /users/analytics/overview for system-wide user metrics",
+            "GET /users/analytics/activity for user activity patterns",
+            "User login/logout tracking and reporting",
+            "Workflow creation and execution statistics per user",
+            "Performance metrics with proper caching",
+            "Data aggregation with configurable time ranges"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/users.controller.ts",
+            "packages/cli/src/services/user.service.ts",
+            "packages/cli/src/services/analytics.service.ts"
+          ],
+          "estimate": "6-8 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        },
+        {
+          "id": "user-subtask-3-enhanced-roles",
+          "title": "Enhance Role Management with Advanced Permissions",
+          "description": "Extend existing role management with granular permissions, custom role creation, role hierarchies, and project-specific role assignments.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Enhanced PATCH /users/:id/role endpoint with granular permissions",
+            "POST /roles/custom endpoint for custom role creation",
+            "GET /roles/permissions endpoint for available permissions",
+            "PUT /users/:id/project-roles for project-specific role management",
+            "Role hierarchy validation and enforcement",
+            "Permission inheritance system working correctly",
+            "Backwards compatibility with existing role system"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/users.controller.ts",
+            "packages/cli/src/services/user.service.ts",
+            "@n8n/permissions/src/",
+            "@n8n/db/src/entities/User.ts"
+          ],
+          "estimate": "5-7 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        },
+        {
+          "id": "user-subtask-4-search-filter",
+          "title": "Advanced User Search and Filtering",
+          "description": "Enhance user listing with advanced search, filtering, sorting, and pagination capabilities including full-text search and complex query support.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "Enhanced GET /users endpoint with advanced filtering",
+            "Full-text search across user fields (name, email, role)",
+            "Complex filtering by role, status, project membership",
+            "Sorting by multiple fields with configurable order",
+            "Cursor-based pagination for large datasets",
+            "Search performance optimization with indexing",
+            "Export functionality for filtered user lists"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/users.controller.ts",
+            "@n8n/db/src/repositories/user.repository.ts",
+            "@n8n/api-types/src/dto/user/"
+          ],
+          "estimate": "3-4 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        },
+        {
+          "id": "user-subtask-5-tests",
+          "title": "Comprehensive Testing for Advanced User Management",
+          "description": "Create extensive test coverage for all new user management endpoints including unit tests, integration tests, and API tests with proper mocking.",
+          "mode": "testing",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Unit tests for all new controller methods >90% coverage",
+            "Integration tests for bulk operations with database",
+            "API tests for all new endpoints with various scenarios",
+            "Performance tests for bulk operations and analytics",
+            "Security tests for authorization and input validation",
+            "Error handling tests for edge cases and failures",
+            "Mock services properly isolated for unit testing"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/__tests__/users.controller.test.ts",
+            "packages/cli/src/services/__tests__/user.service.test.ts"
+          ],
+          "estimate": "4-5 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        },
+        {
+          "id": "user-subtask-6-documentation",
+          "title": "API Documentation for Advanced User Management",
+          "description": "Create comprehensive OpenAPI documentation for all new user management endpoints with proper schemas, examples, and authentication details.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "OpenAPI spec updated for all new user endpoints",
+            "Request/response schemas documented with examples",
+            "Authentication and authorization requirements specified",
+            "Error response schemas and status codes documented",
+            "Usage examples and integration guides provided",
+            "API documentation builds without errors",
+            "Interactive API explorer functional"
+          ],
+          "important_files": [
+            "packages/cli/src/public-api/v1/openapi.yml",
+            "packages/cli/src/public-api/v1/handlers/users/spec/"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "phase1-user-1753924007917-mak3jif26"
+        }
+      ]
     },
     {
       "id": "phase1-resource-1753924007917-epjzqndc7",
@@ -502,8 +647,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 34,
-  "last_hook_activation": 1753948444833,
+  "execution_count": 37,
+  "last_hook_activation": 1753949191236,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 16

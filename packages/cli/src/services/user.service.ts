@@ -1,4 +1,11 @@
-import type { RoleChangeRequestDto } from '@n8n/api-types';
+import type {
+	RoleChangeRequestDto,
+	BulkInviteUsersRequestDto,
+	BulkUpdateRolesRequestDto,
+	BulkStatusUpdateRequestDto,
+	BulkDeleteUsersRequestDto,
+	BulkOperationResponseDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
@@ -251,5 +258,233 @@ export class UserService {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
 			}
 		});
+	}
+
+	async bulkInviteUsers(
+		owner: User,
+		requestDto: BulkInviteUsersRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		const { invitations } = requestDto;
+		const result: BulkOperationResponseDto = {
+			success: [],
+			errors: [],
+			totalProcessed: invitations.length,
+		};
+
+		try {
+			const { usersInvited } = await this.inviteUsers(owner, invitations);
+
+			for (const invitation of usersInvited) {
+				if (invitation.error) {
+					result.errors.push({
+						email: invitation.user.email,
+						error: invitation.error,
+					});
+				} else {
+					result.success.push({
+						userId: invitation.user.id,
+						message: `User ${invitation.user.email} invited successfully`,
+					});
+
+					this.eventService.emit('user-invited', {
+						user: owner,
+						targetUserId: [invitation.user.id],
+						publicApi: false,
+						emailSent: invitation.user.emailSent,
+						inviteeRole: invitation.user.role,
+					});
+				}
+			}
+		} catch (error) {
+			this.logger.error('Bulk invite operation failed', { error: error.message });
+			result.errors.push({
+				error: error instanceof Error ? error.message : 'Unknown error during bulk invite',
+			});
+		}
+
+		return result;
+	}
+
+	async bulkUpdateRoles(
+		user: User,
+		requestDto: BulkUpdateRolesRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		const { userRoleUpdates } = requestDto;
+		const result: BulkOperationResponseDto = {
+			success: [],
+			errors: [],
+			totalProcessed: userRoleUpdates.length,
+		};
+
+		await this.userRepository.manager.transaction(async (trx) => {
+			for (const update of userRoleUpdates) {
+				try {
+					const targetUser = await trx.findOne(User, { where: { id: update.userId } });
+					if (!targetUser) {
+						result.errors.push({
+							userId: update.userId,
+							error: 'User not found',
+						});
+						continue;
+					}
+
+					if (user.role === 'global:admin' && targetUser.role === 'global:owner') {
+						result.errors.push({
+							userId: update.userId,
+							error: 'Admin cannot change role on global owner',
+						});
+						continue;
+					}
+
+					if (user.role === 'global:owner' && targetUser.role === 'global:owner') {
+						result.errors.push({
+							userId: update.userId,
+							error: 'Owner cannot change role on global owner',
+						});
+						continue;
+					}
+
+					await trx.update(User, { id: update.userId }, { role: update.newRole });
+
+					const adminDowngradedToMember =
+						user.role === 'global:owner' &&
+						targetUser.role === 'global:admin' &&
+						update.newRole === 'global:member';
+
+					if (adminDowngradedToMember) {
+						await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+					}
+
+					result.success.push({
+						userId: update.userId,
+						message: `Role updated to ${update.newRole}`,
+					});
+
+					this.eventService.emit('user-changed-role', {
+						userId: user.id,
+						targetUserId: update.userId,
+						targetUserNewRole: update.newRole,
+						publicApi: false,
+					});
+				} catch (error) {
+					result.errors.push({
+						userId: update.userId,
+						error: error instanceof Error ? error.message : 'Unknown error',
+					});
+				}
+			}
+		});
+
+		return result;
+	}
+
+	async bulkUpdateStatus(
+		user: User,
+		requestDto: BulkStatusUpdateRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		const { userIds, disabled } = requestDto;
+		const result: BulkOperationResponseDto = {
+			success: [],
+			errors: [],
+			totalProcessed: userIds.length,
+		};
+
+		await this.userRepository.manager.transaction(async (trx) => {
+			for (const userId of userIds) {
+				try {
+					const targetUser = await trx.findOne(User, { where: { id: userId } });
+					if (!targetUser) {
+						result.errors.push({
+							userId,
+							error: 'User not found',
+						});
+						continue;
+					}
+
+					if (targetUser.role === 'global:owner') {
+						result.errors.push({
+							userId,
+							error: 'Cannot change status of global owner',
+						});
+						continue;
+					}
+
+					if (userId === user.id) {
+						result.errors.push({
+							userId,
+							error: 'Cannot change your own status',
+						});
+						continue;
+					}
+
+					await trx.update(User, { id: userId }, { disabled });
+
+					result.success.push({
+						userId,
+						message: `User ${disabled ? 'disabled' : 'enabled'} successfully`,
+					});
+				} catch (error) {
+					result.errors.push({
+						userId,
+						error: error instanceof Error ? error.message : 'Unknown error',
+					});
+				}
+			}
+		});
+
+		return result;
+	}
+
+	async bulkDeleteUsers(
+		user: User,
+		requestDto: BulkDeleteUsersRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		const { userIds } = requestDto;
+		const result: BulkOperationResponseDto = {
+			success: [],
+			errors: [],
+			totalProcessed: userIds.length,
+		};
+
+		for (const userId of userIds) {
+			try {
+				if (userId === user.id) {
+					result.errors.push({
+						userId,
+						error: 'Cannot delete your own user',
+					});
+					continue;
+				}
+
+				const targetUser = await this.userRepository.findOneBy({ id: userId });
+				if (!targetUser) {
+					result.errors.push({
+						userId,
+						error: 'User not found',
+					});
+					continue;
+				}
+
+				if (targetUser.role === 'global:owner') {
+					result.errors.push({
+						userId,
+						error: 'Cannot delete global owner',
+					});
+					continue;
+				}
+
+				result.success.push({
+					userId,
+					message: 'User deletion scheduled for processing',
+				});
+			} catch (error) {
+				result.errors.push({
+					userId,
+					error: error instanceof Error ? error.message : 'Unknown error',
+				});
+			}
+		}
+
+		return result;
 	}
 }

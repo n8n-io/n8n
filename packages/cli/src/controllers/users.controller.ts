@@ -3,6 +3,11 @@ import {
 	SettingsUpdateRequestDto,
 	UsersListFilterDto,
 	usersListSchema,
+	BulkInviteUsersRequestDto,
+	BulkUpdateRolesRequestDto,
+	BulkStatusUpdateRequestDto,
+	BulkDeleteUsersRequestDto,
+	BulkOperationResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
@@ -20,6 +25,7 @@ import {
 	GlobalScope,
 	Delete,
 	Get,
+	Post,
 	RestController,
 	Patch,
 	Licensed,
@@ -332,5 +338,72 @@ export class UsersController {
 		);
 
 		return { success: true };
+	}
+
+	@Post('/bulk/invite')
+	@GlobalScope('user:create')
+	async bulkInviteUsers(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: BulkInviteUsersRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		this.logger.debug(`Bulk inviting ${payload.invitations.length} users`, {
+			requesterId: req.user.id,
+		});
+
+		const result = await this.userService.bulkInviteUsers(req.user, payload);
+
+		return result;
+	}
+
+	@Patch('/bulk/roles')
+	@GlobalScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
+	async bulkUpdateRoles(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: BulkUpdateRolesRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		this.logger.debug(`Bulk updating roles for ${payload.userRoleUpdates.length} users`, {
+			requesterId: req.user.id,
+		});
+
+		const result = await this.userService.bulkUpdateRoles(req.user, payload);
+
+		return result;
+	}
+
+	@Patch('/bulk/status')
+	@GlobalScope('user:update')
+	async bulkUpdateStatus(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: BulkStatusUpdateRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		this.logger.debug(`Bulk updating status for ${payload.userIds.length} users`, {
+			requesterId: req.user.id,
+			disabled: payload.disabled,
+		});
+
+		const result = await this.userService.bulkUpdateStatus(req.user, payload);
+
+		return result;
+	}
+
+	@Delete('/bulk')
+	@GlobalScope('user:delete')
+	async bulkDeleteUsers(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: BulkDeleteUsersRequestDto,
+	): Promise<BulkOperationResponseDto> {
+		this.logger.debug(`Bulk deleting ${payload.userIds.length} users`, {
+			requesterId: req.user.id,
+			transferToUserId: payload.transferToUserId,
+		});
+
+		const result = await this.userService.bulkDeleteUsers(req.user, payload);
+
+		return result;
 	}
 }
