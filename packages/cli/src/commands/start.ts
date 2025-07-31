@@ -33,6 +33,7 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -178,14 +179,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		const { flags } = this;
-		const { communityPackages } = this.globalConfig.nodes;
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		// cli flag overrides the config env variable
 		if (flags.reinstallMissingPackages) {
-			if (communityPackages.enabled) {
+			if (communityPackagesConfig.enabled) {
 				this.logger.warn(
 					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
 				);
-				communityPackages.reinstallMissing = true;
+				communityPackagesConfig.reinstallMissing = true;
 			} else {
 				this.logger.warn(
 					'`--reinstallMissingPackages` was passed, but community packages are disabled',
