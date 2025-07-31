@@ -289,7 +289,7 @@ export class WorkflowRunner {
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
-				workflowExecution = this.manualExecutionService.runManually(
+				workflowExecution = await this.manualExecutionService.runManually(
 					data,
 					workflow,
 					additionalData,

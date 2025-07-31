@@ -52,7 +52,7 @@ export class ManualExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionId: string,
 		pinData?: IPinData,
-	): PCancelable<IRun> {
+	): Promise<PCancelable<IRun>> {
 		if (data.triggerToStartFrom?.data && data.startNodes?.length) {
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,

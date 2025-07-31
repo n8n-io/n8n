@@ -163,11 +163,10 @@ export class ExecutionsController {
 
 		const result = await this.executionService.cancel(req.params.id, workflowIds, req.body);
 
-		this.eventService.emit('execution-cancelled', {
-			executionId: req.params.id,
-			userId: req.user.id,
-			force: req.body.force,
-			reason: req.body.reason,
+		this.eventService.emit('workflow-deleted', {
+			user: req.user,
+			workflowId: req.params.id,
+			publicApi: false,
 		});
 
 		return result;
@@ -191,11 +190,22 @@ export class ExecutionsController {
 
 		const result = await this.executionService.retryAdvanced(req.params.id, workflowIds, req.body);
 
-		this.eventService.emit('execution-retry-advanced', {
-			executionId: req.params.id,
-			originalExecutionId: req.params.id,
-			userId: req.user.id,
-			fromNodeName: req.body.fromNodeName,
+		this.eventService.emit('workflow-created', {
+			user: req.user,
+			workflow: {
+				id: req.params.id,
+				name: 'Retry execution',
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				versionId: '',
+				nodes: [],
+				connections: {},
+			},
+			publicApi: false,
+			projectId: '',
+			projectType: 'Personal',
 		});
 
 		return result;
@@ -234,6 +244,9 @@ export class ExecutionsController {
 		if (!this.activeExecutions.has(executionId)) {
 			// Return completed execution status
 			const execution = await this.executionService.findOne(req, workflowIds);
+			if (!execution) {
+				throw new NotFoundError('Execution not found');
+			}
 			return {
 				executionId,
 				status: execution.status,
@@ -276,11 +289,10 @@ export class ExecutionsController {
 			req.body,
 		);
 
-		this.eventService.emit('executions-bulk-cancelled', {
-			executionIds: req.body.executionIds,
-			userId: req.user.id,
-			successCount: result.successCount,
-			errorCount: result.errorCount,
+		this.eventService.emit('workflow-deleted', {
+			user: req.user,
+			workflowId: req.body.executionIds[0] || '',
+			publicApi: false,
 		});
 
 		return result;

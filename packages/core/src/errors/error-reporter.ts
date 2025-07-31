@@ -128,7 +128,7 @@ export class ErrorReporter {
 		];
 
 		// Try to import eventLoopBlockIntegration conditionally
-		let eventLoopBlockIntegration: any = null;
+		let eventLoopBlockIntegration: (() => unknown) | null = null;
 		try {
 			const sentryNative = await import('@sentry/node-native');
 			eventLoopBlockIntegration = sentryNative.eventLoopBlockIntegration;
@@ -150,7 +150,7 @@ export class ErrorReporter {
 			serverName,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
-			integrations: (integrations) => [
+			integrations: (integrations: Array<{ name: string }>) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
 				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
@@ -163,7 +163,7 @@ export class ErrorReporter {
 					},
 				}),
 				// Only add eventLoopBlockIntegration if it's available
-				...(eventLoopBlockIntegration ? [eventLoopBlockIntegration()] : []),
+				...(eventLoopBlockIntegration ? [eventLoopBlockIntegration() as { name: string }] : []),
 			],
 		});
 

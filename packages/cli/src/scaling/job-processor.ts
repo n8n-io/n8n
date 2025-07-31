@@ -200,7 +200,7 @@ export class JobProcessor {
 			};
 
 			try {
-				workflowRun = this.manualExecutionService.runManually(
+				workflowRun = await this.manualExecutionService.runManually(
 					data,
 					workflow,
 					additionalData,
