@@ -1,9 +1,8 @@
-import { defineStore } from 'pinia';
 import { TEMPLATES_URLS } from '@/constants';
-import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
-import { useSettingsStore } from './settings.store';
-import * as templatesApi from '@n8n/rest-api-client/api/templates';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { getTemplatePathByRole } from '@/utils/experiments';
+import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
@@ -13,13 +12,14 @@ import type {
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
 } from '@n8n/rest-api-client/api/templates';
-import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
+import * as templatesApi from '@n8n/rest-api-client/api/templates';
+import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
-import { computed, ref } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { getTemplatePathByRole } from '@/utils/experiments';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];

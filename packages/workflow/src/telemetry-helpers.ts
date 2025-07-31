@@ -5,6 +5,7 @@ import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -21,7 +22,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,
@@ -418,6 +419,10 @@ export function generateNodesGraph(
 			nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
 				(metric: { name: string }) => metric.name,
 			);
+		} else if (node.type === CODE_NODE_TYPE) {
+			const { language } = node.parameters;
+			nodeItem.language =
+				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

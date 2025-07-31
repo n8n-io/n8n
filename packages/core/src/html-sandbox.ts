@@ -1,14 +1,52 @@
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { JSDOM } from 'jsdom';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
 
+export const isIframeSandboxDisabled = () => {
+	return Container.get(SecurityConfig).disableIframeSandboxing;
+};
+
 /**
- * Sandboxes the HTML response to prevent possible exploitation. Embeds the
- * response in an iframe to make sure the HTML has a different origin.
+ * Checks if the given string contains HTML.
  */
-export const sandboxHtmlResponse = (html: string) => {
+export const hasHtml = (str: string) => {
+	try {
+		const dom = new JSDOM(str);
+		return (
+			dom.window.document.body.children.length > 0 || dom.window.document.head.children.length > 0
+		);
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * Sandboxes the HTML response to prevent possible exploitation, if the data has HTML.
+ * If the data does not have HTML, it will be returned as is.
+ * Otherwise, it embeds the response in an iframe to make sure the HTML has a different origin.
+ * Env var `N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX` can be used, in this case sandboxing is disabled.
+ *
+ * @param data - The data to sandbox.
+ * @param forceSandbox - Whether to force sandboxing even if the data does not contain HTML.
+ * @returns The sandboxed HTML response.
+ */
+export const sandboxHtmlResponse = <T>(data: T, forceSandbox = false) => {
+	if (isIframeSandboxDisabled()) return data;
+
+	let text;
+	if (typeof data !== 'string') {
+		text = JSON.stringify(data);
+	} else {
+		text = data;
+	}
+
+	if (!forceSandbox && !hasHtml(text)) return text;
+
 	// Escape & and " as mentioned in the spec:
 	// https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element
-	const escapedHtml = html.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+	const escapedHtml = text.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
 
 	return `<iframe srcdoc="${escapedHtml}" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"

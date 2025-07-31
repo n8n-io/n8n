@@ -62,7 +62,11 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+
+import { ChatServer } from './chat/chat-server';
+
 import { MfaService } from './mfa/mfa.service';
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class Server extends AbstractServer {
@@ -115,9 +119,9 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/community-packages.controller');
-			await import('@/controllers/community-node-types.controller');
+		if (Container.get(CommunityPackagesConfig).enabled) {
+			await import('@/community-packages/community-packages.controller');
+			await import('@/community-packages/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
@@ -149,6 +153,10 @@ export class Server extends AbstractServer {
 			await import('@/sso.ee/saml/routes/saml.controller.ee');
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		}
+
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
 		}
 
 		// ----------------------------------------
@@ -286,7 +294,6 @@ export class Server extends AbstractServer {
 					release: `n8n@${N8N_VERSION}`,
 				});
 				const frontendConfig = [
-					`window.BASE_PATH = '${this.globalConfig.path}';`,
 					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
 					`window.sentry = ${frontendSentryConfig};`,
 				].join('\n');
@@ -371,7 +378,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -474,5 +481,6 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatServer).setup(server, app);
 	}
 }

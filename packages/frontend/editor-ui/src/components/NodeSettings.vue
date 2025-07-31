@@ -2,7 +2,6 @@
 import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	INodeParameters,
-	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	INodeCredentialDescription,
@@ -16,12 +15,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import {
-	BASE_NODE_SURVEY_URL,
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CUSTOM_NODES_DOCS_URL,
-	NDV_UI_OVERHAUL_EXPERIMENT,
-} from '@/constants';
+import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -32,7 +26,12 @@ import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { nameIsParameter } from '@/utils/nodeSettingsUtils';
+import {
+	collectSettings,
+	createCommonNodeSettings,
+	nameIsParameter,
+	getNodeSettingsInitialValues,
+} from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -54,37 +53,34 @@ import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { I18nT } from 'vue-i18n';
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 
 const props = withDefaults(
 	defineProps<{
-		eventBus: EventBus;
+		eventBus?: EventBus;
 		dragging: boolean;
 		pushRef: string;
 		readOnly: boolean;
 		foreignCredentials: string[];
 		blockUI: boolean;
 		executable: boolean;
-		inputSize: number;
+		inputSize?: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
-		noWheel?: boolean;
+		subTitle?: string;
 	}>(),
 	{
-		foreignCredentials: () => [],
-		readOnly: false,
-		executable: true,
 		inputSize: 0,
-		blockUI: false,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
-		noWheel: false,
+		subTitle: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	stopExecution: [];
-	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
 	openConnectionNodeCreator: [
@@ -94,22 +90,12 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	captureWheelBody: [WheelEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
 
-const nodeValues = ref<INodeParameters>({
-	color: '#ff0000',
-	alwaysOutputData: false,
-	executeOnce: false,
-	notesInFlow: false,
-	onError: 'stopWorkflow',
-	retryOnFail: false,
-	maxTries: 3,
-	waitBetweenTries: 1000,
-	notes: '',
-	parameters: {},
-});
+const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -142,7 +128,6 @@ const openPanel = ref<Tab>('params');
 const nodeValuesInitialized = ref(false);
 
 const hiddenIssuesInputs = ref<string[]>([]);
-const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
@@ -303,11 +288,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		return;
 	}
 
-	if (parameterData.name === 'onError') {
-		// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
-		emit('redrawRequired');
-	}
-
 	if (parameterData.name === 'name') {
 		// Name of node changed so we have to set also the new node name as active
 
@@ -453,132 +433,9 @@ const populateHiddenIssuesSet = () => {
 	workflowsStore.setNodePristine(node.value.name, false);
 };
 
-const populateSettings = () => {
-	if (isExecutable.value && !isTriggerNode.value) {
-		nodeSettings.value.push(
-			...([
-				{
-					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
-					name: 'alwaysOutputData',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
-					name: 'executeOnce',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.executeOnce.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
-					name: 'retryOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.retryOnFail.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
-					name: 'maxTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 2,
-						maxValue: 5,
-					},
-					default: 3,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.maxTries.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
-					name: 'waitBetweenTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 5000,
-					},
-					default: 1000,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
-					isNodeSetting: true,
-				},
-				{
-					displayName: i18n.baseText('nodeSettings.onError.displayName'),
-					name: 'onError',
-					type: 'options',
-					options: [
-						{
-							name: i18n.baseText('nodeSettings.onError.options.stopWorkflow.displayName'),
-							value: 'stopWorkflow',
-							description: i18n.baseText('nodeSettings.onError.options.stopWorkflow.description'),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueRegularOutput.displayName'),
-							value: 'continueRegularOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueRegularOutput.description',
-							),
-						},
-						{
-							name: i18n.baseText('nodeSettings.onError.options.continueErrorOutput.displayName'),
-							value: 'continueErrorOutput',
-							description: i18n.baseText(
-								'nodeSettings.onError.options.continueErrorOutput.description',
-							),
-						},
-					],
-					default: 'stopWorkflow',
-					description: i18n.baseText('nodeSettings.onError.description'),
-					noDataExpression: true,
-					isNodeSetting: true,
-				},
-			] as INodeProperties[]),
-		);
-	}
-	nodeSettings.value.push(
-		...([
-			{
-				displayName: i18n.baseText('nodeSettings.notes.displayName'),
-				name: 'notes',
-				type: 'string',
-				typeOptions: {
-					rows: 5,
-				},
-				default: '',
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notes.description'),
-				isNodeSetting: true,
-			},
-			{
-				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
-				name: 'notesInFlow',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description: i18n.baseText('nodeSettings.notesInFlow.description'),
-				isNodeSetting: true,
-			},
-		] as INodeProperties[]),
-	);
-};
+const nodeSettings = computed(() =>
+	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -628,124 +485,12 @@ const setNodeValues = () => {
 
 	if (nodeType.value !== null) {
 		nodeValid.value = true;
-
-		const foundNodeSettings = [];
-		if (node.value.color) {
-			foundNodeSettings.push('color');
-			nodeValues.value = {
-				...nodeValues.value,
-				color: node.value.color,
-			};
-		}
-
-		if (node.value.notes) {
-			foundNodeSettings.push('notes');
-			nodeValues.value = {
-				...nodeValues.value,
-				notes: node.value.notes,
-			};
-		}
-
-		if (node.value.alwaysOutputData) {
-			foundNodeSettings.push('alwaysOutputData');
-			nodeValues.value = {
-				...nodeValues.value,
-				alwaysOutputData: node.value.alwaysOutputData,
-			};
-		}
-
-		if (node.value.executeOnce) {
-			foundNodeSettings.push('executeOnce');
-			nodeValues.value = {
-				...nodeValues.value,
-				executeOnce: node.value.executeOnce,
-			};
-		}
-
-		if (node.value.continueOnFail) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: 'continueRegularOutput',
-			};
-		}
-
-		if (node.value.onError) {
-			foundNodeSettings.push('onError');
-			nodeValues.value = {
-				...nodeValues.value,
-				onError: node.value.onError,
-			};
-		}
-
-		if (node.value.notesInFlow) {
-			foundNodeSettings.push('notesInFlow');
-			nodeValues.value = {
-				...nodeValues.value,
-				notesInFlow: node.value.notesInFlow,
-			};
-		}
-
-		if (node.value.retryOnFail) {
-			foundNodeSettings.push('retryOnFail');
-			nodeValues.value = {
-				...nodeValues.value,
-				retryOnFail: node.value.retryOnFail,
-			};
-		}
-
-		if (node.value.maxTries) {
-			foundNodeSettings.push('maxTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				maxTries: node.value.maxTries,
-			};
-		}
-
-		if (node.value.waitBetweenTries) {
-			foundNodeSettings.push('waitBetweenTries');
-			nodeValues.value = {
-				...nodeValues.value,
-				waitBetweenTries: node.value.waitBetweenTries,
-			};
-		}
-
-		// Set default node settings
-		for (const nodeSetting of nodeSettings.value) {
-			if (!foundNodeSettings.includes(nodeSetting.name)) {
-				// Set default value
-				nodeValues.value = {
-					...nodeValues.value,
-					[nodeSetting.name]: nodeSetting.default,
-				};
-			}
-		}
-
-		nodeValues.value = {
-			...nodeValues.value,
-			parameters: deepCopy(node.value.parameters),
-		};
+		nodeValues.value = collectSettings(node.value, nodeSettings.value);
 	} else {
 		nodeValid.value = false;
 	}
 
 	nodeValuesInitialized.value = true;
-};
-
-const onMissingNodeTextClick = (event: MouseEvent) => {
-	if ((event.target as Element).localName === 'a') {
-		telemetry.track('user clicked cnr browse button', {
-			source: 'cnr missing node modal',
-		});
-	}
-};
-
-const onMissingNodeLearnMoreLinkClick = () => {
-	telemetry.track('user clicked cnr docs link', {
-		source: 'missing node modal source',
-		package_name: node.value?.type.split('.')[0],
-		node_type: node.value?.type,
-	});
 };
 
 const onStopExecution = () => {
@@ -779,7 +524,6 @@ watch(node, () => {
 
 onMounted(async () => {
 	populateHiddenIssuesSet();
-	populateSettings();
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
@@ -810,12 +554,6 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
-
-function handleWheelEvent(event: WheelEvent) {
-	if (event.ctrlKey) {
-		event.preventDefault();
-	}
-}
 </script>
 
 <template>
@@ -827,7 +565,22 @@ function handleWheelEvent(event: WheelEvent) {
 		}"
 		@keydown.stop
 	>
-		<div v-if="!isNDVV2" :class="$style.header">
+		<ExperimentalEmbeddedNdvHeader
+			v-if="isEmbeddedInCanvas && node"
+			:node="node"
+			:selected-tab="openPanel"
+			:read-only="readOnly"
+			:node-type="nodeType"
+			:push-ref="pushRef"
+			:sub-title="subTitle"
+			@name-changed="nameChanged"
+			@tab-changed="onTabSelect"
+		>
+			<template #actions>
+				<slot name="actions" />
+			</template>
+		</ExperimentalEmbeddedNdvHeader>
+		<div v-else-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -837,21 +590,18 @@ function handleWheelEvent(event: WheelEvent) {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<template v-if="isExecutable || slots.actions">
-					<NodeExecuteButton
-						v-if="isExecutable && !blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-						@value-changed="valueChanged"
-					/>
-					<slot name="actions" />
-				</template>
+				<NodeExecuteButton
+					v-if="isExecutable && !blockUI && node && nodeValid"
+					data-test-id="node-execute-button"
+					:node-name="node.name"
+					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+					:tooltip="executeButtonTooltip"
+					size="small"
+					telemetry-source="parameters"
+					@execute="onNodeExecute"
+					@stop-execution="onStopExecution"
+					@value-changed="valueChanged"
+				/>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -876,62 +626,21 @@ function handleWheelEvent(event: WheelEvent) {
 			@value-changed="valueChanged"
 			@tab-changed="onTabSelect"
 		/>
-		<div v-if="node && !nodeValid" class="node-is-not-valid">
-			<p :class="$style.warningIcon">
-				<n8n-icon icon="triangle-alert" />
-			</p>
-			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
-			</div>
-			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
-				<div class="mb-l">
-					<I18nT
-						keypath="nodeSettings.communityNodeUnknown.description"
-						tag="span"
-						scope="global"
-						@click="onMissingNodeTextClick"
-					>
-						<template #action>
-							<a
-								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
-								target="_blank"
-								>{{ node.type.split('.')[0] }}</a
-							>
-						</template>
-					</I18nT>
-				</div>
-				<n8n-link
-					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-					@click="onMissingNodeLearnMoreLinkClick"
-				>
-					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
-			</div>
-			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
-				<template #action>
-					<a
-						:href="CUSTOM_NODES_DOCS_URL"
-						target="_blank"
-						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
-					/>
-				</template>
-			</I18nT>
-		</div>
+
+		<NodeSettingsInvalidNodeWarning v-if="node && !nodeValid" :node="node" />
+
 		<div
 			v-if="node && nodeValid"
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
 				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
-			@wheel="noWheel ? handleWheelEvent : undefined"
+			@wheel.capture="emit('captureWheelBody', $event)"
 		>
-			<n8n-notice
+			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
@@ -968,9 +677,9 @@ function handleWheelEvent(event: WheelEvent) {
 					/>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" class="no-parameters">
-					<n8n-text>
+					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<div
@@ -978,7 +687,7 @@ function handleWheelEvent(event: WheelEvent) {
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
-					<n8n-notice
+					<N8nNotice
 						:content="
 							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
@@ -1038,23 +747,18 @@ function handleWheelEvent(event: WheelEvent) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<n8n-block-ui :show="blockUI" />
+		<N8nBlockUi :show="blockUI" />
+		<CommunityNodeFooter
+			v-if="openPanel === 'settings' && isCommunityNode"
+			:package-name="packageName"
+			:show-manage="useUsersStore().isInstanceOwner"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .header {
 	background-color: var(--color-background-base);
-}
-
-.warningIcon {
-	color: var(--color-text-lighter);
-	font-size: var(--font-size-2xl);
-}
-
-.descriptionContainer {
-	display: flex;
-	flex-direction: column;
 }
 
 .featureRequest {
@@ -1095,22 +799,8 @@ function handleWheelEvent(event: WheelEvent) {
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
+			margin-right: var(--spacing-s);
 		}
-	}
-
-	&.embedded .header-side-menu {
-		padding: var(--spacing-xs);
-	}
-
-	.node-is-not-valid {
-		height: 75%;
-		padding: 10px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		line-height: var(--font-line-height-regular);
 	}
 
 	.node-parameters-wrapper {
@@ -1130,7 +820,7 @@ function handleWheelEvent(event: WheelEvent) {
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
 
 		@supports not (selector(::-webkit-scrollbar)) {
 			scrollbar-width: thin;

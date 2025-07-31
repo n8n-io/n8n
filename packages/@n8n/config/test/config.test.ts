@@ -138,17 +138,10 @@ describe('GlobalConfig', () => {
 			files: [],
 		},
 		nodes: {
-			communityPackages: {
-				enabled: true,
-				registry: 'https://registry.npmjs.org',
-				reinstallMissing: false,
-				unverifiedEnabled: true,
-				verifiedEnabled: true,
-				preventLoading: false,
-			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: [],
+			pythonEnabled: true,
 		},
 		publicApi: {
 			disabled: false,
@@ -274,6 +267,9 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+			cron: {
+				activeInterval: 0,
+			},
 		},
 		multiMainSetup: {
 			enabled: false,
@@ -299,6 +295,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			disableIframeSandboxing: false,
 		},
 		executions: {
 			pruneData: true,
@@ -346,6 +343,13 @@ describe('GlobalConfig', () => {
 				loginEnabled: false,
 				loginLabel: '',
 			},
+		},
+		redis: {
+			prefix: 'n8n',
+		},
+		externalFrontendHooksUrls: '',
+		ai: {
+			enabled: false,
 		},
 	};
 
