@@ -49,7 +49,6 @@ const emit = defineEmits<{
 		connectionType: NodeConnectionType,
 		connectionIndex?: number,
 	];
-	redrawNode: [nodeName: string];
 	stopExecution: [];
 }>();
 
@@ -81,7 +80,6 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const selectedInput = ref<string | undefined>();
@@ -498,18 +496,6 @@ const close = async () => {
 		return;
 	}
 
-	if (
-		activeNode.value &&
-		(typeof activeNodeType.value?.outputs === 'string' ||
-			typeof activeNodeType.value?.inputs === 'string' ||
-			redrawRequired.value)
-	) {
-		const nodeName = activeNode.value.name;
-		setTimeout(() => {
-			emit('redrawNode', nodeName);
-		}, 1);
-	}
-
 	if (outputPanelEditMode.value.enabled && activeNode.value) {
 		const shouldPinDataBeforeClosing = await message.confirm(
 			'',
@@ -842,7 +828,6 @@ onBeforeUnmount(() => {
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
-						@redraw-required="redrawRequired = true"
 						@activate="onWorkflowActivate"
 						@switch-selected-node="onSwitchSelectedNode"
 						@open-connection-node-creator="onOpenConnectionNodeCreator"

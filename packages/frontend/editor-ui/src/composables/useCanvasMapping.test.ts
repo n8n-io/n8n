@@ -101,6 +101,7 @@ describe('useCanvasMapping', () => {
 					label: manualTriggerNode.name,
 					type: 'canvas-node',
 					position: expect.anything(),
+					draggable: true,
 					data: {
 						id: manualTriggerNode.id,
 						name: manualTriggerNode.name,

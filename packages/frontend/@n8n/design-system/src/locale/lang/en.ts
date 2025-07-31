@@ -65,6 +65,7 @@ export default {
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',
