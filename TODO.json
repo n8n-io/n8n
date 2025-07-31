@@ -24,25 +24,25 @@
     {
       "id": "linter_task_active",
       "title": "Fix Linter Errors - IMMEDIATE",
-      "description": "Fix 0 errors and 0 warnings found in recently edited files: package.json",
+      "description": "Fix 0 errors and 4 warnings found in recently edited files: create-subtasks.js",
       "mode": "DEVELOPMENT",
       "priority": "high",
       "status": "pending",
       "important_files": [
         "development/linter-errors.md",
-        "package.json"
+        "create-subtasks.js"
       ],
       "success_criteria": [
         "All linter errors in edited files resolved",
         "development/linter-errors.md shows no issues for edited files",
         "Code passes linting without warnings or errors"
       ],
-      "created_at": "2025-07-31T22:17:02.892Z",
+      "created_at": "2025-07-31T22:27:35.818Z",
       "is_linter_task": true,
       "linter_summary": {
-        "total_violations": 0,
+        "total_violations": 4,
         "errors": 0,
-        "warnings": 0,
+        "warnings": 4,
         "files_affected": 1
       }
     },
@@ -1302,10 +1302,10 @@
     {
       "id": "typescript-build-optimization-1753987912607",
       "title": "Optimize TypeScript Compilation Performance",
-      "description": "Implement TypeScript compilation optimizations including project references, incremental builds, and build output optimization for faster builds.",
+      "description": "Implement TypeScript compilation optimizations including project references, incremental builds, and build output optimization for faster builds. This task has been decomposed into focused subtasks for systematic implementation.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "TypeScript project references configured properly",
         "Incremental TypeScript builds enabled",
@@ -1321,7 +1321,117 @@
       ],
       "estimate": "4-5 hours",
       "requires_research": false,
-      "created_at": "2025-07-31T18:51:52.607Z"
+      "created_at": "2025-07-31T18:51:52.607Z",
+      "subtasks": [
+        {
+          "id": "ts-opt-subtask-1-project-refs",
+          "title": "Optimize CLI Package Project References",
+          "description": "Reduce CLI package's 15 project references by creating intermediate reference groups to improve build parallelization.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "CLI package references reduced from 15 to <8 direct references",
+            "Intermediate reference groups created for logical package clusters",
+            "Build parallelization improved without breaking dependencies",
+            "TypeScript compilation still validates all dependencies correctly"
+          ],
+          "important_files": [
+            "packages/cli/tsconfig.json",
+            "packages/@n8n/platform-core/tsconfig.build.json",
+            "packages/@n8n/platform-nodes/tsconfig.build.json",
+            "packages/@n8n/platform-db/tsconfig.build.json"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "typescript-build-optimization-1753987912607"
+        },
+        {
+          "id": "ts-opt-subtask-2-parallel-builds",
+          "title": "Implement Parallel Dual Build Strategy",
+          "description": "Convert workflow package's sequential ESM/CJS builds to parallel execution using concurrently for improved build performance.",
+          "mode": "development",
+          "priority": "high",
+          "status": "pending",
+          "success_criteria": [
+            "Workflow package builds ESM and CJS targets in parallel",
+            "Build scripts use concurrently for parallel execution",
+            "Build time reduced by 30-40% for workflow package",
+            "Both build outputs maintain compatibility and correctness"
+          ],
+          "important_files": [
+            "packages/workflow/package.json",
+            "packages/workflow/tsconfig.build.esm.json",
+            "packages/workflow/tsconfig.build.cjs.json"
+          ],
+          "estimate": "1-2 hours",
+          "parent_task": "typescript-build-optimization-1753987912607"
+        },
+        {
+          "id": "ts-opt-subtask-3-incremental-config",
+          "title": "Enhance Incremental Compilation Configuration",
+          "description": "Optimize TypeScript incremental compilation settings, tsBuildInfoFile placement, and composite build configurations across all packages.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "tsBuildInfoFile centralized to .tsbuildinfo/ directory",
+            "Enhanced incremental compilation settings applied consistently",
+            "composite: true enabled where appropriate",
+            "assumeChangesOnlyAffectDirectDependencies optimization enabled",
+            "Incremental build performance improved by 20%+"
+          ],
+          "important_files": [
+            "packages/@n8n/typescript-config/tsconfig.common.json",
+            "packages/@n8n/typescript-config/tsconfig.build.json",
+            "packages/@n8n/typescript-config/modern/tsconfig.json"
+          ],
+          "estimate": "2-3 hours",
+          "parent_task": "typescript-build-optimization-1753987912607"
+        },
+        {
+          "id": "ts-opt-subtask-4-large-file-modularization",
+          "title": "Modularize Large TypeScript Files",
+          "description": "Split the largest TypeScript files (7,967+ lines) into smaller modules to reduce individual file compilation time and improve maintainability.",
+          "mode": "refactoring",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "UProc/Json/Tools.ts (7,967 lines) split into <2000 line modules",
+            "workflow/src/interfaces.ts (3,027 lines) split into domain-specific interface modules",
+            "Large test files modularized into focused test suites",
+            "All functionality preserved with proper exports/imports",
+            "Compilation time improved for affected packages"
+          ],
+          "important_files": [
+            "packages/nodes-base/nodes/UProc/Json/Tools.ts",
+            "packages/workflow/src/interfaces.ts",
+            "packages/core/src/execution-engine/workflow-execute.ts"
+          ],
+          "estimate": "4-6 hours",
+          "parent_task": "typescript-build-optimization-1753987912607"
+        },
+        {
+          "id": "ts-opt-subtask-5-turbo-optimization",
+          "title": "Optimize Turbo Build Configuration",
+          "description": "Enhance Turbo.json configuration with better input specifications, selective dependencies, and optimized caching strategies.",
+          "mode": "development",
+          "priority": "medium",
+          "status": "pending",
+          "success_criteria": [
+            "Enhanced input specifications for better cache invalidation",
+            "Selective dependency strategy implemented where safe",
+            "Build task parallelization improved",
+            "Cache hit rates improved through better input definitions",
+            "Overall build orchestration performance improved by 15%+"
+          ],
+          "important_files": [
+            "turbo.json",
+            "package.json"
+          ],
+          "estimate": "1-2 hours",
+          "parent_task": "typescript-build-optimization-1753987912607"
+        }
+      ]
     },
     {
       "id": "build_fix_1753995925294",
@@ -1723,9 +1833,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 101,
-  "last_hook_activation": 1754000222892,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 106,
+  "last_hook_activation": 1754000855819,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 49

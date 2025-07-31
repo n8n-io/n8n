@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
+
 import { ExecutionStatus } from './execution-profile.dto';
 
 export class TimeRangeDto extends Z.class({

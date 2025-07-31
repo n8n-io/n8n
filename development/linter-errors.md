@@ -1,73 +1,32 @@
 # Linter Errors Report
 
-**Generated:** 2025-07-31T19:30:00.000Z
-**Status:** ✅ ESLint Configuration Optimized
-**Monorepo Structure:** Fully Configured
+**Generated:** 2025-07-31T22:27:35.819Z
+**Total Issues:** 4 (0 errors, 4 warnings)
+**Files:** 1
 
-## 🎯 Task Completion Summary
+## create-subtasks.js (eslint)
 
-### ✅ Completed Optimizations
+**File Path:** `/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/create-subtasks.js`
+**Issues:** 4
 
-1. **Root Configuration Enhanced**
-   - Added `"type": "module"` to package.json to eliminate MODULE_TYPELESS_PACKAGE_JSON warnings
-   - Optimized global ignores for better performance
-   - Improved documentation and structure
-   - Updated ECMAScript version to 2024
+⚠️ **Line 133:5** - Unexpected console statement. `[no-console]`
 
-2. **Monorepo Structure Validated**
-   - Root eslint.config.js handles global configuration and ignores
-   - Individual packages use their own eslint.config.mjs for specific rules
-   - All package configurations validated and working correctly
-   - Proper delegation between root and package-level configurations
+⚠️ **Line 134:5** - Unexpected console statement. `[no-console]`
 
-3. **Performance Improvements**
-   - Eliminated parsing warnings that were causing performance overhead
-   - Optimized ignore patterns for faster linting
-   - Better separation of concerns between root and package configurations
+⚠️ **Line 136:7** - Unexpected console statement. `[no-console]`
 
-### 📊 Current Linting Status
-
-**Configuration Health:** ✅ All Valid
-- Root configuration: ✅ eslint.config.js (optimized)
-- Package configurations: ✅ All eslint.config.mjs files validated
-- No configuration syntax errors found
-
-**Warning Levels:** Acceptable for large codebase
-- Most warnings are set to 'warn' level for gradual improvement
-- Zero configuration errors that would block development
-- Build processes can continue without linting failures
-
-### 🚀 Monorepo Optimization Benefits
-
-1. **Scalability:** Each package manages its own linting rules
-2. **Performance:** Reduced parsing overhead and better ignore patterns
-3. **Maintainability:** Clear separation between global and package-specific rules
-4. **Development Experience:** No more MODULE_TYPELESS_PACKAGE_JSON warnings
-
-### 🔧 Architecture Overview
-
-```
-Root Level (eslint.config.js)
-├── Global ignores (node_modules, dist, build, etc.)
-├── Essential rules for config files
-└── Minimal configuration
-
-Package Level (eslint.config.mjs)
-├── Package-specific rules and overrides
-├── Framework-specific configurations
-├── Custom ignore patterns
-└── Testing rule modifications
-```
+⚠️ **Line 139:5** - Unexpected console statement. `[no-console]`
 
 ---
 
-## 💡 Future Recommendations
+## 💡 Ignore File Configuration
 
-**For Continued Improvement:**
-1. Gradually convert warnings to errors in less critical packages
-2. Consider implementing pre-commit hooks for linting
-3. Set up CI/CD integration for automated linting checks
-4. Periodically review and update ESLint configurations
+Some linting issues may be in files that shouldn't be linted. **Important:** Only modify ignore files (.ruffignore, .eslintignore, etc.) if there are genuine files that are inappropriate for linting (generated files, vendor dependencies, etc.). Do not use ignore files as a quick fix for linter errors that should be resolved in the code itself. Consider updating your ignore files:
 
-**Note:** Current warning levels are appropriate for a large, actively developed codebase. Focus on preventing new errors rather than fixing all existing warnings immediately.
+**General patterns (both `.ruffignore` and `.eslintignore`):**
+```
+coverage/
+```
+
+---
 

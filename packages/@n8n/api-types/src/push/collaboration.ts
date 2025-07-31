@@ -23,7 +23,7 @@ export type WorkflowEditOperation =
 				type: string;
 				typeVersion: number;
 				position: [number, number];
-				parameters?: Record<string, any>;
+				parameters?: Record<string, unknown>;
 			};
 			position?: number;
 	  }
@@ -35,7 +35,7 @@ export type WorkflowEditOperation =
 	| {
 			action: 'updateNode';
 			nodeId: string;
-			changes: Record<string, any>;
+			changes: Record<string, unknown>;
 			position?: number;
 	  }
 	| {
