@@ -26,7 +26,7 @@ export const hasHtml = (str: string) => {
  * Sandboxes the HTML response to prevent possible exploitation, if the data has HTML.
  * If the data does not have HTML, it will be returned as is.
  * Otherwise, it embeds the response in an iframe to make sure the HTML has a different origin.
- * Env var `N8N_UNSAFE_DISREGARD_SECURITY_WEBHOOK_RESPONSE_IFRAME_SANDBOXING` can be used, in this case sandboxing is disabled.
+ * Env var `N8N_INSECURE_DISABLE_IFRAME_SANDBOX` can be used, in this case sandboxing is disabled.
  *
  * @param data - The data to sandbox.
  * @param forceSandbox - Whether to force sandboxing even if the data does not contain HTML.

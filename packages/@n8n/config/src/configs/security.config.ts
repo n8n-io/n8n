@@ -40,6 +40,6 @@ export class SecurityConfig {
 	contentSecurityPolicyReportOnly: boolean = false;
 
 	/** Whether to disable iframe sandboxing for webhooks */
-	@Env('N8N_UNSAFE_DISREGARD_SECURITY_WEBHOOK_RESPONSE_IFRAME_SANDBOXING')
+	@Env('N8N_INSECURE_DISABLE_IFRAME_SANDBOX')
 	disableIframeSandboxing: boolean = false;
 }
