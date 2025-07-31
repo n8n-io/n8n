@@ -1,5 +1,5 @@
-.n8n-chat {
-	@use 'highlight.js/styles/github';
-}
-
 @use 'css';
+
+.n8n-chat {
+	@import 'highlight.js/styles/github';
+}
