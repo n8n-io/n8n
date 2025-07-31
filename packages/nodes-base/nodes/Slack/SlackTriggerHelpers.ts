@@ -102,8 +102,25 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 	}
 
 	try {
-		const hmac = createHmac('sha256', credential.signatureSecret as string);
-		hmac.update(`v0:${timestamp}:${req.rawBody.toString()}`);
+		if (typeof credential.signatureSecret !== 'string') {
+			return false;
+		}
+
+		if (!req.rawBody) {
+			return false;
+		}
+
+		const hmac = createHmac('sha256', credential.signatureSecret);
+
+		if (Buffer.isBuffer(req.rawBody)) {
+			hmac.update(`v0:${timestamp}:`);
+			hmac.update(req.rawBody);
+		} else {
+			const rawBodyString =
+				typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.rawBody);
+			hmac.update(`v0:${timestamp}:${rawBodyString}`);
+		}
+
 		const computedSignature = `v0=${hmac.digest('hex')}`;
 
 		const computedBuffer = Buffer.from(computedSignature);
