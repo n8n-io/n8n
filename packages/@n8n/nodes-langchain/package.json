@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.103.1",
+  "version": "1.103.2",
   "description": "",
   "main": "index.js",
   "scripts": {

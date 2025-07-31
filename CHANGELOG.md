@@ -1,3 +1,12 @@
+## [1.104.2](https://github.com/n8n-io/n8n/compare/n8n@1.104.1...n8n@1.104.2) (2025-07-31)
+
+
+### Features
+
+* Env to disable webhook response iframe sandboxing ([#17851](https://github.com/n8n-io/n8n/issues/17851)) ([8a67218](https://github.com/n8n-io/n8n/commit/8a672187cf4d127c75d3811d7251d384a2ccea24))
+
+
+
 ## [1.104.1](https://github.com/n8n-io/n8n/compare/n8n@1.104.0...n8n@1.104.1) (2025-07-23)
 
 
