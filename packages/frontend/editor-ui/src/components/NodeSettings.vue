@@ -692,7 +692,7 @@ function handleSelectAction(params: INodeParameters) {
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
 			/>
-			<div v-if="openPanel === 'params'">
+			<div v-show="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
@@ -739,7 +739,7 @@ function handleSelectAction(params: INodeParameters) {
 					/>
 				</div>
 			</div>
-			<div v-if="openPanel === 'settings'">
+			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
 					v-if="isCommunityNode && installedPackage?.updateAvailable"
 					data-test-id="update-available"
