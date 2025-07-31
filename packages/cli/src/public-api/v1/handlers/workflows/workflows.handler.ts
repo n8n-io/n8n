@@ -225,18 +225,23 @@ export = {
 				'meta',
 				'versionId',
 				'triggerCount',
+				'shared',
 			];
 
 			if (!excludePinnedData) {
 				selectFields.push('pinData');
 			}
 
+			const relations = ['shared'];
+			if (!Container.get(GlobalConfig).tags.disabled) {
+				relations.push('tags');
+			}
 			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
 				select: selectFields,
+				relations,
 				where,
-				...(!Container.get(GlobalConfig).tags.disabled && { relations: ['tags'] }),
 			});
 
 			if (excludePinnedData) {

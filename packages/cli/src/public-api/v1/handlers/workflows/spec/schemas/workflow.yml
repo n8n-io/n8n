@@ -46,3 +46,7 @@ properties:
     items:
       $ref: '../../../tags/spec/schemas/tag.yml'
     readOnly: true
+  shared:
+    type: array
+    items:
+      $ref: './sharedWorkflow.yml'
