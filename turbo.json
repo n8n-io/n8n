@@ -22,7 +22,8 @@
 		},
 		"test": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },

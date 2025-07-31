@@ -48,6 +48,8 @@
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:coverage": "COVERAGE_ENABLED=true JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:coverage:html": "COVERAGE_ENABLED=true JEST_JUNIT_CLASSNAME={filepath} turbo run test && echo 'Coverage reports generated in coverage/ directories of each package'",
+    "coverage:report": "node scripts/coverage-report.mjs",
+    "coverage:open": "npm run test:coverage:html && node -e \"require('child_process').exec('open coverage-overview.html || xdg-open coverage-overview.html || start coverage-overview.html')\"",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch",

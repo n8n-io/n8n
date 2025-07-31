@@ -49,7 +49,8 @@ const config = {
 		: {},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
-	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
+	coverageReporters: isCoverageEnabled ? ['text-summary', 'lcov', 'html-spa'] : ['text-summary'],
+	coverageDirectory: 'coverage',
 	coverageThreshold: isCoverageEnabled ? {
 		global: {
 			branches: 80,
