@@ -134,7 +134,7 @@ export class AuthService {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role !== 'global:owner' &&
+			user.role.slug !== 'global:owner' &&
 			!isWithinUsersLimit
 		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);

@@ -39,8 +39,8 @@ let authService: AuthService;
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await createUser({ role: 'global:owner' });
-	member = await createUser({ role: 'global:member' });
+	owner = await createUser({ role: { slug: 'global:owner' } });
+	member = await createUser({ role: { slug: 'global:member' } });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
 	authService = Container.get(AuthService);
@@ -50,7 +50,7 @@ describe('POST /forgot-password', () => {
 	test('should send password reset email', async () => {
 		const member = await createUser({
 			email: 'test@test.com',
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		await Promise.all(
@@ -76,7 +76,7 @@ describe('POST /forgot-password', () => {
 		await setCurrentAuthenticationMethod('saml');
 		const member = await createUser({
 			email: 'test@test.com',
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		await testServer.authlessAgent
