@@ -1,0 +1,355 @@
+{
+  "project": "n8n-monorepo",
+  "tasks": [
+    {
+      "id": "task-1",
+      "mode": "RESEARCH",
+      "description": "Analyze and understand n8n codebase structure",
+      "prompt": "Study the n8n workflow automation platform codebase to understand its architecture, key components, and development patterns",
+      "dependencies": [],
+      "important_files": [],
+      "status": "completed",
+      "requires_research": false,
+      "subtasks": []
+    },
+    {
+      "id": "linter_task_active",
+      "title": "Fix Linter Errors - IMMEDIATE",
+      "description": "Fix 0 errors and 0 warnings found in recently edited files: research-report-task-1.md",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "important_files": [
+        "development/linter-errors.md",
+        "development/research-reports/research-report-task-1.md"
+      ],
+      "success_criteria": [
+        "All linter errors in edited files resolved",
+        "development/linter-errors.md shows no issues for edited files",
+        "Code passes linting without warnings or errors"
+      ],
+      "created_at": "2025-07-31T01:05:16.014Z",
+      "is_linter_task": true,
+      "linter_summary": {
+        "total_violations": 0,
+        "errors": 0,
+        "warnings": 0,
+        "files_affected": 1
+      }
+    },
+    {
+      "id": "phase1-source-1753924007917-nrdhcsqca",
+      "title": "Implement Source Control Integration API",
+      "description": "Add REST endpoints for source control operations including git pull, branch management, and repository status. Extends existing SourceControlService with new API endpoints.",
+      "mode": "development",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/source-control/pull endpoint implemented",
+        "Source control status endpoints functional",
+        "Integration with existing git service working",
+        "Authentication and permissions enforced",
+        "API tests passing with >90% coverage",
+        "Documentation updated in OpenAPI spec"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/environments.ee/source-control/source-control.service.ee.ts",
+        "packages/cli/src/environments.ee/source-control/source-control.controller.ee.ts",
+        "packages/cli/src/api/",
+        "packages/cli/src/controllers/"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase1-user-1753924007917-mak3jif26",
+      "title": "Implement Advanced User Management API",
+      "description": "Add advanced user management endpoints including role updates, bulk operations, and user analytics. Extends existing UserController with enhanced functionality.",
+      "mode": "development",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "PATCH /api/v1/users/:id/role endpoint implemented",
+        "Bulk user operations endpoints functional",
+        "User analytics and activity tracking working",
+        "Role-based access control properly enforced",
+        "API tests passing with >90% coverage",
+        "Database migrations completed successfully"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/controllers/users.controller.ts",
+        "packages/cli/src/services/user.service.ts",
+        "@n8n/db/src/entities/User.ts"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase1-resource-1753924007917-epjzqndc7",
+      "title": "Implement Resource Portability API",
+      "description": "Add endpoints for transferring workflows and credentials between projects. Implements workflow/credential transfer with proper permission validation.",
+      "mode": "development",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/workflows/:id/transfer endpoint implemented",
+        "POST /api/v1/credentials/:id/transfer endpoint implemented",
+        "Cross-project resource transfer working",
+        "Permission validation for transfers enforced",
+        "Data integrity maintained during transfers",
+        "API tests covering transfer scenarios"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/credentials/credentials.controller.ts",
+        "packages/cli/src/controllers/project.controller.ts"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase1-binary-1753924007917-0kv6af47k",
+      "title": "Implement Binary Data Management API",
+      "description": "Create comprehensive binary data management endpoints for upload, download, and deletion with streaming support. Enhances existing binary data handling.",
+      "mode": "development",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/binary-data upload endpoint implemented",
+        "GET /api/v1/binary-data/:id download endpoint functional",
+        "DELETE /api/v1/binary-data/:id endpoint working",
+        "File streaming and chunked uploads supported",
+        "Proper MIME type detection and validation",
+        "Storage quota and security checks implemented"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/controllers/binary-data.controller.ts",
+        "packages/core/src/BinaryData/",
+        "packages/cli/src/services/"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase2-execution-1753924007917-6dr1ooe4b",
+      "title": "Implement Execution Control API",
+      "description": "Add advanced execution control endpoints for cancellation, retry, and detailed execution data retrieval. Extends existing ExecutionsController.",
+      "mode": "development",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/executions/:id/cancel endpoint implemented",
+        "POST /api/v1/executions/:id/retry endpoint functional",
+        "GET /api/v1/executions/:id/full detailed data endpoint working",
+        "Real-time execution status updates supported",
+        "Error handling for failed cancellations",
+        "Integration with ActiveExecutions service"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/executions/executions.controller.ts",
+        "packages/cli/src/active-executions.ts",
+        "packages/cli/src/scaling/scaling.service.ts"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase2-nodes-1753924007917-uqhpkxcjo",
+      "title": "Implement Node Testing API",
+      "description": "Create endpoints for testing individual nodes and partial workflow execution. Enables node development and debugging capabilities.",
+      "mode": "development",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/nodes/test endpoint implemented",
+        "POST /api/v1/workflows/:id/execute-partial endpoint functional",
+        "Node parameter validation and testing supported",
+        "Isolated execution environment for testing",
+        "Test result formatting and error reporting",
+        "Integration with workflow execution engine"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/controllers/node-types.controller.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": false
+    },
+    {
+      "id": "phase3-ai-1753924007917-kxyd5jy16",
+      "title": "Implement AI Configuration API",
+      "description": "Add endpoints for AI node configuration, prompt testing, and memory management. Integrates with existing AI node infrastructure.",
+      "mode": "development",
+      "priority": "low",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/ai-nodes/config endpoint implemented",
+        "POST /api/v1/ai-nodes/test-prompt endpoint functional",
+        "AI node memory management endpoints working",
+        "Integration with LangChain nodes",
+        "Prompt validation and testing capabilities",
+        "AI model configuration management"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/nodes-base/nodes/OpenAi/",
+        "@n8n/n8n-nodes-langchain/",
+        "packages/cli/src/controllers/"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "10-12 hours",
+      "requires_research": true
+    },
+    {
+      "id": "phase4-monitoring-1753924007917-cv23vrfah",
+      "title": "Implement Performance Monitoring API",
+      "description": "Add endpoints for performance profiling, resource monitoring, and system analytics. Enhances existing metrics collection.",
+      "mode": "development",
+      "priority": "low",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/executions/:id/profile endpoint implemented",
+        "GET /api/v1/system/resources monitoring endpoint functional",
+        "Performance metrics collection and reporting",
+        "Resource usage tracking per workflow",
+        "System health monitoring integration",
+        "Metrics visualization support"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-task-1.md",
+        "packages/cli/src/metrics/",
+        "packages/cli/src/services/",
+        "packages/core/src/WorkflowExecute.ts"
+      ],
+      "dependencies": [
+        "task-1"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": false
+    },
+    {
+      "id": "quality-improvement-1753923760422",
+      "title": "Create Quality Improvement Tasks",
+      "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 50%\n- Strike 2 (Lint): 70%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Build Verification: node_modules not found - dependencies not installed\n- Build Verification: Build command fails\n- Lint and Code Quality: No ESLint configuration found\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: No coverage script defined\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
+      "success_criteria": [
+        "All quality issues identified and analyzed",
+        "Specific improvement tasks created for each quality gap",
+        "Tasks properly prioritized and ordered before strikes",
+        "Clear path to 100% quality established"
+      ],
+      "important_files": [
+        "package.json",
+        "eslint.config.js",
+        "**/*.test.js"
+      ],
+      "requires_research": true,
+      "is_quality_improvement_task": true,
+      "quality_analysis": {
+        "strike1": {
+          "name": "Build Verification",
+          "quality": 50,
+          "issues": [
+            "node_modules not found - dependencies not installed",
+            "Build command fails"
+          ]
+        },
+        "strike2": {
+          "name": "Lint and Code Quality",
+          "quality": 70,
+          "issues": [
+            "No ESLint configuration found"
+          ]
+        },
+        "strike3": {
+          "name": "Test Coverage and Success",
+          "quality": 30,
+          "issues": [
+            "Tests are failing",
+            "No coverage script defined"
+          ]
+        },
+        "overallReady": false
+      }
+    },
+    {
+      "id": "review-strike-1",
+      "mode": "REVIEWER",
+      "description": "Review Strike 1: Ensure the project builds completely without errors",
+      "prompt": "Perform a comprehensive code review with focus on: Ensure the project builds completely without errors\n\nCheck the entire codebase and ensure this criterion is met.\n\n## CRITICAL FAILURE RESPONSE PROTOCOL\n\nIF BUILD FAILS: Create specific TASK CREATION tasks in TODO.json to fix build issues:\n- Missing dependencies installation tasks\n- Build configuration setup tasks  \n- Compilation error resolution tasks\n- Environment setup tasks\n- Build script creation tasks\n\nCRITICAL: Use TaskManager API to add these tasks immediately when build failures are detected.\n\n## SUCCESS CRITERIA\n- Mark this review task as completed ONLY if the criterion is fully met\n- If criterion fails, you MUST create remediation tasks using TaskManager API before marking review as completed\n- All new tasks should be actionable, specific, and include proper dependencies/important_files parameters\n\n## TASK CREATION REQUIREMENT\nWhen creating remediation tasks, ensure each task includes:\n- Clear success criteria\n- Appropriate mode (DEVELOPMENT/TESTING/REFACTORING)\n- Specific file dependencies\n- Realistic time estimates\n- High priority for critical issues\n\nUse the task-creation.md guidelines for optimal task structure.",
+      "dependencies": [],
+      "important_files": [],
+      "status": "pending",
+      "requires_research": false,
+      "subtasks": [],
+      "is_review_task": true,
+      "strike_number": 1
+    },
+    {
+      "id": "review-strike-2",
+      "mode": "REVIEWER",
+      "description": "Review Strike 2: Verify no lint errors exist in the codebase",
+      "prompt": "Perform a comprehensive code review with focus on: Verify no lint errors exist in the codebase\n\nCheck the entire codebase and ensure this criterion is met.\n\n## CRITICAL FAILURE RESPONSE PROTOCOL\n\nIF LINT ERRORS FOUND: Create specific TASK CREATION tasks in TODO.json to achieve zero lint errors:\n- Linting tool setup and configuration tasks\n- Code style correction tasks\n- Import organization tasks\n- Naming convention fixes tasks\n- Dead code removal tasks\n\nCRITICAL: Use TaskManager API to add these tasks immediately when lint errors are detected.\n\n## SUCCESS CRITERIA\n- Mark this review task as completed ONLY if the criterion is fully met\n- If criterion fails, you MUST create remediation tasks using TaskManager API before marking review as completed\n- All new tasks should be actionable, specific, and include proper dependencies/important_files parameters\n\n## TASK CREATION REQUIREMENT\nWhen creating remediation tasks, ensure each task includes:\n- Clear success criteria\n- Appropriate mode (DEVELOPMENT/TESTING/REFACTORING)\n- Specific file dependencies\n- Realistic time estimates\n- High priority for critical issues\n\nUse the task-creation.md guidelines for optimal task structure.",
+      "dependencies": [],
+      "important_files": [],
+      "status": "pending",
+      "requires_research": false,
+      "subtasks": [],
+      "is_review_task": true,
+      "strike_number": 2
+    },
+    {
+      "id": "review-strike-3",
+      "mode": "REVIEWER",
+      "description": "Review Strike 3: Confirm test coverage is 100% on important modules and 90%+ on others, with all tests passing",
+      "prompt": "Perform a comprehensive code review with focus on: Confirm test coverage is 100% on important modules and 90%+ on others, with all tests passing\n\nCheck the entire codebase and ensure this criterion is met.\n\n## CRITICAL FAILURE RESPONSE PROTOCOL\n\nIF TEST COVERAGE INSUFFICIENT: Create specific TASK CREATION tasks in TODO.json to achieve required coverage:\n- Test framework setup tasks (Jest/Mocha/Vitest)\n- Unit test creation tasks for all modules\n- Integration test development tasks\n- Test coverage reporting setup tasks\n- CI/CD test integration tasks\n\nCRITICAL: Use TaskManager API to add these tasks immediately when coverage is below requirements.\n\n## SUCCESS CRITERIA\n- Mark this review task as completed ONLY if the criterion is fully met\n- If criterion fails, you MUST create remediation tasks using TaskManager API before marking review as completed\n- All new tasks should be actionable, specific, and include proper dependencies/important_files parameters\n\n## TASK CREATION REQUIREMENT\nWhen creating remediation tasks, ensure each task includes:\n- Clear success criteria\n- Appropriate mode (DEVELOPMENT/TESTING/REFACTORING)\n- Specific file dependencies\n- Realistic time estimates\n- High priority for critical issues\n\nUse the task-creation.md guidelines for optimal task structure.",
+      "dependencies": [],
+      "important_files": [],
+      "status": "pending",
+      "requires_research": false,
+      "subtasks": [],
+      "is_review_task": true,
+      "strike_number": 3
+    }
+  ],
+  "review_strikes": 0,
+  "strikes_completed_last_run": false,
+  "current_task_index": 0,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 4,
+  "last_hook_activation": 1753923954836,
+  "__removedLinterTasks": {
+    "removedCount": 0,
+    "finalTaskCount": 5
+  }
+}
