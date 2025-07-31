@@ -14,7 +14,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "pnpm run typecheck && tsup",
+    "build": "tsup",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",

@@ -24,13 +24,7 @@ import {
 } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -154,6 +148,7 @@ type Props = {
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
+	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
 };
@@ -175,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
+	disableSettingsHint: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
@@ -1311,8 +1307,8 @@ function enableNode() {
 			name: node.value.name,
 			properties: {
 				disabled: !node.value.disabled,
-			} as IDataObject,
-		} as INodeUpdatePropertiesInformation;
+			},
+		};
 
 		workflowsStore.updateNodeProperties(updateInformation);
 	}
@@ -1547,7 +1543,10 @@ defineExpose({ enterEditMode });
 					</slot>
 				</N8nCallout>
 			</div>
-			<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
+			<NodeSettingsHint
+				v-if="!props.disableSettingsHint && props.paneType === 'output'"
+				:node="node"
+			/>
 			<N8nCallout
 				v-for="hint in getNodeHints()"
 				:key="hint.message"
