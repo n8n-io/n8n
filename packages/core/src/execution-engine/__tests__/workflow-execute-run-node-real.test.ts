@@ -586,6 +586,52 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 		});
+
+		it('should throw ApplicationError when close function throws non-Error object', async () => {
+			const mockData = [[{ json: { result: 'test' } }]];
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			// Mock ExecuteContext constructor to capture closeFunctions array
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					// Add close functions to the array passed in
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow("Error on execution node's close function(s)");
+
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
 	});
 
 	describe('poll node type handling', () => {
@@ -750,6 +796,51 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
 			expect(result).toEqual({ data: null, closeFunction: mockCloseFunction });
+		});
+
+		it('should call manualTriggerFunction when defined in trigger response', async () => {
+			const mockTriggerData = [[{ json: { triggered: 'data' } }]];
+			const mockManualTriggerFunction = jest.fn().mockResolvedValue(undefined);
+			const mockCloseFunction = jest.fn();
+			const mockTriggerResponse = {
+				manualTriggerResponse: Promise.resolve(mockTriggerData),
+				manualTriggerFunction: mockManualTriggerFunction, // This will trigger line 1294
+				closeFunction: mockCloseFunction,
+			};
+
+			mockNodeType.trigger = jest.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.webhook = undefined;
+
+			const mockTriggersAndPollersInstance = {
+				runTrigger: jest.fn().mockResolvedValue(mockTriggerResponse),
+			};
+			const mockGlobalConfigInstance = {
+				sentry: { backendDsn: '' },
+			};
+			mockContainer.get.mockImplementation((token) => {
+				if (token === GlobalConfig) {
+					return mockGlobalConfigInstance;
+				}
+				if (token === TriggersAndPollers) {
+					return mockTriggersAndPollersInstance;
+				}
+				return mockTriggersAndPollersInstance;
+			});
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockManualTriggerFunction).toHaveBeenCalled(); // Verify line 1294 was executed
+			expect(result).toEqual({ data: mockTriggerData, closeFunction: mockCloseFunction });
 		});
 
 		it('should pass through input data for trigger nodes in non-manual mode', async () => {
