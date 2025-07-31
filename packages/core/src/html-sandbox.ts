@@ -5,7 +5,6 @@ import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
 
 export const isIframeSandboxDisabled = () => {
-	console.log(Container.get(SecurityConfig).disableIframeSandboxing);
 	return Container.get(SecurityConfig).disableIframeSandboxing;
 };
 
