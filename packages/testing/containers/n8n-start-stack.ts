@@ -165,7 +165,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 	const usePostgres = config.postgres || config.queueMode;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 

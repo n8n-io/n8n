@@ -14,6 +14,7 @@ export const baseConfig = tseslint.config(
 	globalIgnores([
 		'node_modules/**',
 		'dist/**',
+		'coverage/**',
 		'eslint.config.mjs',
 		'tsup.config.ts',
 		'jest.config.js',

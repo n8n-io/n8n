@@ -26,7 +26,7 @@ const readEnv = (envName: string) => {
 	return undefined;
 };
 
-export const Config: ClassDecorator = (ConfigClass: Class) => {
+export const Config = (ConfigClass: Class): void => {
 	const factory = function (...args: unknown[]) {
 		const config = new (ConfigClass as new (...a: unknown[]) => Record<PropertyKey, unknown>)(
 			...args,
@@ -83,8 +83,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		}
 		return config;
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return Service({ factory })(ConfigClass);
+	Service({ factory })(ConfigClass);
 };
 
 export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {

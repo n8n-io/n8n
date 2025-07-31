@@ -1,0 +1,32 @@
+{
+	"tasks": [
+		{
+			"id": "linter_task_active",
+			"title": "Fix Linter Errors - IMMEDIATE",
+			"description": "Fix 7 errors and 6 warnings found in recently edited files: decorators.ts",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"important_files": ["development/linter-errors.md", "../config/src/decorators.ts"],
+			"success_criteria": [
+				"All linter errors in edited files resolved",
+				"development/linter-errors.md shows no issues for edited files",
+				"Code passes linting without warnings or errors"
+			],
+			"created_at": "2025-07-31T16:41:04.391Z",
+			"is_linter_task": true,
+			"linter_summary": {
+				"total_violations": 13,
+				"errors": 7,
+				"warnings": 6,
+				"files_affected": 1
+			}
+		}
+	],
+	"__removedLinterTasks": {
+		"removedCount": 1,
+		"finalTaskCount": 0
+	},
+	"execution_count": 2,
+	"last_hook_activation": 1753980064391
+}

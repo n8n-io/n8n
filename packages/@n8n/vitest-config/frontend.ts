@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
 export const createVitestConfig = (options: InlineConfig = {}) => {
+	const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
+	const isCI = process.env.CI === 'true';
+
 	const vitestConfig = defineConfig({
 		test: {
 			silent: true,
@@ -9,10 +12,27 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			coverage: {
-				enabled: false,
-				all: false,
+				enabled: isCoverageEnabled,
+				all: isCoverageEnabled,
 				provider: 'v8',
-				reporter: ['text-summary', 'lcov', 'html-spa'],
+				reporter: isCI ? ['cobertura'] : ['text-summary', 'lcov', 'html-spa'],
+				thresholds: isCoverageEnabled
+					? {
+							branches: 80,
+							functions: 80,
+							lines: 80,
+							statements: 80,
+						}
+					: undefined,
+				include: ['src/**/*.{js,ts,vue}'],
+				exclude: [
+					'src/__tests__/**',
+					'src/**/__tests__/**',
+					'src/**/*.test.{js,ts,vue}',
+					'src/**/*.spec.{js,ts,vue}',
+					'src/**/types.ts',
+					'src/**/*.d.ts',
+				],
 			},
 			css: {
 				modules: {
@@ -22,15 +42,6 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			...options,
 		},
 	});
-
-	if (process.env.COVERAGE_ENABLED === 'true' && vitestConfig.test?.coverage) {
-		const { coverage } = vitestConfig.test;
-		coverage.enabled = true;
-		if (process.env.CI === 'true' && coverage.provider === 'v8') {
-			coverage.all = true;
-			coverage.reporter = ['cobertura'];
-		}
-	}
 
 	return vitestConfig;
 };
