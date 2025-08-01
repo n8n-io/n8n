@@ -40,12 +40,12 @@ const dataStoreName = ref('');
 				<n8n-button
 					:disabled="!dataStoreName"
 					:label="i18n.baseText('dataStore.add.button.label')"
-					data-test-id="confirm-move-folder-button"
+					data-test-id="confirm-add-data-store-button"
 				/>
 				<n8n-button
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
-					data-test-id="cancel-move-folder-button"
+					data-test-id="cancel-add-data-store-button"
 					@click="close"
 				/>
 			</div>

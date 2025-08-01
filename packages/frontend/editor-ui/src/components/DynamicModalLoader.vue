@@ -12,6 +12,13 @@ const registeredModals = ref<
 	}>
 >([]);
 
+// Type guard to check if component is an async component factory
+const isAsyncComponentFactory = (
+	component: Component | (() => Promise<Component>),
+): component is () => Promise<Component> => {
+	return typeof component === 'function';
+};
+
 const updateModals = () => {
 	const modals: Array<{
 		key: string;
@@ -20,10 +27,9 @@ const updateModals = () => {
 
 	modalRegistry.getAll().forEach((modalDef, key) => {
 		// Create async component wrapper if it's a function
-		const component =
-			typeof modalDef.component === 'function'
-				? defineAsyncComponent(modalDef.component as () => Promise<Component>)
-				: modalDef.component;
+		const component = isAsyncComponentFactory(modalDef.component)
+			? defineAsyncComponent(modalDef.component)
+			: modalDef.component;
 
 		modals.push({ key, component });
 	});

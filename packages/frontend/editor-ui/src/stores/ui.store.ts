@@ -610,7 +610,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	// Subscribe to registry changes
-	modalRegistry.subscribe((modals) => {
+	const unsubscribeFromModalRegistry = modalRegistry.subscribe((modals) => {
 		// Add new modals that aren't registered yet
 		modals.forEach((modalDef, key) => {
 			if (!modalsById.value[key]) {
@@ -618,6 +618,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			}
 		});
 	});
+
+	/**
+	 * Clean up modal registry subscription
+	 */
+	const cleanup = () => {
+		unsubscribeFromModalRegistry();
+	};
 
 	return {
 		appGridDimensions,
@@ -678,6 +685,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		registerModal,
 		unregisterModal,
 		initializeModalsFromRegistry,
+		cleanup,
 	};
 });
 
@@ -694,7 +702,7 @@ export const listenForModalChanges = (opts: {
 
 	return store.$onAction((result) => {
 		const { name, after, args } = result;
-		after(async () => {
+		after(() => {
 			if (!listeningForActions.includes(name)) {
 				return;
 			}
