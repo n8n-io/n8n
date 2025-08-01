@@ -69,6 +69,8 @@ export class Workflow {
 
 	connectionsBySourceNode: IConnections = {};
 
+	connectionsByDestinationNode: IConnections = {};
+
 	nodeTypes: INodeTypes;
 
 	expression: Expression;
@@ -136,37 +138,24 @@ export class Workflow {
 		this.expression = new Expression(this);
 	}
 
-	_connectionsByDestinationNodeCacheMap = new WeakMap<IConnections, IConnections>();
-
-	get connectionsByDestinationNode(): IConnections {
-		const cached = this._connectionsByDestinationNodeCacheMap.get(this.connectionsBySourceNode);
-		if (cached) {
-			return cached;
-		}
-
-		const result = mapConnectionsByDestination(this.connectionsBySourceNode);
-		this._connectionsByDestinationNodeCacheMap.set(this.connectionsBySourceNode, result);
-
-		return result;
-	}
-
 	// Save nodes in workflow as object to be able to get the nodes easily by their name.
-	setNodes(nodes: INode[]): void {
+	setNodes(nodes: INode[]) {
 		this.nodes = {};
 		for (const node of nodes) {
 			this.nodes[node.name] = node;
 		}
 	}
 
-	setConnections(connections: IConnections): void {
+	setConnections(connections: IConnections) {
 		this.connectionsBySourceNode = connections;
+		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
-	setPinData(pinData: IPinData | undefined): void {
+	setPinData(pinData: IPinData | undefined) {
 		this.pinData = pinData;
 	}
 
-	setSettings(settings: IWorkflowSettings): void {
+	setSettings(settings: IWorkflowSettings) {
 		this.settings = settings;
 	}
 

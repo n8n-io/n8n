@@ -935,6 +935,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {} as IPinData);
 
 		workflow.value.pinData = validPinData;
+		workflowObject.value.setPinData(validPinData);
 
 		dataPinningEventBus.emit('pin-data', validPinData);
 	}
@@ -1009,6 +1010,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		workflow.value.pinData[nodeName] = storedPinData;
+		workflowObject.value.setPinData(workflow.value.pinData);
 
 		uiStore.stateIsDirty = true;
 
@@ -1024,6 +1026,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const { [nodeName]: _, ...pinData } = workflow.value.pinData as IPinData;
 		workflow.value.pinData = pinData;
+		workflowObject.value.setPinData(pinData);
 
 		if (nodeMetadata.value[nodeName]) {
 			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
@@ -1223,6 +1226,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				...restPinData,
 				[nameData.new]: renamed,
 			};
+
+			workflowObject.value.setPinData(workflow.value.pinData);
 		}
 
 		const resultData = workflowExecutionData.value?.data?.resultData;
