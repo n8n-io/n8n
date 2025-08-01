@@ -9,13 +9,11 @@ const mockActions = [
 		title: 'Evaluate your workflow',
 		description: 'Set up an AI evaluation to be sure th WF is reliable.',
 		moreInfoLink: 'https://docs.n8n.io/evaluations',
-		buttonLabel: 'Go to evaluations',
 	},
 	{
 		id: 'action2',
 		title: 'Keep track of execution errors',
 		description: 'Setup a workflow error to track what is going on here.',
-		buttonLabel: 'Settings',
 	},
 ];
 
@@ -60,14 +58,12 @@ describe('N8nSuggestedActions', () => {
 		expect(
 			wrapper.getByText('Set up an AI evaluation to be sure th WF is reliable.'),
 		).toBeInTheDocument();
-		expect(wrapper.getByText('Go to evaluations')).toBeInTheDocument();
 
 		// Check second action
 		expect(wrapper.getByText('Keep track of execution errors')).toBeInTheDocument();
 		expect(
 			wrapper.getByText('Setup a workflow error to track what is going on here.'),
 		).toBeInTheDocument();
-		expect(wrapper.getByText('Settings')).toBeInTheDocument();
 	});
 
 	it('emits action-click event when action button is clicked', async () => {
@@ -80,7 +76,7 @@ describe('N8nSuggestedActions', () => {
 		const bellButton = wrapper.getByTestId('suggested-actions-bell');
 		await fireEvent.click(bellButton);
 
-		const actionButtons = wrapper.getAllByTestId('suggested-action-button');
+		const actionButtons = wrapper.getAllByTestId('suggested-action-item');
 		await fireEvent.click(actionButtons[0]);
 
 		expect(wrapper.emitted('action-click')).toBeTruthy();
@@ -118,79 +114,37 @@ describe('N8nSuggestedActions', () => {
 		expect(container.querySelector('[data-test-id="suggested-actions-bell"]')).toBeInTheDocument();
 	});
 
-	it('shows turn off link when turnOffActionsLabel is provided', async () => {
+	it('shows turn off link when ignoreForAllLabel is provided', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
-				turnOffActionsLabel: 'Turn off suggestions',
+				ignoreForAllLabel: 'Ignore for all',
 			},
 		});
 
 		const bellButton = wrapper.getByTestId('suggested-actions-bell');
 		await fireEvent.click(bellButton);
 
-		expect(wrapper.getByTestId('suggested-action-turn-off-all')).toBeInTheDocument();
-		expect(wrapper.getByText('Turn off suggestions')).toBeInTheDocument();
+		expect(wrapper.getByTestId('suggested-action-ignore-for-all')).toBeInTheDocument();
+		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
 	});
 
-	it('emits turn-off event when turn off link is clicked', async () => {
+	it('emits ignore-for-all event when turn off link is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
-				turnOffActionsLabel: 'Turn off suggestions',
+				ignoreForAllLabel: 'Ignore for all',
 			},
 		});
 
 		const bellButton = wrapper.getByTestId('suggested-actions-bell');
 		await fireEvent.click(bellButton);
 
-		const turnOffLink = wrapper.getByTestId('suggested-action-turn-off-all');
+		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-for-all');
+		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
 		await fireEvent.click(turnOffLink);
 
-		expect(wrapper.emitted('turn-off')).toBeTruthy();
-	});
-
-	it('shows ignore all link when there are multiple actions', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-			},
-		});
-
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
-		await fireEvent.click(bellButton);
-
-		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
-		expect(wrapper.getByText('Ignore all')).toBeInTheDocument();
-	});
-
-	it('does not show ignore all link when there is only one action', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: [mockActions[0]],
-			},
-		});
-
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
-		await fireEvent.click(bellButton);
-
-		expect(wrapper.queryByTestId('suggested-action-ignore-all')).not.toBeInTheDocument();
-	});
-
-	it('emits ignore-all event when ignore all link is clicked', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-			},
-		});
-
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
-		await fireEvent.click(bellButton);
-
-		const ignoreAllLink = wrapper.getByTestId('suggested-action-ignore-all');
-		await fireEvent.click(ignoreAllLink);
-
-		expect(wrapper.emitted('ignore-all')).toBeTruthy();
+		expect(wrapper.emitted('ignore-for-all')).toBeTruthy();
 	});
 
 	it('renders more info link when moreInfoLink is provided', async () => {

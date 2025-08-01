@@ -9,12 +9,7 @@ import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
-import {
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	VIEWS,
-	LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS,
-} from '@/constants';
-import { useLocalStorage } from '@vueuse/core';
+import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -26,11 +21,6 @@ const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
-
-const areAllSuggestionsTurnedOff = useLocalStorage(
-	LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS,
-	false,
-);
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -56,11 +46,7 @@ const hasTimeSaved = computed(() => {
 });
 
 const availableActions = computed(() => {
-	if (
-		!props.workflow.active ||
-		areAllSuggestionsTurnedOff.value ||
-		workflowsCache.isCacheLoading.value
-	) {
+	if (!props.workflow.active || workflowsCache.isCacheLoading.value) {
 		return [];
 	}
 
@@ -110,6 +96,7 @@ const availableActions = computed(() => {
 
 async function loadWorkflowSettings() {
 	if (props.workflow.id) {
+		// todo add global config
 		cachedSettings.value = await workflowsCache.getWorkflowSettings(props.workflow.id);
 	}
 }
@@ -141,13 +128,10 @@ async function handleIgnoreClick(actionId: string) {
 	await loadWorkflowSettings();
 }
 
-async function handleIgnoreAll() {
+async function handleIgnoreForAll() {
+	// todo update to ignore for all workflows
 	await workflowsCache.ignoreAllSuggestedActions(props.workflow.id);
 	await loadWorkflowSettings();
-}
-
-function handleTurnOffSuggestions() {
-	areAllSuggestionsTurnedOff.value = true;
 }
 
 function openSuggestedActions() {
@@ -187,10 +171,9 @@ defineExpose({
 		ref="suggestedActionsComponent"
 		popover-alignment="end"
 		:actions="availableActions"
-		:turn-off-actions-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
+		:ignore-for-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
-		@ignore-all="handleIgnoreAll"
-		@turn-off="handleTurnOffSuggestions"
+		@ignore-for-all="handleIgnoreForAll"
 	/>
 </template>

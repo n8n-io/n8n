@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nLink from '../N8nLink';
 import N8nPopoverReka from '../N8nPopoverReka';
@@ -12,27 +12,25 @@ interface SuggestedAction {
 	id: string;
 	title: string;
 	description: string;
-	buttonLabel: string;
 	moreInfoLink?: string;
 }
 
 interface SuggestedActionsProps {
 	actions: SuggestedAction[];
-	turnOffActionsLabel?: string;
+	ignoreForAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
 }
 
 interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
 	(event: 'ignore-click', actionId: string): void;
-	(event: 'ignore-all'): void;
-	(event: 'turn-off'): void;
+	(event: 'ignore-for-all'): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
 
 withDefaults(defineProps<SuggestedActionsProps>(), {
-	turnOffActionsLabel: undefined,
+	ignoreForAllLabel: undefined,
 	popoverAlignment: undefined,
 });
 
@@ -69,7 +67,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="328px" max-height="500px" :align="popoverAlignment">
+	<N8nPopoverReka v-model:open="isOpen" width="360px" max-height="500px" :align="popoverAlignment">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nIconButton
@@ -88,9 +86,12 @@ defineExpose({
 					:key="action.id"
 					:class="[$style.actionItem, { [$style.ignoring]: ignoringActions.has(action.id) }]"
 					data-test-id="suggested-action-item"
+					@click.prevent.stop="() => handleActionClick(action.id)"
 				>
-					<div class="mb-3xs">
+					<div :class="['mb-3xs', $style.actionHeader]">
 						<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
+
+						<N8nIcon icon="chevron-right" />
 					</div>
 					<div>
 						<N8nText size="small" color="text-base">
@@ -102,51 +103,33 @@ defineExpose({
 								theme="text"
 								new-window
 								underline
+								@click.stop
 							>
 								{{ t('generic.moreInfo') }}
 							</N8nLink>
 						</N8nText>
 					</div>
 					<div :class="$style.actionButtons">
-						<N8nButton
-							type="secondary"
-							size="small"
-							:label="action.buttonLabel"
-							data-test-id="suggested-action-button"
-							@click="handleActionClick(action.id)"
-						/>
 						<N8nLink
 							theme="text"
 							size="small"
 							data-test-id="suggested-action-ignore"
 							underline
-							@click.prevent="handleIgnoreClick(action.id)"
+							@click.prevent.stop="handleIgnoreClick(action.id)"
 						>
 							{{ t('generic.ignore') }}
 						</N8nLink>
 					</div>
 				</div>
-				<div v-if="actions.length > 1 || turnOffActionsLabel" :class="$style.ignoreAllContainer">
+				<div v-if="ignoreForAllLabel" :class="$style.ignoreAllContainer">
 					<N8nLink
-						v-if="actions.length > 1"
 						theme="text"
 						size="small"
 						underline
-						data-test-id="suggested-action-ignore-all"
-						@click.prevent="emit('ignore-all')"
+						data-test-id="suggested-action-ignore-for-all"
+						@click.prevent.stop="emit('ignore-for-all')"
 					>
-						{{ t('generic.ignoreAll') }}
-					</N8nLink>
-
-					<N8nLink
-						v-if="turnOffActionsLabel"
-						theme="text"
-						size="small"
-						underline
-						data-test-id="suggested-action-turn-off-all"
-						@click.prevent="emit('turn-off')"
-					>
-						{{ turnOffActionsLabel }}
+						{{ ignoreForAllLabel }}
 					</N8nLink>
 				</div>
 			</div>
@@ -184,14 +167,35 @@ defineExpose({
 		opacity: 0.5;
 		filter: grayscale(0.8);
 		pointer-events: none;
+		cursor: not-allowed;
+	}
+
+	&:hover {
+		cursor: pointer;
+
+		.header {
+			color: var(--color-primary);
+		}
+
+		&:has(a:hover) {
+			.header {
+				color: var(--color-text-dark);
+			}
+		}
+	}
+}
+
+.actionHeader {
+	display: flex;
+	align-items: center;
+
+	> :first-child {
+		flex-grow: 1;
 	}
 }
 
 .actionButtons {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-s);
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing-2xs);
 }
 
 .ignoreAllContainer {

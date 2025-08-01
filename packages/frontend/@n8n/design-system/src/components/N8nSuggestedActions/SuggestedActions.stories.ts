@@ -103,8 +103,7 @@ const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 				v-bind="args"
 				@action-click="onActionClick"
 				@ignore-click="onIgnoreClick"
-				@ignore-all="onIgnoreAll"
-				@turn-off="onTurnOff"
+				@ignore-for-all="onIgnoreForAll"
 			/>
 		</div>
 	`,
@@ -117,20 +116,16 @@ const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 			console.log('Ignore clicked:', actionId);
 			alert(`Ignore clicked: ${actionId}`);
 		},
-		onIgnoreAll() {
+		onIgnoreForAll() {
 			console.log('Ignore all clicked');
 			alert('Ignore all clicked');
-		},
-		onTurnOff() {
-			console.log('Turn off clicked');
-			alert('Turn off clicked');
 		},
 	},
 });
 
-export const WithTurnOffOption = TemplateWithEvents.bind({});
-WithTurnOffOption.args = {
-	turnOffActionsLabel: 'Turn off suggestions',
+export const WithIgnoreForAllOption = TemplateWithEvents.bind({});
+WithIgnoreForAllOption.args = {
+	ignoreForAllLabel: 'Ignore for all',
 	actions: [
 		{
 			id: 'evaluate-workflow',
@@ -151,7 +146,7 @@ WithTurnOffOption.args = {
 
 export const SingleActionWithTurnOff = TemplateWithEvents.bind({});
 SingleActionWithTurnOff.args = {
-	turnOffActionsLabel: 'Disable all suggestions',
+	ignoreForAllLabel: 'Disable all suggestions',
 	actions: [
 		{
 			id: 'single-action',
