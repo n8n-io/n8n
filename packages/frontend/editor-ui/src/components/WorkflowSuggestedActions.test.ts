@@ -87,6 +87,8 @@ const mockNonAINodeType: Partial<INodeTypeDescription> = {
 let mockN8nSuggestedActionsProps: Record<string, any> = {};
 // eslint-disable-next-line
 let mockN8nSuggestedActionsEmits: Record<string, any> = {};
+let mockOpenPopover: ReturnType<typeof vi.fn>;
+let mockClosePopover: ReturnType<typeof vi.fn>;
 
 const mockN8nSuggestedActions = {
 	name: 'N8nSuggestedActions',
@@ -105,10 +107,10 @@ const mockN8nSuggestedActions = {
 			'on-open': () => emit('on-open'),
 		};
 
-		const openPopover = vi.fn(() => emit('on-open'));
-		const closePopover = vi.fn();
+		mockOpenPopover = vi.fn(() => emit('on-open'));
+		mockClosePopover = vi.fn();
 
-		expose({ openPopover, closePopover });
+		expose({ openPopover: mockOpenPopover, closePopover: mockClosePopover });
 
 		return { props };
 	},
@@ -164,6 +166,8 @@ describe('WorkflowSuggestedActions', () => {
 		vi.clearAllMocks();
 		mockN8nSuggestedActionsProps = {};
 		mockN8nSuggestedActionsEmits = {};
+		mockOpenPopover = vi.fn();
+		mockClosePopover = vi.fn();
 	});
 
 	describe('Action visibility', () => {
@@ -552,6 +556,11 @@ describe('WorkflowSuggestedActions', () => {
 			await vi.waitFor(() => {
 				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
 			});
+
+			// Wait for the setTimeout to execute and openPopover to be called
+			await vi.waitFor(() => {
+				expect(mockOpenPopover).toHaveBeenCalled();
+			});
 		});
 
 		it('should not open popover automatically if workflow was previously activated', async () => {
@@ -578,6 +587,7 @@ describe('WorkflowSuggestedActions', () => {
 			});
 
 			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			expect(mockOpenPopover).not.toHaveBeenCalled();
 		});
 	});
 
