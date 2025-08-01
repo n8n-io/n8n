@@ -1,5 +1,6 @@
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+
 export interface ErrorHandlerResult {
 	message: string;
 	options?: {
@@ -9,6 +10,11 @@ export interface ErrorHandlerResult {
 		metadata?: JsonObject;
 	};
 }
+
+function isString(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0;
+}
+
 export function createErrorFromParameters(
 	errorType: 'errorMessage' | 'errorObject',
 	errorParameter: string,
@@ -21,16 +27,16 @@ export function createErrorFromParameters(
 		const errorObject = jsonParse<JsonObject>(errorParameter);
 
 		const errorMessage =
-			(errorObject.message as string) ||
-			(errorObject.description as string) ||
-			(errorObject.error as string) ||
+			(isString(errorObject.message) ? errorObject.message : '') ||
+			(isString(errorObject.description) ? errorObject.description : '') ||
+			(isString(errorObject.error) ? errorObject.error : '') ||
 			`Error: ${JSON.stringify(errorObject)}`;
 
 		return {
 			message: errorMessage,
 			options: {
-				description: (errorObject.description as string) || undefined,
-				type: (errorObject.type as string) || undefined,
+				description: isString(errorObject.description) ? errorObject.description : undefined,
+				type: isString(errorObject.type) ? errorObject.type : undefined,
 				level: 'error',
 				metadata: errorObject,
 			},
