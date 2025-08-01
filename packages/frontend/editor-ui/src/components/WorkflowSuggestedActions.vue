@@ -4,12 +4,13 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { WorkflowSettings } from '@/composables/useWorkflowsCache';
+import type { ActionType, WorkflowSettings } from '@/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS, MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/composables/useMessage';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -21,6 +22,7 @@ const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
+const message = useMessage();
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -50,7 +52,13 @@ const availableActions = computed(() => {
 		return [];
 	}
 
-	const actions = [];
+	const actions: Array<{
+		id: ActionType;
+		title: string;
+		description: string;
+		buttonLabel: string;
+		moreInfoLink: string;
+	}> = [];
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Evaluations action
@@ -129,9 +137,17 @@ async function handleIgnoreClick(actionId: string) {
 }
 
 async function handleIgnoreAll() {
-	// todo update to ignore for all workflows
-	await workflowsCache.ignoreAllSuggestedActions(props.workflow.id);
-	await loadWorkflowSettings();
+	const ignoreAllConfirmed = await message.confirm(
+		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.description'),
+		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.title'),
+	);
+
+	if (ignoreAllConfirmed === MODAL_CONFIRM) {
+		await workflowsCache.ignoreAllSuggestedActionsForAllWorkflows(
+			availableActions.value.map((action) => action.id),
+		);
+		await loadWorkflowSettings();
+	}
 }
 
 function openSuggestedActions() {

@@ -4,7 +4,7 @@ import { ref } from 'vue';
 
 const actionTypes = ['evaluations', 'errorWorkflow', 'timeSaved'] as const;
 
-type ActionType = (typeof actionTypes)[number];
+export type ActionType = (typeof actionTypes)[number];
 
 export interface UserEvaluationPreferences {
 	order: string[];
@@ -32,11 +32,20 @@ export function useWorkflowSettingsCache() {
 
 	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
 		const cache = await getWorkflowsCache();
-		const preferencesJson = cache.getItem(workflowId);
-
-		return jsonParse<WorkflowSettings>(preferencesJson ?? '', {
+		const globalPreferences = jsonParse<WorkflowSettings>(cache.getItem('*') ?? '', {
 			fallbackValue: {},
 		});
+
+		const workflowSettings = jsonParse<WorkflowSettings>(cache.getItem(workflowId) ?? '', {
+			fallbackValue: {},
+		});
+
+		workflowSettings.suggestedActions = {
+			...(workflowSettings.suggestedActions ?? {}),
+			...(globalPreferences.suggestedActions ?? {}),
+		};
+
+		return workflowSettings;
 	}
 
 	async function upsertWorkflowSettings(
@@ -97,10 +106,10 @@ export function useWorkflowSettingsCache() {
 		await upsertWorkflowSettings(workflowId, { evaluationRuns });
 	}
 
-	async function ignoreAllSuggestedActions(workflowId: string) {
+	async function ignoreAllSuggestedActionsForAllWorkflows(actionsToIgnore: ActionType[]) {
 		await upsertWorkflowSettings(
-			workflowId,
-			actionTypes.reduce<WorkflowSettings>((accu, key) => {
+			'*',
+			actionsToIgnore.reduce<WorkflowSettings>((accu, key) => {
 				accu.suggestedActions = accu.suggestedActions ?? {};
 				accu.suggestedActions[key] = {
 					ignored: true,
@@ -116,7 +125,7 @@ export function useWorkflowSettingsCache() {
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
 		ignoreSuggestedAction,
-		ignoreAllSuggestedActions,
+		ignoreAllSuggestedActionsForAllWorkflows,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
 		isCacheLoading,
