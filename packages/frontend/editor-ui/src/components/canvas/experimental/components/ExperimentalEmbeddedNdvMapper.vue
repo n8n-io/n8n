@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import { useCanvas } from '@/composables/useCanvas';
+import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nText } from '@n8n/design-system';
@@ -9,15 +9,14 @@ import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement } from '@vueuse/core';
 import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
-import { ref, useTemplateRef, watch } from 'vue';
+import { inject, ref, useTemplateRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 const { node, container, inputNodeName } = defineProps<{
-	workflow: Workflow;
-	node: INodeUi;
+	workflow?: Workflow;
+	node?: INodeUi;
 	container: HTMLDivElement | null;
 	inputNodeName?: string;
-	maxHeight: number;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +25,7 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 const vf = useVueFlow();
-const { isPaneMoving, viewport } = useCanvas();
+const canvas = inject(CanvasKey, undefined);
 const i18n = useI18n();
 const activeElement = useActiveElement();
 
@@ -50,28 +49,36 @@ function getShouldShowInputPanel() {
 }
 
 watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
+	// TODO: pane does not close when field is blurred
+
 	if (active && container?.contains(active)) {
 		shouldShowInputPanel.value = getShouldShowInputPanel();
 	}
 
-	if (selected.every((sel) => sel.id !== node.id)) {
+	if (selected.every((sel) => sel.id !== node?.id)) {
 		shouldShowInputPanel.value = false;
 	}
 });
 
-watch(isPaneMoving, (moving) => {
-	shouldShowInputPanel.value = !moving && getShouldShowInputPanel();
-});
+watch(
+	() => canvas?.isPaneMoving.value ?? false,
+	(moving) => {
+		shouldShowInputPanel.value = !moving && getShouldShowInputPanel();
+	},
+);
 
-watch(viewport, () => {
-	shouldShowInputPanel.value = false;
-});
+watch(
+	() => canvas?.viewport.value,
+	() => {
+		shouldShowInputPanel.value = false;
+	},
+);
 </script>
 
 <template>
 	<ElPopover
 		:visible="shouldShowInputPanel"
-		placement="left-start"
+		placement="left"
 		:show-arrow="false"
 		:popper-class="$style.component"
 		:width="360"
@@ -85,10 +92,13 @@ watch(viewport, () => {
 			<slot />
 		</template>
 		<InputPanel
+			v-if="workflow && node"
 			ref="inputPanel"
 			:tabindex="-1"
 			:class="$style.inputPanel"
-			:style="{ maxHeight: `${maxHeight}px` }"
+			:style="{
+				maxHeight: `calc(${vf.viewportRef.value?.offsetHeight ?? 0}px - var(--spacing-s) * 2)`,
+			}"
 			:workflow="workflow"
 			:run-index="0"
 			compact
@@ -125,8 +135,9 @@ watch(viewport, () => {
 <style lang="scss" module>
 .component {
 	background-color: transparent !important;
-	padding: 0 !important;
+	padding: var(--spacing-s) 0 !important;
 	border: none !important;
+	box-shadow: none !important;
 	margin-top: -2px;
 }
 

@@ -8,19 +8,21 @@ import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
-import { computed, provide, ref, useTemplateRef } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
+import {
+	getNodeSubTitleText,
+	stopImmediatePropagationIfPanelShouldScroll,
+} from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/composables/useCanvas';
 
-const { nodeId, isReadOnly, isConfigurable } = defineProps<{
+const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
-	isConfigurable: boolean;
 }>();
 
 const i18n = useI18n();
@@ -50,8 +52,6 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
-
-const containerRef = useTemplateRef('container');
 
 const subTitle = computed(() =>
 	node.value && nodeType.value
@@ -117,29 +117,6 @@ function handleOpenNdv() {
 	}
 }
 
-function handleCaptureWheelEvent(event: WheelEvent) {
-	if (event.ctrlKey) {
-		// If the event is pinch, let it propagate and zoom canvas
-		return;
-	}
-
-	if (
-		event.currentTarget instanceof HTMLElement &&
-		event.currentTarget.scrollHeight <= event.currentTarget.offsetHeight
-	) {
-		// If the settings pane doesn't have to scroll, let it propagate and move the canvas
-		return;
-	}
-
-	// If the event has larger horizontal element, let it propagate and move the canvas
-	if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) {
-		return;
-	}
-
-	// Otherwise, let it scroll the settings pane
-	event.stopImmediatePropagation();
-}
-
 provide(IsInExperimentalEmbeddedNdvKey, true);
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
@@ -150,7 +127,6 @@ watchOnce(isVisible, (visible) => {
 
 <template>
 	<div
-		ref="container"
 		:class="[
 			$style.component,
 			isExpanded ? $style.expanded : $style.collapsed,
@@ -162,32 +138,23 @@ watchOnce(isVisible, (visible) => {
 		}"
 	>
 		<template v-if="!node || !isOnceVisible" />
-		<ExperimentalEmbeddedNdvMapper
+		<ExperimentalCanvasNodeSettings
 			v-else-if="isExpanded"
-			:workflow="workflow"
-			:node="node"
-			:input-node-name="expressionResolveCtx?.inputNode?.name"
-			:container="containerRef"
-			:max-height="maxHeightOnFocus"
-			@capture-wheel-data-container="handleCaptureWheelEvent"
+			tabindex="-1"
+			:node-id="nodeId"
+			:class="$style.settingsView"
+			:is-read-only="isReadOnly"
+			:sub-title="subTitle"
+			@capture-wheel-body="stopImmediatePropagationIfPanelShouldScroll"
 		>
-			<ExperimentalCanvasNodeSettings
-				tabindex="-1"
-				:node-id="nodeId"
-				:class="$style.settingsView"
-				:is-read-only="isReadOnly"
-				:sub-title="subTitle"
-				@capture-wheel-body="handleCaptureWheelEvent"
-			>
-				<template #actions>
-					<ExperimentalEmbeddedNdvActions
-						:is-expanded="isExpanded"
-						@open-ndv="handleOpenNdv"
-						@toggle-expand="handleToggleExpand"
-					/>
-				</template>
-			</ExperimentalCanvasNodeSettings>
-		</ExperimentalEmbeddedNdvMapper>
+			<template #actions>
+				<ExperimentalEmbeddedNdvActions
+					:is-expanded="isExpanded"
+					@open-ndv="handleOpenNdv"
+					@toggle-expand="handleToggleExpand"
+				/>
+			</template>
+		</ExperimentalCanvasNodeSettings>
 		<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
 			<NodeIcon :node-type="nodeType" :size="18" />
 			<div :class="$style.collapsedNodeName">
