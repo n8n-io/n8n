@@ -1,4 +1,4 @@
-import { render, fireEvent, getByTestId } from '@testing-library/vue';
+import { render, fireEvent } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
 
 import N8nSuggestedActions from './SuggestedActions.vue';
