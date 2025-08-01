@@ -302,13 +302,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const getCredentialTypesNodeDescriptions: (
-		overrideCredType: NodeParameterValueType | undefined,
+		overrideCredType: NodeParameterValueType,
 		nodeType: INodeTypeDescription | null,
 	) => INodeCredentialDescription[] = (overrideCredType, nodeType) => {
-		const credType =
-			typeof overrideCredType === 'string'
-				? getCredentialTypeByName.value(overrideCredType)
-				: undefined;
+		if (typeof overrideCredType !== 'string') return [];
+
+		const credType = getCredentialTypeByName.value(overrideCredType);
 
 		if (credType) return [credType];
 

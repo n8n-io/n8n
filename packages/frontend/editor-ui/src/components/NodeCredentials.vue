@@ -49,6 +49,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	readonly: false,
+	overrideCredType: '',
 	showAll: false,
 	hideIssues: false,
 });

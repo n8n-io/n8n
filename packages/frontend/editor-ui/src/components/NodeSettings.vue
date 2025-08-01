@@ -152,7 +152,7 @@ const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
 );
 
-const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, false);
+const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
