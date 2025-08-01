@@ -860,7 +860,7 @@ function handleSelectAction(params: INodeParameters) {
 			margin-inline: var(--spacing-m);
 		}
 
-		& > *:last-child {
+		& > * {
 			margin-block-end: var(--spacing-l);
 		}
 	}
@@ -870,7 +870,7 @@ function handleSelectAction(params: INodeParameters) {
 			margin-inline: var(--spacing-xs);
 		}
 
-		& > *:last-child {
+		& > * {
 			margin-block-end: var(--spacing-xs);
 		}
 	}
