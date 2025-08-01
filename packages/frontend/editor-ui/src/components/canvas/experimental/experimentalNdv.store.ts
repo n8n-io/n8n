@@ -49,13 +49,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		nodeNameToBeFocused.value = nodeName;
 	}
 
-	interface FocusNodeOptions {
-		collapseOthers?: boolean;
-		canvasViewport: ViewportTransform;
-		canvasDimensions: Dimensions;
-		setCenter: SetCenter;
-	}
-
 	function focusNode(nodeId: string) {
 		const nodeToFocus = workflowStore.getNodeById(nodeId);
 
