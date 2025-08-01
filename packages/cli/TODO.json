@@ -1,12 +1,87 @@
 {
 	"tasks": [
 		{
+			"id": "fix-typescript-compilation-errors-1754087377429",
+			"title": "Fix Remaining TypeScript Compilation Errors",
+			"description": "Resolve TypeScript compilation errors in enhanced-roles and performance-monitoring controller tests",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"All TypeScript compilation errors resolved",
+				"npm run typecheck passes without errors",
+				"Enhanced-roles controller test compiles cleanly",
+				"Performance-monitoring controller test compiles cleanly"
+			],
+			"important_files": [
+				"packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts",
+				"packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts"
+			],
+			"estimate": "2-3 hours",
+			"created_at": "2025-08-01T22:29:37.429Z",
+			"is_build_improvement_task": true
+		},
+		{
+			"id": "fix-eslint-violations-tests-1754087377429",
+			"title": "Fix ESLint Violations in Test Files",
+			"description": "Resolve ESLint errors in active-executions test and other test files",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"All ESLint errors in test files resolved",
+				"npm run lint passes without errors",
+				"Code follows TypeScript safety standards",
+				"Async functions properly use await expressions"
+			],
+			"important_files": ["packages/cli/src/__tests__/active-executions.test.ts"],
+			"estimate": "1-2 hours",
+			"created_at": "2025-08-01T22:29:37.429Z",
+			"is_lint_improvement_task": true
+		},
+		{
+			"id": "fix-failing-integration-tests-1754087377429",
+			"title": "Fix Failing Integration Tests",
+			"description": "Resolve failing integration tests in public API endpoints with scopes",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"All integration tests pass successfully",
+				"npm run test completes without failures",
+				"Public API endpoint tests with scopes work correctly",
+				"Test coverage maintains acceptable levels"
+			],
+			"important_files": ["test/integration/public-api/endpoints-with-scopes-enabled.test.ts"],
+			"estimate": "3-4 hours",
+			"created_at": "2025-08-01T22:29:37.429Z",
+			"is_test_improvement_task": true
+		},
+		{
+			"id": "add-test-coverage-reporting-1754087377429",
+			"title": "Enhance Test Coverage Reporting",
+			"description": "Ensure comprehensive test coverage reporting is properly configured and working",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"Test coverage script works correctly",
+				"Coverage reports are generated successfully",
+				"Coverage thresholds are properly configured",
+				"HTML coverage reports are accessible"
+			],
+			"important_files": ["package.json", "jest.config.js"],
+			"estimate": "1-2 hours",
+			"created_at": "2025-08-01T22:29:37.429Z",
+			"is_test_improvement_task": true
+		},
+		{
 			"id": "quality-improvement-1753925463525",
 			"title": "Create Quality Improvement Tasks",
 			"description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
 			"mode": "DEVELOPMENT",
 			"priority": "high",
-			"status": "pending",
+			"status": "completed",
 			"prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 50%\n- Strike 2 (Lint): 70%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Build Verification: Build command fails\n- Lint and Code Quality: No ESLint configuration found\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: No coverage script defined\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
 			"success_criteria": [
 				"All quality issues identified and analyzed",
@@ -66,8 +141,8 @@
 		"removedCount": 1,
 		"finalTaskCount": 1
 	},
-	"execution_count": 10,
-	"last_hook_activation": 1754086166167,
+	"execution_count": 11,
+	"last_hook_activation": 1754087295860,
 	"project": "unnamed-project",
 	"review_strikes": 0,
 	"strikes_completed_last_run": false,
