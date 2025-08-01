@@ -578,6 +578,12 @@ function handleSelectAction(params: INodeParameters) {
 		onTabSelect('params');
 	}
 }
+
+function handleWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
