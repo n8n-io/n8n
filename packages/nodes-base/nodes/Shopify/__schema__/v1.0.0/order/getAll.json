@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "id": {
+            "type": "integer"
+        },
         "line_items": {
             "type": "array",
             "items": {
@@ -49,47 +52,6 @@
                                 },
                                 "discount_application_index": {
                                     "type": "integer"
-                                }
-                            }
-                        }
-                    },
-                    "duties": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "admin_graphql_api_id": {
-                                    "type": "string"
-                                },
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "price_set": {
-                                    "type": "object",
-                                    "properties": {
-                                        "presentment_money": {
-                                            "type": "object",
-                                            "properties": {
-                                                "amount": {
-                                                    "type": "string"
-                                                },
-                                                "currency_code": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "shop_money": {
-                                            "type": "object",
-                                            "properties": {
-                                                "amount": {
-                                                    "type": "string"
-                                                },
-                                                "currency_code": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -244,10 +206,7 @@
                     }
                 }
             }
-        },
-        "total_price": {
-            "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
