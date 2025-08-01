@@ -47,8 +47,14 @@ export {
 } from './schemas/user.schema';
 
 export {
+	DATA_STORE_COLUMN_REGEX,
 	type DataStore,
 	type DataStoreColumn,
-	DATA_STORE_COLUMN_REGEX,
 	type DataStoreCreateColumnSchema,
+	type DataStoreColumnJsType,
+	type DataStoreListFilter,
+	type DataStoreRows,
+	type DataStoreListOptions,
+	type DataStoreUserTableName,
+	type IDataStoreService,
 } from './schemas/data-store.schema';

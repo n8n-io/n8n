@@ -1,9 +1,13 @@
-import {
+import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
+	DataStoreListOptions,
+	DataStoreRows,
+	DataStoreUserTableName,
+	IDataStoreService,
 } from '@n8n/api-types';
 import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
 import { Logger } from '@n8n/backend-common';
@@ -14,18 +18,13 @@ import { DataStoreConfig } from './data-store';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
-import type {
-	DataStoreListOptions,
-	DataStoreRows,
-	DataStoreUserTableName,
-} from './data-store.types';
 
 function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
 }
 
 @Service()
-export class DataStoreService {
+export class DataStoreService implements IDataStoreService {
 	private intervalId?: NodeJS.Timeout;
 
 	constructor(

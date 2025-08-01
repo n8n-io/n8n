@@ -1,4 +1,4 @@
-import {
+import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
@@ -6,6 +6,7 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
+	DataStoreRows,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -20,7 +21,6 @@ import {
 } from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
-import { DataStoreRows } from './data-store.types';
 
 @RestController('/projects/:projectId/data-stores')
 export class DataStoreController {
@@ -44,12 +44,10 @@ export class DataStoreController {
 		@Body payload: Partial<ListDataStoreQueryDto> = {},
 	) {
 		const providedFilter = payload?.filter ?? {};
-		const [data, count] = await this.dataStoreService.getManyAndCount({
+		return await this.dataStoreService.getManyAndCount({
 			...payload,
 			filter: { ...providedFilter, projectId: req.params.projectId },
 		});
-
-		return { count, data };
 	}
 
 	@Patch('/:dataStoreId')

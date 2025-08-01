@@ -1,9 +1,12 @@
-import { DataStoreCreateColumnSchema } from '@n8n/api-types';
+import type {
+	DataStoreCreateColumnSchema,
+	DataStoreListOptions,
+	DataStoreUserTableName,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { DataStoreEntity } from './data-store.entity';
-import { DataStoreListOptions, DataStoreUserTableName } from './data-store.types';
 import { createUserTableQuery } from './utils/sql-utils';
 
 @Service()
@@ -23,7 +26,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	async getManyAndCount(options: DataStoreListOptions) {
 		const query = this.getManyQuery(options);
-		return await query.getManyAndCount();
+		const [data, count] = await query.getManyAndCount();
+		return { count, data };
 	}
 
 	async getMany(options: DataStoreListOptions) {
