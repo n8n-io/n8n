@@ -10,8 +10,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
@@ -25,6 +23,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -33,17 +32,26 @@ const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
 
+const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
-const rootStore = useRootStore();
 const sourceControlStore = useSourceControlStore();
 
 const loading = ref(true);
-const dataStores = ref<DataStoreResource[]>([]);
-const totalCount = ref(0);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
+
+const dataStoreResources = computed<DataStoreResource[]>(() =>
+	dataStoreStore.dataStores.map((ds) => {
+		return {
+			...ds,
+			resourceType: 'datastore',
+		};
+	}),
+);
+
+const totalCount = computed(() => dataStoreStore.totalCount);
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -93,15 +101,7 @@ const initialize = async () => {
 		? route.params.projectId[0]
 		: route.params.projectId;
 	try {
-		const response = await fetchDataStores(rootStore.restApiContext, projectId, {
-			page: currentPage.value,
-			pageSize: pageSize.value,
-		});
-		dataStores.value = response.data.map((item) => ({
-			...item,
-			resourceType: 'datastore',
-		}));
-		totalCount.value = response.count;
+		await dataStoreStore.loadDataStores(projectId, currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -134,7 +134,7 @@ onMounted(() => {
 		ref="layout"
 		resource-key="dataStore"
 		type="list-paginated"
-		:resources="dataStores"
+		:resources="dataStoreResources"
 		:initialize="initialize"
 		:type-props="{ itemSize: 80 }"
 		:loading="loading"
