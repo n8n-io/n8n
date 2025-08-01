@@ -57,11 +57,11 @@ const emit = defineEmits<Emits>();
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div :class="$style.contentContainer" :style="{ width }">
+					<div :style="{ width }">
 						<slot name="content" :close="() => emit('update:open', false)" />
 					</div>
 				</N8nScrollArea>
-				<div v-else :class="$style.contentContainer" :style="{ width }">
+				<div v-else :style="{ width }">
 					<slot name="content" :close="() => emit('update:open', false)" />
 				</div>
 			</PopoverContent>
@@ -81,10 +81,6 @@ const emit = defineEmits<Emits>();
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
 	z-index: 999;
-}
-
-.contentContainer {
-	padding: var(--spacing-s);
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

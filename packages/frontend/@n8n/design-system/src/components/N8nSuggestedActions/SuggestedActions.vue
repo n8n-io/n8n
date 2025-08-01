@@ -13,6 +13,7 @@ interface SuggestedAction {
 	title: string;
 	description: string;
 	moreInfoLink?: string;
+	completed?: boolean;
 }
 
 interface SuggestedActionsProps {
@@ -80,7 +81,7 @@ defineExpose({
 			</div>
 		</template>
 		<template #content>
-			<div :class="$style.content">
+			<div :class="$style.popoverContent">
 				<div
 					v-for="action in actions"
 					:key="action.id"
@@ -88,37 +89,43 @@ defineExpose({
 					data-test-id="suggested-action-item"
 					@click.prevent.stop="() => handleActionClick(action.id)"
 				>
-					<div :class="['mb-3xs', $style.actionHeader]">
-						<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
+					<div :class="$style.checkboxContainer">
+						<N8nIcon v-if="action.completed" icon="circle-check" color="success" />
+						<N8nIcon v-else icon="circle" color="foreground-dark" />
+					</div>
+					<div :class="$style.actionItemBody">
+						<div :class="['mb-3xs', $style.actionHeader]">
+							<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
 
-						<N8nIcon icon="chevron-right" />
-					</div>
-					<div>
-						<N8nText size="small" color="text-base">
-							{{ action.description }}
+							<N8nIcon icon="chevron-right" />
+						</div>
+						<div>
+							<N8nText size="small" color="text-base">
+								{{ action.description }}
+								<N8nLink
+									v-if="action.moreInfoLink"
+									:to="action.moreInfoLink"
+									size="small"
+									theme="text"
+									new-window
+									underline
+									@click.stop
+								>
+									{{ t('generic.moreInfo') }}
+								</N8nLink>
+							</N8nText>
+						</div>
+						<div :class="$style.actionButtons">
 							<N8nLink
-								v-if="action.moreInfoLink"
-								:to="action.moreInfoLink"
-								size="small"
 								theme="text"
-								new-window
+								size="small"
+								data-test-id="suggested-action-ignore"
 								underline
-								@click.stop
+								@click.prevent.stop="handleIgnoreClick(action.id)"
 							>
-								{{ t('generic.moreInfo') }}
+								{{ t('generic.ignore') }}
 							</N8nLink>
-						</N8nText>
-					</div>
-					<div :class="$style.actionButtons">
-						<N8nLink
-							theme="text"
-							size="small"
-							data-test-id="suggested-action-ignore"
-							underline
-							@click.prevent.stop="handleIgnoreClick(action.id)"
-						>
-							{{ t('generic.ignore') }}
-						</N8nLink>
+						</div>
 					</div>
 				</div>
 				<div v-if="ignoreForAllLabel" :class="$style.ignoreAllContainer">
@@ -143,25 +150,19 @@ defineExpose({
 	position: relative;
 }
 
-.content {
+.popoverContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-s);
+	padding: var(--spacing-m) var(--spacing-s);
 }
 
 .actionItem {
 	display: flex;
-	flex-direction: column;
-	padding-bottom: var(--spacing-s);
-	border-bottom: var(--border-base);
+	flex-direction: row;
 	transition:
 		opacity 0.3s ease,
 		filter 0.3s ease;
-
-	&:last-child {
-		padding-bottom: 0;
-		border-bottom: none;
-	}
 
 	&.ignoring {
 		opacity: 0.5;
@@ -173,16 +174,27 @@ defineExpose({
 	&:hover {
 		cursor: pointer;
 
-		.header {
+		.actionHeader {
 			color: var(--color-primary);
 		}
 
 		&:has(a:hover) {
-			.header {
+			.actionHeader {
 				color: var(--color-text-dark);
 			}
 		}
 	}
+}
+
+.actionItemBody {
+	display: flex;
+	flex-direction: column;
+	border-bottom: var(--border-base);
+	padding-bottom: var(--spacing-s);
+}
+
+.checkboxContainer {
+	padding-right: var(--spacing-xs);
 }
 
 .actionHeader {
@@ -201,5 +213,6 @@ defineExpose({
 .ignoreAllContainer {
 	display: flex;
 	gap: var(--spacing-s);
+	padding-left: var(--spacing-2xs);
 }
 </style>
