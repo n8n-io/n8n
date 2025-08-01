@@ -971,7 +971,9 @@ export async function requestOAuth2(
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
-			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties),
+			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
+				fallbackValue: {},
+			}),
 		}),
 	});
 
