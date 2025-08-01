@@ -9,7 +9,14 @@ import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS, MODAL_CONFIRM } from '@/constants';
+import {
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	VIEWS,
+	MODAL_CONFIRM,
+	EVALUATIONS_DOCS_URL,
+	ERROR_WORKFLOW_DOCS_URL,
+	TIME_SAVED_DOCS_URL,
+} from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -73,7 +80,7 @@ const availableActions = computed(() => {
 			id: 'evaluations',
 			title: i18n.baseText('workflowSuggestedActions.evaluations.title'),
 			description: i18n.baseText('workflowSuggestedActions.evaluations.description'),
-			moreInfoLink: 'https://docs.n8n.io/advanced-ai/evaluations/overview/',
+			moreInfoLink: EVALUATIONS_DOCS_URL,
 			completed: hasEvaluationSetOutputsNode.value,
 		});
 	}
@@ -84,8 +91,7 @@ const availableActions = computed(() => {
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
 			description: i18n.baseText('workflowSuggestedActions.errorWorkflow.description'),
-			moreInfoLink:
-				'https://docs.n8n.io/flow-logic/error-handling/#create-and-set-an-error-workflow',
+			moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 			completed: hasErrorWorkflow.value,
 		});
 	}
@@ -96,7 +102,7 @@ const availableActions = computed(() => {
 			id: 'timeSaved',
 			title: i18n.baseText('workflowSuggestedActions.timeSaved.title'),
 			description: i18n.baseText('workflowSuggestedActions.timeSaved.description'),
-			moreInfoLink: 'https://docs.n8n.io/insights/#setting-the-time-saved-by-a-workflow',
+			moreInfoLink: TIME_SAVED_DOCS_URL,
 			completed: hasTimeSaved.value,
 		});
 	}
