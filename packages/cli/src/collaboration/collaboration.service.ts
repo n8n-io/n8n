@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { Workflow, NodeConnectionType } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
@@ -170,10 +170,10 @@ export class CollaborationService {
 	private async applyOperationalTransform(
 		workflowId: string,
 		operation: WorkflowEditOperation,
-		timestamp: number,
+		_timestamp: number,
 	): Promise<WorkflowEditOperation | null> {
 		// Store timestamp for future conflict resolution
-		const operationTimestamp = timestamp;
+		// Future use: const operationTimestamp = timestamp;
 		const history = this.operationHistory.get(workflowId) ?? [];
 		const conflictingOperations = history.filter(
 			(op) =>
@@ -319,9 +319,11 @@ export class CollaborationService {
 				if (!workflowData.connections[connOp.connection.source][connOp.connection.sourceIndex]) {
 					workflowData.connections[connOp.connection.source][connOp.connection.sourceIndex] = [];
 				}
-				workflowData.connections[connOp.connection.source][connOp.connection.sourceIndex].push({
+				(
+					workflowData.connections[connOp.connection.source][connOp.connection.sourceIndex] as any[]
+				).push({
 					node: connOp.connection.destination,
-					type: connOp.connection.type || 'main',
+					type: (connOp.connection.type || 'main') as NodeConnectionType,
 					index: connOp.connection.destinationIndex,
 				});
 				break;
