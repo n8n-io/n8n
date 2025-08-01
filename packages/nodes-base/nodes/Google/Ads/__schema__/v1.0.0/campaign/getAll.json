@@ -7,14 +7,8 @@
         "amountMicros": {
             "type": "string"
         },
-        "averageCpm": {
-            "type": "number"
-        },
         "costMicros": {
             "type": "string"
-        },
-        "ctr": {
-            "type": "number"
         },
         "id": {
             "type": "string"
@@ -44,5 +38,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
