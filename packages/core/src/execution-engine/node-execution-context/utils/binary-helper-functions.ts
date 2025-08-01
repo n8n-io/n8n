@@ -90,11 +90,12 @@ export function assertBinaryData(
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
+	node: INode,
 	itemIndex: number,
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
+	const binaryData = assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex);
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 

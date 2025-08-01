@@ -67,7 +67,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 			assertBinaryData: (propertyName, inputIndex = 0) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 			getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				await getBinaryDataBuffer(inputData, node, itemIndex, propertyName, inputIndex),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
 	}
