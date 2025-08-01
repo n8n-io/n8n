@@ -16,6 +16,7 @@ const mockActions = [
 		description: 'Setup a workflow error to track what is going on here.',
 	},
 ];
+const stubs = ['n8n-text', 'n8n-link', 'n8n-icon'];
 
 describe('N8nSuggestedActions', () => {
 	it('renders the suggested actions count', () => {
@@ -42,30 +43,41 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.baseElement).not.toContainHTML('data-test-id="suggested-action-count"');
 	});
 
-	it('renders the suggested actions count with completed actions', () => {
+	it('renders the suggested actions count with completed actions', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: [{ ...mockActions[0], completed: true }, mockActions[1]],
 			},
+			global: { stubs },
 		});
 
 		expect(wrapper.getByTestId('suggested-action-count')).toBeInTheDocument();
 		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('1 / 2');
+
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
+
+		// Check if action items are visible and checked off
+		const actionItems = wrapper.getAllByTestId('suggested-action-item');
+		expect(actionItems).toHaveLength(2);
+		expect(actionItems).toMatchSnapshot();
 	});
 
-	it('opens popover when count tag is clicked', async () => {
+	it('opens popover when count tag is clicked and all items are not completed', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
 			},
+			global: { stubs },
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
 
 		// Check if action items are visible
 		const actionItems = wrapper.getAllByTestId('suggested-action-item');
 		expect(actionItems).toHaveLength(2);
+		expect(actionItems).toMatchSnapshot();
 	});
 
 	it('renders all action items correctly', async () => {
@@ -75,8 +87,8 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
 
 		// Check first action
 		expect(wrapper.getByText('Evaluate your workflow')).toBeInTheDocument();
@@ -98,8 +110,8 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
 
 		const actionButtons = wrapper.getAllByTestId('suggested-action-item');
 		await fireEvent.click(actionButtons[0]);
@@ -115,8 +127,8 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
 
 		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
 		await fireEvent.click(ignoreLinks[0]);
@@ -145,10 +157,11 @@ describe('N8nSuggestedActions', () => {
 				actions: mockActions,
 				ignoreAllLabel: 'Ignore for all',
 			},
+			global: { stubs: { N8nIcon: true } },
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
 
 		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
@@ -160,6 +173,7 @@ describe('N8nSuggestedActions', () => {
 				actions: mockActions,
 				ignoreAllLabel: 'Ignore for all',
 			},
+			global: { stubs: { N8nIcon: true } },
 		});
 
 		const bellButton = wrapper.getByTestId('suggested-action-count');
