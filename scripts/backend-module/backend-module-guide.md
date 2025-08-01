@@ -49,7 +49,7 @@ Modules are managed via env vars:
 
 - To enable a module (activate it on instance startup), use the env var `N8N_ENABLED_MODULES`.
 - To disable a module (skip it on instance startup), use the env var `N8N_DISABLED_MODULES`.
-- Some modules are **default modules** so they are always enabled unless specifically disabled.
+- Some modules are **default modules** so they are always enabled unless specifically disabled. To enable a module by default, add it [here](https://github.com/n8n-io/n8n/blob/c0360e52afe9db37d4dd6e00955fa42b0c851904/packages/%40n8n/backend-common/src/modules/module-registry.ts#L26).
 
 Modules that are under a license flag are automatically skipped on startup if the instance is not licensed to use the feature.
 
@@ -225,7 +225,7 @@ Service-level decorators to be aware of:
 - `@Service()` to make a service usable by the dependency injection container
 - `@OnLifecycleEvent()` to register a class method to be called on an execution lifecycle event, e.g. `nodeExecuteBefore`, `nodeExecuteAfter`, `workflowExecuteBefore`, and `workflowExecuteAfter`
 - `@OnPubSubEvent()` to register a class method to be called on receiving a message via Redis pubsub
-- `@OnLeaderTakeover()` and `@OnLeaderStopdown` to register a class method to be called on leadership transition in a multi-main setup
+- `@OnLeaderTakeover()` and `@OnLeaderStepdown` to register a class method to be called on leadership transition in a multi-main setup
 
 ## Repositories
 
@@ -333,7 +333,7 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 
 4. Existing features that are not modules (e.g. LDAP) should be turned into modules over time.
 
-### FAQs
+## FAQs
 
 - **What is a good example of a backend module?** Our first backend module is the `insights` module at `packages/@n8n/modules/insights`.
 - **My feature is already a separate _package_ at `packages/@n8n/{feature}`. How does this work with modules?** If your feature is already fully decoupled from `cli`, or if you know in advance that your feature will have zero dependencies on `cli`, then you already stand to gain most of the benefits of modularity. In this case, you can add a thin module to `cli` containing an entrypoint to your feature imported from your package, so that your feature is loaded only when needed.

@@ -232,6 +232,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 .nodeItem {
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--canvas-node-icon-color: var(--color-foreground-xdark);
 	margin-left: 15px;
 	margin-right: 12px;
 	user-select: none;

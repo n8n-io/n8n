@@ -175,6 +175,18 @@ export class Webhook extends Node {
 			},
 			responseDataProperty,
 			responseBinaryPropertyNameProperty,
+			{
+				displayName:
+					'If you are sending back a response, add a "Content-Type" response header with the appropriate value to avoid unexpected behavior',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						responseMode: ['onReceived'],
+					},
+				},
+			},
 
 			{
 				...optionsProperty,

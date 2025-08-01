@@ -214,6 +214,16 @@ describe('CanvasNodeAIPrompt', () => {
 			});
 		});
 
+		it('should disable suggestion pills when builder is streaming', () => {
+			streaming.value = true;
+			const { container } = renderComponent();
+			const pills = container.querySelectorAll('[role="group"] button');
+
+			pills.forEach((pill) => {
+				expect(pill).toHaveAttribute('disabled');
+			});
+		});
+
 		it('should replace prompt when suggestion is clicked', async () => {
 			const { container } = renderComponent();
 			const firstPill = container.querySelector('[role="group"] button');
@@ -310,6 +320,26 @@ describe('CanvasNodeAIPrompt', () => {
 			expect(openNodeCreatorForTriggerNodes).toHaveBeenCalledWith(
 				NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 			);
+		});
+
+		it('should disable "Add node manually" button when builder is streaming', () => {
+			streaming.value = true;
+			const { container } = renderComponent();
+			const addButton = container.querySelector('[aria-label="Add node manually"]');
+
+			expect(addButton).toHaveAttribute('disabled');
+		});
+
+		it('should not open node creator when streaming', async () => {
+			streaming.value = true;
+			const { container } = renderComponent();
+			const addButton = container.querySelector('[aria-label="Add node manually"]');
+
+			if (!addButton) throw new Error('Add button not found');
+
+			await fireEvent.click(addButton);
+
+			expect(openNodeCreatorForTriggerNodes).not.toHaveBeenCalled();
 		});
 	});
 
