@@ -57,6 +57,7 @@ import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	TEMPLATE_CATEGORY_AI,
 } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -176,8 +177,10 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
-	const websiteCategoryURL =
-		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
+	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
+		websiteCategoryURLParams,
+		TEMPLATE_CATEGORY_AI,
+	);
 
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
@@ -196,7 +199,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					icon: 'box-open',
 					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
 					name: 'ai_templates_root',
-					url: websiteCategoryURL,
+					url: aiTemplatesURL,
 					tag: {
 						type: 'info',
 						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
