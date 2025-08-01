@@ -690,7 +690,7 @@ export class Ftp implements INodeType {
 									await sftp!.get(path, createWriteStream(binaryFile.path));
 								} else {
 									await sftp!.fastGet(path, binaryFile.path, {
-											concurrency: Number(options.maxConcurrentReads ?? 5),
+										concurrency: Number(options.maxConcurrentReads ?? 5),
 										chunkSize: (Number(options.chunkSize) ?? 64) * 1024,
 									});
 								}
