@@ -926,6 +926,7 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					:is-experimental-ndv-active="isExperimentalNdvActive"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -938,7 +939,6 @@ provide(CanvasKey, {
 					@update:outputs="onUpdateNodeOutputs"
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
-					@focus="onFocusNode"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
