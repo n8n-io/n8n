@@ -30,28 +30,6 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.getByTestId('suggested-actions-bell')).toBeInTheDocument();
 	});
 
-	it('shows red dot when showRedDot is true', () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				showRedDot: true,
-			},
-		});
-
-		expect(wrapper.getByTestId('suggested-actions-red-dot')).toBeInTheDocument();
-	});
-
-	it('does not show red dot when showRedDot is false', () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				showRedDot: false,
-			},
-		});
-
-		expect(wrapper.queryByTestId('suggested-actions-red-dot')).not.toBeInTheDocument();
-	});
-
 	it('opens popover when bell icon is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {

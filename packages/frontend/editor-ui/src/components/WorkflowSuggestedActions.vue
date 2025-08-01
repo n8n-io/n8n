@@ -108,10 +108,6 @@ const availableActions = computed(() => {
 	return actions;
 });
 
-const showRedDot = computed(() => {
-	return availableActions.value.length > 0;
-});
-
 async function loadWorkflowSettings() {
 	if (props.workflow.id) {
 		cachedSettings.value = await workflowsCache.getWorkflowSettings(props.workflow.id);
@@ -191,7 +187,6 @@ defineExpose({
 		ref="suggestedActionsComponent"
 		popover-alignment="end"
 		:actions="availableActions"
-		:show-red-dot="showRedDot"
 		:turn-off-actions-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"

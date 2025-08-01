@@ -5,11 +5,7 @@ import N8nSuggestedActions from './SuggestedActions.vue';
 export default {
 	title: 'Modules/SuggestedActions',
 	component: N8nSuggestedActions,
-	argTypes: {
-		showRedDot: {
-			control: { type: 'boolean' },
-		},
-	},
+	argTypes: {},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -39,7 +35,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Default = Template.bind({});
 Default.args = {
-	showRedDot: true,
 	actions: [
 		{
 			id: 'evaluate-workflow',
@@ -65,22 +60,8 @@ Default.args = {
 	],
 };
 
-export const WithoutRedDot = Template.bind({});
-WithoutRedDot.args = {
-	showRedDot: false,
-	actions: [
-		{
-			id: 'single-action',
-			title: 'Single action example',
-			description: 'This is an example with just one action and no red dot indicator.',
-			buttonLabel: 'Take action',
-		},
-	],
-};
-
 export const WithoutMoreInfoLinks = Template.bind({});
 WithoutMoreInfoLinks.args = {
-	showRedDot: true,
 	actions: [
 		{
 			id: 'action-1',
@@ -99,7 +80,6 @@ WithoutMoreInfoLinks.args = {
 
 export const LongContent = Template.bind({});
 LongContent.args = {
-	showRedDot: true,
 	actions: Array.from({ length: 10 }, (_, i) => ({
 		id: `action-${i + 1}`,
 		title: `Suggested Action ${i + 1}`,
@@ -119,9 +99,9 @@ const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div style="padding: 50px;">
-			<N8nSuggestedActions 
-				v-bind="args" 
-				@action-click="onActionClick" 
+			<N8nSuggestedActions
+				v-bind="args"
+				@action-click="onActionClick"
 				@ignore-click="onIgnoreClick"
 				@ignore-all="onIgnoreAll"
 				@turn-off="onTurnOff"
@@ -150,7 +130,6 @@ const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 
 export const WithTurnOffOption = TemplateWithEvents.bind({});
 WithTurnOffOption.args = {
-	showRedDot: true,
 	turnOffActionsLabel: 'Turn off suggestions',
 	actions: [
 		{
@@ -172,7 +151,6 @@ WithTurnOffOption.args = {
 
 export const SingleActionWithTurnOff = TemplateWithEvents.bind({});
 SingleActionWithTurnOff.args = {
-	showRedDot: false,
 	turnOffActionsLabel: 'Disable all suggestions',
 	actions: [
 		{
@@ -212,7 +190,6 @@ const AlignmentTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const PopoverAlignments = AlignmentTemplate.bind({});
 PopoverAlignments.args = {
-	showRedDot: true,
 	actions: [
 		{
 			id: 'action1',
@@ -225,7 +202,6 @@ PopoverAlignments.args = {
 
 export const MultipleActionsWithIgnoreAll = TemplateWithEvents.bind({});
 MultipleActionsWithIgnoreAll.args = {
-	showRedDot: true,
 	actions: [
 		{
 			id: 'action1',
