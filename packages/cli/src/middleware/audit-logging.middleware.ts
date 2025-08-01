@@ -55,7 +55,9 @@ export interface AuditableRequest extends AuthenticatedRequest {
 		userAgent: string;
 		riskScore: number;
 		suspiciousIndicators: string[];
+		responseBody?: any;
 	};
+	sessionID?: string;
 }
 
 /**
@@ -242,8 +244,8 @@ export class AuditLoggingMiddleware {
 					req,
 					statusCode,
 					responseTimeMs,
-					req.user?.id,
-					req.user?.globalRole?.projectId,
+					req.user?.id || undefined,
+					(req.user as any)?.globalRole?.projectId || undefined,
 					this.getErrorMessage(req, res),
 				);
 			}

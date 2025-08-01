@@ -165,21 +165,21 @@ export class PerformanceMonitoringService {
 	private mapExecutionStatus(status: string): ExecutionStatus {
 		switch (status) {
 			case 'new':
-				return ExecutionStatus.NEW;
+				return ExecutionStatus.new;
 			case 'running':
-				return ExecutionStatus.RUNNING;
+				return ExecutionStatus.running;
 			case 'success':
-				return ExecutionStatus.SUCCESS;
+				return ExecutionStatus.success;
 			case 'error':
-				return ExecutionStatus.ERROR;
+				return ExecutionStatus.error;
 			case 'canceled':
-				return ExecutionStatus.CANCELED;
+				return ExecutionStatus.canceled;
 			case 'crashed':
-				return ExecutionStatus.CRASHED;
+				return ExecutionStatus.crashed;
 			case 'waiting':
-				return ExecutionStatus.WAITING;
+				return ExecutionStatus.waiting;
 			default:
-				return ExecutionStatus.ERROR;
+				return ExecutionStatus.error;
 		}
 	}
 
@@ -216,7 +216,7 @@ export class PerformanceMonitoringService {
 				memoryUsage: this.estimateNodeMemoryUsage(latestRun),
 				inputItems: inputData.length,
 				outputItems: outputData.length,
-				status: latestRun.error ? NodeExecutionStatus.ERROR : NodeExecutionStatus.SUCCESS,
+				status: latestRun.error ? NodeExecutionStatus.error : NodeExecutionStatus.success,
 			});
 		}
 
@@ -360,8 +360,8 @@ export class PerformanceMonitoringService {
 			if (executionTime > 30000) {
 				bottlenecks.push({
 					nodeId,
-					issue: BottleneckIssue.SLOW_EXECUTION,
-					severity: executionTime > 120000 ? BottleneckSeverity.HIGH : BottleneckSeverity.MEDIUM,
+					issue: BottleneckIssue.slowExecution,
+					severity: executionTime > 120000 ? BottleneckSeverity.high : BottleneckSeverity.medium,
 					suggestion: `Node execution took ${Math.round(executionTime / 1000)}s. Consider optimizing queries or reducing data volume.`,
 				});
 			}
@@ -370,9 +370,9 @@ export class PerformanceMonitoringService {
 			if (memoryUsage > 100 * 1024 * 1024) {
 				bottlenecks.push({
 					nodeId,
-					issue: BottleneckIssue.HIGH_MEMORY,
+					issue: BottleneckIssue.highMemory,
 					severity:
-						memoryUsage > 500 * 1024 * 1024 ? BottleneckSeverity.HIGH : BottleneckSeverity.MEDIUM,
+						memoryUsage > 500 * 1024 * 1024 ? BottleneckSeverity.high : BottleneckSeverity.medium,
 					suggestion: `High memory usage detected (~${Math.round(memoryUsage / 1024 / 1024)}MB). Consider processing data in smaller chunks.`,
 				});
 			}
@@ -381,9 +381,9 @@ export class PerformanceMonitoringService {
 			if (dataVolume > 10 * 1024 * 1024) {
 				bottlenecks.push({
 					nodeId,
-					issue: BottleneckIssue.LARGE_DATASET,
+					issue: BottleneckIssue.largeDataset,
 					severity:
-						dataVolume > 100 * 1024 * 1024 ? BottleneckSeverity.HIGH : BottleneckSeverity.MEDIUM,
+						dataVolume > 100 * 1024 * 1024 ? BottleneckSeverity.high : BottleneckSeverity.medium,
 					suggestion: `Large dataset detected (~${Math.round(dataVolume / 1024 / 1024)}MB). Consider pagination or data filtering.`,
 				});
 			}

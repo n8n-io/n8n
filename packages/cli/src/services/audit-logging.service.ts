@@ -13,7 +13,9 @@ type AuditEventCategory =
 	| 'data_access'
 	| 'configuration'
 	| 'system'
-	| 'security';
+	| 'security'
+	| 'workflow_management'
+	| 'user_management';
 type AuditEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 /**

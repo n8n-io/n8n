@@ -207,7 +207,7 @@ export class JobProcessor {
 					executionId,
 					resultData.pinData,
 				);
-				workflowRun = await workflowExecution;
+				workflowRun = workflowExecution;
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
 					// execution did not even start, but we call `workflowExecuteAfter` to notify main
