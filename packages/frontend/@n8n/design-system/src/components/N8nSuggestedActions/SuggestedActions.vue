@@ -26,6 +26,7 @@ interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
 	(event: 'ignore-click', actionId: string): void;
 	(event: 'ignore-all'): void;
+	(event: 'on-open'): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
@@ -78,6 +79,7 @@ defineExpose({
 		width="360px"
 		max-height="500px"
 		:align="popoverAlignment"
+		@update:open="(open) => open && emit('on-open')"
 	>
 		<template #trigger>
 			<div :class="$style.triggerContainer" data-test-id="suggested-action-count">

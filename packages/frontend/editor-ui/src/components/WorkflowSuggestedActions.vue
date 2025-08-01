@@ -11,6 +11,7 @@ import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 import { WORKFLOW_SETTINGS_MODAL_KEY, VIEWS, MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -23,6 +24,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
 const message = useMessage();
+const telemetry = useTelemetry();
 
 const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -130,6 +132,10 @@ async function handleIgnoreClick(actionId: string) {
 
 	await workflowsCache.ignoreSuggestedAction(props.workflow.id, actionId);
 	await loadWorkflowSettings();
+
+	telemetry.track('user clicked ignore suggested action', {
+		actionId,
+	});
 }
 
 async function handleIgnoreAll() {
@@ -146,11 +152,17 @@ async function handleIgnoreAll() {
 			availableActions.value.map((action) => action.id),
 		);
 		await loadWorkflowSettings();
+
+		telemetry.track('user clicked ignore suggested actions for all workflows');
 	}
 }
 
 function openSuggestedActions() {
 	suggestedActionsComponent.value?.openPopover();
+}
+
+function onPopoverOpened() {
+	telemetry.track('user opened suggested actions checklist');
 }
 
 // Watch for workflow activation
@@ -174,10 +186,6 @@ watch(
 onMounted(async () => {
 	await loadWorkflowSettings();
 });
-
-defineExpose({
-	openSuggestedActions,
-});
 </script>
 
 <template>
@@ -190,5 +198,6 @@ defineExpose({
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
 		@ignore-all="handleIgnoreAll"
+		@on-open="onPopoverOpened"
 	/>
 </template>
