@@ -657,7 +657,7 @@ export class ExecutionService {
 			executionData: execution.data,
 			retryOf: executionId,
 			workflowData: execution.workflowData,
-			userId: (execution.userId as string) ?? '',
+			userId: (execution as any).userId ?? '',
 		};
 
 		// Handle advanced retry options
@@ -692,7 +692,7 @@ export class ExecutionService {
 					node.parameters = {
 						...node.parameters,
 						...nodeModifications,
-					};
+					} as any;
 				}
 			}
 		}
@@ -739,7 +739,7 @@ export class ExecutionService {
 
 		const result: ExecutionFullContext = {
 			executionId,
-			execution,
+			execution: execution as any,
 		};
 
 		// Include performance metrics if requested
@@ -756,7 +756,7 @@ export class ExecutionService {
 		// Include workflow context if requested
 		if (options.includeWorkflowContext === 'true') {
 			result.workflowContext = {
-				variables: (execution.workflowData.settings?.variables as IDataObject) ?? {},
+				variables: ((execution.workflowData.settings as any)?.variables as IDataObject) ?? {},
 				expressions: this.extractExpressionsFromWorkflow(execution.workflowData),
 				connections: execution.workflowData.connections as IDataObject,
 			};

@@ -122,7 +122,7 @@ export class AuditController {
 	@Get('/events')
 	async getAuditEvents(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: AuditEventsQueryDto,
 	): Promise<{ events: AuditEvent[]; total: number; page: number; pageSize: number }> {
 		try {
@@ -131,10 +131,10 @@ export class AuditController {
 				startDate: query.startDate ? new Date(query.startDate) : undefined,
 				endDate: query.endDate ? new Date(query.endDate) : undefined,
 				eventTypes: query.eventTypes
-					? (query.eventTypes.split(',') as AuditEventType[])
+					? query.eventTypes.split(',')
 					: undefined,
 				categories: query.categories
-					? (query.categories.split(',') as AuditEventCategory[])
+					? (query.categories.split(',') as any)
 					: undefined,
 				severities: query.severities
 					? (query.severities.split(',') as AuditEventSeverity[])
@@ -197,7 +197,7 @@ export class AuditController {
 	@Get('/events/statistics')
 	async getAuditStatistics(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: { startDate?: string; endDate?: string },
 	): Promise<any> {
 		try {
@@ -238,7 +238,7 @@ export class AuditController {
 	@Post('/events')
 	async createAuditEvent(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body eventData: ManualAuditEventDto,
 	): Promise<AuditEvent> {
 		try {
@@ -248,10 +248,20 @@ export class AuditController {
 			}
 
 			const auditEvent = await this.auditLoggingService.logEvent({
-				...eventData,
+				eventType: eventData.eventType,
+				category: eventData.category as any,
+				severity: eventData.severity,
+				description: eventData.description,
 				userId: req.user.id,
+				resourceId: eventData.resourceId,
+				resourceType: eventData.resourceType,
 				ipAddress: this.extractIpAddress(req),
 				userAgent: req.get('User-Agent') || null,
+				metadata: eventData.metadata,
+				beforeState: eventData.beforeState,
+				afterState: eventData.afterState,
+				requiresReview: eventData.requiresReview,
+				tags: eventData.tags,
 			});
 
 			console.log('Manual audit event created', {
@@ -278,7 +288,7 @@ export class AuditController {
 	@Put('/events/:id/review')
 	async reviewAuditEvent(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('id') eventId: string,
 		@Body reviewData: AcknowledgeEventDto,
 	): Promise<{ success: boolean }> {
@@ -309,7 +319,7 @@ export class AuditController {
 	@Get('/security/events')
 	async getSecurityEvents(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: SecurityEventsQueryDto,
 	): Promise<{ events: SecurityEvent[]; total: number; page: number; pageSize: number }> {
 		try {
@@ -377,7 +387,7 @@ export class AuditController {
 	@Get('/security/metrics')
 	async getSecurityMetrics(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: { startDate?: string; endDate?: string },
 	): Promise<any> {
 		try {
@@ -418,7 +428,7 @@ export class AuditController {
 	@Put('/security/events/:id/acknowledge')
 	async acknowledgeSecurityEvent(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('id') eventId: string,
 		@Body acknowledgeData: AcknowledgeEventDto,
 	): Promise<{ success: boolean }> {
@@ -453,7 +463,7 @@ export class AuditController {
 	@Put('/security/events/:id/resolve')
 	async resolveSecurityEvent(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('id') eventId: string,
 		@Body resolveData: ResolveEventDto,
 	): Promise<{ success: boolean }> {
@@ -492,7 +502,7 @@ export class AuditController {
 	@Get('/compliance/reports')
 	async getComplianceReports(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: ComplianceReportsQueryDto,
 	): Promise<{ reports: ComplianceReport[]; total: number; page: number; pageSize: number }> {
 		try {
@@ -507,7 +517,7 @@ export class AuditController {
 				offset: query.offset ? parseInt(query.offset, 10) : 0,
 			};
 
-			const result = await this.complianceReportingService.getReports(options);
+			const result = await this.complianceReportingService.getReports(options as any);
 
 			// Log the access
 			await this.auditLoggingService.logEvent({
@@ -547,7 +557,7 @@ export class AuditController {
 	@Post('/compliance/reports')
 	async generateComplianceReport(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body reportRequest: CreateComplianceReportDto,
 	): Promise<ComplianceReport> {
 		try {
@@ -570,7 +580,7 @@ export class AuditController {
 				periodStart,
 				periodEnd,
 				generatedBy: req.user.id,
-			});
+			} as any);
 
 			console.log('Compliance report generation started', {
 				reportId: report.id,
@@ -650,7 +660,7 @@ export class AuditController {
 	@Get('/cleanup')
 	async cleanupAuditData(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 	): Promise<{ auditEventsDeleted: number; reportsArchived: number }> {
 		try {
 			// Only admin users can trigger cleanup
@@ -664,7 +674,7 @@ export class AuditController {
 			// Log the cleanup operation
 			await this.auditLoggingService.logEvent({
 				eventType: 'system_configuration_changed',
-				category: 'system_administration',
+				category: 'system_administration' as any,
 				severity: 'medium',
 				description: 'Audit data cleanup performed',
 				userId: req.user.id,

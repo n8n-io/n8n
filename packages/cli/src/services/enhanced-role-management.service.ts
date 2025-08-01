@@ -73,16 +73,19 @@ export class EnhancedRoleManagementService {
 	private customRoles: Map<string, CustomRole> = new Map();
 	private roleAssignments: Map<string, RoleAssignment> = new Map();
 	private permissions: Map<string, PermissionDefinition> = new Map();
-	private roleHierarchy: Map<string, RoleHierarchyDto[]> = new Map();
+	// Role hierarchy storage - future implementation
+	// private roleHierarchy: Map<string, RoleHierarchyDto[]> = new Map();
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
-		private readonly projectRepository: ProjectRepository,
-		private readonly workflowRepository: WorkflowRepository,
+		// Future implementation
+		// private readonly projectRepository: ProjectRepository,
+		// private readonly workflowRepository: WorkflowRepository,
 		private readonly cacheService: CacheService,
 		private readonly eventService: EventService,
-		private readonly roleService: RoleService,
+		// Future implementation
+		// private readonly roleService: RoleService,
 	) {
 		this.initializeDefaultPermissions();
 	}
@@ -466,11 +469,11 @@ export class EnhancedRoleManagementService {
 		if (cached) return cached;
 
 		// Get user's roles and permissions
-		const userRoles = await this.getUserRoles(request.userId);
+		await this.getUserRoles(request.userId); // userRoles for future use
 		const userPermissions = await this.getUserPermissions(request.userId, request.context);
 
-		// Check if permission is granted
-		const permissionKey = `${request.resource}:${request.action}`;
+		// Check if permission is granted - permissionKey for future logging
+		// const permissionKey = `${request.resource}:${request.action}`;
 		const hasPermission = userPermissions.some(
 			(p) => p.resource === request.resource && p.action === request.action && p.granted,
 		);
@@ -643,7 +646,7 @@ export class EnhancedRoleManagementService {
 		return []; // Placeholder
 	}
 
-	private async getSystemRole(roleId: string): Promise<any> {
+	private async getSystemRole(_roleId: string): Promise<any> {
 		// Get system role by ID
 		return null; // Placeholder
 	}
@@ -713,7 +716,7 @@ export class EnhancedRoleManagementService {
 		};
 	}
 
-	private async getTopUsersForRole(roleId: string, assignments: RoleAssignment[]): Promise<any[]> {
+	private async getTopUsersForRole(_roleId: string, assignments: RoleAssignment[]): Promise<any[]> {
 		const userIds = assignments.slice(0, 5).map((a) => a.userId);
 		const users = await this.userRepository.findByIds(userIds);
 
@@ -729,7 +732,7 @@ export class EnhancedRoleManagementService {
 		});
 	}
 
-	private checkLicenseCompatibility(requiredLicense: string): boolean {
+	private checkLicenseCompatibility(_requiredLicense: string): boolean {
 		// Check if current license supports the required license level
 		// This would integrate with the actual license service
 		return true; // Placeholder

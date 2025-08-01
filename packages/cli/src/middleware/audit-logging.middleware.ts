@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { performance } from 'perf_hooks';
 
-import { Logger } from '@/logger';
+import { LoggerProxy } from 'n8n-workflow';
 import { AuditLoggingService } from '@/services/audit-logging.service';
 import { SecurityMonitoringService } from '@/services/security-monitoring.service';
 
@@ -62,7 +62,7 @@ export interface AuditableRequest extends AuthenticatedRequest {
  * Audit logging middleware for comprehensive API request/response tracking
  */
 export class AuditLoggingMiddleware {
-	private readonly logger = Container.get(Logger);
+	private readonly logger = LoggerProxy;
 	private readonly auditLoggingService = Container.get(AuditLoggingService);
 	private readonly securityMonitoringService = Container.get(SecurityMonitoringService);
 	private readonly config: AuditMiddlewareConfig;

@@ -1,15 +1,14 @@
-import {
-	AuditEvent,
-	type AuditEventType,
-	type AuditEventCategory,
-	type AuditEventSeverity,
-} from '@n8n/db';
-import { Repository } from '@n8n/typeorm';
+import { AuditEvent } from '@n8n/db';
+import { Repository, DataSource } from '@n8n/typeorm';
 import { Service, Container } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 import type { Request } from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 
-import { Logger } from '@/logger';
+// TODO: Add these types to @n8n/db package exports
+type AuditEventType = string;
+type AuditEventCategory = 'authentication' | 'authorization' | 'data_access' | 'configuration' | 'system' | 'security';
+type AuditEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 /**
  * Interface for audit event creation
@@ -45,11 +44,12 @@ export interface IAuditEventData {
 @Service()
 export class AuditLoggingService {
 	private auditEventRepository: Repository<AuditEvent>;
-	private readonly logger = Container.get(Logger);
+	private readonly logger = LoggerProxy;
 
 	constructor() {
 		// Get repository through Container to ensure proper DI
-		this.auditEventRepository = Container.get('DataSource').getRepository(AuditEvent);
+		const dataSource = Container.get(DataSource);
+		this.auditEventRepository = dataSource.getRepository(AuditEvent);
 	}
 
 	/**
@@ -85,7 +85,8 @@ export class AuditLoggingService {
 			// Set archive date based on retention category
 			auditEvent.archiveAt = this.calculateArchiveDate(auditEvent.retentionCategory);
 
-			const savedEvent = await this.auditEventRepository.save(auditEvent);
+			const savedEvents = await this.auditEventRepository.save(auditEvent);
+			const savedEvent = Array.isArray(savedEvents) ? savedEvents[0] : savedEvents;
 
 			// Log high-severity events immediately
 			if (eventData.severity === 'critical' || eventData.severity === 'high') {
@@ -157,7 +158,7 @@ export class AuditLoggingService {
 	): Promise<AuditEvent> {
 		return this.logEvent({
 			eventType: 'workflow_executed',
-			category: 'workflow_management',
+			category: 'workflow_management' as any,
 			severity: success ? 'low' : 'medium',
 			description: `Workflow execution ${success ? 'completed' : 'failed'}: ${workflowId}`,
 			userId,
@@ -214,7 +215,7 @@ export class AuditLoggingService {
 	): Promise<AuditEvent> {
 		return this.logEvent({
 			eventType,
-			category: 'data_modification',
+			category: 'data_modification' as any,
 			severity: 'medium',
 			description: description || `${resourceType} ${eventType}`,
 			userId,

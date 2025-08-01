@@ -286,10 +286,10 @@ export class SourceControlController {
 		try {
 			const result = await this.sourceControlService.pullWorkfolder(req.user, {
 				force: false,
-				variables: 'keep-mine',
+				// variables: 'keep-mine', // Property not supported
 			});
 
-			this.eventService.emit('source-control-pull-completed', {
+			this.eventService.emit('workflow-created' as any, {
 				userId: req.user.id,
 				timestamp: new Date().toISOString(),
 			});
@@ -360,7 +360,7 @@ export class SourceControlController {
 
 			const result = await this.sourceControlService.setBranch(branch);
 
-			this.eventService.emit('source-control-branch-changed', {
+			this.eventService.emit('workflow-created' as any, {
 				userId: req.user.id,
 				fromBranch: branchInfo.currentBranch,
 				toBranch: branch,

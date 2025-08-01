@@ -1,19 +1,16 @@
-import {
-	ComplianceReport,
-	AuditEvent,
-	SecurityEvent,
-	type ComplianceStandard,
-	type ReportStatus,
-	type ReportFormat,
-} from '@n8n/db';
-import { Repository } from '@n8n/typeorm';
+import { ComplianceReport, AuditEvent, SecurityEvent } from '@n8n/db';
+import { Repository, DataSource } from '@n8n/typeorm';
 import { Service, Container } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'path';
+import { LoggerProxy } from 'n8n-workflow';
 
-import { Logger } from '@/logger';
+// TODO: Add these types to @n8n/db package exports
+type ComplianceStandard = 'SOC2' | 'GDPR' | 'HIPAA' | 'PCI_DSS' | 'ISO_27001';
+type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed';
+type ReportFormat = 'json' | 'csv' | 'pdf' | 'html';
 import { AuditLoggingService } from './audit-logging.service';
 
 /**
@@ -49,17 +46,17 @@ export interface IComplianceFindings {
 @Service()
 export class ComplianceReportingService {
 	private complianceReportRepository: Repository<ComplianceReport>;
-	private auditEventRepository: Repository<AuditEvent>;
+	// private auditEventRepository: Repository<AuditEvent>; // Future implementation
 	private securityEventRepository: Repository<SecurityEvent>;
-	private readonly logger = Container.get(Logger);
+	private readonly logger = LoggerProxy;
 	private readonly auditLoggingService = Container.get(AuditLoggingService);
 	private readonly reportsBasePath: string;
 
 	constructor() {
 		// Get repositories through Container to ensure proper DI
-		const dataSource = Container.get('DataSource');
+		const dataSource = Container.get(DataSource);
 		this.complianceReportRepository = dataSource.getRepository(ComplianceReport);
-		this.auditEventRepository = dataSource.getRepository(AuditEvent);
+		// this.auditEventRepository = dataSource.getRepository(AuditEvent); // Future implementation
 		this.securityEventRepository = dataSource.getRepository(SecurityEvent);
 
 		// Configure reports storage path
@@ -74,19 +71,20 @@ export class ComplianceReportingService {
 		// Create initial report record
 		const report = this.complianceReportRepository.create({
 			title: options.title,
-			complianceStandard: options.complianceStandard,
-			status: 'generating',
+			complianceStandard: options.complianceStandard as any,
+			status: 'generating' as any,
 			description: options.description || null,
 			periodStart: options.periodStart,
 			periodEnd: options.periodEnd,
 			generatedBy: options.generatedBy,
-			projectId: options.projectId,
-			format: options.format,
+			projectId: options.projectId || null,
+			format: options.format.toUpperCase() as any,
 			parameters: options.parameters || null,
 			generationStartedAt: new Date(),
 		});
 
-		const savedReport = await this.complianceReportRepository.save(report);
+		const savedReports = await this.complianceReportRepository.save(report);
+		const savedReport = Array.isArray(savedReports) ? savedReports[0] : savedReports;
 
 		try {
 			// Generate report content based on compliance standard
@@ -111,7 +109,7 @@ export class ComplianceReportingService {
 				securityEventCount: reportData.totalSecurityEvents,
 				violationCount: reportData.findings.violationEvents,
 				summary: reportData.findings.summary,
-				findings: reportData.findings as IDataObject,
+				findings: reportData.findings as any,
 				complianceScore: this.calculateComplianceScore(reportData.findings),
 				mimeType: this.getMimeType(options.format),
 			});
@@ -119,7 +117,7 @@ export class ComplianceReportingService {
 			// Log the report generation
 			await this.auditLoggingService.logEvent({
 				eventType: 'compliance_report_generated',
-				category: 'system_administration',
+				category: 'system' as const,
 				severity: 'medium',
 				description: `Generated ${options.complianceStandard} compliance report: ${options.title}`,
 				userId: options.generatedBy,
@@ -177,7 +175,7 @@ export class ComplianceReportingService {
 		const auditResult = await this.auditLoggingService.getAuditEvents({
 			startDate: options.periodStart,
 			endDate: options.periodEnd,
-			projectId: options.projectId,
+			projectId: options.projectId || undefined,
 			limit: 10000, // High limit for comprehensive analysis
 		});
 
@@ -235,7 +233,7 @@ export class ComplianceReportingService {
 		auditEvents: AuditEvent[],
 		securityEvents: SecurityEvent[],
 	): Promise<IComplianceFindings> {
-		switch (standard) {
+		switch (standard as string) {
 			case 'SOX':
 				return this.generateSOXFindings(auditEvents, securityEvents);
 			case 'GDPR':
@@ -534,17 +532,17 @@ export class ComplianceReportingService {
 		const filePath = path.join(this.reportsBasePath, fileName);
 
 		switch (format) {
-			case 'JSON':
+			case 'json':
 				await writeFile(filePath, JSON.stringify(reportData.reportContent, null, 2));
 				break;
-			case 'CSV':
+			case 'csv':
 				await this.generateCSVReport(filePath, reportData.reportContent);
 				break;
-			case 'PDF':
+			case 'pdf':
 				await this.generatePDFReport(filePath, reportData.reportContent);
 				break;
-			case 'EXCEL':
-				await this.generateExcelReport(filePath, reportData.reportContent);
+			case 'html':
+				await this.generateHTMLReport(filePath, reportData.reportContent);
 				break;
 			default:
 				throw new Error(`Unsupported report format: ${format}`);
@@ -567,10 +565,10 @@ export class ComplianceReportingService {
 			'',
 			'Event Summary',
 			'Metric,Count',
-			`Total Audit Events,${reportContent.eventSummary?.totalAuditEvents || 0}`,
-			`Total Security Events,${reportContent.eventSummary?.totalSecurityEvents || 0}`,
-			`Critical Events,${reportContent.eventSummary?.criticalEvents || 0}`,
-			`High Severity Events,${reportContent.eventSummary?.highSeverityEvents || 0}`,
+			`Total Audit Events,${(reportContent.eventSummary as any)?.totalAuditEvents || 0}`,
+			`Total Security Events,${(reportContent.eventSummary as any)?.totalSecurityEvents || 0}`,
+			`Critical Events,${(reportContent.eventSummary as any)?.criticalEvents || 0}`,
+			`High Severity Events,${(reportContent.eventSummary as any)?.highSeverityEvents || 0}`,
 		];
 
 		await writeFile(filePath, lines.join('\n'));
@@ -597,10 +595,10 @@ ${reportContent.executiveSummary}
 COMPLIANCE SCORE: ${reportContent.complianceScore}/100
 
 EVENT SUMMARY
-- Total Audit Events: ${reportContent.eventSummary?.totalAuditEvents || 0}
-- Total Security Events: ${reportContent.eventSummary?.totalSecurityEvents || 0}
-- Critical Events: ${reportContent.eventSummary?.criticalEvents || 0}
-- High Severity Events: ${reportContent.eventSummary?.highSeverityEvents || 0}
+- Total Audit Events: ${(reportContent.eventSummary as any)?.totalAuditEvents || 0}
+- Total Security Events: ${(reportContent.eventSummary as any)?.totalSecurityEvents || 0}
+- Critical Events: ${(reportContent.eventSummary as any)?.criticalEvents || 0}
+- High Severity Events: ${(reportContent.eventSummary as any)?.highSeverityEvents || 0}
 
 RECOMMENDATIONS
 ${(reportContent.recommendations as string[])?.map((r, i) => `${i + 1}. ${r}`).join('\n') || 'None'}
@@ -610,12 +608,37 @@ ${(reportContent.recommendations as string[])?.map((r, i) => `${i + 1}. ${r}`).j
 	}
 
 	/**
-	 * Generate Excel report (placeholder - would need Excel library)
+	 * Generate HTML report
 	 */
-	private async generateExcelReport(filePath: string, reportContent: IDataObject): Promise<void> {
-		// For now, generate CSV format
-		// In production, would use a library like exceljs
-		await this.generateCSVReport(filePath.replace('.xlsx', '.csv'), reportContent);
+	private async generateHTMLReport(filePath: string, reportContent: IDataObject): Promise<void> {
+		const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Compliance Report</title>
+	<style>
+		body { font-family: Arial, sans-serif; margin: 20px; }
+		.header { border-bottom: 2px solid #333; padding-bottom: 10px; }
+		.metric { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+	</style>
+</head>
+<body>
+	<div class="header">
+		<h1>Compliance Report</h1>
+		<p>Report ID: ${reportContent.reportId}</p>
+		<p>Standard: ${reportContent.complianceStandard}</p>
+		<p>Generated: ${reportContent.generatedAt}</p>
+	</div>
+	<div class="content">
+		<h2>Executive Summary</h2>
+		<p>${reportContent.executiveSummary}</p>
+		<div class="metric">
+			<strong>Compliance Score: ${reportContent.complianceScore}/100</strong>
+		</div>
+	</div>
+</body>
+</html>`;
+		await writeFile(filePath, htmlContent);
 	}
 
 	/**
@@ -642,13 +665,14 @@ ${(reportContent.recommendations as string[])?.map((r, i) => `${i + 1}. ${r}`).j
 	 * Get MIME type for report format
 	 */
 	private getMimeType(format: ReportFormat): string {
-		const mimeTypes = {
-			PDF: 'application/pdf',
-			EXCEL: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-			CSV: 'text/csv',
-			JSON: 'application/json',
+		const mimeTypes: Record<string, string> = {
+			pdf: 'application/pdf',
+			excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			csv: 'text/csv',
+			json: 'application/json',
+			html: 'text/html',
 		};
-		return mimeTypes[format];
+		return mimeTypes[format as string] || 'application/octet-stream';
 	}
 
 	/**

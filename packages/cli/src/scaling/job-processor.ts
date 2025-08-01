@@ -200,13 +200,14 @@ export class JobProcessor {
 			};
 
 			try {
-				workflowRun = await this.manualExecutionService.runManually(
+				const workflowExecution = this.manualExecutionService.runManually(
 					data,
 					workflow,
 					additionalData,
 					executionId,
 					resultData.pinData,
 				);
+				workflowRun = await workflowExecution;
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
 					// execution did not even start, but we call `workflowExecuteAfter` to notify main

@@ -153,4 +153,5 @@ export {
 	NodeExecutionStatus,
 	BottleneckSeverity,
 	BottleneckIssue,
+	BottleneckDto,
 } from './performance';
