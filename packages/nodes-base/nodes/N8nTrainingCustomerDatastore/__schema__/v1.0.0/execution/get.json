@@ -16,9 +16,6 @@
         "mode": {
             "type": "string"
         },
-        "retrySuccessId": {
-            "type": "null"
-        },
         "startedAt": {
             "type": "string"
         },
@@ -29,5 +26,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
