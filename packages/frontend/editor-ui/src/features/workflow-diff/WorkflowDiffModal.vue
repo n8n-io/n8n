@@ -578,6 +578,33 @@ const modifiers = [
 </template>
 
 <style module>
+/* Light theme diff colors */
+:root,
+[data-theme='light'] {
+	--diff-new: #0eab54;
+	--diff-new-light: #b4efc4;
+	--diff-new-faint: #ddfbe7;
+	--diff-modified: #bf941f;
+	--diff-modified-light: #f3dca1;
+	--diff-modified-faint: #fbf1d4;
+	--diff-del: #f51f32;
+	--diff-del-light: #fad3d0;
+	--diff-del-faint: #ffedec;
+}
+
+/* Dark theme diff colors */
+[data-theme='dark'] {
+	--diff-new: #38cb7a;
+	--diff-new-light: #43674f;
+	--diff-new-faint: #3a463e;
+	--diff-modified: #d6a625;
+	--diff-modified-light: #6a5c38;
+	--diff-modified-faint: #464236;
+	--diff-del: #fb887a;
+	--diff-del-light: #7a524e;
+	--diff-del-faint: #4d3e3d;
+}
+
 .workflowDiffModal {
 	margin-bottom: 0;
 	border-radius: 0;
@@ -696,46 +723,46 @@ const modifiers = [
 }
 
 .deleted {
-	--canvas-node--background: rgba(234, 31, 48, 0.2);
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(234, 31, 48, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+	--canvas-node--background: var(--diff-del-faint);
+	--canvas-node--border-color: var(--diff-del);
+	--color-sticky-background: var(--diff-del-faint);
+	--color-sticky-border: var(--diff-del);
 	&::before {
 		content: 'D';
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-red);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-del);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--color-node-icon-red) !important;
+		--canvas-node--border-color: var(--diff-del) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: rgba(14, 171, 84, 0.2);
-	--color-sticky-background: rgba(14, 171, 84, 0.2);
-	--color-sticky-border: var(--color-node-icon-green);
+	--canvas-node--border-color: var(--diff-new);
+	--canvas-node--background: var(--diff-new-faint);
+	--color-sticky-background: var(--diff-new-faint);
+	--color-sticky-border: var(--diff-new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--color-node-icon-green) !important;
+		--canvas-node--border-color: var(--diff-new) !important;
 	}
 }
 .equal {
@@ -751,35 +778,35 @@ const modifiers = [
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: rgba(255, 150, 90, 0.2);
-	--color-sticky-background: rgba(255, 150, 90, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
+	--canvas-node--border-color: var(--diff-modified);
+	--canvas-node--background: var(--diff-modified-faint);
+	--color-sticky-background: var(--diff-modified-faint);
+	--color-sticky-border: var(--diff-modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-orange);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
 
 	/* Ensure disabled nodes still show diff border color */
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--color-node-icon-orange) !important;
+		--canvas-node--border-color: var(--diff-modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(234, 31, 48, 0.2);
+	--canvas-edge-color: var(--diff-del);
+	--edge-highlight-color: var(--diff-del-light);
 }
 .edge-added {
-	--canvas-edge-color: var(--color-node-icon-green);
-	--edge-highlight-color: rgba(14, 171, 84, 0.2);
+	--canvas-edge-color: var(--diff-new);
+	--edge-highlight-color: var(--diff-new-light);
 }
 .edge-equal {
 	opacity: 0.5;
