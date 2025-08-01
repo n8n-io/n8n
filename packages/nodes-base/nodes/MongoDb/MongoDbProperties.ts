@@ -86,22 +86,22 @@ export const nodeProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Search Index',
+				name: 'Create',
 				value: 'createSearchIndex',
 				action: 'Create Search Index',
 			},
 			{
-				name: 'Drop Search Index',
+				name: 'Drop',
 				value: 'dropSearchIndex',
 				action: 'Drop Search Index',
 			},
 			{
-				name: 'List Search Indexes',
+				name: 'List',
 				value: 'listSearchIndexes',
 				action: 'List Search Indexes',
 			},
 			{
-				name: 'Update Search Index',
+				name: 'Update',
 				value: 'updateSearchIndex',
 				action: 'Update Search Index',
 			},
@@ -384,15 +384,25 @@ export const nodeProperties: INodeProperties[] = [
 	{
 		displayName: 'Index Type',
 		name: 'indexType',
-		type: 'string',
+		type: 'options',
 		displayOptions: {
 			show: {
 				operation: ['createSearchIndex'],
 				resource: ['searchIndexes'],
 			},
 		},
+		options: [
+			{
+				value: 'vectorSearch',
+				name: 'Vector Search',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+			},
+		],
 		default: 'vectorSearch',
 		required: true,
-		description: 'The search index index type - either vectorSearch or search',
+		description: 'The search index index type',
 	},
 ];
