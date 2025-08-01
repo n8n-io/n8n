@@ -75,7 +75,7 @@ export class RerankerCohere implements INodeType {
 				name: 'topN',
 				type: 'number',
 				description: 'The maximum number of documents to return after reranking',
-				default: undefined,
+				default: 3,
 			},
 		],
 	};
@@ -87,13 +87,11 @@ export class RerankerCohere implements INodeType {
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
 
 		const reranker = new CohereRerank(
-			Object.assign(
 				{
 					apiKey: credentials.apiKey,
 					model: modelName,
-				},
-				topN !== undefined ? { topN } : {},
-			),
+					topN
+				}
 		);
 
 		return {
