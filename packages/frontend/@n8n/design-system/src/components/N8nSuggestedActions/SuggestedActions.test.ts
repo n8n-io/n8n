@@ -1,4 +1,4 @@
-import { render, fireEvent } from '@testing-library/vue';
+import { render, fireEvent, getByTestId } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
 
 import N8nSuggestedActions from './SuggestedActions.vue';
@@ -18,24 +18,49 @@ const mockActions = [
 ];
 
 describe('N8nSuggestedActions', () => {
-	it('renders the bell icon button', () => {
+	it('renders the suggested actions count', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
 			},
 		});
 
-		expect(wrapper.getByTestId('suggested-actions-bell')).toBeInTheDocument();
+		expect(wrapper.baseElement).toContainHTML('data-test-id="suggested-action-count"');
+		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('0 / 2');
 	});
 
-	it('opens popover when bell icon is clicked', async () => {
+	it('does not render the suggested actions count if all are completed', () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: [
+					{ ...mockActions[0], completed: true },
+					{ ...mockActions[1], completed: true },
+				],
+			},
+		});
+
+		expect(wrapper.baseElement).not.toContainHTML('data-test-id="suggested-action-count"');
+	});
+
+	it('renders the suggested actions count with completed actions', () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: [{ ...mockActions[0], completed: true }, mockActions[1]],
+			},
+		});
+
+		expect(wrapper.getByTestId('suggested-action-count')).toBeInTheDocument();
+		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('1 / 2');
+	});
+
+	it('opens popover when count tag is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		// Check if action items are visible
@@ -50,7 +75,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		// Check first action
@@ -73,7 +98,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		const actionButtons = wrapper.getAllByTestId('suggested-action-item');
@@ -90,7 +115,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
@@ -111,7 +136,7 @@ describe('N8nSuggestedActions', () => {
 		});
 
 		// Check that the component renders correctly
-		expect(container.querySelector('[data-test-id="suggested-actions-bell"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-test-id="suggested-action-count"]')).toBeInTheDocument();
 	});
 
 	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
@@ -122,7 +147,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
@@ -137,7 +162,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-all');
@@ -154,7 +179,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		const moreInfoLinks = wrapper.getAllByText('More info');
@@ -171,7 +196,7 @@ describe('N8nSuggestedActions', () => {
 			},
 		});
 
-		const bellButton = wrapper.getByTestId('suggested-actions-bell');
+		const bellButton = wrapper.getByTestId('suggested-action-count');
 		await fireEvent.click(bellButton);
 
 		const actionItems = wrapper.getAllByTestId('suggested-action-item');
@@ -192,7 +217,7 @@ describe('N8nSuggestedActions', () => {
 		});
 
 		// Check that the component renders correctly (closePopover is exposed but we can't test it directly in this environment)
-		expect(container.querySelector('[data-test-id="suggested-actions-bell"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-test-id="suggested-action-count"]')).toBeInTheDocument();
 	});
 
 	it('respects popoverAlignment prop', async () => {
@@ -204,6 +229,6 @@ describe('N8nSuggestedActions', () => {
 		});
 
 		// Check that the component renders correctly with the alignment prop
-		expect(wrapper.getByTestId('suggested-actions-bell')).toBeInTheDocument();
+		expect(wrapper.getByTestId('suggested-action-count')).toBeInTheDocument();
 	});
 });

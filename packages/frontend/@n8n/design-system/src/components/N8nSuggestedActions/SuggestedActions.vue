@@ -80,7 +80,7 @@ defineExpose({
 		:align="popoverAlignment"
 	>
 		<template #trigger>
-			<div :class="$style.triggerContainer">
+			<div :class="$style.triggerContainer" data-test-id="suggested-action-count">
 				<N8nTag :text="`${completedCount} / ${actions.length}`" />
 			</div>
 		</template>
