@@ -103,7 +103,7 @@ const availableActions = computed(() => {
 async function loadWorkflowSettings() {
 	if (props.workflow.id) {
 		// todo add global config
-		cachedSettings.value = await workflowsCache.getWorkflowSettings(props.workflow.id);
+		cachedSettings.value = await workflowsCache.getWorkflowSettingsToApply(props.workflow.id);
 	}
 }
 

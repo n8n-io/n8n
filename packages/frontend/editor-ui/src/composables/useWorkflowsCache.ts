@@ -30,13 +30,18 @@ export function useWorkflowSettingsCache() {
 		return await cachePromise.value;
 	}
 
-	async function getWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
+	async function getCachedWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
 		const cache = await getWorkflowsCache();
-		const globalPreferences = jsonParse<WorkflowSettings>(cache.getItem('*') ?? '', {
+		return jsonParse<WorkflowSettings>(cache.getItem(workflowId) ?? '', {
 			fallbackValue: {},
 		});
+	}
 
-		const workflowSettings = jsonParse<WorkflowSettings>(cache.getItem(workflowId) ?? '', {
+	async function getWorkflowSettingsToApply(workflowId: string): Promise<WorkflowSettings> {
+		const workflowSettings = await getCachedWorkflowSettings(workflowId);
+
+		const cache = await getWorkflowsCache();
+		const globalPreferences = jsonParse<WorkflowSettings>(cache.getItem('*') ?? '', {
 			fallbackValue: {},
 		});
 
@@ -53,7 +58,7 @@ export function useWorkflowSettingsCache() {
 		updates: Partial<WorkflowSettings>,
 	): Promise<void> {
 		const cache = await getWorkflowsCache();
-		const existingSettings = await getWorkflowSettings(workflowId);
+		const existingSettings = await getCachedWorkflowSettings(workflowId);
 
 		const updatedSettings: WorkflowSettings = {
 			...existingSettings,
@@ -72,7 +77,7 @@ export function useWorkflowSettingsCache() {
 	}
 
 	async function updateFirstActivatedAt(workflowId: string): Promise<void> {
-		const existingSettings = await getWorkflowSettings(workflowId);
+		const existingSettings = await getCachedWorkflowSettings(workflowId);
 
 		// Only update if not already set
 		if (!existingSettings?.firstActivatedAt) {
@@ -92,7 +97,7 @@ export function useWorkflowSettingsCache() {
 
 	async function getEvaluationPreferences(workflowId: string): Promise<UserEvaluationPreferences> {
 		return (
-			(await getWorkflowSettings(workflowId))?.evaluationRuns ?? {
+			(await getCachedWorkflowSettings(workflowId))?.evaluationRuns ?? {
 				order: [],
 				visibility: {},
 			}
@@ -121,7 +126,8 @@ export function useWorkflowSettingsCache() {
 	}
 
 	return {
-		getWorkflowSettings,
+		getCachedWorkflowSettings,
+		getWorkflowSettingsToApply,
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
 		ignoreSuggestedAction,
