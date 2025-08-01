@@ -168,17 +168,17 @@ const executeData: IExecuteData = {
 	},
 };
 
-const dataProxy = new WorkflowDataProxy(
+const dataProxy = new WorkflowDataProxy({
 	workflow,
 	runExecutionData,
-	0,
-	0,
-	lastNodeName,
-	lastNodeConnectionInputData || [],
-	{},
-	'manual',
-	{},
+	runIndex: 0,
+	itemIndex: 0,
+	activeNodeName: lastNodeName,
+	connectionInputData: lastNodeConnectionInputData || [],
+	siblingParameters: {},
+	mode: 'manual',
+	additionalKeys: {},
 	executeData,
-);
+});
 
 export const mockProxy = dataProxy.getDataProxy();

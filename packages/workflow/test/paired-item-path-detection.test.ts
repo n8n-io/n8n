@@ -40,18 +40,18 @@ describe('Paired Item Path Detection', () => {
 			settings: workflow.settings,
 		});
 
-		return new WorkflowDataProxy(
-			wf,
-			run?.data ?? null,
-			0, // runIndex
-			0, // itemIndex
+		return new WorkflowDataProxy({
+			workflow: wf,
+			runExecutionData: run?.data ?? null,
+			runIndex: 0,
+			itemIndex: 0,
 			activeNodeName,
-			[], // connectionInputData
-			{}, // siblingParameters
-			'manual', // mode
-			{}, // additionalKeys
+			connectionInputData: [],
+			siblingParameters: {},
+			mode: 'manual',
+			additionalKeys: {},
 			executeData,
-		).getDataProxy();
+		}).getDataProxy();
 	};
 
 	describe('AI/Tool Node Scenarios', () => {

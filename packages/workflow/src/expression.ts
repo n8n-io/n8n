@@ -131,8 +131,8 @@ export class Expression {
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(
-			this.workflow,
+		const dataProxy = new WorkflowDataProxy({
+			workflow: this.workflow,
 			runExecutionData,
 			runIndex,
 			itemIndex,
@@ -142,10 +142,10 @@ export class Expression {
 			mode,
 			additionalKeys,
 			executeData,
-			-1,
+			defaultReturnRunIndex: -1,
 			selfData,
 			contextNodeName,
-		);
+		});
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties

@@ -62,8 +62,8 @@ const getProxyFromFixture = (
 		}
 	}
 
-	const dataProxy = new WorkflowDataProxy(
-		new Workflow({
+	const dataProxy = new WorkflowDataProxy({
+		workflow: new Workflow({
 			id: '123',
 			name: 'test workflow',
 			nodes: workflow.nodes,
@@ -72,16 +72,16 @@ const getProxyFromFixture = (
 			nodeTypes: Helpers.NodeTypes(),
 			pinData,
 		}),
-		run?.data ?? null,
-		opts?.runIndex ?? 0,
-		0,
-		activeNode,
-		lastNodeConnectionInputData ?? [],
-		{},
-		mode ?? 'integrated',
-		{},
+		runExecutionData: run?.data ?? null,
+		runIndex: opts?.runIndex ?? 0,
+		itemIndex: 0,
+		activeNodeName: activeNode,
+		connectionInputData: lastNodeConnectionInputData ?? [],
+		siblingParameters: {},
+		mode: mode ?? 'integrated',
+		additionalKeys: {},
 		executeData,
-	);
+	});
 
 	return dataProxy.getDataProxy(opts);
 };
