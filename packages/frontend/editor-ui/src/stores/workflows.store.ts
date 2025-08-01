@@ -1099,6 +1099,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				connections.push(destinationData);
 			}
 		}
+
+		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
 	function removeConnection(data: { connection: IConnection[] }): void {
