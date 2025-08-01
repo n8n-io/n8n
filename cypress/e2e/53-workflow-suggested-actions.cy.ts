@@ -1,5 +1,4 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { NDV } from '../pages/ndv';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { getVisibleSelect } from '../utils';
 import { overrideFeatureFlag } from '../composables/featureFlags';
@@ -8,6 +7,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Suggested Actions', () => {
 	beforeEach(() => {
+		cy.clearIndexedDB('n8n-local', 'workflows');
 		WorkflowPage.actions.visit();
 	});
 
@@ -152,29 +152,6 @@ describe('Workflow Suggested Actions', () => {
 
 		// Verify error workflow action shows as completed
 		getActionCompletedIcon('errorWorkflow').should('be.visible');
-	});
-
-	it.skip('should auto-open popover on first workflow activation', () => {
-		// Add schedule trigger
-		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.saveWorkflowOnButtonClick();
-
-		// Activate workflow - popover should auto-open
-		WorkflowPage.actions.activateWorkflow();
-
-		// Verify popover opened automatically
-		getSuggestedActionsPopover().should('be.visible');
-
-		// Close popover
-		cy.get('body').click(0, 0);
-		getSuggestedActionsPopover().should('not.exist');
-
-		// Deactivate and reactivate - popover should not auto-open again
-		WorkflowPage.actions.activateWorkflow(); // This toggles to deactivate
-		WorkflowPage.actions.activateWorkflow(); // This toggles to activate
-
-		// Verify popover did not auto-open
-		getSuggestedActionsPopover().should('not.exist');
 	});
 
 	it('should not show evaluations action without AI nodes', () => {
