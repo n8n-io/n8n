@@ -128,7 +128,6 @@ watch(viewport, () => {
 	border-width: 1px;
 	background-color: var(--color-background-light);
 	border-radius: var(--border-radius-large);
-	zoom: var(--zoom);
 	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
 	padding: var(--spacing-2xs);
 	height: 100%;

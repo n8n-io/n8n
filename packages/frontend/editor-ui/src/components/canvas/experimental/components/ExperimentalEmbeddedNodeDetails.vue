@@ -133,8 +133,7 @@ watchOnce(isVisible, (visible) => {
 			node?.disabled ? $style.disabled : '',
 		]"
 		:style="{
-			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
-			'--max-height-on-focus': `${(vf.dimensions.value.height * 0.8) / experimentalNdvStore.maxCanvasZoom}px`,
+			'--max-height-on-focus': `${maxHeightOnFocus / experimentalNdvStore.maxCanvasZoom}px`,
 			pointerEvents: isPaneMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
@@ -250,7 +249,7 @@ watchOnce(isVisible, (visible) => {
 	}
 
 	& > * {
-		zoom: var(--zoom);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
 		flex-grow: 0;
 		flex-shrink: 0;
 	}
@@ -272,7 +271,7 @@ watchOnce(isVisible, (visible) => {
 
 .settingsView {
 	& > * {
-		zoom: var(--zoom);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
 	}
 }
 </style>
