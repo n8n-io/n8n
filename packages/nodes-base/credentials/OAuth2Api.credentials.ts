@@ -112,6 +112,12 @@ export class OAuth2Api implements ICredentialType {
 			name: 'sendAdditionalBodyProperties',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				show: {
+					grantType: ['clientCredentials'],
+					authentication: ['body'],
+				},
+			},
 		},
 		{
 			displayName: 'Additional Body Properties',
