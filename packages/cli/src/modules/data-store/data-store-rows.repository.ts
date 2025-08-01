@@ -4,33 +4,27 @@ import type {
 	DataStoreRows,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
 
-import { buildInsertQuery } from './utils/sql-utils';
+import { buildInsertQuery, quoteIdentifier } from './utils/sql-utils';
 
 // type QueryBuilder = SelectQueryBuilder<Record<PropertyKey, unknown>>;
 type QueryBuilder = SelectQueryBuilder<any>;
 // type QueryBuilder = ReturnType<EntityManager['createQueryBuilder']>;
 
-function valueToSQL(value: ListDataStoreContentQueryDto['filter']['filters'][number]['value']) {
-	if (value instanceof Date) {
-		return value.toISOString(); // @Review: this feels bad
-	}
-	switch (typeof value) {
-		case 'number':
-		case 'boolean':
-			return `${value}`;
-		case 'string':
-			return `'${value}'`;
-	}
-}
+function getConditionAndParams(
+	filter: ListDataStoreContentQueryDto['filter']['filters'][number],
+	index: number,
+	dbType: DataSourceOptions['type'],
+): [string, Record<string, unknown>] {
+	const paramName = `filter_${index}`;
+	const column = `dataStore.${quoteIdentifier(filter.columnName, dbType)}`;
 
-function getConditionSQL(filter: ListDataStoreContentQueryDto['filter']['filters'][number]) {
 	switch (filter.condition) {
 		case 'eq':
-			return `dataStore.${filter.columnName} == ${valueToSQL(filter.value)}`;
+			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
 		case 'neq':
-			return `dataStore.${filter.columnName} != ${valueToSQL(filter.value)}`;
+			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
 	}
 }
 
@@ -77,14 +71,19 @@ export class DataStoreRowsRepository {
 	}
 
 	private applyFilters(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {
-		const conditions = dto.filter?.filters.map(getConditionSQL) ?? [];
-		if (dto.filter?.type === 'and') {
-			for (const condition of conditions) {
-				query.andWhere(condition);
-			}
-		} else if (dto.filter?.type === 'or') {
-			for (const condition of conditions) {
-				query.orWhere(condition);
+		const filters = dto.filter?.filters ?? [];
+		const filterType = dto.filter?.type ?? 'and';
+
+		const dbType = this.dataSource.options.type;
+		const conditionsAndParams = filters.map((filter, i) =>
+			getConditionAndParams(filter, i, dbType),
+		);
+
+		for (const [condition, params] of conditionsAndParams) {
+			if (filterType === 'or') {
+				query.orWhere(condition, params);
+			} else {
+				query.andWhere(condition, params);
 			}
 		}
 	}
@@ -100,8 +99,9 @@ export class DataStoreRowsRepository {
 	}
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
-		console.log(field);
-		query.orderBy(`${field}`, direction);
+		const dbType = this.dataSource.options.type;
+		const quotedField = `dataStore.${quoteIdentifier(field, dbType)}`;
+		query.orderBy(quotedField, direction);
 	}
 
 	private applyPagination(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {

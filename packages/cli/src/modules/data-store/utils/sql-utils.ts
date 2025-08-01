@@ -113,7 +113,7 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
-function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
+export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'postgres':
 		case 'aurora-postgres':
