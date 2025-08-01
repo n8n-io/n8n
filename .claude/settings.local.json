@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "mcp__github-mcp__get_pull_request",
+      "Bash(git checkout:*)",
+      "Bash(git log:*)",
+      "Bash(git revert:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git branch:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": []
+  }
+}

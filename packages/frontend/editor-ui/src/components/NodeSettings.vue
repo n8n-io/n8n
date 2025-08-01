@@ -72,12 +72,14 @@ const props = withDefaults(
 		inputSize?: number;
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
+		noWheel?: boolean;
 		subTitle?: string;
 	}>(),
 	{
 		inputSize: 0,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
+		noWheel: false,
 		subTitle: undefined,
 	},
 );
@@ -93,7 +95,6 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
-	captureWheelBody: [WheelEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -662,10 +663,11 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
+				noWheel && shouldShowStaticScrollbar ? 'nowheel' : '',
 				{ 'ndv-v2': isNDVV2 },
 			]"
 			data-test-id="node-parameters"
-			@wheel.capture="emit('captureWheelBody', $event)"
+			@wheel="noWheel ? handleWheelEvent : undefined"
 		>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
@@ -870,7 +872,7 @@ function handleSelectAction(params: INodeParameters) {
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
+		padding: 0 var(--spacing-2xs) var(--spacing-xs) var(--spacing-xs);
 
 		&:has(.action-tab) {
 			padding: 0 0 var(--spacing-xs) 0;
