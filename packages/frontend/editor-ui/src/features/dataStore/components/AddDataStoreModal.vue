@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useDataStoreStore } from '../dataStore.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
+import { useRoute } from 'vue-router';
 
 type Props = {
 	modalName: string;
@@ -8,9 +12,33 @@ type Props = {
 
 const props = defineProps<Props>();
 
+const dataStoreStore = useDataStoreStore();
+const uiStore = useUIStore();
+
+const route = useRoute();
 const i18n = useI18n();
+const toast = useToast();
 
 const dataStoreName = ref('');
+const inputRef = ref<HTMLInputElement | null>(null);
+
+onMounted(() => {
+	setTimeout(() => {
+		inputRef.value?.focus();
+		inputRef.value?.select();
+	}, 0);
+});
+
+const onSubmit = async () => {
+	try {
+		await dataStoreStore.createNewDataStore(dataStoreName.value, route.params.projectId as string);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.add.error'));
+	} finally {
+		dataStoreName.value = '';
+		uiStore.closeModal(props.modalName);
+	}
+};
 </script>
 
 <template>
@@ -27,10 +55,13 @@ const dataStoreName = ref('');
 					input-name="dataStoreName"
 				>
 					<n8n-input
+						ref="inputRef"
 						v-model="dataStoreName"
+						type="text"
 						:placeholder="i18n.baseText('dataStore.add.input.name.placeholder')"
 						data-test-id="data-store-name-input"
 						name="dataStoreName"
+						@keyup.enter="onSubmit"
 					/>
 				</n8n-input-label>
 			</div>
@@ -41,6 +72,7 @@ const dataStoreName = ref('');
 					:disabled="!dataStoreName"
 					:label="i18n.baseText('dataStore.add.button.label')"
 					data-test-id="confirm-add-data-store-button"
+					@click="onSubmit"
 				/>
 				<n8n-button
 					type="secondary"

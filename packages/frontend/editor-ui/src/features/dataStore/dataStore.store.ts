@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { DATA_STORE_STORE } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
+import { fetchDataStores, createDataStore } from '@/features/dataStore/datastore.api';
 import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
@@ -20,9 +20,17 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
+	const createNewDataStore = async (name: string, projectId?: string) => {
+		const newStore = await createDataStore(rootStore.restApiContext, name, projectId);
+		dataStores.value.push(newStore);
+		totalCount.value += 1;
+		return newStore;
+	};
+
 	return {
 		dataStores,
 		totalCount,
 		loadDataStores,
+		createNewDataStore,
 	};
 });
