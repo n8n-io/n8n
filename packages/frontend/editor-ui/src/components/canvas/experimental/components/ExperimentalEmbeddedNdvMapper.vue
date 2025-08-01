@@ -3,14 +3,12 @@ import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement } from '@vueuse/core';
 import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
 import { inject, ref, useTemplateRef, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
 
 const { node, container, inputNodeName } = defineProps<{
 	workflow?: Workflow;
@@ -109,26 +107,9 @@ watch(
 			:current-node-name="inputNodeName"
 			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 			:focused-mappable-input="ndvStore.focusedMappableInput"
+			node-not-run-message-variant="simple"
 			@capture-wheel-data-container="emit('captureWheelDataContainer', $event)"
-		>
-			<template v-if="inputNodeName" #node-not-run>
-				<N8nText color="text-base" size="small">
-					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
-						<template #link>
-							<NodeExecuteButton
-								:class="$style.executeButton"
-								size="medium"
-								:node-name="inputNodeName"
-								:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
-								text
-								telemetry-source="inputs"
-								hide-icon
-							/>
-						</template>
-					</I18nT>
-				</N8nText>
-			</template>
-		</InputPanel>
+		/>
 	</ElPopover>
 </template>
 
@@ -155,9 +136,5 @@ watch(
 .inputPanelTitle {
 	text-transform: uppercase;
 	letter-spacing: 3px;
-}
-
-.executeButton {
-	padding: 0;
 }
 </style>

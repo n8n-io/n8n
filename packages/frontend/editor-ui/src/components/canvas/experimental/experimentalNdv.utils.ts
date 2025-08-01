@@ -33,7 +33,6 @@ export function getNodeSubTitleText(
 }
 
 export function stopImmediatePropagationIfPanelShouldScroll(event: WheelEvent) {
-	debugger;
 	if (event.ctrlKey) {
 		// If the event is pinch, let it propagate and zoom canvas
 		return;
