@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import { randomName, mockInstance } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import {
 	InstalledNodes,
@@ -17,6 +16,7 @@ import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { join } from 'node:path';
 
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
@@ -24,13 +24,14 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
+
+import type { CommunityPackagesConfig } from '../community-packages.config';
+import type { CommunityPackages } from '../community-packages.types';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -46,14 +47,10 @@ const execMock = ((...args) => {
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
-	const globalConfig = mock<GlobalConfig>({
-		nodes: {
-			communityPackages: {
-				reinstallMissing: false,
-				registry: 'some.random.host',
-				unverifiedEnabled: true,
-			},
-		},
+	const config = mock<CommunityPackagesConfig>({
+		reinstallMissing: false,
+		registry: 'some.random.host',
+		unverifiedEnabled: true,
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
@@ -72,7 +69,7 @@ describe('CommunityPackagesService', () => {
 		loadNodesAndCredentials,
 		publisher,
 		license,
-		globalConfig,
+		config,
 	);
 
 	beforeEach(() => {
@@ -384,7 +381,7 @@ describe('CommunityPackagesService', () => {
 		const testBlockDownloadDir = instanceSettings.nodesDownloadDir;
 		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
 		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
-		const testBlockRegistry = globalConfig.nodes.communityPackages.registry;
+		const testBlockRegistry = config.registry;
 		const testBlockNpmInstallArgs = [
 			'--audit=false',
 			'--fund=false',
@@ -519,8 +516,8 @@ describe('CommunityPackagesService', () => {
 
 	describe('installPackage', () => {
 		test('should throw when installation of not vetted packages is forbidden', async () => {
-			globalConfig.nodes.communityPackages.unverifiedEnabled = false;
-			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
+			config.unverifiedEnabled = false;
+			config.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
 			);
@@ -601,7 +598,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockImplementation(
 				(nodeType) => nodeType === 'node-type-2',
 			);
-			globalConfig.nodes.communityPackages.reinstallMissing = false;
+			config.reinstallMissing = false;
 
 			await communityPackagesService.checkForMissingPackages();
 
@@ -616,7 +613,7 @@ describe('CommunityPackagesService', () => {
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			globalConfig.nodes.communityPackages.reinstallMissing = true;
+			config.reinstallMissing = true;
 
 			await communityPackagesService.checkForMissingPackages();
 
@@ -633,7 +630,7 @@ describe('CommunityPackagesService', () => {
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			globalConfig.nodes.communityPackages.reinstallMissing = true;
+			config.reinstallMissing = true;
 			communityPackagesService.installPackage = jest
 				.fn()
 				.mockRejectedValue(new Error('Installation failed'));
@@ -650,7 +647,7 @@ describe('CommunityPackagesService', () => {
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			globalConfig.nodes.communityPackages.reinstallMissing = true;
+			config.reinstallMissing = true;
 
 			// First installation succeeds, second fails
 			communityPackagesService.installPackage = jest
