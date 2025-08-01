@@ -68,7 +68,7 @@ export function useWorkflowSettingsCache() {
 		// Deep merge suggestedActions if provided
 		if (updates.suggestedActions) {
 			updatedSettings.suggestedActions = {
-				...existingSettings.suggestedActions,
+				...(existingSettings.suggestedActions ?? {}),
 				...updates.suggestedActions,
 			};
 		}

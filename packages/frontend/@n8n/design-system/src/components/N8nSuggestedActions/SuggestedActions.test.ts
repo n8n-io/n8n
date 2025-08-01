@@ -1,5 +1,5 @@
 import { render, fireEvent } from '@testing-library/vue';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import N8nSuggestedActions from './SuggestedActions.vue';
 
@@ -121,6 +121,8 @@ describe('N8nSuggestedActions', () => {
 	});
 
 	it('emits ignore-click event when ignore link is clicked', async () => {
+		vi.useFakeTimers();
+
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
@@ -133,11 +135,13 @@ describe('N8nSuggestedActions', () => {
 		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
 		await fireEvent.click(ignoreLinks[0]);
 
-		// Wait for the delayed emission
-		await new Promise((resolve) => setTimeout(resolve, 600));
+		// Advance timers to trigger the delayed emission
+		vi.advanceTimersByTime(600);
 
 		expect(wrapper.emitted('ignore-click')).toBeTruthy();
 		expect(wrapper.emitted('ignore-click')[0]).toEqual(['action1']);
+
+		vi.useRealTimers();
 	});
 
 	it('exposes openPopover method', async () => {
