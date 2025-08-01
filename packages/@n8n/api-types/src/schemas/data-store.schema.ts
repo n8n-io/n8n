@@ -85,5 +85,5 @@ export interface IDataStoreService {
 		dataStoreId: string,
 		dto: Partial<ListDataStoreContentQueryDto>,
 	): Promise<{ count: number; data: DataStoreRows[] }>;
-	appendRows(dataStoreId: string, rows: DataStoreRows): Promise<boolean>;
+	insertRows(dataStoreId: string, rows: DataStoreRows): Promise<boolean>;
 }

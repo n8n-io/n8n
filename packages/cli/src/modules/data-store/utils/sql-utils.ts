@@ -82,9 +82,10 @@ export function deleteColumnQuery(tableName: DataStoreUserTableName, column: str
 	return `ALTER TABLE ${tableName} DROP COLUMN \`${column}\``;
 }
 
-export function insertIntoQuery(
+export function buildInsertQuery(
 	tableName: DataStoreUserTableName,
 	rows: DataStoreRows,
+	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
 	if (rows.length === 0) {
 		return ['', []];
@@ -96,13 +97,31 @@ export function insertIntoQuery(
 		return ['', []];
 	}
 
+	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
+
 	const wildcards = keys.map((_) => '?').join(',');
 	const rowsQuery = Array(rows.length).fill(`(${wildcards})`).join(',');
 	const parameters = Array(rows.length * keys.length);
+
 	for (let i = 0; i < keys.length; ++i) {
 		for (let j = 0; j < rows.length; ++j) {
 			parameters[j * keys.length + i] = rows[j][keys[i]];
 		}
 	}
-	return [`INSERT INTO ${tableName} (${keys.join(',')}) VALUES ${rowsQuery}`, parameters];
+	const query = `INSERT INTO ${tableName} (${quotedKeys}) VALUES ${rowsQuery}`;
+
+	return [query, parameters];
+}
+
+function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
+	switch (dbType) {
+		case 'postgres':
+		case 'aurora-postgres':
+		case 'sqlite':
+		case 'sqlite-pooled':
+		case 'better-sqlite3':
+			return `"${name}"`;
+		default:
+			return `\`${name}\``;
+	}
 }

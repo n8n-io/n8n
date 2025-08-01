@@ -6,7 +6,7 @@ import type {
 import { Service } from '@n8n/di';
 import { DataSource, SelectQueryBuilder } from '@n8n/typeorm';
 
-import { insertIntoQuery } from './utils/sql-utils';
+import { buildInsertQuery } from './utils/sql-utils';
 
 // type QueryBuilder = SelectQueryBuilder<Record<PropertyKey, unknown>>;
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -38,8 +38,8 @@ function getConditionSQL(filter: ListDataStoreContentQueryDto['filter']['filters
 export class DataStoreRowsRepository {
 	constructor(private dataSource: DataSource) {}
 
-	async appendRows(tableName: DataStoreUserTableName, rows: DataStoreRows) {
-		await this.dataSource.query(...insertIntoQuery(tableName, rows));
+	async insertRows(tableName: DataStoreUserTableName, rows: DataStoreRows) {
+		await this.dataSource.query(...buildInsertQuery(tableName, rows));
 		return true;
 	}
 

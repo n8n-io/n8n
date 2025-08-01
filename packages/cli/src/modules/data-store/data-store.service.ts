@@ -19,7 +19,7 @@ import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
 
-function toTableName(dataStoreId: string): DataStoreUserTableName {
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
 }
 
@@ -312,12 +312,12 @@ export class DataStoreService implements IDataStoreService {
 		return true;
 	}
 
-	async appendRows(dataStoreId: string, rows: DataStoreRows) {
+	async insertRows(dataStoreId: string, rows: DataStoreRows) {
 		const validationResult = await this.validateRows(dataStoreId, rows);
 		if (!validationResult) {
 			return validationResult;
 		}
 
-		return await this.dataStoreRowsRepository.appendRows(toTableName(dataStoreId), rows);
+		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows);
 	}
 }

@@ -4,7 +4,7 @@ import {
 	createUserTableQuery,
 	addColumnQuery,
 	deleteColumnQuery,
-	insertIntoQuery,
+	buildInsertQuery,
 } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
@@ -56,7 +56,7 @@ describe('sql-utils', () => {
 		});
 	});
 
-	describe('insertIntoQuery', () => {
+	describe('buildInsertQuery', () => {
 		it('should generate a valid SQL query for inserting rows into a table', () => {
 			const tableName = 'data_store_user_abc';
 			const rows = [
@@ -64,9 +64,9 @@ describe('sql-utils', () => {
 				{ name: 'Bob', age: 25 },
 			];
 
-			const [query, parameters] = insertIntoQuery(tableName, rows);
+			const [query, parameters] = buildInsertQuery(tableName, rows);
 
-			expect(query).toBe('INSERT INTO data_store_user_abc (name,age) VALUES (?,?),(?,?)');
+			expect(query).toBe('INSERT INTO data_store_user_abc ("name", "age") VALUES (?,?),(?,?)');
 			expect(parameters).toEqual(['Alice', 30, 'Bob', 25]);
 		});
 
@@ -74,7 +74,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_store_user_abc';
 			const rows: [] = [];
 
-			const [query, parameters] = insertIntoQuery(tableName, rows);
+			const [query, parameters] = buildInsertQuery(tableName, rows);
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);
@@ -84,7 +84,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_store_user_abc';
 			const rows = [{}];
 
-			const [query, parameters] = insertIntoQuery(tableName, rows);
+			const [query, parameters] = buildInsertQuery(tableName, rows);
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);

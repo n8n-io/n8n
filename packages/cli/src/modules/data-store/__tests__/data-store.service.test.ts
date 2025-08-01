@@ -2,9 +2,10 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import type { DataStoreEntity } from '../data-store.entity';
 import { DataStoreRepository } from '../data-store.repository';
-import { DataStoreService } from '../data-store.service';
+import { DataStoreService, toTableName } from '../data-store.service';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -23,10 +24,12 @@ afterAll(async () => {
 describe('dataStore', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreRepository: DataStoreRepository;
+	let dataStoreRowsRepository: DataStoreRowsRepository;
 
 	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
 		dataStoreRepository = Container.get(DataStoreRepository);
+		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
 	});
 
 	let project1: Project;
@@ -556,8 +559,8 @@ describe('dataStore', () => {
 		});
 	});
 
-	describe('appendRows', () => {
-		it('appends a row to an existing table', async () => {
+	describe('insertRows', () => {
+		it('inserts rows into an existing table', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'boolean' });
@@ -565,14 +568,56 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = await dataStoreService.appendRows(dataStore1.id, [
+			const rows = [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ c1: 4, c2: false, c3: new Date(), c4: 'hello!' },
 				{ c1: 5, c2: true, c3: new Date(), c4: 'hello.' },
-			]);
+			];
+			const result = await dataStoreService.insertRows(dataStore1.id, rows);
 
 			// ASSERT
 			expect(result).toBe(true);
+
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
+				toTableName(dataStore1.id),
+				{},
+			);
+			expect(count).toEqual(3);
+			expect(data).toEqual(
+				rows.map((row, i) => ({
+					...row,
+					id: i + 1,
+					c2: row.c2 ? 1 : 0, // booleans are stored as numbers in the db
+				})),
+			);
+		});
+
+		it('inserts a row even if it matches with the existing one', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'c2', type: 'string' });
+
+			// Insert initial row
+			await dataStoreService.insertRows(dataStore1.id, [{ c1: 1, c2: 'foo' }]);
+
+			// Attempt to insert a row with the same primary key
+			const result = await dataStoreService.insertRows(dataStore1.id, [{ c1: 1, c2: 'foo' }]);
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
+				toTableName(dataStore1.id),
+				{},
+			);
+
+			console.log(data);
+
+			expect(count).toEqual(2);
+			expect(data).toEqual([
+				{ c1: 1, c2: 'foo', id: 1 },
+				{ c1: 1, c2: 'foo', id: 2 },
+			]);
 		});
 
 		it('rejects a mismatched row with extra column', async () => {
@@ -583,7 +628,7 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.insertRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c1: 4, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
@@ -591,6 +636,7 @@ describe('dataStore', () => {
 			// ASSERT
 			await expect(result).rejects.toThrow('mismatched key count');
 		});
+
 		it('rejects a mismatched row with missing column', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
@@ -599,7 +645,7 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.insertRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ c2: true, c3: new Date(), c4: 'hello?' },
 			]);
@@ -607,6 +653,7 @@ describe('dataStore', () => {
 			// ASSERT
 			await expect(result).rejects.toThrow('mismatched key count');
 		});
+
 		it('rejects a mismatched row with replaced column', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
@@ -615,7 +662,7 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = dataStoreService.appendRows(dataStore1.id, [
+			const result = dataStoreService.insertRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
@@ -623,6 +670,7 @@ describe('dataStore', () => {
 			// ASSERT
 			await expect(result).rejects.toThrow('unknown column name');
 		});
+
 		it('rejects unknown data store id', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
@@ -631,7 +679,7 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
 			// ACT
-			const result = dataStoreService.appendRows('this is not an id', [
+			const result = dataStoreService.insertRows('this is not an id', [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
 			]);
@@ -641,23 +689,25 @@ describe('dataStore', () => {
 				'no columns found for this data store or data store not found',
 			);
 		});
+
 		it('rejects on empty column list', async () => {
 			// ARRANGE
 
 			// ACT
-			const result = dataStoreService.appendRows('this is not an id', [{}, {}]);
+			const result = dataStoreService.insertRows('this is not an id', [{}, {}]);
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
 				'no columns found for this data store or data store not found',
 			);
 		});
+
 		it('fails on type mismatch', async () => {
 			// ARRANGE
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c1', type: 'number' });
 
 			// ACT
-			const result = dataStoreService.appendRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);
+			const result = dataStoreService.insertRows(dataStore1.id, [{ c1: 3 }, { c1: true }]);
 
 			// ASSERT
 			await expect(result).rejects.toThrow("value 'true' does not match column type 'number'");
@@ -672,7 +722,7 @@ describe('dataStore', () => {
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c3', type: 'date' });
 			await dataStoreService.addColumn(dataStore1.id, { name: 'c4', type: 'string' });
 
-			await dataStoreService.appendRows(dataStore1.id, [
+			await dataStoreService.insertRows(dataStore1.id, [
 				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },
 				{ c1: 4, c2: false, c3: new Date(1), c4: 'hello!' },
 				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },

@@ -126,7 +126,7 @@ export class DataStoreController {
 		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
 	}
 
-	@Post('/:dataStoreId/append')
+	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
 		_req: AuthenticatedRequest<{ projectId: string }>,
@@ -134,6 +134,6 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: DataStoreRows,
 	) {
-		return await this.dataStoreService.appendRows(dataStoreId, dto);
+		return await this.dataStoreService.insertRows(dataStoreId, dto);
 	}
 }
