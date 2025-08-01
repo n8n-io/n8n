@@ -99,6 +99,7 @@ defineExpose({
 						},
 					]"
 					data-test-id="suggested-action-item"
+					:data-action-id="action.id"
 					@click.prevent.stop="() => handleActionClick(action)"
 				>
 					<div :class="$style.checkboxContainer">
