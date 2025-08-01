@@ -144,7 +144,7 @@ export default defineConfig({
 		video: 'on',
 		screenshot: 'on',
 		testIdAttribute: 'data-test-id',
-		headless: true,
+		headless: process.env.SHOW_BROWSER !== 'true',
 		viewport: { width: 1536, height: 960 },
 		actionTimeout: 30000,
 		navigationTimeout: 10000,
