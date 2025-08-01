@@ -18,20 +18,20 @@ interface SuggestedAction {
 
 interface SuggestedActionsProps {
 	actions: SuggestedAction[];
-	ignoreForAllLabel?: string;
+	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
 }
 
 interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
 	(event: 'ignore-click', actionId: string): void;
-	(event: 'ignore-for-all'): void;
+	(event: 'ignore-all'): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
 
 withDefaults(defineProps<SuggestedActionsProps>(), {
-	ignoreForAllLabel: undefined,
+	ignoreAllLabel: undefined,
 	popoverAlignment: undefined,
 });
 
@@ -128,15 +128,15 @@ defineExpose({
 						</div>
 					</div>
 				</div>
-				<div v-if="ignoreForAllLabel" :class="$style.ignoreAllContainer">
+				<div :class="$style.ignoreAllContainer">
 					<N8nLink
 						theme="text"
 						size="small"
 						underline
-						data-test-id="suggested-action-ignore-for-all"
-						@click.prevent.stop="emit('ignore-for-all')"
+						data-test-id="suggested-action-ignore-all"
+						@click.prevent.stop="emit('ignore-all')"
 					>
-						{{ ignoreForAllLabel }}
+						{{ ignoreAllLabel ?? t('generic.ignoreAll') }}
 					</N8nLink>
 				</div>
 			</div>
@@ -189,11 +189,13 @@ defineExpose({
 .actionItemBody {
 	display: flex;
 	flex-direction: column;
+	flex-grow: 1;
 	border-bottom: var(--border-base);
 	padding-bottom: var(--spacing-s);
 }
 
 .checkboxContainer {
+	padding-top: var(--spacing-5xs);
 	padding-right: var(--spacing-xs);
 }
 
@@ -211,8 +213,6 @@ defineExpose({
 }
 
 .ignoreAllContainer {
-	display: flex;
-	gap: var(--spacing-s);
-	padding-left: var(--spacing-2xs);
+	padding-left: var(--spacing-l);
 }
 </style>

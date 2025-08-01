@@ -114,37 +114,37 @@ describe('N8nSuggestedActions', () => {
 		expect(container.querySelector('[data-test-id="suggested-actions-bell"]')).toBeInTheDocument();
 	});
 
-	it('shows turn off link when ignoreForAllLabel is provided', async () => {
+	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
-				ignoreForAllLabel: 'Ignore for all',
+				ignoreAllLabel: 'Ignore for all',
 			},
 		});
 
 		const bellButton = wrapper.getByTestId('suggested-actions-bell');
 		await fireEvent.click(bellButton);
 
-		expect(wrapper.getByTestId('suggested-action-ignore-for-all')).toBeInTheDocument();
+		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
 	});
 
-	it('emits ignore-for-all event when turn off link is clicked', async () => {
+	it('emits ignore-all event when turn off link is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
-				ignoreForAllLabel: 'Ignore for all',
+				ignoreAllLabel: 'Ignore for all',
 			},
 		});
 
 		const bellButton = wrapper.getByTestId('suggested-actions-bell');
 		await fireEvent.click(bellButton);
 
-		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-for-all');
+		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-all');
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
 		await fireEvent.click(turnOffLink);
 
-		expect(wrapper.emitted('ignore-for-all')).toBeTruthy();
+		expect(wrapper.emitted('ignore-all')).toBeTruthy();
 	});
 
 	it('renders more info link when moreInfoLink is provided', async () => {

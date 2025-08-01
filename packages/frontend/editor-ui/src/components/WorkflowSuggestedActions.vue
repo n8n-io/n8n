@@ -128,7 +128,7 @@ async function handleIgnoreClick(actionId: string) {
 	await loadWorkflowSettings();
 }
 
-async function handleIgnoreForAll() {
+async function handleIgnoreAll() {
 	// todo update to ignore for all workflows
 	await workflowsCache.ignoreAllSuggestedActions(props.workflow.id);
 	await loadWorkflowSettings();
@@ -171,9 +171,9 @@ defineExpose({
 		ref="suggestedActionsComponent"
 		popover-alignment="end"
 		:actions="availableActions"
-		:ignore-for-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
+		:ignore-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
-		@ignore-for-all="handleIgnoreForAll"
+		@ignore-all="handleIgnoreAll"
 	/>
 </template>
