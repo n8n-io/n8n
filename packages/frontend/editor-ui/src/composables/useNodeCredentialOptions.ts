@@ -50,7 +50,7 @@ export function useNodeCredentialOptions(
 				credentialsStore.allUsableCredentialsByType[type].map<CredentialDropdownOption>(
 					(option: ICredentialsResponse) => ({
 						...option,
-						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName,
+						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
 					}),
 				),
 			);
