@@ -214,7 +214,7 @@ defineExpose({
 
 .actionHeader {
 	display: flex;
-	align-items: center;
+	align-items: top;
 
 	> :first-child {
 		flex-grow: 1;
