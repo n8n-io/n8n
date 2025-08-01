@@ -1,0 +1,40 @@
+{
+    "name": "n8n-nodes-github-issues",
+    "version": "0.1.0",
+    "description": "n8n community node to work with the Github Issues API",
+    "keywords": [
+        "n8n-community-node-package"
+    ],
+    "license": "MIT",
+    "homepage": "https://n8n.io",
+    "author": {
+        "name": "Test",
+        "email": "test@example.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+<your-repo-url>"
+    },
+    "scripts": {},
+    "files": [
+        "dist"
+    ],
+    "n8n": {
+        "n8nNodesApiVersion": 1,
+        "credentials": [
+            "dist/credentials/Github/NasaPicsApi.credentials.js"
+        ],
+        "nodes": [
+            "dist/nodes/NasaPics/NasaPics.node.js"
+        ]
+    },
+    "devDependencies": {
+        "eslint": "catalog:",
+        "n8n-workflow": "*",
+        "prettier": "^3.3.3",
+        "typescript": "catalog:"
+    },
+    "peerDependencies": {
+        "n8n-workflow": "*"
+    }
+}
