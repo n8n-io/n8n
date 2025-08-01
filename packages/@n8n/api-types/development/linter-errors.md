@@ -1,8 +1,17 @@
 # Linter Errors Report
 
-**Generated:** 2025-08-01T19:35:02.143Z
-**Total Issues:** 6 (0 errors, 6 warnings)
-**Files:** 3
+**Generated:** 2025-08-01T19:40:37.662Z
+**Total Issues:** 7 (1 errors, 6 warnings)
+**Files:** 4
+
+## cleanup-todos.js (eslint)
+
+**File Path:** `/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/packages/@n8n/api-types/cleanup-todos.js`
+**Issues:** 1
+
+❌ **Line undefined:undefined** - Parsing error: /Users/jeremyparker/Desktop/Claude Coding Projects/n8n/packages/@n8n/api-types/cleanup-todos.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject.
+
+---
 
 ## user.schema.ts (eslint)
 
