@@ -1,6 +1,7 @@
 import {
 	ImportWorkflowFromUrlDto,
 	ManualRunQueryDto,
+	ROLE,
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -558,5 +559,32 @@ export class WorkflowsController {
 			body.shareCredentials,
 			body.destinationParentFolderId,
 		);
+	}
+
+	@Post('/with-node-types')
+	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
+		try {
+			const hasPermission = req.user.role === ROLE.Owner || req.user.role === ROLE.Admin;
+
+			if (!hasPermission) {
+				res.json({ data: [], count: 0 });
+				return;
+			}
+
+			const { nodeTypes } = req.body as { nodeTypes: string[] };
+			const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+				req.user,
+				nodeTypes,
+			);
+
+			res.json({
+				data: workflows,
+				count: workflows.length,
+			});
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
 	}
 }
