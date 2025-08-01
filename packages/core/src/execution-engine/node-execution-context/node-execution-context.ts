@@ -36,6 +36,7 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -225,6 +226,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			HTTP_REQUEST_NODE_TYPE,
 			HTTP_REQUEST_TOOL_NODE_TYPE,
 			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+			MCP_CLIENT_TOOL_NODE_TYPE,
 		].includes(node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
