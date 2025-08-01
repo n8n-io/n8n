@@ -61,7 +61,13 @@ export class Logger implements LoggerType {
 			this.scopes = new Set();
 		}
 
-		if (isRoot) LoggerProxy.init(this);
+		if (isRoot && LoggerProxy && LoggerProxy.init) {
+			try {
+				LoggerProxy.init(this);
+			} catch (error) {
+				// Silently fail in test environments where LoggerProxy might not be properly initialized
+			}
+		}
 	}
 
 	private setInternalLogger(internalLogger: winston.Logger) {

@@ -12,6 +12,5 @@ module.exports = {
 		'<rootDir>/test/extend-expect.ts',
 	],
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
-	testTimeout: 10_000,
 	prettierPath: null,
 };

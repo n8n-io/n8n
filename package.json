@@ -44,6 +44,8 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
+    "test:unit": "JEST_JUNIT_CLASSNAME={filepath} turbo run test:unit",
+    "test:fast": "JEST_JUNIT_CLASSNAME={filepath} turbo run test:unit --parallel",
     "test:ci": "turbo run test --continue --concurrency=1",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:coverage": "COVERAGE_ENABLED=true JEST_JUNIT_CLASSNAME={filepath} turbo run test",

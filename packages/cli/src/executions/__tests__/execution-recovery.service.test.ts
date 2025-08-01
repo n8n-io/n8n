@@ -285,8 +285,8 @@ describe('ExecutionRecoveryService', () => {
 				if (!manualTriggerTaskData) fail("Expected manual trigger's `taskData` to be defined");
 				if (!debugHelperTaskData) fail("Expected debug helper's `taskData` to be defined");
 
-				const resultData = IN_PROGRESS_EXECUTION_DATA.resultData as IRunExecutionData;
-				const runDataArray = resultData.runData['when_clicking_execute_workflow'];
+				const originalResultData = IN_PROGRESS_EXECUTION_DATA.resultData as IRunExecutionData;
+				const runDataArray = originalResultData.runData['when_clicking_execute_workflow'];
 				const originalManualTriggerTaskData = runDataArray.at(0)?.data;
 
 				expect(manualTriggerTaskData.executionStatus).toBe('success');

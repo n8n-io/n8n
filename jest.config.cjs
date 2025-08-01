@@ -61,7 +61,10 @@ const config = {
 			statements: 95,
 		},
 	} : undefined,
-	workerIdleMemoryLimit: '1MB',
+	workerIdleMemoryLimit: '512MB',
+	maxWorkers: process.env.CI ? 2 : '50%',
+	maxConcurrency: 10,
+	testTimeout: 10000,
 };
 
 if (process.env.CI === 'true') {

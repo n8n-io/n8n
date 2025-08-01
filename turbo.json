@@ -16,96 +16,97 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"src/**/*.json",
-				"src/**/*.vue",
-				"src/**/*.scss",
-				"src/**/*.css",
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"src/**/*.{json,scss,css}",
 				"assets/**/*",
 				"public/**/*",
 				"tsconfig*.json",
 				"package.json",
-				"*.config.*",
-				"scripts/**/*"
+				"*.config.{js,mjs,cjs,ts,json}",
+				"scripts/**/*.{js,mjs,ts}",
+				"!src/**/*.{test,spec}.{ts,js}",
+				"!src/**/__tests__/**",
+				"!src/**/__mocks__/**"
 			],
 			"outputs": [
 				"dist/**",
 				"build/**",
 				"lib/**",
-				"types/**"
+				"types/**",
+				"*.tsbuildinfo"
 			],
 			"cache": true,
 			"persistent": false,
-			"passThroughEnv": ["NODE_ENV", "CI"]
+			"passThroughEnv": ["NODE_ENV", "CI", "BUILD_ENV"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"],
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.vue",
+				"src/**/*.{ts,tsx,vue}",
 				"tsconfig*.json",
-				"package.json"
+				"package.json",
+				"!src/**/*.{test,spec}.{ts,tsx}",
+				"!src/**/__tests__/**",
+				"!src/**/__mocks__/**"
 			],
-			"outputs": ["dist/**/*.tsbuildinfo"],
+			"outputs": [
+				"dist/**/*.tsbuildinfo",
+				"*.tsbuildinfo"
+			],
 			"cache": true,
-			"passThroughEnv": ["NODE_ENV"]
+			"passThroughEnv": ["NODE_ENV", "TS_NODE_PROJECT"]
 		},
 		"format": {
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"src/**/*.vue",
-				"src/**/*.json",
-				"src/**/*.scss",
-				"src/**/*.css",
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"src/**/*.{json,scss,css,md}",
+				"test/**/*.{ts,js}",
 				"biome.json",
-				".prettierrc*"
-			],
-			"cache": true
-		},
-		"format:check": {
-			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"src/**/*.vue",
-				"src/**/*.json",
-				"src/**/*.scss",
-				"src/**/*.css",
-				"biome.json",
-				".prettierrc*"
-			],
-			"cache": true
-		},
-		"lint": {
-			"dependsOn": ["^build", "@n8n/eslint-config#build"],
-			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"src/**/*.vue",
-				"test/**/*.ts",
-				"test/**/*.js",
-				"eslint.config.*",
-				".eslintrc*",
-				"package.json",
-				"tsconfig*.json"
+				".prettierrc*",
+				"package.json"
 			],
 			"cache": true,
 			"passThroughEnv": ["NODE_ENV"]
 		},
-		"lint:fix": {
+		"format:check": {
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"src/**/*.vue",
-				"test/**/*.ts",
-				"test/**/*.js",
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"src/**/*.{json,scss,css,md}",
+				"test/**/*.{ts,js}",
+				"biome.json",
+				".prettierrc*",
+				"package.json"
+			],
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV"]
+		},
+		"lint": {
+			"dependsOn": ["@n8n/eslint-config#build"],
+			"inputs": [
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"test/**/*.{ts,js}",
 				"eslint.config.*",
 				".eslintrc*",
 				"package.json",
-				"tsconfig*.json"
+				"tsconfig*.json",
+				"!src/**/__mocks__/**"
 			],
-			"cache": false
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV", "ESLINT_USE_FLAT_CONFIG"]
+		},
+		"lint:fix": {
+			"dependsOn": ["@n8n/eslint-config#build"],
+			"inputs": [
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"test/**/*.{ts,js}",
+				"eslint.config.*",
+				".eslintrc*",
+				"package.json",
+				"tsconfig*.json",
+				"!src/**/__mocks__/**"
+			],
+			"cache": false,
+			"passThroughEnv": ["NODE_ENV", "ESLINT_USE_FLAT_CONFIG"]
 		},
 		"lint:styles": {
 			"dependsOn": ["@n8n/stylelint-config#build"]
@@ -114,59 +115,87 @@
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
-			"dependsOn": ["^build", "build"],
+			"dependsOn": ["^typecheck"],
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"test/**/*.ts",
-				"test/**/*.js",
-				"**/__tests__/**/*",
-				"**/*.test.*",
-				"**/*.spec.*",
+				"src/**/*.{ts,js,jsx,tsx}",
+				"test/**/*.{ts,js}",
+				"**/__tests__/**/*.{ts,js}",
+				"**/*.{test,spec}.{ts,js}",
 				"jest.config.*",
+				"vitest.config.*",
 				"package.json",
-				"tsconfig*.json"
+				"tsconfig*.json",
+				"!**/*.d.ts"
 			],
 			"outputs": [
 				"coverage/**",
 				"*.xml",
-				"test-results/**"
+				"test-results/**",
+				"junit.xml"
 			],
-			"env": ["COVERAGE_ENABLED", "NODE_ENV"],
-			"cache": true
+			"env": ["COVERAGE_ENABLED", "NODE_ENV", "CI"],
+			"cache": true,
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
+		},
+		"test:unit": {
+			"dependsOn": [],
+			"inputs": [
+				"src/**/*.{ts,js,jsx,tsx}",
+				"test/**/*.{ts,js}",
+				"**/__tests__/**/*.{ts,js}",
+				"**/*.{test,spec}.{ts,js}",
+				"jest.config.*",
+				"vitest.config.*",
+				"package.json",
+				"tsconfig*.json",
+				"!**/*.d.ts"
+			],
+			"outputs": [
+				"coverage/**",
+				"*.xml",
+				"test-results/**",
+				"junit.xml"
+			],
+			"env": ["NODE_ENV"],
+			"cache": true,
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
 		},
 		"test:ci": {
 			"dependsOn": ["^build", "build"],
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"test/**/*.ts",
-				"test/**/*.js",
-				"**/__tests__/**/*",
-				"**/*.test.*",
-				"**/*.spec.*",
+				"src/**/*.{ts,js,jsx,tsx}",
+				"test/**/*.{ts,js}",
+				"**/__tests__/**/*.{ts,js}",
+				"**/*.{test,spec}.{ts,js}",
 				"jest.config.*",
+				"vitest.config.*",
 				"package.json",
-				"tsconfig*.json"
+				"tsconfig*.json",
+				"!**/*.d.ts"
 			],
 			"outputs": [
 				"coverage/**",
 				"*.xml",
-				"test-results/**"
+				"test-results/**",
+				"junit.xml"
 			],
 			"env": ["COVERAGE_ENABLED", "NODE_ENV", "CI"],
-			"cache": true
+			"cache": true,
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
 		},
 		"test:e2e": {
 			"dependsOn": ["build"],
 			"inputs": [
-				"cypress/**/*",
-				"playwright/**/*",
-				"e2e/**/*",
-				"test/**/*.e2e.*",
+				"cypress/**/*.{ts,js,json}",
+				"playwright/**/*.{ts,js,json}",
+				"e2e/**/*.{ts,js,json}",
+				"test/**/*.e2e.{ts,js}",
 				"cypress.config.*",
 				"playwright.config.*",
-				"package.json"
+				"package.json",
+				"!cypress/screenshots/**",
+				"!cypress/videos/**",
+				"!playwright-report/**"
 			],
 			"outputs": [
 				"cypress/screenshots/**",
@@ -174,8 +203,9 @@
 				"playwright-report/**",
 				"test-results/**"
 			],
-			"env": ["NODE_ENV", "CI"],
-			"cache": false
+			"env": ["NODE_ENV", "CI", "CYPRESS_RECORD_KEY"],
+			"cache": false,
+			"passThroughEnv": ["CYPRESS_*", "PLAYWRIGHT_*"]
 		},
 		"watch": { 
 			"cache": false, 
@@ -188,23 +218,26 @@
 		"build:playwright": {
 			"dependsOn": ["install-browsers:ci", "build"],
 			"inputs": [
-				"src/**/*.ts",
-				"src/**/*.js",
-				"playwright/**/*",
-				"package.json"
+				"src/**/*.{ts,js}",
+				"playwright/**/*.{ts,js,json}",
+				"package.json",
+				"playwright.config.*"
 			],
 			"outputs": ["dist/**"],
-			"cache": true
+			"cache": true,
+			"passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "CI"]
 		},
 		"install-browsers:ci": {
-			"inputs": ["package.json", "pnpm-lock.yaml"],
+			"inputs": ["package.json", "pnpm-lock.yaml", "playwright.config.*"],
 			"outputs": ["ms-playwright-cache/**"],
-			"env": ["PLAYWRIGHT_BROWSERS_PATH"],
-			"cache": true
+			"env": ["PLAYWRIGHT_BROWSERS_PATH", "CI"],
+			"cache": true,
+			"passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
 		"install-browsers:local": {
-			"inputs": ["package.json", "pnpm-lock.yaml"],
-			"cache": false
+			"inputs": ["package.json", "pnpm-lock.yaml", "playwright.config.*"],
+			"cache": false,
+			"passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
 		"test:container:standard": {
 			"dependsOn": ["install-browsers:local"],
@@ -214,15 +247,17 @@
 		"test:standard": {
 			"dependsOn": ["install-browsers:local"],
 			"inputs": [
-				"playwright/**/*",
-				"e2e/**/*",
-				"package.json"
+				"playwright/**/*.{ts,js,json}",
+				"e2e/**/*.{ts,js,json}",
+				"package.json",
+				"playwright.config.*"
 			],
 			"outputs": [
 				"playwright-report/**",
 				"test-results/**"
 			],
-			"cache": false
+			"cache": false,
+			"passThroughEnv": ["PLAYWRIGHT_*", "CI"]
 		},
 		"validate:build": {
 			"dependsOn": ["^build"],
@@ -230,22 +265,28 @@
 				"scripts/build-validation.mjs",
 				"scripts/health-check.mjs",
 				"turbo.json",
-				"package.json"
+				"package.json",
+				"dist/**",
+				"build/**"
 			],
 			"outputs": [
 				"build-validation-report.json", 
 				"health-check-results.json"
 			],
-			"cache": true
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV", "CI"]
 		},
 		"health:check": {
 			"inputs": [
 				"scripts/health-check.mjs",
 				"package.json",
-				"turbo.json"
+				"turbo.json",
+				"dist/**",
+				"build/**"
 			],
 			"outputs": ["health-check-results.json"],
-			"cache": true
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV"]
 		}
 	}
 }
