@@ -323,7 +323,7 @@ export class Ftp implements INodeType {
 						displayName: 'Chunk Size',
 						name: 'chunkSize',
 						type: 'number',
-						default: '64',
+						default: 64,
 						description: 'Size of each chunk in KB to download, Not all servers support this',
 						displayOptions: {
 							show: {
@@ -690,8 +690,12 @@ export class Ftp implements INodeType {
 									await sftp!.get(path, createWriteStream(binaryFile.path));
 								} else {
 									await sftp!.fastGet(path, binaryFile.path, {
-										concurrency: Number(options.maxConcurrentReads ?? 5),
-										chunkSize: (Number(options.chunkSize) ?? 64) * 1024,
+										concurrency:
+											options.maxConcurrentReads === undefined
+												? 5
+												: Number(options.maxConcurrentReads),
+										chunkSize:
+											(options.chunkSize === undefined ? 64 : Number(options.chunkSize)) * 1024,
 									});
 								}
 
