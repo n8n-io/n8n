@@ -181,7 +181,11 @@ function onFocusNode() {
 				@click="onOpenContextMenu"
 			/>
 		</div>
-		<CanvasNodeStatusIcons v-if="showStatusIcons" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons
+			v-if="showStatusIcons"
+			:class="$style.statusIcons"
+			spinner-layout="static"
+		/>
 	</div>
 </template>
 
@@ -194,7 +198,10 @@ function onFocusNode() {
 
 	&.isExperimentalNdvActive {
 		justify-content: space-between;
+		align-items: center;
 		padding-bottom: var(--spacing-3xs);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 
@@ -208,10 +215,6 @@ function onFocusNode() {
 	:global(.button) {
 		--button-font-color: var(--color-text-light);
 	}
-
-	.isExperimentalNdvActive & > * {
-		zoom: var(--canvas-zoom-compensation-factor, 1);
-	}
 }
 
 .forceVisible {
@@ -219,8 +222,6 @@ function onFocusNode() {
 }
 
 .statusIcons {
-	.isExperimentalNdvActive & {
-		transform: scale(var(--canvas-zoom-compensation-factor, 1));
-	}
+	margin-inline-end: var(--spacing-3xs);
 }
 </style>
