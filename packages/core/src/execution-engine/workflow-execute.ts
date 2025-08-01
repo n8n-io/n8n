@@ -180,6 +180,7 @@ export class WorkflowExecute {
 		return workflow.settings.executionOrder !== 'v1';
 	}
 
+	// TODO: remove
 	/**
 	 * Executes the given workflow but only
 	 *
@@ -354,6 +355,7 @@ export class WorkflowExecute {
 		destinationNodeName?: string,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
+		console.log('enter runPartialWorkflow2');
 		// TODO: Refactor the call-site to make `destinationNodeName` a required
 		// after removing the old partial execution flow.
 		assert.ok(
@@ -374,6 +376,7 @@ export class WorkflowExecute {
 			destination.type,
 			destination.typeVersion,
 		);
+		console.log(25);
 		// Partial execution of nodes as tools
 		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
 			graph = rewireGraph(destination, graph, agentRequest);
@@ -420,9 +423,12 @@ export class WorkflowExecute {
 					},
 				};
 
+				console.log('leave runPartialWorkflow2 1');
 				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 			}
 		}
+
+		console.log(50);
 
 		// 1. Find the Trigger
 		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
@@ -464,6 +470,8 @@ export class WorkflowExecute {
 		// 6. Clean Run Data
 		runData = cleanRunData(runData, graph, startNodes);
 
+		console.log(100);
+
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
@@ -497,6 +505,7 @@ export class WorkflowExecute {
 		// needs it to create more useful error messages, e.g. differentiate
 		// between a node not being connected to the node referencing it or a node
 		// not existing in the workflow.
+		console.log('leave runPartialWorkflow2 2');
 		return this.processRunExecutionData(workflow);
 	}
 

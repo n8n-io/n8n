@@ -140,7 +140,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	// For paginated workflow lists
 	const totalWorkflowCount = ref(0);
@@ -1770,7 +1769,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
+				`/workflows/${startRunData.workflowData.id}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {

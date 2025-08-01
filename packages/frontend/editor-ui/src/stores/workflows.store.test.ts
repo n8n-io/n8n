@@ -930,7 +930,7 @@ describe('useWorkflowsStore', () => {
 		[2, 2, 2], // userVersion 2, valid, use userVersion (2)
 	] as Array<[number, 1 | 2, number]>)(
 		'when { userVersion:%s, defaultVersion:%s, enforced:%s } run workflow should use partial execution version %s',
-		async (userVersion, defaultVersion, expectedVersion) => {
+		async (userVersion, defaultVersion) => {
 			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(userVersion));
 			settingsStore.settings = {
 				partialExecution: { version: defaultVersion },
@@ -946,7 +946,7 @@ describe('useWorkflowsStore', () => {
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				{ baseUrl: '/rest', pushRef: expect.any(String) },
 				'POST',
-				`/workflows/1/run?partialExecutionVersion=${expectedVersion}`,
+				'/workflows/1/run',
 				{ workflowData },
 			);
 		},

@@ -139,10 +139,12 @@ export class WorkflowRunner {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		// Register a new execution
+		console.log(1);
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		const { id: workflowId, nodes } = data.workflowData;
 		try {
+			console.log(2);
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
@@ -152,6 +154,7 @@ export class WorkflowRunner {
 				error.node,
 			);
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+			console.log(3);
 			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 			await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
@@ -170,8 +173,10 @@ export class WorkflowRunner {
 				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
+			console.log(4);
 			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
 		} else {
+			console.log(5);
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
 
@@ -209,6 +214,7 @@ export class WorkflowRunner {
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
+			console.log(1);
 			data.workflowData.staticData =
 				await this.workflowStaticDataService.getStaticDataById(workflowId);
 		}
@@ -241,6 +247,7 @@ export class WorkflowRunner {
 			pinData,
 		});
 
+		console.log(2);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,
@@ -257,7 +264,9 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
+		console.log(3);
 		await this.executionRepository.setRunning(executionId); // write
+		console.log(3.5);
 
 		try {
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
@@ -293,6 +302,7 @@ export class WorkflowRunner {
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
+				console.log('manually');
 				workflowExecution = this.manualExecutionService.runManually(
 					data,
 					workflow,
@@ -322,8 +332,10 @@ export class WorkflowRunner {
 				}
 			}
 
+			console.log('before execution');
 			workflowExecution
 				.then((fullRunData) => {
+					console.log('then');
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
@@ -343,6 +355,7 @@ export class WorkflowRunner {
 						),
 				);
 		} catch (error) {
+			console.log(5);
 			await this.processError(
 				error,
 				new Date(),

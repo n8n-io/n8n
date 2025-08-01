@@ -80,6 +80,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
+		console.log('runWorkflowApi');
 		if (!pushConnectionStore.isConnected) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
@@ -124,7 +125,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
+		console.log('runWorkflowApi');
 		if (workflowsStore.activeExecutionId) {
+			console.log('return 1');
 			return;
 		}
 
@@ -211,6 +214,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
 						startChat();
+						console.log('return 2');
 						return;
 					}
 				}
@@ -243,7 +247,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
-			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
 			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
@@ -299,6 +302,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					}),
 					type: 'error',
 				});
+				console.log('return 2');
 				return undefined;
 			}
 
@@ -309,12 +313,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				runData: !isPartialExecution
 					? // if it's a full execution we don't want to send any run data
 						undefined
-					: version === 2
-						? // With the new partial execution version the backend decides
-							//what run data to use and what to ignore.
-							(runData ?? undefined)
-						: // for v0 we send the run data the FE constructed
-							newRunData,
+					: // With the new partial execution version the backend decides
+						//what run data to use and what to ignore.
+						(runData ?? undefined),
 				startNodes,
 				triggerToStartFrom,
 			};
@@ -322,7 +323,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflow.id && nodeId && version === 2) {
+				if (workflow.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflow.id, nodeId);
 
 					if (agentRequest) {
@@ -409,11 +410,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				source: options.source,
 			});
 
+			console.log('return 3');
 			return runWorkflowApiResponse;
 		} catch (error) {
 			workflowsStore.setWorkflowExecutionData(null);
 			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
+			console.log(error);
+			console.log('return 4');
 			return undefined;
 		}
 	}
