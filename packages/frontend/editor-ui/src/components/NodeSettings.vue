@@ -776,7 +776,10 @@ function handleSelectAction(params: INodeParameters) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
-			<div v-if="isNDVV2 && featureRequestUrl" :class="$style.featureRequest">
+			<div
+				v-if="isNDVV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				:class="$style.featureRequest"
+			>
 				<a target="_blank" @click="onFeatureRequestClick">
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}
@@ -850,34 +853,27 @@ function handleSelectAction(params: INodeParameters) {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
+		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
 
 		&.ndv-v2 {
 			padding: 0 var(--spacing-s) var(--spacing-l) var(--spacing-s);
 		}
-
-		& > :not(.action-tab) {
-			margin-inline: var(--spacing-m);
-		}
-
-		& > * {
-			margin-block-end: var(--spacing-l);
-		}
 	}
 
 	&.embedded .node-parameters-wrapper {
-		& > :not(.action-tab) {
-			margin-inline: var(--spacing-xs);
-		}
+		padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
 
-		& > * {
-			margin-block-end: var(--spacing-xs);
+		&:has(.action-tab) {
+			padding: 0 0 var(--spacing-xs) 0;
 		}
 	}
 
 	&.embedded .node-parameters-wrapper.with-static-scrollbar {
-		& > :not(.action-tab) {
-			margin-inline-end: var(--spacing-4xs);
+		padding: 0 var(--spacing-4xs) var(--spacing-xs) var(--spacing-xs);
+
+		&:has(.action-tab) {
+			padding: 0 0 var(--spacing-xs) 0;
 		}
 
 		@supports not (selector(::-webkit-scrollbar)) {
