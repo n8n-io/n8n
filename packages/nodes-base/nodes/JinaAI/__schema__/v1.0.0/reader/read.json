@@ -7,6 +7,17 @@
         "description": {
             "type": "string"
         },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "lang": {
+                    "type": "string"
+                },
+                "og:description": {
+                    "type": "string"
+                }
+            }
+        },
         "title": {
             "type": "string"
         },
@@ -22,5 +33,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
