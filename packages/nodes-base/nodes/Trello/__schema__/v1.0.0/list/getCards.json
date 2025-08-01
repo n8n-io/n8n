@@ -41,6 +41,9 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
                 "fogbugz": {
                     "type": "string"
                 },
@@ -63,6 +66,9 @@
                     "type": "integer"
                 }
             }
+        },
+        "cardRole": {
+            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -87,7 +93,7 @@
                 "brightness": {
                     "type": "string"
                 },
-                "color": {
+                "idPlugin": {
                     "type": "null"
                 },
                 "idUploadedBackground": {
@@ -172,6 +178,9 @@
         "manualCoverAttachment": {
             "type": "boolean"
         },
+        "mirrorSourceId": {
+            "type": "null"
+        },
         "name": {
             "type": "string"
         },
@@ -194,5 +203,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
