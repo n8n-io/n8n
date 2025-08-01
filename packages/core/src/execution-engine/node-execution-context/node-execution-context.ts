@@ -59,7 +59,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		readonly runIndex = 0,
 		readonly connectionInputData: INodeExecutionData[] = [],
 		readonly executeData?: IExecuteData,
-	) {}
+	) {
+		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	}
 
 	@Memoized
 	get logger() {
@@ -202,25 +204,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	getExecutionWaitingToken() {
+	getExecutionWaitingToken(url: string) {
 		const token = crypto
 			.createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
-			.update(`${this.getExecutionId()}-${JSON.stringify(this.node)}`)
+			.update(url)
 			.digest('hex');
 		return token;
 	}
 
-	getSignedResumeUrl() {
-		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
-
-		if (this.runExecutionData) {
-			this.runExecutionData.validateSignature = true;
+	getSignedResumeUrl(url: string) {
+		const token = this.getExecutionWaitingToken(url);
+		if (url.includes('?')) {
+			return `${url}&${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+		} else {
+			return `${url}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
 		}
-
-		if (typeof executionId !== 'string') {
-			throw new ApplicationError('Execution id is missing');
-		}
-		return `${webhookWaitingBaseUrl}/${executionId}/${this.node.id}?${WAITING_TOKEN_QUERY_PARAM}=${this.getExecutionWaitingToken()}`;
 	}
 
 	getTimezone() {

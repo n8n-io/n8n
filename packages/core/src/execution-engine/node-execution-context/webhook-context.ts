@@ -181,11 +181,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			if (!this.runExecutionData?.validateSignature) return true;
 
 			const req = this.getRequestObject();
+
 			const token = req.query[WAITING_TOKEN_QUERY_PARAM];
 
 			if (typeof token !== 'string') return false;
 
-			const expectedToken = this.getExecutionWaitingToken();
+			const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+			const url = parsedUrl.toString();
+
+			const expectedToken = this.getExecutionWaitingToken(url);
 
 			const valid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
 			return valid;

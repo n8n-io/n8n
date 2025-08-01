@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -378,28 +377,22 @@ describe('NodeExecutionContext', () => {
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
-		it('should return a signed resume URL', () => {
-			additionalData.webhookWaitingBaseUrl = 'https://example.com/webhook';
-			additionalData.executionId = 'execution123';
-			node.id = 'node456';
-
-			const result = testContext.getSignedResumeUrl();
-			const expectedToken = crypto
-				.createHmac('sha256', instanceSettings.hmacSignatureSecret)
-				.update(`${additionalData.executionId}-${JSON.stringify(node)}`)
-				.digest('hex');
+		it('should return a signed resume URL with no query parameters', () => {
+			const url = 'https://example.com/webhook/execution123/node456';
+			const result = testContext.getSignedResumeUrl(url);
 
 			expect(result).toBe(
-				`https://example.com/webhook/execution123/node456?signature=${expectedToken}`,
+				'https://example.com/webhook/execution123/node456?signature=19e03c05769be8157d8c99377504f881bc8c82b604f4063f509aa7dcc6e8ea9f',
 			);
 		});
 
-		it('should throw an error if executionId is missing', () => {
-			additionalData.webhookWaitingBaseUrl = 'https://example.com/webhook';
-			additionalData.executionId = undefined;
-			node.id = 'node456';
+		it('should return a signed resume URL with query parameters', () => {
+			const url = 'https://example.com/webhook/execution123/node456?approved=true';
+			const result = testContext.getSignedResumeUrl(url);
 
-			expect(() => testContext.getSignedResumeUrl()).toThrowError('Execution id is missing');
+			expect(result).toBe(
+				'https://example.com/webhook/execution123/node456?approved=true&signature=68904afab338aeeb83d4cb9fd43a406d6a2986c576d7dd884899916f49070ddc',
+			);
 		});
 	});
 });
