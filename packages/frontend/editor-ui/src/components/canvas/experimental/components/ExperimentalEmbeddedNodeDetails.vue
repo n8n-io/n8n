@@ -105,6 +105,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 });
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -114,6 +115,29 @@ function handleOpenNdv() {
 	if (node.value) {
 		ndvStore.setActiveNodeName(node.value.name);
 	}
+}
+
+function handleCaptureWheelEvent(event: WheelEvent) {
+	if (event.ctrlKey) {
+		// If the event is pinch, let it propagate and zoom canvas
+		return;
+	}
+
+	if (
+		event.currentTarget instanceof HTMLElement &&
+		event.currentTarget.scrollHeight <= event.currentTarget.offsetHeight
+	) {
+		// If the settings pane doesn't have to scroll, let it propagate and move the canvas
+		return;
+	}
+
+	// If the event has larger horizontal element, let it propagate and move the canvas
+	if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) {
+		return;
+	}
+
+	// Otherwise, let it scroll the settings pane
+	event.stopImmediatePropagation();
 }
 
 provide(IsInExperimentalEmbeddedNdvKey, true);
@@ -144,6 +168,8 @@ watchOnce(isVisible, (visible) => {
 			:node="node"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
 			:container="containerRef"
+			:max-height="maxHeightOnFocus"
+			@capture-wheel-data-container="handleCaptureWheelEvent"
 		>
 			<ExperimentalCanvasNodeSettings
 				tabindex="-1"
@@ -151,6 +177,7 @@ watchOnce(isVisible, (visible) => {
 				:class="$style.settingsView"
 				:is-read-only="isReadOnly"
 				:sub-title="subTitle"
+				@capture-wheel-body="handleCaptureWheelEvent"
 			>
 				<template #actions>
 					<ExperimentalEmbeddedNdvActions

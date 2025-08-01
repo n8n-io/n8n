@@ -17,6 +17,11 @@ const { node, container, inputNodeName } = defineProps<{
 	node: INodeUi;
 	container: HTMLDivElement | null;
 	inputNodeName?: string;
+	maxHeight: number;
+}>();
+
+const emit = defineEmits<{
+	captureWheelDataContainer: [WheelEvent];
 }>();
 
 const ndvStore = useNDVStore();
@@ -83,6 +88,7 @@ watch(viewport, () => {
 			ref="inputPanel"
 			:tabindex="-1"
 			:class="$style.inputPanel"
+			:style="{ maxHeight: `${maxHeight}px` }"
 			:workflow="workflow"
 			:run-index="0"
 			compact
@@ -93,6 +99,7 @@ watch(viewport, () => {
 			:current-node-name="inputNodeName"
 			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 			:focused-mappable-input="ndvStore.focusedMappableInput"
+			@capture-wheel-data-container="emit('captureWheelDataContainer', $event)"
 		>
 			<template v-if="inputNodeName" #node-not-run>
 				<N8nText color="text-base" size="small">
@@ -131,6 +138,7 @@ watch(viewport, () => {
 	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
 	padding: var(--spacing-2xs);
 	height: 100%;
+	overflow: auto;
 }
 
 .inputPanelTitle {

@@ -79,6 +79,7 @@ const emit = defineEmits<{
 	execute: [];
 	activatePane: [];
 	displayModeChange: [IRunDataDisplayMode];
+	captureWheelDataContainer: [WheelEvent];
 }>();
 
 defineSlots<{ 'node-not-run'?: {} }>();
@@ -408,6 +409,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@search="onSearch"
 		@display-mode-change="emit('displayModeChange', $event)"
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
+		@capture-wheel-data-container="emit('captureWheelDataContainer', $event)"
 	>
 		<template #header>
 			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
