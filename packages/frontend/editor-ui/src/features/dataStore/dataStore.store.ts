@@ -22,7 +22,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const createNewDataStore = async (name: string, projectId?: string) => {
 		const newStore = await createDataStore(rootStore.restApiContext, name, projectId);
-		dataStores.value.push(newStore);
+		dataStores.value.push(newStore.data);
 		totalCount.value += 1;
 		return newStore;
 	};
