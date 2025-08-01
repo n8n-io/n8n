@@ -4,6 +4,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { Push } from '@/push';
 import type { AccessService } from '@/services/access.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { WorkflowEditMessage, WorkflowCursorMessage } from '../collaboration.message';
 import { CollaborationService } from '../collaboration.service';
@@ -14,6 +15,7 @@ jest.mock('@/push');
 jest.mock('@n8n/db');
 jest.mock('@/services/access.service');
 jest.mock('@/workflows/workflow.service');
+jest.mock('@/workflows/workflow-finder.service');
 jest.mock('n8n-core');
 
 describe('CollaborationService', () => {
@@ -24,6 +26,7 @@ describe('CollaborationService', () => {
 	let mockUserRepository: jest.Mocked<UserRepository>;
 	let mockAccessService: jest.Mocked<AccessService>;
 	let mockWorkflowService: jest.Mocked<WorkflowService>;
+	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
 
 	const mockWorkflow = {
 		id: 'workflow-123',
@@ -66,7 +69,6 @@ describe('CollaborationService', () => {
 
 		mockAccessService = {
 			hasReadAccess: jest.fn(),
-			hasWriteAccess: jest.fn(),
 		} as any;
 
 		mockWorkflowService = {

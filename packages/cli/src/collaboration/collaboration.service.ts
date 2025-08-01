@@ -1,4 +1,4 @@
-import type { PushPayload } from '@n8n/api-types';
+import type { PushPayload, PushMessage } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,6 +11,7 @@ import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
 	WorkflowClosedMessage,
@@ -37,6 +38,7 @@ export class CollaborationService {
 		private readonly userRepository: UserRepository,
 		private readonly accessService: AccessService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	init() {
@@ -105,7 +107,15 @@ export class CollaborationService {
 		const { workflowId, operation, timestamp, operationId } = msg;
 
 		// Check if user has write access to the workflow
-		if (!(await this.accessService.hasWriteAccess(userId, workflowId))) {
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (!user) {
+			return;
+		}
+
+		const hasWriteAccess = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+		if (!hasWriteAccess) {
 			return;
 		}
 
@@ -162,6 +172,8 @@ export class CollaborationService {
 		operation: WorkflowEditOperation,
 		timestamp: number,
 	): Promise<WorkflowEditOperation | null> {
+		// Store timestamp for future conflict resolution
+		const operationTimestamp = timestamp;
 		const history = this.operationHistory.get(workflowId) ?? [];
 		const conflictingOperations = history.filter(
 			(op) =>
@@ -240,7 +252,14 @@ export class CollaborationService {
 		userId: string,
 	): Promise<void> {
 		// Get current workflow data
-		const workflow = await this.workflowService.get(workflowId, true);
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (!user) {
+			throw new Error(`User ${userId} not found`);
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
 
 		if (!workflow) {
 			throw new Error(`Workflow ${workflowId} not found`);
@@ -328,7 +347,7 @@ export class CollaborationService {
 		}
 
 		// Save the updated workflow
-		await this.workflowService.update(userId, workflowId, workflowData);
+		await this.workflowService.update(user, workflowData, workflowId);
 	}
 
 	private addOperationToHistory(workflowId: string, operation: WorkflowEditOperation): void {
@@ -371,7 +390,7 @@ export class CollaborationService {
 			},
 		};
 
-		this.push.sendToUsers(msgData, userIds);
+		this.push.sendToUsers(msgData as PushMessage, userIds);
 	}
 
 	private async broadcastCursorPosition(
@@ -398,7 +417,7 @@ export class CollaborationService {
 			},
 		};
 
-		this.push.sendToUsers(msgData, userIds);
+		this.push.sendToUsers(msgData as PushMessage, userIds);
 	}
 
 	private async sendWorkflowUsersChangedMessage(workflowId: Workflow['id']) {

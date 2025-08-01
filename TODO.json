@@ -1564,11 +1564,11 @@
       "requires_research": false,
       "created_at": "2025-07-31T21:08:33.685Z",
       "progress": {
-        "completed": 29,
+        "completed": 33,
         "total": 134,
-        "remaining": 105
+        "remaining": 101
       },
-      "notes": "Fixed TypeScript errors in audit.controller.ts, system-resources.service.ts, manual-execution.service.ts, security-monitoring.service.ts, and workflows.controller.ts. Reduced from 134 to 105 errors."
+      "notes": "Fixed TypeScript errors in multiple CLI files: audit.controller.ts (✓), system-resources.service.ts (✓), manual-execution.service.ts (✓), security-monitoring.service.ts (✓), workflows.controller.ts (✓), ai-nodes.controller.ts (✓). Reduced from 134 to 101 errors (25% improvement)."
     },
     {
       "id": "build-dependencies-validation-1753996113685",
