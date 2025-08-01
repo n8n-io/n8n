@@ -2,31 +2,31 @@ import { z } from 'zod';
 import { Z } from 'zod-class';
 
 export const enum ExecutionStatus {
-	NEW = 'new',
-	RUNNING = 'running',
-	SUCCESS = 'success',
-	ERROR = 'error',
-	CANCELED = 'canceled',
-	CRASHED = 'crashed',
-	WAITING = 'waiting',
+	new = 'new',
+	running = 'running',
+	success = 'success',
+	error = 'error',
+	canceled = 'canceled',
+	crashed = 'crashed',
+	waiting = 'waiting',
 }
 
 export const enum NodeExecutionStatus {
-	SUCCESS = 'success',
-	ERROR = 'error',
-	WAITING = 'waiting',
+	success = 'success',
+	error = 'error',
+	waiting = 'waiting',
 }
 
 export const enum BottleneckSeverity {
-	LOW = 'low',
-	MEDIUM = 'medium',
-	HIGH = 'high',
+	low = 'low',
+	medium = 'medium',
+	high = 'high',
 }
 
 export const enum BottleneckIssue {
-	SLOW_EXECUTION = 'slow_execution',
-	HIGH_MEMORY = 'high_memory',
-	LARGE_DATASET = 'large_dataset',
+	slowExecution = 'slow_execution',
+	highMemory = 'high_memory',
+	largeDataset = 'large_dataset',
 }
 
 export class ExecutionTimingDto extends Z.class({
@@ -49,7 +49,7 @@ export class NodeExecutionDto extends Z.class({
 	memoryUsage: z.number().optional(),
 	inputItems: z.number(),
 	outputItems: z.number(),
-	status: z.nativeEnum(NodeExecutionStatus),
+	status: z.enum(['success', 'error', 'waiting']),
 }) {}
 
 export class ExecutionPerformanceDto extends Z.class({
@@ -60,15 +60,15 @@ export class ExecutionPerformanceDto extends Z.class({
 
 export class BottleneckDto extends Z.class({
 	nodeId: z.string(),
-	issue: z.nativeEnum(BottleneckIssue),
-	severity: z.nativeEnum(BottleneckSeverity),
+	issue: z.enum(['slow_execution', 'high_memory', 'large_dataset']),
+	severity: z.enum(['low', 'medium', 'high']),
 	suggestion: z.string(),
 }) {}
 
 export class ExecutionProfileDto extends Z.class({
 	executionId: z.string(),
 	workflowId: z.string(),
-	status: z.nativeEnum(ExecutionStatus),
+	status: z.enum(['new', 'running', 'success', 'error', 'canceled', 'crashed', 'waiting']),
 	timing: z.instanceof(ExecutionTimingDto),
 	performance: z.instanceof(ExecutionPerformanceDto),
 	bottlenecks: z.array(z.instanceof(BottleneckDto)),
