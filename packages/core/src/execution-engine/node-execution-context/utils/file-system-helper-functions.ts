@@ -3,8 +3,11 @@ import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
-import { access as fsAccess, writeFile as fsWriteFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import {
+	access as fsAccess,
+	writeFile as fsWriteFile,
+	realpath as fsRealpath,
+} from 'node:fs/promises';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -29,9 +32,9 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-export function isFilePathBlocked(filePath: string): boolean {
+export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = resolve(filePath);
+	const resolvedFilePath = await fsRealpath(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];
@@ -62,7 +65,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 					})
 				: error;
 		}
-		if (isFilePathBlocked(filePath as string)) {
+		if (await isFilePathBlocked(filePath as string)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
@@ -77,7 +80,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 
 	async writeContentToFile(filePath, content, flag) {
-		if (isFilePathBlocked(filePath as string)) {
+		if (await isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
 				level: 'warning',
 			});
