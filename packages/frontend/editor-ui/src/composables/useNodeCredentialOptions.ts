@@ -32,20 +32,16 @@ export function useNodeCredentialOptions(
 		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
 	);
 
-	const credentialTypesNodeDescriptionDisplayed = computed(() => {
-		console.log(444, credentialTypesNodeDescriptions.value, unref(overrideCredType));
-		return credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => ({
+	const credentialTypesNodeDescriptionDisplayed = computed(() =>
+		credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => ({
 			type,
 			options: getCredentialOptions(getAllRelatedCredentialTypes(type)),
-		}));
-	});
+		})),
+	);
 
-	const areAllCredentialsSet = computed(() => {
-		console.log(333, credentialTypesNodeDescriptionDisplayed.value);
-		return credentialTypesNodeDescriptionDisplayed.value.every(({ type }) =>
-			isCredentialExisting(type),
-		);
-	});
+	const areAllCredentialsSet = computed(() =>
+		credentialTypesNodeDescriptionDisplayed.value.every(({ type }) => isCredentialExisting(type)),
+	);
 
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 		let options: CredentialDropdownOption[] = [];
