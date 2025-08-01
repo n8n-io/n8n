@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
 import N8nLink from '../N8nLink';
 import N8nPopoverReka from '../N8nPopoverReka';
+import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 
 interface SuggestedAction {
@@ -30,7 +30,7 @@ interface SuggestedActionsEmits {
 
 defineOptions({ name: 'N8nSuggestedActions' });
 
-withDefaults(defineProps<SuggestedActionsProps>(), {
+const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 	ignoreAllLabel: undefined,
 	popoverAlignment: undefined,
 });
@@ -40,6 +40,8 @@ const { t } = useI18n();
 
 const isOpen = ref(false);
 const ignoringActions = ref<Set<string>>(new Set());
+
+const completedCount = computed(() => props.actions.filter((action) => action.completed).length);
 
 const handleActionClick = (actionId: string) => {
 	emit('action-click', actionId);
@@ -71,13 +73,7 @@ defineExpose({
 	<N8nPopoverReka v-model:open="isOpen" width="360px" max-height="500px" :align="popoverAlignment">
 		<template #trigger>
 			<div :class="$style.triggerContainer">
-				<N8nIconButton
-					icon="circle-alert"
-					type="highlight"
-					size="medium"
-					icon-size="large"
-					data-test-id="suggested-actions-bell"
-				/>
+				<N8nTag :text="`${completedCount} / ${actions.length}`" />
 			</div>
 		</template>
 		<template #content>
@@ -148,6 +144,7 @@ defineExpose({
 .triggerContainer {
 	display: inline-block;
 	position: relative;
+	--tag-height: 24px;
 }
 
 .popoverContent {
