@@ -72,7 +72,13 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka v-model:open="isOpen" width="360px" max-height="500px" :align="popoverAlignment">
+	<N8nPopoverReka
+		v-if="completedCount !== actions.length"
+		v-model:open="isOpen"
+		width="360px"
+		max-height="500px"
+		:align="popoverAlignment"
+	>
 		<template #trigger>
 			<div :class="$style.triggerContainer">
 				<N8nTag :text="`${completedCount} / ${actions.length}`" />

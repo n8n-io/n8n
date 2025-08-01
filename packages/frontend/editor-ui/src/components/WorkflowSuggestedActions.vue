@@ -56,46 +56,42 @@ const availableActions = computed(() => {
 		id: ActionType;
 		title: string;
 		description: string;
-		buttonLabel: string;
 		moreInfoLink: string;
+		completed: boolean;
 	}> = [];
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Evaluations action
-	if (
-		hasAINode.value &&
-		!hasEvaluationSetOutputsNode.value &&
-		!suggestedActionSettings.evaluations?.ignored
-	) {
+	if (hasAINode.value && !suggestedActionSettings.evaluations?.ignored) {
 		actions.push({
 			id: 'evaluations',
 			title: i18n.baseText('workflowSuggestedActions.evaluations.title'),
 			description: i18n.baseText('workflowSuggestedActions.evaluations.description'),
-			buttonLabel: i18n.baseText('workflowSuggestedActions.evaluations.button'),
 			moreInfoLink: 'https://docs.n8n.io/advanced-ai/evaluations/overview/',
+			completed: hasEvaluationSetOutputsNode.value,
 		});
 	}
 
 	// Error workflow action
-	if (!hasErrorWorkflow.value && !suggestedActionSettings.errorWorkflow?.ignored) {
+	if (!suggestedActionSettings.errorWorkflow?.ignored) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
 			description: i18n.baseText('workflowSuggestedActions.errorWorkflow.description'),
-			buttonLabel: i18n.baseText('workflowSuggestedActions.errorWorkflow.button'),
 			moreInfoLink:
 				'https://docs.n8n.io/flow-logic/error-handling/#create-and-set-an-error-workflow',
+			completed: hasErrorWorkflow.value,
 		});
 	}
 
 	// Time saved action
-	if (!hasTimeSaved.value && !suggestedActionSettings.timeSaved?.ignored) {
+	if (!suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowSuggestedActions.timeSaved.title'),
 			description: i18n.baseText('workflowSuggestedActions.timeSaved.description'),
-			buttonLabel: i18n.baseText('workflowSuggestedActions.timeSaved.button'),
 			moreInfoLink: 'https://docs.n8n.io/insights/#setting-the-time-saved-by-a-workflow',
+			completed: hasTimeSaved.value,
 		});
 	}
 
@@ -140,6 +136,9 @@ async function handleIgnoreAll() {
 	const ignoreAllConfirmed = await message.confirm(
 		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.description'),
 		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.title'),
+		{
+			confirmButtonText: i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.confirm'),
+		},
 	);
 
 	if (ignoreAllConfirmed === MODAL_CONFIRM) {
