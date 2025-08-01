@@ -189,7 +189,7 @@ const scrollRight = () => scroll(50);
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
 
-	.small & {
+	.small.modern & {
 		gap: var(--spacing-xs);
 	}
 }
@@ -221,8 +221,11 @@ const scrollRight = () => scroll(50);
 	}
 
 	.small & {
-		padding-inline: 0;
 		font-size: var(--font-size-2xs);
+	}
+
+	.small.modern & {
+		padding-inline: 0;
 	}
 }
 
