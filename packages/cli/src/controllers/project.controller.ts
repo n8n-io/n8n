@@ -69,13 +69,18 @@ export class ProjectController {
 				uiContext: payload.uiContext,
 			});
 
+			const relations = await this.projectsService.getProjectRelations(project.id);
+
 			return {
 				...project,
 				role: 'project:admin',
 				scopes: [
 					...combineScopes({
 						global: getAuthPrincipalScopes(req.user),
-						project: getRoleScopes('project:admin'),
+						project:
+							relations
+								.find((pr) => pr.userId === req.user.id)
+								?.roleEntity.scopes.map((scope) => scope.slug) || [],
 					}),
 				],
 			};
@@ -112,7 +117,7 @@ export class ProjectController {
 				result.scopes.push(
 					...combineScopes({
 						global: getAuthPrincipalScopes(req.user),
-						project: getRoleScopes(pr.role),
+						project: pr.roleEntity.scopes.map((scope) => scope.slug),
 					}),
 				);
 			}
@@ -155,10 +160,15 @@ export class ProjectController {
 		if (!project) {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
+
+		const relations = await this.projectsService.getProjectRelations(project.id);
 		const scopes: Scope[] = [
 			...combineScopes({
 				global: getAuthPrincipalScopes(req.user),
-				project: getRoleScopes('project:personalOwner'),
+				project:
+					relations
+						.find((pr) => pr.userId === req.user.id)
+						?.roleEntity.scopes.map((scope) => scope.slug) ?? [],
 			}),
 		];
 		return {
@@ -196,7 +206,9 @@ export class ProjectController {
 			scopes: [
 				...combineScopes({
 					global: getAuthPrincipalScopes(req.user),
-					...(myRelation ? { project: getRoleScopes(myRelation.role) } : {}),
+					...(myRelation
+						? { project: myRelation.roleEntity.scopes.map((scope) => scope.slug) }
+						: {}),
 				}),
 			],
 		};

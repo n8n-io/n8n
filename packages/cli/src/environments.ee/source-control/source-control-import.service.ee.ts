@@ -148,7 +148,7 @@ export class SourceControlImportService {
 		});
 
 		const accessibleProjects =
-			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
@@ -300,7 +300,7 @@ export class SourceControlImportService {
 		});
 
 		const accessibleProjects =
-			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
@@ -426,7 +426,7 @@ export class SourceControlImportService {
 			});
 
 			const accessibleProjects =
-				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 			mappedFolders.folders = mappedFolders.folders.filter(
 				(folder) =>
