@@ -142,18 +142,7 @@ function getNodeStatusClass(id: string) {
 }
 
 function getEdgeStatusClass(id: string) {
-	const connectionDiff = connectionsDiff.value.get(id);
-	const status = connectionDiff?.status ?? NodeDiffStatus.Eq;
-
-	// Don't color leaf node connections (connections that don't have a target node)
-	// These are just UI affordances for adding new nodes with the plus button
-	if (
-		connectionDiff?.connection.target === undefined ||
-		connectionDiff?.connection.target === null
-	) {
-		return '';
-	}
-
+	const status = connectionsDiff.value.get(id)?.status ?? NodeDiffStatus.Eq;
 	return $style[`edge-${status}`];
 }
 
@@ -793,9 +782,6 @@ const modifiers = [
 	--edge-highlight-color: rgba(14, 171, 84, 0.2);
 }
 .edge-equal {
-	opacity: 0.5;
-}
-.edge-modified {
 	opacity: 0.5;
 }
 
