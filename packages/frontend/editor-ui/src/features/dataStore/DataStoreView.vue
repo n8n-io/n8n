@@ -17,12 +17,14 @@ import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
+	ADD_DATA_STORE_MODAL_KEY,
 	DATA_STORE_CARD_ACTIONS,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/stores/ui.store';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -119,6 +121,10 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 	}
 };
 
+const onAddModalClick = () => {
+	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+};
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataStore.tab.label'));
 });
@@ -159,6 +165,7 @@ onMounted(() => {
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"
+				@click="onAddModalClick"
 			/>
 		</template>
 		<template #item="{ item: data }">

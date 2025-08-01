@@ -10,3 +10,5 @@ export const DATA_STORE_CARD_ACTIONS = {
 	DELETE: 'delete',
 	CLEAR: 'clear',
 };
+
+export const ADD_DATA_STORE_MODAL_KEY = 'addDataStoreModal';
