@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-export const enum ExecutionStatus {
+export enum ExecutionStatus {
 	NEW = 'new',
 	RUNNING = 'running',
 	SUCCESS = 'success',
@@ -11,19 +11,19 @@ export const enum ExecutionStatus {
 	WAITING = 'waiting',
 }
 
-export const enum NodeExecutionStatus {
+export enum NodeExecutionStatus {
 	SUCCESS = 'success',
 	ERROR = 'error',
 	WAITING = 'waiting',
 }
 
-export const enum BottleneckSeverity {
+export enum BottleneckSeverity {
 	LOW = 'low',
 	MEDIUM = 'medium',
 	HIGH = 'high',
 }
 
-export const enum BottleneckIssue {
+export enum BottleneckIssue {
 	SLOW_EXECUTION = 'slow_execution',
 	HIGH_MEMORY = 'high_memory',
 	LARGE_DATASET = 'large_dataset',

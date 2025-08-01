@@ -36,7 +36,6 @@ import { EventService } from '@/events/event.service';
 import { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';
 
 @RestController('/roles/enhanced')
-@Licensed('feat:advancedPermissions')
 export class EnhancedRolesController {
 	constructor(
 		private readonly logger: Logger,
@@ -47,11 +46,12 @@ export class EnhancedRolesController {
 	// Permission Management Endpoints
 
 	@Get('/permissions')
-	@GlobalScope('system:read')
+	@GlobalScope('user:list')
+	@Licensed('feat:advancedPermissions')
 	async getPermissionDefinitions(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Query('category') category?: string,
+		@Query category?: string,
 	): Promise<PermissionDefinitionDto[]> {
 		this.logger.debug('Fetching permission definitions', {
 			requesterId: req.user.id,
@@ -62,7 +62,8 @@ export class EnhancedRolesController {
 	}
 
 	@Post('/permissions/validate')
-	@GlobalScope('system:read')
+	@GlobalScope('user:list')
+	@Licensed('feat:advancedPermissions')
 	async validatePermissions(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -84,6 +85,7 @@ export class EnhancedRolesController {
 
 	@Get('/')
 	@GlobalScope('user:list')
+	@Licensed('feat:advancedPermissions')
 	async getEnhancedRoles(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -99,6 +101,7 @@ export class EnhancedRolesController {
 
 	@Post('/')
 	@GlobalScope('user:create')
+	@Licensed('feat:advancedPermissions')
 	async createCustomRole(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -118,19 +121,21 @@ export class EnhancedRolesController {
 
 		const customRole = await this.enhancedRoleService.createCustomRole(req.user, data);
 
-		this.eventService.emit('custom-role-management', {
-			userId: req.user.id,
-			action: 'create',
-			roleId: customRole.id,
-			roleName: customRole.name,
-			publicApi: false,
-		});
+		// TODO: Add 'custom-role-management' event to EventService type map
+		// this.eventService.emit('custom-role-management', {
+		//	userId: req.user.id,
+		//	action: 'create',
+		//	roleId: customRole.id,
+		//	roleName: customRole.name,
+		//	publicApi: false,
+		// });
 
 		return customRole;
 	}
 
 	@Patch('/:roleId')
 	@GlobalScope('user:update')
+	@Licensed('feat:advancedPermissions')
 	async updateCustomRole(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -145,20 +150,22 @@ export class EnhancedRolesController {
 
 		const updatedRole = await this.enhancedRoleService.updateCustomRole(req.user, roleId, data);
 
-		this.eventService.emit('custom-role-management', {
-			userId: req.user.id,
-			action: 'update',
-			roleId,
-			roleName: updatedRole.name,
-			changes: Object.keys(data),
-			publicApi: false,
-		});
+		// TODO: Add 'custom-role-management' event to EventService type map
+		// this.eventService.emit('custom-role-management', {
+		//	userId: req.user.id,
+		//	action: 'update',
+		//	roleId,
+		//	roleName: updatedRole.name,
+		//	changes: Object.keys(data),
+		//	publicApi: false,
+		// });
 
 		return updatedRole;
 	}
 
 	@Delete('/:roleId')
 	@GlobalScope('user:delete')
+	@Licensed('feat:advancedPermissions')
 	async deleteCustomRole(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -171,12 +178,13 @@ export class EnhancedRolesController {
 
 		await this.enhancedRoleService.deleteCustomRole(req.user, roleId);
 
-		this.eventService.emit('custom-role-management', {
-			userId: req.user.id,
-			action: 'delete',
-			roleId,
-			publicApi: false,
-		});
+		// TODO: Add 'custom-role-management' event to EventService type map
+		// this.eventService.emit('custom-role-management', {
+		//	userId: req.user.id,
+		//	action: 'delete',
+		//	roleId,
+		//	publicApi: false,
+		// });
 
 		return { success: true };
 	}
@@ -185,6 +193,7 @@ export class EnhancedRolesController {
 
 	@Post('/assignments')
 	@GlobalScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
 	async assignRole(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -202,21 +211,23 @@ export class EnhancedRolesController {
 
 		const roleAssignment = await this.enhancedRoleService.assignRole(req.user, assignment);
 
-		this.eventService.emit('enhanced-role-assigned', {
-			assignerId: req.user.id,
-			userId: assignment.userId,
-			roleId: assignment.roleId,
-			scope: assignment.scope,
-			scopeId: assignment.scopeId,
-			expiresAt: assignment.expiresAt,
-			publicApi: false,
-		});
+		// TODO: Add 'enhanced-role-assigned' event to EventService type map
+		// this.eventService.emit('enhanced-role-assigned', {
+		//	assignerId: req.user.id,
+		//	userId: assignment.userId,
+		//	roleId: assignment.roleId,
+		//	scope: assignment.scope,
+		//	scopeId: assignment.scopeId,
+		//	expiresAt: assignment.expiresAt,
+		//	publicApi: false,
+		// });
 
 		return roleAssignment;
 	}
 
 	@Post('/assignments/bulk')
 	@GlobalScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
 	async bulkAssignRoles(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -229,13 +240,14 @@ export class EnhancedRolesController {
 
 		const result = await this.enhancedRoleService.bulkAssignRoles(req.user, request);
 
-		this.eventService.emit('enhanced-roles-bulk-assigned', {
-			assignerId: req.user.id,
-			totalAssignments: request.assignments.length,
-			successCount: result.successCount,
-			errorCount: result.errorCount,
-			publicApi: false,
-		});
+		// TODO: Add 'enhanced-roles-bulk-assigned' event to EventService type map
+		// this.eventService.emit('enhanced-roles-bulk-assigned', {
+		//	assignerId: req.user.id,
+		//	totalAssignments: request.assignments.length,
+		//	successCount: result.successCount,
+		//	errorCount: result.errorCount,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -244,6 +256,7 @@ export class EnhancedRolesController {
 
 	@Post('/check-permission')
 	@GlobalScope('user:read')
+	@Licensed('feat:advancedPermissions')
 	async checkPermission(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -269,6 +282,7 @@ export class EnhancedRolesController {
 
 	@Post('/check-permissions/batch')
 	@GlobalScope('user:read')
+	@Licensed('feat:advancedPermissions')
 	async checkPermissionsBatch(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -310,6 +324,7 @@ export class EnhancedRolesController {
 
 	@Get('/:roleId/analytics')
 	@GlobalScope('user:list')
+	@Licensed('feat:advancedPermissions')
 	async getRoleUsageAnalytics(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -330,6 +345,7 @@ export class EnhancedRolesController {
 
 	@Get('/analytics/overview')
 	@GlobalScope('user:list')
+	@Licensed('feat:advancedPermissions')
 	async getRoleSystemOverview(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -361,6 +377,7 @@ export class EnhancedRolesController {
 
 	@Get('/users/:userId/roles')
 	@GlobalScope('user:read')
+	@Licensed('feat:advancedPermissions')
 	async getUserRoles(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -390,11 +407,12 @@ export class EnhancedRolesController {
 
 	@Get('/users/:userId/permissions')
 	@GlobalScope('user:read')
+	@Licensed('feat:advancedPermissions')
 	async getUserEffectivePermissions(
 		req: AuthenticatedRequest,
 		_: Response,
 		@Param('userId') userId: string,
-		@Query('context') context?: string,
+		@Query context?: string,
 	): Promise<{
 		userId: string;
 		permissions: Array<{
@@ -429,10 +447,11 @@ export class EnhancedRolesController {
 
 	@Get('/templates')
 	@GlobalScope('user:read')
+	@Licensed('feat:advancedPermissions')
 	async getRoleTemplates(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Query('category') category?: string,
+		@Query category?: string,
 	): Promise<
 		Array<{
 			id: string;

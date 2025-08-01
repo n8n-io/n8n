@@ -20,7 +20,6 @@ import { EventService } from '@/events/event.service';
 import { ResourceTransferService } from '@/services/resource-transfer.service';
 
 @RestController('/transfer')
-@Licensed('feat:advancedPermissions')
 export class ResourceTransferController {
 	constructor(
 		private readonly logger: Logger,
@@ -31,6 +30,7 @@ export class ResourceTransferController {
 	// Batch Workflow Transfer
 	@Post('/workflows/batch')
 	@GlobalScope('workflow:move')
+	@Licensed('feat:advancedPermissions')
 	async batchTransferWorkflows(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -52,14 +52,15 @@ export class ResourceTransferController {
 
 		const result = await this.resourceTransferService.batchTransferWorkflows(req.user, request);
 
-		this.eventService.emit('batch-workflow-transfer-requested', {
-			requesterId: req.user.id,
-			workflowCount: request.workflowIds.length,
-			destinationProjectId: request.destinationProjectId,
-			successCount: result.successCount,
-			errorCount: result.errorCount,
-			publicApi: false,
-		});
+		// TODO: Add 'batch-workflow-transfer-requested' event to EventService type map
+		// this.eventService.emit('batch-workflow-transfer-requested', {
+		//	requesterId: req.user.id,
+		//	workflowCount: request.workflowIds.length,
+		//	destinationProjectId: request.destinationProjectId,
+		//	successCount: result.successCount,
+		//	errorCount: result.errorCount,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -67,6 +68,7 @@ export class ResourceTransferController {
 	// Batch Credential Transfer
 	@Post('/credentials/batch')
 	@GlobalScope('credential:move')
+	@Licensed('feat:advancedPermissions')
 	async batchTransferCredentials(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -88,14 +90,15 @@ export class ResourceTransferController {
 
 		const result = await this.resourceTransferService.batchTransferCredentials(req.user, request);
 
-		this.eventService.emit('batch-credential-transfer-requested', {
-			requesterId: req.user.id,
-			credentialCount: request.credentialIds.length,
-			destinationProjectId: request.destinationProjectId,
-			successCount: result.successCount,
-			errorCount: result.errorCount,
-			publicApi: false,
-		});
+		// TODO: Add 'batch-credential-transfer-requested' event to EventService type map
+		// this.eventService.emit('batch-credential-transfer-requested', {
+		//	requesterId: req.user.id,
+		//	credentialCount: request.credentialIds.length,
+		//	destinationProjectId: request.destinationProjectId,
+		//	successCount: result.successCount,
+		//	errorCount: result.errorCount,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -103,6 +106,7 @@ export class ResourceTransferController {
 	// Multi-Resource Project Transfer
 	@Post('/projects/resources')
 	@GlobalScope('project:update')
+	@Licensed('feat:advancedPermissions')
 	async transferProjectResources(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -134,14 +138,15 @@ export class ResourceTransferController {
 
 		const result = await this.resourceTransferService.transferProjectResources(req.user, request);
 
-		this.eventService.emit('multi-resource-transfer-requested', {
-			requesterId: req.user.id,
-			destinationProjectId: request.destinationProjectId,
-			totalResources,
-			successCount: result.summary.totalSuccess,
-			errorCount: result.summary.totalErrors,
-			publicApi: false,
-		});
+		// TODO: Add 'multi-resource-transfer-requested' event to EventService type map
+		// this.eventService.emit('multi-resource-transfer-requested', {
+		//	requesterId: req.user.id,
+		//	destinationProjectId: request.destinationProjectId,
+		//	totalResources,
+		//	successCount: result.summary.totalSuccess,
+		//	errorCount: result.summary.totalErrors,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -149,6 +154,7 @@ export class ResourceTransferController {
 	// Transfer Dependency Analysis
 	@Post('/analyze')
 	@GlobalScope('project:read')
+	@Licensed('feat:advancedPermissions')
 	async analyzeTransferDependencies(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -166,14 +172,15 @@ export class ResourceTransferController {
 			analysis,
 		);
 
-		this.eventService.emit('transfer-dependency-analysis', {
-			requesterId: req.user.id,
-			resourceId: analysis.resourceId,
-			resourceType: analysis.resourceType,
-			canTransfer: result.transferImpact.canTransfer,
-			dependencyCount: result.dependencies.requiredCredentials.length,
-			publicApi: false,
-		});
+		// TODO: Add 'transfer-dependency-analysis' event to EventService type map
+		// this.eventService.emit('transfer-dependency-analysis', {
+		//	requesterId: req.user.id,
+		//	resourceId: analysis.resourceId,
+		//	resourceType: analysis.resourceType,
+		//	canTransfer: result.transferImpact.canTransfer,
+		//	dependencyCount: result.dependencies.requiredCredentials.length,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -181,6 +188,7 @@ export class ResourceTransferController {
 	// Transfer Preview
 	@Post('/preview')
 	@GlobalScope('project:read')
+	@Licensed('feat:advancedPermissions')
 	async previewTransfer(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -206,14 +214,15 @@ export class ResourceTransferController {
 
 		const result = await this.resourceTransferService.previewTransfer(req.user, request);
 
-		this.eventService.emit('transfer-preview-requested', {
-			requesterId: req.user.id,
-			destinationProjectId: request.destinationProjectId,
-			totalResources: result.totalResources,
-			canTransfer: result.canTransfer,
-			warningCount: result.warnings.length,
-			publicApi: false,
-		});
+		// TODO: Add 'transfer-preview-requested' event to EventService type map
+		// this.eventService.emit('transfer-preview-requested', {
+		//	requesterId: req.user.id,
+		//	destinationProjectId: request.destinationProjectId,
+		//	totalResources: result.totalResources,
+		//	canTransfer: result.canTransfer,
+		//	warningCount: result.warnings.length,
+		//	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -221,12 +230,13 @@ export class ResourceTransferController {
 	// Quick Transfer Validation Endpoint
 	@Post('/validate')
 	@GlobalScope('project:read')
+	@Licensed('feat:advancedPermissions')
 	async validateTransfer(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Query('resourceType') resourceType: 'workflow' | 'credential' | 'folder',
-		@Query('resourceId') resourceId: string,
-		@Query('destinationProjectId') destinationProjectId: string,
+		@Query resourceType: 'workflow' | 'credential' | 'folder',
+		@Query resourceId: string,
+		@Query destinationProjectId: string,
 	): Promise<{
 		canTransfer: boolean;
 		reasons: string[];

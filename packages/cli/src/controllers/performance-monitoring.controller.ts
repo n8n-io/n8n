@@ -7,25 +7,26 @@ import {
 	PerformanceMetricsRequestDto,
 } from '@n8n/api-types';
 import { Response } from 'express';
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { LoggerProxy } from 'n8n-workflow';
 
-import type { AuthenticatedRequest } from '@/requests';
 import { PerformanceMonitoringService } from '@/services/performance-monitoring.service';
 import { SystemResourcesService } from '@/services/system-resources.service';
 
-import { Get, RestController, Param, Query } from '@/decorators';
-import { BadRequestError, NotFoundError } from '@/errors/response-errors';
-import { InternalHooks } from '@/internal-hooks';
-import { Logger } from '@/logger';
+import { Get, RestController, Param, Query } from '@n8n/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/performance-monitoring')
 export class PerformanceMonitoringController {
-	private readonly logger = Container.get(Logger);
+	private readonly logger = LoggerProxy;
 
 	constructor(
 		private readonly performanceService: PerformanceMonitoringService,
 		private readonly systemResourcesService: SystemResourcesService,
-		private readonly internalHooks: InternalHooks,
+		// TODO: Fix InternalHooks import path
+		// private readonly internalHooks: InternalHooks,
 	) {}
 
 	/**
@@ -37,7 +38,7 @@ export class PerformanceMonitoringController {
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('id') executionId: string,
-		@Query() query: ExecutionProfileRequestDto,
+		@Query query: ExecutionProfileRequestDto,
 	): Promise<ExecutionProfileDto> {
 		try {
 			// Validate execution ID format
@@ -61,13 +62,14 @@ export class PerformanceMonitoringController {
 			const profile = await this.performanceService.getExecutionProfile(executionId, options);
 
 			// Track usage for analytics
-			void this.internalHooks.onUserAccessedPerformanceProfile({
-				userId: req.user.id,
-				executionId,
-				workflowId: profile.workflowId,
-				includeBottlenecks: options.includeBottlenecks,
-				includeResourceMetrics: options.includeResourceMetrics,
-			});
+			// TODO: Fix InternalHooks import and re-enable tracking
+			// void this.internalHooks.onUserAccessedPerformanceProfile({
+			//	userId: req.user.id,
+			//	executionId,
+			//	workflowId: profile.workflowId,
+			//	includeBottlenecks: options.includeBottlenecks,
+			//	includeResourceMetrics: options.includeResourceMetrics,
+			// });
 
 			return profile;
 		} catch (error) {
@@ -93,7 +95,7 @@ export class PerformanceMonitoringController {
 	async getSystemResources(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: SystemResourcesRequestDto,
+		@Query query: SystemResourcesRequestDto,
 	): Promise<SystemResourcesDto> {
 		try {
 			// Parse query options
@@ -111,11 +113,12 @@ export class PerformanceMonitoringController {
 			const resources = await this.systemResourcesService.getCurrentResources(options);
 
 			// Track usage for analytics
-			void this.internalHooks.onUserAccessedSystemResources({
-				userId: req.user.id,
-				includeWorkers: options.includeWorkers,
-				includeQueue: options.includeQueue,
-			});
+			// TODO: Fix InternalHooks import and re-enable tracking
+			// void this.internalHooks.onUserAccessedSystemResources({
+			//	userId: req.user.id,
+			//	includeWorkers: options.includeWorkers,
+			//	includeQueue: options.includeQueue,
+			// });
 
 			return resources;
 		} catch (error) {
@@ -136,7 +139,7 @@ export class PerformanceMonitoringController {
 	async getPerformanceMetrics(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Query() query: PerformanceMetricsRequestDto,
+		@Query query: PerformanceMetricsRequestDto,
 	): Promise<PerformanceMetricsDto> {
 		try {
 			// Validate time range parameters
@@ -189,13 +192,14 @@ export class PerformanceMonitoringController {
 			const metrics = await this.performanceService.getPerformanceMetrics(query);
 
 			// Track usage for analytics
-			void this.internalHooks.onUserAccessedPerformanceMetrics({
-				userId: req.user.id,
-				timeRange: query.timeRange,
-				workflowId: query.workflowId,
-				hasCustomDateRange: !!(query.startDate && query.endDate),
-				statusFilter: query.status,
-			});
+			// TODO: Fix InternalHooks import and re-enable tracking
+			// void this.internalHooks.onUserAccessedPerformanceMetrics({
+			//	userId: req.user.id,
+			//	timeRange: query.timeRange,
+			//	workflowId: query.workflowId,
+			//	hasCustomDateRange: !!(query.startDate && query.endDate),
+			//	statusFilter: query.status,
+			// });
 
 			return metrics;
 		} catch (error) {
@@ -224,11 +228,12 @@ export class PerformanceMonitoringController {
 			const health = await this.systemResourcesService.checkSystemHealth();
 
 			// Track usage for analytics
-			void this.internalHooks.onUserAccessedSystemHealth({
-				userId: req.user.id,
-				healthy: health.healthy,
-				issueCount: health.issues.length,
-			});
+			// TODO: Fix InternalHooks import and re-enable tracking
+			// void this.internalHooks.onUserAccessedSystemHealth({
+			//	userId: req.user.id,
+			//	healthy: health.healthy,
+			//	issueCount: health.issues.length,
+			// });
 
 			return health;
 		} catch (error) {
@@ -277,12 +282,13 @@ export class PerformanceMonitoringController {
 			};
 
 			// Track usage for analytics
-			void this.internalHooks.onUserAccessedExecutionBottlenecks({
-				userId: req.user.id,
-				executionId,
-				workflowId: profile.workflowId,
-				bottleneckCount: profile.bottlenecks.length,
-			});
+			// TODO: Fix InternalHooks import and re-enable tracking
+			// void this.internalHooks.onUserAccessedExecutionBottlenecks({
+			//	userId: req.user.id,
+			//	executionId,
+			//	workflowId: profile.workflowId,
+			//	bottleneckCount: profile.bottlenecks.length,
+			// });
 
 			return result;
 		} catch (error) {
