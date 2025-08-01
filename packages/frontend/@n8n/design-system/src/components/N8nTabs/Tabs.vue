@@ -188,6 +188,10 @@ const scrollRight = () => scroll(50);
 	/* Hide scrollbar for IE, Edge and Firefox */
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
+
+	.small.modern & {
+		gap: var(--spacing-xs);
+	}
 }
 
 .tab {
@@ -218,6 +222,10 @@ const scrollRight = () => scroll(50);
 
 	.small & {
 		font-size: var(--font-size-2xs);
+	}
+
+	.small.modern & {
+		padding-inline: 0;
 	}
 }
 

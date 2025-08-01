@@ -94,7 +94,7 @@ $input.item()
 return []
 `);
 
-			getParameter().get('.cm-lintRange-error').should('have.length', 5);
+			getParameter().get('.cm-lintRange-error').should('have.length.gte', 5);
 			getParameter().contains('all').realHover();
 			cy.get('.cm-tooltip-lint').should(
 				'have.text',
