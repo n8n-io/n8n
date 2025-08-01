@@ -99,6 +99,6 @@ defineSlots<{ actions?: {} }>();
 }
 
 .tabsContainer {
-	padding-inline: var(--spacing-2xs);
+	padding-inline: var(--spacing-xs);
 }
 </style>
