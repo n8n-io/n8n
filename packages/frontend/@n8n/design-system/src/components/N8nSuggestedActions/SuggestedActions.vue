@@ -43,8 +43,10 @@ const ignoringActions = ref<Set<string>>(new Set());
 
 const completedCount = computed(() => props.actions.filter((action) => action.completed).length);
 
-const handleActionClick = (actionId: string) => {
-	emit('action-click', actionId);
+const handleActionClick = (action: SuggestedAction) => {
+	if (!action.completed) {
+		emit('action-click', action.id);
+	}
 };
 
 const handleIgnoreClick = (actionId: string) => {
@@ -81,21 +83,27 @@ defineExpose({
 				<div
 					v-for="action in actions"
 					:key="action.id"
-					:class="[$style.actionItem, { [$style.ignoring]: ignoringActions.has(action.id) }]"
+					:class="[
+						$style.actionItem,
+						{
+							[$style.ignoring]: ignoringActions.has(action.id),
+							[$style.actionable]: !action.completed,
+						},
+					]"
 					data-test-id="suggested-action-item"
-					@click.prevent.stop="() => handleActionClick(action.id)"
+					@click.prevent.stop="() => handleActionClick(action)"
 				>
 					<div :class="$style.checkboxContainer">
 						<N8nIcon v-if="action.completed" icon="circle-check" color="success" />
 						<N8nIcon v-else icon="circle" color="foreground-dark" />
 					</div>
 					<div :class="$style.actionItemBody">
-						<div :class="['mb-3xs', $style.actionHeader]">
+						<div :class="[action.completed ? '' : 'mb-3xs', $style.actionHeader]">
 							<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
 
-							<N8nIcon icon="chevron-right" />
+							<N8nIcon v-if="!action.completed" icon="chevron-right" />
 						</div>
-						<div>
+						<div v-if="!action.completed">
 							<N8nText size="small" color="text-base">
 								{{ action.description }}
 								<N8nLink
@@ -111,7 +119,7 @@ defineExpose({
 								</N8nLink>
 							</N8nText>
 						</div>
-						<div :class="$style.actionButtons">
+						<div v-if="!action.completed" :class="$style.actionButtons">
 							<N8nLink
 								theme="text"
 								size="small"
@@ -167,7 +175,9 @@ defineExpose({
 		pointer-events: none;
 		cursor: not-allowed;
 	}
+}
 
+.actionable {
 	&:hover {
 		cursor: pointer;
 
@@ -192,7 +202,7 @@ defineExpose({
 }
 
 .checkboxContainer {
-	padding-top: var(--spacing-5xs);
+	padding-top: var(--spacing-6xs);
 	padding-right: var(--spacing-xs);
 }
 
