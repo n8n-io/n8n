@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { ExecutionStatus } from './execution-profile.dto';
-
 export class TimeRangeDto extends Z.class({
 	start: z.string().datetime(),
 	end: z.string().datetime(),
@@ -10,7 +8,9 @@ export class TimeRangeDto extends Z.class({
 
 export class MetricFiltersDto extends Z.class({
 	workflowId: z.string().optional(),
-	status: z.array(z.nativeEnum(ExecutionStatus)).optional(),
+	status: z
+		.array(z.enum(['new', 'running', 'success', 'error', 'canceled', 'crashed', 'waiting']))
+		.optional(),
 }) {}
 
 export class ExecutionCountsDto extends Z.class({
