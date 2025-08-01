@@ -939,10 +939,3 @@ onBeforeUnmount(() => {
 	height: var(--draggable-height);
 }
 </style>
-
-<style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
-}
-</style>
