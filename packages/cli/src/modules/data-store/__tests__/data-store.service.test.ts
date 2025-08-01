@@ -351,15 +351,15 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0]).toEqual({ ...dataStore1, project: expect.any(Project) });
-			expect(result[0][0].project).toEqual({
+			expect(result.data).toHaveLength(1);
+			expect(result.data[0]).toEqual({ ...dataStore1, project: expect.any(Project) });
+			expect(result.data[0].project).toEqual({
 				icon: null,
 				id: project1.id,
 				name: project1.name,
 				type: project1.type,
 			});
-			expect(result[1]).toEqual(1);
+			expect(result.count).toEqual(1);
 		});
 		it('should retrieve by ids', async () => {
 			// ARRANGE
@@ -374,10 +374,10 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result[0]).toHaveLength(2);
-			expect(result[0]).toContainEqual({ ...dataStore3, project: expect.any(Project) });
-			expect(result[0]).toContainEqual({ ...dataStore1, project: expect.any(Project) });
-			expect(result[1]).toEqual(2);
+			expect(result.data).toHaveLength(2);
+			expect(result.data).toContainEqual({ ...dataStore3, project: expect.any(Project) });
+			expect(result.data).toContainEqual({ ...dataStore1, project: expect.any(Project) });
+			expect(result.count).toEqual(2);
 		});
 		it('should retrieve by projectId', async () => {
 			// ARRANGE
@@ -396,8 +396,8 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result[0].map((x) => x.name).sort()).toEqual(names.sort());
-			expect(result[1]).toEqual(11);
+			expect(result.data.map((x) => x.name).sort()).toEqual(names.sort());
+			expect(result.count).toEqual(11);
 		});
 		it('should retrieve by id with pagination', async () => {
 			// ARRANGE
@@ -427,19 +427,19 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(p0[1]).toBe(11);
-			expect(p0[0]).toHaveLength(3);
+			expect(p0.count).toBe(11);
+			expect(p0.data).toHaveLength(3);
 
-			expect(p1[1]).toBe(11);
-			expect(p1[0]).toHaveLength(3);
+			expect(p1.count).toBe(11);
+			expect(p1.data).toHaveLength(3);
 
-			expect(rest[1]).toBe(11);
-			expect(rest[0]).toHaveLength(5);
+			expect(rest.count).toBe(11);
+			expect(rest.data).toHaveLength(5);
 
 			expect(
-				p0[0]
-					.concat(p1[0])
-					.concat(rest[0])
+				p0.data
+					.concat(p1.data)
+					.concat(rest.data)
 					.map((x) => x.name)
 					.sort(),
 			).toEqual(names.sort());
@@ -462,8 +462,8 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result[1]).toEqual(1);
-			expect(result[0][0].columns).toEqual([
+			expect(result.count).toEqual(1);
+			expect(result.data[0].columns).toEqual([
 				{
 					id: expect.any(String),
 					name: 'myColumn1',
@@ -545,14 +545,14 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(createdAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-			expect(createdDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
-			expect(updatedAsc[0].map((x) => x.name)).toEqual(['ds1', 'ds0', 'ds2']);
-			expect(updatedDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds0', 'ds1']);
-			expect(nameAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-			expect(nameDesc[0].map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
-			expect(sizeBytesAsc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-			expect(sizeBytesDesc[0].map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(createdAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(createdDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			expect(updatedAsc.data.map((x) => x.name)).toEqual(['ds1', 'ds0', 'ds2']);
+			expect(updatedDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds0', 'ds1']);
+			expect(nameAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(nameDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			expect(sizeBytesAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+			expect(sizeBytesDesc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
 		});
 	});
 
@@ -682,13 +682,11 @@ describe('dataStore', () => {
 			const result = await dataStoreService.getManyRowsAndCount(dataStore1.id, {});
 
 			// ASSERT
-			expect(result).toEqual([
-				3,
-				[
-					{ c1: 3, c2: 1, c3: '1970-01-01T00:00:00.000Z', c4: 'hello?', id: 1 },
-					{ c1: 4, c2: 0, c3: '1970-01-01T00:00:00.001Z', c4: 'hello!', id: 2 },
-					{ c1: 5, c2: 1, c3: '1970-01-01T00:00:00.002Z', c4: 'hello.', id: 3 },
-				],
+			expect(result.count).toEqual(3);
+			expect(result.data).toEqual([
+				{ c1: 3, c2: 1, c3: '1970-01-01T00:00:00.000Z', c4: 'hello?', id: 1 },
+				{ c1: 4, c2: 0, c3: '1970-01-01T00:00:00.001Z', c4: 'hello!', id: 2 },
+				{ c1: 5, c2: 1, c3: '1970-01-01T00:00:00.002Z', c4: 'hello.', id: 3 },
 			]);
 		});
 	});
