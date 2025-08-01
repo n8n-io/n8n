@@ -600,7 +600,7 @@ th.loading-row {
 	background-color: transparent;
 	padding: 0 !important;
 	border: 0 !important;
-	height: 0px;
+	height: 0;
 	position: relative;
 }
 

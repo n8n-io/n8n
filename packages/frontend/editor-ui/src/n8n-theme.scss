@@ -30,7 +30,7 @@
 
 .el-dialog {
 	border: var(--border-base);
-	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
+	box-shadow: 0 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
 
 	&.classic {
@@ -61,7 +61,7 @@
 		}
 		.el-dialog__body {
 			color: var(--color-text-dark);
-			padding: 0 20px 20px 20px;
+			padding: 0 20px 20px;
 		}
 		.el-dialog__title {
 			color: var(--color-text-dark);
@@ -127,7 +127,7 @@
 
 .el-tabs__content {
 	border: 1px solid var(--color-foreground-base);
-	border-radius: 0px var(--border-radius-base) var(--border-radius-base);
+	border-radius: 0 var(--border-radius-base) var(--border-radius-base);
 }
 .el-tabs__header {
 	border-bottom: 0 !important;
@@ -209,7 +209,7 @@
 
 		.el-notification__closeBtn {
 			height: 100%;
-			top: 0px;
+			top: 0;
 			right: var(--spacing-xs);
 		}
 	}

@@ -4,8 +4,7 @@ export const baseConfig: Config = {
 	// Basic SCSS support with essential rules
 	plugins: ['stylelint-scss'],
 	rules: {
-		// Allow Vue.js single file component syntax
-		'no-empty-source': null,
+		'no-empty-source': true,
 
 		// Basic syntax and consistency rules
 		'color-hex-length': 'short',
@@ -14,12 +13,54 @@ export const baseConfig: Config = {
 		'no-duplicate-selectors': true,
 		'no-invalid-double-slash-comments': true,
 
+		// Quality rules (keep only the working ones)
+		'length-zero-no-unit': true,
+		// 'no-descending-specificity': disabled - too many existing issues (would require major refactoring) but this would be a must have
+		'no-duplicate-at-import-rules': true,
+		'shorthand-property-no-redundant-values': true,
+		// 'declaration-block-no-shorthand-property-overrides': disabled - conflicts with intentional CSS patterns
+		'at-rule-no-unknown': [
+			true,
+			{
+				ignoreAtRules: [
+					'tailwind',
+					'apply',
+					'variants',
+					'responsive',
+					'screen',
+					'use',
+					'forward',
+					'include',
+					'mixin',
+					'function',
+					'return',
+					'if',
+					'else',
+					'for',
+					'each',
+					'while',
+					'extend',
+					'at-root',
+					'warn',
+					'error',
+				],
+			},
+		],
+
 		// SCSS specific rules
 		'scss/dollar-variable-colon-space-after': 'always-single-line',
 		'scss/dollar-variable-colon-space-before': 'never',
 		'scss/dollar-variable-no-missing-interpolation': true,
 		'scss/double-slash-comment-whitespace-inside': 'always',
 		'scss/operator-no-unspaced': true,
+		'scss/property-no-unknown': [
+			true,
+			{
+				ignoreProperties: ['composes'],
+			},
+		],
+		'scss/at-import-partial-extension-disallowed-list': ['scss'],
+		// 'scss/selector-no-redundant-nesting-selector': disabled - would require manual fixes across many files
 	},
 	ignoreFiles: [
 		'**/node_modules/**/*',
