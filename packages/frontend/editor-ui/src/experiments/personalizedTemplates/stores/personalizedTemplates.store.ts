@@ -17,14 +17,14 @@ import { computed, ref, watch } from 'vue';
 const SIMPLE_TEMPLATES = [6270, 5271, 2178];
 
 const PREDEFINED_TEMPLATES_BY_NODE = {
-	gmail: [5678, 4722, 5694],
-	googleSheets: [5694, 5690, 5906],
-	telegram: [5626, 2114, 4875],
-	openAi: [2462, 2722, 2178],
-	googleGemini: [5993, 6270, 5677],
-	googleCalendar: [2328, 3393, 2110],
-	youTube: [3188, 4846, 4506],
-	airtable: [3053, 2700, 2579],
+	'n8n-nodes-base.gmail': [5678, 4722, 5694],
+	'n8n-nodes-base.googleSheets': [5694, 5690, 5906],
+	'n8n-nodes-base.telegram': [5626, 2114, 4875],
+	'@n8n/n8n-nodes-langchain.openAi': [2462, 2722, 2178],
+	'@n8n/n8n-nodes-langchain.googleGemini': [5993, 6270, 5677],
+	'n8n-nodes-base.googleCalendar': [2328, 3393, 2110],
+	'n8n-nodes-base.youTube': [3188, 4846, 4506],
+	'n8n-nodes-base.airtable': [3053, 2700, 2579],
 };
 
 function getPredefinedFromSelected(selectedApps: string[]) {
@@ -139,7 +139,7 @@ export const usePersonalizedTemplatesStore = defineStore(STORES.PERSONALIZED_TEM
 				categories: [],
 				search: '',
 				sort: 'rank:desc',
-				apps: selectedApps.length > 0 ? selectedApps : undefined,
+				nodes: selectedApps.length > 0 ? selectedApps : undefined,
 				combineWith: 'or',
 			});
 
