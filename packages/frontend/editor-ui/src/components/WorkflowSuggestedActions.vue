@@ -64,7 +64,11 @@ const availableActions = computed(() => {
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Evaluations action
-	if (hasAINode.value && !suggestedActionSettings.evaluations?.ignored) {
+	if (
+		hasAINode.value &&
+		evaluationStore.isEvaluationEnabled &&
+		!suggestedActionSettings.evaluations?.ignored
+	) {
 		actions.push({
 			id: 'evaluations',
 			title: i18n.baseText('workflowSuggestedActions.evaluations.title'),
