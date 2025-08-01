@@ -58,5 +58,5 @@ export default defineConfig({
 				['json', { outputFile: 'test-results.json' }],
 				currentsReporter(currentsConfig),
 			]
-		: [['html']],
+		: [['list']],
 });

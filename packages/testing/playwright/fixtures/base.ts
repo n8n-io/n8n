@@ -1,4 +1,4 @@
-import { test as base, expect, type TestInfo } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
@@ -7,12 +7,14 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
-import { TestError } from '../Types';
+import { TestError, type TestRequirements } from '../Types';
+import { setupTestRequirements } from '../utils/requirements';
 
 type TestFixtures = {
 	n8n: n8nPage;
 	api: ApiHelpers;
 	baseURL: string;
+	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 };
 
 type WorkerFixtures = {
@@ -40,8 +42,10 @@ interface ContainerConfig {
 export const test = base.extend<TestFixtures, WorkerFixtures>({
 	// Container configuration from the project use options
 	containerConfig: [
-		async ({}, use, testInfo: TestInfo) => {
-			const config = (testInfo.project.use?.containerConfig as ContainerConfig) || {};
+		async ({}, use, workerInfo) => {
+			const config =
+				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
+					?.containerConfig ?? {};
 			config.env = {
 				...config.env,
 				E2E_TESTS: 'true',
@@ -122,6 +126,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	// Browser, baseURL, and dbSetup are required here to ensure they run first.
 	// This is how Playwright does dependency graphs
 	context: async ({ context, browser, baseURL, dbSetup }, use) => {
+		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
+		void browser;
+		void baseURL;
+		void dbSetup;
+
 		await setupDefaultInterceptors(context);
 		await use(context);
 	},
@@ -144,6 +153,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	api: async ({ context }, use) => {
 		const api = new ApiHelpers(context.request);
 		await use(api);
+	},
+
+	setupRequirements: async ({ page, context }, use) => {
+		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
+			await setupTestRequirements(page, context, requirements);
+		};
+
+		await use(setupFunction);
 	},
 });
 

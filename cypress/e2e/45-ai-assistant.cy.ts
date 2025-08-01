@@ -13,7 +13,9 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
 
-describe('AI Assistant::disabled', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('AI Assistant::disabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.disableAssistant();
 		wf.actions.visit();
@@ -24,7 +26,9 @@ describe('AI Assistant::disabled', () => {
 	});
 });
 
-describe('AI Assistant::enabled', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('AI Assistant::enabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.enableAssistant();
 		wf.actions.visit();

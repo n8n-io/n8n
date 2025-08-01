@@ -1,4 +1,5 @@
 import type { Locator } from '@playwright/test';
+import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
 import { resolveFromRoot } from '../utils/path-helper';
@@ -6,6 +7,10 @@ import { resolveFromRoot } from '../utils/path-helper';
 export class CanvasPage extends BasePage {
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
+	}
+
+	workflowSaveButton(): Locator {
+		return this.page.getByTestId('workflow-save-button');
 	}
 
 	canvasAddButton(): Locator {
@@ -132,7 +137,6 @@ export class CanvasPage extends BasePage {
 	async clickExecutionsTab(): Promise<void> {
 		await this.page.getByRole('radio', { name: 'Executions' }).click();
 	}
-
 	async setWorkflowName(name: string): Promise<void> {
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', name);
@@ -161,7 +165,6 @@ export class CanvasPage extends BasePage {
 	getWorkflowTags() {
 		return this.page.getByTestId('workflow-tags').locator('.el-tag');
 	}
-
 	async activateWorkflow() {
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
@@ -169,5 +172,46 @@ export class CanvasPage extends BasePage {
 		);
 		await this.page.getByTestId('workflow-activate-switch').click();
 		await responsePromise;
+	}
+
+	async clickZoomToFitButton(): Promise<void> {
+		await this.clickByTestId('zoom-to-fit');
+	}
+
+	/**
+	 * Get node issues for a specific node
+	 */
+	getNodeIssuesByName(nodeName: string) {
+		return this.nodeByName(nodeName).getByTestId('node-issues');
+	}
+
+	/**
+	 * Add tags to the workflow
+	 * @param count - The number of tags to add
+	 * @returns An array of tag names
+	 */
+	async addTags(count: number = 1): Promise<string[]> {
+		const tags: string[] = [];
+
+		for (let i = 0; i < count; i++) {
+			const tag = `tag-${nanoid(8)}-${i}`;
+			tags.push(tag);
+
+			if (i === 0) {
+				await this.clickByText('Add tag');
+			} else {
+				await this.page
+					.getByTestId('tags-dropdown')
+					.getByText(tags[i - 1])
+					.click();
+			}
+
+			await this.page.getByRole('combobox').first().fill(tag);
+			await this.page.getByRole('combobox').first().press('Enter');
+		}
+
+		await this.page.click('body');
+
+		return tags;
 	}
 }
