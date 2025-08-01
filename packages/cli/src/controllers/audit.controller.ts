@@ -130,12 +130,8 @@ export class AuditController {
 			const options = {
 				startDate: query.startDate ? new Date(query.startDate) : undefined,
 				endDate: query.endDate ? new Date(query.endDate) : undefined,
-				eventTypes: query.eventTypes
-					? query.eventTypes.split(',')
-					: undefined,
-				categories: query.categories
-					? (query.categories.split(',') as any)
-					: undefined,
+				eventTypes: query.eventTypes ? query.eventTypes.split(',') : undefined,
+				categories: query.categories ? (query.categories.split(',') as any) : undefined,
 				severities: query.severities
 					? (query.severities.split(',') as AuditEventSeverity[])
 					: undefined,

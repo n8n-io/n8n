@@ -7,7 +7,13 @@ import { LoggerProxy } from 'n8n-workflow';
 
 // TODO: Add these types to @n8n/db package exports
 type AuditEventType = string;
-type AuditEventCategory = 'authentication' | 'authorization' | 'data_access' | 'configuration' | 'system' | 'security';
+type AuditEventCategory =
+	| 'authentication'
+	| 'authorization'
+	| 'data_access'
+	| 'configuration'
+	| 'system'
+	| 'security';
 type AuditEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 /**

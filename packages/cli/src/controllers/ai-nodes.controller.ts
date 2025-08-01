@@ -7,28 +7,27 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import type { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
+// Future import for workflow execution
+// import { Workflow, INodeExecutionData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
-import { AiService } from '@/services/ai.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+// Future imports for AI service integration
+// import { AiService } from '@/services/ai.service';
+// import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 @RestController('/ai-nodes')
 export class AiNodesController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
-		private readonly aiService: AiService,
+		// Future use for AI service integration
+		// private readonly aiService: AiService,
 	) {}
 
 	@Get('/config')
@@ -48,7 +47,7 @@ export class AiNodesController {
 
 			const configurations = await Promise.all(
 				aiNodeTypes.map(async (nodeTypeInfo) => {
-					const { description, nodeInstance } = nodeTypeInfo;
+					const { description } = nodeTypeInfo;
 					const config = {
 						name: description.name,
 						displayName: description.displayName,
@@ -101,7 +100,7 @@ export class AiNodesController {
 			nodeVersion = 1,
 			prompt,
 			configuration = {},
-			testData = {},
+			// testData = {}, // TODO: Use testData when implementing AI node testing
 			model,
 			temperature = 0.7,
 			maxTokens,
@@ -136,7 +135,8 @@ export class AiNodesController {
 				...(maxTokens && { maxTokens }),
 			};
 
-			// Create a minimal workflow for testing the AI node
+			// TODO: Create workflow and input data when implementing AI node testing
+			/*
 			const testWorkflow = new Workflow({
 				id: `test-ai-${uuid()}`,
 				name: 'AI Prompt Test Workflow',
@@ -160,13 +160,15 @@ export class AiNodesController {
 			const inputData: INodeExecutionData[] = [
 				{
 					json: {
-						...testData,
+						// ...testData,
 						prompt,
 					},
 				},
 			];
+			*/
 
-			// Create execution data
+			// TODO: Create execution data when implementing workflow execution
+			/* 
 			const executionData = {
 				startData: {},
 				resultData: {
@@ -194,6 +196,7 @@ export class AiNodesController {
 				undefined,
 				undefined,
 			);
+			*/
 
 			// Execute the AI node
 			// TODO: Fix runNode method - doesn't exist on Workflow class

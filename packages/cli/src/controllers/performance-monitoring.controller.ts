@@ -7,7 +7,8 @@ import {
 	PerformanceMetricsRequestDto,
 } from '@n8n/api-types';
 import { Response } from 'express';
-import { Container } from '@n8n/di';
+// Future import for DI container
+// import { Container } from '@n8n/di';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { LoggerProxy } from 'n8n-workflow';
 
@@ -36,7 +37,7 @@ export class PerformanceMonitoringController {
 	@Get('/executions/:id/profile')
 	async getExecutionProfile(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('id') executionId: string,
 		@Query query: ExecutionProfileRequestDto,
 	): Promise<ExecutionProfileDto> {
@@ -94,7 +95,7 @@ export class PerformanceMonitoringController {
 	@Get('/system/resources')
 	async getSystemResources(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: SystemResourcesRequestDto,
 	): Promise<SystemResourcesDto> {
 		try {

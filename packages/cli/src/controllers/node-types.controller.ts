@@ -10,17 +10,19 @@ import type {
 	INodeTypeNameVersion,
 	INodeExecutionData,
 	IDataObject,
-	IRunExecutionData,
 	WorkflowExecuteMode,
 	INodeParameters,
 } from 'n8n-workflow';
+// Future import for workflow execution
+// import type { IRunExecutionData } from 'n8n-workflow';
 import { Workflow, ApplicationError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+// Future import for workflow execution
+// import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 @RestController('/node-types')
 export class NodeTypesController {
@@ -99,7 +101,7 @@ export class NodeTypesController {
 			nodeVersion = 1,
 			parameters = {},
 			inputData = [],
-			mode = 'manual',
+			// mode = 'manual', // TODO: Use mode when implementing workflow execution
 		} = req.body;
 
 		if (!nodeType) {
@@ -140,7 +142,8 @@ export class NodeTypesController {
 				settings: {},
 			} as any); // Cast to any to bypass strict type checking for test workflow
 
-			// Create execution data
+			// TODO: Create execution data when implementing proper node testing
+			/*
 			const executionData: IRunExecutionData = {
 				startData: {},
 				resultData: {
@@ -163,8 +166,10 @@ export class NodeTypesController {
 					waitingExecutionSource: null,
 				},
 			};
+			*/
 
-			// Create additional data for execution
+			// TODO: Create additional data and execution context when implementing proper node testing
+			/*
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(
 				req.user.id,
 				undefined,
@@ -176,6 +181,7 @@ export class NodeTypesController {
 			const nodeExecutionStack = runExecutionData.nodeExecutionStack;
 			const node = nodeExecutionStack[0].node;
 			const nodeInputData = nodeExecutionStack[0].data;
+			*/
 
 			// TODO: Implement proper node execution testing
 			// Execute the node (placeholder implementation)

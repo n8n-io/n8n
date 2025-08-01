@@ -36,9 +36,12 @@ export class PerformanceMonitoringService {
 	): Promise<ExecutionProfileDto> {
 		try {
 			// Get execution data from database
-			const execution = await this.executionService.findOne(executionId as any, {
-				includeData: true,
-			} as any);
+			const execution = await this.executionService.findOne(
+				executionId as any,
+				{
+					includeData: true,
+				} as any,
+			);
 
 			if (!execution) {
 				throw new ApplicationError('Execution not found', { extra: { executionId } });
@@ -107,7 +110,9 @@ export class PerformanceMonitoringService {
 			const { timeRange, startDate, endDate } = this.parseTimeRange(request);
 
 			// Get executions within time range - using alternative approach
-			const executions = [] as any; // await this.executionService.findMany({
+			const executions = [] as any;
+			/* TODO: Implement execution service query when available
+			await this.executionService.findMany({
 				where: {
 					...(request.workflowId && { workflowId: request.workflowId }),
 					...(request.status && {
@@ -126,6 +131,7 @@ export class PerformanceMonitoringService {
 					finishedAt: true,
 				},
 			});
+			*/
 
 			// Calculate aggregated metrics
 			const metrics = this.calculateAggregatedMetrics(executions, timeRange);

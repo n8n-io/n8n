@@ -32,7 +32,8 @@ import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+// Future import for event handling
+// import { EventService } from '@/events/event.service';
 import { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';
 
 @RestController('/roles/enhanced')
@@ -40,7 +41,8 @@ export class EnhancedRolesController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly enhancedRoleService: EnhancedRoleManagementService,
-		private readonly eventService: EventService,
+		// Future use for event handling
+		// private readonly eventService: EventService,
 	) {}
 
 	// Permission Management Endpoints
