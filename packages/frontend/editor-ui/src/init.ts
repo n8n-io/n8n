@@ -22,6 +22,10 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRBACStore } from '@/stores/rbac.store';
+import {
+	registerModuleProjectTabs,
+	registerModuleResources,
+} from '@/moduleInitializer/moduleInitializer';
 
 export const state = {
 	initialized: false,
@@ -180,6 +184,10 @@ export async function initializeAuthenticatedFeatures(
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
 	]);
+
+	// Initialize modules
+	registerModuleResources();
+	registerModuleProjectTabs();
 
 	authenticatedFeaturesInitialized = true;
 }
