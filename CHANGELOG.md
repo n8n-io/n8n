@@ -1,3 +1,12 @@
+## [1.105.2](https://github.com/n8n-io/n8n/compare/n8n@1.105.1...n8n@1.105.2) (2025-08-01)
+
+
+### Bug Fixes
+
+* **editor:** Fix invisible node creator icons ([#17870](https://github.com/n8n-io/n8n/issues/17870)) ([7458edc](https://github.com/n8n-io/n8n/commit/7458edcd9e306bfd866bf0b8511f5ba841e844b1))
+
+
+
 ## [1.105.1](https://github.com/n8n-io/n8n/compare/n8n@1.105.0...n8n@1.105.1) (2025-08-01)
 
 
