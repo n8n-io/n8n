@@ -1,4 +1,5 @@
-import type { DataStoreColumn } from '../data-store.types';
+import type { DataStoreColumn } from '@n8n/api-types';
+
 import {
 	createUserTableQuery,
 	addColumnQuery,
@@ -11,8 +12,8 @@ describe('sql-utils', () => {
 		it('should generate a valid SQL query for creating a user table with columns', () => {
 			const tableName = 'data_store_user_abc';
 			const columns = [
-				{ name: 'name', type: 'string' },
-				{ name: 'age', type: 'number' },
+				{ dataStoreId: '1', name: 'name', type: 'string' },
+				{ dataStoreId: '2', name: 'age', type: 'number' },
 			] satisfies DataStoreColumn[];
 
 			const query = createUserTableQuery(tableName, columns, 'sqlite');
