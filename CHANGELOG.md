@@ -1,3 +1,13 @@
+## [1.105.1](https://github.com/n8n-io/n8n/compare/n8n@1.105.0...n8n@1.105.1) (2025-08-01)
+
+
+### Bug Fixes
+
+* **core:** Replace misleading "No path back to node" error with helpful execution message ([#17759](https://github.com/n8n-io/n8n/issues/17759)) ([cd97a1c](https://github.com/n8n-io/n8n/commit/cd97a1cad0a09c7e73f89d8b809e358da7505add))
+* **editor:** Account for subpath when serving `config.js` ([#17832](https://github.com/n8n-io/n8n/issues/17832)) ([1028a21](https://github.com/n8n-io/n8n/commit/1028a21b18310521cbe9e9cda5a3f5122b0398e7))
+
+
+
 # [1.105.0](https://github.com/n8n-io/n8n/compare/n8n@1.104.0...n8n@1.105.0) (2025-07-28)
 
 
