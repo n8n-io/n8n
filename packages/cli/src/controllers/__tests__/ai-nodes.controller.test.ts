@@ -198,9 +198,16 @@ describe('AiNodesController', () => {
 
 		it('should throw error for non-AI node types', async () => {
 			const nonAiNodeDescription: INodeTypeDescription = {
-				...mockAiNodeDescription,
+				displayName: 'Regular Data Processor',
+				name: 'regularNode',
+				icon: 'file:regular.svg' as const,
 				group: ['transform'],
+				version: [1],
 				description: 'Regular node for data processing',
+				defaults: { name: 'Regular Data Processor' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
 			};
 
 			const nonAiNodeType: INodeType = {
