@@ -111,6 +111,7 @@ declare global {
 				set?(metadata: IDataObject): void;
 			};
 			debug?(): void;
+			get_session_id?(): string | null;
 		};
 		analytics?: {
 			identify(userId: string): void;
