@@ -18,10 +18,13 @@ import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
-}));
+jest.mock('n8n-workflow', () => {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	return {
+		...jest.requireActual('n8n-workflow'),
+		sleep: jest.fn(),
+	};
+});
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -102,7 +105,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	describe('attachWorkflowExecution', () => {
-		test('Should fail attaching execution to invalid executionId', async () => {
+		test('Should fail attaching execution to invalid executionId', () => {
 			expect(() => {
 				activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, workflowExecution);
 			}).toThrow();
@@ -165,7 +168,7 @@ describe('ActiveExecutions', () => {
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 		});
 
-		test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
+		test('Should not try to resolve a post-execute promise for an inactive execution', () => {
 			const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecutionOrFail');
 
 			activeExecutions.finalizeExecution('inactive-execution-id', fullRunData);
@@ -272,7 +275,7 @@ describe('ActiveExecutions', () => {
 			await expect(postExecutePromise).rejects.toThrow(ExecutionCancelledError);
 		});
 
-		test('Should cancel waiting executions', async () => {
+		test('Should cancel waiting executions', () => {
 			activeExecutions.setStatus(executionId, 'waiting');
 			activeExecutions.stopExecution(executionId);
 
@@ -288,9 +291,7 @@ describe('ActiveExecutions', () => {
 		beforeEach(async () => {
 			config.set('executions.mode', 'regular');
 
-			executionRepository.createNewExecution.mockImplementation(async () =>
-				randomInt(1000, 2000).toString(),
-			);
+			executionRepository.createNewExecution.mockResolvedValue(randomInt(1000, 2000).toString());
 
 			(sleep as jest.Mock).mockImplementation(() => {
 				// @ts-expect-error private property
