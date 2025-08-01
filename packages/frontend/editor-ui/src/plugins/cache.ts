@@ -3,7 +3,6 @@ export type IndexedDbCache = Awaited<ReturnType<typeof indexedDbCache>>;
 export async function indexedDbCache(dbName: string, storeName: string) {
 	let cache: Record<string, string> = {};
 
-	let cacheLoading = true;
 	void (await loadCache());
 
 	async function loadCache() {
@@ -20,14 +19,12 @@ export async function indexedDbCache(dbName: string, storeName: string) {
 					} else {
 						db.close();
 						resolve();
-						cacheLoading = false;
 					}
 				};
 
 				request.onerror = (event) => {
 					db.close();
 					reject(event);
-					cacheLoading = false;
 				};
 			});
 		});
@@ -129,5 +126,5 @@ export async function indexedDbCache(dbName: string, storeName: string) {
 		});
 	}
 
-	return { getItem, removeItem, setItem, clear, getAllWithPrefix, cacheLoading };
+	return { getItem, removeItem, setItem, clear, getAllWithPrefix };
 }
