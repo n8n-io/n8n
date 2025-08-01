@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
-import type { AiService } from '@/services/ai.service';
+// import type { AiService } from '@/services/ai.service';
 
 import { AiNodesController } from '../ai-nodes.controller';
 
@@ -20,17 +20,17 @@ const mockNodeTypes: NodeTypes = {
 	getByNameAndVersion: jest.fn(),
 } as any;
 
-const mockAiService: AiService = {
-	init: jest.fn(),
-	chat: jest.fn(),
-} as any;
+// Mock AI service - not currently used in constructor\n// const mockAiService: AiService = {
+//	init: jest.fn(),
+//	chat: jest.fn(),
+// } as any;
 
 // Mock node type description for AI node
 const mockAiNodeDescription: INodeTypeDescription = {
 	displayName: 'OpenAI Chat Model',
 	name: 'lmChatOpenAi',
-	icon: 'openai.svg',
-	group: ['ai'],
+	icon: 'file:openai.svg' as const,
+	group: ['transform'],
 	version: [1],
 	description: 'AI chat model for conversations',
 	defaults: { name: 'OpenAI Chat Model' },
@@ -67,7 +67,7 @@ describe('AiNodesController', () => {
 	let mockRequest: AuthenticatedRequest;
 
 	beforeEach(() => {
-		controller = new AiNodesController(mockLogger, mockNodeTypes, mockAiService);
+		controller = new AiNodesController(mockLogger, mockNodeTypes);
 		mockRequest = {
 			user: { id: 'user-123', email: 'test@example.com' },
 		} as AuthenticatedRequest;
@@ -92,7 +92,7 @@ describe('AiNodesController', () => {
 				return null;
 			});
 
-			const query = { includeCredentials: true, includeModels: true };
+			const query = { nodeVersion: 1, includeCredentials: true, includeModels: true };
 			const result = await controller.getAiNodeConfigurations(mockRequest, query);
 
 			expect(result.success).toBe(true);
@@ -124,7 +124,12 @@ describe('AiNodesController', () => {
 				return null;
 			});
 
-			const query = { nodeType: 'lmChatOpenAi' };
+			const query = {
+				nodeType: 'lmChatOpenAi',
+				nodeVersion: 1,
+				includeCredentials: false,
+				includeModels: true,
+			};
 			const result = await controller.getAiNodeConfigurations(mockRequest, query);
 
 			expect(result.success).toBe(true);
@@ -137,7 +142,7 @@ describe('AiNodesController', () => {
 				throw new Error('Node types service error');
 			});
 
-			const query = {};
+			const query = { nodeVersion: 1, includeCredentials: false, includeModels: true };
 
 			await expect(controller.getAiNodeConfigurations(mockRequest, query)).rejects.toThrow(
 				'Failed to get AI node configurations',
@@ -157,20 +162,20 @@ describe('AiNodesController', () => {
 		it('should test AI prompt successfully', async () => {
 			(mockNodeTypes.getByNameAndVersion as jest.Mock).mockReturnValue(mockAiNodeType);
 
-			// Mock workflow execution methods
-			const mockWorkflow = {
-				getNode: jest.fn().mockReturnValue({
-					id: 'test-ai-node',
-					name: 'AI Test Node',
-					type: 'lmChatOpenAi',
-				}),
-				runNode: jest.fn().mockResolvedValue({
-					data: {
-						main: [[{ json: { response: 'Test AI response' } }]],
-					},
-					executionTime: 1500,
-				}),
-			};
+			// Mock workflow execution methods - unused for now
+			// const mockWorkflow = {
+			//	getNode: jest.fn().mockReturnValue({
+			//		id: 'test-ai-node',
+			//		name: 'AI Test Node',
+			//		type: 'lmChatOpenAi',
+			//	}),
+			//	runNode: jest.fn().mockResolvedValue({
+			//		data: {
+			//			main: [[{ json: { response: 'Test AI response' } }]],
+			//		},
+			//		executionTime: 1500,
+			//	}),
+			// };
 
 			// Mock WorkflowExecuteAdditionalData
 			jest.doMock('@/workflow-execute-additional-data', () => ({
@@ -194,7 +199,7 @@ describe('AiNodesController', () => {
 		it('should throw error for non-AI node types', async () => {
 			const nonAiNodeDescription: INodeTypeDescription = {
 				...mockAiNodeDescription,
-				group: ['regular'],
+				group: ['transform'],
 				description: 'Regular node for data processing',
 			};
 
@@ -207,7 +212,9 @@ describe('AiNodesController', () => {
 
 			const payload = {
 				nodeType: 'regularNode',
+				nodeVersion: 1,
 				prompt: 'Test prompt',
+				temperature: 0.7,
 			};
 
 			await expect(controller.testPrompt(mockRequest, payload)).rejects.toThrow(
@@ -220,7 +227,9 @@ describe('AiNodesController', () => {
 
 			const payload = {
 				nodeType: 'nonExistentNode',
+				nodeVersion: 1,
 				prompt: 'Test prompt',
+				temperature: 0.7,
 			};
 
 			await expect(controller.testPrompt(mockRequest, payload)).rejects.toThrow(
