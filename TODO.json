@@ -2,12 +2,91 @@
   "project": "n8n-monorepo",
   "tasks": [
     {
+      "id": "fix-ai-nodes-controller-test-1754086608346",
+      "title": "Fix TypeScript Errors in AI Nodes Controller Test",
+      "description": "Resolve type assignment errors, missing properties, and enum constant usage in ai-nodes.controller.test.ts",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "fix-build-ts-errors-1754086355170",
+      "success_criteria": [
+        "All TypeScript errors in ai-nodes.controller.test.ts resolved",
+        "Test file compiles without type errors",
+        "Mock data structures match expected interfaces"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/__tests__/ai-nodes.controller.test.ts"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-01T22:16:48.346Z"
+    },
+    {
+      "id": "fix-performance-monitoring-test-1754086608346",
+      "title": "Fix TypeScript Errors in Performance Monitoring Controller Test",
+      "description": "Resolve import errors, enum constant usage, and DTO type mismatches in performance-monitoring.controller.test.ts",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "fix-build-ts-errors-1754086355170",
+      "success_criteria": [
+        "All TypeScript errors in performance-monitoring.controller.test.ts resolved",
+        "Import statements corrected for AuthenticatedRequest and internal-hooks",
+        "Enum constant usage updated to match const enum format",
+        "DTO type structures aligned with expected interfaces"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts",
+        "packages/cli/src/requests.ts",
+        "packages/@n8n/api-types/src/dto/execution-profile.dto.ts"
+      ],
+      "estimate": "3-4 hours",
+      "created_at": "2025-08-01T22:16:48.346Z"
+    },
+    {
+      "id": "fix-enhanced-roles-controller-test-1754086608346",
+      "title": "Fix TypeScript Errors in Enhanced Roles Controller Test",
+      "description": "Resolve function argument mismatch in enhanced-roles.controller.test.ts",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "fix-build-ts-errors-1754086355170",
+      "success_criteria": [
+        "Function call signature corrected in enhanced-roles.controller.test.ts",
+        "Test file compiles without type errors"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts"
+      ],
+      "estimate": "1 hour",
+      "created_at": "2025-08-01T22:16:48.346Z"
+    },
+    {
+      "id": "fix-remaining-cli-ts-errors-1754086608346",
+      "title": "Fix Remaining TypeScript Errors in CLI Package",
+      "description": "Resolve additional TypeScript compilation errors in services and other CLI package files",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "fix-build-ts-errors-1754086355170",
+      "success_criteria": [
+        "All remaining TypeScript compilation errors in CLI package resolved",
+        "npm run typecheck passes without errors",
+        "Build completes successfully"
+      ],
+      "important_files": [
+        "packages/cli/src/services/",
+        "packages/cli/src/controllers/"
+      ],
+      "estimate": "2-4 hours",
+      "created_at": "2025-08-01T22:16:48.346Z"
+    },
+    {
       "id": "fix-build-ts-errors-1754086355170",
       "title": "Fix TypeScript Compilation Errors in CLI Package",
       "description": "Resolve TypeScript compilation errors preventing successful build completion",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All TypeScript compilation errors resolved",
         "npm run typecheck passes without errors",
@@ -19,7 +98,88 @@
         "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts"
       ],
       "created_at": "2025-08-01T22:12:35.170Z",
-      "is_build_fix_task": true
+      "is_build_fix_task": true,
+      "subtasks": [
+        {
+          "id": "fix-ai-nodes-controller-test-1754086608346",
+          "title": "Fix TypeScript Errors in AI Nodes Controller Test",
+          "description": "Resolve type assignment errors, missing properties, and enum constant usage in ai-nodes.controller.test.ts",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-build-ts-errors-1754086355170",
+          "success_criteria": [
+            "All TypeScript errors in ai-nodes.controller.test.ts resolved",
+            "Test file compiles without type errors",
+            "Mock data structures match expected interfaces"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/__tests__/ai-nodes.controller.test.ts"
+          ],
+          "estimate": "2-3 hours",
+          "created_at": "2025-08-01T22:16:48.346Z"
+        },
+        {
+          "id": "fix-performance-monitoring-test-1754086608346",
+          "title": "Fix TypeScript Errors in Performance Monitoring Controller Test",
+          "description": "Resolve import errors, enum constant usage, and DTO type mismatches in performance-monitoring.controller.test.ts",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-build-ts-errors-1754086355170",
+          "success_criteria": [
+            "All TypeScript errors in performance-monitoring.controller.test.ts resolved",
+            "Import statements corrected for AuthenticatedRequest and internal-hooks",
+            "Enum constant usage updated to match const enum format",
+            "DTO type structures aligned with expected interfaces"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts",
+            "packages/cli/src/requests.ts",
+            "packages/@n8n/api-types/src/dto/execution-profile.dto.ts"
+          ],
+          "estimate": "3-4 hours",
+          "created_at": "2025-08-01T22:16:48.346Z"
+        },
+        {
+          "id": "fix-enhanced-roles-controller-test-1754086608346",
+          "title": "Fix TypeScript Errors in Enhanced Roles Controller Test",
+          "description": "Resolve function argument mismatch in enhanced-roles.controller.test.ts",
+          "mode": "DEVELOPMENT",
+          "priority": "medium",
+          "status": "pending",
+          "parent_task_id": "fix-build-ts-errors-1754086355170",
+          "success_criteria": [
+            "Function call signature corrected in enhanced-roles.controller.test.ts",
+            "Test file compiles without type errors"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts"
+          ],
+          "estimate": "1 hour",
+          "created_at": "2025-08-01T22:16:48.346Z"
+        },
+        {
+          "id": "fix-remaining-cli-ts-errors-1754086608346",
+          "title": "Fix Remaining TypeScript Errors in CLI Package",
+          "description": "Resolve additional TypeScript compilation errors in services and other CLI package files",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-build-ts-errors-1754086355170",
+          "success_criteria": [
+            "All remaining TypeScript compilation errors in CLI package resolved",
+            "npm run typecheck passes without errors",
+            "Build completes successfully"
+          ],
+          "important_files": [
+            "packages/cli/src/services/",
+            "packages/cli/src/controllers/"
+          ],
+          "estimate": "2-4 hours",
+          "created_at": "2025-08-01T22:16:48.346Z"
+        }
+      ]
     },
     {
       "id": "fix-cli-build-parallelization-1754086355170",
@@ -2424,9 +2584,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 159,
-  "last_hook_activation": 1754085878733,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 160,
+  "last_hook_activation": 1754086475661,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 63
