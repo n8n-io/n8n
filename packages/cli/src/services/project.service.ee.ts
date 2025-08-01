@@ -12,7 +12,13 @@ import {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { hasGlobalScope, rolesWithScope, type Scope, type ProjectRole } from '@n8n/permissions';
+import {
+	hasGlobalScope,
+	rolesWithScope,
+	type Scope,
+	type ProjectRole,
+	CustomRole,
+} from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -26,8 +32,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
-type Relation = Pick<ProjectRelation, 'userId' | 'role'>;
-
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
 		super(
@@ -37,7 +41,7 @@ export class TeamProjectOverQuotaError extends UserError {
 }
 
 export class UnlicensedProjectRoleError extends UserError {
-	constructor(role: ProjectRole) {
+	constructor(role: ProjectRole | CustomRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
 }
@@ -71,14 +75,12 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		// eslint-disable-next-line import-x/no-cycle
 		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		// eslint-disable-next-line import-x/no-cycle
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
@@ -292,7 +294,10 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUsersToProject(projectId: string, relations: Relation[]) {
+	async addUsersToProject(
+		projectId: string,
+		relations: Array<{ userId: string; role: ProjectRole | CustomRole }>,
+	) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
@@ -319,7 +324,10 @@ export class ProjectService {
 	}
 
 	/** Check to see if the instance is licensed to use all roles provided */
-	private checkRolesLicensed(project: Project, relations: Relation[]) {
+	private checkRolesLicensed(
+		project: Project,
+		relations: Array<{ role: ProjectRole | CustomRole; userId: string }>,
+	) {
 		for (const { role, userId } of relations) {
 			const existing = project.projectRelations.find((pr) => pr.userId === userId);
 			// We don't throw an error if the user already exists with that role so
@@ -385,7 +393,7 @@ export class ProjectService {
 	async addManyRelations(
 		em: EntityManager,
 		project: Project,
-		relations: Array<{ userId: string; role: ProjectRole }>,
+		relations: Array<{ userId: string; role: ProjectRole | CustomRole }>,
 	) {
 		await em.insert(
 			ProjectRelation,
@@ -434,7 +442,11 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUser(projectId: string, { userId, role }: Relation, trx?: EntityManager) {
+	async addUser(
+		projectId: string,
+		{ userId, role }: { userId: string; role: ProjectRole | CustomRole },
+		trx?: EntityManager,
+	) {
 		trx = trx ?? this.projectRelationRepository.manager;
 		return await trx.save(ProjectRelation, {
 			projectId,

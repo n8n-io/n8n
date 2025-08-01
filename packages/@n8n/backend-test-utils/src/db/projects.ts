@@ -1,11 +1,11 @@
 import type { Project, User, ProjectRelation } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ProjectRole } from '@n8n/permissions';
+import type { CustomRole } from '@n8n/permissions';
 
 import { randomName } from '../random';
 
-export const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
+export const linkUserToProject = async (user: User, project: Project, role: CustomRole) => {
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 	await projectRelationRepository.save(
 		projectRelationRepository.create({
@@ -67,10 +67,9 @@ export const getProjectRelations = async ({
 export const getProjectRoleForUser = async (
 	projectId: string,
 	userId: string,
-): Promise<ProjectRole | undefined> => {
+): Promise<CustomRole | undefined> => {
 	return (
 		await Container.get(ProjectRelationRepository).findOne({
-			select: ['role'],
 			where: { projectId, userId },
 		})
 	)?.role;

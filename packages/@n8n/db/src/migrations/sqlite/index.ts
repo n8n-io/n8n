@@ -89,7 +89,9 @@ import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTab
 import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
 import type { Migration } from '../migration-types';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -183,6 +185,8 @@ const sqliteMigrations: Migration[] = [
 	AddRolesTables1750252139167,
 	LinkRoleToUserTable1750252139168,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	AddScopeTables1750252139166,
+	LinkRoleToProjectRelationTable1753953244168,
 ];
 
 export { sqliteMigrations };

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { entities } from '@n8n/db';
-import { DbConnection, DbConnectionOptions } from '@n8n/db';
+import { AuthRolesService, DbConnection, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
@@ -50,6 +50,8 @@ export async function init() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	await dbConnection.migrate();
+
+	await Container.get(AuthRolesService).init();
 }
 
 export function isReady() {

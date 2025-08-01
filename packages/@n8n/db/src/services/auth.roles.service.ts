@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ALL_SCOPES, ALL_ROLES, scopeInformation } from '@n8n/permissions';
+
+import { Scope } from '../entities';
+import { RoleRepository, ScopeRepository } from '../repositories';
 
 @Service()
 export class AuthRolesService {

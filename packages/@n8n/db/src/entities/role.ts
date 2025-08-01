@@ -1,5 +1,6 @@
-import { Column, Entity, JoinTable, ManyToMany, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 
+import type { ProjectRelation } from './project-relation';
 import { Scope } from './scope';
 
 @Entity({
@@ -38,6 +39,9 @@ export class Role {
 		name: 'roleType',
 	})
 	roleType: 'global' | 'project' | 'workflow' | 'credential'; // Type of the role, e.g., global, project, or workflow
+
+	@OneToMany('ProjectRelation', 'roleEntity')
+	projectRelations: ProjectRelation[];
 
 	@ManyToMany(() => Scope, {
 		eager: true,

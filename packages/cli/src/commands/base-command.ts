@@ -9,7 +9,7 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { AuthRolesService, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
@@ -22,6 +22,7 @@ import {
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
@@ -37,7 +38,6 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
-import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -119,6 +119,8 @@ export abstract class BaseCommand<F = never> {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
+
+		await Container.get(AuthRolesService).init();
 
 		Container.get(DeprecationService).warn();
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { ExecutionRepository, SettingsRepository, AuthRolesService } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
@@ -17,6 +17,7 @@ import { BaseCommand } from './base-command';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';

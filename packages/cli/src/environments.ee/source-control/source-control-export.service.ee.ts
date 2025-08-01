@@ -251,7 +251,7 @@ export class SourceControlExportService {
 			}
 
 			const allowedProjects =
-				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 			const fileName = getFoldersPath(this.gitFolder);
 

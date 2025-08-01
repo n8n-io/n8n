@@ -327,11 +327,7 @@ export namespace ListQuery {
 	};
 }
 
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
+export type ProjectRole = string;
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;

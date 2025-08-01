@@ -1,5 +1,6 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from './../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -189,4 +190,6 @@ export const postgresMigrations: Migration[] = [
 	AddRolesTables1750252139167,
 	LinkRoleToUserTable1750252139168,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	AddScopeTables1750252139166,
+	LinkRoleToProjectRelationTable1753953244168,
 ];

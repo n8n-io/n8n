@@ -14,7 +14,11 @@ export const personalRoleSchema = z.enum([
 
 export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer']);
 
-export const projectRoleSchema = z.enum([...personalRoleSchema.options, ...teamRoleSchema.options]);
+export const customRoleSchema = z.string().refine((val) => val !== 'project:personalOwner', {
+	message: "'project:personalOwner' is not assignable",
+});
+
+export const projectRoleSchema = z.union([personalRoleSchema, teamRoleSchema]);
 
 export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credential:user']);
 
