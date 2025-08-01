@@ -26,7 +26,8 @@
 				"public/**/*",
 				"tsconfig*.json",
 				"package.json",
-				"*.config.*"
+				"*.config.*",
+				"scripts/**/*"
 			],
 			"outputs": [
 				"dist/**",
@@ -34,7 +35,9 @@
 				"lib/**",
 				"types/**"
 			],
-			"cache": true
+			"cache": true,
+			"persistent": false,
+			"passThroughEnv": ["NODE_ENV", "CI"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"],
@@ -44,7 +47,9 @@
 				"tsconfig*.json",
 				"package.json"
 			],
-			"cache": true
+			"outputs": ["dist/**/*.tsbuildinfo"],
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV"]
 		},
 		"format": {
 			"inputs": [
@@ -85,7 +90,8 @@
 				"package.json",
 				"tsconfig*.json"
 			],
-			"cache": true
+			"cache": true,
+			"passThroughEnv": ["NODE_ENV"]
 		},
 		"lint:fix": {
 			"inputs": [

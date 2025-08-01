@@ -1,0 +1,234 @@
+{
+  "processName": "build-validation",
+  "sessionId": "1754080966458",
+  "startTime": 1754080966458,
+  "startMemory": {
+    "rss": 44957696,
+    "heapTotal": 7127040,
+    "heapUsed": 4674184,
+    "external": 1943975,
+    "arrayBuffers": 23656
+  },
+  "timers": {},
+  "events": [
+    {
+      "type": "timer_start",
+      "timestamp": 1754080966460,
+      "memory": {
+        "rss": 46104576,
+        "heapTotal": 7127040,
+        "heapUsed": 4770432,
+        "external": 1899345,
+        "arrayBuffers": 23856
+      },
+      "timerName": "total_validation"
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080966460,
+      "memory": {
+        "rss": 46104576,
+        "heapTotal": 7127040,
+        "heapUsed": 4775376,
+        "external": 1899345,
+        "arrayBuffers": 23856
+      },
+      "timerName": "pre_build_validation"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080966800,
+      "memory": {
+        "rss": 47316992,
+        "heapTotal": 7389184,
+        "heapUsed": 5111752,
+        "external": 1901172,
+        "arrayBuffers": 25683
+      },
+      "timerName": "pre_build_validation",
+      "duration": 339.784125
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080966800,
+      "memory": {
+        "rss": 47316992,
+        "heapTotal": 7389184,
+        "heapUsed": 5115720,
+        "external": 1901172,
+        "arrayBuffers": 25683
+      },
+      "timerName": "monitored_build"
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080966800,
+      "memory": {
+        "rss": 47366144,
+        "heapTotal": 7389184,
+        "heapUsed": 5120752,
+        "external": 1901172,
+        "arrayBuffers": 25683
+      },
+      "timerName": "exec_build_process"
+    },
+    {
+      "type": "command_start",
+      "timestamp": 1754080966800,
+      "memory": {
+        "rss": 47366144,
+        "heapTotal": 7389184,
+        "heapUsed": 5121384,
+        "external": 1901172,
+        "arrayBuffers": 25683
+      },
+      "command": "pnpm build",
+      "description": "Build Process"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080969352,
+      "memory": {
+        "rss": 48594944,
+        "heapTotal": 7847936,
+        "heapUsed": 5642640,
+        "external": 2129371,
+        "arrayBuffers": 253882
+      },
+      "timerName": "exec_build_process",
+      "duration": 2552.564417
+    },
+    {
+      "type": "command_success",
+      "timestamp": 1754080969352,
+      "memory": {
+        "rss": 48594944,
+        "heapTotal": 7847936,
+        "heapUsed": 5644824,
+        "external": 2129371,
+        "arrayBuffers": 253882
+      },
+      "command": "pnpm build",
+      "description": "Build Process",
+      "duration": 2552.564417,
+      "memoryDelta": {
+        "rss": 1228800,
+        "heapUsed": 519744
+      }
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080969353,
+      "memory": {
+        "rss": 48676864,
+        "heapTotal": 7847936,
+        "heapUsed": 5650368,
+        "external": 2129371,
+        "arrayBuffers": 253882
+      },
+      "timerName": "monitored_build",
+      "duration": 2552.8800840000004
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080969353,
+      "memory": {
+        "rss": 48676864,
+        "heapTotal": 7847936,
+        "heapUsed": 5654688,
+        "external": 2129371,
+        "arrayBuffers": 253882
+      },
+      "timerName": "post_build_validation"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080969357,
+      "memory": {
+        "rss": 49709056,
+        "heapTotal": 7651328,
+        "heapUsed": 5221288,
+        "external": 1950958,
+        "arrayBuffers": 75469
+      },
+      "timerName": "post_build_validation",
+      "duration": 4.415416000000278
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080969357,
+      "memory": {
+        "rss": 49709056,
+        "heapTotal": 7651328,
+        "heapUsed": 5225040,
+        "external": 1950958,
+        "arrayBuffers": 75469
+      },
+      "timerName": "smoke_tests"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080970732,
+      "memory": {
+        "rss": 49856512,
+        "heapTotal": 7651328,
+        "heapUsed": 5314776,
+        "external": 1953132,
+        "arrayBuffers": 77643
+      },
+      "timerName": "smoke_tests",
+      "duration": 1374.7516249999999
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080970732,
+      "memory": {
+        "rss": 49856512,
+        "heapTotal": 7651328,
+        "heapUsed": 5318648,
+        "external": 1953132,
+        "arrayBuffers": 77643
+      },
+      "timerName": "health_checks"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080972236,
+      "memory": {
+        "rss": 55001088,
+        "heapTotal": 7127040,
+        "heapUsed": 5729824,
+        "external": 1908414,
+        "arrayBuffers": 32925
+      },
+      "timerName": "health_checks",
+      "duration": 1503.9018749999996
+    },
+    {
+      "type": "timer_start",
+      "timestamp": 1754080972236,
+      "memory": {
+        "rss": 55001088,
+        "heapTotal": 7127040,
+        "heapUsed": 5733552,
+        "external": 1908414,
+        "arrayBuffers": 32925
+      },
+      "timerName": "env_consistency"
+    },
+    {
+      "type": "timer_end",
+      "timestamp": 1754080972236,
+      "memory": {
+        "rss": 55001088,
+        "heapTotal": 7127040,
+        "heapUsed": 5741640,
+        "external": 1908414,
+        "arrayBuffers": 32925
+      },
+      "timerName": "env_consistency",
+      "duration": 0.0369170000003578
+    }
+  ],
+  "finalMetrics": {}
+}

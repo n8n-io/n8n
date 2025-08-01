@@ -1,0 +1,32 @@
+{
+  "overall": "success_with_warnings",
+  "steps": {
+    "preBuild": {
+      "status": "success",
+      "steps": {
+        "environment": "success",
+        "dependencies": "success",
+        "diskSpace": "success",
+        "permissions": "success"
+      },
+      "duration": 348.43008299999997
+    },
+    "build": {
+      "status": "success",
+      "duration": 69692.667333
+    },
+    "postBuild": {
+      "status": "success",
+      "duration": 5.5616250000020955
+    }
+  },
+  "issues": [],
+  "warnings": [
+    {
+      "type": "dependencies",
+      "message": "package.json is newer than pnpm-lock.yaml. Consider running pnpm install."
+    }
+  ],
+  "metrics": {},
+  "timestamp": "2025-08-01T20:50:06.088Z"
+}
