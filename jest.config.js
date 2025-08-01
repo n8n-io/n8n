@@ -1,5 +1,6 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
+import 'jest-expect-message';
 
 /** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
