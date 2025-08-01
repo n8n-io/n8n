@@ -1125,9 +1125,8 @@ export class EditImage implements INodeType {
 							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
 						}
 
-						if (operations.length !== i + 1) {
-							// If there are other operations after the current one create a new gm instance
-							// because else things do get messed up
+						// Only create new instance if there are more operations and we're not already in a create operation
+						if (operations.length !== i + 1 && operations[0].operation !== 'create') {
 							gmInstance = gm(gmInstance.stream());
 						}
 					} else if (operationData.operation === 'create') {
