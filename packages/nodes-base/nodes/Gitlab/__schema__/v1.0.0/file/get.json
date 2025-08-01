@@ -19,6 +19,9 @@
         "execute_filemode": {
             "type": "boolean"
         },
+        "file_name": {
+            "type": "string"
+        },
         "file_path": {
             "type": "string"
         },
@@ -32,5 +35,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }
