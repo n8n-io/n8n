@@ -251,7 +251,7 @@ export class WorkflowRunner {
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },
 		);
-		let workflowExecution: PCancelable<IRun>;
+		let workflowExecution: any;
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
@@ -288,13 +288,13 @@ export class WorkflowRunner {
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
-				workflowExecution = await this.manualExecutionService.runManually(
+				workflowExecution = (await this.manualExecutionService.runManually(
 					data,
 					workflow,
 					additionalData,
 					executionId,
 					pinData,
-				);
+				)) as any;
 			}
 
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
@@ -318,7 +318,7 @@ export class WorkflowRunner {
 			}
 
 			workflowExecution
-				.then((fullRunData) => {
+				.then((fullRunData: any) => {
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
@@ -328,7 +328,7 @@ export class WorkflowRunner {
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(
-					async (error) =>
+					async (error: any) =>
 						await this.processError(
 							error,
 							new Date(),

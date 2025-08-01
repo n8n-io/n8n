@@ -215,13 +215,13 @@ export class SecurityEvent extends WithTimestampsAndStringId {
 	/**
 	 * When the event was acknowledged
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	acknowledgedAt: Date | null;
 
 	/**
 	 * When the event was resolved
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	resolvedAt: Date | null;
 
 	/**
@@ -263,7 +263,7 @@ export class SecurityEvent extends WithTimestampsAndStringId {
 	/**
 	 * When alerts were sent
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	alertSentAt: Date | null;
 
 	/**

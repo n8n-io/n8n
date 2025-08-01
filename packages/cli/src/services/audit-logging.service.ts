@@ -88,10 +88,11 @@ export class AuditLoggingService {
 				requiresReview: eventData.requiresReview || false,
 				retentionCategory: eventData.retentionCategory || 'standard',
 				tags: eventData.tags,
-			});
+			} as any);
 
 			// Set archive date based on retention category
-			auditEvent.archiveAt = this.calculateArchiveDate(auditEvent.retentionCategory);
+			const eventEntity = Array.isArray(auditEvent) ? auditEvent[0] : auditEvent;
+			eventEntity.archiveAt = this.calculateArchiveDate(eventEntity.retentionCategory);
 
 			const savedEvents = await this.auditEventRepository.save(auditEvent);
 			const savedEvent = Array.isArray(savedEvents) ? savedEvents[0] : savedEvents;
@@ -142,7 +143,7 @@ export class AuditLoggingService {
 			endpoint: req.path,
 			statusCode,
 			responseTimeMs,
-			sessionId: req.sessionID || null,
+			sessionId: (req as any).sessionID || null,
 			errorMessage,
 			metadata: {
 				query: req.query,

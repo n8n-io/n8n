@@ -178,7 +178,7 @@ export class JobProcessor {
 		};
 
 		let workflowExecute: WorkflowExecute;
-		let workflowRun: PCancelable<IRun>;
+		let workflowRun: any;
 
 		const { startData, resultData, manualData } = execution.data;
 
@@ -200,7 +200,7 @@ export class JobProcessor {
 			};
 
 			try {
-				const workflowExecution = this.manualExecutionService.runManually(
+				const workflowExecution = await this.manualExecutionService.runManually(
 					data,
 					workflow,
 					additionalData,

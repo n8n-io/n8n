@@ -157,7 +157,7 @@ export class ManualExecutionService {
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return await workflowExecute.run(
+			return workflowExecute.run(
 				workflow,
 				startNode,
 				data.destinationNode,
@@ -171,7 +171,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
 			if (data.partialExecutionVersion === 2) {
-				return await workflowExecute.runPartialWorkflow2(
+				return workflowExecute.runPartialWorkflow2(
 					workflow,
 					data.runData,
 					data.pinData,
@@ -180,7 +180,7 @@ export class ManualExecutionService {
 					data.agentRequest,
 				);
 			} else {
-				return await workflowExecute.runPartialWorkflow(
+				return workflowExecute.runPartialWorkflow(
 					workflow,
 					data.runData,
 					data.startNodes ?? [],

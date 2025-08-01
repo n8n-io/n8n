@@ -53,13 +53,13 @@ export class ComplianceReport extends WithTimestampsAndStringId {
 	/**
 	 * Start date of the reporting period
 	 */
-	@Column({ type: 'timestamp' })
+	@Column({ type: 'datetime' })
 	periodStart: Date;
 
 	/**
 	 * End date of the reporting period
 	 */
-	@Column({ type: 'timestamp' })
+	@Column({ type: 'datetime' })
 	periodEnd: Date;
 
 	/**
@@ -107,13 +107,13 @@ export class ComplianceReport extends WithTimestampsAndStringId {
 	/**
 	 * When the report generation started
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	generationStartedAt: Date | null;
 
 	/**
 	 * When the report generation completed
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	generationCompletedAt: Date | null;
 
 	/**
@@ -185,7 +185,7 @@ export class ComplianceReport extends WithTimestampsAndStringId {
 	/**
 	 * Last time this report was downloaded
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	lastDownloadedAt: Date | null;
 
 	/**
@@ -197,7 +197,7 @@ export class ComplianceReport extends WithTimestampsAndStringId {
 	/**
 	 * When this report should be archived
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	archiveAt: Date | null;
 
 	/**

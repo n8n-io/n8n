@@ -191,7 +191,7 @@ export class AuditEvent extends WithTimestampsAndStringId {
 	/**
 	 * When this audit event was reviewed
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	reviewedAt: Date | null;
 
 	/**
@@ -209,7 +209,7 @@ export class AuditEvent extends WithTimestampsAndStringId {
 	/**
 	 * When this audit event should be archived
 	 */
-	@Column({ type: 'timestamp', nullable: true })
+	@Column({ type: 'datetime', nullable: true })
 	archiveAt: Date | null;
 
 	/**

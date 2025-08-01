@@ -246,7 +246,7 @@ export class AuditLoggingMiddleware {
 					responseTimeMs,
 					req.user?.id || undefined,
 					(req.user as any)?.globalRole?.projectId || undefined,
-					this.getErrorMessage(req, res),
+					this.getErrorMessage(req, res) || undefined,
 				);
 			}
 
@@ -368,7 +368,7 @@ export class AuditLoggingMiddleware {
 					description: `Workflow ${eventType.replace('workflow_', '')}`,
 					userId: req.user?.id,
 					resourceType: 'workflow',
-					resourceId: req.params.id,
+					resourceId: (req.params as any).id || null,
 					ipAddress: req.auditMetadata?.ipAddress,
 					userAgent: req.auditMetadata?.userAgent,
 					httpMethod: method,
@@ -388,7 +388,7 @@ export class AuditLoggingMiddleware {
 				eventType = 'credential_updated';
 			} else if (method === 'DELETE' && res.statusCode < 300) {
 				eventType = 'credential_deleted';
-			} else if (method === 'GET' && req.params.id) {
+			} else if (method === 'GET' && (req.params as any).id) {
 				eventType = 'credential_accessed';
 			}
 
@@ -400,7 +400,7 @@ export class AuditLoggingMiddleware {
 					description: `Credential ${eventType.replace('credential_', '')}`,
 					userId: req.user?.id,
 					resourceType: 'credential',
-					resourceId: req.params.id,
+					resourceId: (req.params as any).id || null,
 					ipAddress: req.auditMetadata?.ipAddress,
 					userAgent: req.auditMetadata?.userAgent,
 					httpMethod: method,
@@ -430,7 +430,7 @@ export class AuditLoggingMiddleware {
 					description: `User ${eventType.replace('user_', '')}`,
 					userId: req.user?.id,
 					resourceType: 'user',
-					resourceId: req.params.id,
+					resourceId: (req.params as any).id || null,
 					ipAddress: req.auditMetadata?.ipAddress,
 					userAgent: req.auditMetadata?.userAgent,
 					httpMethod: method,
