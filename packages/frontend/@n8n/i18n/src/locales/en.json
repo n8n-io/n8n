@@ -2484,7 +2484,7 @@
 	"workflowDetails.active": "Active",
 	"workflowDetails.addTag": "Add tag",
 	"workflowDetails.chooseOrCreateATag": "Choose or create a tag",
-	"workflowSuggestedActions.turnOffWorkflowSuggestions": "Turn off for all workflows",
+	"workflowSuggestedActions.turnOffWorkflowSuggestions": "Ignore for all workflows",
 	"workflowSuggestedActions.evaluations.title": "Evaluate your workflow with a dataset",
 	"workflowSuggestedActions.evaluations.description": "Set up an AI evaluation to be sure your workflow is reliable.",
 	"workflowSuggestedActions.evaluations.button": "Go to evaluations",
