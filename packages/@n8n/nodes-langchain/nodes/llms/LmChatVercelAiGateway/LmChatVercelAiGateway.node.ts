@@ -19,7 +19,7 @@ export class LmChatVercelAiGateway implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vercel AI Gateway Chat Model',
 		name: 'lmChatVercelAiGateway',
-		icon: { light: 'file:vercel.svg', dark: 'file:vercel.dark.svg' },
+		icon: { light: 'file:vercel.dark.svg', dark: 'file:vercel.svg' },
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain via Vercel AI Gateway',
