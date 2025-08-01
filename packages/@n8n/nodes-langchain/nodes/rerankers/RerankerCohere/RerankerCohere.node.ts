@@ -83,16 +83,14 @@ export class RerankerCohere implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for reranking Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'rerank-v3.5') as string;
-		const topN = this.getNodeParameter('topN', itemIndex, undefined) as number | undefined;
+		const topN = this.getNodeParameter('topN', itemIndex, 3) as number;
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
 
-		const reranker = new CohereRerank(
-				{
-					apiKey: credentials.apiKey,
-					model: modelName,
-					topN
-				}
-		);
+		const reranker = new CohereRerank({
+			apiKey: credentials.apiKey,
+			model: modelName,
+			topN,
+		});
 
 		return {
 			response: logWrapper(reranker, this),
