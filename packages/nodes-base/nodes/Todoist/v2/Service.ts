@@ -129,32 +129,59 @@ export class TodoistService implements Service {
 	}
 }
 
-export type OperationType =
-	| 'create'
-	| 'close'
-	| 'delete'
-	| 'get'
-	| 'getAll'
-	| 'reopen'
-	| 'update'
-	| 'move'
-	| 'sync';
+// Define operations as const arrays - source of truth
+const TASK_OPERATIONS = [
+	'create',
+	'close',
+	'delete',
+	'get',
+	'getAll',
+	'reopen',
+	'update',
+	'move',
+	'sync',
+] as const;
 
-export type ProjectOperationType =
-	| 'create'
-	| 'delete'
-	| 'get'
-	| 'getAll'
-	| 'update'
-	| 'archive'
-	| 'unarchive'
-	| 'getCollaborators';
+const PROJECT_OPERATIONS = [
+	'create',
+	'delete',
+	'get',
+	'getAll',
+	'update',
+	'archive',
+	'unarchive',
+	'getCollaborators',
+] as const;
 
-export type SectionOperationType = 'create' | 'delete' | 'get' | 'getAll' | 'update';
+const SECTION_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as const;
 
-export type CommentOperationType = 'create' | 'delete' | 'get' | 'getAll' | 'update';
+const COMMENT_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as const;
 
-export type LabelOperationType = 'create' | 'delete' | 'get' | 'getAll' | 'update';
+const LABEL_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as const;
+
+// Derive types from arrays
+export type OperationType = (typeof TASK_OPERATIONS)[number];
+export type ProjectOperationType = (typeof PROJECT_OPERATIONS)[number];
+export type SectionOperationType = (typeof SECTION_OPERATIONS)[number];
+export type CommentOperationType = (typeof COMMENT_OPERATIONS)[number];
+export type LabelOperationType = (typeof LABEL_OPERATIONS)[number];
+
+// Type guards using the same arrays
+export function isProjectOperationType(operation: string): operation is ProjectOperationType {
+	return PROJECT_OPERATIONS.includes(operation as ProjectOperationType);
+}
+
+export function isSectionOperationType(operation: string): operation is SectionOperationType {
+	return SECTION_OPERATIONS.includes(operation as SectionOperationType);
+}
+
+export function isCommentOperationType(operation: string): operation is CommentOperationType {
+	return COMMENT_OPERATIONS.includes(operation as CommentOperationType);
+}
+
+export function isLabelOperationType(operation: string): operation is LabelOperationType {
+	return LABEL_OPERATIONS.includes(operation as LabelOperationType);
+}
 
 export interface Section {
 	name: string;

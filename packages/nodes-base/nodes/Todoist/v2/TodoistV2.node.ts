@@ -9,26 +9,18 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { OperationType, TodoistProjectType } from './Service';
-import { TodoistService } from './Service';
+import {
+	TodoistService,
+	isProjectOperationType,
+	isSectionOperationType,
+	isCommentOperationType,
+	isLabelOperationType,
+} from './Service';
 import { todoistApiRequest } from '../GenericFunctions';
-
-// interface IBodyCreateTask {
-// 	content?: string;
-// 	description?: string;
-// 	project_id?: number;
-// 	section_id?: number;
-// 	parent_id?: number;
-// 	order?: number;
-// 	label_ids?: number[];
-// 	priority?: number;
-// 	due_string?: string;
-// 	due_datetime?: string;
-// 	due_date?: string;
-// 	due_lang?: string;
-// }
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Todoist',
@@ -86,6 +78,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'resource',
 			type: 'options',
 			noDataExpression: true,
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Task',
@@ -1457,13 +1450,37 @@ export class TodoistV2 implements INodeType {
 				if (resource === 'task') {
 					responseData = await service.execute(this, operation, i);
 				} else if (resource === 'project') {
-					responseData = await service.executeProject(this, operation as any, i);
+					if (!isProjectOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for project resource`,
+						);
+					}
+					responseData = await service.executeProject(this, operation, i);
 				} else if (resource === 'section') {
-					responseData = await service.executeSection(this, operation as any, i);
+					if (!isSectionOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for section resource`,
+						);
+					}
+					responseData = await service.executeSection(this, operation, i);
 				} else if (resource === 'comment') {
-					responseData = await service.executeComment(this, operation as any, i);
+					if (!isCommentOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for comment resource`,
+						);
+					}
+					responseData = await service.executeComment(this, operation, i);
 				} else if (resource === 'label') {
-					responseData = await service.executeLabel(this, operation as any, i);
+					if (!isLabelOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for label resource`,
+						);
+					}
+					responseData = await service.executeLabel(this, operation, i);
 				}
 
 				if (responseData !== undefined && Array.isArray(responseData?.data)) {
