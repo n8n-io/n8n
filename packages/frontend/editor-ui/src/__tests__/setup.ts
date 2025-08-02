@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import '@testing-library/jest-dom';
 import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
@@ -7,6 +8,32 @@ import 'core-js/proposals/set-methods-v2';
 process.env.TZ = 'UTC';
 
 configure({ testIdAttribute: 'data-test-id' });
+
+vi.mock('vue-router', async (importOriginal) => {
+	const original = await importOriginal<{}>();
+	const push = vi.fn();
+	const replace = vi.fn();
+	const back = vi.fn();
+	const currentRoute = reactive({ value: { path: '/' } });
+	return {
+		...original,
+		useRouter: () => ({
+			push,
+			replace,
+			back,
+			currentRoute,
+		}),
+		useRoute: () =>
+			reactive({
+				path: '/',
+				params: {},
+				query: {},
+				name: undefined,
+			}),
+		createRouter: vi.fn(),
+		createWebHistory: vi.fn(),
+	};
+});
 
 window.ResizeObserver =
 	window.ResizeObserver ||
