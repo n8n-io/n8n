@@ -19,7 +19,11 @@ import { NodeExecutionContext } from '../node-execution-context';
 class TestContext extends NodeExecutionContext {}
 
 describe('NodeExecutionContext', () => {
-	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: 'abc123',
+		encryptionKey: 'testEncryptionKey',
+		hmacSignatureSecret: 'testHmacSignatureSecret',
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
@@ -361,6 +365,34 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
+		});
+	});
+
+	describe('getSignedResumeUrl', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			testContext = new TestContext(workflow, node, additionalData, mode, {
+				validateSignature: true,
+				resultData: { runData: {} },
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		});
+		it('should return a signed resume URL with no query parameters', () => {
+			const url = 'https://example.com/webhook/execution123/node456';
+			const result = testContext.getSignedResumeUrl(url);
+
+			expect(result).toBe(
+				'https://example.com/webhook/execution123/node456?signature=19e03c05769be8157d8c99377504f881bc8c82b604f4063f509aa7dcc6e8ea9f',
+			);
+		});
+
+		it('should return a signed resume URL with query parameters', () => {
+			const url = 'https://example.com/webhook/execution123/node456?approved=true';
+			const result = testContext.getSignedResumeUrl(url);
+
+			expect(result).toBe(
+				'https://example.com/webhook/execution123/node456?approved=true&signature=68904afab338aeeb83d4cb9fd43a406d6a2986c576d7dd884899916f49070ddc',
+			);
 		});
 	});
 });

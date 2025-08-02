@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import crypto from 'crypto';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -36,6 +37,7 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -57,7 +59,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		readonly runIndex = 0,
 		readonly connectionInputData: INodeExecutionData[] = [],
 		readonly executeData?: IExecuteData,
-	) {}
+	) {
+		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	}
 
 	@Memoized
 	get logger() {
@@ -198,6 +202,23 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
+	}
+
+	getExecutionWaitingToken(url: string) {
+		const token = crypto
+			.createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
+			.update(url)
+			.digest('hex');
+		return token;
+	}
+
+	getSignedResumeUrl(url: string) {
+		const token = this.getExecutionWaitingToken(url);
+		if (url.includes('?')) {
+			return `${url}&${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+		} else {
+			return `${url}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+		}
 	}
 
 	getTimezone() {
