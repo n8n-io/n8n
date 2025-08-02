@@ -41,9 +41,9 @@ import {
 import type { Context } from '../GenericFunctions';
 
 export class TodoistService implements Service {
-	async execute(
+	async executeTask(
 		ctx: Context,
-		operation: OperationType,
+		operation: TaskOperationType,
 		itemIndex: number,
 	): Promise<TodoistResponse> {
 		return await this.handlers[operation].handleOperation(ctx, itemIndex);
@@ -160,7 +160,7 @@ const COMMENT_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as co
 const LABEL_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as const;
 
 // Derive types from arrays
-export type OperationType = (typeof TASK_OPERATIONS)[number];
+export type TaskOperationType = (typeof TASK_OPERATIONS)[number];
 export type ProjectOperationType = (typeof PROJECT_OPERATIONS)[number];
 export type SectionOperationType = (typeof SECTION_OPERATIONS)[number];
 export type CommentOperationType = (typeof COMMENT_OPERATIONS)[number];
@@ -189,7 +189,11 @@ export interface Section {
 }
 
 export interface Service {
-	execute(ctx: Context, operation: OperationType, itemIndex: number): Promise<TodoistResponse>;
+	executeTask(
+		ctx: Context,
+		operation: TaskOperationType,
+		itemIndex: number,
+	): Promise<TodoistResponse>;
 	executeProject(
 		ctx: Context,
 		operation: ProjectOperationType,
