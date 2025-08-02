@@ -34,6 +34,7 @@ import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import { AuthRolesService } from '@/auth/auth.roles.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -199,6 +200,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await super.init();
+
+		await Container.get(AuthRolesService).init();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
