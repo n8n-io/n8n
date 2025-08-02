@@ -3,13 +3,15 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 
+import { findPackagesRoot } from '../../utils/path-helper';
+
 // Only run the file once, so we don't run it multiple times
 const execFileAsync = promisify(execFile);
 
 const CREDENTIALS_FILE_NAME = 'credentials.json';
 const WORKFLOWS_DIR_NAME = 'workflows';
 
-const ASSETS_SOURCE_PATH = path.join(__dirname, '../../../../assets');
+const ASSETS_SOURCE_PATH = path.join(__dirname, '../../../../../assets');
 const PDF_SOURCE_DIR = path.join(__dirname, 'testData', 'pdfs');
 
 const BASE_TMP_DIR = '/tmp';
@@ -23,7 +25,8 @@ const TMP_PDF_DEST_DIR = path.join(BASE_TMP_DIR, 'testData', 'pdfs');
  * @returns A promise that resolves with the stdout of the command, or rejects on error.
  */
 async function runN8nCliCommand(command: string, args: string[], options: { cwd: string }) {
-	const n8nExecutablePath = '../../../cli/bin/n8n';
+	const packagesRoot = findPackagesRoot('cli');
+	const n8nExecutablePath = path.join(packagesRoot, 'cli/bin/n8n');
 	console.log(`Executing n8n command: n8n ${command} ${args.join(' ')}`);
 	await execFileAsync(n8nExecutablePath, [command, ...args], options);
 }

@@ -139,7 +139,6 @@ export class CanvasPage extends BasePage {
 			this.clickByText('Import from File...'),
 		]);
 		await fileChooser.setFiles(resolveFromRoot('workflows', fixtureKey));
-		await this.page.waitForTimeout(250);
 
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', workflowName);

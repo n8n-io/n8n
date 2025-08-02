@@ -54,29 +54,19 @@ jobs:
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
-      - name: Start Local Server
-        if: inputs.test-mode == 'local'
-        env:
-          E2E_TESTS: true
-        run: |
-          pnpm start &
-          npx wait-on http://localhost:5678 --timeout 15000
-
       - name: Run Tests (Local)
         if: inputs.test-mode == 'local'
         run: |
-          pnpm --filter=n8n-playwright test \
+          pnpm --filter=n8n-playwright test:local \
             --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --workers=2
         env:
-          N8N_BASE_URL: http://localhost:5678
-          RESET_E2E_DB: true
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
       - name: Run Tests (Docker)
         if: inputs.test-mode != 'local'
         run: |
-          pnpm --filter=n8n-playwright run test:standard \
+          pnpm --filter=n8n-playwright test:container:standard \
             --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --workers=2
         env:

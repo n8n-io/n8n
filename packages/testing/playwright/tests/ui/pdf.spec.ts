@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/base';
+import { expect, test } from '../../fixtures/base';
 
 // Example of importing a workflow from a file
 test.describe('PDF Test', () => {

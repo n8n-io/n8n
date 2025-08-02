@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/base';
+import { test, expect } from '../../fixtures/base';
 
 test('default signin is as owner', async ({ n8n }) => {
 	await n8n.goHome();
