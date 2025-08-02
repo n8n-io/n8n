@@ -14,7 +14,6 @@ const emit = defineEmits<{
 	run: [];
 	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
-	focus: [id: string];
 }>();
 
 const props = defineProps<{
@@ -106,7 +105,7 @@ function onMouseLeave() {
 
 function onFocusNode() {
 	if (node.value) {
-		emit('focus', node.value.id);
+		experimentalNdvStore.focusNode(node.value.id);
 	}
 }
 </script>
@@ -190,7 +189,6 @@ function onFocusNode() {
 
 	&.isExperimentalNdvActive {
 		justify-content: center;
-		padding-bottom: var(--spacing-3xs);
 	}
 }
 

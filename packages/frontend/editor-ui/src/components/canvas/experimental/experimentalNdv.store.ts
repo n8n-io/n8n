@@ -1,17 +1,9 @@
-import { computed, ref, shallowRef } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import {
-	type Dimensions,
-	type FitView,
-	type GraphNode,
-	type SetCenter,
-	type SetViewport,
-	type ViewportTransform,
-	type ZoomTo,
-} from '@vue-flow/core';
-import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
+import { useVueFlow } from '@vue-flow/core';
+import { calculateNodeSize } from '@/utils/nodeViewUtils';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
@@ -25,9 +17,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
 	);
 
-	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
-	const nodeNameToBeFocused = ref<string | undefined>();
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -51,99 +41,51 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
+		return isEnabled.value && canvasZoom === maxCanvasZoom.value;
 	}
 
-	function setNodeNameToBeFocused(nodeName: string) {
-		nodeNameToBeFocused.value = nodeName;
-	}
+	function focusNode(nodeId: string) {
+		const nodeToFocus = workflowStore.getNodeById(nodeId);
 
-	interface FocusNodeOptions {
-		collapseOthers?: boolean;
-		canvasViewport: ViewportTransform;
-		canvasDimensions: Dimensions;
-		setCenter: SetCenter;
-	}
-
-	function focusNode(
-		node: GraphNode<CanvasNodeData>,
-		{ collapseOthers = true, canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
-	) {
-		collapsedNodes.value = collapseOthers
-			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, n) => {
-					acc[n.id] = n.id !== node.id;
-					return acc;
-				}, {})
-			: { ...collapsedNodes.value, [node.id]: false };
-
-		const topMargin = 80; // pixels
-		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
-
-		if (nodeNameToBeFocused.value === node.data.name) {
-			nodeNameToBeFocused.value = undefined;
+		if (!nodeToFocus) {
+			return;
 		}
 
-		// Move the node to top center of the canvas
-		void setCenter(
-			node.position.x + nodeWidth / 2,
-			node.position.y + (canvasDimensions.height * (1 / 2) - topMargin) / maxCanvasZoom.value,
-			{
-				duration: 200,
-				zoom: maxCanvasZoom.value,
-				interpolate: 'linear',
+		// Call useVueFlow() here because having it in setup fn scope seem to cause initialization problem
+		const vueFlow = useVueFlow(workflowStore.workflow.id);
+
+		collapsedNodes.value = workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>(
+			(acc, node) => {
+				acc[node.id] = node.id !== nodeId;
+				return acc;
 			},
+			{},
 		);
-	}
 
-	interface ToggleZoomModeOptions {
-		canvasViewport: ViewportTransform;
-		canvasDimensions: Dimensions;
-		selectedNodes: Array<GraphNode<CanvasNodeData>>;
-		setViewport: SetViewport;
-		fitView: FitView;
-		zoomTo: ZoomTo;
-		setCenter: SetCenter;
-	}
+		const workflow = workflowStore.getCurrentWorkflow();
+		const nodeSize = calculateNodeSize(
+			workflow.getChildNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
+			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length > 0,
+			workflow.getParentNodes(nodeToFocus.name, 'main').length,
+			workflow.getChildNodes(nodeToFocus.name, 'main').length,
+			workflow.getParentNodes(nodeToFocus.name, 'ALL_NON_MAIN').length,
+		);
 
-	function toggleZoomMode(options: ToggleZoomModeOptions) {
-		if (isActive(options.canvasViewport.zoom)) {
-			if (previousViewport.value === undefined) {
-				void options.fitView({ duration: 200, interpolate: 'linear' });
-				return;
-			}
-
-			void options.setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
-			return;
-		}
-
-		previousViewport.value = options.canvasViewport;
-
-		const toFocus = options.selectedNodes
-			.filter((node) => node.data.render.type === CanvasNodeRenderType.Default)
-			.toSorted((a, b) =>
-				a.position.y === b.position.y ? a.position.x - b.position.x : a.position.y - b.position.y,
-			)[0];
-
-		if (toFocus) {
-			focusNode(toFocus, { ...options, collapseOthers: false });
-			return;
-		}
-
-		void options.zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
+		void vueFlow.setCenter(
+			nodeToFocus.position[0] + (nodeSize.width * 1.5) / 2,
+			nodeToFocus.position[1] + 80,
+			{ duration: 200, zoom: maxCanvasZoom.value },
+		);
 	}
 
 	return {
 		isEnabled,
 		maxCanvasZoom,
-		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
-		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
-		toggleZoomMode,
 		focusNode,
-		setNodeNameToBeFocused,
 	};
 });
