@@ -1,4 +1,5 @@
 import type { Project } from '@playwright/test';
+import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
 // Tags that require test containers environment
 // These tests won't be run against local
@@ -10,7 +11,7 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 // In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
 const SERIAL_EXECUTION = /@db:reset/;
 
-const CONTAINER_CONFIGS = [
+const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
@@ -35,7 +36,7 @@ export function getProjects(): Project[] {
 				testDir: './tests/ui',
 				grep: SERIAL_EXECUTION,
 				workers: 1,
-				dependencies: isLocal ? ['ui'] : undefined,
+				dependencies: ['ui'],
 				use: { baseURL: process.env.N8N_BASE_URL },
 			},
 		);
@@ -46,7 +47,7 @@ export function getProjects(): Project[] {
 					name: `${name}:ui`,
 					testDir: './tests/ui',
 					grepInvert: SERIAL_EXECUTION,
-					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard test, 180 for containers to allow startup etc
+					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
 					fullyParallel: true,
 					use: { containerConfig: config },
 				},

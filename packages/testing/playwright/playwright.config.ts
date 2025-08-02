@@ -1,19 +1,29 @@
 /* eslint-disable import-x/no-default-export */
 import { currentsReporter } from '@currents/playwright';
 import { defineConfig } from '@playwright/test';
+import os from 'os';
 
 import currentsConfig from './currents.config';
 import { getProjects } from './playwright-projects';
+import { getPortFromUrl } from './utils/url-helper';
 
 const IS_CI = !!process.env.CI;
 
 const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
+// Calculate workers based on environment
+// The amount of workers to run, limited to 6 as higher causes instability in the local server
+// Use half the CPUs in local, full in CI (CI has no other processes so we can use more)
+const CPU_COUNT = os.cpus().length;
+const LOCAL_WORKERS = Math.min(6, Math.floor(CPU_COUNT / 2));
+const CI_WORKERS = CPU_COUNT;
+const WORKERS = IS_CI ? CI_WORKERS : LOCAL_WORKERS;
+
 export default defineConfig({
 	globalSetup: './global-setup.ts',
 	forbidOnly: IS_CI,
 	retries: IS_CI ? 2 : 0,
-	workers: IS_CI ? 2 : 6,
+	workers: WORKERS,
 	timeout: 60000,
 
 	projects: getProjects(),
@@ -21,9 +31,8 @@ export default defineConfig({
 	// We use this if an n8n url is passed in. If the server is already running, we reuse it.
 	webServer: process.env.N8N_BASE_URL
 		? {
-				command:
-					'cd .. && N8N_PORT=5680 N8N_USER_FOLDER=/tmp/n8n-main-$(date +%s) E2E_TESTS=true pnpm start',
-				url: process.env.N8N_BASE_URL + '/favicon.ico',
+				command: `cd .. && N8N_PORT=${getPortFromUrl(process.env.N8N_BASE_URL)} N8N_USER_FOLDER=/${os.tmpdir()}/n8n-main-$(date +%s) E2E_TESTS=true pnpm start`,
+				url: `${process.env.N8N_BASE_URL}/favicon.ico`,
 				timeout: 20000,
 				reuseExistingServer: true,
 			}

@@ -2,19 +2,20 @@
 
 ## Quick Start
 ```bash
-pnpm test:all                 # Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
-pnpm test:local           # Starts a local server and runs the tests
+pnpm test:all                 									# Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
+pnpm test:local           											# Starts a local server and runs the UI tests
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the UI tests against the instance running
 ```
 
 ## Test Commands
 ```bash
 # By Mode
-pnpm test:container:standard    # Basic n8n
+pnpm test:container:standard    # Sqlite
 pnpm test:container:postgres    # PostgreSQL
 pnpm test:container:queue       # Queue mode
 pnpm test:container:multi-main  # HA setup
 
-pnpm test:performance						# Runs the performance tests
+pnpm test:performance						# Runs the performance tests against Sqlite container
 pnpm test:chaos									# Runs the chaos tests
 
 
