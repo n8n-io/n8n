@@ -454,7 +454,7 @@
 							{{#if isMultiSelect}}
 								<div>
 									<label class='form-label {{inputRequired}}'>{{label}}</label>
-									<div class='multiselect {{inputRequired}}' id='{{id}}'>
+									<div class='multiselect {{inputRequired}}' id='{{id}}' {{#if maxSelectAllowed}}data-max-select-allowed='{{maxSelectAllowed}}'{{/if}}>
 										{{#each multiSelectOptions}}
 											<div class='multiselect-option'>
 												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
@@ -676,8 +676,14 @@
 
 			function validateMultiselect(input, errorElement) {
 				const selectedValues = getSelectedValues(input);
+				const maxSelectAllowed = input.dataset.maxSelectAllowed ? parseInt(input.dataset.maxSelectAllowed, 10) : null;
 
 				if (!selectedValues.length) {
+					errorElement.textContent = 'This field is required';
+					errorElement.classList.add('error-show');
+					return false;
+				} else if (maxSelectAllowed && selectedValues.length > maxSelectAllowed) {
+					errorElement.textContent = `You can select a maximum of ${maxSelectAllowed} option${maxSelectAllowed > 1 ? 's' : ''}`;
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
@@ -726,6 +732,26 @@
 
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 			const emailInputs = document.querySelectorAll("input[type=email]");
+
+			const restrictedMultiselectInputs = document.querySelectorAll('.multiselect[data-max-select-allowed]');
+
+			restrictedMultiselectInputs.forEach((input) => {
+				input.addEventListener('click', () => {
+					const maxSelectAllowed = input.dataset.maxSelectAllowed ? parseInt(input.dataset.maxSelectAllowed, 10) : null;
+					const selectedValues = getSelectedValues(input);
+
+					if (selectedValues.length > maxSelectAllowed) {
+						const errorSelector = `.error-${input.id}`;
+						const error = document.querySelector(errorSelector);
+						error.textContent = `You can select a maximum of ${maxSelectAllowed} option${maxSelectAllowed > 1 ? 's' : ''}`;
+						error.classList.add('error-show');
+					} else {
+						const errorSelector = `.error-${input.id}`;
+						const error = document.querySelector(errorSelector);
+						error.classList.remove('error-show');
+					}
+				});
+			});
 
 			requiredInputs.forEach((input) => {
 				const errorSelector = `.error-${input.id}`;
@@ -823,7 +849,7 @@
 					valid.push(validateEmailInput(value, error));
 				});
 
-				requiredInputs.forEach((input) => {
+				[...requiredInputs, ...restrictedMultiselectInputs].forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
 					const error = document.querySelector(errorSelector);
 

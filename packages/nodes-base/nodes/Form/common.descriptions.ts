@@ -217,6 +217,22 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Max Selections Allowed',
+					name: 'maxSelectAllowed',
+					type: 'number',
+					default: 0,
+					hint: 'Specify the maximum number of options that can be selected, or 0 for no limit',
+					typeOptions: {
+						numberPrecision: 0,
+					},
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown'],
+							multiselect: [true],
+						},
+					},
+				},
+				{
 					displayName: 'HTML',
 					name: 'html',
 					typeOptions: {
