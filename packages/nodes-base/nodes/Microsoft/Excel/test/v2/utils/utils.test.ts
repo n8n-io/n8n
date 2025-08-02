@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 
@@ -27,8 +27,8 @@ const fakeExecute = (nodeParameters: IDataObject[]) => {
 		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters[itemIndex], parameter, fallbackValue);

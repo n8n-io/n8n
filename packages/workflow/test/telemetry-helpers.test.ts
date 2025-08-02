@@ -1,8 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
-import { STICKY_NODE_TYPE } from '@/constants';
-import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
+import { nodeTypes } from './ExpressionExtensions/helpers';
+import type { NodeTypes } from './node-types';
+import { STICKY_NODE_TYPE } from '../src/constants';
+import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
 	INode,
 	INodeTypeDescription,
@@ -10,22 +12,22 @@ import type {
 	IRunData,
 	NodeConnectionType,
 	IWorkflowBase,
-} from '@/interfaces';
-import { NodeConnectionTypes } from '@/interfaces';
-import * as nodeHelpers from '@/node-helpers';
+	INodeParameters,
+} from '../src/interfaces';
+import { NodeConnectionTypes } from '../src/interfaces';
+import * as nodeHelpers from '../src/node-helpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	extractLastExecutedNodeCredentialData,
+	extractLastExecutedNodeStructuredOutputErrorInfo,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
 	resolveAIMetrics,
+	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
-} from '@/telemetry-helpers';
-import { randomInt } from '@/utils';
-
-import { nodeTypes } from './ExpressionExtensions/helpers';
-import type { NodeTypes } from './node-types';
+} from '../src/telemetry-helpers';
+import { randomInt } from '../src/utils';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -348,6 +350,383 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test('should return node graph with agent node and all prompt types when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+						prompts: { text: 'Agent prompt text', ...optionalPrompts },
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: false })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent tool node and prompt text when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						text: 'Tool agent prompt',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-tool-node-id',
+					name: 'Agent Tool Node',
+					type: '@n8n/n8n-nodes-langchain.agentTool',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agentTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'agent-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.agentTool',
+						version: 1,
+						position: [300, 300],
+						prompts: { text: 'Tool agent prompt', ...optionalPrompts },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with openai langchain node and prompts array when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							values: [
+								{ role: 'system', content: 'You are a helpful assistant.' },
+								{ role: 'user', content: 'Hello!' },
+							],
+						},
+					},
+					id: 'openai-node-id',
+					name: 'OpenAI Node',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'openai-node-id',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'OpenAI Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain summarization node and summarization prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						options: {
+							summarizationMethodAndPrompts: {
+								values: { summaryPrompt: 'Summarize this text.' },
+							},
+						},
+					},
+					id: 'summarization-node-id',
+					name: 'Summarization Node',
+					type: '@n8n/n8n-nodes-langchain.chainSummarization',
+					typeVersion: 1,
+					position: [500, 500],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainSummarization'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'summarization-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainSummarization',
+						version: 1,
+						position: [500, 500],
+						prompts: { summaryPrompt: 'Summarize this text.' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Summarization Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with langchain custom tool node and description prompt when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						description: 'Custom tool description',
+					},
+					id: 'custom-tool-node-id',
+					name: 'Custom Tool Node',
+					type: '@n8n/n8n-nodes-langchain.customTool',
+					typeVersion: 1,
+					position: [600, 600],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.customTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'custom-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.customTool',
+						version: 1,
+						position: [600, 600],
+						// prompts: { description: 'Custom tool description' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Custom Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain llm node and messageValues prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							messageValues: [
+								{ role: 'system', content: 'Chain LLM system prompt.' },
+								{ role: 'user', content: 'Chain LLM user prompt.' },
+							],
+						},
+					},
+					id: 'chain-llm-node-id',
+					name: 'Chain LLM Node',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [700, 700],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainLlm'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'chain-llm-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1,
+						position: [700, 700],
+						prompts: [
+							{ role: 'system', content: 'Chain LLM system prompt.' },
+							{ role: 'user', content: 'Chain LLM user prompt.' },
+						],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Chain LLM Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
 	test('should return node graph with stickies indicating overlap', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),
@@ -498,6 +877,7 @@ describe('generateNodesGraph', () => {
 						type: 'n8n-nodes-base.webhook',
 						version: 1.1,
 						position: [520, 380],
+						response_mode: 'onReceived',
 					},
 				},
 				notes: {},
@@ -929,7 +1309,7 @@ describe('generateNodesGraph', () => {
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
 		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
 
-		jest.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -1805,6 +2185,711 @@ describe('makeAIMetrics', () => {
 			aiToolCount: 0,
 			fromAIOverrideCount: 0,
 			fromAIExpressionCount: 0,
+		});
+	});
+});
+
+describe('resolveVectorStoreMetrics', () => {
+	const makeNode = (parameters: object, type: string) =>
+		({
+			parameters,
+			type,
+			typeVersion: 1,
+			id: '7cb0b373-715c-4a89-8bbb-3f238907bc86',
+			name: 'a name',
+			position: [0, 0],
+		}) as INode;
+
+	it('should return empty object if no vector store nodes are present', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.nonVectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['Non-AI'],
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({});
+	});
+
+	it('should detect vector store nodes that inserted data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: true,
+			queriedDataFromVectorStore: false,
+		});
+	});
+
+	it('should detect vector store nodes that queried data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'retrieve',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: false,
+			queriedDataFromVectorStore: true,
+		});
+	});
+
+	it('should detect vector store nodes that both inserted and queried data', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+			makeNode(
+				{
+					mode: 'retrieve',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'success',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: true,
+			queriedDataFromVectorStore: true,
+		});
+	});
+
+	it('should return empty object if no successful executions are found', () => {
+		const nodes = [
+			makeNode(
+				{
+					mode: 'insert',
+				},
+				'n8n-nodes-base.vectorStoreNode',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Vector Stores'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const run = mock<IRun>({
+			data: {
+				resultData: {
+					runData: {
+						'a name': [
+							{
+								executionStatus: 'error',
+							},
+						],
+					},
+				},
+			},
+		});
+
+		const result = resolveVectorStoreMetrics(nodes, nodeTypes, run);
+		expect(result).toMatchObject({
+			insertedIntoVectorStore: false,
+			queriedDataFromVectorStore: false,
+		});
+	});
+});
+
+describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
+	const mockWorkflow = (nodes: INode[], connections?: any): IWorkflowBase => ({
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		id: 'test-workflow',
+		name: 'Test Workflow',
+		active: false,
+		isArchived: false,
+		nodes,
+		connections: connections || {},
+		settings: {},
+		pinData: {},
+		versionId: 'test-version',
+	});
+
+	const mockAgentNode = (name = 'Agent', hasOutputParser = true): INode => ({
+		id: 'agent-node-id',
+		name,
+		type: '@n8n/n8n-nodes-langchain.agent',
+		typeVersion: 1,
+		position: [100, 100],
+		parameters: {
+			hasOutputParser,
+		},
+	});
+
+	const mockLanguageModelNode = (name = 'Model', model = 'gpt-4'): INode => ({
+		id: 'model-node-id',
+		name,
+		type: 'n8n-nodes-langchain.lmChatOpenAi',
+		typeVersion: 1,
+		position: [200, 200],
+		parameters: {
+			model,
+		},
+	});
+
+	const mockToolNode = (name: string): INode => ({
+		id: `tool-${name}`,
+		name,
+		type: 'n8n-nodes-base.httpRequestTool',
+		typeVersion: 1,
+		position: [300, 300],
+		parameters: {},
+	});
+
+	const mockRunData = (lastNodeExecuted: string, error?: any, nodeRunData?: any): IRun => ({
+		mode: 'manual',
+		status: error ? 'error' : 'success',
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+		data: {
+			startData: {},
+			resultData: {
+				lastNodeExecuted,
+				error,
+				runData: nodeRunData || {},
+			},
+		} as any,
+	});
+
+	it('should return empty object when there is no error', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent');
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({});
+	});
+
+	it('should return empty object when lastNodeExecuted is not defined', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({});
+	});
+
+	it('should return empty object when last executed node is not found in workflow', () => {
+		const workflow = mockWorkflow([mockAgentNode('Agent')]);
+		const runData = mockRunData('NonExistentNode', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({});
+	});
+
+	it('should return empty object when last executed node is not an agent node', () => {
+		const workflow = mockWorkflow([mockLanguageModelNode('Model')]);
+		const runData = mockRunData('Model', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({});
+	});
+
+	it('should return empty object when agent node does not have output parser', () => {
+		const workflow = mockWorkflow([mockAgentNode('Agent', false)]);
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({});
+	});
+
+	it('should return error info without output parser fail reason when error is not output parser error', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent', new Error('Different error'), {
+			Agent: [
+				{
+					error: {
+						message: 'Some other error',
+					},
+				},
+			],
+		});
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+		});
+	});
+
+	it('should return error info with output parser fail reason', () => {
+		const workflow = mockWorkflow([mockAgentNode()]);
+		const runData = mockRunData('Agent', new Error('Some error'), {
+			Agent: [
+				{
+					error: {
+						message: "Model output doesn't fit required format",
+						context: {
+							outputParserFailReason: 'Failed to parse JSON output',
+						},
+					},
+				},
+			],
+		});
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			output_parser_fail_reason: 'Failed to parse JSON output',
+			num_tools: 0,
+		});
+	});
+
+	it('should count connected tools correctly', () => {
+		const agentNode = mockAgentNode();
+		const tool1 = mockToolNode('Tool1');
+		const tool2 = mockToolNode('Tool2');
+		const workflow = mockWorkflow([agentNode, tool1, tool2], {
+			Tool1: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			Tool2: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 2,
+		});
+	});
+
+	it('should extract model name from connected language model node', () => {
+		const agentNode = mockAgentNode();
+		const modelNode = mockLanguageModelNode('OpenAI Model', 'gpt-4-turbo');
+		const workflow = mockWorkflow([agentNode, modelNode], {
+			'OpenAI Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
+		);
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gpt-4-turbo',
+		});
+	});
+
+	it('should handle complete scenario with tools, model, and output parser error', () => {
+		const agentNode = mockAgentNode();
+		const modelNode = mockLanguageModelNode('OpenAI Model', 'gpt-4');
+		const tool1 = mockToolNode('HTTPTool');
+		const tool2 = mockToolNode('SlackTool');
+		const tool3 = mockToolNode('GoogleSheetsTool');
+
+		const workflow = mockWorkflow([agentNode, modelNode, tool1, tool2, tool3], {
+			'OpenAI Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+			HTTPTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			SlackTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+			GoogleSheetsTool: {
+				[NodeConnectionTypes.AiTool]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+				],
+			},
+		});
+
+		const runData = mockRunData('Agent', new Error('Workflow error'), {
+			Agent: [
+				{
+					error: {
+						message: "Model output doesn't fit required format",
+						context: {
+							outputParserFailReason: 'Invalid JSON structure: Expected object, got string',
+						},
+					},
+				},
+			],
+		});
+
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
+		);
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			output_parser_fail_reason: 'Invalid JSON structure: Expected object, got string',
+			num_tools: 3,
+			model_name: 'gpt-4.1-mini',
+		});
+	});
+
+	it('should pick correct model when workflow has multiple model nodes but only one connected to agent', () => {
+		const agentNode = mockAgentNode();
+		const connectedModel = mockLanguageModelNode('Connected Model', 'gpt-4');
+		const unconnectedModel = mockLanguageModelNode('Unconnected Model', 'claude-3');
+
+		const workflow = mockWorkflow([agentNode, connectedModel, unconnectedModel], {
+			'Connected Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+			// Unconnected Model is not connected to anything
+		});
+
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: 'gpt-4' }),
+		);
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gpt-4',
+		});
+	});
+
+	it('should only count tools connected to the agent when workflow has multiple tool nodes', () => {
+		const agentNode = mockAgentNode();
+		const connectedTool1 = mockToolNode('ConnectedTool1');
+		const connectedTool2 = mockToolNode('ConnectedTool2');
+		const unconnectedTool1 = mockToolNode('UnconnectedTool1');
+		const unconnectedTool2 = mockToolNode('UnconnectedTool2');
+		const someOtherNode: INode = {
+			id: 'other-node',
+			name: 'SomeOtherNode',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [400, 400],
+			parameters: {},
+		};
+
+		const workflow = mockWorkflow(
+			[
+				agentNode,
+				connectedTool1,
+				connectedTool2,
+				unconnectedTool1,
+				unconnectedTool2,
+				someOtherNode,
+			],
+			{
+				ConnectedTool1: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				ConnectedTool2: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				// UnconnectedTool1 and UnconnectedTool2 are connected to SomeOtherNode, not to Agent
+				UnconnectedTool1: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'SomeOtherNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+				UnconnectedTool2: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'SomeOtherNode', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			},
+		);
+
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 2, // Only ConnectedTool1 and ConnectedTool2
+		});
+	});
+
+	it('should extract model name from modelName parameter when model parameter is not present', () => {
+		const agentNode = mockAgentNode();
+		const modelNode: INode = {
+			id: 'model-node-id',
+			name: 'Google Gemini Model',
+			type: 'n8n-nodes-langchain.lmChatGoogleGemini',
+			typeVersion: 1,
+			position: [200, 200],
+			parameters: {
+				// Using modelName instead of model
+				modelName: 'gemini-1.5-pro',
+			},
+		};
+		const workflow = mockWorkflow([agentNode, modelNode], {
+			'Google Gemini Model': {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+		});
+		const runData = mockRunData('Agent', new Error('Some error'));
+
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
+		);
+
+		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
+		expect(result).toEqual({
+			num_tools: 0,
+			model_name: 'gemini-1.5-pro',
+		});
+	});
+
+	it('should capture Agent node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						options: {
+							enableStreaming: false,
+						},
+					},
+					id: 'agent-id-streaming-disabled',
+					name: 'Agent with streaming disabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						agent: 'conversationalAgent',
+						options: {
+							enableStreaming: true,
+						},
+					},
+					id: 'agent-id-streaming-enabled',
+					name: 'Agent with streaming enabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [300, 100],
+				},
+				{
+					parameters: {
+						agent: 'openAiFunctionsAgent',
+					},
+					id: 'agent-id-default-streaming',
+					name: 'Agent with default streaming',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [500, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'agent-id-streaming-disabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [100, 100],
+			agent: 'toolsAgent',
+			is_streaming: false,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'agent-id-streaming-enabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [300, 100],
+			agent: 'conversationalAgent',
+			is_streaming: true,
+		});
+
+		expect(result.nodeGraph.nodes['2']).toEqual({
+			id: 'agent-id-default-streaming',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [500, 100],
+			agent: 'openAiFunctionsAgent',
+			is_streaming: true,
+		});
+	});
+
+	it('should capture Chat Trigger node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						public: true,
+						options: {
+							responseMode: 'streaming',
+						},
+					},
+					id: 'chat-trigger-id',
+					name: 'Chat Trigger',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						public: false,
+						options: {
+							responseMode: 'lastNode',
+						},
+					},
+					id: 'chat-trigger-id-2',
+					name: 'Chat Trigger 2',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [300, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'chat-trigger-id',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [100, 100],
+			response_mode: 'streaming',
+			public_chat: true,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'chat-trigger-id-2',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [300, 100],
+			response_mode: 'lastNode',
+			public_chat: false,
 		});
 	});
 });

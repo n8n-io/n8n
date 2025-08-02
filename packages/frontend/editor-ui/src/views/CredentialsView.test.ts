@@ -32,6 +32,16 @@ const router = createRouter({
 			name: VIEWS.CREDENTIALS,
 			component: { template: '<div></div>' },
 		},
+		{
+			path: '/entity-un-authorized',
+			name: VIEWS.ENTITY_UNAUTHORIZED,
+			component: { template: '<div></div>' },
+		},
+		{
+			path: '/entity-not-found',
+			name: VIEWS.ENTITY_NOT_FOUND,
+			component: { template: '<div></div>' },
+		},
 	],
 });
 
@@ -187,6 +197,41 @@ describe('CredentialsView', () => {
 				),
 			);
 		});
+	});
+
+	it("should redirect to unauthorized page if user doesn't have read or update permissions", async () => {
+		const replaceSpy = vi.spyOn(router, 'replace');
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.getCredentialById = vi.fn().mockImplementation(() => ({
+			id: 'abc123',
+			name: 'test',
+			type: 'test',
+			createdAt: '2021-05-05T00:00:00Z',
+			updatedAt: '2021-05-05T00:00:00Z',
+			scopes: [],
+		}));
+		const { rerender } = renderComponent();
+		await rerender({ credentialId: 'abc123' });
+		expect(replaceSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: VIEWS.ENTITY_UNAUTHORIZED,
+				params: { entityType: 'credential' },
+			}),
+		);
+	});
+
+	it("should redirect to not found page if the credential doesn't exist", async () => {
+		const replaceSpy = vi.spyOn(router, 'replace');
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.getCredentialById = vi.fn().mockImplementation(() => undefined);
+		const { rerender } = renderComponent();
+		await rerender({ credentialId: 'abc123' });
+		expect(replaceSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'credential' },
+			}),
+		);
 	});
 
 	describe('filters', () => {

@@ -1,6 +1,7 @@
 <script lang="ts" setup="">
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	status: ExecutionStatus;
@@ -18,18 +19,21 @@ const i18n = useI18n();
 <template>
 	<N8nTooltip placement="top">
 		<template #content>
-			<i18n-t
+			<I18nT
 				v-if="props.status === 'waiting'"
 				keypath="executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely"
+				scope="global"
 			/>
-			<i18n-t
+			<I18nT
 				v-if="props.status === 'new'"
 				keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity"
+				scope="global"
 			>
 				<template #instance>
-					<i18n-t
+					<I18nT
 						v-if="props.isCloudDeployment"
 						keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.cloud"
+						scope="global"
 					>
 						<template #concurrencyCap>{{ props.concurrencyCap }}</template>
 						<template #link>
@@ -37,10 +41,11 @@ const i18n = useI18n();
 								{{ i18n.baseText('generic.upgradeNow') }}
 							</N8nLink>
 						</template>
-					</i18n-t>
-					<i18n-t
+					</I18nT>
+					<I18nT
 						v-else
 						keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.self"
+						scope="global"
 					>
 						<template #concurrencyCap>{{ props.concurrencyCap }}</template>
 						<template #link>
@@ -51,9 +56,9 @@ const i18n = useI18n();
 								>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</template>
 		<slot />
 	</N8nTooltip>

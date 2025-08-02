@@ -43,6 +43,7 @@
 				--color-label: #555555;
 				--color-input-border: #dbdfe7;
 				--color-input-text: #71747A;
+				--color-input-bg: #ffffff;
 				--color-focus-border: rgb(90, 76, 194);
 				--color-submit-btn-bg: #ff6d5a;
 				--color-submit-btn-text: #ffffff;
@@ -174,6 +175,7 @@
 				width: 100%;
 				font-size: var(--font-size-input);
 				color: var(--color-input-text);
+				background-color: var(--color-input-bg);
 				font-weight: 400;
 				padding: var(--padding-form-input);
 			}
@@ -400,7 +402,7 @@
 
 			@media only screen and (max-width: 500px) {
 				body {
-					background-color: #ffffff;
+					background-color: var(--color-background);
 				}
 				hr {
 					display: block;
@@ -409,14 +411,13 @@
 					width: 95%;
 					min-height: 100vh;
 					padding: 24px;
-					background-color: #ffffff;
 					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
 					box-shadow: 0px 0px 0px 0px #ffffff;
 				}
 				.card {
 					padding: 0px;
-					background-color: #ffffff;
+					background-color: var(--color-card-bg);
 					border: 0px solid var(--color-input-border);
 					border-radius: 0px;
 					box-shadow: 0px 0px 0px 0px #ffffff;
@@ -857,9 +858,7 @@
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
 
 					let postUrl = '';
-					if (window.location.href.includes('form-waiting')) {
-						intervalId = setTimeout(checkExecutionStatus, interval);
-					} else {
+					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
 					}
 
@@ -880,7 +879,8 @@
 
 								if(json?.formWaitingUrl) {
 									formWaitingUrl = json.formWaitingUrl;
-									intervalId = setTimeout(checkExecutionStatus, interval);
+									clearTimeout(timeoutId);
+									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
 								}
 
@@ -934,6 +934,12 @@
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+						})
+						.finally(() => {
+							if (window.location.href.includes('form-waiting')) {
+								clearTimeout(timeoutId);
+								timeoutId = setTimeout(checkExecutionStatus, interval);
+							}
 						});
 				}
 			});

@@ -157,7 +157,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				expect(interception.request.query).not.to.have.property('projectId');
 				expect(interception.request.query).to.have.property('workflowId');
 			});
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -182,7 +182,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -211,7 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
@@ -280,7 +280,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.canvasNodeByName('Append a block').should('be.visible').dblclick();
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
@@ -342,14 +342,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should set and update project icon', () => {
-			const DEFAULT_ICON = 'fa-layer-group';
+			const DEFAULT_ICON = 'layers';
 			const NEW_PROJECT_NAME = 'Test Project';
 
 			cy.signinAsAdmin();
 			cy.visit(workflowsPage.url);
 			projects.createProject(NEW_PROJECT_NAME);
 			// New project should have default icon
-			projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+			projects.getIconPickerButton().find('svg').should('have.attr', 'data-icon', DEFAULT_ICON);
 			// Choose another icon
 			projects.getIconPickerButton().click();
 			projects.getIconPickerTab('Emojis').click();

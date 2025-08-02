@@ -1,10 +1,10 @@
+import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
-import { WorkflowPage, NDV } from '../pages';
-import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -76,7 +76,7 @@ describe('Data mapping', () => {
 			.inputTbodyCell(1, 0)
 			.find('span')
 			.contains('count')
-			.trigger('mousedown', { force: true });
+			.trigger('mousedown', { force: true, button: 0, buttons: 1 });
 		ndv.actions.mapToParameter('value');
 
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');

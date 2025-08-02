@@ -68,7 +68,7 @@ export interface IGetExecutionsQueryFilter {
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
+	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
 }
@@ -88,7 +88,11 @@ function parseFiltersToQueryBuilder(
 	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {
-			qb.andWhere('md.key = :key AND md.value = :value', md);
+			if (md.exactMatch) {
+				qb.andWhere('md.key = :key AND md.value = :value', md);
+			} else {
+				qb.andWhere('md.key = :key AND LOWER(md.value) LIKE LOWER(:value)', md);
+			}
 		}
 	}
 	if (filters?.startedAfter) {
@@ -918,7 +922,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async getLiveExecutionRowsOnPostgres() {
 		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
-		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
+		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}' and schemaname = '${this.globalConfig.database.postgresdb.schema}';`;
 
 		try {
 			const rows = (await this.query(pgSql)) as Array<{ result: string }>;
@@ -983,19 +987,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
 		if (metadata?.length === 1) {
-			const [{ key, value }] = metadata;
+			const [{ key, value, exactMatch }] = metadata;
 
-			qb.innerJoin(
-				ExecutionMetadata,
-				'md',
-				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
-			);
+			const executionIdMatch = 'md.executionId = execution.id';
+			const keyMatch = exactMatch ? 'md.key = :key' : 'LOWER(md.key) = LOWER(:key)';
+			const valueMatch = exactMatch ? 'md.value = :value' : 'LOWER(md.value) LIKE LOWER(:value)';
+
+			const matches = [executionIdMatch, keyMatch, valueMatch];
+
+			qb.innerJoin(ExecutionMetadata, 'md', matches.join(' AND '));
 
 			qb.setParameter('key', key);
-			qb.setParameter('value', value);
+			qb.setParameter('value', exactMatch ? value : `%${value}%`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		if (annotationTags?.length || vote) {
 			// If there is a filter by one or multiple tags or by vote - we need to join the annotations table
 			qb.innerJoin('execution.annotation', 'annotation');

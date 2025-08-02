@@ -56,6 +56,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'user:list',
 	'user:resetPassword',
 	'user:changeRole',
+	'user:enforceMfa',
 	'variable:create',
 	'variable:read',
 	'variable:update',
@@ -77,6 +78,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:delete',
 	'insights:list',
 	'folder:move',
+	'oidc:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

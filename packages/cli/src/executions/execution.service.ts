@@ -80,6 +80,10 @@ export const schemaGetExecutionsQueryFilter = {
 					type: 'string',
 				},
 				value: { type: 'string' },
+				exactMatch: {
+					type: 'boolean',
+					default: true,
+				},
 			},
 		},
 	},
@@ -244,7 +248,7 @@ export class ExecutionService {
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
-		let requestFilters;
+		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
 				Object.keys(requestFiltersRaw).map((key) => {
@@ -416,13 +420,19 @@ export class ExecutionService {
 		);
 	}
 
-	async stop(executionId: string): Promise<StopResult> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
 
-		if (!execution) throw new MissingExecutionStopError(executionId);
+		if (!execution) {
+			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
+				executionId,
+			});
+
+			throw new MissingExecutionStopError(executionId);
+		}
 
 		this.assertStoppable(execution);
 

@@ -1,4 +1,4 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -26,11 +26,12 @@ import type {
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
+import { type Stats } from 'node:fs';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { isContainedWithin } from '@/utils/path-util';
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -88,7 +89,7 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+		if (!Container.get(CommunityPackagesConfig).preventLoading) {
 			// Load nodes from any other `n8n-nodes-*` packages in the download directory
 			// This includes the community nodes
 			await this.loadNodesFromNodeModules(
@@ -516,47 +517,63 @@ export class LoadNodesAndCredentials {
 
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
+
 		const { watch } = await import('chokidar');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
 		Object.values(this.loaders).forEach(async (loader) => {
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
 				return;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				try {
+					loader.reset();
+					await loader.loadAll();
+					await this.postProcessLoaders();
+					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				} catch (error) {
+					this.logger.error(`Hot reload failed for ${loader.packageName}`);
+				}
 			}, 100);
 
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			const files = await glob(toWatch, {
-				cwd: realModulePath,
-				ignore: ['node_modules/**'],
-			});
-			const watcher = watch(files, {
-				cwd: realModulePath,
+			// For lazy loaded packages, we need to watch the dist directory
+			const watchPath = loader.isLazyLoaded ? path.join(directory, 'dist') : directory;
+
+			// Watch options for chokidar v4
+			const watchOptions = {
 				ignoreInitial: true,
-			});
-			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
+				cwd: directory,
+				// Filter which files to watch based on loader type
+				ignored: (filePath: string, stats?: Stats) => {
+					if (!stats) return false;
+					if (stats.isDirectory()) return false;
+					if (filePath.includes('node_modules')) return true;
+
+					if (loader.isLazyLoaded) {
+						// Only watch nodes.json and credentials.json files
+						const basename = path.basename(filePath);
+						return basename !== 'nodes.json' && basename !== 'credentials.json';
+					}
+
+					// Watch all .js and .json files
+					return !filePath.endsWith('.js') && !filePath.endsWith('.json');
+				},
+			};
+
+			const watcher = watch(watchPath, watchOptions);
+
+			// Watch for file changes and additions
+			// Not watching removals to prevent issues during build processes
+			watcher.on('change', reloader);
+			watcher.on('add', reloader);
 		});
 	}
 }

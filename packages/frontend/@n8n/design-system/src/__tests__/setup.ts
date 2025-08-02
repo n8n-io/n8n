@@ -1,12 +1,13 @@
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/vue';
 import { config } from '@vue/test-utils';
+import ElementPlus from 'element-plus';
 
 import { N8nPlugin } from '@n8n/design-system/plugin';
 
 configure({ testIdAttribute: 'data-test-id' });
 
-config.global.plugins = [N8nPlugin];
+config.global.plugins = [N8nPlugin, ElementPlus];
 
 window.ResizeObserver =
 	window.ResizeObserver ||

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SubcategoryItemProps } from '@/Interface';
-import { camelCase } from 'lodash-es';
+import camelCase from 'lodash/camelCase';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -30,6 +30,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 				:name="item.icon"
 				:circle="false"
 				:show-tooltip="false"
+				:use-updated-icons="true"
 				v-bind="item.iconProps"
 			/>
 		</template>

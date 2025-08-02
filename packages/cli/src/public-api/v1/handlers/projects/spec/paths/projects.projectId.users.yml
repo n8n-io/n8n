@@ -4,7 +4,7 @@ post:
   tags:
     - Projects
   summary: Add one or more users to a project
-  description: Add one or more users to a project from your instance.
+  description: Add one or more users to a project on your instance.
   parameters:
     - name: projectId
       in: path

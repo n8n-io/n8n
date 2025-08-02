@@ -190,4 +190,35 @@ describe('CommunityPlusEnrollmentModal', () => {
 		await userEvent.click(skipButton);
 		expect(consoleErrorSpy).not.toHaveBeenCalled();
 	});
+
+	it('should prevent multiple submissions', async () => {
+		const closeCallbackSpy = vi.fn();
+		const usageStore = mockedStore(useUsageStore);
+
+		usageStore.registerCommunityEdition.mockImplementation(
+			async () =>
+				await new Promise((resolve) =>
+					setTimeout(() => resolve({ title: 'Title', text: 'Text' }), 100),
+				),
+		);
+
+		const props = {
+			modalName: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: {
+				closeCallback: closeCallbackSpy,
+			},
+		};
+
+		const { getByRole } = renderComponent({ props });
+		const emailInput = getByRole('textbox');
+		expect(emailInput).toBeVisible();
+
+		await userEvent.type(emailInput, 'test@ema.il');
+		await userEvent.keyboard('{Enter}');
+		await userEvent.keyboard('{Enter}');
+
+		expect(getByRole('button', { name: buttonLabel })).toBeDisabled();
+		expect(usageStore.registerCommunityEdition).toHaveBeenCalledWith('test@ema.il');
+		expect(usageStore.registerCommunityEdition).toHaveBeenCalledTimes(1);
+	});
 });

@@ -7,27 +7,32 @@ import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
-	IExecuteData,
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
+	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
-import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
+import {
+	checkNodeParameterNotEmpty,
+	extractTokenUsage,
+} from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -103,15 +108,34 @@ export class TestRunnerService {
 			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
 		}
 
-		const unconfiguredMetricsNode = metricsNodes.find(
-			(node) =>
-				!node.parameters ||
-				!node.parameters.metrics ||
-				(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
-				(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(
-					(assignment) => !assignment.name || assignment.value === null,
-				),
-		);
+		const unconfiguredMetricsNode = metricsNodes.find((node) => {
+			if (node.disabled === true || !node.parameters) {
+				return true;
+			}
+
+			// For versions 4.7+, check if metric parameter is missing
+			if (node.typeVersion >= 4.7 && !node.parameters.metric) {
+				return true;
+			}
+
+			// Check customMetrics configuration if:
+			// - Version 4.7+ and metric is 'customMetrics'
+			// - Version < 4.7 (customMetrics is default)
+			const isCustomMetricsMode =
+				node.typeVersion >= 4.7 ? node.parameters.metric === 'customMetrics' : true;
+
+			if (isCustomMetricsMode) {
+				return (
+					!node.parameters.metrics ||
+					(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
+					(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(
+						(assignment) => !assignment.name || assignment.value === null,
+					)
+				);
+			}
+
+			return false;
+		});
 
 		if (unconfiguredMetricsNode) {
 			throw new TestRunError('SET_METRICS_NODE_NOT_CONFIGURED', {
@@ -127,7 +151,7 @@ export class TestRunnerService {
 	private validateSetOutputsNodes(workflow: IWorkflowBase) {
 		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
 		if (setOutputsNodes.length === 0) {
-			throw new TestRunError('SET_OUTPUTS_NODE_NOT_FOUND');
+			return; // No outputs nodes are strictly required, so we can skip validation
 		}
 
 		const unconfiguredSetOutputsNode = setOutputsNodes.find(
@@ -189,7 +213,16 @@ export class TestRunnerService {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'evaluation',
 			pinData,
-			workflowData: workflow,
+			workflowData: {
+				...workflow,
+				settings: {
+					...workflow.settings,
+					saveManualExecutions: true,
+					saveDataErrorExecution: 'all',
+					saveDataSuccessExecution: 'all',
+					saveExecutionProgress: false,
+				},
+			},
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 			triggerToStartFrom: {
@@ -201,11 +234,8 @@ export class TestRunnerService {
 		// the same way as it would be passed in manual mode
 		if (config.getEnv('executions.mode') === 'queue') {
 			data.executionData = {
-				startData: {
-					// startNodes: startNodesData.startNodes,
-				},
 				resultData: {
-					// pinData,
+					pinData,
 					runData: {},
 				},
 				manualData: {
@@ -250,16 +280,11 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		// Initialize the input data for dataset trigger
-		// Provide a flag indicating that we want to get the whole dataset
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: triggerNode,
-			data: {
-				main: [[{ json: { requestDataset: true } }]],
-			},
-			source: null,
-		});
+		// Call custom operation to fetch the whole dataset
+		triggerNode.forceCustomOperation = {
+			resource: 'dataset',
+			operation: 'getRows',
+		};
 
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode: triggerNode.name,
@@ -284,13 +309,6 @@ export class TestRunnerService {
 				resultData: {
 					runData: {},
 				},
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
 				manualData: {
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
@@ -303,6 +321,33 @@ export class TestRunnerService {
 				name: triggerNode.name,
 			},
 		};
+
+		if (
+			!(
+				config.get('executions.mode') === 'queue' &&
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+			) &&
+			data.executionData
+		) {
+			const nodeExecutionStack: IExecuteData[] = [];
+			nodeExecutionStack.push({
+				node: triggerNode,
+				data: {
+					main: [[{ json: {} }]],
+				},
+				source: null,
+			});
+
+			data.executionData.executionData = {
+				contextData: {},
+				metadata: {},
+				// workflow does not evaluate correctly if this is passed in queue mode with offload manual executions
+				// but this is expected otherwise in regular execution mode
+				nodeExecutionStack,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
@@ -317,21 +362,32 @@ export class TestRunnerService {
 	/**
 	 * Get the evaluation set metrics nodes from a workflow.
 	 */
-	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+	static getEvaluationNodes(
+		workflow: IWorkflowBase,
+		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
+		{ isDefaultOperation }: { isDefaultOperation: boolean } = { isDefaultOperation: false },
+	) {
 		return workflow.nodes.filter(
-			(node) => node.type === EVALUATION_NODE_TYPE && node.parameters.operation === 'setMetrics',
+			(node) =>
+				node.type === EVALUATION_NODE_TYPE &&
+				node.disabled !== true &&
+				(node.parameters.operation === operation ||
+					(isDefaultOperation && node.parameters.operation === undefined)),
 		);
+	}
+
+	/**
+	 * Get the evaluation set metrics nodes from a workflow.
+	 */
+	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+		return this.getEvaluationNodes(workflow, 'setMetrics');
 	}
 
 	/**
 	 * Get the evaluation set outputs nodes from a workflow.
 	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
-		return workflow.nodes.filter(
-			(node) =>
-				node.type === EVALUATION_NODE_TYPE &&
-				(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
-		);
+		return this.getEvaluationNodes(workflow, 'setOutputs', { isDefaultOperation: true });
 	}
 
 	/**
@@ -349,7 +405,7 @@ export class TestRunnerService {
 			});
 		}
 
-		const triggerOutput = triggerOutputData?.data?.main?.[0];
+		const triggerOutput = triggerOutputData?.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
@@ -358,10 +414,26 @@ export class TestRunnerService {
 		return triggerOutput;
 	}
 
+	private getEvaluationData(
+		execution: IRun,
+		workflow: IWorkflowBase,
+		operation: 'setInputs' | 'setOutputs',
+	): JsonObject {
+		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
+
+		return evalNodes.reduce<JsonObject>((accu, node) => {
+			const runs = execution.data.resultData.runData[node.name];
+			const data = runs?.[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
+
+			Object.assign(accu, data);
+			return accu;
+		}, {});
+	}
+
 	/**
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
-	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
+	private extractUserDefinedMetrics(execution: IRun, workflow: IWorkflowBase): IDataObject {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 
 		// If a metrics node did not execute, ignore it.
@@ -373,6 +445,23 @@ export class TestRunnerService {
 			.map((data) => data.data?.main?.[0]?.[0]?.json ?? {});
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 		return metricsResult;
+	}
+
+	/**
+	 * Extracts predefined metrics from the execution data.
+	 * Currently, it extracts token usage and execution time.
+	 */
+	private extractPredefinedMetrics(execution: IRun) {
+		const metricValues: Record<string, number> = {};
+
+		const tokenUsageMetrics = extractTokenUsage(execution.data.resultData.runData);
+		Object.assign(metricValues, tokenUsageMetrics.total);
+
+		if (execution.startedAt && execution.stoppedAt) {
+			metricValues.executionTime = execution.stoppedAt.getTime() - execution.startedAt.getTime();
+		}
+
+		return metricValues;
 	}
 
 	/**
@@ -505,11 +594,18 @@ export class TestRunnerService {
 					}
 					const completedAt = new Date();
 
-					const { addedMetrics } = metrics.addResults(
-						this.extractEvaluationResult(testCaseExecution, workflow),
+					// Collect common metrics
+					const { addedMetrics: addedPredefinedMetrics } = metrics.addResults(
+						this.extractPredefinedMetrics(testCaseExecution),
+					);
+					this.logger.debug('Test case common metrics extracted', addedPredefinedMetrics);
+
+					// Collect user-defined metrics
+					const { addedMetrics: addedUserDefinedMetrics } = metrics.addResults(
+						this.extractUserDefinedMetrics(testCaseExecution, workflow),
 					);
 
-					if (Object.keys(addedMetrics).length === 0) {
+					if (Object.keys(addedUserDefinedMetrics).length === 0) {
 						await this.testCaseExecutionRepository.createTestCaseExecution({
 							executionId: testCaseExecutionId,
 							testRun: {
@@ -522,7 +618,19 @@ export class TestRunnerService {
 						});
 						telemetryMeta.errored_test_case_count++;
 					} else {
-						this.logger.debug('Test case metrics extracted', addedMetrics);
+						const combinedMetrics = {
+							...addedUserDefinedMetrics,
+							...addedPredefinedMetrics,
+						};
+
+						const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+						const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+
+						this.logger.debug(
+							'Test case metrics extracted (user-defined)',
+							addedUserDefinedMetrics,
+						);
+
 						// Create a new test case execution in DB
 						await this.testCaseExecutionRepository.createTestCaseExecution({
 							executionId: testCaseExecutionId,
@@ -532,7 +640,9 @@ export class TestRunnerService {
 							runAt,
 							completedAt,
 							status: 'success',
-							metrics: addedMetrics,
+							metrics: combinedMetrics,
+							inputs,
+							outputs,
 						});
 					}
 				} catch (e) {

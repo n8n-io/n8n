@@ -1,57 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "__last_update": {
-            "type": "string"
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "contact_fullname": {
-            "type": "string"
-        },
-        "contact_lastname": {
-            "type": "string"
-        },
-        "country": {
-            "type": "boolean"
-        },
-        "create_date": {
-            "type": "string"
-        },
-        "display_name": {
-            "type": "string"
-        },
         "id": {
             "type": "integer"
         },
-        "is_blacklisted": {
-            "type": "boolean"
-        },
-        "lost_reason": {
-            "type": "boolean"
-        },
-        "message_attachment_count": {
-            "type": "integer"
-        },
-        "message_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "street4": {
-            "type": "boolean"
-        },
-        "tag_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "type": {
+        "name": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

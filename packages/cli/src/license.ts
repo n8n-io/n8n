@@ -4,12 +4,13 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 	type BooleanLicenseFeature,
 	type NumericLicenseFeature,
 } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
@@ -18,7 +19,7 @@ import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
-import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY, Time } from './constants';
+import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
@@ -78,6 +79,8 @@ export class License implements LicenseProvider {
 		const collectPassthroughData = isMainInstance
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
+		const onExpirySoon = !this.instanceSettings.isLeader ? () => this.onExpirySoon() : undefined;
+		const expirySoonOffsetMins = !this.instanceSettings.isLeader ? 120 : undefined;
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
@@ -107,6 +110,8 @@ export class License implements LicenseProvider {
 				collectPassthroughData,
 				onFeatureChange,
 				onLicenseRenewed,
+				onExpirySoon,
+				expirySoonOffsetMins,
 			});
 
 			await this.manager.initialize();
@@ -171,6 +176,7 @@ export class License implements LicenseProvider {
 		this.logger.debug('License activated');
 	}
 
+	@OnPubSubEvent('reload-license')
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
@@ -431,5 +437,21 @@ export class License implements LicenseProvider {
 	@OnLeaderStepdown()
 	disableAutoRenewals() {
 		this.manager?.disableAutoRenewals();
+	}
+
+	private onExpirySoon() {
+		this.logger.info('License is about to expire soon, reloading license...');
+
+		// reload in background to avoid blocking SDK
+
+		void this.reload()
+			.then(() => {
+				this.logger.info('Reloaded license on expiry soon');
+			})
+			.catch((error) => {
+				this.logger.error('Failed to reload license on expiry soon', {
+					error: error instanceof Error ? error.message : error,
+				});
+			});
 	}
 }

@@ -1,11 +1,13 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { InstanceSettingsConfig } from '@n8n/config';
+import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'path';
 
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
@@ -21,10 +23,6 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
-
-type InstanceRole = 'unset' | 'leader' | 'follower';
-
-export type InstanceType = 'main' | 'webhook' | 'worker';
 
 @Service()
 export class InstanceSettings {
@@ -60,12 +58,10 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2];
-		this.instanceType = ['webhook', 'worker'].includes(command)
-			? (command as InstanceType)
-			: 'main';
+		const command = process.argv[2] as InstanceType;
+		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
 
-		this.hostId = `${this.instanceType}-${nanoid()}`;
+		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
 		this.instanceId = this.generateInstanceId();
 	}
@@ -81,12 +77,11 @@ export class InstanceSettings {
 	instanceRole: InstanceRole = 'unset';
 
 	/**
-	 * Transient ID of this n8n instance, for scaling mode.
-	 * Reset on restart. Do not confuse with `instanceId`.
+	 * ID of this n8n instance. Hostname-based when in Docker, or nanoID-based
+	 * otherwise (resets on restart). Do not confuse with `instanceId`.
 	 *
-	 * @example 'main-bnxa1riryKUNHtln'
-	 * @example 'worker-nDJR0FnSd2Vf6DB5'
-	 * @example 'webhook-jxQ7AO8IzxEtfW1F'
+	 * @example 'main-bnxa1riryKUNHtln' (local)
+	 * @example 'main-6bf523178bc6' (Docker)
 	 */
 	readonly hostId: string;
 
@@ -186,7 +181,7 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) this.logger.debug(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 

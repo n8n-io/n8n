@@ -18,10 +18,11 @@ import type {
 	ICredentialsResponse,
 	IUsedCredential,
 } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { I18nT } from 'vue-i18n';
 
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
@@ -60,14 +61,14 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
-const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
+const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
 const isPersonalProject = computed(() => {
 	return selectedProject.value?.type === ProjectTypes.Personal;
 });
 const isOwnPersonalProject = computed(() => {
 	return (
 		selectedProject.value?.type === ProjectTypes.Personal &&
-		selectedProject.value.id === projectsStore.personalProject?.id
+		selectedProject.value?.id === projectsStore.personalProject?.id
 	);
 });
 const isTransferringOwnership = computed(() => {
@@ -196,12 +197,29 @@ const onSubmit = () => {
 			};
 
 	if (props.data.resourceType === 'folder') {
-		if (selectedProject.value?.id !== projectsStore.currentProject?.id) {
+		if (selectedProject.value.id !== projectsStore.currentProject?.id) {
 			props.data.workflowListEventBus.emit('folder-transferred', {
-				newParent,
-				folder: { id: props.data.resource.id, name: props.data.resource.name },
-				projectId: projectsStore.currentProject?.id,
-				destinationProjectId: selectedProject.value.id,
+				source: {
+					projectId: projectsStore.currentProject?.id,
+					folder: {
+						id: props.data.resource.id,
+						name: props.data.resource.name,
+					},
+				},
+				destination: {
+					projectId: selectedProject.value.id,
+					parentFolder: {
+						id:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.id
+								: undefined,
+						name:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.name
+								: targetProjectName.value,
+					},
+					canAccess: isFolderSelectable.value,
+				},
 				shareCredentials: shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined,
@@ -215,12 +233,26 @@ const onSubmit = () => {
 	} else {
 		if (isTransferringOwnership.value) {
 			props.data.workflowListEventBus.emit('workflow-transferred', {
-				newParent,
-				projectId: selectedProject.value.id,
-				workflow: {
-					id: props.data.resource.id,
-					name: props.data.resource.name,
-					oldParentId: props.data.resource.parentFolderId,
+				source: {
+					projectId: projectsStore.currentProject?.id,
+					workflow: {
+						id: props.data.resource.id,
+						name: props.data.resource.name,
+					},
+				},
+				destination: {
+					projectId: selectedProject.value.id,
+					parentFolder: {
+						id:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.id
+								: undefined,
+						name:
+							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+								? selectedFolder.value.name
+								: targetProjectName.value,
+					},
+					canAccess: isFolderSelectable.value,
 				},
 				shareCredentials: shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
@@ -237,6 +269,7 @@ const onSubmit = () => {
 			});
 		}
 	}
+
 	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
 };
 
@@ -332,14 +365,14 @@ onMounted(async () => {
 
 				<div v-if="isTransferringOwnership" :class="$style.block">
 					<N8nText>
-						<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+						<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
 							<template #note
 								><strong>{{
 									i18n.baseText('projects.move.resource.modal.message.note')
 								}}</strong></template
 							>
 							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
-						</i18n-t>
+						</I18nT>
 						<span
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
 							:class="$style.textBlock"
@@ -379,12 +412,13 @@ onMounted(async () => {
 				:class="$style.textBlock"
 				data-test-id="move-modal-share-credentials-checkbox"
 			>
-				<i18n-t
+				<I18nT
 					:keypath="
 						data.resourceType === 'workflow'
 							? 'folders.move.modal.message.usedCredentials.workflow'
 							: 'folders.move.modal.message.usedCredentials.folder'
 					"
+					scope="global"
 				>
 					<template #usedCredentials>
 						<N8nTooltip placement="top">
@@ -404,7 +438,7 @@ onMounted(async () => {
 							</template>
 						</N8nTooltip>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
@@ -415,7 +449,10 @@ onMounted(async () => {
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
 			</N8nCallout>
 			<span v-if="unShareableCredentials.length" :class="$style.textBlock">
-				<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
+				<I18nT
+					keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
+					scope="global"
+				>
 					<template #credentials>
 						<N8nTooltip placement="top">
 							<span :class="$style.tooltipText">{{
@@ -429,7 +466,7 @@ onMounted(async () => {
 							</template>
 						</N8nTooltip>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</span>
 		</template>
 		<template #footer="{ close }">

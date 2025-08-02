@@ -2,10 +2,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
 
@@ -22,6 +24,7 @@ describe('handleLoadOperation', () => {
 	let mockContext: MockProxy<IExecuteFunctions>;
 	let mockEmbeddings: MockProxy<Embeddings>;
 	let mockVectorStore: MockProxy<VectorStore>;
+	let mockReranker: MockProxy<BaseDocumentCompressor>;
 	let mockArgs: VectorStoreNodeConstructorArgs<VectorStore>;
 	let nodeParameters: Record<string, any>;
 
@@ -30,6 +33,7 @@ describe('handleLoadOperation', () => {
 			prompt: 'test search query',
 			topK: 3,
 			includeDocumentMetadata: true,
+			useReranker: false,
 		};
 
 		mockContext = mock<IExecuteFunctions>();
@@ -47,6 +51,24 @@ describe('handleLoadOperation', () => {
 			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
 			[{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } } as Document, 0.75],
 		]);
+
+		mockReranker = mock<BaseDocumentCompressor>();
+		mockReranker.compressDocuments.mockResolvedValue([
+			{
+				pageContent: 'test content 2',
+				metadata: { test: 'metadata 2', relevanceScore: 0.98 },
+			} as Document,
+			{
+				pageContent: 'test content 1',
+				metadata: { test: 'metadata 1', relevanceScore: 0.92 },
+			} as Document,
+			{
+				pageContent: 'test content 3',
+				metadata: { test: 'metadata 3', relevanceScore: 0.88 },
+			} as Document,
+		]);
+
+		mockContext.getInputConnectionData.mockResolvedValue(mockReranker);
 
 		mockArgs = {
 			meta: {
@@ -141,5 +163,83 @@ describe('handleLoadOperation', () => {
 		);
 
 		expect(mockArgs.releaseVectorStoreClient).toHaveBeenCalledWith(mockVectorStore);
+	});
+
+	describe('reranking functionality', () => {
+		beforeEach(() => {
+			nodeParameters.useReranker = true;
+		});
+
+		it('should use reranker when useReranker is true', async () => {
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(mockContext.getInputConnectionData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiReranker,
+				0,
+			);
+			expect(mockReranker.compressDocuments).toHaveBeenCalledWith(
+				[
+					{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } },
+					{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } },
+					{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } },
+				],
+				'test search query',
+			);
+			expect(result).toHaveLength(3);
+		});
+
+		it('should return reranked documents with relevance scores', async () => {
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			// First result should be the reranked first document (was second in original order)
+			expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 2');
+			expect(result[0].json?.score).toEqual(0.98);
+
+			// Second result should be the reranked second document (was first in original order)
+			expect((result[1].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
+			expect(result[1].json?.score).toEqual(0.92);
+
+			// Third result should be the reranked third document
+			expect((result[2].json?.document as IDataObject)?.pageContent).toEqual('test content 3');
+			expect(result[2].json?.score).toEqual(0.88);
+		});
+
+		it('should remove relevanceScore from metadata after reranking', async () => {
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			// Check that relevanceScore is not included in the metadata
+			expect((result[0].json?.document as IDataObject)?.metadata).toEqual({ test: 'metadata 2' });
+			expect((result[1].json?.document as IDataObject)?.metadata).toEqual({ test: 'metadata 1' });
+			expect((result[2].json?.document as IDataObject)?.metadata).toEqual({ test: 'metadata 3' });
+		});
+
+		it('should handle reranking with includeDocumentMetadata false', async () => {
+			nodeParameters.includeDocumentMetadata = false;
+
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result[0].json?.document).not.toHaveProperty('metadata');
+			expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 2');
+			expect(result[0].json?.score).toEqual(0.98);
+		});
+
+		it('should not call reranker when useReranker is false', async () => {
+			nodeParameters.useReranker = false;
+
+			await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(mockContext.getInputConnectionData).not.toHaveBeenCalled();
+			expect(mockReranker.compressDocuments).not.toHaveBeenCalled();
+		});
+
+		it('should release vector store client even if reranking fails', async () => {
+			mockReranker.compressDocuments.mockRejectedValue(new Error('Reranking failed'));
+
+			await expect(handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0)).rejects.toThrow(
+				'Reranking failed',
+			);
+
+			expect(mockArgs.releaseVectorStoreClient).toHaveBeenCalledWith(mockVectorStore);
+		});
 	});
 });

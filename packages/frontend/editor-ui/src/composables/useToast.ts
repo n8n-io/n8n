@@ -13,7 +13,7 @@ import { useStyles } from './useStyles';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useLogsStore } from '@/stores/logs.store';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {

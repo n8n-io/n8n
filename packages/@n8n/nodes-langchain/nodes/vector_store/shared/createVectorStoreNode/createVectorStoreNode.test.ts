@@ -95,15 +95,23 @@ describe('createVectorStoreNode', () => {
 	});
 
 	describe('retrieve-as-tool mode', () => {
-		it('supplies DynamicTool that queries vector store and returns documents with metadata', async () => {
+		it('supplies DynamicTool that queries vector store and returns documents with metadata on version <= 1.2', async () => {
 			// ARRANGE
-			const parameters: Record<string, NodeParameterValueType | object> = {
+			const parameters: Record<string, NodeParameterValueType> = {
 				...DEFAULT_PARAMETERS,
 				mode: 'retrieve-as-tool',
 				description: 'tool description',
 				toolName: 'tool name',
 				includeDocumentMetadata: true,
 			};
+			context.getNode.mockReturnValueOnce({
+				id: 'testNode',
+				typeVersion: 1.2,
+				name: 'Test Tool',
+				type: 'testVectorStore',
+				parameters,
+				position: [0, 0],
+			});
 			context.getNodeParameter.mockImplementation(
 				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
 			);
@@ -130,15 +138,22 @@ describe('createVectorStoreNode', () => {
 			]);
 		});
 
-		it('supplies DynamicTool that queries vector store and returns documents without metadata', async () => {
+		it('supplies DynamicTool that queries vector store and returns documents with metadata on version > 1.2', async () => {
 			// ARRANGE
-			const parameters: Record<string, NodeParameterValueType | object> = {
+			const parameters: Record<string, NodeParameterValueType> = {
 				...DEFAULT_PARAMETERS,
 				mode: 'retrieve-as-tool',
 				description: 'tool description',
-				toolName: 'tool name',
-				includeDocumentMetadata: false,
+				includeDocumentMetadata: true,
 			};
+			context.getNode.mockReturnValueOnce({
+				id: 'testNode',
+				typeVersion: 1.3,
+				name: 'Test Tool',
+				type: 'testVectorStore',
+				parameters,
+				position: [0, 0],
+			});
 			context.getNodeParameter.mockImplementation(
 				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
 			);
@@ -151,7 +166,49 @@ describe('createVectorStoreNode', () => {
 			const output = await tool?.func(MOCK_SEARCH_VALUE);
 
 			// ASSERT
-			expect(tool?.getName()).toEqual(parameters.toolName);
+			expect(tool?.getName()).toEqual('Test_Tool');
+			expect(tool?.description).toEqual(parameters.toolDescription);
+			expect(embeddings.embedQuery).toHaveBeenCalledWith(MOCK_SEARCH_VALUE);
+			expect(vectorStore.similaritySearchVectorWithScore).toHaveBeenCalledWith(
+				MOCK_EMBEDDED_SEARCH_VALUE,
+				parameters.topK,
+				parameters.filter,
+			);
+			expect(output).toEqual([
+				{ type: 'text', text: JSON.stringify(MOCK_DOCUMENTS[0][0]) },
+				{ type: 'text', text: JSON.stringify(MOCK_DOCUMENTS[1][0]) },
+			]);
+		});
+
+		it('supplies DynamicTool that queries vector store and returns documents without metadata', async () => {
+			// ARRANGE
+			const parameters: Record<string, NodeParameterValueType> = {
+				...DEFAULT_PARAMETERS,
+				mode: 'retrieve-as-tool',
+				description: 'tool description',
+				includeDocumentMetadata: false,
+			};
+			context.getNode.mockReturnValueOnce({
+				id: 'testNode',
+				typeVersion: 1.3,
+				name: 'Test Tool',
+				type: 'testVectorStore',
+				parameters,
+				position: [0, 0],
+			});
+			context.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
+			);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const data = await nodeType.supplyData.call(context, 1);
+			const tool = (data.response as { logWrapped: DynamicTool }).logWrapped;
+			const output = await tool?.func(MOCK_SEARCH_VALUE);
+
+			// ASSERT
+			expect(tool?.getName()).toEqual('Test_Tool');
 			expect(tool?.description).toEqual(parameters.toolDescription);
 			expect(embeddings.embedQuery).toHaveBeenCalledWith(MOCK_SEARCH_VALUE);
 			expect(vectorStore.similaritySearchVectorWithScore).toHaveBeenCalledWith(

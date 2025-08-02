@@ -7,7 +7,6 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -25,11 +24,10 @@ const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
-const router = useRouter();
 const toast = useToast();
 const locale = useI18n();
 
-const { initializeWorkspace } = useCanvasOperations({ router });
+const { initializeWorkspace } = useCanvasOperations();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;

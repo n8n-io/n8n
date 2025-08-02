@@ -1,10 +1,15 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload as payload,
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+	randomName,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -24,15 +29,7 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
-import {
-	randomCredentialPayload as payload,
-	randomCredentialPayload,
-	randomCredentialPayloadWithOauthTokenData,
-	randomName,
-} from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -1260,12 +1257,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail with a 403 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
+	test('should fail with a 404 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
 		const response = await authMemberAgent
 			.patch('/credentials/123')
 			.send(randomCredentialPayload());
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('should fail with a 400 is credential is managed', async () => {

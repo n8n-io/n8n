@@ -1,8 +1,8 @@
+import { testDb } from '@n8n/backend-test-utils';
 import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createUserShell } from './shared/db/users';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 

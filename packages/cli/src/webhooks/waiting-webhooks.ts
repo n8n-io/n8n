@@ -18,6 +18,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -88,6 +89,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];

@@ -98,6 +98,7 @@ export const useExecutionDebugging = () => {
 		}
 
 		// Set execution data
+		workflowsStore.resetAllNodesIssues();
 		workflowsStore.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
@@ -147,7 +148,7 @@ export const useExecutionDebugging = () => {
 			uiStore.openModalWithData({
 				name: DEBUG_PAYWALL_MODAL_KEY,
 				data: {
-					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
+					title: i18n.baseText('executionsList.debug.paywall.title'),
 					footerButtonAction: () => {
 						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
 						void pageRedirectionHelper.goToUpgrade('debug', 'upgrade-debug');

@@ -27,7 +27,7 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -42,6 +42,9 @@ export class Agent extends VersionedNodeType {
 			1.8: new AgentV1(baseDescription),
 			1.9: new AgentV1(baseDescription),
 			2: new AgentV2(baseDescription),
+			2.1: new AgentV2(baseDescription),
+			2.2: new AgentV2(baseDescription),
+			// IMPORTANT Reminder to update AgentTool
 		};
 
 		super(nodeVersions, baseDescription);

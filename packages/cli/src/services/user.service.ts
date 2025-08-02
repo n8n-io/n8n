@@ -61,15 +61,16 @@ export class UserService {
 			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
+			mfaAuthenticated?: boolean;
 		},
 	) {
 		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
 
-		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: ldapIdentity ? 'ldap' : 'email',
+			signInType: providerType ?? 'email',
 			isOwner: user.role === 'global:owner',
 		};
 
@@ -89,6 +90,8 @@ export class UserService {
 		if (options?.withScopes) {
 			publicUser.globalScopes = getGlobalScopes(user);
 		}
+
+		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
 	}

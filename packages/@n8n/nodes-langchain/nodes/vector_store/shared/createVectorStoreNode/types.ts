@@ -25,6 +25,8 @@ export interface NodeMeta {
 	iconColor?: ThemeIconColor;
 	credentials?: INodeCredentialDescription[];
 	operationModes?: NodeOperationMode[];
+	categories?: string[];
+	subcategories?: Record<string, string[]>;
 }
 
 export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {

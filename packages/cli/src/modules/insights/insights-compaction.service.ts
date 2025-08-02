@@ -11,7 +11,7 @@ import { InsightsConfig } from './insights.config';
  */
 @Service()
 export class InsightsCompactionService {
-	private compactInsightsTimer: NodeJS.Timer | undefined;
+	private compactInsightsTimer: NodeJS.Timeout | undefined;
 
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,

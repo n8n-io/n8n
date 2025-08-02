@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
 import type {
 	IBinaryKeyData,

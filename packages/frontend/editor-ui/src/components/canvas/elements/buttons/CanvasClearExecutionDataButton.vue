@@ -6,7 +6,7 @@ const i18n = useI18n();
 <template>
 	<N8nIconButton
 		:title="i18n.baseText('nodeView.deletesTheCurrentExecutionData')"
-		icon="trash"
+		icon="trash-2"
 		size="large"
 		data-test-id="clear-execution-data-button"
 	/>

@@ -1,5 +1,5 @@
-import type { WorkflowEntity } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type {
@@ -13,7 +13,6 @@ import { Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { NodeTypes } from '@/node-types';
-import { mockLogger } from '@test/mocking';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -38,6 +37,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			instanceSettings,
+			mock(),
 			mock(),
 			mock(),
 		);

@@ -487,14 +487,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
-			newParent: {
-				id: folder.id,
-				name: folder.name,
-				type: folder.resource,
+			source: {
+				projectId: personalProject.id,
+				folder: {
+					id: TEST_FOLDER_RESOURCE.id,
+					name: TEST_FOLDER_RESOURCE.name,
+				},
 			},
-			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
-			projectId: personalProject.id,
-			destinationProjectId: teamProjects[0].id,
+			destination: {
+				projectId: teamProjects[0].id,
+				parentFolder: {
+					id: folder.id,
+					name: folder.name,
+				},
+				canAccess: true,
+			},
 			shareCredentials: undefined,
 		});
 	});
@@ -536,14 +543,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
-			newParent: {
-				id: folder.id,
-				name: folder.name,
-				type: folder.resource,
+			source: {
+				projectId: personalProject.id,
+				folder: {
+					id: TEST_FOLDER_RESOURCE.id,
+					name: TEST_FOLDER_RESOURCE.name,
+				},
 			},
-			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
-			projectId: personalProject.id,
-			destinationProjectId: teamProjects[0].id,
+			destination: {
+				projectId: teamProjects[0].id,
+				parentFolder: {
+					id: folder.id,
+					name: folder.name,
+				},
+				canAccess: true,
+			},
 			shareCredentials: [shareableUsedCredential.id],
 		});
 	});
@@ -584,14 +598,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
-			newParent: {
-				id: folder.id,
-				name: folder.name,
-				type: folder.resource,
+			source: {
+				projectId: personalProject.id,
+				folder: {
+					id: TEST_FOLDER_RESOURCE.id,
+					name: TEST_FOLDER_RESOURCE.name,
+				},
 			},
-			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
-			projectId: personalProject.id,
-			destinationProjectId: teamProjects[0].id,
+			destination: {
+				projectId: teamProjects[0].id,
+				parentFolder: {
+					id: folder.id,
+					name: folder.name,
+				},
+				canAccess: true,
+			},
 			shareCredentials: undefined,
 		});
 	});
@@ -628,14 +649,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
-			newParent: {
-				id: anotherUser.id,
-				name: anotherUser.name,
-				type: 'project',
+			source: {
+				projectId: personalProject.id,
+				folder: {
+					id: TEST_FOLDER_RESOURCE.id,
+					name: TEST_FOLDER_RESOURCE.name,
+				},
 			},
-			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
-			projectId: personalProject.id,
-			destinationProjectId: anotherUser.id,
+			destination: {
+				projectId: anotherUser.id,
+				parentFolder: {
+					id: undefined,
+					name: anotherUser.name,
+				},
+				canAccess: false,
+			},
 			shareCredentials: undefined,
 		});
 	});
@@ -731,17 +759,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
-			newParent: {
-				id: folder.id,
-				name: folder.name,
-				type: folder.resource,
+			source: {
+				projectId: personalProject.id,
+				workflow: {
+					id: TEST_WORKFLOW_RESOURCE.id,
+					name: TEST_WORKFLOW_RESOURCE.name,
+				},
 			},
-			workflow: {
-				id: TEST_WORKFLOW_RESOURCE.id,
-				name: TEST_WORKFLOW_RESOURCE.name,
-				oldParentId: TEST_WORKFLOW_RESOURCE.parentFolderId,
+			destination: {
+				projectId: teamProjects[0].id,
+				parentFolder: {
+					id: folder.id,
+					name: folder.name,
+				},
+				canAccess: true,
 			},
-			projectId: teamProjects[0].id,
 			shareCredentials: undefined,
 		});
 	});
@@ -778,17 +810,21 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(submitButton);
 
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
-			newParent: {
-				id: anotherUser.id,
-				name: anotherUser.name,
-				type: 'project',
+			source: {
+				projectId: personalProject.id,
+				workflow: {
+					id: TEST_WORKFLOW_RESOURCE.id,
+					name: TEST_WORKFLOW_RESOURCE.name,
+				},
 			},
-			workflow: {
-				id: TEST_WORKFLOW_RESOURCE.id,
-				name: TEST_WORKFLOW_RESOURCE.name,
-				oldParentId: TEST_WORKFLOW_RESOURCE.parentFolderId,
+			destination: {
+				projectId: anotherUser.id,
+				parentFolder: {
+					id: undefined,
+					name: anotherUser.name,
+				},
+				canAccess: false,
 			},
-			projectId: anotherUser.id,
 			shareCredentials: undefined,
 		});
 	});

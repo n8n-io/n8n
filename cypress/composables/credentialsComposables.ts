@@ -68,8 +68,7 @@ export function getCredentialSaveButton() {
  */
 
 export function setCredentialName(name: string) {
-	cy.getByTestId('credential-name').click();
-	cy.getByTestId('credential-name').find('input').clear();
+	cy.getByTestId('credential-name').find('span[data-test-id=inline-edit-preview]').click();
 	cy.getByTestId('credential-name').type(name);
 }
 export function saveCredential() {

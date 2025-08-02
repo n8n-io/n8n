@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { isEmpty, isEqual } from 'lodash-es';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
 
 import {
 	type FilterConditionValue,

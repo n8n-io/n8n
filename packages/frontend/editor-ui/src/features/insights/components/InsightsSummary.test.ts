@@ -17,6 +17,7 @@ const renderComponent = createComponentRenderer(InsightsSummary, {
 			'router-link': {
 				template: '<a><slot /></a>',
 			},
+			N8nIcon: true,
 		},
 	},
 });

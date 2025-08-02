@@ -11,6 +11,7 @@
 	--prim-gray-800: hsl(var(--prim-gray-h), 1%, 20%);
 	--prim-gray-780: hsl(var(--prim-gray-h), 1%, 22%);
 	--prim-gray-740: hsl(var(--prim-gray-h), 2%, 26%);
+	--prim-gray-710: hsl(var(--prim-gray-h), 2%, 29%);
 	--prim-gray-670: hsl(var(--prim-gray-h), 2%, 33%);
 	--prim-gray-540: hsl(var(--prim-gray-h), 4%, 46%);
 	--prim-gray-490: hsl(var(--prim-gray-h), 3%, 51%);
@@ -454,6 +455,13 @@
 		var(--prim-color-alt-j-s),
 		var(--prim-color-alt-j-l),
 		0.75
+	);
+
+	--prim-color-alt-j-alpha-095: hsla(
+		var(--prim-color-alt-j-h),
+		var(--prim-color-alt-j-s),
+		var(--prim-color-alt-j-l),
+		0.95
 	);
 
 	// Color Alternate K - Used for errors in dark mode

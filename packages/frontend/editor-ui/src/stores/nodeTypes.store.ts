@@ -5,7 +5,7 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
-import * as nodeTypesApi from '@/api/nodeTypes';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -155,7 +155,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 				return outputTypes.includes(NodeConnectionTypes.AiTool);
 			} else {
-				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool) ?? false;
 			}
 		};
 	});
@@ -366,7 +366,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
 			return;
 		}
 		try {
