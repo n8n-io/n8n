@@ -28,20 +28,22 @@ export function assertIsArray<T>(
 	);
 }
 
+type ParameterType =
+	| 'string'
+	| 'boolean'
+	| 'number'
+	| 'resource-locator'
+	| 'string[]'
+	| 'number[]'
+	| 'boolean[]'
+	| 'object';
+
 export function assertIsNodeParameters<T>(
 	value: unknown,
 	parameters: Record<
 		string,
 		{
-			type:
-				| 'string'
-				| 'boolean'
-				| 'number'
-				| 'resource-locator'
-				| 'string[]'
-				| 'number[]'
-				| 'boolean[]'
-				| 'object';
+			type: ParameterType | ParameterType[];
 			optional?: boolean;
 		}
 	>,
@@ -59,35 +61,51 @@ export function assertIsNodeParameters<T>(
 		}
 
 		if (paramValue !== undefined) {
-			if (param.type === 'resource-locator') {
-				assert(
-					typeof paramValue === 'object' &&
-						paramValue !== null &&
-						'__rl' in paramValue &&
-						'mode' in paramValue &&
-						'value' in paramValue,
-					`Parameter "${key}" is not a valid resource locator object`,
-				);
-			} else if (param.type === 'object') {
-				assert(
-					typeof paramValue === 'object' && paramValue !== null,
-					`Parameter "${key}" is not a valid object`,
-				);
-			} else if (param.type.endsWith('[]')) {
-				const baseType = param.type.slice(0, -2);
-				const elementType =
-					baseType === 'string' || baseType === 'number' || baseType === 'boolean'
-						? baseType
-						: 'string';
-				assert(Array.isArray(paramValue), `Parameter "${key}" is not an array`);
-				paramValue.forEach((item, index) => {
-					assert(
-						typeof item === elementType,
-						`Parameter "${key}[${index}]" is not a valid ${elementType}`,
-					);
-				});
-			} else {
-				assert(typeof paramValue === param.type, `Parameter "${key}" is not a valid ${param.type}`);
+			const types = Array.isArray(param.type) ? param.type : [param.type];
+			let isValid = false;
+
+			for (const type of types) {
+				try {
+					if (type === 'resource-locator') {
+						assert(
+							typeof paramValue === 'object' &&
+								paramValue !== null &&
+								'__rl' in paramValue &&
+								'mode' in paramValue &&
+								'value' in paramValue,
+							`Parameter "${key}" is not a valid resource locator object`,
+						);
+					} else if (type === 'object') {
+						assert(
+							typeof paramValue === 'object' && paramValue !== null,
+							`Parameter "${key}" is not a valid object`,
+						);
+					} else if (type.endsWith('[]')) {
+						const baseType = type.slice(0, -2);
+						const elementType =
+							baseType === 'string' || baseType === 'number' || baseType === 'boolean'
+								? baseType
+								: 'string';
+						assert(Array.isArray(paramValue), `Parameter "${key}" is not an array`);
+						paramValue.forEach((item, index) => {
+							assert(
+								typeof item === elementType,
+								`Parameter "${key}[${index}]" is not a valid ${elementType}`,
+							);
+						});
+					} else {
+						assert(typeof paramValue === type, `Parameter "${key}" is not a valid ${type}`);
+					}
+					isValid = true;
+					break;
+				} catch {
+					// Continue to next type
+				}
+			}
+
+			if (!isValid) {
+				const typeList = types.join(' or ');
+				assert(false, `Parameter "${key}" does not match any of the expected types: ${typeList}`);
 			}
 		}
 	});
