@@ -5,7 +5,15 @@ import type { IconName } from '../components/N8nIcon/icons';
 const BUTTON_ELEMENT = ['button', 'a'] as const;
 export type ButtonElement = (typeof BUTTON_ELEMENT)[number];
 
-const BUTTON_TYPE = ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'] as const;
+const BUTTON_TYPE = [
+	'primary',
+	'secondary',
+	'tertiary',
+	'success',
+	'warning',
+	'danger',
+	'highlight',
+] as const;
 export type ButtonType = (typeof BUTTON_TYPE)[number];
 
 const BUTTON_SIZE = ['xmini', 'mini', 'small', 'medium', 'large'] as const;

@@ -2,7 +2,7 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -136,7 +136,7 @@ watch(
 					</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
 						{{ locale.baseText('evaluations.setupWizard.description') }}
-						<N8nLink size="small" href="https://docs.n8n.io/advanced-ai/evaluations/overview">{{
+						<N8nLink size="small" :href="EVALUATIONS_DOCS_URL">{{
 							locale.baseText('evaluations.setupWizard.moreInfo')
 						}}</N8nLink>
 					</N8nText>

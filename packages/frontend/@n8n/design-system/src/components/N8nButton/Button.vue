@@ -120,6 +120,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	@include n8n-button-secondary;
 }
 
+.highlight {
+	@include n8n-button-highlight;
+}
+
 .tertiary {
 	@include n8n-button-secondary;
 }

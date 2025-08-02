@@ -28,8 +28,10 @@ import {
 	getTestCasesColumns,
 	getTestTableHeaders,
 } from './utils';
-import { indexedDbCache } from '@/plugins/cache';
-import { jsonParse } from 'n8n-workflow';
+import {
+	useWorkflowSettingsCache,
+	type UserEvaluationPreferences,
+} from '@/composables/useWorkflowsCache';
 
 export type Column =
 	| {
@@ -44,11 +46,6 @@ export type Column =
 	// even if some columns are disabled / not available in the current run
 	| { key: string; disabled: true };
 
-interface UserPreferences {
-	order: string[];
-	visibility: Record<string, boolean>;
-}
-
 export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
 
 const router = useRouter();
@@ -56,6 +53,7 @@ const toast = useToast();
 const evaluationStore = useEvaluationStore();
 const workflowsStore = useWorkflowsStore();
 const locale = useI18n();
+const workflowsCache = useWorkflowSettingsCache();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
@@ -65,7 +63,7 @@ const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
-const cachedUserPreferences = ref<UserPreferences | undefined>();
+const cachedUserPreferences = ref<UserEvaluationPreferences | undefined>();
 const expandedRows = ref<Set<string>>(new Set());
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
@@ -158,18 +156,13 @@ const fetchExecutionTestCases = async () => {
 };
 
 async function loadCachedUserPreferences() {
-	const cache = await indexedDbCache('workflows', 'evaluations');
-	cachedUserPreferences.value = jsonParse(cache.getItem(workflowId.value) ?? '', {
-		fallbackValue: {
-			order: [],
-			visibility: {},
-		},
-	});
+	cachedUserPreferences.value = await workflowsCache.getEvaluationPreferences(workflowId.value);
 }
 
 async function saveCachedUserPreferences() {
-	const cache = await indexedDbCache('workflows', 'evaluations');
-	cache.setItem(workflowId.value, JSON.stringify(cachedUserPreferences.value));
+	if (cachedUserPreferences.value) {
+		await workflowsCache.saveEvaluationPreferences(workflowId.value, cachedUserPreferences.value);
+	}
 }
 
 async function handleColumnVisibilityUpdate(columnKey: string, visibility: boolean) {
