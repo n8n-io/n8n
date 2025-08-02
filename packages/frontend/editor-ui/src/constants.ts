@@ -736,6 +736,12 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
+export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
+	name: 'canvas_zoomed_view',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	name: '029_ndv_ui_overhaul',
 	control: 'control',
@@ -940,6 +946,9 @@ export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window
 export const ExpressionLocalResolveContextSymbol = Symbol(
 	'ExpressionLocalResolveContext',
 ) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
+export const IsInExperimentalEmbeddedNdvKey = Symbol(
+	'IsInExperimentalEmbeddedNdv',
+) as InjectionKey<boolean>;
 
 /** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';

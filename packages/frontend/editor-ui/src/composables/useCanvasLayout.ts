@@ -10,8 +10,8 @@ import {
 } from '../types';
 import { isPresent } from '../utils/typesUtils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '../utils/nodeViewUtils';
+import type { ComputedRef } from 'vue';
 
-export type CanvasLayoutOptions = { id?: string };
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
 	| 'keyboard-shortcut'
@@ -47,7 +47,7 @@ const AI_X_SPACING = GRID_SIZE * 3;
 const AI_Y_SPACING = GRID_SIZE * 8;
 const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 
-export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
+export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedRef<boolean>) {
 	const {
 		findNode,
 		findEdge,
@@ -120,6 +120,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 				mainInputCount,
 				mainOutputCount,
 				nonMainInputCount,
+				isEmbeddedNdvActive.value,
 			);
 		}
 

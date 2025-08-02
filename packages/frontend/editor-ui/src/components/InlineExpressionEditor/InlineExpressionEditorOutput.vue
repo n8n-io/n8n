@@ -15,12 +15,10 @@ interface InlineExpressionEditorOutputProps {
 	unresolvedExpression?: string;
 	editorState?: EditorState;
 	selection?: SelectionRange;
-	visible?: boolean;
 	isReadOnly?: boolean;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
-	visible: false,
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -37,7 +35,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div v-if="visible" :class="$style.dropdown" title="">
+	<div :class="$style.dropdown">
 		<div :class="$style.header">
 			<n8n-text bold size="small" compact>
 				{{ i18n.baseText('parameterInput.result') }}
@@ -67,8 +65,6 @@ onBeforeUnmount(() => {
 .dropdown {
 	display: flex;
 	flex-direction: column;
-	position: absolute;
-	z-index: 2; // cover tooltips
 	background: var(--color-code-background);
 	border: var(--border-base);
 	border-top: none;

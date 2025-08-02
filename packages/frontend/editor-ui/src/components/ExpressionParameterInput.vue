@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
@@ -16,6 +16,9 @@ import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
+import { ElPopover } from 'element-plus';
+import { CanvasKey, IsInExperimentalEmbeddedNdvKey } from '@/constants';
+import { useVueFlow } from '@vue-flow/core';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -23,6 +26,7 @@ const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 const container = ref<HTMLDivElement>();
+const popoverContainer = ref<HTMLDivElement>();
 
 type Props = {
 	path: string;
@@ -52,8 +56,15 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const { viewportRef } = useVueFlow();
+
+const canvas = inject(CanvasKey);
+const isInExperimentalNdv = inject(IsInExperimentalEmbeddedNdvKey, false);
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
+const isOutputPopoverVisible = computed(
+	() => isFocused.value && (!isInExperimentalNdv || !canvas?.isPaneMoving.value),
+);
 
 function select() {
 	if (inlineInput.value) {
@@ -78,6 +89,10 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
 	) {
 		return; // prevent blur on resizing
+	}
+
+	if (event?.target instanceof Element && popoverContainer.value?.contains(event.target)) {
+		return;
 	}
 
 	const wasFocused = isFocused.value;
@@ -173,53 +188,69 @@ defineExpose({ focus, select });
 
 <template>
 	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
-		<div
-			:class="[
-				$style['all-sections'],
-				{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
-			]"
+		<ElPopover
+			:visible="isOutputPopoverVisible"
+			placement="bottom"
+			:append-to="isInExperimentalNdv ? (viewportRef ?? undefined) : undefined"
+			:popper-class="$style.popper"
+			:show-arrow="false"
+			:width="container?.offsetWidth"
+			:popper-options="{
+				modifiers: [{ name: 'flip', enabled: false }],
+			}"
+			:offset="0"
 		>
-			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
-				<span v-if="isAssignment">=</span>
-				<ExpressionFunctionIcon v-else />
-			</div>
-			<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
-				<template #default="{ activeDrop, droppable }">
-					<InlineExpressionEditorInput
-						ref="inlineInput"
-						:model-value="modelValue"
-						:path="path"
-						:is-read-only="isReadOnly"
-						:rows="rows"
-						:additional-data="additionalExpressionData"
-						:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
-						@focus="onFocus"
-						@blur="onBlur"
-						@update:model-value="onValueChange"
-						@update:selection="onSelectionChange"
+			<template #reference>
+				<div
+					:class="[
+						$style['all-sections'],
+						{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
+					]"
+				>
+					<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
+						<span v-if="isAssignment">=</span>
+						<ExpressionFunctionIcon v-else />
+					</div>
+					<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+						<template #default="{ activeDrop, droppable }">
+							<InlineExpressionEditorInput
+								ref="inlineInput"
+								:model-value="modelValue"
+								:path="path"
+								:is-read-only="isReadOnly"
+								:rows="rows"
+								:additional-data="additionalExpressionData"
+								:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
+								@focus="onFocus"
+								@blur="onBlur"
+								@update:model-value="onValueChange"
+								@update:selection="onSelectionChange"
+							/>
+						</template>
+					</DraggableTarget>
+					<n8n-button
+						v-if="!isDragging"
+						square
+						outline
+						type="tertiary"
+						icon="external-link"
+						size="mini"
+						:class="$style['expression-editor-modal-opener']"
+						data-test-id="expander"
+						@click="emit('modal-opener-click')"
 					/>
-				</template>
-			</DraggableTarget>
-			<n8n-button
-				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
-				icon="external-link"
-				size="mini"
-				:class="$style['expression-editor-modal-opener']"
-				data-test-id="expander"
-				@click="emit('modal-opener-click')"
-			/>
-		</div>
-		<InlineExpressionEditorOutput
-			:unresolved-expression="modelValue"
-			:selection="selection"
-			:editor-state="editorState"
-			:segments="segments"
-			:is-read-only="isReadOnly"
-			:visible="isFocused"
-		/>
+				</div>
+			</template>
+			<div ref="popoverContainer">
+				<InlineExpressionEditorOutput
+					:unresolved-expression="modelValue"
+					:selection="selection"
+					:editor-state="editorState"
+					:segments="segments"
+					:is-read-only="isReadOnly"
+				/>
+			</div>
+		</ElPopover>
 	</div>
 </template>
 
@@ -315,5 +346,11 @@ defineExpose({ focus, select });
 		cursor: grabbing !important;
 		border-width: 1px;
 	}
+}
+
+.popper {
+	background-color: transparent !important;
+	padding: 0 !important;
+	border: none !important;
 }
 </style>

@@ -163,9 +163,10 @@ watchDebounced(
 }
 
 .tipText {
-	display: inline;
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+	align-self: flex-start;
 }
 
 .drag .tipText {
