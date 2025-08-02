@@ -39,7 +39,7 @@ export async function serviceNowApiRequest(
 	let baseUrl;
 
 	if (credentials.useCustomHost && credentials.customHost) {
-		baseUrl = (credentials.customHost as string).replace(/\/$/, ''); /* strip 1 trailing “/” */
+		baseUrl = credentials.customHost.replace(/\/$/, ''); /* strip 1 trailing “/” */
 	} else {
 		baseUrl = `https://${credentials.subdomain}.service-now.com`;
 	}
