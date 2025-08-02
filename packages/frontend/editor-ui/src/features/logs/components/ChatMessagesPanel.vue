@@ -362,13 +362,6 @@ async function copySessionId() {
 	--chat--input--file--button--color: var(--color-button-secondary-font);
 	--chat--input--file--button--color-hover: var(--color-primary);
 
-	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
-	}
-	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
-	}
-
 	padding: var(--spacing-5xs);
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
@@ -379,6 +372,13 @@ async function copySessionId() {
 	border: var(--input-border-color, var(--border-color-base))
 		var(--input-border-style, var(--border-style-base))
 		var(--input-border-width, var(--border-width-base));
+
+	[data-theme='dark'] & {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
+	@media (prefers-color-scheme: dark) {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
 
 	&:focus-within {
 		--input-border-color: #4538a3;

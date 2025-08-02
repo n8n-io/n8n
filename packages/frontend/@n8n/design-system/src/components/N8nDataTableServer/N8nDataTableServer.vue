@@ -525,14 +525,6 @@ const table = useVueTable({
 	th {
 		position: relative;
 		text-align: left;
-	}
-
-	thead {
-		background-color: var(--color-background-light-base);
-		border-bottom: 1px solid var(--color-foreground-base);
-	}
-
-	th {
 		color: var(--color-text-base);
 		font-weight: 600;
 		font-size: 12px;
@@ -544,9 +536,15 @@ const table = useVueTable({
 		&:first-child {
 			padding-left: 16px;
 		}
+
 		&:last-child {
 			padding-right: 16px;
 		}
+	}
+
+	thead {
+		background-color: var(--color-background-light-base);
+		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
 	tbody > tr {
@@ -602,7 +600,7 @@ th.loading-row {
 	background-color: transparent;
 	padding: 0 !important;
 	border: 0 !important;
-	height: 0px;
+	height: 0;
 	position: relative;
 }
 

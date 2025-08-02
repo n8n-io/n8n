@@ -880,10 +880,13 @@ onBeforeUnmount(() => {
 }
 
 .main {
-	width: 0;
+	width: 100%;
 	flex-grow: 1;
 	display: flex;
 	align-items: stretch;
+	height: 100%;
+	min-height: 0;
+	position: relative;
 }
 
 .column {
@@ -915,14 +918,6 @@ onBeforeUnmount(() => {
 	border-bottom: var(--border-base);
 	border-top-left-radius: var(--border-radius-large);
 	border-top-right-radius: var(--border-radius-large);
-}
-
-.main {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	position: relative;
 }
 
 .settings {

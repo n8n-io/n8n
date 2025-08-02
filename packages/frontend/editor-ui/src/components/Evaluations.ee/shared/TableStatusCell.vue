@@ -102,5 +102,3 @@ function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefi
 		</N8nBadge>
 	</N8nTooltip>
 </template>
-
-<style scoped lang="scss"></style>

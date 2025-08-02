@@ -238,7 +238,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	font-size: var(--font-size-2xs);
 
 	:hover {
-		color: #ff0000;
+		color: #f00;
 	}
 }
 

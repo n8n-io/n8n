@@ -9,7 +9,7 @@ $directions: rtl, ltr, ttb, btt;
 	background-color: var.$dialog-background-color;
 	display: flex;
 	flex-direction: column;
-	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
+	box-shadow: 0 6px 16px rgb(68 28 23 / 6%);
 	overflow: hidden;
 
 	transition: all 0.3s;
@@ -123,15 +123,7 @@ $directions: rtl, ltr, ttb, btt;
 	&-enter-from,
 	&-leave-to {
 		opacity: 0;
-	}
 
-	&-enter-to,
-	&-leave-from {
-		opacity: 1;
-	}
-
-	&-enter-from,
-	&-leave-to {
 		@each $direction in $directions {
 			.#{$direction} {
 				@if $direction == ltr {
@@ -151,5 +143,10 @@ $directions: rtl, ltr, ttb, btt;
 				}
 			}
 		}
+	}
+
+	&-enter-to,
+	&-leave-from {
+		opacity: 1;
 	}
 }

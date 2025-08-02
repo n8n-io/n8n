@@ -312,7 +312,7 @@
 	}
 }
 
-//@mixin pagination-button {
+// @mixin pagination-button {
 //	display: flex;
 //	justify-content: center;
 //	align-items: center;
@@ -363,9 +363,9 @@
 //		outline: 1px solid getCssVar('pagination-hover-color');
 //		outline-offset: -1px;
 //	}
-//}
+// }
 //
-//@include b(pagination) {
+// @include b(pagination) {
 //	@include set-component-css-var('pagination', $pagination);
 //
 //	white-space: nowrap;
@@ -517,9 +517,9 @@
 //			width: 100px;
 //		}
 //	}
-//}
+// }
 //
-//@include b(pager) {
+// @include b(pager) {
 //	user-select: none;
 //	list-style: none;
 //	font-size: 0;
@@ -531,4 +531,4 @@
 //	li {
 //		@include pagination-button;
 //	}
-//}
+// }
