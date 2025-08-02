@@ -132,6 +132,20 @@
                         }
                     }
                 },
+                "wp:featuredmedia": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "wp:term": {
                     "type": "array",
                     "items": {
@@ -258,5 +272,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

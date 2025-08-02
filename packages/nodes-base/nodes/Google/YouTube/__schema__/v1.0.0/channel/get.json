@@ -157,6 +157,9 @@
         "status": {
             "type": "object",
             "properties": {
+                "isChannelMonetizationEnabled": {
+                    "type": "boolean"
+                },
                 "isLinked": {
                     "type": "boolean"
                 },
@@ -189,5 +192,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

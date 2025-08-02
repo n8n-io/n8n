@@ -6,6 +6,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "AddressLine1": {
+                        "type": "string"
+                    },
                     "AddressType": {
                         "type": "string"
                     },
@@ -31,9 +34,6 @@
             "type": "string"
         },
         "ContactStatus": {
-            "type": "string"
-        },
-        "DefaultCurrency": {
             "type": "string"
         },
         "EmailAddress": {
@@ -78,5 +78,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

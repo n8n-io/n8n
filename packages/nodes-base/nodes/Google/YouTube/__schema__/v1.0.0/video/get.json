@@ -201,18 +201,7 @@
                     "type": "string"
                 }
             }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 3
+    "version": 4
 }

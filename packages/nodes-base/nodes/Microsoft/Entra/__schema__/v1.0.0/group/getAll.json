@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mailEnabled": {
+            "type": "boolean"
+        },
+        "securityEnabled": {
+            "type": "boolean"
+        },
+        "securityIdentifier": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -42,24 +42,6 @@
         "profile": {
             "type": "object",
             "properties": {
-                "CA_ContractTerminationDate": {
-                    "type": "string"
-                },
-                "CA_ContractType": {
-                    "type": "string"
-                },
-                "CA_FullRemote": {
-                    "type": "string"
-                },
-                "CA_HireDate": {
-                    "type": "string"
-                },
-                "CA_PersonioEmployeeStatus": {
-                    "type": "string"
-                },
-                "CA_Team": {
-                    "type": "string"
-                },
                 "city": {
                     "type": "string"
                 },
@@ -70,9 +52,6 @@
                     "type": "string"
                 },
                 "email": {
-                    "type": "string"
-                },
-                "employeeNumber": {
                     "type": "string"
                 },
                 "firstName": {
@@ -104,5 +83,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -19,9 +19,6 @@
         "id": {
             "type": "string"
         },
-        "subject": {
-            "type": "string"
-        },
         "to": {
             "type": "array",
             "items": {
@@ -29,5 +26,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }
