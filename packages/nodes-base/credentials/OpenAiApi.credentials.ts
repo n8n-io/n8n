@@ -1,7 +1,9 @@
 import type {
-	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IDisplayOptions,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -37,17 +39,48 @@ export class OpenAiApi implements ICredentialType {
 			default: 'https://api.openai.com/v1',
 			description: 'Override the default base URL for the API',
 		},
+		{
+			displayName: 'Add Custom Header',
+			name: 'header',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
+		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
-				'OpenAI-Organization': '={{$credentials.organizationId}}',
-			},
-		},
-	};
+	// authenticate: IAuthenticateGeneric = {
+	// 	type: 'generic',
+	// 	properties: {
+	// 		headers: {
+	// 			Authorization: '=Bearer {{$credentials.apiKey}}',
+	// 			'OpenAI-Organization': '={{$credentials.organizationId}}',
+	// 		},
+	// 	},
+	// };
 
 	test: ICredentialTestRequest = {
 		request: {
@@ -55,4 +88,18 @@ export class OpenAiApi implements ICredentialType {
 			url: '/models',
 		},
 	};
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers = {
+			Authorization: 'Bearer ' + credentials.apiKey,
+			'OpenAI-Organization': credentials.organizationId,
+		};
+		if (credentials.header) {
+			requestOptions.headers[credentials.headerName as string] = credentials.headerValue;
+		}
+		return requestOptions;
+	}
 }

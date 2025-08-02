@@ -358,6 +358,11 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
+		if (credentials.header) {
+			configuration.defaultHeaders = {
+				[credentials.headerName as string]: credentials.headerValue as string,
+			};
+		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: {

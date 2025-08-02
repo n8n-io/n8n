@@ -37,7 +37,7 @@ on:
             - '!packages/@n8n/benchmark/**'
             - '!**/*.md'
       excluded_source_branch_patterns:
-        description: "Newline-separated list of glob patterns for source branches to EXCLUDE."
+        description: 'Newline-separated list of glob patterns for source branches to EXCLUDE.'
         required: false
         type: string
         default: |
