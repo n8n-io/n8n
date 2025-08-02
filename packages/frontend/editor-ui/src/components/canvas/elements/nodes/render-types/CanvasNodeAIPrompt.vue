@@ -30,6 +30,7 @@ const workflowSaver = useWorkflowSaving({ router });
 const prompt = ref('');
 const userEditedPrompt = ref(false);
 const isFocused = ref(false);
+const isLoading = ref(false);
 
 // Computed properties
 const hasContent = computed(() => prompt.value.trim().length > 0);
@@ -42,6 +43,7 @@ const suggestions = ref(WORKFLOW_SUGGESTIONS);
  */
 async function onSubmit() {
 	if (!hasContent.value || builderStore.streaming) return;
+	isLoading.value = true;
 
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 
@@ -52,6 +54,7 @@ async function onSubmit() {
 
 	// Here we need to await for chat to open and session to be loaded
 	await builderStore.openChat();
+	isLoading.value = false;
 	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
 }
 
@@ -120,7 +123,7 @@ function onAddNodeClick() {
 					name="aiBuilderPrompt"
 					:class="$style.formTextarea"
 					type="textarea"
-					:disabled="builderStore.streaming"
+					:disabled="isLoading || builderStore.streaming"
 					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 					:read-only="false"
 					:rows="15"
@@ -133,6 +136,7 @@ function onAddNodeClick() {
 					<n8n-button
 						native-type="submit"
 						:disabled="!hasContent || builderStore.streaming"
+						:loading="isLoading"
 						@keydown.enter="onSubmit"
 					>
 						{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWorkflow') }}

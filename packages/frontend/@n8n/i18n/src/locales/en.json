@@ -190,6 +190,7 @@
 	"aiAssistant.builder.canvasPrompt.cancelButton": "Cancel",
 	"aiAssistant.builder.canvasPrompt.startManually.title": "Start manually",
 	"aiAssistant.builder.canvasPrompt.startManually.subTitle": "Add the first node",
+	"aiAssistant.builder.streamAbortedMessage": "[Task aborted]",
 	"aiAssistant.assistant": "AI Assistant",
 	"aiAssistant.newSessionModal.title.part1": "Start new",
 	"aiAssistant.newSessionModal.title.part2": "session",

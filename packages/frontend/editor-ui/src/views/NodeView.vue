@@ -2132,7 +2132,12 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill v-if="builderStore.streaming" :class="$style.thinkingPill" />
+			<CanvasThinkingPill
+				v-if="builderStore.streaming"
+				:class="$style.thinkingPill"
+				show-stop
+				@stop="builderStore.stopStreaming"
+			/>
 
 			<Suspense>
 				<LazyNodeCreation
