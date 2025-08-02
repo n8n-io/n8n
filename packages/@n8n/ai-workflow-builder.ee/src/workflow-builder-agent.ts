@@ -11,6 +11,8 @@ import type {
 	NodeExecutionSchema,
 } from 'n8n-workflow';
 
+import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError } from './errors';
 import { createAddNodeTool } from './tools/add-node.tool';
@@ -181,6 +183,18 @@ export class WorkflowBuilderAgent {
 	}
 
 	async *chat(payload: ChatPayload, userId?: string) {
+		// Check for the message maximum length
+		if (payload.message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
+			this.logger?.warn('Message exceeds maximum length', {
+				messageLength: payload.message.length,
+				maxLength: MAX_AI_BUILDER_PROMPT_LENGTH,
+			});
+
+			throw new Error(
+				`Message exceeds maximum length of ${MAX_AI_BUILDER_PROMPT_LENGTH} characters`,
+			);
+		}
+
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
