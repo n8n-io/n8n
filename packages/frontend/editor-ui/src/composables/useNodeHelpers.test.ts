@@ -48,12 +48,12 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				id: 'workflow-id',
 				getNode: () => node,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -76,11 +76,11 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -103,11 +103,11 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -130,11 +130,11 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => triggerNode,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(true);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -157,11 +157,11 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => toolNode,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(true);
@@ -184,11 +184,11 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = {
+			const mockWorkflow = mock<Workflow>({
 				getNode: () => node,
-			};
+			});
 
-			mockedStore(useWorkflowsStore).getCurrentWorkflow = vi.fn().mockReturnValue(mockWorkflow);
+			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);

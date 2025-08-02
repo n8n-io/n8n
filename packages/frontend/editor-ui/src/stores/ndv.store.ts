@@ -180,8 +180,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const parentNodes = workflow.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
+		const parentNodes = workflowsStore.workflowObject.getParentNodes(
+			activeNode.value.name,
+			NodeConnectionTypes.Main,
+			1,
+		);
 		return parentNodes.includes(inputNodeName);
 	});
 

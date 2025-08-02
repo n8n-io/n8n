@@ -728,8 +728,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			codeDiffMessage.replacing = true;
 			const suggestionId = codeDiffMessage.suggestionId;
 
-			const currentWorkflow = workflowsStore.getCurrentWorkflow();
-			const activeNode = currentWorkflow.getNode(chatSessionError.value.node.name);
+			const workflowObject = workflowsStore.workflowObject;
+			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
 			const cached = suggestions.value[suggestionId];
@@ -774,8 +774,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const suggestion = suggestions.value[suggestionId];
 			assert(suggestion);
 
-			const currentWorkflow = workflowsStore.getCurrentWorkflow();
-			const activeNode = currentWorkflow.getNode(chatSessionError.value.node.name);
+			const workflowObject = workflowsStore.workflowObject;
+			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
 			const suggested = suggestion.previous;

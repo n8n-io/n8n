@@ -2,13 +2,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
-	type ExtractableSubgraphData,
-	type ExtractableErrorResult,
 	extractReferencesInNodeExpressions,
-	type IConnections,
-	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+} from 'n8n-workflow';
+import type {
+	ExtractableSubgraphData,
+	ExtractableErrorResult,
+	IConnections,
+	INode,
+	Workflow,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -43,6 +46,8 @@ export function useWorkflowExtraction() {
 	const telemetry = useTelemetry();
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -309,7 +314,7 @@ export function useWorkflowExtraction() {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
 
-			const ios = getIOs(workflowsStore.getCurrentWorkflow(), node, nodeType);
+			const ios = getIOs(workflowObject.value, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -427,7 +432,6 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
@@ -438,16 +442,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'main', 1)
-					.map((x) => currentWorkflow.getNode(x)?.name)
+					.map((x) => workflowObject.value.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 
 		const allAfterEndNodes = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'ALL')
-					.map((x) => currentWorkflow.getNode(x))
+					.map((x) => workflowObject.value.getNode(x))
 					.filter((x) => x !== null)
 			: [];
 

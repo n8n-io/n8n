@@ -756,7 +756,7 @@ onBeforeUnmount(() => {
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
@@ -785,7 +785,7 @@ onBeforeUnmount(() => {
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"

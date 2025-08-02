@@ -582,6 +582,8 @@ export function useCanvasMapping({
 				const outputConnections = connectionsBySourceNode[node.name] ?? {};
 				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 
+				// console.log(node.name, nodeInputsById.value[node.id]);
+
 				const data: CanvasNodeData = {
 					id: node.id,
 					name: node.name,

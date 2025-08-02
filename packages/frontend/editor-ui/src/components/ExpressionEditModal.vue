@@ -66,12 +66,11 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 
 const activeNode = computed(() => ndvStore.activeNode);
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflow.value.getParentNodesByDepth(node.name);
+	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
 
 	return nodes.filter(({ name }) => name !== node.name);
 });

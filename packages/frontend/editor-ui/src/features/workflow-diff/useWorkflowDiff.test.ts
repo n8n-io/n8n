@@ -15,7 +15,7 @@ import { useCanvasMapping } from '@/composables/useCanvasMapping';
 // Mock modules at top level
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
-		getWorkflow: vi.fn().mockReturnValue({
+		createWorkflowObject: vi.fn().mockReturnValue({
 			id: 'test-workflow',
 			nodes: [],
 			connections: {},

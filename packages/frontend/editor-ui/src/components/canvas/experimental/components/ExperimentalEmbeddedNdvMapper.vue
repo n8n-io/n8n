@@ -78,7 +78,7 @@ watch(viewport, () => {
 			ref="inputPanel"
 			:tabindex="-1"
 			:class="$style.inputPanel"
-			:workflow="workflow"
+			:workflow-object="workflow"
 			:run-index="0"
 			compact
 			push-ref=""
