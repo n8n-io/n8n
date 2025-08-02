@@ -203,6 +203,9 @@ export function prepareFormData({
 					id: `option${i}_${input.id}`,
 					label: e.option,
 				})) ?? [];
+			if (field.maxSelectAllowed) {
+				input.maxSelectAllowed = field.maxSelectAllowed;
+			}
 		} else if (fieldType === 'file') {
 			input.isFileInput = true;
 			input.acceptFileTypes = field.acceptFileTypes;

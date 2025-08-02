@@ -2827,6 +2827,7 @@ export type FormFieldsParameter = Array<{
 	placeholder?: string;
 	fieldName?: string;
 	fieldValue?: string;
+	maxSelectAllowed?: number;
 }>;
 
 export type FieldTypeMap = {
