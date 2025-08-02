@@ -683,7 +683,7 @@
 					errorElement.classList.add('error-show');
 					return false;
 				} else if (maxSelectAllowed && selectedValues.length > maxSelectAllowed) {
-					errorElement.textContent = `You can select a maximum of ${maxSelectAllowed} option${maxSelectAllowed > 1 ? 's' : ''}`;
+					errorElement.textContent = `You can select a maximum of ${maxSelectAllowed} options`;
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
@@ -736,14 +736,34 @@
 			const restrictedMultiselectInputs = document.querySelectorAll('.multiselect[data-max-select-allowed]');
 
 			restrictedMultiselectInputs.forEach((input) => {
+				const maxSelectAllowed = input.dataset.maxSelectAllowed ? parseInt(input.dataset.maxSelectAllowed, 10) : null;
+
+				if (maxSelectAllowed === 1) {
+					const checkboxes = input.querySelectorAll('.multiselect-checkbox');
+					checkboxes.forEach((checkbox) => {
+						checkbox.addEventListener('change', (event) => {
+							if (event.target.checked) {
+								checkboxes.forEach((cb) => {
+									if (cb !== event.target) {
+										cb.checked = false;
+									}
+								});
+
+								const errorSelector = `.error-${input.id}`;
+								const error = document.querySelector(errorSelector);
+								error.classList.remove('error-show');
+							}
+						});
+					});
+				}
+
 				input.addEventListener('click', () => {
-					const maxSelectAllowed = input.dataset.maxSelectAllowed ? parseInt(input.dataset.maxSelectAllowed, 10) : null;
 					const selectedValues = getSelectedValues(input);
 
-					if (selectedValues.length > maxSelectAllowed) {
+					if (maxSelectAllowed && selectedValues.length > maxSelectAllowed) {
 						const errorSelector = `.error-${input.id}`;
 						const error = document.querySelector(errorSelector);
-						error.textContent = `You can select a maximum of ${maxSelectAllowed} option${maxSelectAllowed > 1 ? 's' : ''}`;
+						error.textContent = `You can select a maximum of ${maxSelectAllowed} options`;
 						error.classList.add('error-show');
 					} else {
 						const errorSelector = `.error-${input.id}`;
