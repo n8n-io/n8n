@@ -130,6 +130,10 @@ export class Github implements INodeType {
 						name: 'Workflow',
 						value: 'workflow',
 					},
+					{
+						name: 'Notification',
+						value: 'notification',
+					},
 				],
 				default: 'issue',
 			},
@@ -549,6 +553,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					hide: {
 						operation: ['invite'],
+						resource: ['notification'],
 					},
 				},
 			},
@@ -610,7 +615,7 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						resource: ['user', 'organization'],
+						resource: ['user', 'organization', 'notification'],
 						operation: ['getRepositories'],
 					},
 				},
@@ -2093,6 +2098,50 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
+			// ----------------------------------
+			//    notification:getNotifications
+			// ----------------------------------
+			{
+			  displayName: 'Operation',
+			  name: 'operation',
+			  type: 'options',
+			  noDataExpression: true,
+			  displayOptions: {
+			    show: {
+			      resource: ['notification'],
+			    },
+			  },
+			  options: [
+			    {
+			      name: 'Get',
+			      value: 'get',
+			      description: 'Get notifications for the authenticated user',
+			      action: 'Get notifications',
+			    },
+			    {
+			      name: 'Mark As Read',
+			      value: 'markAsRead',
+			      description: 'Mark a notification as read',
+			      action: 'Mark As Read',
+			    },
+			  ],
+			  default: 'get',
+			},
+			{
+			  displayName: 'Thread ID',
+			  name: 'threadid',
+			  type: 'string',
+			  displayOptions: {
+			    show: {
+			      resource: ['notification'],
+			      operation: ['markAsRead'],
+			    },
+			  },
+			  default: '',
+			  required: true,
+			  description: 'The unique identifier of the notification thread',
+			},
 		],
 	};
 
@@ -2148,6 +2197,8 @@ export class Github implements INodeType {
 			'workflow:get',
 			'workflow:getUsage',
 			'workflow:list',
+			'notification:get',
+			'notification:markasread',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
@@ -2231,7 +2282,10 @@ export class Github implements INodeType {
 				qs = {};
 
 				let owner = '';
-				if (fullOperation !== 'user:invite') {
+				if (
+					fullOperation !== 'user:invite' &&
+					resource !== 'notification'
+				) {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2240,7 +2294,8 @@ export class Github implements INodeType {
 				if (
 					fullOperation !== 'user:getRepositories' &&
 					fullOperation !== 'user:invite' &&
-					fullOperation !== 'organization:getRepositories'
+					fullOperation !== 'organization:getRepositories' &&
+					resource !== 'notification'
 				) {
 					repository = this.getNodeParameter('repository', i, '', { extractValue: true }) as string;
 				}
@@ -2740,6 +2795,17 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows`;
+					}
+				} else if (resource === 'notification') {
+					if (operation === 'get') {
+					  requestMethod = 'GET';
+					  endpoint = `/notifications`;
+
+					} else if (operation === 'markAsRead') {
+					  const threadId = this.getNodeParameter('threadid', i, '') as string;
+					  requestMethod = 'PATCH';
+					  endpoint = `/notifications/threads/${threadId}`;
+					  body = {};
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
