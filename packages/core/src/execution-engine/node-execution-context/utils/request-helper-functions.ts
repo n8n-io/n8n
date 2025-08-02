@@ -957,6 +957,11 @@ export async function requestOAuth2(
 		scopes: (credentials.scope as string).split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
+		...(credentials.additionalBodyProperties && {
+			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
+				fallbackValue: {},
+			}),
+		}),
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
