@@ -1,120 +1,10 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`N8nSuggestedActions > opens popover when count tag is clicked 1`] = `
-[
-  <div
-    class="actionItem actionable"
-    data-test-id="suggested-action-item"
-  >
-    <div
-      class="checkboxContainer"
-    >
-      <n8n-icon-stub
-        color="foreground-dark"
-        icon="circle"
-        spin="false"
-      />
-    </div>
-    <div
-      class="actionItemBody"
-    >
-      <div
-        class="mb-3xs actionHeader"
-      >
-        <n8n-text-stub
-          bold="true"
-          compact="false"
-          size="medium"
-          tag="span"
-        />
-        <n8n-icon-stub
-          icon="chevron-right"
-          spin="false"
-        />
-      </div>
-      <div>
-        <n8n-text-stub
-          bold="false"
-          color="text-base"
-          compact="false"
-          size="small"
-          tag="span"
-        />
-      </div>
-      <div
-        class="actionButtons"
-      >
-        <n8n-link-stub
-          bold="false"
-          data-test-id="suggested-action-ignore"
-          newwindow="false"
-          size="small"
-          theme="text"
-          underline="true"
-        />
-      </div>
-    </div>
-  </div>,
-  <div
-    class="actionItem actionable"
-    data-test-id="suggested-action-item"
-  >
-    <div
-      class="checkboxContainer"
-    >
-      <n8n-icon-stub
-        color="foreground-dark"
-        icon="circle"
-        spin="false"
-      />
-    </div>
-    <div
-      class="actionItemBody"
-    >
-      <div
-        class="mb-3xs actionHeader"
-      >
-        <n8n-text-stub
-          bold="true"
-          compact="false"
-          size="medium"
-          tag="span"
-        />
-        <n8n-icon-stub
-          icon="chevron-right"
-          spin="false"
-        />
-      </div>
-      <div>
-        <n8n-text-stub
-          bold="false"
-          color="text-base"
-          compact="false"
-          size="small"
-          tag="span"
-        />
-      </div>
-      <div
-        class="actionButtons"
-      >
-        <n8n-link-stub
-          bold="false"
-          data-test-id="suggested-action-ignore"
-          newwindow="false"
-          size="small"
-          theme="text"
-          underline="true"
-        />
-      </div>
-    </div>
-  </div>,
-]
-`;
-
 exports[`N8nSuggestedActions > opens popover when count tag is clicked and all items are not completed 1`] = `
 [
   <div
     class="actionItem actionable"
+    data-action-id="action1"
     data-test-id="suggested-action-item"
   >
     <div
@@ -168,6 +58,7 @@ exports[`N8nSuggestedActions > opens popover when count tag is clicked and all i
   </div>,
   <div
     class="actionItem actionable"
+    data-action-id="action2"
     data-test-id="suggested-action-item"
   >
     <div
@@ -226,6 +117,7 @@ exports[`N8nSuggestedActions > renders the suggested actions count with complete
 [
   <div
     class="actionItem"
+    data-action-id="action1"
     data-test-id="suggested-action-item"
   >
     <div
@@ -257,6 +149,7 @@ exports[`N8nSuggestedActions > renders the suggested actions count with complete
   </div>,
   <div
     class="actionItem actionable"
+    data-action-id="action2"
     data-test-id="suggested-action-item"
   >
     <div
