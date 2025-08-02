@@ -1,36 +1,43 @@
 import type { IDataObject } from 'n8n-workflow';
 
-export const enum JobStatus {
-	WAITING = 'Waiting',
-	INPROGRESS = 'InProgress',
-	SUCCESS = 'Success',
-	FAILURE = 'Failure',
-	DELETED = 'Deleted',
-}
+export const JobStatuses = {
+	WAITING: 'Waiting',
+	INPROGRESS: 'InProgress',
+	SUCCESS: 'Success',
+	FAILURE: 'Failure',
+	DELETED: 'Deleted',
+} as const;
 
-export const enum TLP {
-	white,
-	green,
-	amber,
-	red,
-}
+export type JobStatus = (typeof JobStatuses)[keyof typeof JobStatuses];
 
-export const enum ObservableDataType {
-	domain = 'domain',
-	file = 'file',
-	filename = 'filename',
-	fqdn = 'fqdn',
-	hash = 'hash',
-	ip = 'ip',
-	mail = 'mail',
-	mail_subject = 'mail_subject',
-	other = 'other',
-	regexp = 'regexp',
-	registry = 'registry',
-	uri_path = 'uri_path',
-	url = 'url',
-	'user-agent' = 'user-agent',
-}
+export const TLPs = {
+	white: 0,
+	green: 1,
+	amber: 2,
+	red: 3,
+} as const;
+
+export type TLP = (typeof TLPs)[keyof typeof TLPs];
+
+export const ObservableDataTypes = {
+	domain: 'domain',
+	file: 'file',
+	filename: 'filename',
+	fqdn: 'fqdn',
+	hash: 'hash',
+	ip: 'ip',
+	mail: 'mail',
+	mail_subject: 'mail_subject',
+	other: 'other',
+	regexp: 'regexp',
+	registry: 'registry',
+	uri_path: 'uri_path',
+	url: 'url',
+	'user-agent': 'user-agent',
+} as const;
+
+export type ObservableDataType = (typeof ObservableDataTypes)[keyof typeof ObservableDataTypes];
+
 export interface IJob {
 	id?: string;
 	organization?: string;

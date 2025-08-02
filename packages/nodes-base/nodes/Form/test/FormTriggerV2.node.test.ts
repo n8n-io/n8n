@@ -4,7 +4,6 @@ import { NodeOperationError, type INode } from 'n8n-workflow';
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { FormTrigger } from '../FormTrigger.node';
-import type { FormField } from '../interfaces';
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
@@ -12,7 +11,7 @@ describe('FormTrigger', () => {
 	});
 
 	it('should render a form template with correct fields', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Notes', fieldType: 'textarea', requiredField: false },
@@ -49,7 +48,9 @@ describe('FormTrigger', () => {
 
 		expect(response.render).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: false,
+			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -108,14 +109,13 @@ describe('FormTrigger', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 
 		expect(responseData).toEqual({ noWebhookResponse: true });
 	});
 
 	it('should return workflowData on POST request', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Date', fieldType: 'date', formatDate: 'dd MMM', requiredField: false },
@@ -189,8 +189,9 @@ describe('FormTrigger', () => {
 			);
 
 			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
 					node: {
+						typeVersion: 2.1,
 						parameters: {
 							responseMode: 'onReceived',
 						},
@@ -201,17 +202,18 @@ describe('FormTrigger', () => {
 							name: 'Test Respond To Webhook',
 							type: 'n8n-nodes-base.respondToWebhook',
 							typeVersion: 1,
+							disabled: false,
 						},
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'n8n Form Trigger node not correctly configured'),
+				new NodeOperationError(mock<INode>(), 'On form submission node not correctly configured'),
 			);
 		});
 	});
 
 	it('should throw on invalid webhook authentication', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
@@ -238,8 +240,35 @@ describe('FormTrigger', () => {
 		);
 	});
 
+	it('should apply customCss property to form render', async () => {
+		const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+		const { response } = await testVersionedWebhookTriggerNode(FormTrigger, 2.2, {
+			mode: 'manual',
+			node: {
+				typeVersion: 2.2,
+				parameters: {
+					formTitle: 'Custom CSS Test',
+					formDescription: 'Testing custom CSS',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					options: {
+						customCss: '.form-input { border-color: red; }',
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				dangerousCustomCss: '.form-input { border-color: red; }',
+			}),
+		);
+	});
+
 	it('should handle files', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{
 				fieldLabel: 'Resume',
 				fieldType: 'file',

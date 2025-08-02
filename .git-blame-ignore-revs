@@ -11,3 +11,8 @@
 # refactor: Run lintfix (no-changelog) (#7537)
 
 62c096710fab2f7e886518abdbded34b55e93f62
+
+# refactor: Move test files alongside tested files (#11504)
+
+7e58fc4fec468aca0b45d5bfe6150e1af632acbc
+f32b13c6ed078be042a735bc8621f27e00dc3116

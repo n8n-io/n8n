@@ -1,7 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
-import { messageRLC, returnAllOrLimit } from '../../descriptions';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { messageRLC, returnAllOrLimit } from '../../descriptions';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	messageRLC,

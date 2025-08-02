@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,9 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
-
-import set from 'lodash/set';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Set',
@@ -21,8 +20,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Set',
 		color: '#0000FF',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Keep Only Set',

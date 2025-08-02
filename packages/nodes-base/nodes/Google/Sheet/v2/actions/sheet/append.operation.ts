@@ -5,8 +5,10 @@ import {
 	NodeOperationError,
 	type ResourceMapperField,
 } from 'n8n-workflow';
-import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
+
+import { cellFormat, handlingExtraData, useAppendOption } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import {
 	autoMapInputData,
 	cellFormatDefault,
@@ -14,7 +16,6 @@ import {
 	mapFields,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData, useAppendOption } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -228,7 +229,7 @@ export async function execute(
 
 	const sheetData = await sheet.getData(range, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || !sheetData.length) {
+	if (!sheetData?.length) {
 		dataMode = 'autoMapInputData';
 	}
 

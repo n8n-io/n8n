@@ -1,20 +1,21 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
+import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
 import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
-import { encodingForModel } from '@langchain/core/utils/tiktoken';
 import type {
 	Serialized,
 	SerializedNotImplemented,
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
-import type { LLMResult } from '@langchain/core/outputs';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { pick } from 'lodash';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
-import { logAiEvent } from '../../utils/helpers';
+import type { LLMResult } from '@langchain/core/outputs';
+import pick from 'lodash/pick';
+import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
+import { logAiEvent } from '@utils/helpers';
+import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
+
+type TokensUsageParser = (result: LLMResult) => {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
@@ -26,17 +27,21 @@ type RunDetail = {
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
-const TIKTOKEN_ESTIMATE_MODEL = 'gpt-3.5-turbo';
+const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
 
-	executionFunctions: IExecuteFunctions;
+	// This flag makes sure that LangChain will wait for the handlers to finish before continuing
+	// This is crucial for the handleLLMError handler to work correctly (it should be called before the error is propagated to the root node)
+	awaitHandlers = true;
 
-	connectionType = NodeConnectionType.AiLanguageModel;
+	connectionType = NodeConnectionTypes.AiLanguageModel;
 
 	promptTokensEstimate = 0;
 
 	completionTokensEstimate = 0;
+
+	#parentRunIndex?: number;
 
 	/**
 	 * A map to associate LLM run IDs to run details.
@@ -48,9 +53,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	options = {
 		// Default(OpenAI format) parser
-		tokensUsageParser: (llmOutput: LLMResult['llmOutput']) => {
-			const completionTokens = (llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
+		tokensUsageParser: (result: LLMResult) => {
+			const completionTokens = (result?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
+			const promptTokens = (result?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
 
 			return {
 				completionTokens,
@@ -58,14 +63,17 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				totalTokens: completionTokens + promptTokens,
 			};
 		},
+		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
 
 	constructor(
-		executionFunctions: IExecuteFunctions,
-		options?: { tokensUsageParser: TokensUsageParser },
+		private executionFunctions: ISupplyDataFunctions,
+		options?: {
+			tokensUsageParser?: TokensUsageParser;
+			errorDescriptionMapper?: (error: NodeError) => string;
+		},
 	) {
 		super();
-		this.executionFunctions = executionFunctions;
 		this.options = { ...this.options, ...options };
 	}
 
@@ -76,13 +84,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	async estimateTokensFromStringList(list: string[]) {
 		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
-		const encoder = await encodingForModel(embeddingModel);
-
-		const encodedListLength = await Promise.all(
-			list.map(async (text) => encoder.encode(text).length),
-		);
-
-		return encodedListLength.reduce((acc, curr) => acc + curr, 0);
+		return await estimateTokensFromStringList(list, embeddingModel);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
@@ -99,7 +101,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output.llmOutput);
+		const tokenUsage = this.options.tokensUsageParser(output);
 
 		if (output.generations.length > 0) {
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(
@@ -135,10 +137,18 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 						return message;
 					});
 
-		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
-			[{ json: { ...response } }],
-		]);
-		void logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		const sourceNodeRunIndex =
+			this.#parentRunIndex !== undefined ? this.#parentRunIndex + runDetails.index : undefined;
+
+		this.executionFunctions.addOutputData(
+			this.connectionType,
+			runDetails.index,
+			[[{ json: { ...response } }]],
+			undefined,
+			sourceNodeRunIndex,
+		);
+
+		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
 			response,
@@ -147,19 +157,27 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
+		const sourceNodeRunIndex =
+			this.#parentRunIndex !== undefined
+				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
+				: undefined;
 
 		const options = llm.type === 'constructor' ? llm.kwargs : llm;
-		const { index } = this.executionFunctions.addInputData(this.connectionType, [
+		const { index } = this.executionFunctions.addInputData(
+			this.connectionType,
 			[
-				{
-					json: {
-						messages: prompts,
-						estimatedTokens,
-						options,
+				[
+					{
+						json: {
+							messages: prompts,
+							estimatedTokens,
+							options,
+						},
 					},
-				},
+				],
 			],
-		]);
+			sourceNodeRunIndex,
+		);
 
 		// Save the run details for later use when processing `handleLLMEnd` event
 		this.runsMap[runId] = {
@@ -170,11 +188,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.promptTokensEstimate = estimatedTokens;
 	}
 
-	async handleLLMError(
-		error: IDataObject | Error,
-		runId: string,
-		parentRunId?: string | undefined,
-	) {
+	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
+		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
+
 		// Filter out non-x- headers to avoid leaking sensitive information in logs
 		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
 			const errorWithHeaders = error as { headers: Record<string, unknown> };
@@ -186,10 +202,32 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			});
 		}
 
-		void logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		if (error instanceof NodeError) {
+			if (this.options.errorDescriptionMapper) {
+				error.description = this.options.errorDescriptionMapper(error);
+			}
+
+			this.executionFunctions.addOutputData(this.connectionType, runDetails.index, error);
+		} else {
+			// If the error is not a NodeError, we wrap it in a NodeOperationError
+			this.executionFunctions.addOutputData(
+				this.connectionType,
+				runDetails.index,
+				new NodeOperationError(this.executionFunctions.getNode(), error as JsonObject, {
+					functionality: 'configuration-node',
+				}),
+			);
+		}
+
+		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,
 		});
+	}
+
+	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
+	setParentRunIndex(runIndex: number) {
+		this.#parentRunIndex = runIndex;
 	}
 }

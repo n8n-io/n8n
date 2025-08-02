@@ -1,9 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { guildRLC } from '../common.description';
 import * as getAll from './getAll.operation';
 import * as roleAdd from './roleAdd.operation';
 import * as roleRemove from './roleRemove.operation';
+import { guildRLC } from '../common.description';
 
 export { getAll, roleAdd, roleRemove };
 

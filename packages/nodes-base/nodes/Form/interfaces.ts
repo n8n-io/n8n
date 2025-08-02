@@ -1,15 +1,3 @@
-export type FormField = {
-	fieldLabel: string;
-	fieldType: string;
-	requiredField: boolean;
-	fieldOptions?: { values: Array<{ option: string }> };
-	multiselect?: boolean;
-	multipleFiles?: boolean;
-	acceptFileTypes?: string;
-	formatDate?: string;
-	placeholder?: string;
-};
-
 export type FormTriggerInput = {
 	isSelect?: boolean;
 	isMultiSelect?: boolean;
@@ -31,15 +19,18 @@ export type FormTriggerInput = {
 
 export type FormTriggerData = {
 	testRun: boolean;
-	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
+	formDescriptionMetadata?: string;
+	formSubmittedHeader?: string;
 	formSubmittedText?: string;
 	redirectUrl?: string;
 	n8nWebsiteLink: string;
 	formFields: FormTriggerInput[];
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
+	buttonLabel?: string;
+	dangerousCustomCss?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

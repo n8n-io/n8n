@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	GenericValue,
 	IDataObject,
@@ -6,8 +7,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 type AggregationType =
 	| 'append'

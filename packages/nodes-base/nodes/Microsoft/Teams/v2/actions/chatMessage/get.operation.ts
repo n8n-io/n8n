@@ -1,7 +1,9 @@
 import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
-import { microsoftApiRequest } from '../../transport';
-import { chatRLC } from '../../descriptions';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { chatRLC } from '../../descriptions';
+import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	chatRLC,

@@ -1,3 +1,4 @@
+import omit from 'lodash/omit';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -6,17 +7,14 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, NodeApiError } from 'n8n-workflow';
 
-import omit from 'lodash/omit';
+import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {
 	elasticsearchApiRequest,
 	elasticsearchApiRequestAllItems,
 	elasticsearchBulkApiRequest,
 } from './GenericFunctions';
-
-import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
-
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 export class Elasticsearch implements INodeType {
@@ -31,8 +29,9 @@ export class Elasticsearch implements INodeType {
 		defaults: {
 			name: 'Elasticsearch',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'elasticsearchApi',
@@ -172,7 +171,7 @@ export class Elasticsearch implements INodeType {
 						} else {
 							responseData = await elasticsearchApiRequest.call(
 								this,
-								'GET',
+								'POST',
 								`/${indexId}/_search`,
 								body,
 								qs,
@@ -184,7 +183,7 @@ export class Elasticsearch implements INodeType {
 
 						responseData = await elasticsearchApiRequest.call(
 							this,
-							'GET',
+							'POST',
 							`/${indexId}/_search`,
 							body,
 							qs,

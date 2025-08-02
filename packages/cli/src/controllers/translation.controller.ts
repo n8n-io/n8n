@@ -1,11 +1,11 @@
+import { GlobalConfig } from '@n8n/config';
+import { Get, RestController } from '@n8n/decorators';
 import type { Request } from 'express';
 import { access } from 'fs/promises';
 import { join } from 'path';
 
-import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { Get, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
@@ -18,7 +18,10 @@ export declare namespace TranslationRequest {
 
 @RestController('/')
 export class TranslationController {
-	constructor(private readonly credentialTypes: CredentialTypes) {}
+	constructor(
+		private readonly credentialTypes: CredentialTypes,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	@Get('/credential-translation')
 	async getCredentialTranslation(req: TranslationRequest.Credential) {
@@ -27,7 +30,7 @@ export class TranslationController {
 		if (!this.credentialTypes.recognizes(credentialType))
 			throw new BadRequestError(`Invalid Credential type: "${credentialType}"`);
 
-		const defaultLocale = config.getEnv('defaultLocale');
+		const { defaultLocale } = this.globalConfig;
 		const translationPath = join(
 			CREDENTIAL_TRANSLATIONS_DIR,
 			defaultLocale,
@@ -54,7 +57,7 @@ export class TranslationController {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return require(NODE_HEADERS_PATH);
 		} catch (error) {
-			throw new InternalServerError('Failed to load headers file');
+			throw new InternalServerError('Failed to load headers file', error);
 		}
 	}
 }

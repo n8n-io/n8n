@@ -1,7 +1,8 @@
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
-import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
-import { configurePostgres } from '../transport';
+
+import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
+import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
 
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -62,34 +63,32 @@ export async function getMappingColumns(
 		extractValue: true,
 	}) as string;
 
-	try {
-		const columns = await getTableSchema(db, schema, table, { getColumnsForResourceMapper: true });
-		const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
-		const enumInfo = await getEnums(db);
-		const fields = await Promise.all(
-			columns.map(async (col) => {
-				const canBeUsedToMatch =
-					operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
-				const type = mapPostgresType(col.data_type);
-				const options =
-					type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
-				const hasDefault = Boolean(col.column_default);
-				const isGenerated = col.is_generated === 'ALWAYS' || col.identity_generation === 'ALWAYS';
-				const nullable = col.is_nullable === 'YES';
-				return {
-					id: col.column_name,
-					displayName: col.column_name,
-					required: !nullable && !hasDefault && !isGenerated,
-					defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
-					display: true,
-					type,
-					canBeUsedToMatch,
-					options,
-				};
-			}),
-		);
-		return { fields };
-	} finally {
-		if (!db.$pool.ending) await db.$pool.end();
-	}
+	const columns = await getTableSchema(db, schema, table, { getColumnsForResourceMapper: true });
+	const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
+	const enumInfo = await getEnums(db);
+	const fields = await Promise.all(
+		columns.map(async (col) => {
+			const canBeUsedToMatch =
+				operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
+			const type = mapPostgresType(col.data_type);
+			const options =
+				type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
+			const hasDefault = Boolean(col.column_default);
+			const isGenerated =
+				col.is_generated === 'ALWAYS' ||
+				['ALWAYS', 'BY DEFAULT'].includes(col.identity_generation ?? '');
+			const nullable = col.is_nullable === 'YES';
+			return {
+				id: col.column_name,
+				displayName: col.column_name,
+				required: !nullable && !hasDefault && !isGenerated,
+				defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
+				display: true,
+				type,
+				canBeUsedToMatch,
+				options,
+			};
+		}),
+	);
+	return { fields };
 }

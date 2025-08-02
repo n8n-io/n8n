@@ -1,40 +1,37 @@
+import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
+	ErrorReporter,
 	InstanceSettings,
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
+	UnrecognizedCredentialTypeError,
+	UnrecognizedNodeTypeError,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	INodeTypeData,
-	ICredentialTypeData,
+	LoadedClass,
+	ICredentialType,
+	INodeType,
+	IVersionedNodeType,
+	INodeProperties,
+	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
+import { type Stats } from 'node:fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
-import { Logger } from '@/logging/logger.service';
-import { isContainedWithin } from '@/utils/path-util';
-
-interface LoadedNodesAndCredentials {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-}
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -57,12 +54,13 @@ export class LoadNodesAndCredentials {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async init() {
-		if (inTest) throw new ApplicationError('Not available in tests');
+		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -91,11 +89,13 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
+		if (!Container.get(CommunityPackagesConfig).preventLoading) {
+			// Load nodes from any other `n8n-nodes-*` packages in the download directory
+			// This includes the community nodes
+			await this.loadNodesFromNodeModules(
+				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+			);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -149,7 +149,7 @@ export class LoadNodesAndCredentials {
 				);
 			} catch (error) {
 				this.logger.error((error as Error).message);
-				ErrorReporter.error(error);
+				this.errorReporter.error(error);
 			}
 		}
 	}
@@ -163,6 +163,29 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+	}
+
+	resolveSchema({
+		node,
+		version,
+		resource,
+		operation,
+	}: {
+		node: string;
+		version: string;
+		resource?: string;
+		operation?: string;
+	}): string | undefined {
+		const nodePath = this.known.nodes[node]?.sourcePath;
+		if (!nodePath) {
+			return undefined;
+		}
+
+		const nodeParentPath = path.dirname(nodePath);
+		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
+		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+
+		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
 	getCustomDirectories(): string[] {
@@ -261,7 +284,7 @@ export class LoadNodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
-			throw new ApplicationError(
+			throw new UserError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
 				),
@@ -280,15 +303,20 @@ export class LoadNodesAndCredentials {
 	 */
 	createAiTools() {
 		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+			this.types.nodes.filter((nodeType) => nodeType.usableAsTool);
 
 		for (const usableNode of usableNodes) {
-			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
-			const wrapped = NodeHelpers.convertNodeToAiTool({ description }).description;
+			const description =
+				typeof usableNode.usableAsTool === 'object'
+					? ({
+							...deepCopy(usableNode),
+							...usableNode.usableAsTool?.replacements,
+						} as INodeTypeBaseDescription)
+					: deepCopy(usableNode);
+			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
+			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
 
 			const credentialNames = Object.entries(this.known.credentials)
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
@@ -307,13 +335,26 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory } = loader;
-			this.types.nodes = this.types.nodes.concat(types.nodes);
-			this.types.credentials = this.types.credentials.concat(types.credentials);
+			const { known, types, directory, packageName } = loader;
+			this.types.nodes = this.types.nodes.concat(
+				types.nodes.map(({ name, ...rest }) => ({
+					...rest,
+					name: `${packageName}.${name}`,
+				})),
+			);
+			this.types.credentials = this.types.credentials.concat(
+				types.credentials.map(({ supportedNodes, ...rest }) => ({
+					...rest,
+					supportedNodes:
+						loader instanceof PackageDirectoryLoader
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+				})),
+			);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
 			}
 
 			for (const credentialTypeName in loader.credentialTypes) {
@@ -322,7 +363,7 @@ export class LoadNodesAndCredentials {
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[type] = {
+				this.known.nodes[`${packageName}.${type}`] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
 				};
@@ -356,41 +397,183 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
+	}
+
+	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		if (!loader) {
+			throw new UnrecognizedNodeTypeError(packageName, nodeType);
+		}
+		return loader.getNode(nodeType);
+	}
+
+	getCredential(credentialType: string): LoadedClass<ICredentialType> {
+		const { loadedCredentials } = this;
+
+		for (const loader of Object.values(this.loaders)) {
+			if (credentialType in loader.known.credentials) {
+				const loaded = loader.getCredential(credentialType);
+				loadedCredentials[credentialType] = loaded;
+			}
+		}
+
+		if (credentialType in loadedCredentials) {
+			return loadedCredentials[credentialType];
+		}
+
+		throw new UnrecognizedCredentialTypeError(credentialType);
+	}
+
+	/**
+	 * Modifies the description of the passed in object, such that it can be used
+	 * as an AI Agent Tool.
+	 * Returns the modified item (not copied)
+	 */
+	convertNodeToAiTool<
+		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
+	>(item: T): T {
+		// quick helper function for type-guard down below
+		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
+			return typeof obj === 'object' && obj !== null && 'properties' in obj;
+		}
+
+		if (isFullDescription(item.description)) {
+			item.description.name += 'Tool';
+			item.description.inputs = [];
+			item.description.outputs = [NodeConnectionTypes.AiTool];
+			item.description.displayName += ' Tool';
+			delete item.description.usableAsTool;
+
+			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
+			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
+
+			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+				const descriptionType: INodeProperties = {
+					displayName: 'Tool Description',
+					name: 'descriptionType',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Set Automatically',
+							value: 'auto',
+							description: 'Automatically set based on resource and operation',
+						},
+						{
+							name: 'Set Manually',
+							value: 'manual',
+							description: 'Manually set the description',
+						},
+					],
+					default: 'auto',
+				};
+
+				const descProp: INodeProperties = {
+					displayName: 'Description',
+					name: 'toolDescription',
+					type: 'string',
+					default: item.description.description,
+					required: true,
+					typeOptions: { rows: 2 },
+					description:
+						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+				};
+
+				item.description.properties.unshift(descProp);
+
+				// If node has resource or operation we can determine pre-populate tool description based on it
+				// so we add the descriptionType property as the first property
+				if (hasResource || hasOperation) {
+					item.description.properties.unshift(descriptionType);
+
+					descProp.displayOptions = {
+						show: {
+							descriptionType: ['manual'],
+						},
+					};
+				}
+			}
+		}
+
+		const resources = item.description.codex?.resources ?? {};
+
+		item.description.codex = {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Tools'],
+				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
+			},
+			resources,
+		};
+		return item;
+	}
+
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
+
 		const { watch } = await import('chokidar');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
 		Object.values(this.loaders).forEach(async (loader) => {
+			const { directory } = loader;
 			try {
-				await fsPromises.access(loader.directory);
+				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
 				return;
 			}
 
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
 			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast('nodeDescriptionUpdated', {});
+				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+				try {
+					loader.reset();
+					await loader.loadAll();
+					await this.postProcessLoaders();
+					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+				} catch (error) {
+					this.logger.error(`Hot reload failed for ${loader.packageName}`);
+				}
 			}, 100);
 
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			watch(toWatch, { cwd: realModulePath }).on('change', reloader);
+			// For lazy loaded packages, we need to watch the dist directory
+			const watchPath = loader.isLazyLoaded ? path.join(directory, 'dist') : directory;
+
+			// Watch options for chokidar v4
+			const watchOptions = {
+				ignoreInitial: true,
+				cwd: directory,
+				// Filter which files to watch based on loader type
+				ignored: (filePath: string, stats?: Stats) => {
+					if (!stats) return false;
+					if (stats.isDirectory()) return false;
+					if (filePath.includes('node_modules')) return true;
+
+					if (loader.isLazyLoaded) {
+						// Only watch nodes.json and credentials.json files
+						const basename = path.basename(filePath);
+						return basename !== 'nodes.json' && basename !== 'credentials.json';
+					}
+
+					// Watch all .js and .json files
+					return !filePath.endsWith('.js') && !filePath.endsWith('.json');
+				},
+			};
+
+			const watcher = watch(watchPath, watchOptions);
+
+			// Watch for file changes and additions
+			// Not watching removals to prevent issues during build processes
+			watcher.on('change', reloader);
+			watcher.on('add', reloader);
 		});
 	}
 }

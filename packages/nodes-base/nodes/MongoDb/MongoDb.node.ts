@@ -1,4 +1,12 @@
 import type {
+	FindOneAndReplaceOptions,
+	FindOneAndUpdateOptions,
+	UpdateOptions,
+	Sort,
+} from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,17 +17,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
-
-import type {
-	FindOneAndReplaceOptions,
-	FindOneAndUpdateOptions,
-	UpdateOptions,
-	Sort,
-} from 'mongodb';
-import { ObjectId } from 'mongodb';
-import { generatePairedItemData } from '../../utils/utilities';
-import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
@@ -29,8 +26,9 @@ import {
 	stringifyObjectIDs,
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
-
 import type { IMongoParametricCredentials } from './mongoDb.types';
+import { nodeProperties } from './MongoDbProperties';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,13 +36,13 @@ export class MongoDb implements INodeType {
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -81,7 +79,6 @@ export class MongoDb implements INodeType {
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
-						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new ApplicationError(`Database "${database}" does not exist`, {
 							level: 'warning',
 						});
@@ -211,7 +208,11 @@ export class MongoDb implements INodeType {
 						query = query.sort(sort);
 					}
 
-					if (projection && projection instanceof Document) {
+					if (
+						projection &&
+						Object.keys(projection).length !== 0 &&
+						projection.constructor === Object
+					) {
 						query = query.project(projection);
 					}
 
@@ -247,7 +248,7 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({ items, fields, updateKey, useDotNotation, dateFields });
 
 			for (const item of updateItems) {
 				try {
@@ -289,7 +290,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				isUpdate: nodeVersion >= 1.2,
+			});
 
 			for (const item of updateItems) {
 				try {
@@ -328,7 +336,13 @@ export class MongoDb implements INodeType {
 					this.getNodeParameter('options.dateFields', 0, '') as string,
 				);
 
-				const insertItems = prepareItems(items, fields, '', useDotNotation, dateFields);
+				const insertItems = prepareItems({
+					items,
+					fields,
+					updateKey: '',
+					useDotNotation,
+					dateFields,
+				});
 
 				const { insertedIds } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
@@ -369,7 +383,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems({
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				isUpdate: nodeVersion >= 1.2,
+			});
 
 			for (const item of updateItems) {
 				try {

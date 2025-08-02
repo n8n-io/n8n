@@ -1,4 +1,4 @@
-import { Config, Env, Nested } from '../decorators';
+import { Config, Env } from '../decorators';
 
 function isStringArray(input: unknown): input is string[] {
 	return Array.isArray(input) && input.every((item) => typeof item === 'string');
@@ -21,21 +21,6 @@ class JsonStringArray extends Array<string> {
 }
 
 @Config
-class CommunityPackagesConfig {
-	/** Whether to enable community packages */
-	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
-	enabled: boolean = true;
-
-	/** NPM registry URL to pull community packages from */
-	@Env('N8N_COMMUNITY_PACKAGES_REGISTRY')
-	registry: string = 'https://registry.npmjs.org';
-
-	/** Whether to reinstall any missing community packages */
-	@Env('N8N_REINSTALL_MISSING_PACKAGES')
-	reinstallMissing: boolean = false;
-}
-
-@Config
 export class NodesConfig {
 	/** Node types to load. Includes all if unspecified. @example '["n8n-nodes-base.hackerNews"]' */
 	@Env('NODES_INCLUDE')
@@ -49,6 +34,7 @@ export class NodesConfig {
 	@Env('NODES_ERROR_TRIGGER_TYPE')
 	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
-	@Nested
-	communityPackages: CommunityPackagesConfig;
+	/** Whether to enable Python execution on the Code node. */
+	@Env('N8N_PYTHON_ENABLED')
+	pythonEnabled: boolean = true;
 }

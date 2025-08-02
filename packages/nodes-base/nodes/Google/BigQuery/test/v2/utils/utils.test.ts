@@ -1,6 +1,7 @@
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { constructExecutionMetaData } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+
 import { prepareOutput } from '../../../v2/helpers/utils';
 
 describe('Google BigQuery v2 Utils', () => {

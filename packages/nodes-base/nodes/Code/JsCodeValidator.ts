@@ -13,7 +13,13 @@ export function validateNoDisallowedMethodsInRunForEach(code: string, itemIndex:
 
 		const lineNumber =
 			code.split('\n').findIndex((line) => {
-				return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
+				line = line.trimStart();
+				return (
+					line.includes(disallowedMethod) &&
+					!line.startsWith('//') &&
+					!line.startsWith('/*') &&
+					!line.startsWith('*')
+				);
 			}) + 1;
 
 		const disallowedMethodFound = lineNumber !== 0;
@@ -37,7 +43,7 @@ export function mapItemsNotDefinedErrorIfNeededForRunForAll(code: string, error:
 	// anticipate user expecting `items` to pre-exist as in Function Item node
 	if (error.message === 'items is not defined' && !/(let|const|var) +items +=/.test(code)) {
 		const quoted = error.message.replace('items', '`items`');
-		error.message = (quoted as string) + '. Did you mean `$input.all()`?';
+		error.message = quoted + '. Did you mean `$input.all()`?';
 	}
 }
 
@@ -49,6 +55,6 @@ export function mapItemNotDefinedErrorIfNeededForRunForEach(code: string, error:
 	// anticipate user expecting `items` to pre-exist as in Function Item node
 	if (error.message === 'item is not defined' && !/(let|const|var) +item +=/.test(code)) {
 		const quoted = error.message.replace('item', '`item`');
-		error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
+		error.message = quoted + '. Did you mean `$input.item.json`?';
 	}
 }

@@ -18,6 +18,18 @@ import { getVisibleSelect } from '../utils';
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
 const workflowPage = new WorkflowPage();
+const ADD_TO_WORKFLOW_BUTTON = 'Add to workflow';
+
+const addCommunityNodeToCanvas = (name: string) => {
+	nodeCreatorFeature.actions.openNodeCreator();
+	nodeCreatorFeature.getters.searchBar().find('input').clear().type(name);
+
+	nodeCreatorFeature.getters.getCreatorItem(name).find('.el-tooltip__trigger').should('exist');
+	nodeCreatorFeature.actions.selectNode(name);
+
+	cy.contains('span', name).should('be.visible');
+	cy.contains(ADD_TO_WORKFLOW_BUTTON).should('be.visible').click();
+};
 
 // We separate-out the custom nodes because they require injecting nodes and credentials
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
@@ -48,23 +60,36 @@ describe('Community and custom nodes in canvas', () => {
 			});
 		});
 
+		// next intercepts are not strictly needed, but they make the tests faster
+		// - intercept request to vetted community types, returning empty list
+		// - intercept request to vetted community type details, return null
+		// - intercept request npm registry, return 404
+		// --------------------------------------------------------------------------
+		cy.intercept('/community-node-types', (req) => {
+			req.reply({
+				statusCode: 200,
+				body: {
+					data: [],
+				},
+			});
+		});
+
+		cy.intercept('GET', '/community-node-types/*', {
+			statusCode: 200,
+			body: null,
+		});
+
+		cy.intercept('GET', 'https://registry.npmjs.org/*', {
+			statusCode: 404,
+			body: {},
+		});
+		// --------------------------------------------------------------------------
+
 		workflowPage.actions.visit();
 	});
 
 	it('should render and select community node', () => {
-		const customNode = 'E2E Node';
-
-		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type(customNode);
-
-		nodeCreatorFeature.getters
-			.getCreatorItem(customNode)
-			.find('.el-tooltip__trigger')
-			.should('exist');
-		nodeCreatorFeature.actions.selectNode(customNode);
-
-		// TODO: Replace once we have canvas feature utils
-		cy.get('.data-display .node-name').contains(customNode).should('exist');
+		addCommunityNodeToCanvas('E2E Node');
 
 		const nodeParameters = () => cy.getByTestId('node-parameters');
 		const firstParameter = () => nodeParameters().find('.parameter-item').eq(0);
@@ -87,18 +112,18 @@ describe('Community and custom nodes in canvas', () => {
 
 	it('should render custom node with n8n credential', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('E2E Node with native n8n credential', true, true);
+		addCommunityNodeToCanvas('E2E Node with native n8n credential');
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
 	});
 
 	it('should render custom node with custom credential', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('E2E Node with custom credential', true, true);
+		addCommunityNodeToCanvas('E2E Node with custom credential');
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
 	});

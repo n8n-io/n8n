@@ -1,4 +1,5 @@
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+
 import { AnnotationTagsRequest } from '@/requests';
 import { AnnotationTagService } from '@/services/annotation-tag.service.ee';
 
@@ -22,7 +23,7 @@ export class AnnotationTagsController {
 		return await this.annotationTagService.save(tag);
 	}
 
-	@Patch('/:id(\\w+)')
+	@Patch('/:id')
 	@GlobalScope('annotationTag:update')
 	async updateTag(req: AnnotationTagsRequest.Update) {
 		const newTag = this.annotationTagService.toEntity({
@@ -33,7 +34,7 @@ export class AnnotationTagsController {
 		return await this.annotationTagService.save(newTag);
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('annotationTag:delete')
 	async deleteTag(req: AnnotationTagsRequest.Delete) {
 		const { id } = req.params;

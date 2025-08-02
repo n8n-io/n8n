@@ -1,0 +1,69 @@
+{
+	"meta": {
+		"instanceId": "4d0676b62208d810ef035130bbfc9fd3afdc78d963ea8ccb9514dc89066efc94"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "bb7f8bb3-840a-464c-a7de-d3a80538c2be",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"workflowId": {},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {},
+					"matchingColumns": [],
+					"schema": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [500, 240],
+			"id": "6b6e2e34-c6ab-4083-b8e3-6b0d56be5453",
+			"name": "Execute Workflow"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When clicking ‘Execute workflow’": [
+			{
+				"aaString": "A String",
+				"aaNumber": 1,
+				"aaArray": [1, true, "3"],
+				"aaObject": {
+					"aKey": -1
+				},
+				"aaAny": {}
+			},
+			{
+				"aaString": "Another String",
+				"aaNumber": 2,
+				"aaArray": [],
+				"aaObject": {
+					"aDifferentKey": -1
+				},
+				"aaAny": []
+			}
+		]
+	}
+}

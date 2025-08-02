@@ -1,0 +1,106 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "df3ea0b2-913b-4736-a3c6-f61b35abd1e1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"category": "randomData",
+				"randomDataCount": 3
+			},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [280, 0],
+			"id": "e31f942c-876a-43ae-b883-0b7566d44750",
+			"name": "DebugHelper"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "049c69e3-969d-4df9-bf93-e44c1da06ba1",
+							"name": "test",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [500, 0],
+			"id": "eb20f04e-875f-4a2d-853c-f2e30014b821",
+			"name": "Edit Fields"
+		},
+		{
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [720, 0],
+			"id": "d4e8b6a2-cd73-452d-b5f0-986753f5dc4a",
+			"name": "Set"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Edit Fields": [
+			{
+				"uid": "d42c6385-12f2-4486-92b5-eebd2e95d161",
+				"email": "Joanna_Willms@yahoo.com",
+				"firstname": "Laurie",
+				"lastname": "Krajcik",
+				"password": "k%Y2I9oq",
+				"test": "1"
+			},
+			{
+				"uid": "53fc09df-5463-4f48-9fda-6500b1b77c82",
+				"email": "Elaine_Feeney@gmail.com",
+				"firstname": "Tracy",
+				"lastname": "Mraz",
+				"password": "t48s3-r",
+				"test": "1"
+			}
+		]
+	}
+}

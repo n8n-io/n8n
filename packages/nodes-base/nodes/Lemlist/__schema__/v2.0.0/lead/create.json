@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "campaignId": {
+            "type": "string"
+        },
+        "campaignName": {
+            "type": "string"
+        },
+        "companyName": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "isPaused": {
+            "type": "boolean"
+        },
+        "lastName": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

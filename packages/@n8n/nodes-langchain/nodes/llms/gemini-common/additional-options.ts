@@ -1,5 +1,6 @@
 import type { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import type { INodeProperties } from 'n8n-workflow';
+
 import { harmCategories, harmThresholds } from './safety-options';
 
 export const additionalOptions: INodeProperties = {

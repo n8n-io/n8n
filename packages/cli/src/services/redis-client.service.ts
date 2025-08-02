@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Debounce } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import { Service } from 'typedi';
 
-import { Debounce } from '@/decorators/debounce';
-import { Logger } from '@/logging/logger.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
@@ -37,6 +37,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
+
+		this.logger = this.logger.scoped(['redis', 'scaling']);
+
 		this.registerListeners();
 	}
 
@@ -50,7 +53,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				? this.createClusterClient(arg)
 				: this.createRegularClient(arg);
 
-		client.on('error', (error) => {
+		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
 
 			this.logger.error(`[Redis client] ${error.message}`, { error });
@@ -99,9 +102,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		options.host = host;
 		options.port = port;
 
-		this.logger.debug('[Redis] Initializing regular client', { type, host, port });
+		const client = new ioRedis(options);
 
-		return new ioRedis(options);
+		this.logger.debug(`Started Redis client ${type}`, { type, host, port });
+
+		return client;
 	}
 
 	private createClusterClient({
@@ -115,16 +120,18 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const clusterNodes = this.clusterNodes();
 
-		this.logger.debug('[Redis] Initializing cluster client', { type, clusterNodes });
-
-		return new ioRedis.Cluster(clusterNodes, {
+		const clusterClient = new ioRedis.Cluster(clusterNodes, {
 			redisOptions: options,
 			clusterRetryStrategy: this.retryStrategy(),
 		});
+
+		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
+
+		return clusterClient;
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -145,6 +152,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			retryStrategy: this.retryStrategy(),
 			...extraOptions,
 		};
+
+		if (dualStack) options.family = 0;
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 

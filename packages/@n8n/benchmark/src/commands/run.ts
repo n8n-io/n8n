@@ -13,6 +13,10 @@ export default class RunCommand extends Command {
 
 	static flags = {
 		testScenariosPath,
+		scenarioFilter: Flags.string({
+			char: 'f',
+			description: 'Filter scenarios by name',
+		}),
 		scenarioNamePrefix: Flags.string({
 			description: 'Prefix for the scenario name',
 			default: 'Unnamed',
@@ -36,6 +40,11 @@ export default class RunCommand extends Command {
 			doc: 'The API token for k6 cloud',
 			default: undefined,
 			env: 'K6_API_TOKEN',
+		}),
+		out: Flags.string({
+			description: 'The --out flag for k6',
+			default: undefined,
+			env: 'K6_OUT',
 		}),
 		resultWebhookUrl: Flags.string({
 			doc: 'The URL where the benchmark results should be sent to',
@@ -77,6 +86,7 @@ export default class RunCommand extends Command {
 			new K6Executor({
 				duration: flags.duration,
 				vus: flags.vus,
+				k6Out: flags.out,
 				k6ExecutablePath: flags.k6ExecutablePath,
 				k6ApiToken: flags.k6ApiToken,
 				n8nApiBaseUrl: flags.n8nBaseUrl,
@@ -95,7 +105,7 @@ export default class RunCommand extends Command {
 			flags.scenarioNamePrefix,
 		);
 
-		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath);
+		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath, flags.scenarioFilter);
 
 		await scenarioRunner.runManyScenarios(allScenarios);
 	}

@@ -1,3 +1,4 @@
+import merge from 'lodash/merge';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,12 +6,11 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import merge from 'lodash/merge';
-import type { ClashResolveOptions } from '../../helpers/interfaces';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
+import type { ClashResolveOptions } from '../../helpers/interfaces';
 import { addSuffixToEntriesKeys, selectMergeMethod } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -35,7 +35,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const clashHandling = this.getNodeParameter(
@@ -59,7 +59,7 @@ export async function execute(
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	if (!input1 || !input2) {
-		return returnData;
+		return [returnData];
 	}
 
 	let entry1: INodeExecutionData;
@@ -79,5 +79,5 @@ export async function execute(
 		}
 	}
 
-	return returnData;
+	return [returnData];
 }

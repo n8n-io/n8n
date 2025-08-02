@@ -1,66 +1,130 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 
-import type { ApiKey } from '@/databases/entities/api-key';
-import type { User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
-import type { ApiKeysRequest, AuthenticatedRequest } from '@/requests';
-import { API_KEY_PREFIX } from '@/services/public-api-key.service';
-import { mockInstance } from '@test/mocking';
+import { EventService } from '@/events/event.service';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { ApiKeysController } from '../api-keys.controller';
 
 describe('ApiKeysController', () => {
-	const apiKeysRepository = mockInstance(ApiKeyRepository);
+	const publicApiKeyService = mockInstance(PublicApiKeyService);
+	const eventService = mockInstance(EventService);
+
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
 	beforeAll(() => {
-		req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+		req = { user: { id: '123' } } as AuthenticatedRequest;
 	});
 
 	describe('createAPIKey', () => {
 		it('should create and save an API key', async () => {
+			// Arrange
+
 			const apiKeyData = {
 				id: '123',
 				userId: '123',
 				label: 'My API Key',
-				apiKey: `${API_KEY_PREFIX}${randomString(42)}`,
+				apiKey: 'apiKey123',
 				createdAt: new Date(),
+				scopes: ['user:create'],
 			} as ApiKey;
 
-			apiKeysRepository.upsert.mockImplementation();
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
-			apiKeysRepository.findOneByOrFail.mockResolvedValue(apiKeyData);
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(true);
 
-			const newApiKey = await controller.createAPIKey(req);
+			publicApiKeyService.createPublicApiKeyForUser.mockResolvedValue(apiKeyData);
 
-			expect(apiKeysRepository.upsert).toHaveBeenCalled();
-			expect(apiKeyData).toEqual(newApiKey);
+			publicApiKeyService.redactApiKey.mockImplementation(() => '***123');
+
+			// Act
+
+			const newApiKey = await controller.createApiKey(req, mock(), mock());
+
+			// Assert
+
+			expect(publicApiKeyService.createPublicApiKeyForUser).toHaveBeenCalled();
+			expect(newApiKey).toEqual(
+				expect.objectContaining({
+					id: '123',
+					userId: '123',
+					label: 'My API Key',
+					apiKey: '***123',
+					createdAt: expect.any(Date),
+					rawApiKey: 'apiKey123',
+					scopes: ['user:create'],
+				}),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'public-api-key-created',
+				expect.objectContaining({ user: req.user, publicApi: false }),
+			);
+		});
+
+		it('should fail to create API key if user uses a scope not allow for its role', async () => {
+			// Arrange
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(false);
+
+			// Act and Assert
+
+			await expect(controller.createApiKey(req, mock(), mock())).rejects.toThrowError();
+		});
+	});
+
+	describe('updateApiKey', () => {
+		it('should fail to update API key if user uses a scope not allow for its role', async () => {
+			// Arrange
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(false);
+
+			// Act and Assert
+
+			await expect(controller.updateApiKey(req, mock(), mock(), mock())).rejects.toThrowError();
 		});
 	});
 
 	describe('getAPIKeys', () => {
 		it('should return the users api keys redacted', async () => {
+			// Arrange
+
 			const apiKeyData = {
 				id: '123',
 				userId: '123',
 				label: 'My API Key',
-				apiKey: `${API_KEY_PREFIX}${randomString(42)}`,
+				apiKey: 'apiKey***',
 				createdAt: new Date(),
+				updatedAt: new Date(),
 			} as ApiKey;
 
-			apiKeysRepository.findBy.mockResolvedValue([apiKeyData]);
+			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([
+				{ ...apiKeyData, expiresAt: null },
+			]);
 
-			const apiKeys = await controller.getAPIKeys(req);
-			expect(apiKeys[0].apiKey).not.toEqual(apiKeyData.apiKey);
-			expect(apiKeysRepository.findBy).toHaveBeenCalledWith({ userId: req.user.id });
+			// Act
+
+			const apiKeys = await controller.getApiKeys(req);
+
+			// Assert
+
+			expect(apiKeys).toEqual([{ ...apiKeyData, expiresAt: null }]);
+			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ id: req.user.id }),
+			);
 		});
 	});
 
 	describe('deleteAPIKey', () => {
 		it('should delete the API key', async () => {
+			// Arrange
+
 			const user = mock<User>({
 				id: '123',
 				password: 'password',
@@ -68,12 +132,22 @@ describe('ApiKeysController', () => {
 				role: 'global:member',
 				mfaEnabled: false,
 			});
-			const req = mock<ApiKeysRequest.DeleteAPIKey>({ user, params: { id: user.id } });
-			await controller.deleteAPIKey(req);
-			expect(apiKeysRepository.delete).toHaveBeenCalledWith({
-				userId: req.user.id,
-				id: req.params.id,
-			});
+
+			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
+
+			// Act
+
+			await controller.deleteApiKey(req, mock(), user.id);
+
+			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
+
+			// Assert
+
+			expect(publicApiKeyService.deleteApiKeyForUser).toHaveBeenCalledWith(user, user.id);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'public-api-key-deleted',
+				expect.objectContaining({ user, publicApi: false }),
+			);
 		});
 	});
 });

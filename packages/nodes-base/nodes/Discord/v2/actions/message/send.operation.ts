@@ -4,60 +4,23 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
-import {
-	embedsFixedCollection,
-	filesFixedCollection,
-	textChannelRLC,
-	userRLC,
-} from '../common.description';
 
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
-	checkAccessToChannel,
 	parseDiscordError,
 	prepareEmbeds,
 	prepareErrorData,
-	prepareMultiPartForm,
 	prepareOptions,
+	sendDiscordMessage,
 } from '../../helpers/utils';
+import {
+	embedsFixedCollection,
+	filesFixedCollection,
+	sendToProperties,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Send To',
-		name: 'sendTo',
-		type: 'options',
-		options: [
-			{
-				name: 'User',
-				value: 'user',
-			},
-			{
-				name: 'Channel',
-				value: 'channel',
-			},
-		],
-		default: 'channel',
-		description: 'Send message to a channel or DM to a user',
-	},
-
-	{
-		...userRLC,
-		displayOptions: {
-			show: {
-				sendTo: ['user'],
-			},
-		},
-	},
-	{
-		...textChannelRLC,
-		displayOptions: {
-			show: {
-				sendTo: ['channel'],
-			},
-		},
-	},
+	...sendToProperties,
 	{
 		displayName: 'Message',
 		name: 'content',
@@ -157,90 +120,17 @@ export async function execute(
 		}
 
 		try {
-			const sendTo = this.getNodeParameter('sendTo', i) as string;
-
-			let channelId = '';
-
-			if (sendTo === 'user') {
-				const userId = this.getNodeParameter('userId', i, undefined, {
-					extractValue: true,
-				}) as string;
-
-				if (isOAuth2) {
-					try {
-						await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
-					} catch (error) {
-						if (error instanceof NodeApiError && error.httpCode === '404') {
-							throw new NodeOperationError(
-								this.getNode(),
-								`User with the id ${userId} is not a member of the selected guild`,
-								{
-									itemIndex: i,
-								},
-							);
-						}
-
-						throw new NodeOperationError(this.getNode(), error, {
-							itemIndex: i,
-						});
-					}
-				}
-
-				channelId = (
-					(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
-						recipient_id: userId,
-					})) as IDataObject
-				).id as string;
-
-				if (!channelId) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Could not create a channel to send direct message to',
-						{ itemIndex: i },
-					);
-				}
-			}
-
-			if (sendTo === 'channel') {
-				channelId = this.getNodeParameter('channelId', i, undefined, {
-					extractValue: true,
-				}) as string;
-			}
-
-			if (isOAuth2 && sendTo !== 'user') {
-				await checkAccessToChannel.call(this, channelId, userGuilds, i);
-			}
-
-			if (!channelId) {
-				throw new NodeOperationError(this.getNode(), 'Channel ID is required', { itemIndex: i });
-			}
-
-			let response: IDataObject[] = [];
-
-			if (files?.length) {
-				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
-
-				response = await discordApiMultiPartRequest.call(
-					this,
-					'POST',
-					`/channels/${channelId}/messages`,
-					multiPartBody,
-				);
-			} else {
-				response = await discordApiRequest.call(
-					this,
-					'POST',
-					`/channels/${channelId}/messages`,
+			returnData.push(
+				...(await sendDiscordMessage.call(this, {
+					guildId,
+					userGuilds,
+					isOAuth2,
 					body,
-				);
-			}
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(response),
-				{ itemData: { item: i } },
+					items,
+					files,
+					itemIndex: i,
+				})),
 			);
-
-			returnData.push(...executionData);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 

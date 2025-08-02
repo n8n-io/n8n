@@ -1,9 +1,7 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-export class QueuedExecutionRetryError extends ApplicationError {
+export class QueuedExecutionRetryError extends UnexpectedError {
 	constructor() {
-		super('Execution is queued to run (not yet started) so it cannot be retried', {
-			level: 'warning',
-		});
+		super('Execution is queued to run (not yet started) so it cannot be retried');
 	}
 }

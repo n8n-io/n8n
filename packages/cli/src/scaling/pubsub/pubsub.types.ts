@@ -1,6 +1,6 @@
-import type { PubSubCommandMap, PubSubWorkerResponseMap } from '@/events/maps/pub-sub.event-map';
 import type { Resolve } from '@/utlity.types';
 
+import type { PubSubCommandMap, PubSubWorkerResponseMap } from './pubsub.event-map';
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
 export namespace PubSub {
@@ -19,9 +19,13 @@ export namespace PubSub {
 	// ----------------------------------
 
 	type _ToCommand<CommandKey extends keyof PubSubCommandMap> = {
-		senderId: string;
-		targets?: string[];
 		command: CommandKey;
+
+		/** Host ID of the sender, added during publishing. */
+		senderId?: string;
+
+		/** Host IDs of the receivers. */
+		targets?: string[];
 
 		/** Whether the command should be sent to the sender as well. */
 		selfSend?: boolean;
@@ -75,9 +79,17 @@ export namespace PubSub {
 	// ----------------------------------
 
 	type _ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = {
-		workerId: string;
+		/** ID of worker sending the response. */
+		senderId: string;
+
+		/** IDs of processes to send the response to. */
 		targets?: string[];
-		command: WorkerResponseKey;
+
+		/** Content of worker response. */
+		response: WorkerResponseKey;
+
+		/** Whether the worker response should be debounced when received. */
+		debounce?: boolean;
 	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
 		? { payload?: never } // some responses carry no payload
 		: { payload: PubSubWorkerResponseMap[WorkerResponseKey] });
@@ -86,18 +98,6 @@ export namespace PubSub {
 		_ToWorkerResponse<WorkerResponseKey>
 	>;
 
-	namespace WorkerResponses {
-		export type RestartEventBus = ToWorkerResponse<'restart-event-bus'>;
-		export type ReloadExternalSecretsProviders =
-			ToWorkerResponse<'reload-external-secrets-providers'>;
-		export type GetWorkerId = ToWorkerResponse<'get-worker-id'>;
-		export type GetWorkerStatus = ToWorkerResponse<'get-worker-status'>;
-	}
-
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
-	export type WorkerResponse =
-		| WorkerResponses.RestartEventBus
-		| WorkerResponses.ReloadExternalSecretsProviders
-		| WorkerResponses.GetWorkerId
-		| WorkerResponses.GetWorkerStatus;
+	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
 }

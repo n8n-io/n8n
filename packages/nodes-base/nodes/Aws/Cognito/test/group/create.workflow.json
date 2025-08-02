@@ -1,0 +1,63 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "create",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_qqle3XBUA",
+					"mode": "list",
+					"cachedResultName": "UserPoolThree"
+				},
+				"newGroupName": "MyNewGroup11",
+				"additionalFields": {},
+				"requestOptions": {}
+			},
+			"id": "fc6ee80d-3c8f-4ecc-a053-b4a717484c2a",
+			"name": "createGroup",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [500, 360],
+			"credentials": {
+				"aws": {
+					"id": "testId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"createGroup": [
+			{
+				"json": {
+					"CreationDate": 1743068959.243,
+					"GroupName": "MyNewGroup11",
+					"LastModifiedDate": 1743068959.243,
+					"UserPoolId": "eu-central-1_qqle3XBUA"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "createGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

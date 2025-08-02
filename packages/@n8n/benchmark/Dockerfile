@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20.16.0 AS base
+FROM node:22.16.0 AS base
 
 # Install required dependencies
 RUN apt-get update && apt-get install -y gnupg2 curl
@@ -18,7 +18,7 @@ RUN apt-get update && \
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN npm install -g corepack@0.33 && corepack enable
 
 #
 # Builder
@@ -37,9 +37,9 @@ ENV DOCKER_BUILD=true
 RUN pnpm install --frozen-lockfile
 
 # TS config files
-COPY --chown=node:node ./tsconfig.json /app/tsconfig.json
-COPY --chown=node:node ./tsconfig.build.json /app/tsconfig.build.json
-COPY --chown=node:node ./tsconfig.backend.json /app/tsconfig.backend.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.common.json /app/packages/@n8n/typescript-config/tsconfig.common.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.build.json /app/packages/@n8n/typescript-config/tsconfig.build.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.backend.json /app/packages/@n8n/typescript-config/tsconfig.backend.json
 COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.json /app/packages/@n8n/benchmark/tsconfig.json
 COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.build.json /app/packages/@n8n/benchmark/tsconfig.build.json
 

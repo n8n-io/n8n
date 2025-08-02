@@ -4,60 +4,118 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'n8n Release version to push to a channel'
+        description: 'n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)'
         required: true
+        type: string
 
       release-channel:
         description: 'Release channel'
         required: true
         type: choice
-        default: 'next'
+        default: 'beta'
         options:
-          - next
-          - latest
+          - beta
+          - stable
 
 jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check_version.outputs.version }}
+      release_channel: ${{ github.event.inputs.release-channel }}
+    steps:
+      - name: Check Version Format
+        id: check_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          input_version="${{ env.INPUT_VERSION }}"
+          version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
+
+          if [[ "$input_version" =~ $version_regex ]]; then
+            echo "Version format is valid: $input_version"
+            echo "version=$input_version" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Invalid version format provided: '$input_version'. Must match regex '$version_regex'."
+            exit 1
+          fi
+
   release-to-npm:
     name: Release to NPM
     runs-on: ubuntu-latest
+    needs: validate-inputs
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
-      - run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          npm dist-tag add n8n@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}
+          node-version: 22.x
+
+      - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Add beta/next tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        run: |
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" next
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" beta
+
+      - name: Add latest/stable tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'stable'
+        run: |
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
 
   release-to-docker-hub:
     name: Release to DockerHub
     runs-on: ubuntu-latest
+    needs: validate-inputs
     timeout-minutes: 5
     steps:
-      - uses: docker/login-action@v3.0.0
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - run: docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.release-channel }} ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+      - name: Tag stable/latest Docker image
+        if: needs.validate-inputs.outputs.release_channel == 'stable'
+        run: |
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:stable" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:latest" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+
+      - name: Tag beta/next Docker image
+        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        run: |
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:beta" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
     runs-on: ubuntu-latest
+    needs: validate-inputs
     timeout-minutes: 5
     steps:
-      - uses: docker/login-action@v3.0.0
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.release-channel }} ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+      - name: Tag stable/latest GHCR image
+        if: needs.validate-inputs.outputs.release_channel == 'stable'
+        run: |
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+
+      - name: Tag beta/next GHCR image
+        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        run: |
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
 
   update-docs:
     name: Update latest and next in the docs
     runs-on: ubuntu-latest
-    needs: [release-to-npm, release-to-docker-hub]
+    needs: [validate-inputs, release-to-npm, release-to-docker-hub]
     steps:
       - continue-on-error: true
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

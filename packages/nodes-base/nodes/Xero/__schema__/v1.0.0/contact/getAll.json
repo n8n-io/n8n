@@ -1,0 +1,82 @@
+{
+    "type": "object",
+    "properties": {
+        "Addresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "AddressType": {
+                        "type": "string"
+                    },
+                    "City": {
+                        "type": "string"
+                    },
+                    "Country": {
+                        "type": "string"
+                    },
+                    "PostalCode": {
+                        "type": "string"
+                    },
+                    "Region": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "BankAccountDetails": {
+            "type": "string"
+        },
+        "ContactID": {
+            "type": "string"
+        },
+        "ContactStatus": {
+            "type": "string"
+        },
+        "DefaultCurrency": {
+            "type": "string"
+        },
+        "EmailAddress": {
+            "type": "string"
+        },
+        "HasAttachments": {
+            "type": "boolean"
+        },
+        "HasValidationErrors": {
+            "type": "boolean"
+        },
+        "IsCustomer": {
+            "type": "boolean"
+        },
+        "IsSupplier": {
+            "type": "boolean"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Phones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "PhoneAreaCode": {
+                        "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                        "type": "string"
+                    },
+                    "PhoneNumber": {
+                        "type": "string"
+                    },
+                    "PhoneType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "UpdatedDateUTC": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

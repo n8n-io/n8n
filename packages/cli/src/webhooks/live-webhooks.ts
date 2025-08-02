@@ -1,18 +1,20 @@
+import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Workflow, NodeHelpers, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
-import { Service } from 'typedi';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
@@ -114,11 +116,9 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflow.getNode(webhook.node) as INode,
-			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		const webhookData = this.webhookService
+			.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+			.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -126,6 +126,10 @@ export class LiveWebhooks implements IWebhookManager {
 
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
+		}
+
+		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+			sanitizeWebhookRequest(request);
 		}
 
 		return await new Promise((resolve, reject) => {

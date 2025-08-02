@@ -1,0 +1,534 @@
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use 'select';
+
+@include mixins.b(pagination) {
+	white-space: nowrap;
+	padding: 2px 5px;
+	color: var.$pagination-font-color;
+	font-weight: var(--font-weight-bold);
+	@include utils.utils-clearfix;
+
+	span:not([class*='suffix']),
+	button {
+		display: inline-block;
+		font-size: var.$pagination-font-size;
+		min-width: var.$pagination-button-width;
+		height: var.$pagination-button-height;
+		line-height: var.$pagination-button-height;
+		vertical-align: top;
+		box-sizing: border-box;
+	}
+
+	.el-input__inner {
+		text-align: center;
+		-moz-appearance: textfield;
+		line-height: normal;
+	}
+
+	// pagesize 的下拉 icon
+	.el-input__suffix {
+		right: 0;
+		transform: scale(0.8);
+	}
+
+	.el-select .el-input {
+		width: 100px;
+		margin: 0 5px;
+
+		.el-input__inner {
+			padding-right: 25px;
+			border-radius: var.$pagination-border-radius;
+		}
+	}
+
+	button {
+		border: none;
+		padding: 0 6px;
+		background: transparent;
+
+		&:focus {
+			outline: none;
+		}
+
+		&:hover {
+			color: var.$pagination-hover-color;
+		}
+
+		&:disabled {
+			color: var.$pagination-button-disabled-color;
+			background-color: var.$pagination-button-disabled-background-color;
+			cursor: not-allowed;
+		}
+	}
+
+	.btn-prev,
+	.btn-next {
+		background-position: center center;
+		background-repeat: no-repeat;
+		background-size: 16px;
+		background-color: var.$pagination-background-color;
+		cursor: pointer;
+		margin: 0;
+		color: var.$pagination-button-color;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+
+		.el-icon {
+			font-size: 12px;
+			width: 12px;
+			height: 12px;
+			font-weight: var(--font-weight-bold);
+
+			svg {
+				width: 12px;
+				height: 12px;
+				display: block;
+				pointer-events: none;
+			}
+		}
+	}
+
+	.btn-prev {
+		padding-right: 12px;
+	}
+
+	.btn-next {
+		padding-left: 12px;
+	}
+
+	.el-pager li.disabled {
+		color: var(--color-text-lighter);
+		cursor: not-allowed;
+	}
+
+	@include mixins.m(small) {
+		.btn-prev,
+		.btn-next,
+		.el-pager li,
+		.el-pager li.btn-quicknext,
+		.el-pager li.btn-quickprev,
+		.el-pager li:last-child {
+			border-color: transparent;
+			font-size: 12px;
+			line-height: 22px;
+			height: 22px;
+			min-width: 22px;
+		}
+
+		.arrow.disabled {
+			visibility: hidden;
+		}
+
+		.more::before,
+		li.more::before {
+			line-height: 24px;
+		}
+
+		span:not([class*='suffix']),
+		button {
+			height: 22px;
+			line-height: 22px;
+		}
+
+		@include mixins.e(editor) {
+			height: 22px;
+			&.el-input .el-input__inner {
+				height: 22px;
+			}
+		}
+	}
+
+	@include mixins.e(sizes) {
+		margin: 0 10px 0 0;
+		font-weight: var(--font-weight-regular);
+		color: var(--color-text-dark);
+
+		.el-input .el-input__inner {
+			font-size: var.$pagination-font-size;
+			padding-left: 8px;
+
+			&:hover {
+				border-color: var.$pagination-hover-color;
+			}
+		}
+	}
+
+	@include mixins.e(total) {
+		margin-right: 10px;
+		font-weight: var(--font-weight-regular);
+		color: var(--color-text-dark);
+	}
+
+	@include mixins.e(jump) {
+		margin-left: 24px;
+		font-weight: var(--font-weight-regular);
+		color: var(--color-text-dark);
+
+		.el-input__inner {
+			padding: 0 3px;
+		}
+	}
+
+	@include mixins.e(rightwrapper) {
+		float: right;
+	}
+
+	@include mixins.e(editor) {
+		line-height: 18px;
+		padding: 0 2px;
+		height: var.$pagination-button-height;
+
+		text-align: center;
+		margin: 0 2px;
+		box-sizing: border-box;
+		border-radius: var.$pagination-border-radius;
+
+		&.el-input {
+			width: 50px;
+		}
+
+		&.el-input .el-input__inner {
+			height: var.$pagination-button-height;
+		}
+
+		.el-input__inner::-webkit-inner-spin-button,
+		.el-input__inner::-webkit-outer-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
+	}
+
+	@include mixins.when(background) {
+		.btn-prev,
+		.btn-next,
+		.el-pager li {
+			margin: 0 1px;
+			color: var(--color-text-base);
+			min-width: 30px;
+			border-radius: var(--border-radius-base);
+			border: 1px solid transparent;
+
+			&.disabled {
+				color: var(--color-text-lighter);
+			}
+		}
+
+		.btn-prev,
+		.btn-next {
+			padding: 0;
+
+			&:disabled {
+				color: var(--color-text-lighter);
+			}
+		}
+
+		.el-pager li:not(.disabled) {
+			&:hover {
+				color: var(--color-primary);
+				background-color: var(--color-background-xlight);
+				border: 1px solid var(--color-foreground-base);
+			}
+
+			&.is-active {
+				border: 1px solid var(--color-primary);
+				color: var(--color-primary);
+			}
+		}
+
+		&.el-pagination--small {
+			.btn-prev,
+			.btn-next,
+			.el-pager li {
+				margin: 0 3px;
+				min-width: 22px;
+			}
+		}
+	}
+}
+
+@include mixins.b(pager) {
+	user-select: none;
+	list-style: none;
+	vertical-align: top;
+	font-size: 0;
+	padding: 0;
+	margin: 0;
+	display: inline-flex;
+	align-items: center;
+
+	.more::before {
+		line-height: 30px;
+	}
+
+	li {
+		padding: 0 4px;
+		background: var.$pagination-background-color;
+		vertical-align: top;
+		font-size: var.$pagination-font-size;
+		min-width: var.$pagination-button-width;
+		height: var.$pagination-button-height;
+		line-height: var.$pagination-button-height;
+		cursor: pointer;
+		box-sizing: border-box;
+		text-align: center;
+		margin: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+
+		&.btn-quicknext,
+		&.btn-quickprev {
+			line-height: 28px;
+			color: var.$pagination-button-color;
+
+			&.disabled {
+				color: var(--color-text-lighter);
+			}
+		}
+
+		&.btn-quickprev:hover {
+			cursor: pointer;
+		}
+
+		&.btn-quicknext:hover {
+			cursor: pointer;
+		}
+
+		&.is-active + li {
+			border-left: 0;
+		}
+
+		&:hover {
+			color: var.$pagination-hover-color;
+		}
+
+		&.is-active {
+			color: var.$pagination-hover-color;
+			cursor: default;
+		}
+	}
+}
+
+//@mixin pagination-button {
+//	display: flex;
+//	justify-content: center;
+//	align-items: center;
+//	font-size: getCssVar('pagination-font-size');
+//	min-width: getCssVar('pagination-button-width');
+//	height: getCssVar('pagination-button-height');
+//	line-height: getCssVar('pagination-button-height');
+//	color: getCssVar('pagination-button-color');
+//	background: getCssVar('pagination-bg-color');
+//	padding: 0 4px;
+//	border: none;
+//	border-radius: getCssVar('pagination-border-radius');
+//	cursor: pointer;
+//	text-align: center;
+//	box-sizing: border-box;
+//
+//	* {
+//		pointer-events: none;
+//	}
+//
+//	&:focus {
+//		outline: none;
+//	}
+//
+//	&:hover {
+//		color: getCssVar('pagination-hover-color');
+//	}
+//
+//	&.is-active {
+//		color: getCssVar('pagination-hover-color');
+//		cursor: default;
+//		font-weight: bold;
+//
+//		&.is-disabled {
+//			font-weight: bold;
+//			color: getCssVar('text-color', 'secondary');
+//		}
+//	}
+//
+//	&:disabled,
+//	&.is-disabled {
+//		color: getCssVar('pagination-button-disabled-color');
+//		background-color: getCssVar('pagination-button-disabled-bg-color');
+//		cursor: not-allowed;
+//	}
+//
+//	&:focus-visible {
+//		outline: 1px solid getCssVar('pagination-hover-color');
+//		outline-offset: -1px;
+//	}
+//}
+//
+//@include b(pagination) {
+//	@include set-component-css-var('pagination', $pagination);
+//
+//	white-space: nowrap;
+//	color: getCssVar('pagination-text-color');
+//	font-size: getCssVar('pagination-font-size');
+//	font-weight: normal;
+//	display: flex;
+//	align-items: center;
+//
+//	.#{$namespace}-input__inner {
+//		text-align: center;
+//		-moz-appearance: textfield;
+//	}
+//
+//	.#{$namespace}-select .#{$namespace}-input {
+//		width: 128px;
+//	}
+//
+//	button {
+//		@include pagination-button;
+//	}
+//
+//	.btn-prev,
+//	.btn-next {
+//		.#{$namespace}-icon {
+//			display: block;
+//			font-size: 12px;
+//			font-weight: bold;
+//			width: inherit;
+//		}
+//	}
+//
+//	& > * {
+//		@include when(first) {
+//			margin-left: 0 !important;
+//		}
+//		@include when(last) {
+//			margin-right: 0 !important;
+//		}
+//	}
+//
+//	.btn-prev {
+//		margin-left: getCssVar('pagination-item-gap');
+//	}
+//
+//	@include e(sizes) {
+//		margin-left: getCssVar('pagination-item-gap');
+//		font-weight: normal;
+//		color: getCssVar('text-color', 'regular');
+//	}
+//
+//	@include e(total) {
+//		margin-left: getCssVar('pagination-item-gap');
+//		font-weight: normal;
+//		color: getCssVar('text-color', 'regular');
+//
+//		&[disabled='true'] {
+//			color: getCssVar('text-color', 'placeholder');
+//		}
+//	}
+//
+//	@include e(jump) {
+//		display: flex;
+//		align-items: center;
+//		margin-left: getCssVar('pagination-item-gap');
+//		font-weight: normal;
+//		color: getCssVar('text-color', 'regular');
+//
+//		&[disabled='true'] {
+//			color: getCssVar('text-color', 'placeholder');
+//		}
+//
+//		@include e(goto) {
+//			margin-right: 8px;
+//		}
+//
+//		@include e(editor) {
+//			text-align: center;
+//			box-sizing: border-box;
+//
+//			&.#{$namespace}-input {
+//				width: 56px;
+//			}
+//
+//			.#{$namespace}-input__inner::-webkit-inner-spin-button,
+//			.#{$namespace}-input__inner::-webkit-outer-spin-button {
+//				-webkit-appearance: none;
+//				margin: 0;
+//			}
+//		}
+//
+//		@include e(classifier) {
+//			margin-left: 8px;
+//		}
+//	}
+//
+//	@include e(rightwrapper) {
+//		flex: 1;
+//		display: flex;
+//		align-items: center;
+//		justify-content: flex-end;
+//	}
+//
+//	@include when(background) {
+//		.btn-prev,
+//		.btn-next,
+//		.#{$namespace}-pager li {
+//			margin: 0 4px;
+//			background-color: getCssVar('pagination-button-bg-color');
+//
+//			&.is-active {
+//				background-color: getCssVar('color-primary');
+//				color: getCssVar('color-white');
+//			}
+//
+//			&:disabled,
+//			&.is-disabled {
+//				color: getCssVar('text-color', 'placeholder');
+//				background-color: getCssVar('disabled-bg-color');
+//
+//				&.is-active {
+//					color: getCssVar('text-color', 'secondary');
+//					background-color: getCssVar('fill-color', 'dark');
+//				}
+//			}
+//		}
+//
+//		.btn-prev {
+//			margin-left: getCssVar('pagination-item-gap');
+//		}
+//	}
+//
+//	@include m(small) {
+//		.btn-prev,
+//		.btn-next,
+//		.#{$namespace}-pager li {
+//			height: getCssVar('pagination-button-height-small');
+//			line-height: getCssVar('pagination-button-height-small');
+//			font-size: getCssVar('pagination-font-size-small');
+//			min-width: getCssVar('pagination-button-width-small');
+//		}
+//
+//		span:not([class*='suffix']),
+//		button {
+//			font-size: getCssVar('pagination-font-size-small');
+//		}
+//
+//		.#{$namespace}-select .#{$namespace}-input {
+//			width: 100px;
+//		}
+//	}
+//}
+//
+//@include b(pager) {
+//	user-select: none;
+//	list-style: none;
+//	font-size: 0;
+//	padding: 0;
+//	margin: 0;
+//	display: flex;
+//	align-items: center;
+//
+//	li {
+//		@include pagination-button;
+//	}
+//}

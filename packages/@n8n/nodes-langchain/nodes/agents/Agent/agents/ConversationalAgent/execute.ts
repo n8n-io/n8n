@@ -1,37 +1,35 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import {
-	isChatInstance,
-	getPromptInputByType,
-	getOptionalOutputParsers,
-	getConnectedTools,
-} from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
-import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { initializeAgentExecutorWithOptions } from 'langchain/agents';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { throwIfToolSchema } from '@utils/schemaParsing';
+import { getTracingConfig } from '@utils/tracing';
+
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Conversational Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
-	const outputParsers = await getOptionalOutputParsers(this);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
+	const outputParser = await getOptionalOutputParser(this);
+
+	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -58,24 +56,15 @@ export async function conversationalAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 
-	let outputParser: BaseOutputParser | undefined;
 	let prompt: PromptTemplate | undefined;
-	if (outputParsers.length) {
-		if (outputParsers.length === 1) {
-			outputParser = outputParsers[0];
-		} else {
-			outputParser = new CombiningOutputParser(...outputParsers);
-		}
+	if (outputParser) {
+		const formatInstructions = outputParser.getFormatInstructions();
 
-		if (outputParser) {
-			const formatInstructions = outputParser.getFormatInstructions();
-
-			prompt = new PromptTemplate({
-				template: '{input}\n{formatInstructions}',
-				inputVariables: ['input'],
-				partialVariables: { formatInstructions },
-			});
-		}
+		prompt = new PromptTemplate({
+			template: '{input}\n{formatInstructions}',
+			inputVariables: ['input'],
+			partialVariables: { formatInstructions },
+		});
 	}
 
 	const items = this.getInputData();
@@ -102,12 +91,12 @@ export async function conversationalAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
-				.invoke({ input, outputParsers });
+				.invoke({ input, outputParser });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

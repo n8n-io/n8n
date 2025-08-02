@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
+import { returnJsonArray } from 'n8n-core';
 import type { IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import { returnJsonArray } from 'n8n-core';
+
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
 
 jest.mock('rss-parser');

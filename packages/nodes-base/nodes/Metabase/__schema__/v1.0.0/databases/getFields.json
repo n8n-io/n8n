@@ -1,0 +1,28 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
+        "base_type": {
+            "type": "string"
+        },
+        "table_name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "base_type",
+        "table_name",
+        "schema"
+    ],
+    "version": 1
+}

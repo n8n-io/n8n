@@ -1,0 +1,76 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, -360],
+			"id": "0889ff06-41e2-4786-a0fe-ca330c3711e7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "dispatchAndWait",
+				"owner": {
+					"__rl": true,
+					"value": "Owner",
+					"mode": "list",
+					"cachedResultName": "Owner",
+					"cachedResultUrl": "https://github.com/Owner"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "test-github-actions",
+					"mode": "list",
+					"cachedResultName": "test-github-actions",
+					"cachedResultUrl": "https://github.com/Owner/test-github-actions"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": 145370278,
+					"mode": "list",
+					"cachedResultName": "New Test Workflow"
+				},
+				"ref": {
+					"__rl": true,
+					"value": "test-branch",
+					"mode": "list",
+					"cachedResultName": "test-branch"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "105cb5f0-bcc3-4397-ba06-bda8cf46c71b",
+			"name": "Dispatch and Wait for Completion",
+			"webhookId": "02bfeade-db6c-412a-8627-fe3a9952e8ee",
+			"credentials": {
+				"githubApi": {
+					"id": "RtvkwCTqGZ2sLhB8",
+					"name": "GitHub account 3"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Dispatch and Wait for Completion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Dispatch and Wait for Completion": [
+			{
+				"json": {}
+			}
+		]
+	}
+}

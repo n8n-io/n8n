@@ -1,0 +1,57 @@
+{
+  "name": "@n8n/n8n-extension-insights",
+  "version": "0.5.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "n8n.manifest.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./n8n.manifest.json",
+  "module": "./n8n.manifest.json",
+  "exports": {
+    ".": {
+      "import": "./n8n.manifest.json",
+      "require": "./n8n.manifest.json"
+    },
+    "./backend": {
+      "types": "./dist/backend/index.d.ts",
+      "import": "./dist/backend/index.js",
+      "require": "./dist/backend/index.cjs"
+    },
+    "./frontend": {
+      "types": "./dist/frontend/index.d.ts",
+      "import": "./dist/frontend/index.js",
+      "require": "./dist/frontend/index.umd.cjs"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "cleanup": "rimraf dist",
+    "dev": "vite",
+    "lint": "eslint src --quiet",
+    "typecheck": "vue-tsc --noEmit",
+    "build:backend": "tsup",
+    "build:frontend": "vite build",
+    "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
+  },
+  "dependencies": {
+    "@n8n/extension-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/tsconfig": "catalog:frontend",
+    "rimraf": "catalog:",
+    "vite": "catalog:",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
+    "vue-tsc": "catalog:frontend"
+  }
+}

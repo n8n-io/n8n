@@ -1,0 +1,43 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PushConnectionTracker > should not render error when connected and connection not requested 1`] = `
+<div>
+  <span>
+    
+    
+  </span>
+</div>
+`;
+
+exports[`PushConnectionTracker > should not render error when connected and connection requested 1`] = `
+<div>
+  <span>
+    
+    
+  </span>
+</div>
+`;
+
+exports[`PushConnectionTracker > should render error when disconnected and connection requested 1`] = `
+<div>
+  <span>
+    <div
+      class="push-connection-lost primary-color"
+    >
+      
+      <span
+        class="el-tooltip__trigger"
+      >
+        <n8n-icon-stub
+          icon="triangle-alert"
+          spin="false"
+        />
+          Connection lost
+      </span>
+      <!--teleport start-->
+      <!--teleport end-->
+      
+    </div>
+  </span>
+</div>
+`;

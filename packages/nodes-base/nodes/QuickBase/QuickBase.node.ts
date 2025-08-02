@@ -8,22 +8,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../utils/utilities';
+import { fieldFields, fieldOperations } from './FieldDescription';
+import { fileFields, fileOperations } from './FileDescription';
 import {
 	getFieldsObject,
 	quickbaseApiRequest,
 	quickbaseApiRequestAllItems,
 } from './GenericFunctions';
-
-import { fieldFields, fieldOperations } from './FieldDescription';
-
-import { fileFields, fileOperations } from './FileDescription';
-
 import { recordFields, recordOperations } from './RecordDescription';
-
 import { reportFields, reportOperations } from './ReportDescription';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,8 +34,9 @@ export class QuickBase implements INodeType {
 		defaults: {
 			name: 'Quick Base',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'quickbaseApi',

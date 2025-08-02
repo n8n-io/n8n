@@ -1,5 +1,5 @@
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
-const workflows = getWorkflowFilenames(__dirname);
-
-describe('Test Compare Datasets Node', () => testWorkflows(workflows));
+describe('Test Compare Datasets Node', () => {
+	new NodeTestHarness().setupTests();
+});

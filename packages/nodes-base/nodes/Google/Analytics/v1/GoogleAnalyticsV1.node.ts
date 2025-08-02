@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -8,16 +9,15 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IHttpRequestMethods,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { reportFields, reportOperations } from './ReportDescription';
-import { userActivityFields, userActivityOperations } from './UserActivityDescription';
+import { oldVersionNotice } from '@utils/descriptions';
+
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 import type { IData } from './Interfaces';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { reportFields, reportOperations } from './ReportDescription';
+import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -30,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Analytics',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'googleAnalyticsOAuth2',

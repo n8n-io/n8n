@@ -6,8 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { theHiveApiRequest } from '../../transport';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{

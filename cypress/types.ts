@@ -22,3 +22,8 @@ export interface ExecutionResponse {
 		results: Execution[];
 	};
 }
+
+export type OpenContextMenuOptions = {
+	method?: 'right-click' | 'overflow-button';
+	anchor?: 'topRight' | 'topLeft' | 'center' | 'bottomRight' | 'bottomLeft';
+};

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -5,9 +6,8 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import moment from 'moment-timezone';
 
 interface PollData {
 	lastItemDate?: string;
@@ -30,7 +30,7 @@ export class RssFeedReadTrigger implements INodeType {
 		},
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Feed URL',

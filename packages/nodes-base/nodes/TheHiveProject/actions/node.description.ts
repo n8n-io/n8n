@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as alert from './alert';
 import * as case_ from './case';
 import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
+import * as page from './page';
 import * as query from './query';
 import * as task from './task';
-import * as page from './page';
 
 export const description: INodeTypeDescription = {
 	displayName: 'TheHive 5',
@@ -21,8 +21,9 @@ export const description: INodeTypeDescription = {
 	defaults: {
 		name: 'TheHive 5',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'theHiveProjectApi',

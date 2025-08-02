@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
@@ -22,8 +22,9 @@ export class Gitlab implements INodeType {
 		defaults: {
 			name: 'GitLab',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gitlabApi',
@@ -1606,7 +1607,13 @@ export class Gitlab implements INodeType {
 						body.commit_message = this.getNodeParameter('commitMessage', i) as string;
 
 						if (additionalParameters.author) {
-							body.author = additionalParameters.author;
+							const author = additionalParameters.author as IDataObject;
+							if (author.name) {
+								body.author_name = author.name;
+							}
+							if (author.email) {
+								body.author_email = author.email;
+							}
 						}
 						if (
 							additionalParameters.branchStart &&
@@ -1648,7 +1655,13 @@ export class Gitlab implements INodeType {
 							{},
 						) as IDataObject;
 						if (additionalParameters.author) {
-							body.author = additionalParameters.author;
+							const author = additionalParameters.author as IDataObject;
+							if (author.name) {
+								body.author_name = author.name;
+							}
+							if (author.email) {
+								body.author_email = author.email;
+							}
 						}
 						body.branch = this.getNodeParameter('branch', i) as string;
 						body.commit_message = this.getNodeParameter('commitMessage', i) as string;

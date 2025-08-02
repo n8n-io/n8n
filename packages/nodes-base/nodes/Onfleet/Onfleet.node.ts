@@ -8,34 +8,19 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { taskFields, taskOperations } from './descriptions/TaskDescription';
-
-import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
-
-import { resourceLoaders } from './GenericFunctions';
-
-import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
-
-import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
-
 import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
-
-import { hubFields, hubOperations } from './descriptions/HubDescription';
-
-import { workerFields, workerOperations } from './descriptions/WorkerDescription';
-
-// import {
-// 	webhookFields,
-// 	webhookOperations,
-// } from './descriptions/WebhookDescription';
-
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
-
+import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
+import { hubFields, hubOperations } from './descriptions/HubDescription';
+import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
+import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
+import { taskFields, taskOperations } from './descriptions/TaskDescription';
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
-
+import { workerFields, workerOperations } from './descriptions/WorkerDescription';
+import { resourceLoaders } from './GenericFunctions';
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,8 +34,9 @@ export class Onfleet implements INodeType {
 		defaults: {
 			name: 'Onfleet',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',
@@ -178,7 +164,7 @@ export class Onfleet implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		const items = this.getInputData();
 
-		// eslint-disable-next-line @typescript-eslint/ban-types
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const operations: { [key: string]: Function } = {
 			task: OnfleetMethods.executeTaskOperations,
 			destination: OnfleetMethods.executeDestinationOperations,

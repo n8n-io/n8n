@@ -1,5 +1,5 @@
-import { Get, RestController } from '@/decorators';
-import { AuthenticatedRequest } from '@/requests';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, RestController } from '@n8n/decorators';
 
 import { EventService } from './event.service';
 

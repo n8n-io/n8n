@@ -1,16 +1,13 @@
 import {
-	ensureError,
+	ApplicationError,
 	type CodeExecutionMode,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { ExecutionError } from './ExecutionError';
-import {
-	mapItemsNotDefinedErrorIfNeededForRunForAll,
-	validateNoDisallowedMethodsInRunForEach,
-} from './JsCodeValidator';
+import { isWrappableError, WrappedExecutionError } from './errors/WrappedExecutionError';
+import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
 
 /**
  * JS Code execution sandbox that executes the JS code using task runner.
@@ -21,72 +18,88 @@ export class JsTaskRunnerSandbox {
 		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: IExecuteFunctions,
+		private readonly chunkSize = 1000,
 	) {}
-
-	async runCode<T = unknown>(): Promise<T> {
-		const itemIndex = 0;
-
-		try {
-			const executionResult = (await this.executeFunctions.startJob<T>(
-				'javascript',
-				{
-					code: this.jsCode,
-					nodeMode: this.nodeMode,
-					workflowMode: this.workflowMode,
-				},
-				itemIndex,
-			)) as T;
-			return executionResult;
-		} catch (e) {
-			const error = ensureError(e);
-			throw new ExecutionError(error);
-		}
-	}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
 		const itemIndex = 0;
 
-		return await this.executeFunctions
-			.startJob<INodeExecutionData[]>(
-				'javascript',
-				{
-					code: this.jsCode,
-					nodeMode: this.nodeMode,
-					workflowMode: this.workflowMode,
-					continueOnFail: this.executeFunctions.continueOnFail(),
-				},
-				itemIndex,
-			)
-			.catch((e) => {
-				const error = ensureError(e);
-				// anticipate user expecting `items` to pre-exist as in Function Item node
-				mapItemsNotDefinedErrorIfNeededForRunForAll(this.jsCode, error);
+		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
+			'javascript',
+			{
+				code: this.jsCode,
+				nodeMode: this.nodeMode,
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+			},
+			itemIndex,
+		);
 
-				throw new ExecutionError(error);
-			});
+		return executionResult.ok
+			? executionResult.result
+			: this.throwExecutionError('error' in executionResult ? executionResult.error : {});
 	}
 
-	async runCodeForEachItem(): Promise<INodeExecutionData[]> {
+	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
 		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
-		const itemIndex = 0;
 
-		return await this.executeFunctions
-			.startJob<INodeExecutionData[]>(
+		const itemIndex = 0;
+		const chunks = this.chunkInputItems(numInputItems);
+		let executionResults: INodeExecutionData[] = [];
+
+		for (const chunk of chunks) {
+			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 				'javascript',
 				{
 					code: this.jsCode,
 					nodeMode: this.nodeMode,
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
+					chunk: {
+						startIndex: chunk.startIdx,
+						count: chunk.count,
+					},
 				},
 				itemIndex,
-			)
-			.catch((e) => {
-				const error = ensureError(e);
-				// anticipate user expecting `items` to pre-exist as in Function Item node
-				mapItemsNotDefinedErrorIfNeededForRunForAll(this.jsCode, error);
+			);
 
-				throw new ExecutionError(error);
+			if (!executionResult.ok) {
+				return this.throwExecutionError('error' in executionResult ? executionResult.error : {});
+			}
+
+			executionResults = executionResults.concat(executionResult.result);
+		}
+
+		return executionResults;
+	}
+
+	private throwExecutionError(error: unknown): never {
+		if (error instanceof Error) {
+			throw error;
+		} else if (isWrappableError(error)) {
+			// The error coming from task runner is not an instance of error,
+			// so we need to wrap it in an error instance.
+			throw new WrappedExecutionError(error);
+		}
+
+		throw new ApplicationError(`Unknown error: ${JSON.stringify(error)}`);
+	}
+
+	/** Chunks the input items into chunks of 1000 items each */
+	private chunkInputItems(numInputItems: number) {
+		const numChunks = Math.ceil(numInputItems / this.chunkSize);
+		const chunks = [];
+
+		for (let i = 0; i < numChunks; i++) {
+			const startIdx = i * this.chunkSize;
+			const isLastChunk = i === numChunks - 1;
+			const count = isLastChunk ? numInputItems - startIdx : this.chunkSize;
+			chunks.push({
+				startIdx,
+				count,
 			});
+		}
+
+		return chunks;
 	}
 }

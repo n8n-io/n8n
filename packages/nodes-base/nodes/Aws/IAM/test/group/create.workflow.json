@@ -1,0 +1,78 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "create",
+				"groupName": "NewGroupTest",
+				"additionalFields": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [160, -120],
+			"id": "23fd4c79-516d-49dc-81c8-e68052a294d1",
+			"name": "createGroup",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"createGroup": [
+			{
+				"json": {
+					"CreateGroupResponse": {
+						"CreateGroupResult": {
+							"Group": {
+								"Arn": "arn:aws:iam::130450532146:group/NewGroupTest",
+								"CreateDate": 1743409792,
+								"GroupId": "AGPAR4X3VE4ZI7H42C2XW",
+								"GroupName": "NewGroupTest",
+								"Path": "/"
+							}
+						},
+						"ResponseMetadata": {
+							"RequestId": "50bf4fdb-34b9-4c99-8da8-358d50783c8d"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "createGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "da88fb89-6234-4eb3-b6fb-31a7a299c7ec",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

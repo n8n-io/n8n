@@ -1,0 +1,109 @@
+# Determines if conditions are met for running subsequent jobs on a Pull Request.
+#
+# !! IMPORTANT !!
+# This workflow RELIES on being called from a parent workflow triggered by
+# a `pull_request` or `pull_request_target` event. It uses `github.event`
+# to access PR details.
+#
+# It checks if all the following conditions are TRUE:
+# 1. The PR is NOT from a fork (i.e., it's an internal PR).
+# 2. The PR has been approved by a maintainer (`is_pr_approved_by_maintainer`).
+# 3. The PR's source branch does NOT match an excluded pattern.
+# 4. The PR includes relevant file changes (`paths_filter_patterns`).
+#
+# It outputs `should_run` as 'true' if ALL conditions pass, 'false' otherwise.
+
+name: PR Eligibility Check
+
+on:
+  workflow_call:
+    inputs:
+      is_pr_approved_by_maintainer:
+        required: true
+        type: boolean
+      paths_filter_patterns:
+        description: "Path filter patterns for 'paths-filter-action'."
+        required: false
+        type: string
+        default: |
+          not_ignored:
+            - '!.devcontainer/**'
+            - '!.github/*'
+            - '!.github/scripts/*'
+            - '!.github/workflows/benchmark-*'
+            - '!.github/workflows/check-*'
+            - '!.vscode/**'
+            - '!docker/**'
+            - '!packages/@n8n/benchmark/**'
+            - '!**/*.md'
+      excluded_source_branch_patterns:
+        description: "Newline-separated list of glob patterns for source branches to EXCLUDE."
+        required: false
+        type: string
+        default: |
+          release/*
+          master
+
+    outputs:
+      should_run:
+        description: "Outputs 'true' if all eligibility checks pass, otherwise 'false'."
+        value: ${{ jobs.evaluate_conditions.outputs.run_decision }}
+
+jobs:
+  evaluate_conditions:
+    runs-on: ubuntu-latest
+    outputs:
+      run_decision: ${{ steps.evaluate.outputs.should_run }}
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Determine changed files
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
+        id: changed
+        with:
+          filters: ${{ inputs.paths_filter_patterns }}
+          predicate-quantifier: 'every'
+
+      - name: Evaluate Conditions & Set Output
+        id: evaluate
+        env:
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          IS_APPROVED: ${{ inputs.is_pr_approved_by_maintainer }}
+          FILES_CHANGED: ${{ steps.changed.outputs.not_ignored == 'true' }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EXCLUDED_PATTERNS: ${{ inputs.excluded_source_branch_patterns }}
+        run: |
+          if [[ "$IS_FORK" == "true" ]]; then
+            is_community="true"
+          else
+            is_community="false"
+          fi
+
+          source_branch_excluded="false"
+          while IFS= read -r pattern; do
+            if [[ -n "$pattern" && "$HEAD_REF" == $pattern ]]; then
+                source_branch_excluded="true"
+                break
+            fi
+          done <<< "$EXCLUDED_PATTERNS"
+
+          echo "--- Checking Conditions ---"
+          echo "Is NOT Community PR: $([[ "$is_community" == "false" ]] && echo true || echo false)"
+          echo "Files Changed: $FILES_CHANGED"
+          echo "Source Branch Excluded: $source_branch_excluded"
+          echo "Is Approved: $IS_APPROVED"
+          echo "-------------------------"
+
+          if [[ "$is_community" == "false" && \
+                "$FILES_CHANGED" == "true" && \
+                "$source_branch_excluded" == "false" && \
+                "$IS_APPROVED" == "true" ]]; then
+            echo "Decision: Conditions met. Setting should_run=true."
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "Decision: Conditions not met. Setting should_run=false."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi

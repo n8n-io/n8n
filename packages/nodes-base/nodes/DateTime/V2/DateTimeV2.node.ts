@@ -1,3 +1,6 @@
+import type { DateTimeUnit, DurationUnit } from 'luxon';
+import { DateTime } from 'luxon';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,18 +8,15 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import type { DateTimeUnit, DurationUnit } from 'luxon';
-import { DateTime } from 'luxon';
-import { CurrentDateDescription } from './CurrentDateDescription';
 import { AddToDateDescription } from './AddToDateDescription';
-import { SubtractFromDateDescription } from './SubtractFromDateDescription';
-import { FormatDateDescription } from './FormatDateDescription';
-import { RoundDateDescription } from './RoundDateDescription';
-import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
+import { CurrentDateDescription } from './CurrentDateDescription';
 import { ExtractDateDescription } from './ExtractDateDescription';
+import { FormatDateDescription } from './FormatDateDescription';
 import { parseDate } from './GenericFunctions';
+import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
+import { RoundDateDescription } from './RoundDateDescription';
+import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -29,8 +29,9 @@ export class DateTimeV2 implements INodeType {
 				name: 'Date & Time',
 				color: '#408000',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			description: 'Manipulate date and time values',
 			properties: [
 				{

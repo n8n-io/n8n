@@ -1,77 +1,42 @@
-import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
-
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-import * as transport from '../../../v2/transport';
-import { setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
-jest.mock('../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../v2/transport');
-	return {
-		...originalModule,
-		googleBigQueryApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
-			if (resource === '/v2/projects/test-project/jobs' && method === 'POST') {
-				return {
-					jobReference: {
-						jobId: 'job_123',
-					},
-					status: {
-						state: 'DONE',
-					},
-				};
-			}
-			if (resource === '/v2/projects/test-project/queries/job_123' && method === 'GET') {
-				return {};
-			}
-		}),
-		googleBigQueryApiRequestAllItems: jest.fn(async () => ({ rows: [], schema: {} })),
-	};
-});
+jest.mock('jsonwebtoken', () => ({
+	sign: jest.fn().mockReturnValue('signature'),
+}));
 
 describe('Test Google BigQuery V2, executeQuery', () => {
-	const workflows = ['nodes/Google/BigQuery/test/v2/node/executeQuery.workflow.json'];
-	const tests = workflowToTests(workflows);
+	nock('https://oauth2.googleapis.com')
+		.persist()
+		.post(
+			'/token',
+			'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=signature',
+		)
+		.reply(200, { access_token: 'token' });
 
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../v2/transport');
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-
-		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.googleBigQueryApiRequestAllItems).toHaveBeenCalledTimes(1);
-		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
-			'POST',
-			'/v2/projects/test-project/jobs',
-			{
-				configuration: {
-					query: {
-						query: 'SELECT * FROM bigquery_node_dev_test_dataset.test_json;',
-						useLegacySql: false,
-					},
+	nock('https://bigquery.googleapis.com/bigquery')
+		.post('/v2/projects/test-project/jobs', {
+			configuration: {
+				query: {
+					query: 'SELECT * FROM bigquery_node_dev_test_dataset.test_json;',
+					useLegacySql: false,
 				},
 			},
-		);
-		expect(transport.googleBigQueryApiRequestAllItems).toHaveBeenCalledWith(
-			'GET',
-			'/v2/projects/test-project/queries/job_123',
-			undefined,
-			{ location: undefined, maxResults: 1000, timeoutMs: 10000 },
-		);
+		})
+		.reply(200, {
+			jobReference: {
+				jobId: 'job_123',
+			},
+			status: {
+				state: 'DONE',
+			},
+		})
+		.get('/v2/projects/test-project/queries/job_123')
+		.reply(200)
+		.get('/v2/projects/test-project/queries/job_123?maxResults=1000&timeoutMs=10000')
+		.reply(200, { rows: [], schema: {} });
 
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['executeQuery.workflow.json'],
+	});
 });

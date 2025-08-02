@@ -1,0 +1,210 @@
+{
+    "type": "object",
+    "properties": {
+        "closed": {
+            "type": "boolean"
+        },
+        "desc": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idEnterprise": {
+            "type": "null"
+        },
+        "idOrganization": {
+            "type": "string"
+        },
+        "labelNames": {
+            "type": "object",
+            "properties": {
+                "black": {
+                    "type": "string"
+                },
+                "black_dark": {
+                    "type": "string"
+                },
+                "black_light": {
+                    "type": "string"
+                },
+                "blue": {
+                    "type": "string"
+                },
+                "blue_dark": {
+                    "type": "string"
+                },
+                "blue_light": {
+                    "type": "string"
+                },
+                "green": {
+                    "type": "string"
+                },
+                "green_dark": {
+                    "type": "string"
+                },
+                "green_light": {
+                    "type": "string"
+                },
+                "lime": {
+                    "type": "string"
+                },
+                "lime_dark": {
+                    "type": "string"
+                },
+                "lime_light": {
+                    "type": "string"
+                },
+                "orange": {
+                    "type": "string"
+                },
+                "orange_dark": {
+                    "type": "string"
+                },
+                "orange_light": {
+                    "type": "string"
+                },
+                "pink": {
+                    "type": "string"
+                },
+                "pink_dark": {
+                    "type": "string"
+                },
+                "pink_light": {
+                    "type": "string"
+                },
+                "purple": {
+                    "type": "string"
+                },
+                "purple_dark": {
+                    "type": "string"
+                },
+                "purple_light": {
+                    "type": "string"
+                },
+                "red": {
+                    "type": "string"
+                },
+                "red_dark": {
+                    "type": "string"
+                },
+                "red_light": {
+                    "type": "string"
+                },
+                "sky": {
+                    "type": "string"
+                },
+                "sky_dark": {
+                    "type": "string"
+                },
+                "sky_light": {
+                    "type": "string"
+                },
+                "yellow": {
+                    "type": "string"
+                },
+                "yellow_dark": {
+                    "type": "string"
+                },
+                "yellow_light": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "prefs": {
+            "type": "object",
+            "properties": {
+                "background": {
+                    "type": "string"
+                },
+                "backgroundBottomColor": {
+                    "type": "string"
+                },
+                "backgroundBrightness": {
+                    "type": "string"
+                },
+                "backgroundTile": {
+                    "type": "boolean"
+                },
+                "backgroundTopColor": {
+                    "type": "string"
+                },
+                "calendarFeedEnabled": {
+                    "type": "boolean"
+                },
+                "canBeEnterprise": {
+                    "type": "boolean"
+                },
+                "canBeOrg": {
+                    "type": "boolean"
+                },
+                "canBePrivate": {
+                    "type": "boolean"
+                },
+                "canBePublic": {
+                    "type": "boolean"
+                },
+                "canInvite": {
+                    "type": "boolean"
+                },
+                "cardAging": {
+                    "type": "string"
+                },
+                "cardCounts": {
+                    "type": "boolean"
+                },
+                "cardCovers": {
+                    "type": "boolean"
+                },
+                "comments": {
+                    "type": "string"
+                },
+                "hideVotes": {
+                    "type": "boolean"
+                },
+                "invitations": {
+                    "type": "string"
+                },
+                "isTemplate": {
+                    "type": "boolean"
+                },
+                "permissionLevel": {
+                    "type": "string"
+                },
+                "selfJoin": {
+                    "type": "boolean"
+                },
+                "switcherViews": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "viewType": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "voting": {
+                    "type": "string"
+                }
+            }
+        },
+        "shortUrl": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -4,13 +4,20 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-
 import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
-import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import type { ResponseWithJobReference } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+interface IQueryParameterOptions {
+	namedParameters: Array<{
+		name: string;
+		value: string;
+	}>;
+}
 
 const properties: INodeProperties[] = [
 	{
@@ -151,6 +158,53 @@ const properties: INodeProperties[] = [
 				description:
 					'Whether all integer values will be returned as numbers. If set to false, all integer values will be returned as strings.',
 			},
+			{
+				displayName: 'Query Parameters (Named)',
+				name: 'queryParameters',
+				type: 'fixedCollection',
+				description:
+					'Use <a href="https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries" target="_blank">parameterized queries</a> to prevent SQL injections. Positional arguments are not supported at the moment. This feature won\'t be available when using legacy SQL.',
+				displayOptions: {
+					hide: {
+						'/options.useLegacySql': [true],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {
+					namedParameters: [
+						{
+							name: '',
+							value: '',
+						},
+					],
+				},
+				options: [
+					{
+						name: 'namedParameters',
+						displayName: 'Named Parameter',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the parameter',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description:
+									'The substitute value. It must be a string. Arrays, dates and struct types mentioned in <a href="https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries" target="_blank">the official documentation</a> are not yet supported.',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];
@@ -189,6 +243,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				rawOutput?: boolean;
 				useLegacySql?: boolean;
 				returnAsNumbers?: boolean;
+				queryParameters?: IQueryParameterOptions;
 			};
 
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
@@ -235,6 +290,25 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (body.useLegacySql === undefined) {
 				body.useLegacySql = false;
+			}
+
+			if (typeof body.queryParameters === 'object') {
+				const { namedParameters } = body.queryParameters as IQueryParameterOptions;
+
+				body.parameterMode = 'NAMED';
+
+				body.queryParameters = namedParameters.map(({ name, value }) => {
+					// BigQuery type descriptors are very involved, and it would be hard to support all possible
+					// options, that's why the only supported type here is "STRING".
+					//
+					// If we switch this node to the official JS SDK from Google, we should be able to use `getTypeDescriptorFromValue`
+					// at runtime, which would infer BQ type descriptors of any valid JS value automatically:
+					//
+					// https://github.com/googleapis/nodejs-bigquery/blob/22021957f697ce67491bd50535f6fb43a99feea0/src/bigquery.ts#L1111
+					//
+					// Another, less user-friendly option, would be to allow users to specify the types manually.
+					return { name, parameterType: { type: 'STRING' }, parameterValue: { value } };
+				});
 			}
 
 			//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/insert
