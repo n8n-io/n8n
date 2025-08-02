@@ -1,17 +1,15 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
-	FOCUS_PANEL_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { usePostHog } from '@/stores/posthog.store';
 import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
@@ -45,16 +43,11 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
-const posthogStore = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 
 const { getAddedNodesAndConnections } = useActions();
-
-const isOpenFocusPanelButtonVisible = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -138,7 +131,6 @@ function onAskAssistantButtonClick() {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			v-if="isOpenFocusPanelButtonVisible"
 			:label="i18n.baseText('nodeView.openFocusPanel')"
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"

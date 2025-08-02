@@ -25,7 +25,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
-	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
@@ -35,7 +34,6 @@ import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
@@ -77,7 +75,6 @@ const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -85,7 +82,6 @@ const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = ref(-1);
 const isLinkingEnabled = ref(true);
@@ -310,25 +306,9 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
-const foreignCredentials = computed(() => {
-	const credentials = activeNode.value?.credentials;
-	const usedCredentials = workflowsStore.usedCredentials;
-
-	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-		Object.values(credentials).forEach((credential) => {
-			if (
-				credential.id &&
-				usedCredentials[credential.id] &&
-				!usedCredentials[credential.id].currentUserHasAccess
-			) {
-				foreignCredentialsArray.push(credential.id);
-			}
-		});
-	}
-
-	return foreignCredentialsArray;
-});
+const foreignCredentials = computed(() =>
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+);
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
@@ -821,7 +801,6 @@ onBeforeUnmount(() => {
 								:class="$style.settings"
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
-								@redraw-required="redrawRequired = true"
 								@activate="onWorkflowActivate"
 								@switch-selected-node="onSwitchSelectedNode"
 								@open-connection-node-creator="onOpenConnectionNodeCreator"
@@ -958,12 +937,5 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable-height);
-}
-</style>
-
-<style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
 }
 </style>

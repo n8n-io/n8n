@@ -575,6 +575,7 @@ export const enum VIEWS {
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
 	PROJECTS = 'Projects',
+	PROJECT_DETAILS = 'ProjectDetails',
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
@@ -755,12 +756,6 @@ export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
 
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const FOCUS_PANEL_EXPERIMENT = {
-	name: 'focus_panel',
 	control: 'control',
 	variant: 'variant',
 };

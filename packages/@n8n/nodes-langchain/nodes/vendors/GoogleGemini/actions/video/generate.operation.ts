@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 				name: 'durationSeconds',
 				type: 'number',
 				default: 8,
-				description: 'Length of the generated video in seconds',
+				description: 'Length of the generated video in seconds. Supported only by certain models.',
 				typeOptions: {
 					minValue: 5,
 					maxValue: 8,
@@ -159,7 +159,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			aspectRatio: options.aspectRatio,
 			personGeneration: options.personGeneration,
 			sampleCount: options.sampleCount ?? 1,
-			durationSeconds: options.durationSeconds ?? 8,
+			durationSeconds: options.durationSeconds,
 		},
 	};
 	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:predictLongRunning`, {
