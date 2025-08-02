@@ -340,7 +340,7 @@ const modifiers = [
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
-						class="mr-xs"
+						:class="[$style.backButton, 'mr-xs']"
 						@click="closeDialog"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
@@ -507,11 +507,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 								</div>
@@ -551,11 +551,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
 									</template>
 								</div>
@@ -578,6 +578,33 @@ const modifiers = [
 </template>
 
 <style module>
+/* Light theme diff colors */
+:root,
+[data-theme='light'] {
+	--diff-new: #0eab54;
+	--diff-new-light: #b4efc4;
+	--diff-new-faint: #ddfbe7;
+	--diff-modified: #bf941f;
+	--diff-modified-light: #f3dca1;
+	--diff-modified-faint: #fbf1d4;
+	--diff-del: #f51f32;
+	--diff-del-light: #fad3d0;
+	--diff-del-faint: #ffedec;
+}
+
+/* Dark theme diff colors */
+[data-theme='dark'] {
+	--diff-new: #38cb7a;
+	--diff-new-light: #43674f;
+	--diff-new-faint: #3a463e;
+	--diff-modified: #d6a625;
+	--diff-modified-light: #6a5c38;
+	--diff-modified-faint: #464236;
+	--diff-del: #fb887a;
+	--diff-del-light: #7a524e;
+	--diff-del-faint: #4d3e3d;
+}
+
 .workflowDiffModal {
 	margin-bottom: 0;
 	border-radius: 0;
@@ -587,7 +614,7 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -666,13 +693,13 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
 		color: var(--color-text-xlight);
-		font-family: var(--font-family-monospace);
-		font-size: 8px;
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
 		font-weight: 700;
 		z-index: 1;
 		width: 16px;
@@ -696,39 +723,46 @@ const modifiers = [
 }
 
 .deleted {
-	--canvas-node--background: rgba(234, 31, 48, 0.2);
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(234, 31, 48, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+	--canvas-node--background: var(--diff-del-faint);
+	--canvas-node--border-color: var(--diff-del);
+	--color-sticky-background: var(--diff-del-faint);
+	--color-sticky-border: var(--diff-del);
 	&::before {
 		content: 'D';
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-red);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-del);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-del) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: rgba(14, 171, 84, 0.2);
-	--color-sticky-background: rgba(14, 171, 84, 0.2);
-	--color-sticky-border: var(--color-node-icon-green);
+	--canvas-node--border-color: var(--diff-new);
+	--canvas-node--background: var(--diff-new-faint);
+	--color-sticky-background: var(--diff-new-faint);
+	--color-sticky-border: var(--diff-new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
-	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-new) !important;
 	}
 }
 .equal {
@@ -744,30 +778,35 @@ const modifiers = [
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: rgba(255, 150, 90, 0.2);
-	--color-sticky-background: rgba(255, 150, 90, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
+	--canvas-node--border-color: var(--diff-modified);
+	--canvas-node--background: var(--diff-modified-faint);
+	--color-sticky-background: var(--diff-modified-faint);
+	--color-sticky-border: var(--diff-modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
-	:global(.canvas-node-handle-main-output .source) {
-		--color-foreground-xdark: var(--color-node-icon-orange);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(234, 31, 48, 0.2);
+	--canvas-edge-color: var(--diff-del);
+	--edge-highlight-color: var(--diff-del-light);
 }
 .edge-added {
-	--canvas-edge-color: var(--color-node-icon-green);
-	--edge-highlight-color: rgba(14, 171, 84, 0.2);
+	--canvas-edge-color: var(--diff-new);
+	--edge-highlight-color: var(--diff-new-light);
 }
 .edge-equal {
 	opacity: 0.5;
@@ -788,8 +827,8 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-background-medium);
-	color: var(--color-text-dark);
+	background-color: var(--color-primary);
+	color: var(--color-text-xlight);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
@@ -815,7 +854,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid #ddd;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {
@@ -840,5 +879,9 @@ const modifiers = [
 .navigationButton {
 	height: 34px !important;
 	width: 34px !important;
+}
+
+.backButton {
+	border: none !important;
 }
 </style>
