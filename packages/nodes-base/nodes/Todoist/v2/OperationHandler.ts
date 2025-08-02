@@ -1,7 +1,12 @@
 import type { IDataObject } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { assertIsString, assertIsNumber, assertIsNodeParameters } from '../../../utils/types';
+import {
+	assertIsString,
+	assertIsNumber,
+	assertIsStringOrNumber,
+	assertIsNodeParameters,
+} from '../../../utils/types';
 
 import type { Section, TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
@@ -14,7 +19,7 @@ export interface OperationHandler {
 export interface CreateTaskRequest {
 	content?: string;
 	description?: string;
-	project_id?: number;
+	project_id?: number | string;
 	section_id?: number;
 	parent_id?: string;
 	order?: number;
@@ -110,7 +115,7 @@ export class CreateHandler implements OperationHandler {
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		});
-		assertIsNumber('project', projectId);
+		assertIsStringOrNumber('project', projectId);
 
 		const labels = ctx.getNodeParameter('labels', itemIndex) as string[];
 		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
@@ -223,14 +228,14 @@ export class GetAllHandler implements OperationHandler {
 		const filters = ctx.getNodeParameter('filters', itemIndex) as IDataObject;
 
 		assertIsNodeParameters<{
-			projectId?: string;
+			projectId?: string | number;
 			sectionId?: string;
 			labelId?: string;
 			filter?: string;
 			lang?: string;
 			ids?: string;
 		}>(filters, {
-			projectId: { type: 'string', optional: true },
+			projectId: { type: ['string', 'number'], optional: true },
 			sectionId: { type: 'string', optional: true },
 			labelId: { type: 'string', optional: true },
 			filter: { type: 'string', optional: true },
@@ -542,7 +547,7 @@ export class ProjectCreateHandler implements OperationHandler {
 export class ProjectDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/projects/${id}`);
 		return { success: true };
@@ -552,7 +557,7 @@ export class ProjectDeleteHandler implements OperationHandler {
 export class ProjectGetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}`);
 		return { data };
@@ -569,7 +574,7 @@ export class ProjectGetAllHandler implements OperationHandler {
 export class ProjectUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		const updateFields = ctx.getNodeParameter('projectUpdateFields', itemIndex) as IDataObject;
 		assertIsNodeParameters<{
@@ -592,7 +597,7 @@ export class ProjectUpdateHandler implements OperationHandler {
 export class ProjectArchiveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/archive`);
 		return { success: true };
@@ -602,7 +607,7 @@ export class ProjectArchiveHandler implements OperationHandler {
 export class ProjectUnarchiveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/unarchive`);
 		return { success: true };
@@ -612,7 +617,7 @@ export class ProjectUnarchiveHandler implements OperationHandler {
 export class ProjectGetCollaboratorsHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsString('projectId', id);
+		assertIsStringOrNumber('projectId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}/collaborators`);
 		return { data };
@@ -628,7 +633,7 @@ export class SectionCreateHandler implements OperationHandler {
 		const projectId = ctx.getNodeParameter('sectionProject', itemIndex, undefined, {
 			extractValue: true,
 		});
-		assertIsNumber('sectionProject', projectId);
+		assertIsStringOrNumber('sectionProject', projectId);
 
 		const options = ctx.getNodeParameter('sectionOptions', itemIndex) as IDataObject;
 		assertIsNodeParameters<{

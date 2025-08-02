@@ -846,6 +846,7 @@ const versionDescription: INodeTypeDescription = {
 					operation: ['archive', 'delete', 'get', 'getCollaborators', 'unarchive', 'update'],
 				},
 			},
+			description: 'The project ID - can be either a string or number',
 		},
 		{
 			displayName: 'Name',

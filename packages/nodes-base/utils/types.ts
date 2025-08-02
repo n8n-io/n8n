@@ -16,6 +16,16 @@ export function assertIsString(parameterName: string, value: unknown): asserts v
 	assertIsType<string>(parameterName, value, 'string');
 }
 
+export function assertIsStringOrNumber(
+	parameterName: string,
+	value: unknown,
+): asserts value is string | number {
+	assert(
+		typeof value === 'string' || typeof value === 'number',
+		`Parameter "${parameterName}" must be a string or number`,
+	);
+}
+
 export function assertIsArray<T>(
 	parameterName: string,
 	value: unknown,
