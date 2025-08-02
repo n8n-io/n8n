@@ -8,7 +8,6 @@ services:
 
   redis:
     image: redis:6.2.14-alpine
-    restart: always
     ports:
       - 6379:6379
     healthcheck:
@@ -18,6 +17,7 @@ services:
 
   postgres:
     image: postgres:16.4
+    user: root:root
     restart: always
     environment:
       - POSTGRES_DB=n8n
@@ -34,14 +34,12 @@ services:
 
   n8n_worker1:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker1
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
-      - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
-      - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
-      # Scaling mode config
+      # Queue mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_HEALTH_CHECK_ACTIVE=true
@@ -53,8 +51,8 @@ services:
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=internal
-      # Enable Insights
-      - N8N_ENABLED_MODULES=insights
+      # Disable Insights
+      - N8N_DISABLED_MODULES=insights
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker1:/n8n
@@ -64,21 +62,19 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_worker1:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
 
   n8n_worker2:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker2
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
-      - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
-      - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
-      # Scaling mode config
+      # Queue mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_HEALTH_CHECK_ACTIVE=true
@@ -90,8 +86,8 @@ services:
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=internal
-      # Enable Insights
-      - N8N_ENABLED_MODULES=insights
+      # Disable Insights
+      - N8N_DISABLED_MODULES=insights
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker2:/n8n
@@ -104,114 +100,58 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_worker2:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
 
-  n8n_main2:
-    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
-    environment:
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_USER_FOLDER=/n8n
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
-      - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
-      - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
-      # Scaling mode config
-      - N8N_PROXY_HOPS=1
-      - EXECUTIONS_MODE=queue
-      - QUEUE_BULL_REDIS_HOST=redis
-      - N8N_MULTI_MAIN_SETUP_ENABLED=true
-      # DB config
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PASSWORD=password
-      # Task Runner config
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
-      # Enable Insights
-      - N8N_ENABLED_MODULES=insights
-    volumes:
-      - ${RUN_DIR}/n8n-main2:/n8n
-    depends_on:
-      n8n_worker1:
-        condition: service_healthy
-      n8n_worker2:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mockapi:
-        condition: service_started
-    healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://n8n_main2:5678/healthz || exit 1']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  n8n_main1:
-    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
-    environment:
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_USER_FOLDER=/n8n
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
-      - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
-      - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
-      # Scaling mode config
-      - N8N_PROXY_HOPS=1
-      - EXECUTIONS_MODE=queue
-      - QUEUE_BULL_REDIS_HOST=redis
-      - N8N_MULTI_MAIN_SETUP_ENABLED=true
-      # DB config
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PASSWORD=password
-      # Task Runner config
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
-      # Enable Insights
-      - N8N_ENABLED_MODULES=insights
-    volumes:
-      - ${RUN_DIR}/n8n-main1:/n8n
-    depends_on:
-      n8n_worker1:
-        condition: service_healthy
-      n8n_worker2:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mockapi:
-        condition: service_started
-    healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://n8n_main1:5678/healthz || exit 1']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  # Load balancer that acts as an entry point for n8n
   n8n:
-    image: nginx:1.27.2
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/main
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Queue mode config
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      # DB config
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PASSWORD=password
+      # Task Runner config
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=internal
+      # Disable Insights
+      - N8N_DISABLED_MODULES=insights
     ports:
-      - '5678:80'
+      - 5678:5678
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ${RUN_DIR}/n8n-main:/n8n
     depends_on:
-      n8n_main1:
+      n8n_worker1:
         condition: service_healthy
-      n8n_main2:
+      n8n_worker2:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mockapi:
+        condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
     depends_on:
-      - n8n
+      n8n:
+        condition: service_healthy
     environment:
-      - N8N_BASE_URL=http://n8n:80
+      - N8N_BASE_URL=http://n8n:5678
       - K6_API_TOKEN=${K6_API_TOKEN}
       - BENCHMARK_RESULT_WEBHOOK_URL=${BENCHMARK_RESULT_WEBHOOK_URL}
       - BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER=${BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER}
