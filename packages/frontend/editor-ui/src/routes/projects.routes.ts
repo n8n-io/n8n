@@ -1,7 +1,7 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
@@ -114,6 +114,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		redirect: '/home/workflows',
 		children: [
 			{
+				name: VIEWS.PROJECT_DETAILS,
 				path: ':projectId',
 				meta: {
 					middleware: ['authenticated'],

@@ -1,7 +1,17 @@
-import { CredentialsRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	createTeamProject,
+	findProject,
+	getPersonalProject,
+	mockInstance,
+	createWorkflow,
+	randomCredentialPayload,
+} from '@n8n/backend-test-utils';
+import {
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
@@ -14,13 +24,9 @@ import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../../shared/mocking';
 import { saveCredential } from '../../shared/db/credentials';
-import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
 import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
-import { createWorkflow } from '../../shared/db/workflows';
 import { createLdapConfig } from '../../shared/ldap';
-import { randomCredentialPayload } from '../../shared/random';
 
 mockInstance(Telemetry);
 

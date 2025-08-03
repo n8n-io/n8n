@@ -74,8 +74,8 @@ export function createCanvasGraphNode({
 	id = '1',
 	type = 'default',
 	label = 'Node',
-	position = { x: 100, y: 100 },
-	dimensions = { width: 100, height: 100 },
+	position = { x: 96, y: 96 },
+	dimensions = { width: 96, height: 96 },
 	data,
 	...rest
 }: Partial<
@@ -92,7 +92,10 @@ export function createCanvasGraphNode({
 		isParent: false,
 		selected: false,
 		resizing: false,
-		handleBounds: {},
+		handleBounds: {
+			source: null,
+			target: null,
+		},
 		events: {},
 		data: createCanvasNodeData({ id, type, ...data }),
 		...rest,
@@ -138,6 +141,8 @@ export function createCanvasProvide({
 			isExecuting: ref(isExecuting),
 			connectingHandle: ref(connectingHandle),
 			viewport: ref(viewport),
+			isExperimentalNdvActive: computed(() => false),
+			isPaneMoving: ref(false),
 		} satisfies CanvasInjectionData,
 	};
 }

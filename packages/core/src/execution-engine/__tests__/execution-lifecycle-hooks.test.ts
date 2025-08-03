@@ -39,6 +39,7 @@ describe('ExecutionLifecycleHooks', () => {
 				sendResponse: [],
 				workflowExecuteAfter: [],
 				workflowExecuteBefore: [],
+				sendChunk: [],
 			});
 		});
 	});

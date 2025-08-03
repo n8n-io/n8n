@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
+import type { Operations, Resources, WebhookPayload } from './types';
 
 // import {
 // 	createHmac,

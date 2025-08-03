@@ -346,7 +346,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it('should flag issues as soon as params are set', () => {
+	it('webhook shoul fallback to webhookId if path is empty', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -356,13 +356,31 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('path').clear();
 
-		ndv.getters.nodeExecuteButton().should('be.disabled');
-		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		const urrWithUUID =
+			/https?:\/\/[^\/]+\/webhook-test\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urrWithUUID);
+				expect(match, 'Should contain dynamic URL with UUID').to.not.be.null;
+			});
+
 		ndv.actions.close();
-		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.parameterInput('path').type('t');
+		ndv.getters.parameterInput('path').type('test-path');
+
+		const urlWithCustomPath = /https?:\/\/[^\/]+\/webhook-test\/test-path/i;
+
+		cy.contains('Webhook URLs')
+			.parent()
+			.invoke('text')
+			.then((text) => {
+				const match = text.match(urlWithCustomPath);
+				expect(match, 'Should contain URL with custom path').to.not.be.null;
+			});
 
 		ndv.getters.nodeExecuteButton().should('not.be.disabled');
 		ndv.getters.triggerPanelExecuteButton().should('exist');
@@ -565,18 +583,20 @@ describe('NDV', () => {
 				{
 					title: 'Language Models',
 					id: 'ai_languageModel',
+					index: 0,
 				},
 				{
 					title: 'Tools',
 					id: 'ai_tool',
+					index: 0,
 				},
 			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
 			connectionGroups.forEach((group) => {
-				cy.getByTestId(`add-subnode-${group.id}`).should('exist');
-				cy.getByTestId(`add-subnode-${group.id}`).click();
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
+				cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
 				// Add HTTP Request tool
@@ -585,16 +605,16 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
 				if (group.id === 'ai_languageModel') {
-					cy.getByTestId(`add-subnode-${group.id}`).should('not.exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('not.exist');
 				} else {
-					cy.getByTestId(`add-subnode-${group.id}`).should('exist');
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).should('exist');
 					// Expand the subgroup
-					cy.getByTestId('subnode-connection-group-ai_tool').click();
-					cy.getByTestId(`add-subnode-${group.id}`).click();
+					cy.getByTestId('subnode-connection-group-ai_tool-0').click();
+					cy.getByTestId(`add-subnode-${group.id}-${group.index}`).click();
 					// Add HTTP Request tool
 					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool')
+					cy.getByTestId('subnode-connection-group-ai_tool-0')
 						.findChildByTestId('floating-subnode')
 						.should('have.length', 2);
 				}
@@ -692,7 +712,7 @@ describe('NDV', () => {
 			.outputDataContainer()
 			.should(
 				'have.text',
-				'[{"body": "<?xml version="1.0" encoding="UTF-8"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
+				'[{"body": "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?> <library>     <book>         <title>Introduction to XML</title>         <author>John Doe</author>         <publication_year>2020</publication_year>         <isbn>1234567890</isbn>     </book>     <book>         <title>Data Science Basics</title>         <author>Jane Smith</author>         <publication_year>2019</publication_year>         <isbn>0987654321</isbn>     </book>     <book>         <title>Programming in Python</title>         <author>Bob Johnson</author>         <publication_year>2021</publication_year>         <isbn>5432109876</isbn>     </book> </library>"}]',
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 

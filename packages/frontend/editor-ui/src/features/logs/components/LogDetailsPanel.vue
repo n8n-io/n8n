@@ -15,24 +15,35 @@ import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { getSubtreeTotalConsumedTokens, isPlaceholderLog } from '@/features/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
-import { isPlaceholderLog } from '@/features/logs/logs.utils';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, window, latestInfo, panels } = defineProps<{
+const {
+	isOpen,
+	logEntry,
+	window,
+	latestInfo,
+	panels,
+	collapsingInputTableColumnName,
+	collapsingOutputTableColumnName,
+} = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
 	panels: LogDetailsPanelState;
+	collapsingInputTableColumnName: string | null;
+	collapsingOutputTableColumnName: string | null;
 }>();
 
 const emit = defineEmits<{
 	clickHeader: [];
 	toggleInputOpen: [] | [boolean];
 	toggleOutputOpen: [] | [boolean];
+	collapsingInputTableColumnChanged: [columnName: string | null];
+	collapsingOutputTableColumnChanged: [columnName: string | null];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -78,8 +89,7 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<LogsViewNodeName
-						:latest-name="latestInfo?.name ?? logEntry.node.name"
-						:name="logEntry.node.name"
+						:name="latestInfo?.name ?? logEntry.node.name"
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<LogsViewExecutionSummary
@@ -151,6 +161,8 @@ function handleResizeEnd() {
 						pane-type="input"
 						:title="locale.baseText('logs.details.header.actions.input')"
 						:log-entry="logEntry"
+						:collapsing-table-column-name="collapsingInputTableColumnName"
+						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
 					/>
 				</N8nResizeWrapper>
 				<LogsViewRunData
@@ -160,6 +172,8 @@ function handleResizeEnd() {
 					:class="$style.outputPanel"
 					:title="locale.baseText('logs.details.header.actions.output')"
 					:log-entry="logEntry"
+					:collapsing-table-column-name="collapsingOutputTableColumnName"
+					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
 				/>
 			</template>
 		</div>

@@ -30,4 +30,7 @@ export const STORES = {
 	EVALUATION: 'evaluation',
 	FOLDERS: 'folders',
 	MODULES: 'modules',
+	FOCUS_PANEL: 'focusPanel',
+	AI_TEMPLATES_STARTER_COLLECTION: 'aiTemplatesStarterCollection',
+	PERSONALIZED_TEMPLATES: 'personalizedTemplates',
 } as const;

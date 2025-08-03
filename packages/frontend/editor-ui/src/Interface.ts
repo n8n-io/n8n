@@ -8,6 +8,7 @@ import type {
 	IVersionNotificationSettings,
 	ROLE,
 	Role,
+	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -40,20 +41,25 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
-	INodeCredentialsDetails,
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
 } from 'n8n-workflow';
-import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
+import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
+import type {
+	WorkflowMetadata,
+	WorkflowData,
+	WorkflowDataCreate,
+	WorkflowDataUpdate,
+} from '@n8n/rest-api-client/api/workflows';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -64,6 +70,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export * from '@n8n/design-system/types';
 
@@ -104,6 +111,7 @@ declare global {
 				set?(metadata: IDataObject): void;
 			};
 			debug?(): void;
+			get_session_id?(): string | null;
 		};
 		analytics?: {
 			identify(userId: string): void;
@@ -125,7 +133,6 @@ declare global {
 				disallowReturnToOpener?: boolean;
 			}) => Promise<Window>;
 		};
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
 }
@@ -154,10 +161,7 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: {
-		position: XYPosition;
-		[key: string]: IDataObject | XYPosition;
-	};
+	properties: Partial<INodeUi>;
 }
 
 export type XYPosition = [number, number];
@@ -171,6 +175,7 @@ export interface INodeUi extends INode {
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
+	draggable?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -203,7 +208,7 @@ export interface IAiData {
 }
 
 export interface IStartRunData {
-	workflowData: IWorkflowData;
+	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
@@ -230,49 +235,17 @@ export interface ITableData {
 	};
 }
 
-// Simple version of n8n-workflow.Workflow
-export interface IWorkflowData {
-	id?: string;
-	name?: string;
-	active?: boolean;
-	nodes: INode[];
-	connections: IConnections;
-	settings?: IWorkflowSettings;
-	tags?: string[];
-	pinData?: IPinData;
-	versionId?: string;
-	meta?: WorkflowMetadata;
-}
-
-export interface IWorkflowDataUpdate {
-	id?: string;
-	name?: string;
-	nodes?: INode[];
-	connections?: IConnections;
-	settings?: IWorkflowSettings;
-	active?: boolean;
-	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: IPinData;
-	versionId?: string;
-	meta?: WorkflowMetadata;
-	parentFolderId?: string;
-}
-
-export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
-	projectId?: string;
-}
-
 /**
  * Workflow data with mandatory `templateId`
  * This is used to identify sample workflows that we create for onboarding
  */
-export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+export interface WorkflowDataWithTemplateId extends Omit<WorkflowDataCreate, 'meta'> {
 	meta: WorkflowMetadata & {
 		templateId: Required<WorkflowMetadata>['templateId'];
 	};
 }
 
-export interface IWorkflowToShare extends IWorkflowDataUpdate {
+export interface IWorkflowToShare extends WorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
@@ -281,36 +254,8 @@ export interface NewWorkflowResponse {
 	defaultSettings: IWorkflowSettings;
 }
 
-export interface IWorkflowTemplateNode
-	extends Pick<
-		INodeUi,
-		'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId' | 'id' | 'disabled'
-	> {
-	// The credentials in a template workflow have a different type than in a regular workflow
-	credentials?: IWorkflowTemplateNodeCredentials;
-}
-
-export interface IWorkflowTemplateNodeCredentials {
-	[key: string]: string | INodeCredentialsDetails;
-}
-
-export interface IWorkflowTemplate {
-	id: number;
-	name: string;
-	workflow: Pick<IWorkflowData, 'connections' | 'settings' | 'pinData'> & {
-		nodes: IWorkflowTemplateNode[];
-	};
-}
-
 export interface INewWorkflowData {
 	name: string;
-}
-
-export interface WorkflowMetadata {
-	onboardingId?: string;
-	templateId?: string;
-	instanceId?: string;
-	templateCredsSetupCompleted?: boolean;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -345,6 +290,68 @@ export interface IWorkflowDb {
 export type BaseResource = {
 	id: string;
 	name: string;
+};
+
+export type FolderResource = BaseFolderItem & {
+	resourceType: 'folder';
+};
+
+export type WorkflowResource = BaseResource & {
+	resourceType: 'workflow';
+	updatedAt: string;
+	createdAt: string;
+	active: boolean;
+	isArchived: boolean;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	tags?: ITag[] | string[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	parentFolder?: ResourceParentFolder;
+};
+
+export type VariableResource = BaseResource & {
+	resourceType: 'variable';
+	key?: string;
+	value?: string;
+};
+
+export type CredentialsResource = BaseResource & {
+	resourceType: 'credential';
+	updatedAt: string;
+	createdAt: string;
+	type: string;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	needsSetup: boolean;
+};
+
+// Base resource types that are always available
+export type CoreResource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource;
+
+// This interface can be extended by modules to add their own resource types
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ModuleResources {}
+
+// The Resource type is the union of core resources and any module resources
+export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
+
+export type BaseFilters = {
+	search: string;
+	homeProject: string;
+	[key: string]: boolean | string | string[];
+};
+
+export type SortingAndPaginationUpdates = {
+	page?: number;
+	pageSize?: number;
+	sort?: string;
 };
 
 export type WorkflowListItem = Omit<
@@ -571,18 +578,10 @@ export type IPersonalizationSurveyVersions =
 
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
 
-export interface IUserResponse {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email?: string;
-	createdAt?: string;
-	role?: Role;
+export interface IUserResponse extends User {
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	isPending: boolean;
-	signInType?: SignInType;
-	settings?: IUserSettings;
+	settings?: IUserSettings | null;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -596,6 +595,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	mfaAuthenticated?: boolean;
 }
 
 export interface IUserListAction {
@@ -633,93 +633,6 @@ export interface IUserPermissions {
 	[category: string]: {
 		[permission: string]: IPermissions;
 	};
-}
-
-export interface ITemplatesCollection {
-	id: number;
-	name: string;
-	nodes: ITemplatesNode[];
-	workflows: Array<{ id: number }>;
-}
-
-interface ITemplatesImage {
-	id: number;
-	url: string;
-}
-
-interface ITemplatesCollectionExtended extends ITemplatesCollection {
-	description: string | null;
-	image: ITemplatesImage[];
-	categories: ITemplatesCategory[];
-	createdAt: string;
-}
-
-export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
-	full: true;
-}
-
-export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
-	workflows: ITemplatesWorkflow[];
-}
-
-/**
- * A template without the actual workflow definition
- */
-export interface ITemplatesWorkflow {
-	id: number;
-	createdAt: string;
-	name: string;
-	nodes: ITemplatesNode[];
-	totalViews: number;
-	user: {
-		username: string;
-	};
-}
-
-export interface ITemplatesWorkflowInfo {
-	nodeCount: number;
-	nodeTypes: {
-		[key: string]: {
-			count: number;
-		};
-	};
-}
-
-export type TemplateSearchFacet = {
-	field_name: string;
-	sampled: boolean;
-	stats: {
-		total_values: number;
-	};
-	counts: Array<{
-		count: number;
-		highlighted: string;
-		value: string;
-	}>;
-};
-
-export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
-	description: string | null;
-	image: ITemplatesImage[];
-	categories: ITemplatesCategory[];
-	workflowInfo: ITemplatesWorkflowInfo;
-}
-
-/**
- * A template with also the full workflow definition
- */
-export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
-	full: true;
-}
-
-export interface ITemplatesQuery {
-	categories: string[];
-	search: string;
-}
-
-export interface ITemplatesCategory {
-	id: number;
-	name: string;
 }
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
@@ -767,7 +680,7 @@ export type SimplifiedNodeType = Pick<
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
-	icon?: string;
+	icon?: IconName;
 	iconProps?: {
 		color?: string;
 	};
@@ -901,13 +814,6 @@ export type NodeTypeSelectedPayload = {
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
 }
-export interface ITag {
-	id: string;
-	name: string;
-	usageCount?: number;
-	createdAt?: string;
-	updatedAt?: string;
-}
 
 export interface ITagRow {
 	tag?: ITag;
@@ -917,11 +823,6 @@ export interface ITagRow {
 	update?: boolean;
 	delete?: boolean;
 	canDelete?: boolean;
-}
-
-export interface ITemplatesNode extends VersionNode {
-	id: number;
-	categories?: ITemplatesCategory[];
 }
 
 export interface INodeMetadata {
@@ -1138,28 +1039,6 @@ export interface INodeTypesState {
 	nodeTypes: NodeTypesByTypeNameAndVersion;
 }
 
-export interface ITemplateState {
-	categories: ITemplatesCategory[];
-	collections: { [id: string]: ITemplatesCollection };
-	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
-	workflowSearches: {
-		[search: string]: {
-			workflowIds: string[];
-			totalWorkflows: number;
-			loadingMore?: boolean;
-			categories?: ITemplatesCategory[];
-		};
-	};
-	collectionSearches: {
-		[search: string]: {
-			collectionIds: string[];
-		};
-	};
-	currentSessionId: string;
-	previousSessionId: string;
-	currentN8nPath: string;
-}
-
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: Version[];
@@ -1205,9 +1084,10 @@ export interface ITab<Value extends string | number = string | number> {
 	value: Value;
 	label?: string;
 	href?: string;
-	icon?: string;
+	icon?: IconName;
 	align?: 'right';
 	tooltip?: string;
+	notification?: boolean;
 }
 
 export interface ITabBarItem {
@@ -1452,7 +1332,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes';
+	| 'ApiKeyScopes'
+	| 'EnforceMFA';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

@@ -1,10 +1,8 @@
-import type { CredentialsEntity } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 
 import { NamingService } from '@/services/naming.service';
-import { mockInstance } from '@test/mocking';
 
 describe('NamingService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);

@@ -81,17 +81,32 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		installedPackages.value[newPackage.packageName] = newPackage;
 	};
 
-	const updatePackage = async (packageName: string): Promise<void> => {
+	const updatePackage = async (
+		packageName: string,
+		version?: string,
+		checksum?: string,
+	): Promise<void> => {
 		const packageToUpdate = installedPackages.value[packageName];
 		const updatedPackage = await communityNodesApi.updatePackage(
 			rootStore.restApiContext,
 			packageToUpdate.packageName,
+			version,
+			checksum,
 		);
 		updatePackageObject(updatedPackage);
 	};
 
+	const getInstalledPackage = async (packageName: string) => {
+		if (!getInstalledPackages.value.length) {
+			await fetchInstalledPackages();
+		}
+
+		return getInstalledPackages.value.find((p) => p.packageName === packageName);
+	};
+
 	return {
 		installedPackages,
+		getInstalledPackage,
 		getInstalledPackages,
 		availablePackageCount,
 		fetchAvailableCommunityPackageCount,
@@ -99,5 +114,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		installPackage,
 		uninstallPackage,
 		updatePackage,
+		setInstalledPackages,
 	};
 });

@@ -25,6 +25,8 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -112,6 +114,10 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
+		}
+
+		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+			sanitizeWebhookRequest(request);
 		}
 
 		return await new Promise(async (resolve, reject) => {

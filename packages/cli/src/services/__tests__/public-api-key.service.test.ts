@@ -1,5 +1,6 @@
-import { ApiKeyRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { testDb } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -10,11 +11,11 @@ import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
-import * as testDb from '@test-integration/test-db';
+import { retryUntil } from '@test-integration/retry-until';
 
 import { JwtService } from '../jwt.service';
+import { LastActiveAtService } from '../last-active-at.service';
 import { PublicApiKeyService } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
@@ -39,6 +40,8 @@ const jwtService = new JwtService(instanceSettings);
 
 let userRepository: UserRepository;
 let apiKeyRepository: ApiKeyRepository;
+let lastActiveAtService: LastActiveAtService;
+let publicApiKeyService: PublicApiKeyService;
 
 describe('PublicApiKeyService', () => {
 	beforeEach(async () => {
@@ -50,6 +53,14 @@ describe('PublicApiKeyService', () => {
 		await testDb.init();
 		userRepository = Container.get(UserRepository);
 		apiKeyRepository = Container.get(ApiKeyRepository);
+		lastActiveAtService = Container.get(LastActiveAtService);
+		publicApiKeyService = new PublicApiKeyService(
+			apiKeyRepository,
+			userRepository,
+			jwtService,
+			eventService,
+			lastActiveAtService,
+		);
 	});
 
 	afterAll(async () => {
@@ -64,13 +75,6 @@ describe('PublicApiKeyService', () => {
 			const path = '/test';
 			const method = 'GET';
 			const apiVersion = 'v1';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
 
@@ -91,13 +95,6 @@ describe('PublicApiKeyService', () => {
 			const method = 'GET';
 			const apiVersion = 'v1';
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
 
 			//Act
@@ -115,13 +112,6 @@ describe('PublicApiKeyService', () => {
 			const path = '/test';
 			const method = 'GET';
 			const apiVersion = 'v1';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			const owner = await createOwnerWithApiKey();
 
@@ -155,13 +145,6 @@ describe('PublicApiKeyService', () => {
 			const method = 'GET';
 			const apiVersion = 'v1';
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			const dateInThePast = DateTime.now().minus({ days: 1 }).toUnixInteger();
 
 			const owner = await createOwnerWithApiKey({
@@ -188,13 +171,6 @@ describe('PublicApiKeyService', () => {
 			const method = 'GET';
 			const apiVersion = 'v1';
 			const legacyApiKey = `n8n_api_${randomString(10)}`;
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			const owner = await createOwnerWithApiKey();
 
@@ -226,6 +202,37 @@ describe('PublicApiKeyService', () => {
 				}),
 			);
 		});
+
+		it('should update last active at for the user', async () => {
+			// Arrange
+			const path = '/test';
+			const method = 'GET';
+			const apiVersion = 'v1';
+
+			const owner = await createOwnerWithApiKey();
+
+			const [{ apiKey }] = owner.apiKeys;
+
+			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
+
+			// Act
+
+			await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
+
+			// Wait for the fire and forget job to complete
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			// Assert
+			// Poll the database to check if lastActiveAt was updated
+			await retryUntil(async () => {
+				const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
+
+				expect(userOnDb.lastActiveAt).toBeDefined();
+				expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
+					DateTime.now().startOf('day').toMillis(),
+				);
+			});
+		});
 	});
 
 	describe('redactApiKey', () => {
@@ -234,13 +241,6 @@ describe('PublicApiKeyService', () => {
 
 			const jwt =
 				'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0ODUxNDA5ODQsImlhdCI6MTQ4NTEzNzM4NCwiaXNzIjoiYWNtZS5jb20iLCJzdWIiOiIyOWFjMGMxOC0wYjRhLTQyY2YtODJmYy0wM2Q1NzAzMThhMWQiLCJhcHBsaWNhdGlvbklkIjoiNzkxMDM3MzQtOTdhYi00ZDFhLWFmMzctZTAwNmQwNWQyOTUyIiwicm9sZXMiOltdfQ.Mp0Pcwsz5VECK11Kf2ZZNF_SMKu5CgBeLN9ZOP04kZo';
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			//Act
 
@@ -259,13 +259,6 @@ describe('PublicApiKeyService', () => {
 			const adminUser = await createAdminWithApiKey();
 			const apiKeyId = adminUser.apiKeys[0].id;
 			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			// Act
 
@@ -300,13 +293,6 @@ describe('PublicApiKeyService', () => {
 
 			const next = jest.fn() as NextFunction;
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			// Act
 			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
 			await middleware(req, res, next);
@@ -335,13 +321,6 @@ describe('PublicApiKeyService', () => {
 
 			const next = jest.fn() as NextFunction;
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			// Act
 			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
 			await middleware(req, res, next);
@@ -365,13 +344,6 @@ describe('PublicApiKeyService', () => {
 			res.json.mockReturnThis();
 
 			const next = jest.fn() as NextFunction;
-
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
 
 			// Act
 			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
@@ -400,13 +372,6 @@ describe('PublicApiKeyService', () => {
 
 			const next = jest.fn() as NextFunction;
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			// Act
 			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
 			await middleware(req, res, next);
@@ -429,13 +394,6 @@ describe('PublicApiKeyService', () => {
 			const apiKey = owner.apiKeys[0].apiKey;
 			const requiredScope = 'workflow:read' as ApiKeyScope;
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			// Act
 			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
 
@@ -453,13 +411,6 @@ describe('PublicApiKeyService', () => {
 			const apiKey = owner.apiKeys[0].apiKey;
 			const requiredScope = 'workflow:read' as ApiKeyScope;
 
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			// Act
 			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
 
@@ -471,13 +422,6 @@ describe('PublicApiKeyService', () => {
 	describe('apiKeyHasValidScopesForRole', () => {
 		it('should return true if API key has the required scope for the role', async () => {
 			// Arrange
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 			// Act
@@ -494,13 +438,6 @@ describe('PublicApiKeyService', () => {
 
 		it('should return false if API key does not have the required scope for the role', async () => {
 			// Arrange
-			const publicApiKeyService = new PublicApiKeyService(
-				apiKeyRepository,
-				userRepository,
-				jwtService,
-				eventService,
-			);
-
 			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 			// Act

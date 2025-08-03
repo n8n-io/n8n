@@ -1,10 +1,24 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	getPersonalProject,
+	findProject,
+	getProjectRelations,
+	createWorkflow,
+	shareWorkflowWithProjects,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
@@ -19,19 +33,8 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
-import {
-	createTeamProject,
-	linkUserToProject,
-	getPersonalProject,
-	findProject,
-	getProjectRelations,
-} from './shared/db/projects';
 import { createMember, createOwner, createUser } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],

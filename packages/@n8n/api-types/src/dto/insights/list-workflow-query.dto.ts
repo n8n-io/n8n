@@ -21,6 +21,8 @@ const VALID_SORT_OPTIONS = [
 	'runTime:desc',
 	'averageRunTime:asc',
 	'averageRunTime:desc',
+	'workflowName:asc',
+	'workflowName:desc',
 ] as const;
 
 // ---------------------

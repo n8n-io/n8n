@@ -173,7 +173,7 @@ export class SplitOut implements INodeType {
 					}
 
 					if (typeof entityToSplit !== 'object' || entityToSplit === null) {
-						entityToSplit = [entityToSplit];
+						entityToSplit = [entityToSplit] as unknown as IDataObject[];
 					}
 
 					if (!Array.isArray(entityToSplit)) {

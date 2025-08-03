@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
+import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -36,10 +37,13 @@ const props = defineProps<{
 	insightType: InsightsSummaryType;
 }>();
 
+const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const insightsStore = useInsightsStore();
+
+const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
 	total: InsightsChartTotal,
@@ -108,8 +112,8 @@ watch(
 			void insightsStore.summary.execute(0, { dateRange: selectedDateRange.value });
 		}
 
+		void insightsStore.charts.execute(0, { dateRange: selectedDateRange.value });
 		if (insightsStore.isDashboardEnabled) {
-			void insightsStore.charts.execute(0, { dateRange: selectedDateRange.value });
 			fetchPaginatedTableData({ sortBy: sortTableBy.value, dateRange: selectedDateRange.value });
 		}
 	},
@@ -149,11 +153,10 @@ onMounted(() => {
 				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">
-				<InsightsPaywall
-					v-if="!insightsStore.isDashboardEnabled"
-					data-test-id="insights-dashboard-unlicensed"
-				/>
-				<div v-else :class="$style.insightsContentWrapper">
+				<div
+					v-if="insightsStore.isDashboardEnabled || isTimeSavedRoute"
+					:class="$style.insightsContentWrapper"
+				>
 					<div
 						:class="[
 							$style.dataLoader,
@@ -179,10 +182,12 @@ onMounted(() => {
 							v-model:sort-by="sortTableBy"
 							:data="insightsStore.table.state"
 							:loading="insightsStore.table.isLoading"
+							:is-dashboard-enabled="insightsStore.isDashboardEnabled"
 							@update:options="fetchPaginatedTableData"
 						/>
 					</div>
 				</div>
+				<InsightsPaywall v-else />
 			</div>
 		</div>
 	</div>

@@ -35,7 +35,7 @@ const containerCssVars = computed(() => ({
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
-				<font-awesome-icon icon="plus" size="lg" />
+				<n8n-icon icon="plus" size="large" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}

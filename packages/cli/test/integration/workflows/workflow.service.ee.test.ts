@@ -1,15 +1,16 @@
-import { CredentialsEntity } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { mockInstance } from '@test/mocking';
 
-import * as testDb from '../shared/test-db';
 import {
 	FIRST_CREDENTIAL_ID,
 	SECOND_CREDENTIAL_ID,

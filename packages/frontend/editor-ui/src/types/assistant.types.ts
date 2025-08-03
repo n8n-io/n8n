@@ -10,6 +10,7 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
+import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -55,17 +56,6 @@ export namespace ChatRequest {
 	export interface InitSupportChat {
 		role: 'user';
 		type: 'init-support-chat';
-		user: {
-			firstName: string;
-		};
-		context?: UserContext & WorkflowContext;
-		workflowContext?: WorkflowContext;
-		question: string;
-	}
-
-	export interface InitBuilderChat {
-		role: 'user';
-		type: 'init-builder-chat';
 		user: {
 			firstName: string;
 		};
@@ -127,118 +117,70 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper | InitSupportChat | InitCredHelp | InitBuilderChat;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;
-				sessionId: string;
+				sessionId?: string;
 		  };
 
-	interface CodeDiffMessage {
-		role: 'assistant';
-		type: 'code-diff';
-		description?: string;
-		codeDiff?: string;
-		suggestionId: string;
-		solution_count: number;
+	// Re-export types from design-system for backward compatibility
+	export type ToolMessage = ChatUI.ToolMessage;
+
+	// API-specific types that extend UI types
+	export interface CodeDiffMessage extends ChatUI.CodeDiffMessage {
+		solution_count?: number;
+		quickReplies?: ChatUI.QuickReply[];
 	}
 
-	interface QuickReplyOption {
-		text: string;
-		type: string;
-		isFeedback?: boolean;
-	}
-
-	interface AssistantChatMessage {
-		role: 'assistant';
-		type: 'message';
-		text: string;
-		step?: 'n8n_documentation' | 'n8n_forum';
-		codeSnippet?: string;
-	}
-
-	interface AssistantSummaryMessage {
-		role: 'assistant';
-		type: 'summary';
-		title: string;
-		content: string;
-	}
-
-	interface EndSessionMessage {
-		role: 'assistant';
-		type: 'event';
-		eventName: 'end-session';
-	}
-
-	interface AgentChatMessage {
-		role: 'assistant';
-		type: 'agent-suggestion';
-		title: string;
-		text: string;
-	}
-
-	interface AgentThinkingStep {
+	export interface AgentThinkingStep {
 		role: 'assistant';
 		type: 'intermediate-step';
 		text: string;
 		step: string;
 	}
 
-	interface WorkflowStepMessage {
-		role: 'assistant';
-		type: 'workflow-step';
-		steps: string[];
+	// API-specific types that extend UI types
+	export interface TextMessage {
+		role: 'assistant' | 'user';
+		type: 'message'; // API uses 'message' instead of 'text'
+		text: string;
+		step?: 'n8n_documentation' | 'n8n_forum';
+		codeSnippet?: string;
+		quickReplies?: ChatUI.QuickReply[];
 	}
 
-	interface WorkflowNodeMessage {
+	export interface SummaryMessage {
 		role: 'assistant';
-		type: 'workflow-node';
-		nodes: string[];
-	}
-
-	interface WorkflowPromptValidationMessage {
-		role: 'assistant';
-		type: 'prompt-validation';
-		isWorkflowPrompt: boolean;
-	}
-	interface WorkflowComposedMessage {
-		role: 'assistant';
-		type: 'workflow-composed';
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-	}
-	interface WorkflowGeneratedMessage {
-		role: 'assistant';
-		type: 'workflow-generated';
-		codeSnippet: string;
-	}
-	interface RateWorkflowMessage {
-		role: 'assistant';
-		type: 'rate-workflow';
+		type: 'summary'; // API uses 'summary' instead of 'block'
+		title: string;
 		content: string;
 	}
 
+	export interface AgentSuggestionMessage {
+		role: 'assistant';
+		type: 'agent-suggestion';
+		title: string;
+		text: string; // API uses text instead of content
+		suggestionId?: string;
+	}
+
+	// API-only types
+
 	export type MessageResponse =
 		| ((
-				| AssistantChatMessage
+				| TextMessage
 				| CodeDiffMessage
-				| AssistantSummaryMessage
-				| AgentChatMessage
+				| SummaryMessage
+				| AgentSuggestionMessage
 				| AgentThinkingStep
-				| WorkflowStepMessage
-				| WorkflowNodeMessage
-				| WorkflowComposedMessage
-				| WorkflowPromptValidationMessage
-				| WorkflowGeneratedMessage
-				| RateWorkflowMessage
+				| ChatUI.WorkflowUpdatedMessage
+				| ToolMessage
+				| ChatUI.ErrorMessage
 		  ) & {
-				quickReplies?: QuickReplyOption[];
+				quickReplies?: ChatUI.QuickReply[];
 		  })
-		| EndSessionMessage;
+		| ChatUI.EndSessionMessage;
 
 	export interface ResponsePayload {
 		sessionId?: string;
@@ -278,4 +220,49 @@ export namespace AskAiRequest {
 		};
 		forNode: 'code' | 'transform';
 	}
+}
+
+// Type guards for ChatRequest messages
+export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
+	return 'type' in msg && msg.type === 'message' && 'text' in msg;
+}
+
+export function isSummaryMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.SummaryMessage {
+	return 'type' in msg && msg.type === 'summary' && 'title' in msg && 'content' in msg;
+}
+
+export function isAgentSuggestionMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.AgentSuggestionMessage {
+	return 'type' in msg && msg.type === 'agent-suggestion' && 'title' in msg && 'text' in msg;
+}
+
+export function isAgentThinkingMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.AgentThinkingStep {
+	return 'type' in msg && msg.type === 'intermediate-step' && 'step' in msg;
+}
+
+export function isCodeDiffMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.CodeDiffMessage {
+	return 'type' in msg && msg.type === 'code-diff' && 'codeDiff' in msg;
+}
+
+export function isWorkflowUpdatedMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatUI.WorkflowUpdatedMessage {
+	return 'type' in msg && msg.type === 'workflow-updated' && 'codeSnippet' in msg;
+}
+
+export function isToolMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ToolMessage {
+	return 'type' in msg && msg.type === 'tool' && 'toolName' in msg && 'status' in msg;
+}
+
+export function isEndSessionMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatUI.EndSessionMessage {
+	return 'type' in msg && msg.type === 'event' && msg.eventName === 'end-session';
 }

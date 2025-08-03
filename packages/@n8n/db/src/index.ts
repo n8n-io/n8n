@@ -12,6 +12,7 @@ export {
 export { generateNanoId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { separate } from './utils/separate';
+export { sql } from './utils/sql';
 export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
 
 export * from './entities';
@@ -28,3 +29,5 @@ export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
+export { DbConnection } from './connection/db-connection';
+export { DbConnectionOptions } from './connection/db-connection-options';

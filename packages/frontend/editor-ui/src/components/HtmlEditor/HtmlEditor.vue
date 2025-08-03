@@ -7,7 +7,7 @@ import {
 	foldGutter,
 	indentOnInput,
 } from '@codemirror/language';
-import { Prec } from '@codemirror/state';
+import { Prec, EditorState } from '@codemirror/state';
 import {
 	dropCursor,
 	highlightActiveLine,
@@ -36,18 +36,21 @@ import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -80,11 +83,17 @@ const extensions = computed(() => [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
+	...(props.isReadOnly ? [EditorState.readOnly.of(true)] : []),
 ]);
-const { editor: editorRef, readEditorValue } = useExpressionEditor({
+const {
+	editor: editorRef,
+	readEditorValue,
+	focus,
+} = useExpressionEditor({
 	editorRef: htmlEditor,
 	editorValue: () => props.modelValue,
 	extensions,
+	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},
@@ -235,6 +244,10 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editorRef.value), event, value);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>

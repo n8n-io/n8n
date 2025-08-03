@@ -8,7 +8,6 @@ import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
-	INode,
 	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -75,16 +74,16 @@ export function isToolsInstance(model: unknown): model is Tool {
 }
 
 export function getPromptInputByType(options: {
-	ctx: IExecuteFunctions;
+	ctx: IExecuteFunctions | ISupplyDataFunctions;
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
 }) {
 	const { ctx, i, promptTypeKey, inputKey } = options;
-	const prompt = ctx.getNodeParameter(promptTypeKey, i) as string;
+	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
 	let input;
-	if (prompt === 'auto') {
+	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
@@ -118,6 +117,20 @@ export function getSessionId(
 			sessionId = bodyData.sessionId as string;
 		} else {
 			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+
+			// try to get sessionId from chat trigger
+			if (!sessionId || sessionId === undefined) {
+				try {
+					const chatTrigger = ctx.getChatTrigger();
+
+					if (chatTrigger) {
+						sessionId = ctx.evaluateExpression(
+							`{{ $('${chatTrigger.name}').first().json.sessionId }}`,
+							itemIndex,
+						) as string;
+					}
+				} catch (error) {}
+			}
 		}
 
 		if (sessionId === '' || sessionId === undefined) {
@@ -186,7 +199,7 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions | IWebhookFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
@@ -252,9 +265,48 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 }
 
 /**
- * Converts a node name to a valid tool name by replacing special characters with underscores
- * and collapsing consecutive underscores into a single one.
+ * Detects if a text contains a character that repeats sequentially for a specified threshold.
+ * This is used to prevent performance issues with tiktoken on highly repetitive content.
+ * @param text The text to check
+ * @param threshold The minimum number of sequential repeats to detect (default: 1000)
+ * @returns true if a character repeats sequentially for at least the threshold amount
  */
-export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
+export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean {
+	try {
+		// Validate inputs
+		if (
+			text === null ||
+			typeof text !== 'string' ||
+			text.length === 0 ||
+			threshold <= 0 ||
+			text.length < threshold
+		) {
+			return false;
+		}
+		// Use string iterator to avoid creating array copy (memory efficient)
+		const iterator = text[Symbol.iterator]();
+		let prev = iterator.next();
+
+		if (prev.done) {
+			return false;
+		}
+
+		let count = 1;
+		for (const char of iterator) {
+			if (char === prev.value) {
+				count++;
+				if (count >= threshold) {
+					return true;
+				}
+			} else {
+				count = 1;
+				prev = { value: char, done: false };
+			}
+		}
+
+		return false;
+	} catch (error) {
+		// On any error, return false to allow normal processing
+		return false;
+	}
 }
