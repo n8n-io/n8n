@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.94% </span>
+                <span class="strong">95.52% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>71/74</span>
+                <span class='fraction'>64/67</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.29% </span>
+                <span class="strong">96.15% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>26/27</span>
+                <span class='fraction'>25/26</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.08% </span>
+                <span class="strong">94.73% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>58/61</span>
+                <span class='fraction'>54/57</span>
             </div>
         
             
@@ -212,22 +212,9 @@
 <a name='L147'></a><a href='#L147'>147</a>
 <a name='L148'></a><a href='#L148'>148</a>
 <a name='L149'></a><a href='#L149'>149</a>
-<a name='L150'></a><a href='#L150'>150</a>
-<a name='L151'></a><a href='#L151'>151</a>
-<a name='L152'></a><a href='#L152'>152</a>
-<a name='L153'></a><a href='#L153'>153</a>
-<a name='L154'></a><a href='#L154'>154</a>
-<a name='L155'></a><a href='#L155'>155</a>
-<a name='L156'></a><a href='#L156'>156</a>
-<a name='L157'></a><a href='#L157'>157</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L150'></a><a href='#L150'>150</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">30x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -252,10 +239,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">30x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-yes">5x</span>
@@ -264,6 +248,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -375,15 +361,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { SecurityConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
-import { JSDOM } from 'jsdom';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { JSDOM } from 'jsdom';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
-&nbsp;
-export const isIframeSandboxDisabled = () =&gt; {
-	return Container.get(SecurityConfig).disableIframeSandboxing;
-};
 &nbsp;
 /**
  * Checks if the given string contains HTML.
@@ -403,15 +383,12 @@ export const hasHtml = (str: string) =&gt; {
  * Sandboxes the HTML response to prevent possible exploitation, if the data has HTML.
  * If the data does not have HTML, it will be returned as is.
  * Otherwise, it embeds the response in an iframe to make sure the HTML has a different origin.
- * Env var `N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX` can be used, in this case sandboxing is disabled.
  *
  * @param data - The data to sandbox.
  * @param forceSandbox - Whether to force sandboxing even if the data does not contain HTML.
  * @returns The sandboxed HTML response.
  */
 export const sandboxHtmlResponse = &lt;T&gt;(data: T, forceSandbox = false) =&gt; {
-	if (isIframeSandboxDisabled()) return data;
-&nbsp;
 	let text;
 	if (typeof data !== 'string') {
 		text = JSON.stringify(data);
@@ -419,7 +396,9 @@ export const sandboxHtmlResponse = &lt;T&gt;(data: T, forceSandbox = false) =&gt
 		text = data;
 	}
 &nbsp;
-	if (!forceSandbox &amp;&amp; !hasHtml(text)) return text;
+	if (!forceSandbox &amp;&amp; !hasHtml(text)) {
+		return text;
+	}
 &nbsp;
 	// Escape &amp; and " as mentioned in the spec:
 	// https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element
@@ -538,7 +517,7 @@ export const isHtmlRenderedContentType = (contentType: string) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-03T06:48:27.497Z
+                at 2025-07-31T19:20:20.152Z
             </div>
         <script src="../prettify.js"></script>
         <script>
