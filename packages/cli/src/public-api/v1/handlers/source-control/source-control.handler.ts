@@ -13,11 +13,17 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { ImportResult } from '@/environments.ee/source-control/types/import-result';
 import { EventService } from '@/events/event.service';
 
-import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScopeWithGlobalScopeFallback,
+	globalScope,
+} from '../../shared/middlewares/global.middleware';
 
 export = {
 	pull: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:pull' }),
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:manage',
+		}),
 		async (
 			req: AuthenticatedRequest,
 			res: express.Response,
@@ -53,7 +59,10 @@ export = {
 		},
 	],
 	getCommitHistory: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:manage',
+		}),
 		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
@@ -68,8 +77,9 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const limit = parseInt(req.query.limit as string) || 10;
-				const offset = parseInt(req.query.offset as string) || 0;
+				const query = req.query as { limit?: string; offset?: string };
+				const limit = parseInt(query.limit || '10');
+				const offset = parseInt(query.offset || '0');
 
 				const commits = await sourceControlService.getCommitHistory({ limit, offset });
 				return res.status(200).json({ commits });
@@ -82,7 +92,10 @@ export = {
 		},
 	],
 	getRepositoryStatus: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:manage',
+		}),
 		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
@@ -97,7 +110,11 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const status = await sourceControlService.getStatus();
+				const status = await sourceControlService.getStatus(req.user, {
+					direction: 'push',
+					preferLocalVersion: true,
+					verbose: false,
+				});
 				return res.status(200).json(status);
 			} catch (error) {
 				return res.status(400).json({
@@ -108,7 +125,10 @@ export = {
 		},
 	],
 	syncCheck: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:manage',
+		}),
 		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
@@ -134,7 +154,10 @@ export = {
 		},
 	],
 	setBranch: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:manage' }),
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:manage',
+		}),
 		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
@@ -149,7 +172,7 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const branchName = req.body.branch;
+				const branchName = (req.body as { branch?: string }).branch;
 				if (!branchName) {
 					return res.status(400).json({
 						status: 'Error',

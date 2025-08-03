@@ -24,17 +24,17 @@
 		{
 			"id": "linter_task_active",
 			"title": "Fix Linter Errors - IMMEDIATE",
-			"description": "Fix 0 errors and 0 warnings found in recently edited files: package.json",
+			"description": "Fix 0 errors and 0 warnings found in recently edited files: TODO.json",
 			"mode": "DEVELOPMENT",
 			"priority": "high",
 			"status": "completed",
-			"important_files": ["development/linter-errors.md", "package.json"],
+			"important_files": ["development/linter-errors.md", "TODO.json"],
 			"success_criteria": [
 				"All linter errors in edited files resolved",
 				"development/linter-errors.md shows no issues for edited files",
 				"Code passes linting without warnings or errors"
 			],
-			"created_at": "2025-08-03T00:43:46.037Z",
+			"created_at": "2025-08-03T04:10:30.935Z",
 			"is_linter_task": true,
 			"linter_summary": {
 				"total_violations": 0,
@@ -310,17 +310,193 @@
 				},
 				"overallReady": false
 			}
+		},
+		{
+			"id": "implement-community-node-manager-1754184800000",
+			"title": "Implement Community Node Management API",
+			"description": "Build comprehensive community node management system with CLI and web UI for installing, updating, and removing n8n community nodes",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"CLI commands for node installation/removal/updates work",
+				"Web UI for browsing and managing community nodes",
+				"Integration with n8n community node registry",
+				"Proper error handling and validation",
+				"Automated dependency management"
+			],
+			"important_files": [
+				"src/community-packages/",
+				"src/controllers/community-nodes.controller.ts",
+				"src/services/community-node.service.ts"
+			],
+			"estimate": "2-3 weeks",
+			"created_at": "2025-08-03T01:00:00.000Z",
+			"is_gap_implementation_task": true,
+			"api_gap_type": "community_node_management"
+		},
+		{
+			"id": "implement-unified-backup-api-1754184800001",
+			"title": "Create Unified Backup/Restore API System",
+			"description": "Build single-endpoint backup system for complete n8n instance backup including workflows, credentials, settings, and binary data",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"Single API endpoint for complete instance backup",
+				"Atomic restore operations with rollback capability",
+				"Binary data inclusion in backups",
+				"Backup integrity validation and checksums",
+				"Incremental backup support",
+				"Automated backup scheduling"
+			],
+			"important_files": [
+				"src/controllers/backup.controller.ts",
+				"src/services/backup.service.ts",
+				"src/services/restore.service.ts"
+			],
+			"estimate": "3-4 weeks",
+			"created_at": "2025-08-03T01:00:00.001Z",
+			"is_gap_implementation_task": true,
+			"api_gap_type": "unified_backup"
+		},
+		{
+			"id": "implement-cross-instance-migration-1754184800002",
+			"title": "Build Cross-Instance Migration Tools",
+			"description": "Create direct instance-to-instance transfer system for migrating complete n8n setups between different environments",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"Direct instance-to-instance data transfer",
+				"Environment variable and configuration migration",
+				"Automated migration validation and verification",
+				"Conflict resolution for duplicate resources",
+				"Migration preview and dry-run capabilities",
+				"Progress tracking and error recovery"
+			],
+			"important_files": [
+				"src/controllers/migration.controller.ts",
+				"src/services/migration.service.ts",
+				"src/services/instance-sync.service.ts"
+			],
+			"estimate": "2-3 weeks",
+			"created_at": "2025-08-03T01:00:00.002Z",
+			"is_gap_implementation_task": true,
+			"api_gap_type": "cross_instance_migration"
+		},
+		{
+			"id": "enhance-binary-data-portability-1754184800003",
+			"title": "Enhance Binary Data Portability System",
+			"description": "Extend binary data management with bulk export/import and cross-instance migration capabilities",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"Bulk binary data export API with workflow packaging",
+				"Cross-instance binary data migration tools",
+				"Binary data integrity validation during transfers",
+				"Efficient compression and decompression",
+				"Progress tracking for large binary transfers",
+				"Automatic cleanup of orphaned binary data"
+			],
+			"important_files": [
+				"src/controllers/binary-data.controller.ts",
+				"src/services/binary-migration.service.ts",
+				"src/services/binary-export.service.ts"
+			],
+			"estimate": "2 weeks",
+			"created_at": "2025-08-03T01:00:00.003Z",
+			"is_gap_implementation_task": true,
+			"api_gap_type": "binary_data_portability"
+		},
+		{
+			"id": "implement-advanced-workflow-organization-1754184800004",
+			"title": "Build Advanced Workflow Organization System",
+			"description": "Create comprehensive folder management and workflow organization system beyond basic tagging",
+			"mode": "DEVELOPMENT",
+			"priority": "low",
+			"status": "pending",
+			"success_criteria": [
+				"Hierarchical folder structure for workflows",
+				"Drag-and-drop workflow organization UI",
+				"Bulk folder operations (move, copy, delete)",
+				"Folder-based permissions and sharing",
+				"Advanced search within folder hierarchies",
+				"Folder export/import capabilities"
+			],
+			"important_files": [
+				"src/controllers/folders.controller.ts",
+				"src/services/workflow-organization.service.ts",
+				"src/services/folder-permissions.service.ts"
+			],
+			"estimate": "3-4 weeks",
+			"created_at": "2025-08-03T01:00:00.004Z",
+			"is_gap_implementation_task": true,
+			"api_gap_type": "workflow_organization"
+		},
+		{
+			"id": "remove-redundant-implementations-1754184800005",
+			"title": "Remove Redundant API Implementations",
+			"description": "Clean up codebase by removing implementations that duplicate existing n8n core functionality",
+			"mode": "REFACTORING",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"Remove redundant authentication implementations (use n8n OAuth2/SAML)",
+				"Remove basic execution control (use n8n advanced APIs)",
+				"Remove redundant credential sharing (use n8n enterprise RBAC)",
+				"Remove redundant workflow export/import (use n8n CLI tools)",
+				"Update documentation to reference n8n core APIs",
+				"Maintain only unique AI-focused and analytics features"
+			],
+			"important_files": [
+				"src/controllers/auth/",
+				"src/controllers/executions/",
+				"src/controllers/credentials/",
+				"src/services/workflow-export.service.ts"
+			],
+			"estimate": "1-2 weeks",
+			"created_at": "2025-08-03T01:00:00.005Z",
+			"is_cleanup_task": true,
+			"cleanup_type": "remove_redundancy"
+		},
+		{
+			"id": "focus-on-ai-extensions-1754184800006",
+			"title": "Refocus Project on AI-First Extensions",
+			"description": "Pivot project to focus on AI-powered workflow enhancements and analytics rather than reimplementing existing functionality",
+			"mode": "REFACTORING",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"Enhanced AI node configuration and testing tools",
+				"Advanced workflow analytics and optimization engine",
+				"AI-powered template recommendations system",
+				"Automated workflow optimization suggestions",
+				"Integration layer combining n8n APIs with AI enhancements",
+				"Clear value proposition as AI-focused n8n extension"
+			],
+			"important_files": [
+				"src/tools/ai-config.ts",
+				"src/tools/ai-testing.ts",
+				"src/tools/analytics.ts",
+				"src/tools/templates.ts"
+			],
+			"estimate": "2-3 weeks",
+			"created_at": "2025-08-03T01:00:00.006Z",
+			"is_pivot_task": true,
+			"pivot_type": "ai_first_focus"
 		}
 	],
 	"__removedLinterTasks": {
 		"removedCount": 1,
-		"finalTaskCount": 6
+		"finalTaskCount": 20
 	},
-	"execution_count": 16,
-	"last_hook_activation": 1754182445813,
+	"execution_count": 18,
+	"last_hook_activation": 1754194354836,
 	"project": "unnamed-project",
 	"review_strikes": 0,
 	"strikes_completed_last_run": false,
 	"current_task_index": 0,
-	"last_mode": "TASK_CREATION"
+	"last_mode": "DEVELOPMENT"
 }

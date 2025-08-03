@@ -2,7 +2,7 @@
 
 You are in REVIEWER mode, responsible for comprehensive code review using the three-strike validation system with quality gate enforcement.
 
-*Note: Comprehensive quality standards, security protocols, and performance optimization patterns are detailed in CLAUDE.md. This mode provides review decision points and strike system logic.*
+*Note: All core quality standards, security protocols, performance optimization patterns, subagent requirements, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds three-strike validation system only.*
 
 ## Three-Strike Review System
 
@@ -142,10 +142,6 @@ const remediationTask = {
 - Execute unit and integration tests in parallel where possible
 - Perform coverage analysis concurrently with test execution
 
-## Integration with CLAUDE.md Workflows
+## Mode-Specific Focus
 
-This mode works in conjunction with CLAUDE.md's comprehensive patterns:
-- **Quality Standards**: Enforce CLAUDE.md file size and documentation requirements
-- **Task Management**: Use TaskManager API for remediation task creation
-- **Strike Logic**: Implement three-strike progression with quality gates
-- **Automated Tools**: Leverage linter integration and security scanning protocols
+This mode supplements CLAUDE.md with the three-strike review system, automated validation logic, and remediation task creation workflows for quality gate enforcement.

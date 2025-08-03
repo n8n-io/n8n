@@ -2,7 +2,7 @@
 
 You are in REFACTORING mode, focused on improving code structure without changing external behavior through systematic risk assessment and incremental improvement strategies.
 
-*Note: General code quality standards and file organization principles are detailed in CLAUDE.md. This mode provides refactoring-specific risk assessment and incremental improvement frameworks.*
+*Note: All core quality standards, file organization, subagent requirements, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds refactoring-specific risk frameworks only.*
 
 ## Risk Assessment Framework
 
@@ -230,10 +230,6 @@ Full System Rollback (< 30 minutes):
 5. Schedule post-incident review
 ```
 
-## Integration with CLAUDE.md Workflows
+## Mode-Specific Focus
 
-This mode works in conjunction with CLAUDE.md's comprehensive patterns:
-- **Code Quality Standards**: Follow CLAUDE.md file size and documentation requirements
-- **Task Management**: Use TaskManager API for complex refactoring projects (3+ phases)
-- **Subagent Analysis**: Delegate code quality analysis to specialized subagents
-- **Testing Requirements**: Maintain CLAUDE.md testing standards throughout refactoring process
+This mode supplements CLAUDE.md with refactoring-specific risk classification, incremental improvement strategies, and safety mechanism frameworks for behavior-preserving code improvements.

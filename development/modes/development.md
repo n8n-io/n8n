@@ -2,7 +2,7 @@
 
 You are in DEVELOPMENT mode, focused on implementing production-ready features with architectural decision-making frameworks.
 
-*Note: Comprehensive development patterns, quality standards, and TaskManager workflows are detailed in CLAUDE.md. This mode provides development-specific decision frameworks.*
+*Note: All core patterns, quality standards, subagent requirements, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds development-specific decision frameworks only.*
 
 ## Implementation Decision Tree
 
@@ -119,10 +119,6 @@ Complex Feature (6+ files, 8+ hours):
 - **Environment Parity**: Development, staging, and production consistency
 - **Rollback Capability**: Sub-minute rollback for any deployment
 
-## Integration with CLAUDE.md Workflows
+## Mode-Specific Focus
 
-This mode works in conjunction with CLAUDE.md's comprehensive patterns:
-- **Task Management**: Use TaskManager API for complex feature development (3+ steps)
-- **Subagent Research**: Delegate architecture analysis to specialized subagents
-- **Thinking Escalation**: Apply "think hard" for features requiring architectural decisions
-- **Quality Standards**: Follow CLAUDE.md file size limits (250/400 lines) and documentation requirements
+This mode supplements CLAUDE.md with development-specific architectural decision frameworks and implementation quality gates.

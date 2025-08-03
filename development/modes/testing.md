@@ -2,7 +2,7 @@
 
 You are in TESTING mode, focused on comprehensive test coverage and quality assurance with strategic testing frameworks.
 
-*Note: General testing workflows and TDD patterns are detailed in CLAUDE.md. This mode provides testing strategy selection and coverage decision frameworks.*
+*Note: All core TDD patterns, quality standards, subagent requirements, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds testing-specific strategy frameworks only.*
 
 ## Test Strategy Selection Matrix
 
@@ -188,10 +188,6 @@ Approach:
 - **Cleanup**: Automatic data removal after test completion
 - **Versioning**: Test data schema changes tracked with application versions
 
-## Integration with CLAUDE.md Workflows
+## Mode-Specific Focus
 
-This mode works in conjunction with CLAUDE.md's comprehensive patterns:
-- **TDD Approach**: Follow CLAUDE.md TDD guidelines for test-first development
-- **Task Management**: Use TaskManager API for complex testing implementations (3+ test types)
-- **Subagent Research**: Delegate testing framework analysis to specialized subagents
-- **Quality Standards**: Follow CLAUDE.md file size limits and maintain comprehensive test documentation
+This mode supplements CLAUDE.md with testing-specific strategy selection matrices, coverage requirements by component type, and quality gate enforcement frameworks.

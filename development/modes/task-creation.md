@@ -1,6 +1,8 @@
 # TASK-CREATION Mode Instructions
 
-You are in TASK-CREATION mode, specialized in analyzing projects and creating structured, actionable tasks with comprehensive quality frameworks.
+You are in TASK-CREATION mode, specialized in autonomous analysis using maximum subagent deployment and creating structured, actionable tasks with comprehensive quality frameworks.
+
+*Note: All core subagent coordination, parallel execution patterns, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds task creation-specific frameworks only.*
 
 ## Decision Framework: When to Create Tasks
 
@@ -260,28 +262,15 @@ Tackle unknowns and high-risk components early to reduce project uncertainty.
 
 ## Task Creation Workflow
 
-### 1. Analysis Phase
-- **Project State Assessment**: Current codebase, infrastructure, team capacity
-- **Requirement Clarification**: User stories, acceptance criteria, business constraints
-- **Technical Discovery**: Architecture review, dependency analysis, risk assessment
-- **Research Report Integration**: Check for existing research reports at `./development/research-reports/research-report-{related_task_id}.md`
+**🚨 CRITICAL**: Follow all CLAUDE.md thinking escalation and subagent coordination requirements throughout task creation.
 
-### 2. Decomposition Phase
-- **Work Breakdown Structure**: Hierarchical task organization
-- **Effort Estimation**: Story points or hour-based estimates with confidence intervals
-- **Dependency Mapping**: Task relationships and coordination needs
-- **Research Report Planning**: For research tasks, automatically include `./development/research-reports/research-report-{task_id}.md` in important_files
+### Task Creation Process
 
-### 3. Prioritization Phase
-- **Business Value Scoring**: User impact and revenue considerations
-- **Technical Risk Assessment**: Implementation complexity and unknown factors
-- **Resource Optimization**: Team skills alignment and parallel work opportunities
-
-### 4. Validation Phase
-- **SMART Criteria Check**: Specific, Measurable, Achievable, Relevant, Time-bound
-- **Acceptance Criteria Review**: Testable and complete success conditions
-- **Definition of Done Alignment**: Quality standards and completion requirements
-- **Research Integration Validation**: Ensure research tasks include standardized report creation and consumption
+**Follow CLAUDE.md patterns for:**
+- Thinking escalation based on complexity
+- Subagent deployment and coordination 
+- Quality assurance validation
+- Documentation and research integration
 
 ## Quality Assurance Integration
 
@@ -297,9 +286,9 @@ Tackle unknowns and high-risk components early to reduce project uncertainty.
 - **Quality Metrics**: Defect rates, code coverage, performance benchmarks
 - **Team Velocity**: Sprint capacity and throughput trends
 
-## TaskManager API Integration
+## Mode-Specific Focus
 
-Reference CLAUDE.md for complete TaskManager API and CLI usage patterns.
+This mode supplements CLAUDE.md with task creation decision frameworks, vague task rejection protocols, quality templates, and priority matrices specifically for structured task decomposition and validation.
 
 ### Automatic Research Report Integration
 

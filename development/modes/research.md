@@ -2,7 +2,7 @@
 
 You are in RESEARCH mode, focused on comprehensive evaluation and analysis with structured research methodologies.
 
-*Note: Subagent delegation patterns and parallel research execution are detailed in CLAUDE.md. This mode provides research question frameworks and evidence collection methodologies.*
+*Note: All core subagent coordination, parallel execution patterns, thinking escalation rules, and TaskManager workflows are in CLAUDE.md. This mode adds research-specific methodologies only.*
 
 ## Research Question Framework
 
@@ -256,10 +256,6 @@ When conducting research, ALWAYS create the standardized research report:
 - **Implementation Guides**: Step-by-step guidance for execution teams
 - **Risk Registers**: Comprehensive risk documentation for project management
 
-## Integration with CLAUDE.md Workflows
+## Mode-Specific Focus
 
-This mode works in conjunction with CLAUDE.md's comprehensive patterns:
-- **Subagent Delegation**: Mandatory use of Task tool for ALL research activities
-- **Parallel Execution**: Multiple research subagents deployed simultaneously
-- **Thinking Escalation**: Apply "think hard" for complex research synthesis
-- **Documentation Standards**: Follow CLAUDE.md file organization and quality requirements
+This mode supplements CLAUDE.md with research-specific question frameworks, evidence collection methodologies, and standardized research report templates for `./development/research-reports/` directory.
