@@ -24,7 +24,7 @@ export class ResourceTransferController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly resourceTransferService: ResourceTransferService,
-		private readonly _eventService: EventService,
+		private readonly _eventService: EventService, // eslint-disable-line @typescript-eslint/no-unused-vars
 	) {}
 
 	// Batch Workflow Transfer

@@ -296,8 +296,8 @@ describe('result', () => {
 				expect(processedResult.result).toBe(20);
 			}
 
-			const errorResult = createResultError('error');
-			const processedError = processResult(errorResult, (x) => x * 2);
+			const errorResult: Result<number, string> = createResultError('error');
+			const processedError = processResult(errorResult, (x: number) => x * 2);
 
 			expect(processedError.ok).toBe(false);
 			if (!processedError.ok) {

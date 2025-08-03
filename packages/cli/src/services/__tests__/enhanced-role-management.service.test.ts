@@ -31,18 +31,18 @@ describe('EnhancedRoleManagementService', () => {
 		userRepository = mock<UserRepository>();
 		projectRepository = mock<ProjectRepository>();
 		workflowRepository = mock<WorkflowRepository>();
-		cacheService = mock<CacheService>();
+		cacheService = {
+			get: jest.fn(),
+			set: jest.fn(),
+		} as unknown as CacheService;
 		eventService = mock<EventService>();
 		roleService = mock<RoleService>();
 
 		enhancedRoleService = new EnhancedRoleManagementService(
 			mock(),
 			userRepository,
-			projectRepository,
-			workflowRepository,
 			cacheService,
 			eventService,
-			roleService,
 		);
 	});
 
@@ -52,8 +52,8 @@ describe('EnhancedRoleManagementService', () => {
 
 	describe('getPermissionDefinitions', () => {
 		it('should return all permission definitions when no category specified', async () => {
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await enhancedRoleService.getPermissionDefinitions();
 
@@ -67,8 +67,8 @@ describe('EnhancedRoleManagementService', () => {
 		});
 
 		it('should filter permissions by category', async () => {
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await enhancedRoleService.getPermissionDefinitions('workflow');
 
@@ -90,7 +90,7 @@ describe('EnhancedRoleManagementService', () => {
 					updatedAt: new Date().toISOString(),
 				},
 			];
-			cacheService.get.mockResolvedValue(cachedResults);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedResults);
 
 			const result = await enhancedRoleService.getPermissionDefinitions();
 
@@ -311,8 +311,8 @@ describe('EnhancedRoleManagementService', () => {
 		};
 
 		it('should return enhanced roles with pagination', async () => {
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await enhancedRoleService.getEnhancedRoles(mockQuery);
 
@@ -324,7 +324,7 @@ describe('EnhancedRoleManagementService', () => {
 
 		it('should return cached results when available', async () => {
 			const cachedResult = { roles: [], total: 0 };
-			cacheService.get.mockResolvedValue(cachedResult);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedResult);
 
 			const result = await enhancedRoleService.getEnhancedRoles(mockQuery);
 
@@ -353,7 +353,7 @@ describe('EnhancedRoleManagementService', () => {
 		};
 
 		beforeEach(() => {
-			userRepository.findOneBy.mockResolvedValue(mockTargetUser);
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(mockTargetUser);
 		});
 
 		it('should assign role successfully', async () => {
@@ -393,7 +393,7 @@ describe('EnhancedRoleManagementService', () => {
 		});
 
 		it('should throw error for non-existent user', async () => {
-			userRepository.findOneBy.mockResolvedValue(null);
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(null);
 
 			await expect(enhancedRoleService.assignRole(mockAdminUser, mockAssignment)).rejects.toThrow(
 				NotFoundError,
@@ -417,8 +417,8 @@ describe('EnhancedRoleManagementService', () => {
 		};
 
 		it('should check permission successfully', async () => {
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await enhancedRoleService.checkPermission(mockPermissionRequest);
 
@@ -441,7 +441,7 @@ describe('EnhancedRoleManagementService', () => {
 				source: 'direct' as const,
 				context: undefined,
 			};
-			cacheService.get.mockResolvedValue(cachedResult);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedResult);
 
 			const result = await enhancedRoleService.checkPermission(mockPermissionRequest);
 
@@ -464,9 +464,9 @@ describe('EnhancedRoleManagementService', () => {
 				scope: 'project',
 			});
 
-			userRepository.findByIds.mockResolvedValue([]);
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(userRepository.findByIds as jest.Mock).mockResolvedValue([]);
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await enhancedRoleService.getRoleUsageAnalytics(createdRole.id);
 
@@ -515,7 +515,7 @@ describe('EnhancedRoleManagementService', () => {
 		};
 
 		beforeEach(() => {
-			userRepository.findOneBy.mockResolvedValue(
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(
 				mock<User>({ id: 'user-1', role: 'global:member' }),
 			);
 		});

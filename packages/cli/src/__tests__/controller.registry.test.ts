@@ -68,7 +68,7 @@ describe('ControllerRegistry', () => {
 				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 			lastActiveAtService.middleware.mockImplementation(
-				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+				async (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 		});
 
@@ -131,7 +131,7 @@ describe('ControllerRegistry', () => {
 				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 			lastActiveAtService.middleware.mockImplementation(
-				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+				async (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 		});
 
@@ -164,7 +164,7 @@ describe('ControllerRegistry', () => {
 				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 			lastActiveAtService.middleware.mockImplementation(
-				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+				async (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
 			);
 		});
 

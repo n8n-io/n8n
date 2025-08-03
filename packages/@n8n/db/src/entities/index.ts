@@ -72,6 +72,20 @@ export {
 	SecurityEvent,
 };
 
+// Export types from entity files
+export type {
+	ComplianceStandard,
+	ReportFormat,
+	ReportStatus,
+} from './compliance-report';
+
+export type {
+	SecurityEventType,
+	SecurityEventSeverity,
+	SecurityEventStatus,
+	ThreatLevel,
+} from './security-event';
+
 export const entities = {
 	EventDestinations,
 	InstalledNodes,

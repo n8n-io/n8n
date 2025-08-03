@@ -1,10 +1,4 @@
-import {
-	ComplianceReport,
-	AuditEvent,
-	SecurityEvent,
-	type ComplianceStandard,
-	type ReportFormat,
-} from '@n8n/db';
+import { ComplianceReport, AuditEvent, SecurityEvent, type ComplianceStandard } from '@n8n/db';
 import { Repository } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -44,7 +38,7 @@ describe('ComplianceReportingService', () => {
 		periodEnd: new Date('2023-12-31'),
 		generatedBy: 'admin-123',
 		projectId: 'project-123',
-		format: 'PDF',
+		format: 'pdf',
 		parameters: { includeDetails: true },
 	};
 
@@ -146,7 +140,7 @@ describe('ComplianceReportingService', () => {
 					periodEnd: mockReportOptions.periodEnd,
 					generatedBy: 'admin-123',
 					projectId: 'project-123',
-					format: 'PDF',
+					format: 'pdf',
 				}),
 			);
 
@@ -299,7 +293,7 @@ describe('ComplianceReportingService', () => {
 				total: 2,
 			});
 
-			const result = await complianceReportingService.generateReport({
+			await complianceReportingService.generateReport({
 				...mockReportOptions,
 				complianceStandard: 'SOX',
 			});
@@ -355,7 +349,7 @@ describe('ComplianceReportingService', () => {
 				mockSecurityQueryBuilder as any,
 			);
 
-			const result = await complianceReportingService.generateReport({
+			await complianceReportingService.generateReport({
 				...mockReportOptions,
 				complianceStandard: 'GDPR',
 			});
@@ -406,7 +400,7 @@ describe('ComplianceReportingService', () => {
 				mockSecurityQueryBuilder as any,
 			);
 
-			const result = await complianceReportingService.generateReport({
+			await complianceReportingService.generateReport({
 				...mockReportOptions,
 				complianceStandard: 'HIPAA',
 			});
@@ -455,7 +449,7 @@ describe('ComplianceReportingService', () => {
 
 			await complianceReportingService.generateReport({
 				...mockReportOptions,
-				format: 'JSON',
+				format: 'json',
 			});
 
 			expect(writeFile).toHaveBeenCalledWith(
@@ -469,7 +463,7 @@ describe('ComplianceReportingService', () => {
 
 			await complianceReportingService.generateReport({
 				...mockReportOptions,
-				format: 'CSV',
+				format: 'csv',
 			});
 
 			expect(writeFile).toHaveBeenCalledWith(
@@ -483,7 +477,7 @@ describe('ComplianceReportingService', () => {
 
 			await complianceReportingService.generateReport({
 				...mockReportOptions,
-				format: 'PDF',
+				format: 'pdf',
 			});
 
 			expect(writeFile).toHaveBeenCalledWith(
@@ -497,7 +491,7 @@ describe('ComplianceReportingService', () => {
 
 			await complianceReportingService.generateReport({
 				...mockReportOptions,
-				format: 'EXCEL',
+				format: 'excel',
 			});
 
 			expect(writeFile).toHaveBeenCalledWith(
@@ -684,7 +678,7 @@ describe('ComplianceReportingService', () => {
 				mockSecurityQueryBuilder as any,
 			);
 
-			const result = await complianceReportingService.generateReport(mockReportOptions);
+			await complianceReportingService.generateReport(mockReportOptions);
 
 			// Verify that compliance score was calculated and stored
 			expect(mockComplianceReportRepository.update).toHaveBeenCalledWith(

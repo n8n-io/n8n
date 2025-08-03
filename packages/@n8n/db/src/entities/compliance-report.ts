@@ -17,7 +17,7 @@ export type ComplianceStandard =
 
 export type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed' | 'archived';
 
-export type ReportFormat = 'PDF' | 'EXCEL' | 'CSV' | 'JSON';
+export type ReportFormat = 'pdf' | 'excel' | 'csv' | 'json';
 
 @Entity('compliance_report')
 @Index(['complianceStandard', 'createdAt'])
@@ -83,7 +83,7 @@ export class ComplianceReport extends WithTimestampsAndStringId {
 	/**
 	 * Format of the generated report
 	 */
-	@Column({ type: 'varchar', length: 10, default: 'PDF' })
+	@Column({ type: 'varchar', length: 10, default: 'pdf' })
 	format: ReportFormat;
 
 	/**

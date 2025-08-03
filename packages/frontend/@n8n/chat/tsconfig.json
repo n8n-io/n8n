@@ -14,6 +14,7 @@
 		"resolveJsonModule": true,
 		"types": ["vitest/globals"],
 		"paths": {
+			"@/*": ["./*"],
 			"@n8n/chat/*": ["./*"],
 			"@n8n/design-system*": ["../../design-system/src*"]
 		},

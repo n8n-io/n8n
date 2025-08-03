@@ -655,7 +655,7 @@ export class EnhancedRoleManagementService {
 
 	private async validateRoleAssignmentPermissions(
 		assignerUser: User,
-		assignment: RoleAssignmentRequestDto,
+		_assignment: RoleAssignmentRequestDto,
 	): Promise<void> {
 		// Validate assigner has permission to assign this role
 		if (!['global:owner', 'global:admin'].includes(assignerUser.role)) {
@@ -671,7 +671,7 @@ export class EnhancedRoleManagementService {
 		return assignments.map((a) => a.roleId);
 	}
 
-	private async getUserPermissions(userId: string, context?: any): Promise<any[]> {
+	private async getUserPermissions(userId: string, _context?: any): Promise<any[]> {
 		// Get user's effective permissions from all assigned roles
 		const roles = await this.getUserRoles(userId);
 		const permissions: any[] = [];

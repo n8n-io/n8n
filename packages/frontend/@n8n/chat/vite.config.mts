@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig, PluginOption } from 'vite';
 import { resolve } from 'path';
-import { renameSync, writeFileSync, readFileSync } from 'fs';
+import { renameSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
@@ -46,7 +46,10 @@ export default mergeConfig(
 					const cssPath = resolve(__dirname, 'dist', 'chat.css');
 					const newCssPath = resolve(__dirname, 'dist', 'style.css');
 					try {
-						renameSync(cssPath, newCssPath);
+						// Check if file exists before renaming (prevents errors during test runs)
+						if (existsSync(cssPath)) {
+							renameSync(cssPath, newCssPath);
+						}
 					} catch (error) {
 						console.error('Failed to rename chat.css file:', error);
 					}
@@ -57,9 +60,12 @@ export default mergeConfig(
 				closeBundle() {
 					const cssPath = resolve(__dirname, 'dist', 'style.css');
 					try {
-						const cssContent = readFileSync(cssPath, 'utf-8');
-						const updatedCssContent = banner + '\n' + cssContent;
-						writeFileSync(cssPath, updatedCssContent, 'utf-8');
+						// Check if file exists before processing (prevents errors during test runs)
+						if (existsSync(cssPath)) {
+							const cssContent = readFileSync(cssPath, 'utf-8');
+							const updatedCssContent = banner + '\n' + cssContent;
+							writeFileSync(cssPath, updatedCssContent, 'utf-8');
+						}
 					} catch (error) {
 						console.error('Failed to inject build version into CSS file:', error);
 					}

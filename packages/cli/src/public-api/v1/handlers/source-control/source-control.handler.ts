@@ -15,7 +15,7 @@ import { EventService } from '@/events/event.service';
 
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
-	globalScope,
+	// globalScope, // Unused import
 } from '../../shared/middlewares/global.middleware';
 
 export = {
@@ -129,7 +129,7 @@ export = {
 			apiKeyScope: 'sourceControl:pull',
 			globalScope: 'sourceControl:manage',
 		}),
-		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
+		async (_req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
 				return res

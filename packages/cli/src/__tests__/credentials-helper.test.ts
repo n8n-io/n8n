@@ -373,7 +373,18 @@ describe('CredentialsHelper', () => {
 
 			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
 
-			const parsedUpdatedData = jsonParse(decryptedUpdatedData);
+			const parsedUpdatedData = jsonParse(decryptedUpdatedData) as {
+				clientId: string;
+				clientSecret: string;
+				scope: string;
+				customField: string;
+				oauthTokenData: {
+					access_token: string;
+					refresh_token: string;
+					expires_in: number;
+					token_type: string;
+				};
+			};
 
 			expect(parsedUpdatedData).toEqual({
 				clientId: 'existing-client-id',
@@ -395,13 +406,9 @@ describe('CredentialsHelper', () => {
 			expect(parsedUpdatedData.scope).toBe('read write');
 
 			expect(parsedUpdatedData.customField).toBe('custom-value');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.access_token).toBe('new-access-token');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.refresh_token).toBe('new-refresh-token');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
 	});

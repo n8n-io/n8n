@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { VersionedNodeType } from '../src/versioned-node-type';
 import type { INodeTypeBaseDescription, INodeType } from '../src/interfaces';
 
@@ -6,7 +7,7 @@ describe('VersionedNodeType', () => {
 		description: {
 			displayName: `Test Node v${version}`,
 			name: 'testNode',
-			group: ['test'],
+			group: ['transform'],
 			version,
 			description: `Test node version ${version}`,
 			defaults: {},
@@ -20,7 +21,7 @@ describe('VersionedNodeType', () => {
 	const createMockBaseDescription = (defaultVersion?: number): INodeTypeBaseDescription => ({
 		displayName: 'Test Node',
 		name: 'testNode',
-		group: ['test'],
+		group: ['transform'],
 		description: 'Test node description',
 		defaultVersion,
 	});

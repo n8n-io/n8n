@@ -16,7 +16,9 @@ import type {
 	INodePropertyCollection,
 	INodeParameterResourceLocator,
 	ResourceMapperValue,
+	ResourceMapperField,
 	FilterValue,
+	FilterConditionValue,
 } from '../src/interfaces';
 
 describe('type-guards', () => {
@@ -403,8 +405,11 @@ describe('type-guards', () => {
 		it('should return true for valid ResourceMapperValue', () => {
 			const mapperValue: ResourceMapperValue = {
 				mappingMode: 'defineBelow',
-				schema: {},
+				schema: [] as ResourceMapperField[],
 				value: {},
+				matchingColumns: [],
+				attemptToConvertTypes: false,
+				convertFieldsToString: false,
 			};
 
 			expect(isResourceMapperValue(mapperValue)).toBe(true);
@@ -452,8 +457,14 @@ describe('type-guards', () => {
 	describe('isFilterValue', () => {
 		it('should return true for valid FilterValue', () => {
 			const filterValue: FilterValue = {
-				conditions: {},
+				conditions: [] as FilterConditionValue[],
 				combinator: 'and',
+				options: {
+					caseSensitive: false,
+					leftValue: '',
+					typeValidation: 'strict',
+					version: 2,
+				},
 			};
 
 			expect(isFilterValue(filterValue)).toBe(true);
