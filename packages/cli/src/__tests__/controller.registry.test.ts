@@ -1,8 +1,8 @@
 jest.mock('@n8n/backend-common', (): Record<string, unknown> => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const actual = jest.requireActual('@n8n/backend-common');
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		...actual,
 		inProduction: true,
 	};

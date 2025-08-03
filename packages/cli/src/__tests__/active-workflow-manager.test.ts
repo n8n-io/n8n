@@ -76,7 +76,7 @@ describe('ActiveWorkflowManager', () => {
 			['should activate if poll method exists', pollNode, [], true],
 			['should activate if trigger method exists', triggerNode, [], true],
 			['should activate if webhook method exists', webhookNode, [], true],
-		])('%s', async (_, node, ignoredNodes, expected) => {
+		])('%s', (_, node, ignoredNodes, expected) => {
 			const workflow = new Workflow(mock<WorkflowParameters>({ nodeTypes, nodes: [node] }));
 			const canBeActivated = activeWorkflowManager.checkIfWorkflowCanBeActivated(
 				workflow,

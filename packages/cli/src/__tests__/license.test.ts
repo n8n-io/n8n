@@ -48,20 +48,27 @@ describe('License', () => {
 		await license.init();
 	});
 
-	test('initializes license manager', async () => {
+	test('initializes license manager', () => {
 		expect(LicenseManager).toHaveBeenCalledWith(
 			expect.objectContaining({
 				autoRenewEnabled: true,
 				autoRenewOffset: MOCK_RENEW_OFFSET,
 				offlineMode: false,
 				renewOnInit: true,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				deviceFingerprint: expect.any(Function),
 				productIdentifier: `n8n-${N8N_VERSION}`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				loadCertStr: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				saveCertStr: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				onFeatureChange: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				onLicenseRenewed: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				collectUsageMetrics: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
 				tenantId: 1,
@@ -86,13 +93,20 @@ describe('License', () => {
 				autoRenewOffset: MOCK_RENEW_OFFSET,
 				offlineMode: true,
 				renewOnInit: false,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				deviceFingerprint: expect.any(Function),
 				productIdentifier: `n8n-${N8N_VERSION}`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				loadCertStr: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				saveCertStr: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				onFeatureChange: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				onLicenseRenewed: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				collectUsageMetrics: expect.any(Function),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
 				tenantId: 1,
@@ -130,19 +144,19 @@ describe('License', () => {
 		expect(LicenseManager.prototype.getCurrentEntitlements).toHaveBeenCalled();
 	});
 
-	test('check fetching feature values', async () => {
+	test('check fetching feature values', () => {
 		license.getValue(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check management jwt', async () => {
+	test('check management jwt', () => {
 		license.getManagementJwt();
 
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
 
-	test('getMainPlan() returns the latest main entitlement', async () => {
+	test('getMainPlan() returns the latest main entitlement', () => {
 		// mock entitlements response
 		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
 			{

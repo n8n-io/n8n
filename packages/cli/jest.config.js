@@ -13,4 +13,10 @@ module.exports = {
 	],
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
 	prettierPath: null,
+	// Performance optimizations
+	maxWorkers: process.env.CI ? 1 : '25%', // Reduce workers for integration tests
+	testTimeout: 30000, // Increase timeout for integration tests
+	workerIdleMemoryLimit: '256MB', // Reduce memory per worker
+	detectOpenHandles: false, // Disable for performance unless debugging
+	forceExit: true, // Force exit to prevent hanging
 };

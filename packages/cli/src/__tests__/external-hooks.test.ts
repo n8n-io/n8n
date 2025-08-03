@@ -96,12 +96,18 @@ describe('ExternalHooks', () => {
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const hookInvocationContext = hookFn.mock.instances[0];
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(hookInvocationContext.dbCollections).toEqual({
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				User: userRepository,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				Settings: settingsRepository,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				Credentials: credentialsRepository,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				Workflow: workflowRepository,
 			});
 		});

@@ -52,7 +52,7 @@
       "description": "Resolve \"No input files found\" errors in parallel build execution",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "Parallel build commands execute without \"No input files found\" errors",
         "tsc-alias command finds input files correctly",
@@ -71,7 +71,7 @@
       "description": "Resolve ESLint errors in test files to improve code quality",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All ESLint errors resolved in test files",
         "npm run lint passes without errors",
@@ -91,7 +91,7 @@
       "description": "Resolve failing integration tests in public API endpoints",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All integration tests pass successfully",
         "npm run test completes without failures",
@@ -101,7 +101,189 @@
         "test/integration/public-api/endpoints-with-scopes-enabled.test.ts"
       ],
       "created_at": "2025-08-01T22:12:35.170Z",
-      "is_test_fix_task": true
+      "is_test_fix_task": true,
+      "subtasks": [
+        {
+          "id": "investigate-test-failure-1754198055940",
+          "title": "Investigate Integration Test Failure Root Cause",
+          "description": "Analyze the endpoints-with-scopes-enabled.test.ts failure to identify specific root causes (timeout, setup issues, dependency problems)",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-failing-tests-1754086355170",
+          "success_criteria": [
+            "Root cause of test failure identified",
+            "Test error logs captured and analyzed",
+            "Specific failure points documented",
+            "Dependencies and setup requirements validated"
+          ],
+          "important_files": [
+            "packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts",
+            "packages/cli/test/setup.ts",
+            "packages/cli/jest.config.js"
+          ],
+          "estimate": "2-3 hours",
+          "created_at": "2025-08-03T05:14:15.940Z"
+        },
+        {
+          "id": "fix-test-setup-issues-1754198055940",
+          "title": "Fix Test Environment Setup Issues",
+          "description": "Resolve database setup, test configuration, or dependency issues preventing integration tests from running",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-failing-tests-1754086355170",
+          "success_criteria": [
+            "Test environment properly initialized",
+            "Database connections established correctly",
+            "Test utilities and mocks configured",
+            "Test isolation working properly"
+          ],
+          "important_files": [
+            "packages/cli/test/setup.ts",
+            "packages/cli/test/setup-mocks.ts",
+            "packages/cli/jest.config.js",
+            "packages/@n8n/backend-test-utils/"
+          ],
+          "estimate": "3-4 hours",
+          "created_at": "2025-08-03T05:14:15.940Z"
+        },
+        {
+          "id": "resolve-api-endpoint-issues-1754198055940",
+          "title": "Fix Public API Endpoint Implementation Issues",
+          "description": "Resolve specific API endpoint bugs causing test failures in scoped endpoints functionality",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "fix-failing-tests-1754086355170",
+          "success_criteria": [
+            "API endpoints respond correctly to test requests",
+            "Scope-based permissions working as expected",
+            "Authentication and authorization functioning",
+            "Response formats match expected schemas"
+          ],
+          "important_files": [
+            "packages/cli/src/controllers/",
+            "packages/cli/src/middleware/",
+            "packages/cli/src/services/",
+            "@n8n/api-types/src/dto/"
+          ],
+          "estimate": "4-6 hours",
+          "created_at": "2025-08-03T05:14:15.940Z"
+        },
+        {
+          "id": "validate-test-fixes-1754198055940",
+          "title": "Validate Integration Test Fixes",
+          "description": "Run comprehensive test validation to ensure all integration test issues are resolved",
+          "mode": "DEVELOPMENT",
+          "priority": "medium",
+          "status": "pending",
+          "parent_task_id": "fix-failing-tests-1754086355170",
+          "success_criteria": [
+            "endpoints-with-scopes-enabled.test.ts passes completely",
+            "Related integration tests continue to pass",
+            "Test execution time within acceptable limits",
+            "No regression in other test suites"
+          ],
+          "important_files": [
+            "packages/cli/test/integration/public-api/",
+            "packages/cli/test/integration/"
+          ],
+          "estimate": "1-2 hours",
+          "created_at": "2025-08-03T05:14:15.940Z"
+        }
+      ]
+    },
+    {
+      "id": "investigate-test-failure-1754198055940",
+      "title": "Investigate Integration Test Failure Root Cause",
+      "description": "Analyze the endpoints-with-scopes-enabled.test.ts failure to identify specific root causes (timeout, setup issues, dependency problems)",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "completed",
+      "parent_task_id": "fix-failing-tests-1754086355170",
+      "success_criteria": [
+        "Root cause of test failure identified",
+        "Test error logs captured and analyzed",
+        "Specific failure points documented",
+        "Dependencies and setup requirements validated"
+      ],
+      "important_files": [
+        "packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts",
+        "packages/cli/test/setup.ts",
+        "packages/cli/jest.config.js",
+        "./development/research-reports/test-failure-investigation-1754198055940.md"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T05:14:15.940Z"
+    },
+    {
+      "id": "fix-test-setup-issues-1754198055940",
+      "title": "Fix Test Environment Setup Issues",
+      "description": "Resolve database setup, test configuration, or dependency issues preventing integration tests from running",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "completed",
+      "parent_task_id": "fix-failing-tests-1754086355170",
+      "success_criteria": [
+        "Test environment properly initialized",
+        "Database connections established correctly",
+        "Test utilities and mocks configured",
+        "Test isolation working properly"
+      ],
+      "important_files": [
+        "packages/cli/test/setup.ts",
+        "packages/cli/test/setup-mocks.ts",
+        "packages/cli/jest.config.js",
+        "packages/@n8n/backend-test-utils/",
+        "./development/research-reports/test-setup-optimization-1754198055940.md"
+      ],
+      "estimate": "3-4 hours",
+      "created_at": "2025-08-03T05:14:15.940Z"
+    },
+    {
+      "id": "resolve-api-endpoint-issues-1754198055940",
+      "title": "Fix Public API Endpoint Implementation Issues",
+      "description": "Resolve specific API endpoint bugs causing test failures in scoped endpoints functionality",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "completed",
+      "parent_task_id": "fix-failing-tests-1754086355170",
+      "success_criteria": [
+        "API endpoints respond correctly to test requests",
+        "Scope-based permissions working as expected",
+        "Authentication and authorization functioning",
+        "Response formats match expected schemas"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/",
+        "packages/cli/src/middleware/",
+        "packages/cli/src/services/",
+        "@n8n/api-types/src/dto/"
+      ],
+      "estimate": "4-6 hours",
+      "created_at": "2025-08-03T05:14:15.940Z"
+    },
+    {
+      "id": "validate-test-fixes-1754198055940",
+      "title": "Validate Integration Test Fixes",
+      "description": "Run comprehensive test validation to ensure all integration test issues are resolved",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "completed",
+      "parent_task_id": "fix-failing-tests-1754086355170",
+      "success_criteria": [
+        "endpoints-with-scopes-enabled.test.ts passes completely",
+        "Related integration tests continue to pass",
+        "Test execution time within acceptable limits",
+        "No regression in other test suites"
+      ],
+      "important_files": [
+        "packages/cli/test/integration/public-api/",
+        "packages/cli/test/integration/"
+      ],
+      "estimate": "1-2 hours",
+      "created_at": "2025-08-03T05:14:15.940Z"
     },
     {
       "id": "typescript-build-parallelization-1753998821937",
@@ -957,9 +1139,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "TASK_CREATION",
-  "execution_count": 180,
-  "last_hook_activation": 1754192609460,
+  "last_mode": "DEVELOPMENT",
+  "execution_count": 189,
+  "last_hook_activation": 1754200609142,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

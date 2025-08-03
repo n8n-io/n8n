@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	INodeCredentialsDetails,
 } from 'n8n-workflow';
-import { deepCopy, Workflow } from 'n8n-workflow';
+import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -136,13 +136,21 @@ describe('CredentialsHelper', () => {
 							type: 'generic',
 							properties: {
 								headers: {
+									// eslint-disable-next-line @typescript-eslint/naming-convention
 									Authorization: '=Bearer {{$credentials.accessToken}}',
 								},
 							},
 						};
 					})(),
 				},
-				output: { url: '', headers: { Authorization: 'Bearer test' }, qs: {} },
+				output: {
+					url: '',
+					headers: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Authorization: 'Bearer test',
+					},
+					qs: {},
+				},
 			},
 			{
 				description: 'headerAuth, key and value expressions',
@@ -168,6 +176,7 @@ describe('CredentialsHelper', () => {
 							type: 'generic',
 							properties: {
 								headers: {
+									// eslint-disable-next-line @typescript-eslint/naming-convention
 									'={{$credentials.accessToken}}': '=Bearer {{$credentials.accessToken}}',
 								},
 							},
@@ -229,10 +238,12 @@ describe('CredentialsHelper', () => {
 							},
 						];
 
+						// eslint-disable-next-line @typescript-eslint/require-await
 						async authenticate(
 							credentials: ICredentialDataDecryptedObject,
 							requestOptions: IHttpRequestOptions,
 						): Promise<IHttpRequestOptions> {
+							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-base-to-string
 							requestOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 							requestOptions.qs!.user = credentials.user;
 							return requestOptions;
@@ -241,7 +252,10 @@ describe('CredentialsHelper', () => {
 				},
 				output: {
 					url: '',
-					headers: { Authorization: 'Bearer test' },
+					headers: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Authorization: 'Bearer test',
+					},
 					qs: { user: 'testUser' },
 				},
 			},
@@ -343,7 +357,9 @@ describe('CredentialsHelper', () => {
 					id: 'cred-123',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					data: expect.any(String),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(Date),
 				}),
 			);
@@ -356,7 +372,8 @@ describe('CredentialsHelper', () => {
 			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
 
 			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
-			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
+
+			const parsedUpdatedData = jsonParse(decryptedUpdatedData);
 
 			expect(parsedUpdatedData).toEqual({
 				clientId: 'existing-client-id',
@@ -372,12 +389,19 @@ describe('CredentialsHelper', () => {
 			});
 
 			expect(parsedUpdatedData.clientId).toBe('existing-client-id');
+
 			expect(parsedUpdatedData.clientSecret).toBe('existing-client-secret');
+
 			expect(parsedUpdatedData.scope).toBe('read write');
+
 			expect(parsedUpdatedData.customField).toBe('custom-value');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.access_token).toBe('new-access-token');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.refresh_token).toBe('new-refresh-token');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
 	});
