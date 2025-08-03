@@ -40,7 +40,7 @@ export const PLAYGROUND_1: WorkflowDataCreate = {
 			typeVersion: 3.4,
 			position: [160, 272],
 			id: '42d065cd-1580-4b2a-8cc6-796be9a1da2a',
-			name: 'Set Category = Personnal',
+			name: 'Set Category = Personal',
 		},
 		{
 			parameters: {
@@ -179,7 +179,7 @@ export const PLAYGROUND_1: WorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'## ▶ Click to start\n\n1. Click the orange `Execute Worfklow` button  \n2. Double-click nodes to view data flows\n2. Re-run to see results change',
+					'## ▶ Click to start\n\n1. Click the orange `Execute Workflow` button  \n2. Double-click nodes to view data flows\n2. Re-run to see results change',
 				height: 448,
 				width: 368,
 				color: 4,

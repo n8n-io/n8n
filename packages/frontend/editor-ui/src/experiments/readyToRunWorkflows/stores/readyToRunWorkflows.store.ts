@@ -18,7 +18,7 @@ import { PLAYGROUND_4 } from '../workflows/4_playground';
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
 
 export const useReadyToRunWorkflowsStore = defineStore(
-	STORES.EXPERIMENT_READY_TO_RUN_WORKFLWOS,
+	STORES.EXPERIMENT_READY_TO_RUN_WORKFLOWS,
 	() => {
 		const telemetry = useTelemetry();
 		const i18n = useI18n();
