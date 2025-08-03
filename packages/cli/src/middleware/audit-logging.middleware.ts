@@ -616,7 +616,7 @@ export class AuditLoggingMiddleware {
 	/**
 	 * Analyze authentication context for anomalies
 	 */
-	private analyzeAuthenticationContext(req: AuditableRequest): {
+	private analyzeAuthenticationContext(_req: AuditableRequest): {
 		suspicious: boolean;
 		score: number;
 		indicators: string[];

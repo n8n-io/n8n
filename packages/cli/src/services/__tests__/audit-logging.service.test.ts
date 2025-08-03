@@ -1,9 +1,5 @@
-import {
-	AuditEvent,
-	type AuditEventType,
-	type AuditEventCategory,
-	type AuditEventSeverity,
-} from '@n8n/db';
+import { AuditEvent } from '@n8n/db';
+import type { AuditEventType, AuditEventSeverity } from '@n8n/db/src/entities/audit-event';
 import { Repository } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -25,7 +21,6 @@ describe('AuditLoggingService', () => {
 		headers: { 'user-agent': 'test-agent' },
 		query: { test: 'value' },
 		params: { id: '123' },
-		sessionID: 'session-123',
 	});
 
 	const mockAuditEventData: IAuditEventData = {

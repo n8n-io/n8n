@@ -28,12 +28,28 @@ describe('UserAnalyticsService', () => {
 	let eventService: EventService;
 
 	beforeEach(() => {
-		userRepository = mock<UserRepository>();
-		workflowRepository = mock<WorkflowRepository>();
-		credentialsRepository = mock<CredentialsRepository>();
-		executionRepository = mock<ExecutionRepository>();
-		cacheService = mock<CacheService>();
-		eventService = mock<EventService>();
+		userRepository = {
+			findOneBy: jest.fn(),
+			find: jest.fn(),
+			count: jest.fn(),
+		} as any;
+		workflowRepository = {
+			count: jest.fn(),
+		} as any;
+		credentialsRepository = {
+			count: jest.fn(),
+		} as any;
+		executionRepository = {
+			count: jest.fn(),
+		} as any;
+		cacheService = {
+			get: jest.fn(),
+			set: jest.fn(),
+			delete: jest.fn(),
+		} as any;
+		eventService = {
+			emit: jest.fn(),
+		} as any;
 
 		userAnalyticsService = new UserAnalyticsService(
 			mock(),
@@ -64,12 +80,12 @@ describe('UserAnalyticsService', () => {
 				createdAt: new Date('2024-01-01T10:00:00Z'),
 			});
 
-			userRepository.findOneBy.mockResolvedValue(mockUser);
-			workflowRepository.count.mockResolvedValue(5);
-			executionRepository.count.mockResolvedValue(25);
-			credentialsRepository.count.mockResolvedValue(3);
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(mockUser);
+			(workflowRepository.count as jest.Mock).mockResolvedValue(5);
+			(executionRepository.count as jest.Mock).mockResolvedValue(25);
+			(credentialsRepository.count as jest.Mock).mockResolvedValue(3);
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await userAnalyticsService.getUserMetrics(userId, query);
 
@@ -110,7 +126,7 @@ describe('UserAnalyticsService', () => {
 				mostActiveDayOfWeek: 2,
 			};
 
-			cacheService.get.mockResolvedValue(cachedMetrics);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedMetrics);
 
 			const result = await userAnalyticsService.getUserMetrics(userId, query);
 
@@ -125,8 +141,8 @@ describe('UserAnalyticsService', () => {
 				includeInactive: false,
 			};
 
-			userRepository.findOneBy.mockResolvedValue(null);
-			cacheService.get.mockResolvedValue(null);
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(null);
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
 
 			await expect(userAnalyticsService.getUserMetrics(userId, query)).rejects.toThrow(
 				'User not found',
@@ -141,8 +157,8 @@ describe('UserAnalyticsService', () => {
 				includeInactive: false,
 			};
 
-			userRepository.count.mockResolvedValueOnce(100); // total users
-			userRepository.count
+			(userRepository.count as jest.Mock).mockResolvedValueOnce(100); // total users
+			(userRepository.count as jest.Mock)
 				.mockResolvedValueOnce(15) // active today
 				.mockResolvedValueOnce(45) // active this week
 				.mockResolvedValueOnce(80) // active this month
@@ -159,9 +175,9 @@ describe('UserAnalyticsService', () => {
 					lastActiveAt: new Date('2024-01-15T10:00:00Z'),
 				},
 			];
-			userRepository.find.mockResolvedValue(mockTopUsers);
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(userRepository.find as jest.Mock).mockResolvedValue(mockTopUsers);
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await userAnalyticsService.getSystemUserAnalytics(query);
 
@@ -205,7 +221,7 @@ describe('UserAnalyticsService', () => {
 				topUsers: [],
 			};
 
-			cacheService.get.mockResolvedValue(cachedAnalytics);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedAnalytics);
 
 			const result = await userAnalyticsService.getSystemUserAnalytics(query);
 
@@ -224,9 +240,9 @@ describe('UserAnalyticsService', () => {
 				lastActiveAt: new Date('2024-01-15T10:00:00Z'),
 			});
 
-			userRepository.findOneBy.mockResolvedValue(mockUser);
-			cacheService.get.mockResolvedValue(null);
-			cacheService.set.mockResolvedValue();
+			(userRepository.findOneBy as jest.Mock).mockResolvedValue(mockUser);
+			(cacheService.get as jest.Mock).mockResolvedValue(null);
+			(cacheService.set as jest.Mock).mockResolvedValue(undefined);
 
 			const result = await userAnalyticsService.getUserEngagementAnalytics(userId);
 
@@ -280,7 +296,7 @@ describe('UserAnalyticsService', () => {
 				},
 			};
 
-			cacheService.get.mockResolvedValue(cachedEngagement);
+			(cacheService.get as jest.Mock).mockResolvedValue(cachedEngagement);
 
 			const result = await userAnalyticsService.getUserEngagementAnalytics(userId);
 
@@ -300,7 +316,7 @@ describe('UserAnalyticsService', () => {
 				userAgent: 'Mozilla/5.0...',
 			};
 
-			cacheService.deleteByPattern.mockResolvedValue();
+			(cacheService.delete as jest.Mock).mockResolvedValue(undefined);
 
 			await userAnalyticsService.trackUserActivity(activityEvent);
 
@@ -311,13 +327,9 @@ describe('UserAnalyticsService', () => {
 				metadata: activityEvent.metadata,
 			});
 
-			expect(cacheService.deleteByPattern).toHaveBeenCalledWith(
-				`user-metrics:${activityEvent.userId}:*`,
-			);
-			expect(cacheService.deleteByPattern).toHaveBeenCalledWith(
-				`user-engagement:${activityEvent.userId}`,
-			);
-			expect(cacheService.deleteByPattern).toHaveBeenCalledWith('system-analytics:*');
+			expect(cacheService.delete).toHaveBeenCalledWith(`user-metrics:${activityEvent.userId}`);
+			expect(cacheService.delete).toHaveBeenCalledWith(`user-engagement:${activityEvent.userId}`);
+			expect(cacheService.delete).toHaveBeenCalledWith('system-analytics');
 		});
 
 		it('should handle different activity types', async () => {

@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { randomInt, type IRunExecutionData } from 'n8n-workflow';
+import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -285,7 +285,7 @@ describe('ExecutionRecoveryService', () => {
 				if (!manualTriggerTaskData) fail("Expected manual trigger's `taskData` to be defined");
 				if (!debugHelperTaskData) fail("Expected debug helper's `taskData` to be defined");
 
-				const originalResultData = IN_PROGRESS_EXECUTION_DATA.resultData as IRunExecutionData;
+				const originalResultData = IN_PROGRESS_EXECUTION_DATA.resultData;
 				const runDataArray = originalResultData.runData['when_clicking_execute_workflow'];
 				const originalManualTriggerTaskData = runDataArray.at(0)?.data;
 

@@ -1,0 +1,40 @@
+get:
+  x-eov-operation-id: getRepositoryStatus
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Get repository status information
+  description: Retrieves current repository status including branch information and changes.
+  responses:
+    '200':
+      description: Repository status information
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              connected:
+                type: boolean
+                description: Whether the repository is connected
+              branch:
+                type: string
+                description: Current active branch
+              branches:
+                type: array
+                items:
+                  type: string
+                description: List of available branches
+              hasChanges:
+                type: boolean
+                description: Whether there are uncommitted changes
+              lastSync:
+                type: string
+                format: date-time
+                description: Last synchronization timestamp
+                nullable: true
+              repositoryUrl:
+                type: string
+                description: Repository URL
+                nullable: true
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'

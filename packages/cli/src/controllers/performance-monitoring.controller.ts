@@ -139,7 +139,7 @@ export class PerformanceMonitoringController {
 	@Get('/metrics/performance')
 	async getPerformanceMetrics(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Query query: PerformanceMetricsRequestDto,
 	): Promise<PerformanceMetricsDto> {
 		try {
@@ -219,7 +219,7 @@ export class PerformanceMonitoringController {
 	 * Get system health status and recommendations
 	 */
 	@Get('/system/health')
-	async getSystemHealth(req: AuthenticatedRequest, res: Response) {
+	async getSystemHealth(req: AuthenticatedRequest, _res: Response) {
 		try {
 			this.logger.debug('Getting system health', {
 				userId: req.user.id,
@@ -254,7 +254,7 @@ export class PerformanceMonitoringController {
 	@Get('/executions/:id/bottlenecks')
 	async getExecutionBottlenecks(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('id') executionId: string,
 	) {
 		try {
@@ -312,6 +312,9 @@ export class PerformanceMonitoringController {
 	 */
 	private parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
 		if (value === undefined) return defaultValue;
-		return value.toLowerCase() === 'true';
+		const normalized = value.toLowerCase();
+		if (normalized === 'true') return true;
+		if (normalized === 'false') return false;
+		return defaultValue; // Return default for invalid values
 	}
 }

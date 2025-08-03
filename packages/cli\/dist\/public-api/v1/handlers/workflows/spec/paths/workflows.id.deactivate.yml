@@ -1,0 +1,20 @@
+post:
+  x-eov-operation-id: deactivateWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Deactivate a workflow
+  description: Deactivate a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Workflow object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

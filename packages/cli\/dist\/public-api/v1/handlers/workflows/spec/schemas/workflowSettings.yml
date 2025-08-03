@@ -1,0 +1,27 @@
+type: object
+additionalProperties: false
+properties:
+  saveExecutionProgress:
+    type: boolean
+  saveManualExecutions:
+    type: boolean
+  saveDataErrorExecution:
+    type: string
+    enum: ['all', 'none']
+  saveDataSuccessExecution:
+    type: string
+    enum: ['all', 'none']
+  executionTimeout:
+    type: number
+    example: 3600
+    maxLength: 3600
+  errorWorkflow:
+    type: string
+    example: 'VzqKEW0ShTXA5vPj'
+    description: The ID of the workflow that contains the error trigger node.
+  timezone:
+    type: string
+    example: America/New_York
+  executionOrder:
+    type: string
+    example: v1

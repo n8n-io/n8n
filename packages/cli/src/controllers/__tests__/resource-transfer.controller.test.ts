@@ -24,10 +24,18 @@ describe('ResourceTransferController', () => {
 	let mockResponse: Response;
 
 	beforeEach(() => {
-		resourceTransferService = mock<ResourceTransferService>();
-		eventService = mock<EventService>();
+		resourceTransferService = {
+			batchTransferWorkflows: jest.fn(),
+			batchTransferCredentials: jest.fn(),
+			transferProjectResources: jest.fn(),
+			analyzeTransferDependencies: jest.fn(),
+			previewTransfer: jest.fn(),
+		} as any;
+		eventService = {
+			emit: jest.fn(),
+		} as any;
 		mockUser = mock<User>({ id: 'user-123', role: 'global:admin' });
-		mockRequest = mock<Request>({ user: mockUser });
+		mockRequest = { user: mockUser } as any;
 		mockResponse = mock<Response>();
 
 		resourceTransferController = new ResourceTransferController(
@@ -60,7 +68,9 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully process batch workflow transfer', async () => {
-			resourceTransferService.batchTransferWorkflows.mockResolvedValue(mockServiceResponse);
+			(resourceTransferService.batchTransferWorkflows as jest.Mock).mockResolvedValue(
+				mockServiceResponse,
+			);
 
 			const result = await resourceTransferController.batchTransferWorkflows(
 				mockRequest as any,
@@ -126,7 +136,7 @@ describe('ResourceTransferController', () => {
 
 		it('should handle service errors gracefully', async () => {
 			const serviceError = new Error('Service unavailable');
-			resourceTransferService.batchTransferWorkflows.mockRejectedValue(serviceError);
+			(resourceTransferService.batchTransferWorkflows as jest.Mock).mockRejectedValue(serviceError);
 
 			await expect(
 				resourceTransferController.batchTransferWorkflows(
@@ -143,7 +153,9 @@ describe('ResourceTransferController', () => {
 				successCount: 1,
 				errorCount: 1,
 			};
-			resourceTransferService.batchTransferWorkflows.mockResolvedValue(partialFailureResponse);
+			(resourceTransferService.batchTransferWorkflows as jest.Mock).mockResolvedValue(
+				partialFailureResponse,
+			);
 
 			await resourceTransferController.batchTransferWorkflows(
 				mockRequest as any,
@@ -180,7 +192,9 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully process batch credential transfer', async () => {
-			resourceTransferService.batchTransferCredentials.mockResolvedValue(mockServiceResponse);
+			(resourceTransferService.batchTransferCredentials as jest.Mock).mockResolvedValue(
+				mockServiceResponse,
+			);
 
 			const result = await resourceTransferController.batchTransferCredentials(
 				mockRequest as any,
@@ -266,7 +280,9 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully process multi-resource transfer', async () => {
-			resourceTransferService.transferProjectResources.mockResolvedValue(mockServiceResponse);
+			(resourceTransferService.transferProjectResources as jest.Mock).mockResolvedValue(
+				mockServiceResponse,
+			);
 
 			const result = await resourceTransferController.transferProjectResources(
 				mockRequest as any,
@@ -343,7 +359,9 @@ describe('ResourceTransferController', () => {
 				summary: { totalProcessed: 1, totalSuccess: 1, totalErrors: 0 },
 			};
 
-			resourceTransferService.transferProjectResources.mockResolvedValue(workflowOnlyResponse);
+			(resourceTransferService.transferProjectResources as jest.Mock).mockResolvedValue(
+				workflowOnlyResponse,
+			);
 
 			const result = await resourceTransferController.transferProjectResources(
 				mockRequest as any,
@@ -398,7 +416,9 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully analyze transfer dependencies', async () => {
-			resourceTransferService.analyzeTransferDependencies.mockResolvedValue(mockServiceResponse);
+			(resourceTransferService.analyzeTransferDependencies as jest.Mock).mockResolvedValue(
+				mockServiceResponse,
+			);
 
 			const result = await resourceTransferController.analyzeTransferDependencies(
 				mockRequest as any,
@@ -440,7 +460,9 @@ describe('ResourceTransferController', () => {
 				},
 			};
 
-			resourceTransferService.analyzeTransferDependencies.mockResolvedValue(credentialResponse);
+			(resourceTransferService.analyzeTransferDependencies as jest.Mock).mockResolvedValue(
+				credentialResponse,
+			);
 
 			const result = await resourceTransferController.analyzeTransferDependencies(
 				mockRequest as any,
@@ -473,7 +495,7 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully generate transfer preview', async () => {
-			resourceTransferService.previewTransfer.mockResolvedValue(mockServiceResponse);
+			(resourceTransferService.previewTransfer as jest.Mock).mockResolvedValue(mockServiceResponse);
 
 			const result = await resourceTransferController.previewTransfer(
 				mockRequest as any,
@@ -531,7 +553,7 @@ describe('ResourceTransferController', () => {
 				],
 			};
 
-			resourceTransferService.previewTransfer.mockResolvedValue(previewWithWarnings);
+			(resourceTransferService.previewTransfer as jest.Mock).mockResolvedValue(previewWithWarnings);
 
 			const result = await resourceTransferController.previewTransfer(
 				mockRequest as any,
@@ -562,7 +584,7 @@ describe('ResourceTransferController', () => {
 		};
 
 		it('should successfully validate workflow transfer', async () => {
-			resourceTransferService.previewTransfer.mockResolvedValue(mockPreviewResponse);
+			(resourceTransferService.previewTransfer as jest.Mock).mockResolvedValue(mockPreviewResponse);
 
 			const result = await resourceTransferController.validateTransfer(
 				mockRequest as any,
@@ -588,7 +610,7 @@ describe('ResourceTransferController', () => {
 				...mockPreviewResponse,
 				summary: { workflows: 0, credentials: 1, folders: 0 },
 			};
-			resourceTransferService.previewTransfer.mockResolvedValue(credentialPreview);
+			(resourceTransferService.previewTransfer as jest.Mock).mockResolvedValue(credentialPreview);
 
 			const result = await resourceTransferController.validateTransfer(
 				mockRequest as any,
@@ -614,7 +636,7 @@ describe('ResourceTransferController', () => {
 				resourceTransferController.validateTransfer(
 					mockRequest as any,
 					mockResponse,
-					'',
+					'workflow' as any,
 					'resource-1',
 					'project-456',
 				),
@@ -623,7 +645,7 @@ describe('ResourceTransferController', () => {
 				resourceTransferController.validateTransfer(
 					mockRequest as any,
 					mockResponse,
-					'',
+					'workflow' as any,
 					'resource-1',
 					'project-456',
 				),
@@ -641,7 +663,7 @@ describe('ResourceTransferController', () => {
 					},
 				],
 			};
-			resourceTransferService.previewTransfer.mockResolvedValue(previewWithWarnings);
+			(resourceTransferService.previewTransfer as jest.Mock).mockResolvedValue(previewWithWarnings);
 
 			const result = await resourceTransferController.validateTransfer(
 				mockRequest as any,

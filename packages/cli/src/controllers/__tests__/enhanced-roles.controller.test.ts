@@ -12,20 +12,21 @@ import type {
 	BulkRoleOperationResponseDto,
 	RoleUsageAnalyticsDto,
 } from '@n8n/api-types';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service';
 import type { EnhancedRoleManagementService } from '@/services/enhanced-role-management.service';
 
 import { EnhancedRolesController } from '../enhanced-roles.controller';
 
 describe('EnhancedRolesController', () => {
-	const eventService = mock<EventService>();
 	const enhancedRoleService = mock<EnhancedRoleManagementService>();
-	const controller = new EnhancedRolesController(mock(), enhancedRoleService, eventService);
+	const eventService = mockInstance(EventService);
+	const controller = new EnhancedRolesController(mock(), enhancedRoleService);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();

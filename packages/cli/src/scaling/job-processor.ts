@@ -11,7 +11,6 @@ import type {
 	StructuredChunk,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
-import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';

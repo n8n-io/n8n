@@ -14,7 +14,6 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
-import { parseRangeQuery } from './parse-range-query.middleware';
 import { validateExecutionUpdatePayload } from './validation';
 
 @RestController('/executions')

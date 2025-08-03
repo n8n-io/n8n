@@ -21,6 +21,7 @@ if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
 	bundleOpenApiSpecs();
+	copyYamlSpecFiles();
 }
 
 function generateUserManagementEmailTemplates() {
@@ -81,4 +82,23 @@ function generateTimezoneData() {
 		return acc;
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
+}
+
+function copyYamlSpecFiles() {
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
+	const destDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+	
+	console.log('Copying YAML specification files...');
+	
+	const yamlFiles = glob.sync('{handlers,shared}/**/spec/**/*.yml', { cwd: sourceDir });
+	
+	yamlFiles.forEach((yamlFile) => {
+		const sourcePath = path.resolve(sourceDir, yamlFile);
+		const destPath = path.resolve(destDir, yamlFile);
+		
+		shell.mkdir('-p', path.dirname(destPath));
+		shell.cp(sourcePath, destPath);
+	});
+	
+	console.log(`Copied ${yamlFiles.length} YAML specification files`);
 }

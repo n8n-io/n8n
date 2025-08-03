@@ -11,11 +11,10 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 	WorkflowExecuteMode,
-	INodeParameters,
 } from 'n8n-workflow';
 // Future import for workflow execution
 // import type { IRunExecutionData } from 'n8n-workflow';
-import { Workflow, ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -123,24 +122,8 @@ export class NodeTypesController {
 				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
 			}
 
-			// Create a minimal workflow for testing
-			const testWorkflow = new Workflow({
-				id: 'test-workflow',
-				name: 'Test Workflow',
-				nodes: [
-					{
-						id: 'test-node',
-						name: 'Test Node',
-						type: nodeType,
-						typeVersion: nodeVersion,
-						position: [100, 100],
-						parameters: parameters as INodeParameters,
-					},
-				],
-				connections: {},
-				active: false,
-				settings: {},
-			} as any); // Cast to any to bypass strict type checking for test workflow
+			// TODO: Create minimal workflow for testing when implementing proper node execution
+			// const testWorkflow = new Workflow({ ... });
 
 			// TODO: Create execution data when implementing proper node testing
 			/*

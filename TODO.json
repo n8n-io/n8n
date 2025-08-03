@@ -2,63 +2,29 @@
   "project": "n8n-monorepo",
   "tasks": [
     {
-      "id": "fix-ai-nodes-controller-test-1754086608346",
-      "title": "Fix TypeScript Errors in AI Nodes Controller Test",
-      "description": "Resolve type assignment errors, missing properties, and enum constant usage in ai-nodes.controller.test.ts",
+      "id": "linter_task_active",
+      "title": "Fix Linter Errors - IMMEDIATE",
+      "description": "Fix 0 errors and 0 warnings found in recently edited files: dev-manager.sh",
       "mode": "DEVELOPMENT",
       "priority": "high",
       "status": "completed",
-      "parent_task_id": "fix-build-ts-errors-1754086355170",
-      "success_criteria": [
-        "All TypeScript errors in ai-nodes.controller.test.ts resolved",
-        "Test file compiles without type errors",
-        "Mock data structures match expected interfaces"
-      ],
       "important_files": [
-        "packages/cli/src/controllers/__tests__/ai-nodes.controller.test.ts"
+        "development/linter-errors.md",
+        "dev-manager.sh"
       ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-01T22:16:48.346Z"
-    },
-    {
-      "id": "fix-performance-monitoring-test-1754086608346",
-      "title": "Fix TypeScript Errors in Performance Monitoring Controller Test",
-      "description": "Resolve import errors, enum constant usage, and DTO type mismatches in performance-monitoring.controller.test.ts",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "pending",
-      "parent_task_id": "fix-build-ts-errors-1754086355170",
       "success_criteria": [
-        "All TypeScript errors in performance-monitoring.controller.test.ts resolved",
-        "Import statements corrected for AuthenticatedRequest and internal-hooks",
-        "Enum constant usage updated to match const enum format",
-        "DTO type structures aligned with expected interfaces"
+        "All linter errors in edited files resolved",
+        "development/linter-errors.md shows no issues for edited files",
+        "Code passes linting without warnings or errors"
       ],
-      "important_files": [
-        "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts",
-        "packages/cli/src/requests.ts",
-        "packages/@n8n/api-types/src/dto/execution-profile.dto.ts"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-01T22:16:48.346Z"
-    },
-    {
-      "id": "fix-enhanced-roles-controller-test-1754086608346",
-      "title": "Fix TypeScript Errors in Enhanced Roles Controller Test",
-      "description": "Resolve function argument mismatch in enhanced-roles.controller.test.ts",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "pending",
-      "parent_task_id": "fix-build-ts-errors-1754086355170",
-      "success_criteria": [
-        "Function call signature corrected in enhanced-roles.controller.test.ts",
-        "Test file compiles without type errors"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts"
-      ],
-      "estimate": "1 hour",
-      "created_at": "2025-08-01T22:16:48.346Z"
+      "created_at": "2025-08-02T16:19:36.974Z",
+      "is_linter_task": true,
+      "linter_summary": {
+        "total_violations": 0,
+        "errors": 0,
+        "warnings": 0,
+        "files_affected": 1
+      }
     },
     {
       "id": "fix-remaining-cli-ts-errors-1754086608346",
@@ -66,7 +32,7 @@
       "description": "Resolve additional TypeScript compilation errors in services and other CLI package files",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "fix-build-ts-errors-1754086355170",
       "success_criteria": [
         "All remaining TypeScript compilation errors in CLI package resolved",
@@ -79,107 +45,6 @@
       ],
       "estimate": "2-4 hours",
       "created_at": "2025-08-01T22:16:48.346Z"
-    },
-    {
-      "id": "fix-build-ts-errors-1754086355170",
-      "title": "Fix TypeScript Compilation Errors in CLI Package",
-      "description": "Resolve TypeScript compilation errors preventing successful build completion",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors resolved",
-        "npm run typecheck passes without errors",
-        "Build completes successfully"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/__tests__/ai-nodes.controller.test.ts",
-        "packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts",
-        "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts"
-      ],
-      "created_at": "2025-08-01T22:12:35.170Z",
-      "is_build_fix_task": true,
-      "subtasks": [
-        {
-          "id": "fix-ai-nodes-controller-test-1754086608346",
-          "title": "Fix TypeScript Errors in AI Nodes Controller Test",
-          "description": "Resolve type assignment errors, missing properties, and enum constant usage in ai-nodes.controller.test.ts",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "fix-build-ts-errors-1754086355170",
-          "success_criteria": [
-            "All TypeScript errors in ai-nodes.controller.test.ts resolved",
-            "Test file compiles without type errors",
-            "Mock data structures match expected interfaces"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/__tests__/ai-nodes.controller.test.ts"
-          ],
-          "estimate": "2-3 hours",
-          "created_at": "2025-08-01T22:16:48.346Z"
-        },
-        {
-          "id": "fix-performance-monitoring-test-1754086608346",
-          "title": "Fix TypeScript Errors in Performance Monitoring Controller Test",
-          "description": "Resolve import errors, enum constant usage, and DTO type mismatches in performance-monitoring.controller.test.ts",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "fix-build-ts-errors-1754086355170",
-          "success_criteria": [
-            "All TypeScript errors in performance-monitoring.controller.test.ts resolved",
-            "Import statements corrected for AuthenticatedRequest and internal-hooks",
-            "Enum constant usage updated to match const enum format",
-            "DTO type structures aligned with expected interfaces"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/__tests__/performance-monitoring.controller.test.ts",
-            "packages/cli/src/requests.ts",
-            "packages/@n8n/api-types/src/dto/execution-profile.dto.ts"
-          ],
-          "estimate": "3-4 hours",
-          "created_at": "2025-08-01T22:16:48.346Z"
-        },
-        {
-          "id": "fix-enhanced-roles-controller-test-1754086608346",
-          "title": "Fix TypeScript Errors in Enhanced Roles Controller Test",
-          "description": "Resolve function argument mismatch in enhanced-roles.controller.test.ts",
-          "mode": "DEVELOPMENT",
-          "priority": "medium",
-          "status": "pending",
-          "parent_task_id": "fix-build-ts-errors-1754086355170",
-          "success_criteria": [
-            "Function call signature corrected in enhanced-roles.controller.test.ts",
-            "Test file compiles without type errors"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/__tests__/enhanced-roles.controller.test.ts"
-          ],
-          "estimate": "1 hour",
-          "created_at": "2025-08-01T22:16:48.346Z"
-        },
-        {
-          "id": "fix-remaining-cli-ts-errors-1754086608346",
-          "title": "Fix Remaining TypeScript Errors in CLI Package",
-          "description": "Resolve additional TypeScript compilation errors in services and other CLI package files",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "fix-build-ts-errors-1754086355170",
-          "success_criteria": [
-            "All remaining TypeScript compilation errors in CLI package resolved",
-            "npm run typecheck passes without errors",
-            "Build completes successfully"
-          ],
-          "important_files": [
-            "packages/cli/src/services/",
-            "packages/cli/src/controllers/"
-          ],
-          "estimate": "2-4 hours",
-          "created_at": "2025-08-01T22:16:48.346Z"
-        }
-      ]
     },
     {
       "id": "fix-cli-build-parallelization-1754086355170",
@@ -237,1944 +102,6 @@
       ],
       "created_at": "2025-08-01T22:12:35.170Z",
       "is_test_fix_task": true
-    },
-    {
-      "id": "build-quality-improvement-1754035808040",
-      "title": "Resolve Remaining Build Issues for 100% Build Strike Success",
-      "description": "Fix remaining TypeScript compilation errors and build failures to achieve 100% build success rate",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors resolved in CLI package",
-        "Build command completes successfully without failures",
-        "Type safety maintained across all services",
-        "Build verification passes 100% of the time"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/audit.controller.ts",
-        "packages/cli/src/controllers/__tests__/",
-        "packages/cli/src/services/"
-      ],
-      "requires_research": false,
-      "created_at": "2025-08-01T08:10:08.040Z",
-      "subtasks": [
-        {
-          "id": "ts-errors-audit-middleware-1754052833527",
-          "title": "Fix TypeScript Errors in Audit and Middleware Components",
-          "description": "Resolve TypeScript compilation errors in audit.controller.ts, audit-logging.middleware.ts, and related service files focusing on type compatibility and property access issues",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "All TypeScript errors in audit.controller.ts resolved",
-            "Middleware type compatibility issues fixed",
-            "AuditEventCategory enum usage corrected",
-            "Property access errors on User and Request objects resolved"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/audit.controller.ts",
-            "packages/cli/src/middleware/audit-logging.middleware.ts",
-            "packages/cli/src/services/audit-logging.service.ts"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "build-quality-improvement-1754035808040"
-        },
-        {
-          "id": "ts-errors-execution-services-1754052833527",
-          "title": "Fix TypeScript Errors in Execution Services",
-          "description": "Resolve compilation errors in execution.service.ts, performance-monitoring.service.ts, and workflow-runner.ts focusing on interface mismatches and return type issues",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Execution service interface compatibility restored",
-            "Performance monitoring service method signatures fixed",
-            "Workflow runner return type issues resolved",
-            "ExecutionEntity vs IExecutionResponse type conflicts resolved"
-          ],
-          "important_files": [
-            "packages/cli/src/executions/execution.service.ts",
-            "packages/cli/src/services/performance-monitoring.service.ts",
-            "packages/cli/src/workflow-runner.ts",
-            "packages/cli/src/scaling/job-processor.ts"
-          ],
-          "estimate": "4-5 hours",
-          "parent_task": "build-quality-improvement-1754035808040"
-        },
-        {
-          "id": "ts-errors-controller-interfaces-1754052833527",
-          "title": "Fix Controller Interface and Request Handler Issues",
-          "description": "Resolve TypeScript errors in executions.controller.ts and other controllers related to RequestHandler type mismatches and Express request interface compatibility",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "RequestHandler type compatibility restored across all controllers",
-            "Express Request interface issues resolved",
-            "ExecutionRequest type definitions fixed",
-            "Response parameter usage standardized"
-          ],
-          "important_files": [
-            "packages/cli/src/executions/executions.controller.ts",
-            "packages/cli/src/controllers/",
-            "@n8n/api-types/src/requests/"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "build-quality-improvement-1754035808040"
-        },
-        {
-          "id": "ts-errors-repository-methods-1754052833527",
-          "title": "Fix Repository Method Signature Issues",
-          "description": "Resolve TypeScript errors related to repository method calls, service dependencies, and data access patterns across various service files",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Repository method signatures aligned with actual implementations",
-            "Service dependency injection issues resolved",
-            "Database entity type compatibility restored",
-            "Service method parameter types corrected"
-          ],
-          "important_files": [
-            "packages/cli/src/services/",
-            "@n8n/db/src/repositories/",
-            "packages/cli/src/controllers/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "build-quality-improvement-1754035808040"
-        }
-      ]
-    },
-    {
-      "id": "lint-quality-improvement-1754035808040",
-      "title": "Achieve 100% Lint Strike Success with Zero Violations",
-      "description": "Fix console.log violations and ensure comprehensive lint coverage across all packages",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Zero linter errors and warnings across all packages",
-        "Console statements properly handled in create-subtasks.js",
-        "ESLint configuration optimized for monorepo",
-        "Lint execution completes in under 30 seconds"
-      ],
-      "important_files": [
-        "create-subtasks.js",
-        "eslint.config.js",
-        "development/linter-errors.md"
-      ],
-      "requires_research": false,
-      "created_at": "2025-08-01T08:10:08.040Z"
-    },
-    {
-      "id": "test-quality-improvement-1754035808040",
-      "title": "Achieve 100% Test Strike Success with Full Coverage",
-      "description": "Fix failing tests and establish comprehensive test coverage across all packages",
-      "mode": "TESTING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All test suites pass successfully",
-        "Test coverage meets 80% minimum threshold",
-        "Coverage reporting functional with HTML reports",
-        "No test execution failures or timeouts"
-      ],
-      "important_files": [
-        "package.json",
-        "jest.config.js",
-        "packages/*/jest.config.js",
-        "turbo.json"
-      ],
-      "requires_research": false,
-      "created_at": "2025-08-01T08:10:08.040Z",
-      "subtasks": [
-        {
-          "id": "test-fix-design-system-timeouts-1754080727099",
-          "title": "Fix UserSelect Component Test Timeouts in Design System",
-          "description": "Resolve timeout issues in design-system UserSelect component tests by optimizing async operations and increasing timeout limits.",
-          "mode": "testing",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "UserSelect component tests pass without timeout errors",
-            "All async user interactions properly awaited",
-            "Test execution time under 10 seconds per test",
-            "Component tests are stable and reliable"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts",
-            "packages/frontend/@n8n/design-system/vite.config.mts",
-            "packages/@n8n/vitest-config/frontend.ts"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "test-quality-improvement-1754035808040"
-        },
-        {
-          "id": "test-config-standardization-1754080727100",
-          "title": "Standardize Test Configuration Across All Packages",
-          "description": "Align Jest and Vitest configurations to use consistent coverage thresholds and optimize test execution settings.",
-          "mode": "testing",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "All packages use 90 percent coverage threshold",
-            "Jest and Vitest configurations aligned",
-            "Test timeouts standardized across packages",
-            "Configuration files follow monorepo best practices"
-          ],
-          "important_files": [
-            "jest.config.cjs",
-            "packages/@n8n/vitest-config/frontend.ts",
-            "packages/*/jest.config.js",
-            "packages/*/vite.config.mts"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "test-quality-improvement-1754035808040"
-        },
-        {
-          "id": "test-missing-coverage-packages-1754080727101",
-          "title": "Add Missing Tests for Backend Utility Packages",
-          "description": "Implement comprehensive test suites for packages currently without tests like backend-common and errors packages.",
-          "mode": "testing",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Test suites created for backend-common package",
-            "Test suites created for errors package",
-            "Utility function tests with over 80 percent coverage",
-            "Error class and factory tests implemented"
-          ],
-          "important_files": [
-            "packages/@n8n/backend-common/src/",
-            "packages/@n8n/errors/src/",
-            "packages/@n8n/backend-common/jest.config.js",
-            "packages/@n8n/errors/jest.config.js"
-          ],
-          "estimate": "4-6 hours",
-          "parent_task": "test-quality-improvement-1754035808040"
-        }
-      ]
-    },
-    {
-      "id": "build-fix-typescript-errors-1753956505476",
-      "title": "Fix TypeScript Compilation Errors in Custom Services",
-      "description": "Resolve TypeScript compilation errors in enhanced-role-management.service.ts, resource-transfer.service.ts, and user-analytics.service.ts",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors resolved",
-        "Build command runs successfully without errors",
-        "Custom services properly typed and functional"
-      ],
-      "important_files": [
-        "packages/cli/src/services/enhanced-role-management.service.ts",
-        "packages/cli/src/services/resource-transfer.service.ts",
-        "packages/cli/src/services/user-analytics.service.ts"
-      ],
-      "created_at": "2025-07-31T10:08:25.476Z",
-      "requires_research": true
-    },
-    {
-      "id": "lint-fix-core-errors-1753956505476",
-      "title": "Fix ESLint Errors in n8n-core Package",
-      "description": "Resolve 5 ESLint errors in n8n-core including jest.config.cjs parsing issues and unsafe any usage",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All ESLint errors in n8n-core package resolved",
-        "jest.config.cjs properly configured for ESLint",
-        "Unsafe any usage replaced with proper types"
-      ],
-      "important_files": [
-        "packages/core/jest.config.cjs",
-        "packages/core/src/errors/error-reporter.ts",
-        "packages/core/eslint.config.mjs"
-      ],
-      "created_at": "2025-07-31T10:08:25.476Z"
-    },
-    {
-      "id": "test-fix-di-failures-1753956505476",
-      "title": "Fix Failing Tests in @n8n/di Package",
-      "description": "Investigate and resolve test failures in @n8n/di package to restore test suite functionality",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All tests in @n8n/di package pass successfully",
-        "Test suite runs without errors",
-        "Proper test coverage maintained"
-      ],
-      "important_files": [
-        "packages/@n8n/di/src/**/*.test.ts",
-        "packages/@n8n/di/jest.config.js",
-        "packages/@n8n/di/package.json"
-      ],
-      "created_at": "2025-07-31T10:08:25.476Z",
-      "requires_research": true
-    },
-    {
-      "id": "coverage-setup-reporting-1753956505476",
-      "title": "Set Up Comprehensive Test Coverage Reporting",
-      "description": "Configure proper test coverage reporting across all packages with HTML reports and coverage thresholds",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Coverage reporting configured for all packages",
-        "HTML coverage reports generated",
-        "Coverage thresholds defined and enforced",
-        "test:coverage:html script working properly"
-      ],
-      "important_files": [
-        "package.json",
-        "packages/*/jest.config.js",
-        "turbo.json"
-      ],
-      "created_at": "2025-07-31T10:08:25.476Z"
-    },
-    {
-      "id": "build-fix-typescript-1753952694054",
-      "title": "Fix TypeScript compilation errors in @n8n/api-types package",
-      "description": "Resolve TypeScript errors in user-analytics.dto.ts preventing build completion. The errors are related to Zod schema class extensions and StaticProperties type mismatches.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "TypeScript compilation succeeds in @n8n/api-types package",
-        "Build command completes without errors",
-        "All type safety maintained"
-      ],
-      "created_at": "2025-07-31T09:04:54.054Z",
-      "requires_research": true
-    },
-    {
-      "id": "build-dependencies-1753952694054",
-      "title": "Verify and fix build dependency chain issues",
-      "description": "Ensure all package build dependencies are correctly configured in turbo.json and package.json files. Some packages may have missing or incorrect dependency specifications.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All package builds complete in correct order",
-        "No dependency resolution errors",
-        "Full monorepo build succeeds"
-      ],
-      "created_at": "2025-07-31T09:04:54.054Z",
-      "requires_research": true
-    },
-    {
-      "id": "lint-performance-1753952694054",
-      "title": "Fix ESLint configuration timeouts and performance",
-      "description": "ESLint execution is timing out (>30s) indicating performance issues. Need to optimize configuration for large monorepo and reduce lint execution time.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "ESLint completes within 30 seconds",
-        "No timeout errors in lint execution",
-        "Maintained code quality standards"
-      ],
-      "created_at": "2025-07-31T09:04:54.054Z",
-      "requires_research": false
-    },
-    {
-      "id": "lint-execution-errors-1753952694054",
-      "title": "Resolve remaining execution service linter errors",
-      "description": "Fix remaining TypeScript and ESLint errors in execution service files including unsafe assignments, import ordering, and type safety issues.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Zero linter errors in execution service files",
-        "Proper import ordering maintained",
-        "Type safety preserved"
-      ],
-      "created_at": "2025-07-31T09:04:54.054Z",
-      "requires_research": false
-    },
-    {
-      "id": "test-failures-investigation-1753952694054",
-      "title": "Investigate and fix failing test suites",
-      "description": "Identify any failing tests in the monorepo and resolve test failures to ensure all tests pass consistently.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "All tests pass consistently",
-        "No flaky or intermittent test failures",
-        "Test execution completes without errors"
-      ],
-      "created_at": "2025-07-31T09:04:54.054Z",
-      "requires_research": true
-    },
-    {
-      "id": "task-1",
-      "mode": "RESEARCH",
-      "description": "Analyze and understand n8n codebase structure",
-      "prompt": "Study the n8n workflow automation platform codebase to understand its architecture, key components, and development patterns",
-      "dependencies": [],
-      "important_files": [],
-      "status": "completed",
-      "requires_research": false,
-      "subtasks": []
-    },
-    {
-      "id": "build-fix-1753936283521",
-      "title": "Fix Build Dependencies and Extension SDK Issues",
-      "description": "Resolve build failures specifically in @n8n/extension-sdk package and ensure complete monorepo build success",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "npm run build completes successfully across all packages",
-        "@n8n/extension-sdk package builds without node_modules errors",
-        "All TypeScript compilation errors resolved",
-        "Turbo build cache works correctly for all packages"
-      ],
-      "important_files": [
-        "packages/@n8n/extension-sdk/package.json",
-        "packages/@n8n/extension-sdk/tsconfig.json",
-        "pnpm-lock.yaml",
-        "turbo.json"
-      ],
-      "estimate": "2-3 hours",
-      "requires_research": false
-    },
-    {
-      "id": "test-setup-1753936293869",
-      "title": "Fix Test Suite and Coverage Reporting",
-      "description": "Resolve test execution failures and implement comprehensive test coverage reporting across the monorepo",
-      "mode": "TESTING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "npm run test executes successfully across all packages",
-        "Jest test suites run without build dependency errors",
-        "Test coverage reporting configured and working",
-        "Coverage threshold of 80% minimum established",
-        "Test results properly aggregated across monorepo"
-      ],
-      "important_files": [
-        "jest.config.js",
-        "packages/cli/src/__tests__/**",
-        "packages/core/src/**/__tests__/**",
-        "package.json",
-        "turbo.json"
-      ],
-      "estimate": "3-4 hours",
-      "requires_research": false
-    },
-    {
-      "id": "lint-validation-1753936302916",
-      "title": "Validate and Optimize Linting Configuration",
-      "description": "Ensure comprehensive linting works across all packages and optimize ESLint configuration for monorepo structure",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "npm run lint executes successfully across all packages",
-        "All packages have consistent ESLint configuration",
-        "No linting errors or warnings in codebase",
-        "Linting integrates properly with CI/CD processes",
-        "development/linter-errors.md reflects accurate status"
-      ],
-      "important_files": [
-        "eslint.config.js",
-        "packages/cli/eslint.config.mjs",
-        "packages/*/eslint.config.mjs",
-        "development/linter-errors.md",
-        ".eslintignore"
-      ],
-      "estimate": "1-2 hours",
-      "requires_research": false
-    },
-    {
-      "id": "phase1-source-1753924007917-nrdhcsqca",
-      "title": "Implement Source Control Integration API",
-      "description": "Add REST endpoints for source control operations including git pull, branch management, and repository status. Extends existing SourceControlService with new API endpoints.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/source-control/pull endpoint implemented",
-        "Source control status endpoints functional",
-        "Integration with existing git service working",
-        "Authentication and permissions enforced",
-        "API tests passing with >90% coverage",
-        "Documentation updated in OpenAPI spec"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/environments.ee/source-control/source-control.service.ee.ts",
-        "packages/cli/src/environments.ee/source-control/source-control.controller.ee.ts",
-        "packages/cli/src/api/",
-        "packages/cli/src/controllers/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "subtasks": [
-        {
-          "id": "source-subtask-1-config",
-          "title": "Fix ESLint Configuration Issues",
-          "description": "Resolve ESLint v9 configuration errors by creating proper eslint.config.js at root level with correct import syntax and configuration structure.",
-          "mode": "development",
-          "priority": "high",
-          "status": "completed",
-          "success_criteria": [
-            "ESLint configuration loads without errors",
-            "Linting passes on modified source control files",
-            "Configuration follows ESLint v9 flat config format",
-            "Ignores patterns set correctly for monorepo structure"
-          ],
-          "important_files": [
-            "eslint.config.js",
-            "packages/cli/eslint.config.mjs",
-            "development/linter-errors.md"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
-        },
-        {
-          "id": "source-subtask-2-endpoints",
-          "title": "Complete Source Control API Endpoints Implementation",
-          "description": "Finalize the implementation of new source control API endpoints including proper error handling, response formatting, and integration with existing services.",
-          "mode": "development",
-          "priority": "high",
-          "status": "completed",
-          "success_criteria": [
-            "All new endpoints functional and tested",
-            "POST /source-control/pull endpoint working",
-            "GET /source-control/repository-status endpoint working",
-            "POST /source-control/set-branch endpoint working",
-            "Proper error handling and status codes implemented",
-            "Event emission for tracking working correctly"
-          ],
-          "important_files": [
-            "packages/cli/src/environments.ee/source-control/source-control.controller.ee.ts",
-            "packages/cli/src/environments.ee/source-control/source-control.service.ee.ts"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
-        },
-        {
-          "id": "source-subtask-3-tests",
-          "title": "Create API Tests for Source Control Endpoints",
-          "description": "Write comprehensive unit and integration tests for the new source control API endpoints to ensure functionality and prevent regressions.",
-          "mode": "testing",
-          "priority": "medium",
-          "status": "completed",
-          "success_criteria": [
-            "Unit tests for all new controller methods",
-            "Integration tests for API endpoints",
-            "Test coverage >90% for new code",
-            "Mock services properly for isolated testing",
-            "Error scenarios covered in tests"
-          ],
-          "important_files": [
-            "packages/cli/src/environments.ee/source-control/__tests__/source-control.controller.ee.test.ts",
-            "packages/cli/src/environments.ee/source-control/__tests__/"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
-        },
-        {
-          "id": "source-subtask-4-docs",
-          "title": "Update API Documentation",
-          "description": "Update OpenAPI specification and documentation to include the new source control endpoints with proper request/response schemas and examples.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "completed",
-          "success_criteria": [
-            "OpenAPI spec updated with new endpoints",
-            "Request/response schemas documented",
-            "Authentication requirements specified",
-            "Example requests and responses provided",
-            "API documentation builds without errors"
-          ],
-          "important_files": [
-            "packages/cli/src/public-api/v1/openapi.yml"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "phase1-source-1753924007917-nrdhcsqca"
-        }
-      ]
-    },
-    {
-      "id": "phase1-user-1753924007917-mak3jif26",
-      "title": "Implement Advanced User Management API",
-      "description": "Add advanced user management endpoints including role updates, bulk operations, and user analytics. Extends existing UserController with enhanced functionality.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "PATCH /api/v1/users/:id/role endpoint implemented",
-        "Bulk user operations endpoints functional",
-        "User analytics and activity tracking working",
-        "Role-based access control properly enforced",
-        "API tests passing with >90% coverage",
-        "Database migrations completed successfully"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/controllers/users.controller.ts",
-        "packages/cli/src/services/user.service.ts",
-        "@n8n/db/src/entities/User.ts"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "4-6 hours",
-      "requires_research": false,
-      "subtasks": [
-        {
-          "id": "user-subtask-1-bulk-ops",
-          "title": "Implement Bulk User Operations API",
-          "description": "Add endpoints for bulk user operations including bulk invite, bulk role updates, bulk enable/disable, and bulk deletion with proper validation and transaction support.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "POST /users/bulk/invite endpoint implemented with validation",
-            "PATCH /users/bulk/roles endpoint for bulk role updates",
-            "PATCH /users/bulk/status endpoint for bulk enable/disable",
-            "DELETE /users/bulk endpoint for bulk deletion with proper safeguards",
-            "All bulk operations use database transactions",
-            "Comprehensive error handling for partial failures",
-            "Rate limiting implemented for bulk operations"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/users.controller.ts",
-            "packages/cli/src/services/user.service.ts",
-            "@n8n/api-types/src/dto/user/"
-          ],
-          "estimate": "4-6 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        },
-        {
-          "id": "user-subtask-2-analytics",
-          "title": "Implement User Analytics and Activity Tracking",
-          "description": "Add comprehensive user analytics endpoints including user activity metrics, login patterns, workflow usage statistics, and user engagement analytics.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "GET /users/:id/analytics endpoint for individual user metrics",
-            "GET /users/analytics/overview for system-wide user metrics",
-            "GET /users/analytics/activity for user activity patterns",
-            "User login/logout tracking and reporting",
-            "Workflow creation and execution statistics per user",
-            "Performance metrics with proper caching",
-            "Data aggregation with configurable time ranges"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/users.controller.ts",
-            "packages/cli/src/services/user.service.ts",
-            "packages/cli/src/services/analytics.service.ts"
-          ],
-          "estimate": "6-8 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        },
-        {
-          "id": "user-subtask-3-enhanced-roles",
-          "title": "Enhance Role Management with Advanced Permissions",
-          "description": "Extend existing role management with granular permissions, custom role creation, role hierarchies, and project-specific role assignments.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Enhanced PATCH /users/:id/role endpoint with granular permissions",
-            "POST /roles/custom endpoint for custom role creation",
-            "GET /roles/permissions endpoint for available permissions",
-            "PUT /users/:id/project-roles for project-specific role management",
-            "Role hierarchy validation and enforcement",
-            "Permission inheritance system working correctly",
-            "Backwards compatibility with existing role system"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/users.controller.ts",
-            "packages/cli/src/services/user.service.ts",
-            "@n8n/permissions/src/",
-            "@n8n/db/src/entities/User.ts"
-          ],
-          "estimate": "5-7 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        },
-        {
-          "id": "user-subtask-4-search-filter",
-          "title": "Advanced User Search and Filtering",
-          "description": "Enhance user listing with advanced search, filtering, sorting, and pagination capabilities including full-text search and complex query support.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Enhanced GET /users endpoint with advanced filtering",
-            "Full-text search across user fields (name, email, role)",
-            "Complex filtering by role, status, project membership",
-            "Sorting by multiple fields with configurable order",
-            "Cursor-based pagination for large datasets",
-            "Search performance optimization with indexing",
-            "Export functionality for filtered user lists"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/users.controller.ts",
-            "@n8n/db/src/repositories/user.repository.ts",
-            "@n8n/api-types/src/dto/user/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        },
-        {
-          "id": "user-subtask-5-tests",
-          "title": "Comprehensive Testing for Advanced User Management",
-          "description": "Create extensive test coverage for all new user management endpoints including unit tests, integration tests, and API tests with proper mocking.",
-          "mode": "testing",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Unit tests for all new controller methods >90% coverage",
-            "Integration tests for bulk operations with database",
-            "API tests for all new endpoints with various scenarios",
-            "Performance tests for bulk operations and analytics",
-            "Security tests for authorization and input validation",
-            "Error handling tests for edge cases and failures",
-            "Mock services properly isolated for unit testing"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/__tests__/users.controller.test.ts",
-            "packages/cli/src/services/__tests__/user.service.test.ts"
-          ],
-          "estimate": "4-5 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        },
-        {
-          "id": "user-subtask-6-documentation",
-          "title": "API Documentation for Advanced User Management",
-          "description": "Create comprehensive OpenAPI documentation for all new user management endpoints with proper schemas, examples, and authentication details.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "OpenAPI spec updated for all new user endpoints",
-            "Request/response schemas documented with examples",
-            "Authentication and authorization requirements specified",
-            "Error response schemas and status codes documented",
-            "Usage examples and integration guides provided",
-            "API documentation builds without errors",
-            "Interactive API explorer functional"
-          ],
-          "important_files": [
-            "packages/cli/src/public-api/v1/openapi.yml",
-            "packages/cli/src/public-api/v1/handlers/users/spec/"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-user-1753924007917-mak3jif26"
-        }
-      ]
-    },
-    {
-      "id": "phase1-resource-1753924007917-epjzqndc7",
-      "title": "Implement Resource Portability API",
-      "description": "Add endpoints for transferring workflows and credentials between projects. Implements workflow/credential transfer with proper permission validation.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/workflows/:id/transfer endpoint implemented",
-        "POST /api/v1/credentials/:id/transfer endpoint implemented",
-        "Cross-project resource transfer working",
-        "Permission validation for transfers enforced",
-        "Data integrity maintained during transfers",
-        "API tests covering transfer scenarios"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/cli/src/credentials/credentials.controller.ts",
-        "packages/cli/src/controllers/project.controller.ts"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false
-    },
-    {
-      "id": "phase1-binary-1753924007917-0kv6af47k",
-      "title": "Implement Binary Data Management API",
-      "description": "Create comprehensive binary data management endpoints for upload, download, and deletion with streaming support. Enhances existing binary data handling.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/binary-data upload endpoint implemented",
-        "GET /api/v1/binary-data/:id download endpoint functional",
-        "DELETE /api/v1/binary-data/:id endpoint working",
-        "File streaming and chunked uploads supported",
-        "Proper MIME type detection and validation",
-        "Storage quota and security checks implemented"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/controllers/binary-data.controller.ts",
-        "packages/core/src/BinaryData/",
-        "packages/cli/src/services/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false,
-      "subtasks": [
-        {
-          "id": "binary-subtask-1-infrastructure",
-          "title": "Enhance Binary Data Upload Infrastructure",
-          "description": "Extend existing BinaryDataController with POST upload endpoint supporting multipart uploads, streaming, and chunked uploads with proper validation and error handling.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "POST /binary-data/upload endpoint implemented with multipart support",
-            "Chunked upload handling for large files (>100MB)",
-            "MIME type detection and validation working correctly",
-            "File size limits and quota enforcement implemented",
-            "Temporary file cleanup on upload failures",
-            "Integration with existing BinaryDataService storage modes",
-            "Proper error handling for storage failures and disk space issues"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/binary-data.controller.ts",
-            "packages/core/src/binary-data/binary-data.service.ts",
-            "@n8n/api-types/src/dto/binary-data/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        },
-        {
-          "id": "binary-subtask-2-delete-operations",
-          "title": "Implement Binary Data Deletion and Management",
-          "description": "Add DELETE endpoint for binary data removal with proper authorization, cleanup of associated metadata, and support for bulk deletion operations.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "DELETE /binary-data/:id endpoint implemented with authorization",
-            "Proper cleanup of files from filesystem/S3 storage",
-            "Metadata removal from database/cache",
-            "Bulk deletion support for multiple files",
-            "Audit trail for deletion operations",
-            "Prevention of deletion of files still referenced by workflows",
-            "Proper error handling for missing files or permission issues"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/binary-data.controller.ts",
-            "packages/core/src/binary-data/binary-data.service.ts",
-            "packages/core/src/binary-data/file-system.manager.ts"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        },
-        {
-          "id": "binary-subtask-3-streaming-optimization",
-          "title": "Optimize Binary Data Streaming and Performance",
-          "description": "Enhance existing download endpoints with improved streaming, range requests, compression, and caching for better performance with large files.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "HTTP range request support for partial content delivery",
-            "Response compression for appropriate file types",
-            "Streaming optimization for large files (>1GB)",
-            "Caching headers for efficient browser/CDN caching",
-            "Progress tracking for upload/download operations",
-            "Resume capability for interrupted transfers",
-            "Performance benchmarks meet requirements (<2s for 100MB files)"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/binary-data.controller.ts",
-            "packages/core/src/binary-data/binary-data.service.ts",
-            "packages/core/src/binary-data/object-store.manager.ts"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        },
-        {
-          "id": "binary-subtask-4-security-validation",
-          "title": "Implement Binary Data Security and Validation",
-          "description": "Add comprehensive security measures including file type validation, virus scanning integration, access control, and quota management.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "File type whitelist/blacklist validation",
-            "Content scanning for malicious files",
-            "Per-user and per-project storage quotas",
-            "Access control integration with existing permission system",
-            "Rate limiting for upload operations",
-            "File content validation (not just extension-based)",
-            "Audit logging for all binary data operations"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/binary-data.controller.ts",
-            "packages/cli/src/services/role.service.ts",
-            "@n8n/permissions/src/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        },
-        {
-          "id": "binary-subtask-5-api-documentation",
-          "title": "Create Binary Data API Documentation and DTOs",
-          "description": "Create comprehensive API documentation, request/response DTOs, and OpenAPI specifications for all new binary data endpoints.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Request/response DTOs created for all endpoints",
-            "OpenAPI specification updated with binary data endpoints",
-            "Upload/download examples and integration guides",
-            "Error response documentation with proper status codes",
-            "Authentication and authorization requirements documented",
-            "File format and size limit documentation",
-            "SDK integration examples for common use cases"
-          ],
-          "important_files": [
-            "@n8n/api-types/src/dto/binary-data/",
-            "packages/cli/src/public-api/v1/openapi.yml",
-            "packages/cli/src/public-api/v1/handlers/binary-data/spec/"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        },
-        {
-          "id": "binary-subtask-6-comprehensive-testing",
-          "title": "Create Comprehensive Binary Data Tests",
-          "description": "Write extensive test coverage for all binary data endpoints including unit tests, integration tests, performance tests, and security tests.",
-          "mode": "testing",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Unit tests for all controller methods >90% coverage",
-            "Integration tests with filesystem and S3 storage",
-            "Upload/download functionality tests with various file sizes",
-            "Security tests for malicious file uploads and access control",
-            "Performance tests for large file operations",
-            "Error handling tests for edge cases and failures",
-            "Mock services properly isolated for unit testing"
-          ],
-          "important_files": [
-            "packages/cli/src/controllers/__tests__/binary-data.controller.test.ts",
-            "packages/core/src/binary-data/__tests__/",
-            "packages/cli/src/services/__tests__/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-binary-1753924007917-0kv6af47k"
-        }
-      ]
-    },
-    {
-      "id": "phase2-execution-1753924007917-6dr1ooe4b",
-      "title": "Implement Execution Control API",
-      "description": "Add advanced execution control endpoints for cancellation, retry, and detailed execution data retrieval. Extends existing ExecutionsController.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/executions/:id/cancel endpoint implemented",
-        "POST /api/v1/executions/:id/retry endpoint functional",
-        "GET /api/v1/executions/:id/full detailed data endpoint working",
-        "Real-time execution status updates supported",
-        "Error handling for failed cancellations",
-        "Integration with ActiveExecutions service"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/executions/executions.controller.ts",
-        "packages/cli/src/active-executions.ts",
-        "packages/cli/src/scaling/scaling.service.ts"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false
-    },
-    {
-      "id": "phase2-nodes-1753924007917-uqhpkxcjo",
-      "title": "Implement Node Testing API",
-      "description": "Create endpoints for testing individual nodes and partial workflow execution. Enables node development and debugging capabilities.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/nodes/test endpoint implemented",
-        "POST /api/v1/workflows/:id/execute-partial endpoint functional",
-        "Node parameter validation and testing supported",
-        "Isolated execution environment for testing",
-        "Test result formatting and error reporting",
-        "Integration with workflow execution engine"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/controllers/node-types.controller.ts",
-        "packages/core/src/WorkflowExecute.ts",
-        "packages/workflow/src/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false
-    },
-    {
-      "id": "phase3-ai-1753924007917-kxyd5jy16",
-      "title": "Implement AI Configuration API",
-      "description": "Add endpoints for AI node configuration, prompt testing, and memory management. Integrates with existing AI node infrastructure.",
-      "mode": "DEVELOPMENT",
-      "priority": "low",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/ai-nodes/config endpoint implemented",
-        "POST /api/v1/ai-nodes/test-prompt endpoint functional",
-        "AI node memory management endpoints working",
-        "Integration with LangChain nodes",
-        "Prompt validation and testing capabilities",
-        "AI model configuration management"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/nodes-base/nodes/OpenAi/",
-        "@n8n/n8n-nodes-langchain/",
-        "packages/cli/src/controllers/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "10-12 hours",
-      "requires_research": true
-    },
-    {
-      "id": "phase4-monitoring-1753924007917-cv23vrfah",
-      "title": "Implement Performance Monitoring API",
-      "description": "Add endpoints for performance profiling, resource monitoring, and system analytics. Enhances existing metrics collection.",
-      "mode": "DEVELOPMENT",
-      "priority": "low",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/executions/:id/profile endpoint implemented",
-        "GET /api/v1/system/resources monitoring endpoint functional",
-        "Performance metrics collection and reporting",
-        "Resource usage tracking per workflow",
-        "System health monitoring integration",
-        "Metrics visualization support"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/metrics/",
-        "packages/cli/src/services/",
-        "packages/core/src/WorkflowExecute.ts"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false
-    },
-    {
-      "id": "phase1-collaboration-1753924007917-rtc8k2m9x",
-      "title": "Implement Real-time Collaboration API",
-      "description": "Add WebSocket-based real-time collaboration endpoints for workflow editing, comments, activity feeds, and team coordination. Essential for team productivity and enterprise workflows.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "WebSocket endpoints for real-time workflow editing implemented",
-        "Collaborative editing with conflict resolution working",
-        "Workflow comments and annotation system functional",
-        "Team activity feeds and notification APIs operational",
-        "Multi-user presence and cursor tracking working",
-        "Real-time workflow execution status updates",
-        "Integration with existing authentication and permission systems"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/controllers/",
-        "packages/cli/src/services/",
-        "packages/workflow/src/",
-        "packages/cli/src/websocket/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "12-15 hours",
-      "requires_research": false,
-      "subtasks": [
-        {
-          "id": "collab-subtask-1-realtime-editing",
-          "title": "Implement Real-time Collaborative Workflow Editing",
-          "description": "Add WebSocket message handlers for real-time collaborative editing with operational transforms, conflict resolution, and multi-user synchronization for workflow modifications.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "WebSocket handlers for workflow edit operations (add/remove/modify nodes)",
-            "Operational transform algorithm for conflict resolution implemented",
-            "Real-time synchronization of workflow changes across connected users",
-            "Prevention of conflicting edits with proper user notification",
-            "Integration with existing collaboration state management",
-            "Comprehensive error handling for network issues and conflicts",
-            "Performance optimization for large workflows with many collaborators"
-          ],
-          "important_files": [
-            "packages/cli/src/collaboration/collaboration.service.ts",
-            "packages/cli/src/collaboration/collaboration.message.ts",
-            "packages/cli/src/push/websocket.push.ts",
-            "@n8n/api-types/src/collaboration/",
-            "packages/workflow/src/"
-          ],
-          "estimate": "4-6 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        },
-        {
-          "id": "collab-subtask-2-comments-annotations",
-          "title": "Implement Workflow Comments and Annotations System",
-          "description": "Create a comprehensive comments and annotations system for workflows, allowing users to add contextual comments, discussions, and notes on workflow elements.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Database schema for workflow comments and annotations",
-            "REST API endpoints for CRUD operations on comments",
-            "WebSocket real-time comment synchronization",
-            "Comment threading and reply functionality",
-            "User mentions and notification system for comments",
-            "Comments attached to specific workflow nodes or connections",
-            "Rich text support with markdown formatting",
-            "Comment moderation and deletion permissions"
-          ],
-          "important_files": [
-            "@n8n/db/src/entities/",
-            "packages/cli/src/controllers/",
-            "packages/cli/src/collaboration/collaboration.service.ts",
-            "@n8n/api-types/src/dto/collaboration/",
-            "packages/cli/src/services/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        },
-        {
-          "id": "collab-subtask-3-activity-feeds",
-          "title": "Implement Team Activity Feeds and Notifications",
-          "description": "Create real-time activity feeds showing team member actions, workflow changes, executions, and system events with configurable notification preferences.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Activity feed data model and storage system",
-            "Real-time activity broadcasting via WebSocket",
-            "Configurable notification preferences per user",
-            "Activity filtering by workflow, user, action type",
-            "Integration with existing execution and workflow events",
-            "Push notifications for mobile/desktop clients",
-            "Activity feed pagination and search functionality",
-            "Privacy controls for sensitive workflow activities"
-          ],
-          "important_files": [
-            "@n8n/db/src/entities/",
-            "packages/cli/src/events/",
-            "packages/cli/src/collaboration/collaboration.service.ts",
-            "packages/cli/src/services/",
-            "@n8n/api-types/src/dto/collaboration/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        },
-        {
-          "id": "collab-subtask-4-cursor-tracking",
-          "title": "Implement Multi-user Presence and Cursor Tracking",
-          "description": "Add real-time cursor position tracking, user presence indicators, and visual feedback for collaborative editing sessions with user avatars and status.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Real-time cursor position synchronization via WebSocket",
-            "User presence indicators with avatars and status",
-            "Visual feedback for active editing areas",
-            "Cursor position persistence across workflow pan/zoom",
-            "Performance optimization for high-frequency cursor updates",
-            "User identification with color coding and names",
-            "Inactive user cleanup and timeout handling",
-            "Integration with existing collaboration state management"
-          ],
-          "important_files": [
-            "packages/cli/src/collaboration/collaboration.service.ts",
-            "packages/cli/src/collaboration/collaboration.message.ts",
-            "packages/cli/src/collaboration/collaboration.state.ts",
-            "@n8n/api-types/src/collaboration/",
-            "packages/cli/src/push/"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        },
-        {
-          "id": "collab-subtask-5-execution-status",
-          "title": "Implement Real-time Workflow Execution Status Updates",
-          "description": "Enhance existing execution tracking with real-time collaborative updates, showing execution progress, node status, and results to all connected collaborators.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Real-time execution progress broadcasting to all collaborators",
-            "Node-level execution status updates with visual indicators",
-            "Execution results sharing across collaborative sessions",
-            "Integration with existing execution lifecycle events",
-            "Performance optimization for long-running workflows",
-            "Error state broadcasting and collaborative debugging",
-            "Execution history sharing and replay functionality",
-            "Resource usage and performance metrics sharing"
-          ],
-          "important_files": [
-            "packages/cli/src/collaboration/collaboration.service.ts",
-            "packages/cli/src/executions/",
-            "packages/cli/src/execution-lifecycle/",
-            "packages/cli/src/workflows/",
-            "packages/cli/src/push/"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        },
-        {
-          "id": "collab-subtask-6-comprehensive-testing",
-          "title": "Create Comprehensive Collaboration API Tests",
-          "description": "Develop extensive test coverage for all collaboration features including WebSocket communication, conflict resolution, real-time synchronization, and multi-user scenarios.",
-          "mode": "testing",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Unit tests for all collaboration service methods >90% coverage",
-            "WebSocket communication integration tests",
-            "Multi-user collaboration scenario tests",
-            "Conflict resolution algorithm tests with edge cases",
-            "Real-time synchronization stress tests",
-            "Comment system CRUD operation tests",
-            "Activity feed and notification delivery tests",
-            "Performance tests for large collaborative sessions"
-          ],
-          "important_files": [
-            "packages/cli/src/collaboration/__tests__/",
-            "packages/cli/src/push/__tests__/",
-            "packages/cli/src/controllers/__tests__/",
-            "packages/cli/src/services/__tests__/"
-          ],
-          "estimate": "3-4 hours",
-          "parent_task": "phase1-collaboration-1753924007917-rtc8k2m9x"
-        }
-      ]
-    },
-    {
-      "id": "phase1-audit-1753924007917-eal5n7qjp",
-      "title": "Implement Enterprise Audit and Compliance API",
-      "description": "Add comprehensive audit logging, compliance reporting, and security monitoring endpoints. Critical for enterprise adoption and regulatory compliance (SOX, GDPR, HIPAA).",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Comprehensive audit logging for all API operations implemented",
-        "Compliance reporting endpoints (SOX, GDPR, HIPAA) functional",
-        "Data retention policy enforcement working",
-        "Workflow execution audit trails with change tracking",
-        "Security event monitoring and alerting operational",
-        "Audit log search and filtering capabilities",
-        "Export functionality for compliance reports"
-      ],
-      "important_files": [
-        "./development/research-reports/research-report-task-1.md",
-        "packages/cli/src/controllers/",
-        "packages/cli/src/services/",
-        "@n8n/db/src/entities/",
-        "packages/cli/src/audit/"
-      ],
-      "dependencies": [
-        "task-1"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false
-    },
-    {
-      "id": "build-optimization-1753955460689",
-      "title": "Optimize Build Performance and Reliability",
-      "description": "Improve build system performance, add build validation, and ensure consistent build success across environments",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Build completes successfully in under 5 minutes",
-        "Build validation scripts added",
-        "Build cache optimization implemented",
-        "No build failures on clean install"
-      ],
-      "important_files": [
-        "package.json",
-        "turbo.json",
-        "packages/*/package.json"
-      ],
-      "requires_research": true,
-      "created_at": "2025-07-31T09:51:00.689Z"
-    },
-    {
-      "id": "lint-standards-1753955460689",
-      "title": "Enhance Code Quality Standards",
-      "description": "Strengthen ESLint rules, add pre-commit hooks, and improve code quality across the monorepo",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Zero critical ESLint errors across all packages",
-        "Pre-commit hooks configured for linting",
-        "Code quality metrics improved",
-        "Consistent code style enforced"
-      ],
-      "important_files": [
-        "eslint.config.js",
-        "packages/*/eslint.config.mjs",
-        ".lefthook.yml"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T09:51:00.689Z"
-    },
-    {
-      "id": "test-coverage-1753955460689",
-      "title": "Improve Test Coverage and Reliability",
-      "description": "Increase test coverage, fix failing tests, and implement comprehensive test reporting",
-      "mode": "TESTING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Test coverage above 80% for critical packages",
-        "All test suites pass consistently",
-        "Comprehensive test reporting implemented",
-        "Integration tests cover key workflows"
-      ],
-      "important_files": [
-        "packages/cli/test/**/*.test.ts",
-        "jest.config.js",
-        "packages/*/jest.config.js"
-      ],
-      "requires_research": true,
-      "created_at": "2025-07-31T09:51:00.689Z"
-    },
-    {
-      "id": "performance-monitoring-1753955460689",
-      "title": "Implement Performance Monitoring",
-      "description": "Add performance monitoring for build, test, and lint processes to track quality metrics",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Build time tracking implemented",
-        "Test execution time monitoring",
-        "Lint performance metrics collected",
-        "Quality trend analysis available"
-      ],
-      "important_files": [
-        "scripts/**/*.mjs",
-        "package.json"
-      ],
-      "requires_research": true,
-      "created_at": "2025-07-31T09:51:00.689Z"
-    },
-    {
-      "id": "quality-improvement-1753979851513",
-      "title": "Create Quality Improvement Tasks",
-      "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 50%\n- Strike 2 (Lint): 100%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Build Verification: Build command fails\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: Coverage check failed\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
-      "success_criteria": [
-        "All quality issues identified and analyzed",
-        "Specific improvement tasks created for each quality gap",
-        "Tasks properly prioritized and ordered before strikes",
-        "Clear path to 100% quality established"
-      ],
-      "important_files": [
-        "package.json",
-        "eslint.config.js",
-        "**/*.test.js"
-      ],
-      "requires_research": true,
-      "is_quality_improvement_task": true,
-      "quality_analysis": {
-        "strike1": {
-          "name": "Build Verification",
-          "quality": 50,
-          "issues": [
-            "Build command fails"
-          ]
-        },
-        "strike2": {
-          "name": "Lint and Code Quality",
-          "quality": 100,
-          "issues": []
-        },
-        "strike3": {
-          "name": "Test Coverage and Success",
-          "quality": 30,
-          "issues": [
-            "Tests are failing",
-            "Coverage check failed"
-          ]
-        },
-        "overallReady": false
-      }
-    },
-    {
-      "id": "task_1753980909842",
-      "title": "Fix Failing Test Suites in n8n Monorepo",
-      "description": "Systematically investigate and fix all failing test suites across the n8n monorepo to achieve 100% test success rate",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All tests pass consistently",
-        "No flaky or intermittent test failures",
-        "Test execution completes without errors",
-        "Test configuration issues resolved"
-      ],
-      "important_files": [
-        "package.json",
-        "jest.config.js",
-        "packages/*/package.json"
-      ],
-      "estimate": "4-6 hours",
-      "created_at": "2025-07-31T16:55:09.842Z"
-    },
-    {
-      "id": "build-perf-analysis-1753987912607",
-      "title": "Analyze Build System Performance and Bottlenecks",
-      "description": "Comprehensive analysis of current build system performance including Turbo cache effectiveness, TypeScript compilation bottlenecks, and parallel build optimization opportunities.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Build performance baseline established with timing metrics",
-        "Turbo cache hit rates analyzed and documented",
-        "TypeScript compilation bottlenecks identified",
-        "Parallel build opportunities mapped",
-        "Performance optimization roadmap created",
-        "Build system monitoring dashboards configured"
-      ],
-      "important_files": [
-        "turbo.json",
-        "package.json",
-        "packages/*/package.json",
-        "packages/*/tsconfig.json",
-        "development/build-analysis-report.md"
-      ],
-      "estimate": "3-4 hours",
-      "requires_research": true,
-      "created_at": "2025-07-31T18:51:52.607Z"
-    },
-    {
-      "id": "build-validation-framework-1753987912607",
-      "title": "Implement Build Validation and Health Check Framework",
-      "description": "Create comprehensive build validation system with health checks, smoke tests, and environment consistency validation to ensure reliable builds across different environments.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Build health check scripts implemented",
-        "Environment consistency validation added",
-        "Smoke tests for critical build outputs",
-        "Build failure detection and reporting",
-        "Pre-build environment validation",
-        "Post-build verification tests"
-      ],
-      "important_files": [
-        "scripts/build-validation.mjs",
-        "scripts/health-check.mjs",
-        "turbo.json",
-        "package.json"
-      ],
-      "estimate": "4-5 hours",
-      "requires_research": false,
-      "created_at": "2025-07-31T18:51:52.607Z"
-    },
-    {
-      "id": "turbo-cache-optimization-1753987912607",
-      "title": "Optimize Turbo Build Cache and Dependency Management",
-      "description": "Enhance Turbo cache configuration, optimize build dependencies, and implement intelligent cache invalidation strategies for improved build performance.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Turbo cache configuration optimized for maximum hit rates",
-        "Build dependency graph optimized",
-        "Cache invalidation strategies implemented",
-        "Remote caching configured (if applicable)",
-        "Build parallelization maximized",
-        "Build time reduced by 30%+ from baseline"
-      ],
-      "important_files": [
-        "turbo.json",
-        "packages/*/package.json",
-        ".github/workflows/*.yml"
-      ],
-      "estimate": "5-6 hours",
-      "requires_research": false,
-      "created_at": "2025-07-31T18:51:52.607Z"
-    },
-    {
-      "id": "typescript-build-optimization-1753987912607",
-      "title": "Optimize TypeScript Compilation Performance",
-      "description": "Implement TypeScript compilation optimizations including project references, incremental builds, and build output optimization for faster builds. This task has been decomposed into focused subtasks for systematic implementation.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "TypeScript project references configured properly",
-        "Incremental TypeScript builds enabled",
-        "TypeScript build output optimized",
-        "Build-time type checking optimized",
-        "Memory usage during builds optimized",
-        "TypeScript compilation time reduced by 25%+"
-      ],
-      "important_files": [
-        "tsconfig.json",
-        "packages/*/tsconfig.json",
-        "packages/*/tsconfig.build.json"
-      ],
-      "estimate": "4-5 hours",
-      "requires_research": false,
-      "created_at": "2025-07-31T18:51:52.607Z",
-      "subtasks": [
-        {
-          "id": "ts-opt-subtask-1-project-refs",
-          "title": "Optimize CLI Package Project References",
-          "description": "Reduce CLI package's 15 project references by creating intermediate reference groups to improve build parallelization.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "CLI package references reduced from 15 to <8 direct references",
-            "Intermediate reference groups created for logical package clusters",
-            "Build parallelization improved without breaking dependencies",
-            "TypeScript compilation still validates all dependencies correctly"
-          ],
-          "important_files": [
-            "packages/cli/tsconfig.json",
-            "packages/@n8n/platform-core/tsconfig.build.json",
-            "packages/@n8n/platform-nodes/tsconfig.build.json",
-            "packages/@n8n/platform-db/tsconfig.build.json"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "typescript-build-optimization-1753987912607"
-        },
-        {
-          "id": "ts-opt-subtask-2-parallel-builds",
-          "title": "Implement Parallel Dual Build Strategy",
-          "description": "Convert workflow package's sequential ESM/CJS builds to parallel execution using concurrently for improved build performance.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "Workflow package builds ESM and CJS targets in parallel",
-            "Build scripts use concurrently for parallel execution",
-            "Build time reduced by 30-40% for workflow package",
-            "Both build outputs maintain compatibility and correctness"
-          ],
-          "important_files": [
-            "packages/workflow/package.json",
-            "packages/workflow/tsconfig.build.esm.json",
-            "packages/workflow/tsconfig.build.cjs.json"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "typescript-build-optimization-1753987912607"
-        },
-        {
-          "id": "ts-opt-subtask-3-incremental-config",
-          "title": "Enhance Incremental Compilation Configuration",
-          "description": "Optimize TypeScript incremental compilation settings, tsBuildInfoFile placement, and composite build configurations across all packages.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "tsBuildInfoFile centralized to .tsbuildinfo/ directory",
-            "Enhanced incremental compilation settings applied consistently",
-            "composite: true enabled where appropriate",
-            "assumeChangesOnlyAffectDirectDependencies optimization enabled",
-            "Incremental build performance improved by 20%+"
-          ],
-          "important_files": [
-            "packages/@n8n/typescript-config/tsconfig.common.json",
-            "packages/@n8n/typescript-config/tsconfig.build.json",
-            "packages/@n8n/typescript-config/modern/tsconfig.json"
-          ],
-          "estimate": "2-3 hours",
-          "parent_task": "typescript-build-optimization-1753987912607"
-        },
-        {
-          "id": "ts-opt-subtask-4-large-file-modularization",
-          "title": "Modularize Large TypeScript Files",
-          "description": "Split the largest TypeScript files (7,967+ lines) into smaller modules to reduce individual file compilation time and improve maintainability.",
-          "mode": "refactoring",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "UProc/Json/Tools.ts (7,967 lines) split into <2000 line modules",
-            "workflow/src/interfaces.ts (3,027 lines) split into domain-specific interface modules",
-            "Large test files modularized into focused test suites",
-            "All functionality preserved with proper exports/imports",
-            "Compilation time improved for affected packages"
-          ],
-          "important_files": [
-            "packages/nodes-base/nodes/UProc/Json/Tools.ts",
-            "packages/workflow/src/interfaces.ts",
-            "packages/core/src/execution-engine/workflow-execute.ts"
-          ],
-          "estimate": "4-6 hours",
-          "parent_task": "typescript-build-optimization-1753987912607"
-        },
-        {
-          "id": "ts-opt-subtask-5-turbo-optimization",
-          "title": "Optimize Turbo Build Configuration",
-          "description": "Enhance Turbo.json configuration with better input specifications, selective dependencies, and optimized caching strategies.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "Enhanced input specifications for better cache invalidation",
-            "Selective dependency strategy implemented where safe",
-            "Build task parallelization improved",
-            "Cache hit rates improved through better input definitions",
-            "Overall build orchestration performance improved by 15%+"
-          ],
-          "important_files": [
-            "turbo.json",
-            "package.json"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "typescript-build-optimization-1753987912607"
-        }
-      ]
-    },
-    {
-      "id": "build_fix_1753995925294",
-      "title": "Fix Build System TypeScript Compilation Errors",
-      "description": "Resolve TypeScript compilation errors preventing successful monorepo build completion This task has been decomposed into focused subtasks to systematically resolve TypeScript compilation errors.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors resolved",
-        "npm run build completes successfully",
-        "All packages build without errors",
-        "Build quality reaches 100%"
-      ],
-      "important_files": [
-        "packages/cli/src/services/security-monitoring.service.ts",
-        "packages/cli/src/services/system-resources.service.ts",
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/cli/src/workflow-runner.ts"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T21:05:25.294Z",
-      "subtasks": [
-        {
-          "id": "build-fix-subtask-1-const-enums",
-          "title": "Fix const enum usage in TypeScript DTOs",
-          "description": "Replace const enums with regular enums in API types to resolve TypeScript compilation errors with z.nativeEnum() usage.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "All const enums converted to regular enums in API types package",
-            "TypeScript compilation errors resolved for enum usage with z.nativeEnum()",
-            "@n8n/api-types package builds successfully",
-            "All enum functionality preserved"
-          ],
-          "important_files": [
-            "packages/@n8n/api-types/src/dto/performance/execution-profile.dto.ts",
-            "packages/@n8n/api-types/src/dto/performance/performance-metrics.dto.ts"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "build_fix_1753995925294"
-        },
-        {
-          "id": "build-fix-subtask-2-tsconfig-validation",
-          "title": "Validate TypeScript configuration compatibility",
-          "description": "Review and fix TypeScript configuration settings that may be causing enum compilation issues across the monorepo.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "TypeScript configurations reviewed for enum compatibility",
-            "Compiler options optimized for const enum usage",
-            "Build configuration consistency across packages verified",
-            "No regression in existing TypeScript functionality"
-          ],
-          "important_files": [
-            "packages/@n8n/api-types/tsconfig.json",
-            "packages/@n8n/api-types/tsconfig.build.json",
-            "packages/@n8n/typescript-config/tsconfig.common.json"
-          ],
-          "estimate": "1-2 hours",
-          "parent_task": "build_fix_1753995925294"
-        },
-        {
-          "id": "build-fix-subtask-3-zod-integration",
-          "title": "Verify zod-class enum integration",
-          "description": "Ensure zod-class library properly handles enum types after fixing const enum issues and validate schema generation.",
-          "mode": "development",
-          "priority": "medium",
-          "status": "pending",
-          "success_criteria": [
-            "zod-class schemas work correctly with regular enums",
-            "z.nativeEnum() calls function properly",
-            "Runtime validation works for enum values",
-            "Type safety preserved in enum usage"
-          ],
-          "important_files": [
-            "packages/@n8n/api-types/src/dto/performance/execution-profile.dto.ts",
-            "packages/@n8n/api-types/src/dto/performance/performance-metrics.dto.ts"
-          ],
-          "estimate": "1 hour",
-          "parent_task": "build_fix_1753995925294"
-        },
-        {
-          "id": "build-fix-subtask-4-build-validation",
-          "title": "Complete build system validation",
-          "description": "Run full monorepo build and resolve any remaining TypeScript compilation issues discovered after enum fixes.",
-          "mode": "development",
-          "priority": "high",
-          "status": "pending",
-          "success_criteria": [
-            "npm run build completes successfully across all packages",
-            "No TypeScript compilation errors in any package",
-            "Build quality reaches 100%",
-            "All package dependencies build in correct order"
-          ],
-          "important_files": [
-            "package.json",
-            "turbo.json",
-            "packages/@n8n/api-types/package.json"
-          ],
-          "estimate": "1 hour",
-          "parent_task": "build_fix_1753995925294"
-        }
-      ]
-    },
-    {
-      "id": "build-fix-typescript-errors-1753996113685",
-      "title": "Fix TypeScript Compilation Errors in n8n Package",
-      "description": "Resolve 36 TypeScript compilation errors preventing successful build completion in the n8n (CLI) package",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors in n8n package resolved",
-        "security-monitoring.service.ts event type issues fixed",
-        "system-resources.service.ts import dependencies corrected",
-        "workflows.controller.ts interface mismatches resolved",
-        "workflow-runner.ts return type issues fixed",
-        "npm run build completes successfully"
-      ],
-      "important_files": [
-        "packages/cli/src/services/security-monitoring.service.ts",
-        "packages/cli/src/services/system-resources.service.ts",
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/cli/src/workflow-runner.ts",
-        "packages/cli/src/events/maps/relay.event-map.ts"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T21:08:33.685Z",
-      "progress": {
-        "completed": 33,
-        "total": 134,
-        "remaining": 101
-      },
-      "notes": "Fixed TypeScript errors in multiple CLI files: audit.controller.ts (✓), system-resources.service.ts (✓), manual-execution.service.ts (✓), security-monitoring.service.ts (✓), workflows.controller.ts (✓), ai-nodes.controller.ts (✓). Reduced from 134 to 101 errors (25% improvement)."
-    },
-    {
-      "id": "build-dependencies-validation-1753996113685",
-      "title": "Validate and Fix Build Dependency Chain",
-      "description": "Ensure all package build dependencies are correctly configured and packages build in proper order",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "All package dependencies correctly specified in turbo.json",
-        "Build order optimized for dependency resolution",
-        "No circular dependency issues",
-        "Build cache works correctly for all packages"
-      ],
-      "important_files": [
-        "turbo.json",
-        "packages/*/package.json",
-        "packages/*/tsconfig.json"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T21:08:33.685Z"
-    },
-    {
-      "id": "test-failures-investigation-1753996113685",
-      "title": "Fix Failing Test Suites Across Monorepo",
-      "description": "Investigate and resolve failing tests causing Strike 3 (Tests) to be at 30% quality",
-      "mode": "TESTING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All failing tests identified and categorized",
-        "Critical test failures resolved",
-        "Test suite runs without errors",
-        "Test execution completes successfully for all packages"
-      ],
-      "important_files": [
-        "packages/**/*.test.ts",
-        "packages/**/*.test.js",
-        "packages/*/jest.config.js",
-        "jest.config.js"
-      ],
-      "requires_research": true,
-      "created_at": "2025-07-31T21:08:33.685Z"
-    },
-    {
-      "id": "test-coverage-improvement-1753996113685",
-      "title": "Improve Test Coverage to Meet Quality Thresholds",
-      "description": "Increase test coverage across packages to meet 80% minimum threshold for Strike 3 quality",
-      "mode": "TESTING",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Overall test coverage above 80%",
-        "Critical packages have coverage above 90%",
-        "Coverage reports generated successfully",
-        "Coverage thresholds enforced in CI/CD"
-      ],
-      "important_files": [
-        "packages/*/jest.config.js",
-        "jest.config.js",
-        "package.json"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T21:08:33.685Z"
-    },
-    {
-      "id": "test-infrastructure-optimization-1753996113685",
-      "title": "Optimize Test Infrastructure and Performance",
-      "description": "Improve test execution speed and reliability across the monorepo",
-      "mode": "TESTING",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Test execution time reduced by at least 20%",
-        "Test reliability improved (no flaky tests)",
-        "Parallel test execution optimized",
-        "Test setup and teardown properly configured"
-      ],
-      "important_files": [
-        "turbo.json",
-        "packages/*/jest.config.js",
-        "packages/**/__tests__/**",
-        "packages/**/test/**"
-      ],
-      "requires_research": false,
-      "created_at": "2025-07-31T21:08:33.685Z"
-    },
-    {
-      "id": "quality-improvement-1753996260607",
-      "title": "Create Quality Improvement Tasks",
-      "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 50%\n- Strike 2 (Lint): 100%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Build Verification: Build command fails\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: Coverage check failed\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
-      "success_criteria": [
-        "All quality issues identified and analyzed",
-        "Specific improvement tasks created for each quality gap",
-        "Tasks properly prioritized and ordered before strikes",
-        "Clear path to 100% quality established"
-      ],
-      "important_files": [
-        "package.json",
-        "eslint.config.js",
-        "**/*.test.js"
-      ],
-      "requires_research": true,
-      "is_quality_improvement_task": true,
-      "quality_analysis": {
-        "strike1": {
-          "name": "Build Verification",
-          "quality": 50,
-          "issues": [
-            "Build command fails"
-          ]
-        },
-        "strike2": {
-          "name": "Lint and Code Quality",
-          "quality": 100,
-          "issues": []
-        },
-        "strike3": {
-          "name": "Test Coverage and Success",
-          "quality": 30,
-          "issues": [
-            "Tests are failing",
-            "Coverage check failed"
-          ]
-        },
-        "overallReady": false
-      }
-    },
-    {
-      "id": "task_1753996688802",
-      "title": "Comprehensive n8n Build System Performance Analysis",
-      "description": "Analyze Turbo cache effectiveness, TypeScript compilation bottlenecks, and parallel build optimization opportunities across 43 packages in the monorepo",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Complete analysis of Turbo configuration and cache patterns",
-        "Identify TypeScript compilation bottlenecks across all packages",
-        "Document parallel build optimization opportunities",
-        "Generate actionable performance optimization recommendations"
-      ],
-      "important_files": [
-        "turbo.json",
-        "package.json",
-        "packages/*/tsconfig.json"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-07-31T21:18:08.802Z"
-    },
-    {
-      "id": "turbo-config-optimization-1753998821937",
-      "title": "Optimize Turbo Configuration for Better Build Performance",
-      "description": "Enhance Turbo configuration with input specifications, selective dependencies, and better cache invalidation to improve build parallelization and reduce unnecessary rebuilds.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Turbo configuration includes input specifications for better caching",
-        "Selective dependencies implemented where safe",
-        "Build parallelization improved by 20-30%",
-        "Cache invalidation optimized",
-        "Build performance benchmarks show measurable improvement"
-      ],
-      "important_files": [
-        "turbo.json",
-        "package.json",
-        "packages/*/package.json",
-        "development/build-analysis-report.md"
-      ],
-      "estimate": "2-3 hours",
-      "requires_research": false,
-      "created_at": "2025-07-31T21:53:41.937Z"
     },
     {
       "id": "typescript-build-parallelization-1753998821937",
@@ -2542,6 +469,281 @@
       }
     },
     {
+      "id": "missing-api-execution-control-1754177683422",
+      "title": "Implement Advanced Execution Control API",
+      "description": "Add missing execution control endpoints for granular execution management, including retry from specific points, partial workflow execution, and execution cancellation at the node level.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/executions/:id/cancel-node endpoint implemented",
+        "POST /api/v1/executions/:id/retry-from-node endpoint functional",
+        "POST /api/v1/workflows/:id/execute-partial endpoint working",
+        "Real-time execution status updates for granular control",
+        "Integration with existing workflow execution engine",
+        "Proper error handling for mid-execution operations"
+      ],
+      "important_files": [
+        "packages/cli/src/executions/executions.controller.ts",
+        "packages/cli/src/active-executions.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/Workflow.ts"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:34:43.422Z"
+    },
+    {
+      "id": "missing-api-node-testing-1754177683422",
+      "title": "Implement Comprehensive Node Testing API",
+      "description": "Extend existing node testing beyond AI nodes to support testing any node type with parameter validation, mock data generation, and isolated execution environments.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/nodes/:nodeType/test endpoint for all node types",
+        "Parameter validation and mock data generation",
+        "Isolated execution environment for safe testing",
+        "Test result formatting with detailed error reporting",
+        "Integration with node credential validation",
+        "Support for testing custom/community nodes"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/node-types.controller.ts",
+        "packages/core/src/NodeExecuteFunctions.ts",
+        "packages/workflow/src/NodeHelpers.ts",
+        "packages/nodes-base/nodes/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:34:43.422Z"
+    },
+    {
+      "id": "missing-api-workflow-variables-1754177713263",
+      "title": "Implement Dynamic Workflow Variables Discovery API",
+      "description": "Add endpoints for discovering available variables, functions, and context within workflow execution scope for enhanced development experience.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/workflows/:id/variables endpoint implemented",
+        "GET /api/v1/workflows/:id/functions endpoint for available functions",
+        "Context-aware variable discovery based on workflow state",
+        "Documentation generation for built-in functions",
+        "Integration with expression editor capabilities",
+        "Support for node-specific variable scoping"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/workflow/src/Expression.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/WorkflowDataProxy.ts"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-credential-testing-1754177713263",
+      "title": "Implement Credential Testing API",
+      "description": "Add endpoints for testing credential validity outside of workflow execution context, enabling credential validation and troubleshooting.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/credentials/:id/test endpoint implemented",
+        "Credential validation without workflow execution",
+        "Connection testing for various credential types",
+        "Detailed error reporting for credential failures",
+        "Integration with existing credential management",
+        "Support for OAuth2 token refresh testing"
+      ],
+      "important_files": [
+        "packages/cli/src/credentials/credentials.controller.ts",
+        "packages/core/src/CredentialsHelper.ts",
+        "packages/nodes-base/credentials/",
+        "packages/cli/src/services/credentials.service.ts"
+      ],
+      "estimate": "4-5 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-bulk-operations-1754177713263",
+      "title": "Implement Bulk Workflow Operations API",
+      "description": "Add endpoints for bulk workflow operations including activation, deactivation, updates, and batch processing for enterprise workflow management.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/workflows/bulk/activate endpoint implemented",
+        "POST /api/v1/workflows/bulk/deactivate endpoint functional",
+        "PATCH /api/v1/workflows/bulk/update for batch updates",
+        "Transaction support for bulk operations",
+        "Progress tracking for long-running bulk operations",
+        "Comprehensive error handling for partial failures"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/workflows/workflows.service.ts",
+        "packages/cli/src/services/workflow.service.ts",
+        "@n8n/api-types/src/dto/workflows/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-workflow-folders-1754177713263",
+      "title": "Implement Workflow Folder Management API",
+      "description": "Add comprehensive folder management endpoints for organizing workflows hierarchically with proper permissions and inheritance.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/folders endpoint with hierarchical structure",
+        "POST /api/v1/folders endpoint for folder creation",
+        "PATCH /api/v1/folders/:id for folder updates",
+        "DELETE /api/v1/folders/:id with cascade options",
+        "PUT /api/v1/workflows/:id/folder for workflow organization",
+        "Permission inheritance from parent folders"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/folders.controller.ts",
+        "packages/cli/src/services/folders.service.ts",
+        "@n8n/db/src/entities/Folder.ts",
+        "packages/cli/src/workflows/workflows.controller.ts"
+      ],
+      "estimate": "5-7 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-oauth2-callback-1754177713263",
+      "title": "Implement OAuth2 Callback Management API",
+      "description": "Add endpoints for managing OAuth2 authentication callbacks, token refresh, and credential flow completion for enhanced authentication workflows.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/oauth2/callback/:service endpoint implemented",
+        "POST /api/v1/oauth2/refresh endpoint for token refresh",
+        "GET /api/v1/oauth2/auth-url endpoint for authorization URLs",
+        "Proper state validation and CSRF protection",
+        "Integration with existing credential system",
+        "Support for multiple OAuth2 providers"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/oauth/oauth2.controller.ts",
+        "packages/cli/src/services/oauth2.service.ts",
+        "packages/nodes-base/credentials/",
+        "packages/cli/src/controllers/oauth/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-intelligent-helpers-1754177739695",
+      "title": "Implement Intelligent Workflow Helpers API",
+      "description": "Add AI-powered endpoints for suggesting node connections, auto-mapping parameters, and providing intelligent workflow development assistance.",
+      "mode": "DEVELOPMENT",
+      "priority": "low",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/workflows/:id/suggest-connections endpoint",
+        "POST /api/v1/nodes/auto-map-parameters endpoint",
+        "GET /api/v1/workflows/:id/optimization-suggestions endpoint",
+        "AI-powered node recommendation engine",
+        "Parameter mapping intelligence based on data types",
+        "Integration with existing AI node infrastructure"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/ai-helpers.controller.ts",
+        "packages/cli/src/services/ai-helpers.service.ts",
+        "packages/nodes-base/nodes/OpenAi/",
+        "packages/workflow/src/NodeHelpers.ts"
+      ],
+      "estimate": "10-12 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-instance-monitoring-1754177739695",
+      "title": "Implement Instance-Level Resource Monitoring API",
+      "description": "Add endpoints for monitoring CPU, memory, and disk usage at the n8n instance level with per-workflow resource tracking and alerting.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/system/cpu-usage endpoint implemented",
+        "GET /api/v1/system/memory-usage endpoint functional",
+        "GET /api/v1/system/disk-usage endpoint working",
+        "GET /api/v1/workflows/:id/resource-usage per-workflow tracking",
+        "Real-time resource monitoring with WebSocket updates",
+        "Resource usage alerting and threshold management"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/system-monitoring.controller.ts",
+        "packages/cli/src/services/system-monitoring.service.ts",
+        "packages/cli/src/services/system-resources.service.ts",
+        "packages/cli/src/metrics/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-node-metrics-1754177739695",
+      "title": "Implement Node-Specific Performance Metrics API",
+      "description": "Add endpoints for detailed node-level performance metrics including memory usage, execution time, and error statistics for workflow optimization.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/analytics/nodes/:nodeType/metrics endpoint",
+        "GET /api/v1/analytics/nodes/:nodeType/errors endpoint",
+        "Node-level memory usage tracking and reporting",
+        "Execution time breakdown by node type",
+        "Error rate statistics per node with categorization",
+        "Performance comparison across different node versions"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/analytics.controller.ts",
+        "packages/cli/src/services/analytics.service.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/cli/src/services/performance-monitoring.service.ts"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-workflow-search-1754177739695",
+      "title": "Implement Advanced Workflow Search API",
+      "description": "Add comprehensive workflow search capabilities beyond templates, including full-text search, metadata filtering, and complex query support.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/workflows/search endpoint with advanced filtering",
+        "Full-text search across workflow content and metadata",
+        "Complex filtering by tags, status, execution history",
+        "Search performance optimization with indexing",
+        "Elasticsearch/OpenSearch integration support",
+        "Saved search queries and bookmarking"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/services/workflow-search.service.ts",
+        "@n8n/db/src/repositories/workflow.repository.ts",
+        "packages/cli/src/services/search.service.ts"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
       "id": "review-strike-1",
       "mode": "REVIEWER",
       "description": "Review Strike 1: Ensure the project builds completely without errors",
@@ -2579,16 +781,187 @@
       "subtasks": [],
       "is_review_task": true,
       "strike_number": 3
+    },
+    {
+      "id": "remove-pyodide-enable-local-python-1754179589293",
+      "title": "Remove Pyodide and Enable Local Python Execution with Virtual Environments",
+      "description": "Replace the current Pyodide-based Python execution in Code nodes with native local Python execution using virtual environments for maximum capabilities and performance",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "Pyodide dependencies completely removed from codebase",
+        "Local Python execution implemented with venv support",
+        "Full Python standard library access enabled",
+        "Native C-extension support (NumPy, Pandas, TensorFlow, etc.)",
+        "File system access for data processing workflows",
+        "Security sandbox implemented via Docker containers",
+        "Performance benchmarks show 5-10x improvement over Pyodide",
+        "Backward compatibility maintained for existing workflows",
+        "Comprehensive documentation for Python environment setup"
+      ],
+      "important_files": [
+        "packages/nodes-base/nodes/Code/Code.node.ts",
+        "packages/nodes-base/nodes/Code/CodeNodePython.ts",
+        "packages/core/src/NodeExecuteFunctions.ts",
+        "packages/workflow/src/NodeHelpers.ts",
+        "packages/cli/src/services/python-executor.service.ts",
+        "docker/python-executor/Dockerfile",
+        "docs/nodes/code-node-python.md"
+      ],
+      "estimate": "12-16 hours",
+      "requires_research": true,
+      "subtasks": [
+        {
+          "id": "subtask-research-python-execution-1754179589293",
+          "title": "Research Current Pyodide Implementation and Security Model",
+          "description": "Analyze existing Pyodide integration to understand security boundaries and execution model",
+          "status": "pending",
+          "mode": "RESEARCH",
+          "priority": "high",
+          "estimate": "2-3 hours"
+        },
+        {
+          "id": "subtask-design-local-python-architecture-1754179589293",
+          "title": "Design Local Python Execution Architecture with Docker Sandboxing",
+          "description": "Create architecture for secure local Python execution using Docker containers and venv management",
+          "status": "pending",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "estimate": "3-4 hours"
+        },
+        {
+          "id": "subtask-implement-python-executor-service-1754179589293",
+          "title": "Implement Python Executor Service with Virtual Environment Management",
+          "description": "Create service to manage Python virtual environments and execute code securely",
+          "status": "pending",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "estimate": "4-5 hours"
+        },
+        {
+          "id": "subtask-replace-code-node-execution-1754179589293",
+          "title": "Replace Code Node Pyodide Execution with Local Python Service",
+          "description": "Update Code node to use new local Python execution service instead of Pyodide",
+          "status": "pending",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "estimate": "2-3 hours"
+        },
+        {
+          "id": "subtask-docker-python-environment-1754179589293",
+          "title": "Create Docker Container for Secure Python Execution",
+          "description": "Build Docker image with common Python libraries and security constraints",
+          "status": "pending",
+          "mode": "DEVELOPMENT",
+          "priority": "medium",
+          "estimate": "2-3 hours"
+        }
+      ],
+      "created_at": "2025-08-03T00:06:29.293Z"
+    },
+    {
+      "id": "python-security-enhancement-1754179613699",
+      "title": "Implement Advanced Security Model for Local Python Execution",
+      "description": "Create comprehensive security framework for local Python execution that maintains safety while enabling full capabilities",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "Docker-based sandboxing with resource limits implemented",
+        "Network isolation and controlled external access",
+        "File system access controls with workspace restrictions",
+        "Python package installation controls and whitelist system",
+        "Execution timeout and resource monitoring",
+        "Audit logging for all Python execution activities",
+        "Security configuration documentation",
+        "Penetration testing completed with no critical vulnerabilities"
+      ],
+      "important_files": [
+        "packages/cli/src/security/python-sandbox.service.ts",
+        "docker/python-executor/security-config.json",
+        "packages/cli/src/middleware/python-security.middleware.ts",
+        "docs/security/python-execution-security.md",
+        "packages/cli/src/services/resource-monitor.service.ts"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": true,
+      "dependencies": [
+        "remove-pyodide-enable-local-python-1754179589293"
+      ],
+      "created_at": "2025-08-03T00:06:53.699Z"
+    },
+    {
+      "id": "python-performance-optimization-1754179613699",
+      "title": "Optimize Python Execution Performance and Resource Management",
+      "description": "Implement performance optimizations for local Python execution including connection pooling, environment caching, and execution optimization",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "Python environment connection pooling implemented",
+        "Virtual environment caching and reuse system",
+        "Hot code execution for frequently used scripts",
+        "Memory usage optimization and garbage collection",
+        "Parallel execution support for independent code blocks",
+        "Performance benchmarks showing 5-10x improvement over Pyodide",
+        "Resource usage monitoring and optimization dashboard",
+        "Load testing completed with acceptable performance under stress"
+      ],
+      "important_files": [
+        "packages/cli/src/services/python-pool.service.ts",
+        "packages/cli/src/services/python-cache.service.ts",
+        "packages/cli/src/performance/python-metrics.service.ts",
+        "scripts/benchmark-python-execution.js",
+        "docs/performance/python-optimization.md"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "dependencies": [
+        "remove-pyodide-enable-local-python-1754179589293"
+      ],
+      "created_at": "2025-08-03T00:06:53.699Z"
+    },
+    {
+      "id": "python-migration-tools-1754179613699",
+      "title": "Create Migration Tools for Existing Pyodide Workflows",
+      "description": "Develop automated migration tools and compatibility layer to ensure existing Pyodide-based workflows continue working with local Python execution",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "success_criteria": [
+        "Automated workflow migration tool for Pyodide to local Python",
+        "Compatibility layer for Pyodide-specific APIs",
+        "Migration validation and testing framework",
+        "Rollback mechanism for failed migrations",
+        "User migration guide and documentation",
+        "Migration progress tracking and reporting",
+        "All existing n8n community workflows migrated successfully",
+        "Zero breaking changes for end users"
+      ],
+      "important_files": [
+        "packages/cli/src/migration/pyodide-to-local-python.service.ts",
+        "packages/cli/src/compatibility/pyodide-compat.ts",
+        "scripts/migrate-python-workflows.js",
+        "docs/migration/pyodide-to-local-python.md",
+        "packages/cli/src/commands/migrate-python.command.ts"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "dependencies": [
+        "remove-pyodide-enable-local-python-1754179589293"
+      ],
+      "created_at": "2025-08-03T00:06:53.699Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 162,
-  "last_hook_activation": 1754088034141,
+  "execution_count": 170,
+  "last_hook_activation": 1754180082367,
   "__removedLinterTasks": {
     "removedCount": 1,
-    "finalTaskCount": 63
+    "finalTaskCount": 71
   }
 }

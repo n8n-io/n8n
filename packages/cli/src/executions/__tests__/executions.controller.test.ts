@@ -13,10 +13,13 @@ describe('ExecutionsController', () => {
 	const workflowSharingService = mock<WorkflowSharingService>();
 
 	const executionsController = new ExecutionsController(
+		mock(), // logger
 		executionService,
-		mock(),
+		mock(), // enterpriseExecutionService
 		workflowSharingService,
-		mock(),
+		mock(), // license
+		mock(), // activeExecutions
+		mock(), // eventService
 	);
 
 	beforeEach(() => {

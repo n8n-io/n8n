@@ -21,20 +21,19 @@ describe('SecurityMonitoringService', () => {
 	let mockEventService: jest.Mocked<EventService>;
 	let mockAuditLoggingService: jest.Mocked<AuditLoggingService>;
 
-	const mockRequest = mock<Request>({
+	const mockRequest = {
 		method: 'POST',
 		path: '/api/sensitive',
 		ip: '192.168.1.100',
 		headers: { 'user-agent': 'suspicious-client/1.0' },
 		query: { test: 'value' },
 		params: { id: '123' },
-		sessionID: 'session-456',
 		get: jest.fn((header) => {
 			if (header === 'User-Agent') return 'suspicious-client/1.0';
 			if (header === 'X-Forwarded-For') return '192.168.1.100';
 			return undefined;
 		}),
-	});
+	} as unknown as Request;
 
 	const mockSecurityEventData: ISecurityEventData = {
 		eventType: 'suspicious_activity',

@@ -24,7 +24,7 @@ export class ResourceTransferController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly resourceTransferService: ResourceTransferService,
-		private readonly eventService: EventService,
+		private readonly _eventService: EventService,
 	) {}
 
 	// Batch Workflow Transfer

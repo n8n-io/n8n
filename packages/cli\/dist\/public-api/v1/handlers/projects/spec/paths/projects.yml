@@ -1,0 +1,40 @@
+post:
+  x-eov-operation-id: createProject
+  x-eov-operation-handler: v1/handlers/projects/projects.handler
+  tags:
+    - Projects
+  summary: Create a project
+  description: Create a project on your instance.
+  requestBody:
+    description: Payload for project to create.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/project.yml'
+    required: true
+  responses:
+    '201':
+      description: Operation successful.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+get:
+  x-eov-operation-id: getProjects
+  x-eov-operation-handler: v1/handlers/projects/projects.handler
+  tags:
+    - Projects
+  summary: Retrieve projects
+  description: Retrieve projects from your instance.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/projectList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

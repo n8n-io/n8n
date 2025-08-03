@@ -467,7 +467,7 @@ export class ComplianceReportingService {
 	 * Categorize events by compliance relevance
 	 */
 	private categorizeEventsByCompliance(
-		standard: ComplianceStandard,
+		_standard: ComplianceStandard,
 		auditEvents: AuditEvent[],
 		securityEvents: SecurityEvent[],
 	): IDataObject {
