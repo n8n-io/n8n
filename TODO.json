@@ -316,7 +316,7 @@
       "description": "Split oversized TypeScript files (7,967+ lines) into logical modules to improve compilation performance and maintainability.",
       "mode": "REFACTORING",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "UProc/Json/Tools.ts (7,967 lines) split into logical modules",
         "Large test files refactored to extract reusable utilities",
@@ -334,7 +334,82 @@
       ],
       "estimate": "6-8 hours",
       "requires_research": true,
-      "created_at": "2025-07-31T21:53:41.937Z"
+      "created_at": "2025-07-31T21:53:41.937Z",
+      "subtasks": [
+        {
+          "id": "refactor-uproc-tools-1754202356060",
+          "title": "Refactor UProc/Json/Tools.ts into Category-Based Modules",
+          "description": "Split the 7,967-line UProc/Json/Tools.ts file into logical modules organized by tool categories (finance, geographic, text, communication, etc.)",
+          "mode": "REFACTORING",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "large-file-refactoring-1753998821937",
+          "success_criteria": [
+            "UProc/Json/Tools.ts split into category-based modules (finance.ts, geographic.ts, text.ts, etc.)",
+            "Each module exports tools specific to its category",
+            "Main Tools.ts file imports and re-exports all tools",
+            "All functionality preserved - no breaking changes",
+            "TypeScript compilation time improved",
+            "File maintainability enhanced"
+          ],
+          "important_files": [
+            "packages/nodes-base/nodes/UProc/Json/Tools.ts",
+            "packages/nodes-base/nodes/UProc/Json/",
+            "packages/nodes-base/nodes/UProc/UProc.node.ts"
+          ],
+          "estimate": "3-4 hours",
+          "created_at": "2025-08-03T06:25:56.060Z"
+        },
+        {
+          "id": "refactor-workflow-tests-1754202356060",
+          "title": "Extract Reusable Test Utilities from Large Test Files",
+          "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead",
+          "mode": "REFACTORING",
+          "priority": "medium",
+          "status": "pending",
+          "parent_task_id": "large-file-refactoring-1753998821937",
+          "success_criteria": [
+            "Common test utilities extracted into separate modules",
+            "Test helper functions modularized and reusable",
+            "Large test files broken into focused test suites",
+            "All tests continue to pass",
+            "Test execution time maintained or improved",
+            "Code duplication eliminated"
+          ],
+          "important_files": [
+            "packages/workflow/test/workflow.test.ts",
+            "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
+            "packages/workflow/test/helpers/",
+            "packages/frontend/editor-ui/src/test-utils/"
+          ],
+          "estimate": "2-3 hours",
+          "created_at": "2025-08-03T06:25:56.060Z"
+        },
+        {
+          "id": "refactor-pipedrive-node-1754202356060",
+          "title": "Modularize Pipedrive Node Implementation",
+          "description": "Break down the large Pipedrive.node.ts file (4,991 lines) into logical modules for better maintainability and compilation performance",
+          "mode": "REFACTORING",
+          "priority": "medium",
+          "status": "pending",
+          "parent_task_id": "large-file-refactoring-1753998821937",
+          "success_criteria": [
+            "Pipedrive.node.ts split into logical modules (operations, resources, helpers)",
+            "Common functionality extracted into reusable utilities",
+            "Node registration and exports maintained correctly",
+            "All Pipedrive node functionality preserved",
+            "TypeScript compilation performance improved",
+            "Code organization enhanced for future maintenance"
+          ],
+          "important_files": [
+            "packages/nodes-base/nodes/Pipedrive/Pipedrive.node.ts",
+            "packages/nodes-base/nodes/Pipedrive/",
+            "packages/nodes-base/nodes/Pipedrive/descriptions/"
+          ],
+          "estimate": "2-3 hours",
+          "created_at": "2025-08-03T06:25:56.060Z"
+        }
+      ]
     },
     {
       "id": "build-performance-monitoring-1753998821937",
@@ -1134,14 +1209,87 @@
         "remove-pyodide-enable-local-python-1754179589293"
       ],
       "created_at": "2025-08-03T00:06:53.699Z"
+    },
+    {
+      "id": "refactor-uproc-tools-1754202356060",
+      "title": "Refactor UProc/Json/Tools.ts into Category-Based Modules",
+      "description": "Split the 7,967-line UProc/Json/Tools.ts file into logical modules organized by tool categories (finance, geographic, text, communication, etc.)",
+      "mode": "REFACTORING",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "large-file-refactoring-1753998821937",
+      "success_criteria": [
+        "UProc/Json/Tools.ts split into category-based modules (finance.ts, geographic.ts, text.ts, etc.)",
+        "Each module exports tools specific to its category",
+        "Main Tools.ts file imports and re-exports all tools",
+        "All functionality preserved - no breaking changes",
+        "TypeScript compilation time improved",
+        "File maintainability enhanced"
+      ],
+      "important_files": [
+        "packages/nodes-base/nodes/UProc/Json/Tools.ts",
+        "packages/nodes-base/nodes/UProc/Json/",
+        "packages/nodes-base/nodes/UProc/UProc.node.ts"
+      ],
+      "estimate": "3-4 hours",
+      "created_at": "2025-08-03T06:25:56.060Z"
+    },
+    {
+      "id": "refactor-workflow-tests-1754202356060",
+      "title": "Extract Reusable Test Utilities from Large Test Files",
+      "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead",
+      "mode": "REFACTORING",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "large-file-refactoring-1753998821937",
+      "success_criteria": [
+        "Common test utilities extracted into separate modules",
+        "Test helper functions modularized and reusable",
+        "Large test files broken into focused test suites",
+        "All tests continue to pass",
+        "Test execution time maintained or improved",
+        "Code duplication eliminated"
+      ],
+      "important_files": [
+        "packages/workflow/test/workflow.test.ts",
+        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
+        "packages/workflow/test/helpers/",
+        "packages/frontend/editor-ui/src/test-utils/"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T06:25:56.060Z"
+    },
+    {
+      "id": "refactor-pipedrive-node-1754202356060",
+      "title": "Modularize Pipedrive Node Implementation",
+      "description": "Break down the large Pipedrive.node.ts file (4,991 lines) into logical modules for better maintainability and compilation performance",
+      "mode": "REFACTORING",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "large-file-refactoring-1753998821937",
+      "success_criteria": [
+        "Pipedrive.node.ts split into logical modules (operations, resources, helpers)",
+        "Common functionality extracted into reusable utilities",
+        "Node registration and exports maintained correctly",
+        "All Pipedrive node functionality preserved",
+        "TypeScript compilation performance improved",
+        "Code organization enhanced for future maintenance"
+      ],
+      "important_files": [
+        "packages/nodes-base/nodes/Pipedrive/Pipedrive.node.ts",
+        "packages/nodes-base/nodes/Pipedrive/",
+        "packages/nodes-base/nodes/Pipedrive/descriptions/"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T06:25:56.060Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 191,
-  "last_hook_activation": 1754201347860,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 192,
+  "last_hook_activation": 1754202083702,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
