@@ -1,0 +1,50 @@
+{
+    "name": "n8n-nodes-example",
+    "version": "0.1.0",
+    "description": "n8n community node to work with the Example API",
+    "license": "MIT",
+    "homepage": "https://example.com",
+    "keywords": [
+        "n8n-community-node-package"
+    ],
+    "author": {
+        "name": "Test",
+        "email": "test@example.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "scripts": {
+        "build": "tsc && node ./scripts/copy-static-files.mjs",
+        "dev": "tsc --watch",
+        "lint": "eslint .",
+        "release": "release-it"
+    },
+    "files": [
+        "dist"
+    ],
+    "n8n": {
+        "n8nNodesApiVersion": 1,
+        "credentials": [ ],
+        "nodes": [
+            "dist/nodes/Example/Example.node.js"
+        ]
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.29.0",
+        "eslint": "9.32.0",
+        "eslint-import-resolver-typescript": "^4.4.3",
+        "eslint-plugin-import-x": "^4.15.2",
+        "eslint-plugin-n8n-nodes-base": "1.16.3",
+        "fast-glob": "catalog:",
+        "n8n-workflow": "*",
+        "prettier": "3.6.2",
+        "release-it": "^19.0.4",
+        "typescript": "5.9.2",
+        "typescript-eslint": "^8.35.0"
+    },
+    "peerDependencies": {
+        "n8n-workflow": "*"
+    }
+}

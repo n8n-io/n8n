@@ -35,7 +35,9 @@
     "topicSeparator": " "
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "@oclif/core": "^4.5.2",
+    "picocolors": "catalog:",
     "prompts": "^2.4.2"
   },
   "devDependencies": {

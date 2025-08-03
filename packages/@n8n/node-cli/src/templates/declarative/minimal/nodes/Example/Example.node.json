@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.nasapics",
+	"node": "n8n-nodes-base.example",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development", "Developer Tools"],
