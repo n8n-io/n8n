@@ -599,6 +599,7 @@ const versionDescription: INodeTypeDescription = {
 					name: 'auto_reminder',
 					type: 'boolean',
 					default: false,
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 					description:
 						'When this option is enabled, the default reminder will be added to the new item if it has a due date with time set',
 				},
