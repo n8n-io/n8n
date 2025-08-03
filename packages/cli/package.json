@@ -49,6 +49,7 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@parcel/watcher": "^2.5.1",
     "@redocly/cli": "^1.28.5",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
