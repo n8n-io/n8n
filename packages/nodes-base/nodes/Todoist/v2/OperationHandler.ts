@@ -10,7 +10,12 @@ import {
 
 import type { Section, TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
-import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
+import {
+	FormatDueDatetime,
+	todoistApiRequest,
+	todoistSyncRequest,
+	todoistSingleSyncRequest,
+} from '../GenericFunctions';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -938,5 +943,18 @@ export class LabelUpdateHandler implements OperationHandler {
 
 		await todoistApiRequest.call(ctx, 'POST', `/labels/${id}`, updateFields);
 		return { success: true };
+	}
+}
+
+export class QuickAddHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		const text = ctx.getNodeParameter('text', itemIndex);
+		assertIsString('text', text);
+
+		const data = await todoistSingleSyncRequest.call(ctx, { text }, {}, '/quick/add');
+
+		return {
+			data,
+		};
 	}
 }

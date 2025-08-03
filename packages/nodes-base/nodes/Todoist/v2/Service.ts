@@ -7,6 +7,7 @@ import {
 	GetAllHandler,
 	GetHandler,
 	MoveHandler,
+	QuickAddHandler,
 	ReopenHandler,
 	SyncHandler,
 	UpdateHandler,
@@ -59,6 +60,7 @@ export class TodoistService implements Service {
 		update: new UpdateHandler(),
 		move: new MoveHandler(),
 		sync: new SyncHandler(),
+		quickAdd: new QuickAddHandler(),
 	};
 
 	private projectHandlers = {
@@ -140,6 +142,7 @@ const TASK_OPERATIONS = [
 	'update',
 	'move',
 	'sync',
+	'quickAdd',
 ] as const;
 
 const PROJECT_OPERATIONS = [

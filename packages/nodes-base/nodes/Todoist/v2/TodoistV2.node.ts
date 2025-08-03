@@ -181,6 +181,12 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Move a task',
 				},
 				{
+					name: 'Quick Add',
+					value: 'quickAdd',
+					description: 'Quick add a task using natural language',
+					action: 'Quick add a task',
+				},
+				{
 					name: 'Reopen',
 					value: 'reopen',
 					description: 'Reopen a task',
@@ -542,6 +548,24 @@ const versionDescription: INodeTypeDescription = {
 			default: '',
 			required: true,
 			description: 'Task content',
+		},
+		{
+			displayName: 'Text',
+			name: 'text',
+			type: 'string',
+			typeOptions: {
+				rows: 3,
+			},
+			displayOptions: {
+				show: {
+					resource: ['task'],
+					operation: ['quickAdd'],
+				},
+			},
+			default: '',
+			required: true,
+			description:
+				'Natural language text for quick adding task (e.g., "Buy milk @Grocery #shopping tomorrow"). It can include a due date in free form text, a project name starting with the "#" character (without spaces), a label starting with the "@" character, an assignee starting with the "+" character, a priority (e.g., p1), a deadline between "{}" (e.g. {in 3 days}), or a description starting from "//" until the end of the text.',
 		},
 		{
 			displayName: 'Sync Commands',
