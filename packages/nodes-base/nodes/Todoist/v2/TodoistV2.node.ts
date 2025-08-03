@@ -509,7 +509,8 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Label Names or IDs',
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+			displayName: 'Label Names',
 			name: 'labels',
 			type: 'multiOptions',
 			typeOptions: {
@@ -810,7 +811,8 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Label Names or IDs',
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+					displayName: 'Label Names',
 					name: 'labels',
 					type: 'multiOptions',
 					description:
@@ -1144,28 +1146,6 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 			description: 'Comment content',
-		},
-		{
-			displayName: 'Additional Fields',
-			name: 'commentOptions',
-			type: 'collection',
-			placeholder: 'Add Field',
-			default: {},
-			displayOptions: {
-				show: {
-					resource: ['comment'],
-					operation: ['create'],
-				},
-			},
-			options: [
-				{
-					displayName: 'Attachment',
-					name: 'attachment',
-					type: 'json',
-					default: '',
-					description: 'Attachment data (JSON)',
-				},
-			],
 		},
 		{
 			displayName: 'Update Fields',
