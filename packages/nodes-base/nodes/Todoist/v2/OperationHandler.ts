@@ -24,7 +24,7 @@ export interface CreateTaskRequest {
 	parent_id?: number | string;
 	order?: number;
 	labels?: string[];
-	priority?: number;
+	priority?: number | string;
 	due_string?: string;
 	due_datetime?: string;
 	due_date?: string;
