@@ -85,7 +85,7 @@ test.describe('Projects @db:reset', () => {
 		await subn8n.canvas.saveWorkflow();
 
 		await subn8n.page.goto('/home/workflows');
-		await subn8n.projectWorkflows.clickProjectMenuItem(projectName);
+		await subn8n.sideBar.clickProjectMenuItem(projectName);
 		await subn8n.page.getByRole('link', { name: 'Workflows' }).click();
 
 		// Get Workflow Count

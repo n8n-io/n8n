@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "test:all": "playwright test",
-    "test:local:reset": "N8N_BASE_URL=http://localhost:5678 RESET_E2E_DB=true playwright test --workers=4",
-    "test:local": "N8N_BASE_URL=http://localhost:5678 playwright test",
+    "start:isolated": "cd ..; N8N_PORT=5679 N8N_USER_FOLDER=/tmp/n8n-test-$(date +%s) E2E_TESTS=true pnpm start",
+    "test:local": "RESET_E2E_DB=true N8N_BASE_URL=http://localhost:5679 start-server-and-test 'pnpm start:isolated' http://localhost:5679/favicon.ico 'sleep 1 && pnpm test:standard --workers 4'",
     "test:standard": "playwright test --project=mode:standard*",
     "test:postgres": "playwright test --project=mode:postgres*",
     "test:queue": "playwright test --project=mode:queue*",
@@ -15,7 +15,7 @@
     "test:workflows:schema": "SCHEMA=true playwright test --project=mode:workflows",
     "test:workflows:update": "playwright test --project=mode:workflows --update-snapshots",
     "lint": "eslint .",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps --no-shell",
     "install-browsers:local": "playwright install chromium --with-deps --no-shell"
   },

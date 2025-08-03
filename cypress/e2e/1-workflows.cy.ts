@@ -10,7 +10,9 @@ const workflowSharingModal = new WorkflowSharingModal();
 
 const multipleWorkflowsCount = 5;
 
-describe('Workflows', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Workflows', () => {
 	beforeEach(() => {
 		cy.visit(WorkflowsPage.url);
 	});
