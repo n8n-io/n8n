@@ -635,6 +635,60 @@ const versionDescription: INodeTypeDescription = {
 					description:
 						'The section you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
+				{
+					displayName: 'Order',
+					name: 'order',
+					type: 'number',
+					default: 0,
+					description: 'Non-zero integer used to sort tasks under the same parent',
+				},
+				{
+					displayName: 'Due Date',
+					name: 'dueDate',
+					type: 'string',
+					default: '',
+					placeholder: 'YYYY-MM-DD',
+					description: 'Specific date in YYYY-MM-DD format',
+				},
+				{
+					displayName: 'Assignee ID',
+					name: 'assigneeId',
+					type: 'string',
+					default: '',
+					description: 'Responsible user ID (for shared tasks)',
+				},
+				{
+					displayName: 'Duration',
+					name: 'duration',
+					type: 'number',
+					default: 0,
+					description: 'Positive integer for task duration (must be used with Duration Unit)',
+				},
+				{
+					displayName: 'Duration Unit',
+					name: 'durationUnit',
+					type: 'options',
+					options: [
+						{
+							name: 'Minute',
+							value: 'minute',
+						},
+						{
+							name: 'Day',
+							value: 'day',
+						},
+					],
+					default: 'minute',
+					description: 'Unit of time for duration (must be used with Duration)',
+				},
+				{
+					displayName: 'Deadline Date',
+					name: 'deadlineDate',
+					type: 'string',
+					default: '',
+					placeholder: 'YYYY-MM-DD',
+					description: 'Specific deadline date in YYYY-MM-DD format',
+				},
 			],
 		},
 		{

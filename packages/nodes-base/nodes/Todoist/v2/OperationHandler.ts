@@ -29,6 +29,10 @@ export interface CreateTaskRequest {
 	due_datetime?: string;
 	due_date?: string;
 	due_lang?: string;
+	assignee_id?: string;
+	duration?: number;
+	duration_unit?: string;
+	deadline_date?: string;
 }
 
 export interface SyncRequest {
@@ -128,6 +132,12 @@ export class CreateHandler implements OperationHandler {
 			dueLang?: string;
 			parentId?: string | number;
 			priority?: string | number;
+			order?: number;
+			dueDate?: string;
+			assigneeId?: string;
+			duration?: number;
+			durationUnit?: string;
+			deadlineDate?: string;
 		}>(options, {
 			description: { type: 'string', optional: true },
 			dueDateTime: { type: 'string', optional: true },
@@ -136,6 +146,12 @@ export class CreateHandler implements OperationHandler {
 			dueLang: { type: 'string', optional: true },
 			parentId: { type: ['string', 'number'], optional: true },
 			priority: { type: ['string', 'number'], optional: true },
+			order: { type: 'number', optional: true },
+			dueDate: { type: 'string', optional: true },
+			assigneeId: { type: 'string', optional: true },
+			duration: { type: 'number', optional: true },
+			durationUnit: { type: 'string', optional: true },
+			deadlineDate: { type: 'string', optional: true },
 		});
 
 		const body: CreateTaskRequest = {
@@ -173,6 +189,30 @@ export class CreateHandler implements OperationHandler {
 
 		if (options.parentId) {
 			body.parent_id = options.parentId;
+		}
+
+		if (options.order) {
+			body.order = options.order;
+		}
+
+		if (options.dueDate) {
+			body.due_date = options.dueDate;
+		}
+
+		if (options.assigneeId) {
+			body.assignee_id = options.assigneeId;
+		}
+
+		if (options.duration) {
+			body.duration = options.duration;
+		}
+
+		if (options.durationUnit) {
+			body.duration_unit = options.durationUnit;
+		}
+
+		if (options.deadlineDate) {
+			body.deadline_date = options.deadlineDate;
 		}
 
 		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body as IDataObject);
