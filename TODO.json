@@ -548,7 +548,7 @@
       "description": "Implement comprehensive test suite for n8n-workflow package covering expression evaluation, node helpers, workflow execution logic, and utility functions.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "n8n-workflow package test coverage reaches 80% minimum",
         "Expression evaluation engine fully tested",
@@ -571,7 +571,7 @@
       "description": "Create comprehensive test suites for backend utility packages (@n8n/backend-common, @n8n/errors, @n8n/config, @n8n/db) that currently lack adequate test coverage.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All backend utility packages have 80%+ test coverage",
         "@n8n/backend-common logging and utilities tested",
@@ -1383,14 +1383,176 @@
         "./development/research-reports/research-report-cli-coverage-analysis-1754203420018.md"
       ],
       "created_at": "2025-08-03T06:43:41.226Z"
+    },
+    {
+      "id": "errors-package-test-suite-1754204776630",
+      "title": "Implement Complete Test Suite for @n8n/errors Package",
+      "description": "Create comprehensive test coverage for the @n8n/errors package which currently has 0% test coverage, focusing on ApplicationError class, Sentry integration, and error handling patterns.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "ApplicationError class fully tested with all constructor variations",
+        "Sentry integration and package name detection tested",
+        "Error level handling and reporting options validated",
+        "Test coverage reaches 85%+ for @n8n/errors package",
+        "Jest configuration set up for @n8n/errors package",
+        "All error handling edge cases covered"
+      ],
+      "important_files": [
+        "packages/@n8n/errors/src/application.error.ts",
+        "packages/@n8n/errors/src/types.ts",
+        "packages/@n8n/errors/test/",
+        "packages/@n8n/errors/jest.config.js",
+        "packages/@n8n/errors/package.json"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
+    },
+    {
+      "id": "db-security-validators-tests-1754204776630",
+      "title": "Create Security-Critical Tests for @n8n/db Validators",
+      "description": "Implement comprehensive tests for security validators in @n8n/db package, focusing on XSS prevention, URL validation, and input sanitization to prevent security vulnerabilities.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "no-xss.validator.ts comprehensively tested with malicious input variations",
+        "no-url.validator.ts tested with various URL formats and edge cases",
+        "Entity validation logic tested across user-facing entities",
+        "Security boundary testing for input sanitization",
+        "Performance testing for validation under load",
+        "Edge case testing for validation bypass attempts"
+      ],
+      "important_files": [
+        "packages/@n8n/db/src/utils/validators/no-xss.validator.ts",
+        "packages/@n8n/db/src/utils/validators/no-url.validator.ts",
+        "packages/@n8n/db/src/entities/user.ts",
+        "packages/@n8n/db/src/entities/credentials-entity.ts",
+        "packages/@n8n/db/test/validators/"
+      ],
+      "estimate": "3-4 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
+    },
+    {
+      "id": "config-decorators-tests-1754204776630",
+      "title": "Implement Tests for @n8n/config Decorators and Type System",
+      "description": "Create comprehensive test coverage for @n8n/config decorators (@Config, @Env, @Nested) and type coercion system which handles environment variable parsing and validation.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "@Config decorator tested with various configuration scenarios",
+        "@Env decorator tested with environment variable parsing and validation",
+        "@Nested decorator tested with complex nested configuration structures",
+        "Type coercion tested for Number, Boolean, Date, and Array parsing",
+        "File-based configuration reading tested",
+        "Error handling for invalid configurations tested",
+        "Reflection metadata handling validated"
+      ],
+      "important_files": [
+        "packages/@n8n/config/src/decorators.ts",
+        "packages/@n8n/config/src/custom-types.ts",
+        "packages/@n8n/config/src/configs/",
+        "packages/@n8n/config/test/decorators.test.ts"
+      ],
+      "estimate": "3-4 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
+    },
+    {
+      "id": "db-core-entities-tests-1754204776630",
+      "title": "Create Entity Tests for @n8n/db User-Facing and Security Entities",
+      "description": "Implement comprehensive tests for critical @n8n/db entities focusing on user-facing entities, security-sensitive entities, and core business logic entities.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "user.ts entity fully tested including validation and relationships",
+        "credentials-entity.ts tested with encryption and security features",
+        "workflow-entity.ts tested with business logic and data integrity",
+        "auth-identity.ts and api-key.ts security entities tested",
+        "execution-entity.ts tested with performance and data handling",
+        "Entity relationships and cascading operations tested",
+        "Validation constraints and error handling tested"
+      ],
+      "important_files": [
+        "packages/@n8n/db/src/entities/user.ts",
+        "packages/@n8n/db/src/entities/credentials-entity.ts",
+        "packages/@n8n/db/src/entities/workflow-entity.ts",
+        "packages/@n8n/db/src/entities/auth-identity.ts",
+        "packages/@n8n/db/src/entities/api-key.ts",
+        "packages/@n8n/db/src/entities/execution-entity.ts",
+        "packages/@n8n/db/test/entities/"
+      ],
+      "estimate": "4-5 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
+    },
+    {
+      "id": "db-repositories-tests-1754204776630",
+      "title": "Implement Repository Tests for @n8n/db Critical Repositories",
+      "description": "Create comprehensive tests for critical @n8n/db repositories focusing on data access patterns, query optimization, and business logic implementation.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "user.repository.ts tested with all CRUD operations and queries",
+        "execution.repository.ts tested with performance-critical operations",
+        "workflow.repository.ts tested with complex business logic queries",
+        "credentials.repository.ts tested with security and encryption handling",
+        "auth-identity.repository.ts tested with authentication flows",
+        "Repository error handling and transaction management tested",
+        "Query performance and optimization validated"
+      ],
+      "important_files": [
+        "packages/@n8n/db/src/repositories/user.repository.ts",
+        "packages/@n8n/db/src/repositories/execution.repository.ts",
+        "packages/@n8n/db/src/repositories/workflow.repository.ts",
+        "packages/@n8n/db/src/repositories/credentials.repository.ts",
+        "packages/@n8n/db/src/repositories/auth-identity.repository.ts",
+        "packages/@n8n/db/test/repositories/"
+      ],
+      "estimate": "4-5 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
+    },
+    {
+      "id": "backend-common-modules-tests-1754204776630",
+      "title": "Add Missing Tests for @n8n/backend-common Modules and Environment",
+      "description": "Complete test coverage for @n8n/backend-common package by adding tests for module registry, environment detection, and licensing functionality.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "backend-utils-test-coverage-1754084008691",
+      "success_criteria": [
+        "Module registry dynamic loading and configuration tested",
+        "Environment detection logic tested (dev/prod/test detection)",
+        "License state management and validation tested",
+        "Module error handling and recovery tested",
+        "Environment-specific behavior validation tested",
+        "Configuration loading and validation tested",
+        "Package coverage increased from 68% to 85%+"
+      ],
+      "important_files": [
+        "packages/@n8n/backend-common/src/modules/",
+        "packages/@n8n/backend-common/src/environment.ts",
+        "packages/@n8n/backend-common/src/license-state.ts",
+        "packages/@n8n/backend-common/test/modules.test.ts",
+        "packages/@n8n/backend-common/test/environment.test.ts"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T07:06:16.630Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 198,
-  "last_hook_activation": 1754203814841,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 200,
+  "last_hook_activation": 1754204526105,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
