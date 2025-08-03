@@ -260,6 +260,7 @@ class PerformanceDashboard {
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
             <button class="nav-tab" onclick="showTab('build')">🔨 Build</button>
+            <button class="nav-tab" onclick="showTab('cache')">🗄️ Cache</button>
             <button class="nav-tab" onclick="showTab('test')">🧪 Test</button>
             <button class="nav-tab" onclick="showTab('lint')">🔍 Lint</button>
         </div>
@@ -270,6 +271,10 @@ class PerformanceDashboard {
 
         <div id="build" class="tab-content">
             ${this.createProcessContent('Build', buildMetrics, buildTrends, '🔨')}
+        </div>
+
+        <div id="cache" class="tab-content">
+            ${this.createCacheAnalysisContent(buildMetrics)}
         </div>
 
         <div id="test" class="tab-content">
@@ -385,6 +390,142 @@ class PerformanceDashboard {
   }
 
   /**
+   * Create cache analysis content
+   */
+  createCacheAnalysisContent(buildMetrics) {
+    if (buildMetrics.length === 0) {
+      return `
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🗄️</span>
+            Cache Analysis
+          </div>
+          <p style="color: #666; text-align: center; padding: 40px;">
+            No build data available yet. Run the performance-build.mjs script to start collecting cache metrics.
+          </p>
+        </div>
+      `;
+    }
+
+    const latest = buildMetrics[buildMetrics.length - 1];
+    const cacheMetrics = latest.qualityMetrics || {};
+    
+    // Extract cache-related metrics
+    const turboCacheEntries = cacheMetrics.turboCacheEntries || 0;
+    const turboCacheSize = cacheMetrics.turboCacheSize || '0K';
+    const cacheEffectiveness = cacheMetrics.cacheEffectiveness || 'No data';
+    const recentCacheHits = cacheMetrics.recentCacheHits || 0;
+
+    return `
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🗄️</span>
+            Turbo Cache Overview
+          </div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number">${turboCacheEntries}</div>
+              <div class="stat-label">Cache Entries</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${turboCacheSize}</div>
+              <div class="stat-label">Cache Size</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${recentCacheHits}</div>
+              <div class="stat-label">Recent Hits</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${cacheEffectiveness}</div>
+              <div class="stat-label">Effectiveness</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">📈</span>
+            Build Optimization Impact
+          </div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number">${cacheMetrics.buildComplexity || 'Unknown'}</div>
+              <div class="stat-label">Build Complexity</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${cacheMetrics.totalPackages || 0}</div>
+              <div class="stat-label">Total Packages</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${cacheMetrics.typescriptConfigs || 0}</div>
+              <div class="stat-label">TS Configs</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">${cacheMetrics.largeTypescriptFiles || 0}</div>
+              <div class="stat-label">Large TS Files</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">💡</span>
+            Optimization Recommendations
+          </div>
+          <div class="recommendations">
+            ${this.generateCacheRecommendations(cacheMetrics)}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Generate cache-specific recommendations
+   */
+  generateCacheRecommendations(cacheMetrics) {
+    const recommendations = [];
+    
+    const cacheEntries = cacheMetrics.turboCacheEntries || 0;
+    const effectiveness = cacheMetrics.cacheEffectiveness || '0%';
+    const complexity = cacheMetrics.buildComplexity || 'Unknown';
+    const largeFiles = cacheMetrics.largeTypescriptFiles || 0;
+
+    if (cacheEntries < 10) {
+      recommendations.push('Low cache utilization detected. Consider running more builds to populate cache.');
+    }
+    
+    if (effectiveness.includes('%') && parseFloat(effectiveness) < 50) {
+      recommendations.push('Cache effectiveness is below 50%. Review cache configuration and build patterns.');
+    }
+    
+    if (complexity === 'High' || complexity === 'Very High') {
+      recommendations.push('High build complexity detected. Consider refactoring large TypeScript files and optimizing project references.');
+    }
+    
+    if (largeFiles > 10) {
+      recommendations.push(`${largeFiles} large TypeScript files found. Consider splitting large files for faster compilation.`);
+    }
+    
+    if (recommendations.length === 0) {
+      recommendations.push('Cache performance appears optimal. Continue monitoring for potential improvements.');
+    }
+
+    return `
+      <h4 style="color: #856404; margin-bottom: 10px;">💡 Performance Recommendations</h4>
+      <ul style="list-style: none; margin: 0; padding: 0;">
+        ${recommendations.map(rec => `
+          <li style="color: #856404; margin: 5px 0; padding-left: 20px; position: relative;">
+            <span style="position: absolute; left: 0;">💡</span>
+            ${rec}
+          </li>
+        `).join('')}
+      </ul>
+    `;
+  }
+
+  /**
    * Create process-specific content
    */
   createProcessContent(processName, metrics, trends, icon) {
@@ -477,22 +618,62 @@ class PerformanceDashboard {
       return '';
     }
 
-    return `
-      <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-        <h4 style="margin-bottom: 10px; color: #333;">Quality Metrics</h4>
-        <div class="stats-row">
-          ${Object.entries(qualityMetrics)
-            .filter(([key]) => !key.includes('Timestamp') && !key.includes('Results'))
-            .slice(0, 4)
-            .map(([key, value]) => `
-              <div class="stat-item">
-                <div class="stat-number">${typeof value === 'number' ? value.toLocaleString() : value}</div>
-                <div class="stat-label">${key.replace(/([A-Z])/g, ' $1').toLowerCase()}</div>
-              </div>
-            `).join('')}
+    // Separate cache metrics from general quality metrics
+    const cacheMetrics = {};
+    const generalMetrics = {};
+    
+    Object.entries(qualityMetrics).forEach(([key, value]) => {
+      if (key.includes('cache') || key.includes('Cache') || key.includes('turbo') || key.includes('Turbo')) {
+        cacheMetrics[key] = value;
+      } else if (!key.includes('Timestamp') && !key.includes('Results')) {
+        generalMetrics[key] = value;
+      }
+    });
+
+    let html = '';
+
+    // Display cache effectiveness metrics if available
+    if (Object.keys(cacheMetrics).length > 0) {
+      html += `
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+          <h4 style="margin-bottom: 10px; color: #333; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">🗄️</span>Cache Effectiveness
+          </h4>
+          <div class="stats-row">
+            ${Object.entries(cacheMetrics)
+              .map(([key, value]) => `
+                <div class="stat-item">
+                  <div class="stat-number">${typeof value === 'number' ? value.toLocaleString() : value}</div>
+                  <div class="stat-label">${key.replace(/([A-Z])/g, ' $1').toLowerCase()}</div>
+                </div>
+              `).join('')}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
+
+    // Display general quality metrics
+    if (Object.keys(generalMetrics).length > 0) {
+      html += `
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+          <h4 style="margin-bottom: 10px; color: #333; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">📊</span>Build Quality Metrics
+          </h4>
+          <div class="stats-row">
+            ${Object.entries(generalMetrics)
+              .slice(0, 4)
+              .map(([key, value]) => `
+                <div class="stat-item">
+                  <div class="stat-number">${typeof value === 'number' ? value.toLocaleString() : value}</div>
+                  <div class="stat-label">${key.replace(/([A-Z])/g, ' $1').toLowerCase()}</div>
+                </div>
+              `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    return html;
   }
 
   /**

@@ -13,6 +13,7 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:incremental": "tsc -p tsconfig.build.json --incremental && tsc-alias -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",

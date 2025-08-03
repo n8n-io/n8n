@@ -9,6 +9,7 @@
 		"tsconfig.json",
 		"eslint.config.*"
 	],
+	"globalEnv": ["NODE_ENV", "CI", "BUILD_ENV"],
 	"tasks": {
 		"clean": { 
 			"cache": false 
@@ -26,7 +27,10 @@
 				"scripts/**/*.{js,mjs,ts}",
 				"!src/**/*.{test,spec}.{ts,js}",
 				"!src/**/__tests__/**",
-				"!src/**/__mocks__/**"
+				"!src/**/__mocks__/**",
+				"!**/*.md",
+				"!README*",
+				"!CHANGELOG*"
 			],
 			"outputs": [
 				"dist/**",
@@ -37,7 +41,8 @@
 			],
 			"cache": true,
 			"persistent": false,
-			"passThroughEnv": ["NODE_ENV", "CI", "BUILD_ENV"]
+			"passThroughEnv": ["NODE_ENV", "CI", "BUILD_ENV"],
+			"outputLogs": "hash-only"
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"],
@@ -54,7 +59,28 @@
 				"*.tsbuildinfo"
 			],
 			"cache": true,
-			"passThroughEnv": ["NODE_ENV", "TS_NODE_PROJECT"]
+			"passThroughEnv": ["NODE_ENV", "TS_NODE_PROJECT"],
+			"outputLogs": "errors-only"
+		},
+		"build:incremental": {
+			"dependsOn": ["^typecheck"],
+			"inputs": [
+				"src/**/*.{ts,js,vue,jsx,tsx}",
+				"src/**/*.{json,scss,css}",
+				"tsconfig*.json",
+				"package.json",
+				"!src/**/*.{test,spec}.{ts,js}",
+				"!src/**/__tests__/**",
+				"!src/**/__mocks__/**"
+			],
+			"outputs": [
+				"dist/**",
+				"*.tsbuildinfo"
+			],
+			"cache": true,
+			"persistent": false,
+			"passThroughEnv": ["NODE_ENV", "CI", "BUILD_ENV"],
+			"outputLogs": "hash-only"
 		},
 		"format": {
 			"inputs": [
@@ -89,10 +115,12 @@
 				".eslintrc*",
 				"package.json",
 				"tsconfig*.json",
-				"!src/**/__mocks__/**"
+				"!src/**/__mocks__/**",
+				"!**/*.d.ts"
 			],
 			"cache": true,
-			"passThroughEnv": ["NODE_ENV", "ESLINT_USE_FLAT_CONFIG"]
+			"passThroughEnv": ["NODE_ENV", "ESLINT_USE_FLAT_CONFIG"],
+			"outputLogs": "hash-only"
 		},
 		"lint:fix": {
 			"dependsOn": ["@n8n/eslint-config#build"],
@@ -115,7 +143,7 @@
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
-			"dependsOn": ["^typecheck"],
+			"dependsOn": ["^build:incremental"],
 			"inputs": [
 				"src/**/*.{ts,js,jsx,tsx}",
 				"test/**/*.{ts,js}",
@@ -158,10 +186,11 @@
 			],
 			"env": ["NODE_ENV"],
 			"cache": true,
-			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"],
+			"outputLogs": "errors-only"
 		},
 		"test:ci": {
-			"dependsOn": ["^build", "build"],
+			"dependsOn": ["^build:incremental", "build:incremental"],
 			"inputs": [
 				"src/**/*.{ts,js,jsx,tsx}",
 				"test/**/*.{ts,js}",

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Performance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+            padding: 30px; 
+        }
+        .metric-card { 
+            background: #f8f9fa; 
+            border-radius: 8px; 
+            padding: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease;
+        }
+        .metric-card:hover { transform: translateY(-2px); }
+        .metric-title { 
+            font-size: 1.3em; 
+            font-weight: bold; 
+            color: #333; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .metric-icon { font-size: 1.5em; margin-right: 10px; }
+        .metric-value { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            color: #007acc; 
+            margin: 10px 0; 
+        }
+        .metric-trend { 
+            display: flex; 
+            align-items: center; 
+            font-size: 0.9em; 
+            margin-top: 10px;
+        }
+        .trend-up { color: #e74c3c; }
+        .trend-down { color: #27ae60; }
+        .trend-stable { color: #95a5a6; }
+        .chart-container { 
+            height: 300px; 
+            margin-top: 20px; 
+            position: relative;
+        }
+        .stats-row { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 15px; 
+            margin-top: 20px; 
+        }
+        .stat-item { 
+            text-align: center; 
+            padding: 15px; 
+            background: white; 
+            border-radius: 6px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .stat-number { 
+            font-size: 1.5em; 
+            font-weight: bold; 
+            color: #007acc; 
+        }
+        .stat-label { 
+            font-size: 0.8em; 
+            color: #666; 
+            margin-top: 5px; 
+        }
+        .recommendations { 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            border-radius: 6px; 
+            padding: 15px; 
+            margin-top: 20px; 
+        }
+        .recommendations h4 { 
+            color: #856404; 
+            margin-bottom: 10px; 
+        }
+        .recommendations ul { 
+            list-style: none; 
+        }
+        .recommendations li { 
+            color: #856404; 
+            margin: 5px 0; 
+            padding-left: 20px; 
+            position: relative; 
+        }
+        .recommendations li::before { 
+            content: "💡"; 
+            position: absolute; 
+            left: 0; 
+        }
+        .footer { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            text-align: center; 
+            color: #666; 
+            border-top: 1px solid #dee2e6; 
+        }
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1em;
+            color: #666;
+            transition: all 0.2s ease;
+        }
+        .nav-tab.active {
+            background: white;
+            color: #007acc;
+            border-bottom: 3px solid #007acc;
+        }
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 n8n Performance Dashboard</h1>
+            <p>Comprehensive monitoring and analysis of build, test, and lint performance</p>
+            <p style="opacity: 0.7; margin-top: 10px;">Generated 8/3/2025, 1:33:01 AM</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
+            <button class="nav-tab" onclick="showTab('build')">🔨 Build</button>
+            <button class="nav-tab" onclick="showTab('test')">🧪 Test</button>
+            <button class="nav-tab" onclick="showTab('lint')">🔍 Lint</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">📊</span>
+            Total Performance Runs
+          </div>
+          <div class="metric-value">2</div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number">2</div>
+              <div class="stat-label">Build Runs</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Test Runs</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Lint Runs</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">⏱️</span>
+            Recent Activity
+          </div>
+          <div style="max-height: 200px; overflow-y: auto;">
+            
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">
+                <span>build-validation</span>
+                <span style="font-size: 0.8em; color: #666;">8/1/2025</span>
+              </div>
+            
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🎯</span>
+            System Health
+          </div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number" style="color: #27ae60;">Good</div>
+              <div class="stat-label">Overall Status</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0ms</div>
+              <div class="stat-label">Avg Duration</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+        </div>
+
+        <div id="build" class="tab-content">
+            
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🔨</span>
+            Build Performance Overview
+          </div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number">2</div>
+              <div class="stat-label">Total Runs</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0ms</div>
+              <div class="stat-label">Average Duration</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">NaN%</div>
+              <div class="stat-label">Duration Trend</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="buildChart"></canvas>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">📈</span>
+            Latest Build Run
+          </div>
+          <div class="metric-value">0ms</div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number">8/1/2025</div>
+              <div class="stat-label">Date</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Timers</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">11</div>
+              <div class="stat-label">Events</div>
+            </div>
+          </div>
+          
+        </div>
+
+        
+        <div class="metric-card">
+          <div class="recommendations">
+            <h4>💡 Performance Recommendations</h4>
+            <ul>
+              <li>Performance metrics are within normal ranges</li>
+            </ul>
+          </div>
+        </div>
+        
+      </div>
+    
+        </div>
+
+        <div id="test" class="tab-content">
+            
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🧪</span>
+            Test Performance
+          </div>
+          <p style="color: #666; text-align: center; padding: 40px;">
+            No test performance data available yet. 
+            Run the performance-test.mjs script to start collecting metrics.
+          </p>
+        </div>
+      
+        </div>
+
+        <div id="lint" class="tab-content">
+            
+        <div class="metric-card">
+          <div class="metric-title">
+            <span class="metric-icon">🔍</span>
+            Lint Performance
+          </div>
+          <p style="color: #666; text-align: center; padding: 40px;">
+            No lint performance data available yet. 
+            Run the performance-lint.mjs script to start collecting metrics.
+          </p>
+        </div>
+      
+        </div>
+
+        <div class="footer">
+            <p>📈 Performance data is automatically collected and updated with each build, test, and lint execution.</p>
+            <p>💡 Use the performance-monitor.mjs, performance-build.mjs, performance-test.mjs, and performance-lint.mjs scripts for detailed monitoring.</p>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to selected tab button
+            event.target.classList.add('active');
+        }
+
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            
+      const buildChartCanvas = document.getElementById('buildChart');
+      if (buildChartCanvas) {
+        new Chart(buildChartCanvas, {
+          type: 'line',
+          data: {
+            datasets: [{
+              label: 'Build Duration (seconds)',
+              data: [{"x":"8/1/2025","y":0},{"x":"8/1/2025","y":0}],
+              borderColor: '#007acc',
+              backgroundColor: 'rgba(0, 122, 204, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { 
+                type: 'category',
+                title: { display: true, text: 'Date' }
+              },
+              y: { 
+                title: { display: true, text: 'Duration (seconds)' },
+                beginAtZero: true
+              }
+            },
+            plugins: {
+              legend: { display: false }
+            }
+          }
+        });
+      }
+    
+        });
+    </script>
+</body>
+</html>

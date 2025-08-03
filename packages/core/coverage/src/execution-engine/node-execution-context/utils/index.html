@@ -1,0 +1,416 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/execution-engine/node-execution-context/utils</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../../prettify.css" />
+    <link rel="stylesheet" href="../../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../../index.html">All files</a> src/execution-engine/node-execution-context/utils</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">67.04% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>893/1332</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">54.95% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>388/706</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">73.36% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>135/184</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">66.38% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>853/1285</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line medium'></div>
+    <div class="pad1">
+<table class="coverage-summary">
+<thead>
+<tr>
+   <th data-col="file" data-fmt="html" data-html="true" class="file">File</th>
+   <th data-col="pic" data-type="number" data-fmt="html" data-html="true" class="pic"></th>
+   <th data-col="statements" data-type="number" data-fmt="pct" class="pct">Statements</th>
+   <th data-col="statements_raw" data-type="number" data-fmt="html" class="abs"></th>
+   <th data-col="branches" data-type="number" data-fmt="pct" class="pct">Branches</th>
+   <th data-col="branches_raw" data-type="number" data-fmt="html" class="abs"></th>
+   <th data-col="functions" data-type="number" data-fmt="pct" class="pct">Functions</th>
+   <th data-col="functions_raw" data-type="number" data-fmt="html" class="abs"></th>
+   <th data-col="lines" data-type="number" data-fmt="pct" class="pct">Lines</th>
+   <th data-col="lines_raw" data-type="number" data-fmt="html" class="abs"></th>
+</tr>
+</thead>
+<tbody><tr>
+	<td class="file high" data-value="binary-helper-functions.ts"><a href="binary-helper-functions.ts.html">binary-helper-functions.ts</a></td>
+	<td data-value="85" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 85%"></div><div class="cover-empty" style="width: 15%"></div></div>
+	</td>
+	<td data-value="85" class="pct high">85%</td>
+	<td data-value="100" class="abs high">85/100</td>
+	<td data-value="78.72" class="pct medium">78.72%</td>
+	<td data-value="47" class="abs medium">37/47</td>
+	<td data-value="66.66" class="pct medium">66.66%</td>
+	<td data-value="15" class="abs medium">10/15</td>
+	<td data-value="84.84" class="pct high">84.84%</td>
+	<td data-value="99" class="abs high">84/99</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="cleanup-parameter-data.ts"><a href="cleanup-parameter-data.ts.html">cleanup-parameter-data.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="15" class="abs high">15/15</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="8" class="abs high">8/8</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="3" class="abs high">3/3</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="14" class="abs high">14/14</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="construct-execution-metadata.ts"><a href="construct-execution-metadata.ts.html">construct-execution-metadata.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="5" class="abs high">5/5</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="0" class="abs high">0/0</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="5" class="abs high">5/5</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="copy-input-items.ts"><a href="copy-input-items.ts.html">copy-input-items.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="9" class="abs high">9/9</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="9" class="abs high">9/9</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="create-node-as-tool.ts"><a href="create-node-as-tool.ts.html">create-node-as-tool.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="37" class="abs high">37/37</td>
+	<td data-value="91.66" class="pct high">91.66%</td>
+	<td data-value="12" class="abs high">11/12</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="6" class="abs high">6/6</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="37" class="abs high">37/37</td>
+	</tr>
+
+<tr>
+	<td class="file low" data-value="deduplication-helper-functions.ts"><a href="deduplication-helper-functions.ts.html">deduplication-helper-functions.ts</a></td>
+	<td data-value="28.57" class="pic low">
+	<div class="chart"><div class="cover-fill" style="width: 28%"></div><div class="cover-empty" style="width: 72%"></div></div>
+	</td>
+	<td data-value="28.57" class="pct low">28.57%</td>
+	<td data-value="14" class="abs low">4/14</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="0" class="abs high">0/0</td>
+	<td data-value="9.09" class="pct low">9.09%</td>
+	<td data-value="11" class="abs low">1/11</td>
+	<td data-value="23.07" class="pct low">23.07%</td>
+	<td data-value="13" class="abs low">3/13</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="ensure-type.ts"><a href="ensure-type.ts.html">ensure-type.ts</a></td>
+	<td data-value="86.11" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 86%"></div><div class="cover-empty" style="width: 14%"></div></div>
+	</td>
+	<td data-value="86.11" class="pct high">86.11%</td>
+	<td data-value="36" class="abs high">31/36</td>
+	<td data-value="90" class="pct high">90%</td>
+	<td data-value="20" class="abs high">18/20</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="1" class="abs high">1/1</td>
+	<td data-value="85.71" class="pct high">85.71%</td>
+	<td data-value="35" class="abs high">30/35</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="execution-metadata.ts"><a href="execution-metadata.ts.html">execution-metadata.ts</a></td>
+	<td data-value="96.87" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 96%"></div><div class="cover-empty" style="width: 4%"></div></div>
+	</td>
+	<td data-value="96.87" class="pct high">96.87%</td>
+	<td data-value="32" class="abs high">31/32</td>
+	<td data-value="86.66" class="pct high">86.66%</td>
+	<td data-value="15" class="abs high">13/15</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="5" class="abs high">5/5</td>
+	<td data-value="96.87" class="pct high">96.87%</td>
+	<td data-value="32" class="abs high">31/32</td>
+	</tr>
+
+<tr>
+	<td class="file low" data-value="extract-value.ts"><a href="extract-value.ts.html">extract-value.ts</a></td>
+	<td data-value="30.37" class="pic low">
+	<div class="chart"><div class="cover-fill" style="width: 30%"></div><div class="cover-empty" style="width: 70%"></div></div>
+	</td>
+	<td data-value="30.37" class="pct low">30.37%</td>
+	<td data-value="79" class="abs low">24/79</td>
+	<td data-value="10.63" class="pct low">10.63%</td>
+	<td data-value="47" class="abs low">5/47</td>
+	<td data-value="55.55" class="pct medium">55.55%</td>
+	<td data-value="9" class="abs medium">5/9</td>
+	<td data-value="30.76" class="pct low">30.76%</td>
+	<td data-value="78" class="abs low">24/78</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="file-system-helper-functions.ts"><a href="file-system-helper-functions.ts.html">file-system-helper-functions.ts</a></td>
+	<td data-value="98.21" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 98%"></div><div class="cover-empty" style="width: 2%"></div></div>
+	</td>
+	<td data-value="98.21" class="pct high">98.21%</td>
+	<td data-value="56" class="abs high">55/56</td>
+	<td data-value="87.5" class="pct high">87.5%</td>
+	<td data-value="16" class="abs high">14/16</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="11" class="abs high">11/11</td>
+	<td data-value="98.11" class="pct high">98.11%</td>
+	<td data-value="53" class="abs high">52/53</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="get-additional-keys.ts"><a href="get-additional-keys.ts.html">get-additional-keys.ts</a></td>
+	<td data-value="85.71" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 85%"></div><div class="cover-empty" style="width: 15%"></div></div>
+	</td>
+	<td data-value="85.71" class="pct high">85.71%</td>
+	<td data-value="21" class="abs high">18/21</td>
+	<td data-value="90" class="pct high">90%</td>
+	<td data-value="10" class="abs high">9/10</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="5" class="abs high">5/5</td>
+	<td data-value="85.71" class="pct high">85.71%</td>
+	<td data-value="21" class="abs high">18/21</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="get-input-connection-data.ts"><a href="get-input-connection-data.ts.html">get-input-connection-data.ts</a></td>
+	<td data-value="92.15" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 92%"></div><div class="cover-empty" style="width: 8%"></div></div>
+	</td>
+	<td data-value="92.15" class="pct high">92.15%</td>
+	<td data-value="102" class="abs high">94/102</td>
+	<td data-value="80.7" class="pct high">80.7%</td>
+	<td data-value="57" class="abs high">46/57</td>
+	<td data-value="93.75" class="pct high">93.75%</td>
+	<td data-value="16" class="abs high">15/16</td>
+	<td data-value="91.39" class="pct high">91.39%</td>
+	<td data-value="93" class="abs high">85/93</td>
+	</tr>
+
+<tr>
+	<td class="file low" data-value="get-secrets-proxy.ts"><a href="get-secrets-proxy.ts.html">get-secrets-proxy.ts</a></td>
+	<td data-value="40" class="pic low">
+	<div class="chart"><div class="cover-fill" style="width: 40%"></div><div class="cover-empty" style="width: 60%"></div></div>
+	</td>
+	<td data-value="40" class="pct low">40%</td>
+	<td data-value="30" class="abs low">12/30</td>
+	<td data-value="16.66" class="pct low">16.66%</td>
+	<td data-value="12" class="abs low">2/12</td>
+	<td data-value="33.33" class="pct low">33.33%</td>
+	<td data-value="9" class="abs low">3/9</td>
+	<td data-value="40" class="pct low">40%</td>
+	<td data-value="30" class="abs low">12/30</td>
+	</tr>
+
+<tr>
+	<td class="file medium" data-value="normalize-items.ts"><a href="normalize-items.ts.html">normalize-items.ts</a></td>
+	<td data-value="64" class="pic medium">
+	<div class="chart"><div class="cover-fill" style="width: 64%"></div><div class="cover-empty" style="width: 36%"></div></div>
+	</td>
+	<td data-value="64" class="pct medium">64%</td>
+	<td data-value="25" class="abs medium">16/25</td>
+	<td data-value="83.33" class="pct high">83.33%</td>
+	<td data-value="18" class="abs high">15/18</td>
+	<td data-value="75" class="pct medium">75%</td>
+	<td data-value="8" class="abs medium">6/8</td>
+	<td data-value="60" class="pct medium">60%</td>
+	<td data-value="20" class="abs medium">12/20</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="parse-incoming-message.ts"><a href="parse-incoming-message.ts.html">parse-incoming-message.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="36" class="abs high">36/36</td>
+	<td data-value="92.3" class="pct high">92.3%</td>
+	<td data-value="13" class="abs high">12/13</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="5" class="abs high">5/5</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="34" class="abs high">34/34</td>
+	</tr>
+
+<tr>
+	<td class="file medium" data-value="request-helper-functions.ts"><a href="request-helper-functions.ts.html">request-helper-functions.ts</a></td>
+	<td data-value="50.32" class="pic medium">
+	<div class="chart"><div class="cover-fill" style="width: 50%"></div><div class="cover-empty" style="width: 50%"></div></div>
+	</td>
+	<td data-value="50.32" class="pct medium">50.32%</td>
+	<td data-value="620" class="abs medium">312/620</td>
+	<td data-value="39.94" class="pct low">39.94%</td>
+	<td data-value="373" class="abs low">149/373</td>
+	<td data-value="65.57" class="pct medium">65.57%</td>
+	<td data-value="61" class="abs medium">40/61</td>
+	<td data-value="49.75" class="pct low">49.75%</td>
+	<td data-value="607" class="abs low">302/607</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="return-json-array.ts"><a href="return-json-array.ts.html">return-json-array.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="9" class="abs high">9/9</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="3" class="abs high">3/3</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="9" class="abs high">9/9</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="scheduling-helper-functions.ts"><a href="scheduling-helper-functions.ts.html">scheduling-helper-functions.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="7" class="abs high">7/7</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="0" class="abs high">0/0</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="6" class="abs high">6/6</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="ssh-tunnel-helper-functions.ts"><a href="ssh-tunnel-helper-functions.ts.html">ssh-tunnel-helper-functions.ts</a></td>
+	<td data-value="100" class="pic high">
+	<div class="chart"><div class="cover-fill cover-full" style="width: 100%"></div><div class="cover-empty" style="width: 0%"></div></div>
+	</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="8" class="abs high">8/8</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="0" class="abs high">0/0</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="3" class="abs high">3/3</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="7" class="abs high">7/7</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="validate-value-against-schema.ts"><a href="validate-value-against-schema.ts.html">validate-value-against-schema.ts</a></td>
+	<td data-value="94.28" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 94%"></div><div class="cover-empty" style="width: 6%"></div></div>
+	</td>
+	<td data-value="94.28" class="pct high">94.28%</td>
+	<td data-value="70" class="abs high">66/70</td>
+	<td data-value="85.41" class="pct high">85.41%</td>
+	<td data-value="48" class="abs high">41/48</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="6" class="abs high">6/6</td>
+	<td data-value="93.84" class="pct high">93.84%</td>
+	<td data-value="65" class="abs high">61/65</td>
+	</tr>
+
+<tr>
+	<td class="file high" data-value="webhook-helper-functions.ts"><a href="webhook-helper-functions.ts.html">webhook-helper-functions.ts</a></td>
+	<td data-value="90.47" class="pic high">
+	<div class="chart"><div class="cover-fill" style="width: 90%"></div><div class="cover-empty" style="width: 10%"></div></div>
+	</td>
+	<td data-value="90.47" class="pct high">90.47%</td>
+	<td data-value="21" class="abs high">19/21</td>
+	<td data-value="60" class="pct medium">60%</td>
+	<td data-value="5" class="abs medium">3/5</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="2" class="abs high">2/2</td>
+	<td data-value="100" class="pct high">100%</td>
+	<td data-value="18" class="abs high">18/18</td>
+	</tr>
+
+</tbody>
+</table>
+</div>
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2025-08-03T06:46:40.436Z
+            </div>
+        <script src="../../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../../sorter.js"></script>
+        <script src="../../../../block-navigation.js"></script>
+    </body>
+</html>
+    

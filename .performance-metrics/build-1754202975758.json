@@ -1,0 +1,53 @@
+{
+  "processName": "build",
+  "sessionId": "1754202975758",
+  "startTime": 1754202975758,
+  "startMemory": {
+    "rss": 32751616,
+    "heapTotal": 5636096,
+    "heapUsed": 4789104,
+    "external": 1928514,
+    "arrayBuffers": 23312
+  },
+  "timers": {},
+  "events": [
+    {
+      "type": "quality_metrics",
+      "timestamp": 1754202976490,
+      "memory": {
+        "rss": 35553280,
+        "heapTotal": 5636096,
+        "heapUsed": 5143416,
+        "external": 1929990,
+        "arrayBuffers": 23539
+      },
+      "turboCacheEntries": 0,
+      "turboCacheSize": "",
+      "totalPackages": 50,
+      "typescriptConfigs": 78,
+      "buildComplexity": "Medium",
+      "cacheEffectiveness": "75.2%",
+      "analysisTimestamp": "2025-08-03T06:36:16.489Z"
+    }
+  ],
+  "finalMetrics": {
+    "totalDuration": 732,
+    "memoryDelta": {
+      "rss": 2801664,
+      "heapUsed": 358128,
+      "heapTotal": 0,
+      "external": 1476
+    },
+    "timerSummary": []
+  },
+  "qualityMetrics": {
+    "turboCacheEntries": 0,
+    "turboCacheSize": "",
+    "totalPackages": 50,
+    "typescriptConfigs": 78,
+    "buildComplexity": "Medium",
+    "cacheEffectiveness": "75.2%",
+    "analysisTimestamp": "2025-08-03T06:36:16.489Z",
+    "recordedAt": 1754202976490
+  }
+}

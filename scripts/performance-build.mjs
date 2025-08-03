@@ -160,6 +160,12 @@ async function collectBuildMetrics(monitor) {
       'Calculate Build Size'
     );
 
+    // Collect Turbo cache metrics
+    await collectTurboCacheMetrics(monitor);
+
+    // Collect build performance insights
+    await collectBuildPerformanceInsights(monitor);
+
     // Record build quality metrics
     monitor.recordQualityMetrics({
       buildArtifacts: parseInt(distDirs.output?.trim() || '0'),
@@ -173,6 +179,119 @@ async function collectBuildMetrics(monitor) {
   } catch (error) {
     console.warn('Could not collect build metrics:', error.message);
   }
+}
+
+/**
+ * Collect Turbo cache effectiveness metrics
+ */
+async function collectTurboCacheMetrics(monitor) {
+  try {
+    monitor.startTimer('cache_analysis');
+    
+    // Get Turbo cache stats
+    const cacheStats = await monitor.executeWithMonitoring(
+      `find ${rootDir}/node_modules/.cache/turbo -name "*.tar.zst" | wc -l`,
+      'Count Cache Entries'
+    );
+
+    const cacheSize = await monitor.executeWithMonitoring(
+      `du -sh ${rootDir}/node_modules/.cache/turbo 2>/dev/null | awk '{print $1}' || echo "0K"`,
+      'Calculate Cache Size'
+    );
+
+    // Check for recent cache activity (files modified in last hour)
+    const recentCacheActivity = await monitor.executeWithMonitoring(
+      `find ${rootDir}/node_modules/.cache/turbo -name "*.tar.zst" -mtime -1 | wc -l`,
+      'Recent Cache Activity'
+    );
+
+    monitor.recordQualityMetrics({
+      turboCacheEntries: parseInt(cacheStats.output?.trim() || '0'),
+      turboCacheSize: cacheSize.output?.trim() || '0K',
+      recentCacheHits: parseInt(recentCacheActivity.output?.trim() || '0'),
+      cacheEffectiveness: calculateCacheEffectiveness(cacheStats.output, recentCacheActivity.output)
+    });
+
+    monitor.endTimer('cache_analysis');
+    
+    console.log(`🗄️ Turbo cache: ${cacheStats.output?.trim() || '0'} entries (${cacheSize.output?.trim() || '0K'})`);
+    console.log(`⚡ Recent cache hits: ${recentCacheActivity.output?.trim() || '0'}`);
+
+  } catch (error) {
+    console.warn('Could not collect Turbo cache metrics:', error.message);
+  }
+}
+
+/**
+ * Collect build performance insights based on build analysis
+ */
+async function collectBuildPerformanceInsights(monitor) {
+  try {
+    monitor.startTimer('performance_insights');
+
+    // Check TypeScript project references complexity
+    const tsConfigFiles = await monitor.executeWithMonitoring(
+      `find ${rootDir}/packages -name "tsconfig*.json" | wc -l`,
+      'Count TypeScript Configs'
+    );
+
+    // Check for large TypeScript files (potential bottlenecks)
+    const largeFiles = await monitor.executeWithMonitoring(
+      `find ${rootDir}/packages -name "*.ts" -size +50k | wc -l`,
+      'Count Large TypeScript Files'
+    );
+
+    // Check parallel build utilization
+    const packageCount = await monitor.executeWithMonitoring(
+      `find ${rootDir}/packages -name "package.json" | wc -l`,
+      'Count Packages'
+    );
+
+    monitor.recordQualityMetrics({
+      typescriptConfigs: parseInt(tsConfigFiles.output?.trim() || '0'),
+      largeTypescriptFiles: parseInt(largeFiles.output?.trim() || '0'),
+      totalPackages: parseInt(packageCount.output?.trim() || '0'),
+      buildComplexity: calculateBuildComplexity(tsConfigFiles.output, largeFiles.output, packageCount.output)
+    });
+
+    monitor.endTimer('performance_insights');
+
+    console.log(`📊 TypeScript configs: ${tsConfigFiles.output?.trim() || '0'}`);
+    console.log(`📈 Large TS files: ${largeFiles.output?.trim() || '0'}`);
+    console.log(`📦 Total packages: ${packageCount.output?.trim() || '0'}`);
+
+  } catch (error) {
+    console.warn('Could not collect build performance insights:', error.message);
+  }
+}
+
+/**
+ * Calculate cache effectiveness percentage
+ */
+function calculateCacheEffectiveness(totalEntries, recentHits) {
+  const total = parseInt(totalEntries?.trim() || '0');
+  const recent = parseInt(recentHits?.trim() || '0');
+  
+  if (total === 0) return 'No cache data';
+  
+  const effectiveness = Math.min(100, (recent / Math.max(1, total * 0.1)) * 100);
+  return `${effectiveness.toFixed(1)}%`;
+}
+
+/**
+ * Calculate build complexity score
+ */
+function calculateBuildComplexity(tsConfigs, largeFiles, packages) {
+  const configs = parseInt(tsConfigs?.trim() || '0');
+  const large = parseInt(largeFiles?.trim() || '0');
+  const pkgs = parseInt(packages?.trim() || '0');
+  
+  const complexity = (configs * 2) + (large * 5) + pkgs;
+  
+  if (complexity < 50) return 'Low';
+  if (complexity < 150) return 'Medium';
+  if (complexity < 300) return 'High';
+  return 'Very High';
 }
 
 /**
