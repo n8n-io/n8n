@@ -361,6 +361,12 @@ export class UpdateHandler implements OperationHandler {
 			dueString?: string;
 			labels?: string[];
 			dueLang?: string;
+			order?: number;
+			dueDate?: string;
+			assigneeId?: string;
+			duration?: number;
+			durationUnit?: string;
+			deadlineDate?: string;
 		}>(updateFields, {
 			content: { type: 'string', optional: true },
 			priority: { type: ['number', 'string'], optional: true },
@@ -369,6 +375,12 @@ export class UpdateHandler implements OperationHandler {
 			dueString: { type: 'string', optional: true },
 			labels: { type: 'string[]', optional: true },
 			dueLang: { type: 'string', optional: true },
+			order: { type: 'number', optional: true },
+			dueDate: { type: 'string', optional: true },
+			assigneeId: { type: 'string', optional: true },
+			duration: { type: 'number', optional: true },
+			durationUnit: { type: 'string', optional: true },
+			deadlineDate: { type: 'string', optional: true },
 		});
 
 		const body: CreateTaskRequest = {};
@@ -403,6 +415,30 @@ export class UpdateHandler implements OperationHandler {
 
 		if (updateFields.dueLang) {
 			body.due_lang = updateFields.dueLang;
+		}
+
+		if (updateFields.order) {
+			body.order = updateFields.order;
+		}
+
+		if (updateFields.dueDate) {
+			body.due_date = updateFields.dueDate;
+		}
+
+		if (updateFields.assigneeId) {
+			body.assignee_id = updateFields.assigneeId;
+		}
+
+		if (updateFields.duration) {
+			body.duration = updateFields.duration;
+		}
+
+		if (updateFields.durationUnit) {
+			body.duration_unit = updateFields.durationUnit;
+		}
+
+		if (updateFields.deadlineDate) {
+			body.deadline_date = updateFields.deadlineDate;
 		}
 
 		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body as IDataObject);
