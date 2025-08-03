@@ -1,3 +1,4 @@
+/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
 export const PLAYGROUND_2: WorkflowDataCreate = {
@@ -7,7 +8,7 @@ export const PLAYGROUND_2: WorkflowDataCreate = {
 	settings: {
 		executionOrder: 'v1',
 	},
-	name: '▶️ 2. Process user answers from a form',
+	name: '▶ 2. Process user answers from a form',
 	nodes: [
 		{
 			parameters: {
