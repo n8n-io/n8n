@@ -568,6 +568,43 @@ const versionDescription: INodeTypeDescription = {
 				'Natural language text for quick adding task (e.g., "Buy milk @Grocery #shopping tomorrow"). It can include a due date in free form text, a project name starting with the "#" character (without spaces), a label starting with the "@" character, an assignee starting with the "+" character, a priority (e.g., p1), a deadline between "{}" (e.g. {in 3 days}), or a description starting from "//" until the end of the text.',
 		},
 		{
+			displayName: 'Additional Fields',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add Field',
+			default: {},
+			displayOptions: {
+				show: {
+					resource: ['task'],
+					operation: ['quickAdd'],
+				},
+			},
+			options: [
+				{
+					displayName: 'Note',
+					name: 'note',
+					type: 'string',
+					default: '',
+					description: 'The content of the note',
+				},
+				{
+					displayName: 'Reminder',
+					name: 'reminder',
+					type: 'string',
+					default: '',
+					description: 'The date of the reminder, added in free form text',
+				},
+				{
+					displayName: 'Auto Reminder',
+					name: 'auto_reminder',
+					type: 'boolean',
+					default: false,
+					description:
+						'When this option is enabled, the default reminder will be added to the new item if it has a due date with time set',
+				},
+			],
+		},
+		{
 			displayName: 'Sync Commands',
 			name: 'commands',
 			type: 'string',

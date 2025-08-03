@@ -951,7 +951,32 @@ export class QuickAddHandler implements OperationHandler {
 		const text = ctx.getNodeParameter('text', itemIndex);
 		assertIsString('text', text);
 
-		const data = await todoistSingleSyncRequest.call(ctx, { text }, {}, '/quick/add');
+		const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
+		assertIsNodeParameters<{
+			note?: string;
+			reminder?: string;
+			auto_reminder?: boolean;
+		}>(options, {
+			note: { type: 'string', optional: true },
+			reminder: { type: 'string', optional: true },
+			auto_reminder: { type: 'boolean', optional: true },
+		});
+
+		const body: IDataObject = { text };
+
+		if (options.note) {
+			body.note = options.note;
+		}
+
+		if (options.reminder) {
+			body.reminder = options.reminder;
+		}
+
+		if (options.auto_reminder) {
+			body.auto_reminder = options.auto_reminder;
+		}
+
+		const data = await todoistSingleSyncRequest.call(ctx, body, {}, '/quick/add');
 
 		return {
 			data,

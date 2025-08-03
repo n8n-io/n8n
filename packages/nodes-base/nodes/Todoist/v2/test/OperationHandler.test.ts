@@ -946,6 +946,7 @@ describe('OperationHandler', () => {
 				const handler = new QuickAddHandler();
 				const mockCtx = createMockContext({
 					text: 'Buy milk tomorrow @shopping',
+					options: {},
 				});
 
 				const expectedResponse = {
@@ -965,6 +966,170 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Buy milk tomorrow @shopping' },
+					{},
+					'/quick/add',
+				);
+				expect(result).toEqual({ data: expectedResponse });
+			});
+
+			it('should quick add a task with all optional parameters', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Meeting with team tomorrow at 2pm',
+					options: {
+						note: 'Discuss project roadmap and priorities',
+						reminder: 'tomorrow at 1:30pm',
+						auto_reminder: true,
+					},
+				});
+
+				const expectedResponse = {
+					id: '789123',
+					content: 'Meeting with team',
+					project_id: '456',
+					due: {
+						date: '2025-08-04',
+						datetime: '2025-08-04T14:00:00',
+						string: 'tomorrow at 2pm',
+					},
+				};
+
+				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+					{
+						text: 'Meeting with team tomorrow at 2pm',
+						note: 'Discuss project roadmap and priorities',
+						reminder: 'tomorrow at 1:30pm',
+						auto_reminder: true,
+					},
+					{},
+					'/quick/add',
+				);
+				expect(result).toEqual({ data: expectedResponse });
+			});
+
+			it('should quick add a task with note only', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Review documents',
+					options: {
+						note: 'Check the quarterly reports',
+					},
+				});
+
+				const expectedResponse = {
+					id: '456789',
+					content: 'Review documents',
+					project_id: '123',
+				};
+
+				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+					{
+						text: 'Review documents',
+						note: 'Check the quarterly reports',
+					},
+					{},
+					'/quick/add',
+				);
+				expect(result).toEqual({ data: expectedResponse });
+			});
+
+			it('should quick add a task with reminder only', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Call dentist',
+					options: {
+						reminder: 'next Monday at 9am',
+					},
+				});
+
+				const expectedResponse = {
+					id: '321654',
+					content: 'Call dentist',
+					project_id: '456',
+				};
+
+				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+					{
+						text: 'Call dentist',
+						reminder: 'next Monday at 9am',
+					},
+					{},
+					'/quick/add',
+				);
+				expect(result).toEqual({ data: expectedResponse });
+			});
+
+			it('should quick add a task with auto_reminder only', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Presentation due Friday at 5pm',
+					options: {
+						auto_reminder: true,
+					},
+				});
+
+				const expectedResponse = {
+					id: '987654',
+					content: 'Presentation due',
+					project_id: '789',
+					due: {
+						date: '2025-08-08',
+						datetime: '2025-08-08T17:00:00',
+						string: 'Friday at 5pm',
+					},
+				};
+
+				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+					{
+						text: 'Presentation due Friday at 5pm',
+						auto_reminder: true,
+					},
+					{},
+					'/quick/add',
+				);
+				expect(result).toEqual({ data: expectedResponse });
+			});
+
+			it('should handle empty optional parameters correctly', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Simple task',
+					options: {
+						note: '',
+						reminder: '',
+						auto_reminder: false,
+					},
+				});
+
+				const expectedResponse = {
+					id: '111222',
+					content: 'Simple task',
+					project_id: '333',
+				};
+
+				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				// Should only include text since other options are empty/false
+				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+					{ text: 'Simple task' },
 					{},
 					'/quick/add',
 				);
