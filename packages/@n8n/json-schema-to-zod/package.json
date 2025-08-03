@@ -26,7 +26,7 @@
     "build:types": "tsc -p tsconfig.types.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",
     "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
-    "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
+    "build": "rimraf ./dist && pnpm run build:types && run-p build:cjs build:esm",
     "dry": "pnpm run build && pnpm pub --dry-run",
     "test": "jest",
     "test:watch": "jest --watch"
