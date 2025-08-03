@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 
 import { BaseCommand } from './base-command';
 

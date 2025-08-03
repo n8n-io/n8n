@@ -6,17 +6,20 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
+import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
 
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
 	pageType?: 'overview' | 'shared' | 'project';
+	additionalTabs?: DynamicTabOptions[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	showSettings: false,
 	showExecutions: true,
 	pageType: 'project',
+	additionalTabs: () => [],
 });
 
 const locale = useI18n();
@@ -91,6 +94,11 @@ const options = computed<Array<TabOptions<string>>>(() => {
 
 	if (props.showExecutions) {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
+	}
+
+	if (props.additionalTabs?.length) {
+		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);
+		tabs.push(...processedAdditionalTabs);
 	}
 
 	if (props.showSettings) {

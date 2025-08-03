@@ -99,9 +99,12 @@ export class Telemetry {
 	track(event: string, properties?: ITelemetryTrackProperties) {
 		if (!this.rudderStack) return;
 
+		const posthogSessionId = window.posthog?.get_session_id?.();
+
 		const updatedProperties = {
 			...properties,
 			version_cli: useRootStore().versionCli,
+			posthog_session_id: posthogSessionId,
 		};
 
 		this.rudderStack.track(event, updatedProperties, {

@@ -36,6 +36,10 @@ export class SidebarPage {
 		return this.page.getByTestId('project-menu-item');
 	}
 
+	async clickProjectMenuItem(projectName: string) {
+		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
+	}
+
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
 	}

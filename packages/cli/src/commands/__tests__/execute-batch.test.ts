@@ -3,11 +3,12 @@ import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository, DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -33,6 +34,7 @@ mockInstance(MessageEventBus);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
+mockInstance(CommunityPackagesService);
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
@@ -69,7 +71,7 @@ test('should start a task runner when task runners are enabled', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: { enabled: true },
-			nodes: { communityPackages: { enabled: false } },
+			nodes: {},
 		}),
 	);
 

@@ -6,11 +6,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const uiStore = useUIStore();
+const ndvStore = useNDVStore();
 
 const curlCommand = ref('');
 const modalBus = createEventBus();
@@ -18,8 +20,13 @@ const modalBus = createEventBus();
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
 onMounted(() => {
-	curlCommand.value = (uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommand as string) ?? '';
-
+	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
+		string,
+		string
+	>;
+	const nodeId = ndvStore.activeNode?.id ?? '';
+	const command = curlCommands?.[nodeId];
+	curlCommand.value = command ?? '';
 	setTimeout(() => {
 		inputRef.value?.focus();
 	});
@@ -43,9 +50,13 @@ function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) 
 }
 
 function onAfterImport() {
+	const nodeId = ndvStore.activeNode?.id as string;
+	const curlCommands =
+		(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ?? {};
+	curlCommands[nodeId] = curlCommand.value;
 	uiStore.setModalData({
 		name: IMPORT_CURL_MODAL_KEY,
-		data: { curlCommand: curlCommand.value },
+		data: { curlCommands },
 	});
 }
 
@@ -90,6 +101,7 @@ async function onImport() {
 						:model-value="curlCommand"
 						type="textarea"
 						:rows="5"
+						data-test-id="import-curl-modal-input"
 						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
 						@update:model-value="onInput"
 						@focus="$event.target.select()"
@@ -107,6 +119,7 @@ async function onImport() {
 					<N8nButton
 						float="right"
 						:label="i18n.baseText('importCurlModal.button.label')"
+						data-test-id="import-curl-modal-button"
 						@click="onImport"
 					/>
 				</div>

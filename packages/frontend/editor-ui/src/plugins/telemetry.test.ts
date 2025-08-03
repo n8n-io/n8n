@@ -203,5 +203,29 @@ describe('telemetry', () => {
 				{ context: { ip: '0.0.0.0' } },
 			);
 		});
+
+		it('should include the posthog session id in the parameters', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			vi.stubGlobal('posthog', {
+				init: vi.fn(),
+				get_session_id: vi.fn().mockReturnValue('test_session_id'),
+			});
+
+			const event = 'testEvent';
+			const properties = { test: '1' };
+
+			telemetry.track(event, properties);
+
+			expect(trackFunction).toHaveBeenCalledTimes(1);
+			expect(trackFunction).toHaveBeenCalledWith(
+				event,
+				expect.objectContaining({
+					posthog_session_id: 'test_session_id',
+				}),
+				expect.any(Object),
+			);
+
+			vi.unstubAllGlobals();
+		});
 	});
 });

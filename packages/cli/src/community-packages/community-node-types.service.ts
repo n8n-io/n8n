@@ -1,14 +1,12 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { Logger, inProduction } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+
+import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
 import { CommunityPackagesService } from './community-packages.service';
-import {
-	getCommunityNodeTypes,
-	StrapiCommunityNodeType,
-} from '../utils/community-node-types-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
@@ -20,17 +18,14 @@ export class CommunityNodeTypesService {
 
 	constructor(
 		private readonly logger: Logger,
-		private globalConfig: GlobalConfig,
+		private config: CommunityPackagesConfig,
 		private communityPackagesService: CommunityPackagesService,
 	) {}
 
 	private async fetchNodeTypes() {
 		try {
 			let data: StrapiCommunityNodeType[] = [];
-			if (
-				this.globalConfig.nodes.communityPackages.enabled &&
-				this.globalConfig.nodes.communityPackages.verifiedEnabled
-			) {
+			if (this.config.enabled && this.config.verifiedEnabled) {
 				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
 				const environment = this.detectEnvironment();
 				data = await getCommunityNodeTypes(environment);

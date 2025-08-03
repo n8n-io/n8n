@@ -19,6 +19,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 /*
 	Type guards used in editor-ui project
@@ -129,4 +130,17 @@ export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
+}
+
+// Check if i18n key is a valid BaseTextKey
+export function isBaseTextKey(key: string): key is BaseTextKey {
+	const i18n = useI18n();
+	try {
+		// Attempt to access the base text to check if the key is valid
+		i18n.baseText(key as BaseTextKey);
+		return true;
+	} catch {
+		// If an error is thrown, the key is not valid
+		return false;
+	}
 }

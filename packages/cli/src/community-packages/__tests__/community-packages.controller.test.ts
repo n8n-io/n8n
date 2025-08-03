@@ -2,13 +2,13 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import type { InstalledPackages } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { CommunityPackagesController } from '@/controllers/community-packages.controller';
+import { CommunityPackagesController } from '@/community-packages/community-packages.controller';
 import type { NodeRequest } from '@/requests';
 
 import type { EventService } from '../../events/event.service';
 import type { Push } from '../../push';
-import type { CommunityNodeTypesService } from '../../services/community-node-types.service';
-import type { CommunityPackagesService } from '../../services/community-packages.service';
+import type { CommunityNodeTypesService } from '../community-node-types.service';
+import type { CommunityPackagesService } from '../community-packages.service';
 
 describe('CommunityPackagesController', () => {
 	const push = mock<Push>();

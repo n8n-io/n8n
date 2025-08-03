@@ -73,13 +73,25 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		}
 	}
 
-	if (nodeType.name && isNodePreviewKey(nodeType.name) && typeof nodeType.iconUrl === 'string') {
-		// If node type is a node preview it would have full icon url
-		return {
-			type: 'file',
-			src: nodeType.iconUrl,
-			badge: undefined,
-		};
+	if (nodeType.name && isNodePreviewKey(nodeType.name)) {
+		// Handle both string and object iconUrl for preview nodes
+		if (typeof nodeType.iconUrl === 'string') {
+			return {
+				type: 'file',
+				src: nodeType.iconUrl,
+				badge: undefined,
+			};
+		} else if (nodeType.iconUrl && typeof nodeType.iconUrl === 'object') {
+			// Use getThemedValue to get the appropriate theme URL
+			const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
+			if (themedUrl) {
+				return {
+					type: 'file',
+					src: themedUrl,
+					badge: undefined,
+				};
+			}
+		}
 	}
 
 	const iconUrl = getNodeIconUrl(nodeType);

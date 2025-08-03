@@ -35,6 +35,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Example = Template.bind({});
 Example.args = {
+	modelValue: 'first',
 	options: [
 		{
 			label: 'First',
@@ -104,23 +105,27 @@ const options: Array<TabOptions<string>> = [
 
 export const TabVariants = Template.bind({});
 TabVariants.args = {
+	modelValue: 'first',
 	options,
 };
 
 export const WithSmallSize = Template.bind({});
 WithSmallSize.args = {
+	modelValue: 'first',
 	options,
 	size: 'small',
 };
 
 export const WithModernVariant = Template.bind({});
 WithModernVariant.args = {
+	modelValue: 'first',
 	variant: 'modern',
 	options,
 };
 
 export const WithSmallAndModern = Template.bind({});
 WithSmallAndModern.args = {
+	modelValue: 'first',
 	variant: 'modern',
 	options,
 	size: 'small',

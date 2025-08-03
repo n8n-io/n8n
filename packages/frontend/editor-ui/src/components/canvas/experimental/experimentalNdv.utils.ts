@@ -1,10 +1,6 @@
 import type { INodeUi } from '@/Interface';
 import type { I18nClass } from '@n8n/i18n';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-
-export function shouldShowParameter(item: INodeProperties): boolean {
-	return item.name.match(/resource|authentication|operation/i) === null;
-}
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 export function getNodeSubTitleText(
 	node: INodeUi,
