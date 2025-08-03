@@ -1,11 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import {
-	todoistApiRequest,
-	todoistSyncRequest,
-	todoistSingleSyncRequest,
-} from '../../GenericFunctions';
+import { todoistApiRequest, todoistSyncRequest } from '../../GenericFunctions';
 import {
 	CreateHandler,
 	CloseHandler,
@@ -46,7 +42,6 @@ import {
 jest.mock('../../GenericFunctions', () => ({
 	todoistApiRequest: jest.fn(),
 	todoistSyncRequest: jest.fn(),
-	todoistSingleSyncRequest: jest.fn(),
 	FormatDueDatetime: jest.fn((dateTime: string) => dateTime),
 }));
 
@@ -57,9 +52,6 @@ jest.mock('uuid', () => ({
 
 const mockTodoistApiRequest = todoistApiRequest as jest.MockedFunction<typeof todoistApiRequest>;
 const mockTodoistSyncRequest = todoistSyncRequest as jest.MockedFunction<typeof todoistSyncRequest>;
-const mockTodoistSingleSyncRequest = todoistSingleSyncRequest as jest.MockedFunction<
-	typeof todoistSingleSyncRequest
->;
 
 // Mock Context interface
 const createMockContext = (params: Record<string, any> = {}) =>
@@ -960,11 +952,11 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Buy milk tomorrow @shopping' },
 					{},
 					'/quick/add',
@@ -994,11 +986,11 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{
 						text: 'Meeting with team tomorrow at 2pm',
 						note: 'Discuss project roadmap and priorities',
@@ -1026,11 +1018,11 @@ describe('OperationHandler', () => {
 					project_id: '123',
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{
 						text: 'Review documents',
 						note: 'Check the quarterly reports',
@@ -1056,11 +1048,11 @@ describe('OperationHandler', () => {
 					project_id: '456',
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{
 						text: 'Call dentist',
 						reminder: 'next Monday at 9am',
@@ -1091,11 +1083,11 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{
 						text: 'Presentation due Friday at 5pm',
 						auto_reminder: true,
@@ -1123,12 +1115,12 @@ describe('OperationHandler', () => {
 					project_id: '333',
 				};
 
-				mockTodoistSingleSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
 				// Should only include text since other options are empty/false
-				expect(mockTodoistSingleSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Simple task' },
 					{},
 					'/quick/add',

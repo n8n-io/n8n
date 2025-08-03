@@ -10,12 +10,7 @@ import {
 
 import type { Section, TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
-import {
-	FormatDueDatetime,
-	todoistApiRequest,
-	todoistSyncRequest,
-	todoistSingleSyncRequest,
-} from '../GenericFunctions';
+import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -976,7 +971,7 @@ export class QuickAddHandler implements OperationHandler {
 			body.auto_reminder = options.auto_reminder;
 		}
 
-		const data = await todoistSingleSyncRequest.call(ctx, body, {}, '/quick/add');
+		const data = await todoistSyncRequest.call(ctx, body, {}, '/quick/add');
 
 		return {
 			data,
