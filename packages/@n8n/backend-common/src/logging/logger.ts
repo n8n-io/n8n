@@ -61,7 +61,7 @@ export class Logger implements LoggerType {
 			this.scopes = new Set();
 		}
 
-		if (isRoot && LoggerProxy && LoggerProxy.init) {
+		if (isRoot && LoggerProxy?.init) {
 			try {
 				LoggerProxy.init(this);
 			} catch (error) {

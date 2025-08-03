@@ -1,32 +1,17 @@
 # Linter Errors Report
 
-**Generated:** 2025-08-01T00:05:00.000Z (Updated)
-**Total Issues:** 0 (0 errors, 0 warnings)
-**Files:** 0
+**Generated:** 2025-08-03T00:29:40.637Z
+**Total Issues:** 2 (0 errors, 2 warnings)
+**Files:** 1
 
-✅ **All linting issues resolved!**
+## debug-test.js (eslint)
 
-## Recently Fixed Issues
+**File Path:** `/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/debug-test.js`
+**Issues:** 2
 
-### execution-profile.dto.ts (@n8n/api-types) - RESOLVED ✅
-**Fixed:** 2025-08-01T00:05:00.000Z
-**Issues Resolved:** 4 errors (raw enum declarations)
-- Converted `ExecutionStatus` to const enum
-- Converted `NodeExecutionStatus` to const enum  
-- Converted `BottleneckSeverity` to const enum
-- Converted `BottleneckIssue` to const enum
+⚠️ **Line 22:1** - Unexpected console statement. `[no-console]`
 
-## Previously Resolved Issues
-
-### create-subtasks.js (eslint) - RESOLVED
-**File Path:** `/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/create-subtasks.js`
-**Status:** ✅ File removed or console violations fixed
-
-**Previous Issues (Now Resolved):**
-- Line 133:5 - Unexpected console statement. `[no-console]` - RESOLVED
-- Line 134:5 - Unexpected console statement. `[no-console]` - RESOLVED  
-- Line 136:7 - Unexpected console statement. `[no-console]` - RESOLVED
-- Line 139:5 - Unexpected console statement. `[no-console]` - RESOLVED
+⚠️ **Line 23:1** - Unexpected console statement. `[no-console]`
 
 ---
 

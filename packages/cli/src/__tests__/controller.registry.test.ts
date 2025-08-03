@@ -1,6 +1,9 @@
-jest.mock('@n8n/backend-common', () => {
+jest.mock('@n8n/backend-common', (): Record<string, unknown> => {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const actual = jest.requireActual('@n8n/backend-common');
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		...actual,
 		inProduction: true,
 	};
 });
@@ -25,7 +28,11 @@ describe('ControllerRegistry', () => {
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
 	let agent: SuperAgentTest;
-	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
+	const authMiddleware = jest
+		.fn()
+		.mockImplementation(
+			(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+		);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -57,8 +64,12 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
-			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
+			lastActiveAtService.middleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
 		});
 
 		it('should not rate-limit by default', async () => {
@@ -96,7 +107,7 @@ describe('ControllerRegistry', () => {
 		});
 
 		it('should require auth by default', async () => {
-			authMiddleware.mockImplementation(async (_req, res) => {
+			authMiddleware.mockImplementation((_req: express.Request, res: express.Response) => {
 				res.status(401).send();
 			});
 			await agent.get('/rest/test/auth').expect(401);
@@ -116,8 +127,12 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
-			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
+			lastActiveAtService.middleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
 		});
 
 		it('should disallow when feature is missing', async () => {
@@ -145,14 +160,18 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
-			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
+			lastActiveAtService.middleware.mockImplementation(
+				(_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+			);
 		});
 
 		it('should pass in correct args to the route handler', async () => {
-			const { headers, body } = await agent.get('/rest/test/args/1234').expect(200);
-			expect(headers.testing).toBe('true');
-			expect(body.data).toEqual({ url: '/args/1234', id: '1234' });
+			const response = await agent.get('/rest/test/args/1234').expect(200);
+			expect(response.headers.testing).toBe('true');
+			expect((response.body as { data: unknown }).data).toEqual({ url: '/args/1234', id: '1234' });
 		});
 	});
 });

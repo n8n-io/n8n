@@ -52,4 +52,118 @@ export = {
 			}
 		},
 	],
+	getCommitHistory: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+			try {
+				const sourceControlService = Container.get(SourceControlService);
+				const limit = parseInt(req.query.limit as string) || 10;
+				const offset = parseInt(req.query.offset as string) || 0;
+
+				const commits = await sourceControlService.getCommitHistory({ limit, offset });
+				return res.status(200).json({ commits });
+			} catch (error) {
+				return res.status(400).json({
+					status: 'Error',
+					message: (error as { message: string }).message,
+				});
+			}
+		},
+	],
+	getRepositoryStatus: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+			try {
+				const sourceControlService = Container.get(SourceControlService);
+				const status = await sourceControlService.getStatus();
+				return res.status(200).json(status);
+			} catch (error) {
+				return res.status(400).json({
+					status: 'Error',
+					message: (error as { message: string }).message,
+				});
+			}
+		},
+	],
+	syncCheck: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:read' }),
+		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+			try {
+				const sourceControlService = Container.get(SourceControlService);
+				const syncStatus = await sourceControlService.getBranches();
+				return res.status(200).json(syncStatus);
+			} catch (error) {
+				return res.status(400).json({
+					status: 'Error',
+					message: (error as { message: string }).message,
+				});
+			}
+		},
+	],
+	setBranch: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:manage' }),
+		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+			try {
+				const sourceControlService = Container.get(SourceControlService);
+				const branchName = req.body.branch;
+				if (!branchName) {
+					return res.status(400).json({
+						status: 'Error',
+						message: 'Branch name is required',
+					});
+				}
+				await sourceControlService.setBranch(branchName);
+				return res.status(200).json({ status: 'success', branch: branchName });
+			} catch (error) {
+				return res.status(400).json({
+					status: 'Error',
+					message: (error as { message: string }).message,
+				});
+			}
+		},
+	],
 };

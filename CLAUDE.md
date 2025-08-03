@@ -598,14 +598,34 @@ node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding 
 
 #### **REQUIRED Task Creation Triggers**
 
+**🚨 CRITICAL: Only Create Tasks with Specific Purpose and Concrete Deliverables**
+
+**MANDATORY REQUIREMENT**: Every task MUST have a **CONCRETE PURPOSE** and **MEASURABLE OUTCOMES**. Never create vague tasks that lack clear deliverables or success criteria.
+
 **MUST create tasks for:**
-- **Multi-step implementations** (3+ steps) - NO EXCEPTIONS
-- **Feature development** - ALWAYS required
-- **Bug fixes** with investigation - MANDATORY
-- **Refactoring work** - REQUIRED for visibility
-- **Testing implementations** - MUST track progress
-- **Documentation updates** - ALWAYS create tasks
-- **Integration work** - MANDATORY coordination
+- **Multi-step implementations** (3+ steps) with specific feature requirements - NO EXCEPTIONS
+- **Feature development** with clear user value and acceptance criteria - ALWAYS required
+- **Bug fixes** with identified root causes and investigation needs - MANDATORY
+- **Refactoring work** addressing specific code quality issues - REQUIRED for visibility
+- **Testing implementations** with defined coverage targets - MUST track progress
+- **Documentation updates** filling identified knowledge gaps - ALWAYS create tasks
+- **Integration work** with external systems and defined scope - MANDATORY coordination
+
+**🚫 NEVER CREATE VAGUE TASKS:**
+- ❌ "Review codebase for improvements"
+- ❌ "Enhance system performance"
+- ❌ "Improve code quality"
+- ❌ "Update documentation"
+- ❌ "Optimize user experience"
+- ❌ "Clean up technical debt"
+
+**✅ CREATE SPECIFIC TASKS INSTEAD:**
+- ✅ "Fix memory leak in user session handler causing 500ms delays"
+- ✅ "Add JSDoc comments to authentication module functions"
+- ✅ "Reduce login API response time from 3s to <1s using connection pooling"
+- ✅ "Document rate limiting configuration in API README section"
+
+**Task Creation Filter**: Ask "What specific problem does this solve?" and "What concrete deliverable will be produced?" If answers are vague, DON'T create the task.
 
 #### **Task Creation Integration with TodoWrite**
 
@@ -669,7 +689,17 @@ Use appropriate complexity level and ALWAYS create tasks for multi-step work.
 3. **Quality assurance needs** (test coverage, security fixes)
 4. **Multi-file changes** (cross-cutting concerns, schema changes)
 
-**NO EXCEPTIONS** - Always create tasks for complex work.
+**NO EXCEPTIONS** - Always create tasks for complex work, but ONLY with specific purposes and measurable outcomes.
+
+**MANDATORY TASK REJECTION CRITERIA:**
+- **Vague titles** like "Review X" or "Improve Y" without specific goals
+- **No clear success criteria** or measurable deliverables
+- **Created for task count** rather than organizing actual work
+- **Generic improvement language** without identified specific problems
+- **Open-ended exploration** without defined research questions
+- **Maintenance directives** without specific issues or failure points
+
+**QUALITY TEST**: If a task could be copy-pasted to any project and still make sense, it's too vague and must be rejected.
 
 #### **Task Creation Workflow**
 

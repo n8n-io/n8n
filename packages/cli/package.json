@@ -25,6 +25,7 @@
     "test:dev": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:coverage": "COVERAGE_ENABLED=true N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --coverage",
+    "test:coverage:open": "npm run test:coverage && open coverage/index.html",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mariadb": "N8N_LOG_LEVEL=silent DB_TYPE=mariadb DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",

@@ -2,14 +2,13 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CliParser } from '@n8n/backend-common';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { z } from 'zod';
 
 import { CommandRegistry } from '../command-registry';
 
 jest.mock('fast-glob');
-
-import glob from 'fast-glob';
 
 describe('CommandRegistry', () => {
 	let commandRegistry: CommandRegistry;
@@ -20,8 +19,14 @@ describe('CommandRegistry', () => {
 	let mockProcessExit: jest.SpyInstance;
 	const cliParser = new CliParser(logger);
 
+	interface TestCommandFlags {
+		flag1?: string;
+		flag2?: boolean;
+		shortFlag?: number;
+	}
+
 	class TestCommand {
-		flags: any;
+		flags: TestCommandFlags = {};
 
 		init = jest.fn();
 
@@ -36,7 +41,9 @@ describe('CommandRegistry', () => {
 		jest.resetAllMocks();
 
 		originalProcessArgv = process.argv;
-		mockProcessExit = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+		mockProcessExit = jest.spyOn(process, 'exit').mockImplementation((() => {
+			// Mock implementation for testing
+		}) as (code?: string | number | null) => never);
 
 		(glob as unknown as jest.Mock).mockResolvedValue([]);
 

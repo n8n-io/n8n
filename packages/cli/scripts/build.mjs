@@ -31,13 +31,28 @@ function generateUserManagementEmailTemplates() {
 	shell.mkdir('-p', destinationDir);
 
 	const templates = glob.sync('*.mjml', { cwd: sourceDir });
-	templates.forEach((template) => {
-		if (template.startsWith('_')) return;
-		const source = path.resolve(sourceDir, template);
-		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output ${destination} ${source}`;
-		shell.exec(command, { silent: false });
-	});
+	const templatesToProcess = templates.filter(template => !template.startsWith('_'));
+	
+	if (templatesToProcess.length > 0) {
+		console.log(`Processing ${templatesToProcess.length} MJML email templates...`);
+		
+		templatesToProcess.forEach((template, index) => {
+			const source = path.resolve(sourceDir, template);
+			const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
+			const command = `pnpm mjml --output "${destination}" "${source}"`;
+			
+			console.log(`[${index + 1}/${templatesToProcess.length}] Processing ${template}...`);
+			const result = shell.exec(command, { silent: true });
+			
+			if (result.code !== 0) {
+				console.error(`Error processing ${template}:`, result.stderr);
+			} else {
+				console.log(`✓ Generated ${template.replace(/\.mjml$/, '.handlebars')}`);
+			}
+		});
+		
+		console.log('✅ Email template processing completed');
+	}
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
 }
@@ -62,17 +77,31 @@ function copySwaggerTheme() {
 function bundleOpenApiSpecs() {
 	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
 
-	shell
+	const specPaths = shell
 		.find(publicApiDir)
 		.reduce((acc, cur) => {
 			return cur.endsWith(SPEC_FILENAME) ? [...acc, path.relative('./src', cur)] : acc;
-		}, [])
-		.forEach((specPath) => {
+		}, []);
+		
+	if (specPaths.length > 0) {
+		console.log(`Bundling ${specPaths.length} OpenAPI specification(s)...`);
+		
+		specPaths.forEach((specPath, index) => {
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
-
-			shell.exec(command, { silent: true });
+			const command = `pnpm openapi bundle src/${specPath} --output "${distSpecPath}"`;
+			
+			console.log(`[${index + 1}/${specPaths.length}] Bundling ${specPath}...`);
+			const result = shell.exec(command, { silent: true });
+			
+			if (result.code !== 0) {
+				console.error(`Error bundling ${specPath}:`, result.stderr);
+			} else {
+				console.log(`✓ Bundled ${specPath}`);
+			}
 		});
+		
+		console.log('✅ OpenAPI specification bundling completed');
+	}
 }
 
 function generateTimezoneData() {
