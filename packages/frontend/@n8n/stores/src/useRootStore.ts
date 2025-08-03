@@ -157,6 +157,14 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.endpointWebhookWaiting = value;
 	};
 
+	const setEndpointMcp = (value: string) => {
+		state.value.endpointMcp = value;
+	};
+
+	const setEndpointMcpTest = (value: string) => {
+		state.value.endpointMcpTest = value;
+	};
+
 	const setTimezone = (value: string) => {
 		state.value.timezone = value;
 		setGlobalState({ defaultTimezone: value });
@@ -226,6 +234,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setEndpointWebhook,
 		setEndpointWebhookTest,
 		setEndpointWebhookWaiting,
+		setEndpointMcp,
+		setEndpointMcpTest,
 		setTimezone,
 		setExecutionTimeout,
 		setMaxExecutionTimeout,
