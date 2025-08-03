@@ -21,6 +21,7 @@ import type {
 import {
 	buildParameterizedConnString,
 	connectMongoClient,
+	parseJsonToEjson,
 	prepareFields,
 	prepareItems,
 	stringifyObjectIDs,
@@ -134,7 +135,7 @@ export class MongoDb implements INodeType {
 
 					const query = mdb
 						.collection(this.getNodeParameter('collection', i) as string)
-						.aggregate(queryParameter as unknown as Document[]);
+						.aggregate(parseJsonToEjson(queryParameter) as unknown as Document[]);
 
 					for (const entry of await query.toArray()) {
 						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
@@ -155,9 +156,13 @@ export class MongoDb implements INodeType {
 		if (operation === 'delete') {
 			for (let i = 0; i < itemsLength; i++) {
 				try {
+					const queryParameter = JSON.parse(
+						this.getNodeParameter('query', i) as string,
+					) as IDataObject;
+
 					const { deletedCount } = await mdb
 						.collection(this.getNodeParameter('collection', i) as string)
-						.deleteMany(JSON.parse(this.getNodeParameter('query', i) as string) as Document);
+						.deleteMany(parseJsonToEjson(queryParameter) as unknown as Document);
 
 					returnData.push({
 						json: { deletedCount },
@@ -189,7 +194,7 @@ export class MongoDb implements INodeType {
 
 					let query = mdb
 						.collection(this.getNodeParameter('collection', i) as string)
-						.find(queryParameter as unknown as Document);
+						.find(parseJsonToEjson(queryParameter) as unknown as Document);
 
 					const options = this.getNodeParameter('options', i);
 					const limit = options.limit as number;
