@@ -14,7 +14,7 @@ import {
 	splitRowsByExistence,
 } from './utils/sql-utils';
 
-type QueryBuilder = SelectQueryBuilder<Record<PropertyKey, unknown>>;
+type QueryBuilder = SelectQueryBuilder<any>;
 
 function getConditionAndParams(
 	filter: ListDataStoreContentQueryDto['filter']['filters'][number],
