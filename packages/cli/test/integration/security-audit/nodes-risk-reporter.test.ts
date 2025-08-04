@@ -10,7 +10,7 @@ import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/consta
 import { PackagesRepository } from '@/security-audit/security-audit.repository';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 
