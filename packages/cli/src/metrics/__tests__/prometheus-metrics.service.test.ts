@@ -530,4 +530,35 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
 		});
 	});
+
+	describe('instance role metric', () => {
+		it('should set up instance role metric for main instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'main';
+
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Gauge).toHaveBeenCalledWith({
+				name: 'n8n_instance_role_leader',
+				help: 'Whether this main instance is the leader (1) or not (0).',
+			});
+		});
+
+		it('should not set up instance role metric for worker instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'worker';
+
+			await prometheusMetricsService.init(app);
+
+			// Only version and active workflow count metrics should be created
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+
+			// Verify instance role metric was not created
+			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			const hasInstanceRoleMetric = calls.some(
+				(call) => call[0]?.name === 'n8n_instance_role_leader',
+			);
+			expect(hasInstanceRoleMetric).toBe(false);
+		});
+	});
 });
