@@ -1,81 +1,35 @@
 <script setup lang="ts">
+import { stopImmediatePropagationIfPanelShouldScroll } from '@/components/canvas/experimental/experimentalNdv.utils';
 import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n } from '@n8n/i18n';
+import { N8nPopover } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
-import { useActiveElement } from '@vueuse/core';
-import { ElPopover } from 'element-plus';
 import type { Workflow } from 'n8n-workflow';
-import { inject, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, useTemplateRef } from 'vue';
 
-const { node, container, inputNodeName } = defineProps<{
-	workflow?: Workflow;
-	node?: INodeUi;
-	container: HTMLDivElement | null;
-	inputNodeName?: string;
+const { node, inputNodeName, visible, virtualRef } = defineProps<{
+	workflow: Workflow;
+	node: INodeUi;
+	inputNodeName: string;
+	visible: boolean;
+	virtualRef: HTMLElement | undefined;
 }>();
 
-const emit = defineEmits<{
-	captureWheelDataContainer: [WheelEvent];
-}>();
-
+const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
 const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
-const i18n = useI18n();
-const activeElement = useActiveElement();
 
-const inputPanelRef = useTemplateRef('inputPanel');
-const shouldShowInputPanel = ref(false);
-
-function getShouldShowInputPanel() {
-	const active = activeElement.value;
-
-	if (!inputNodeName || !active || !container || !container.contains(active)) {
-		return false;
-	}
-
-	// TODO: find a way to implement this without depending on test ID
-	return (
-		!!active.closest('[data-test-id=inline-expression-editor-input]') ||
-		((active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) &&
-			active.value === '') ||
-		!!inputPanelRef.value?.$el.contains(active)
-	);
-}
-
-watch([activeElement, vf.getSelectedNodes], ([active, selected]) => {
-	// TODO: pane does not close when field is blurred
-
-	if (active && container?.contains(active)) {
-		shouldShowInputPanel.value = getShouldShowInputPanel();
-	}
-
-	if (selected.every((sel) => sel.id !== node?.id)) {
-		shouldShowInputPanel.value = false;
-	}
+defineExpose({
+	contentRef: computed<HTMLElement>(() => contentRef.value?.$el ?? null),
 });
-
-watch(
-	() => canvas?.isPaneMoving.value ?? false,
-	(moving) => {
-		shouldShowInputPanel.value = !moving && getShouldShowInputPanel();
-	},
-);
-
-watch(
-	() => canvas?.viewport.value,
-	() => {
-		shouldShowInputPanel.value = false;
-	},
-);
 </script>
 
 <template>
-	<ElPopover
-		:visible="shouldShowInputPanel"
+	<N8nPopover
+		:visible="visible && !canvas?.isPaneMoving.value"
 		placement="left"
 		:show-arrow="false"
 		:popper-class="$style.component"
@@ -85,13 +39,12 @@ watch(
 		:popper-options="{
 			modifiers: [{ name: 'flip', enabled: false }],
 		}"
+		:persistent="false"
+		virtual-triggering
+		:virtual-ref="virtualRef"
 	>
-		<template #reference>
-			<slot />
-		</template>
 		<InputPanel
-			v-if="workflow && node"
-			ref="inputPanel"
+			ref="content"
 			:tabindex="-1"
 			:class="$style.inputPanel"
 			:style="{
@@ -108,9 +61,9 @@ watch(
 			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 			:focused-mappable-input="ndvStore.focusedMappableInput"
 			node-not-run-message-variant="simple"
-			@capture-wheel-data-container="emit('captureWheelDataContainer', $event)"
+			@capture-wheel-data-container="stopImmediatePropagationIfPanelShouldScroll"
 		/>
-	</ElPopover>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

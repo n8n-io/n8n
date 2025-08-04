@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
 import get from 'lodash/get';
 
@@ -51,6 +51,7 @@ import {
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/constants';
@@ -79,6 +80,7 @@ import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -144,10 +146,13 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
+const mapperRef = ref<InstanceType<typeof ExperimentalEmbeddedNdvMapper>>();
 
 const nodeName = ref('');
 const codeEditDialogVisible = ref(false);
@@ -190,7 +195,12 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
-const node = computed(() => ndvStore.activeNode ?? undefined);
+const node = computed(
+	() =>
+		expressionLocalResolveCtx?.value?.workflow.getNode(expressionLocalResolveCtx.value.nodeName) ??
+		ndvStore.activeNode ??
+		undefined,
+);
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
@@ -592,6 +602,12 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
+const shouldShowMapper = computed(
+	() =>
+		isFocused.value &&
+		(isModelValueExpression.value || props.forceShowExpression || props.modelValue === ''),
+);
+
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
@@ -916,7 +932,16 @@ function expressionUpdated(value: string) {
 	valueChanged(val);
 }
 
-function onBlur() {
+function onBlur(event?: FocusEvent | KeyboardEvent) {
+	if (
+		event?.target instanceof HTMLElement &&
+		mapperRef.value?.contentRef &&
+		(event.target === mapperRef.value.contentRef ||
+			mapperRef.value.contentRef.contains(event.target))
+	) {
+		return;
+	}
+
 	emit('blur');
 	isFocused.value = false;
 }
@@ -1186,7 +1211,17 @@ onUpdated(async () => {
 			:redact-values="shouldRedactValue"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
-		></ExpressionEditModal>
+		/>
+
+		<ExperimentalEmbeddedNdvMapper
+			v-if="node && expressionLocalResolveCtx?.inputNode"
+			ref="mapperRef"
+			:workflow="expressionLocalResolveCtx?.workflow"
+			:node="node"
+			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
+			:visible="shouldShowMapper"
+			:virtual-ref="wrapper"
+		/>
 
 		<div
 			:class="[

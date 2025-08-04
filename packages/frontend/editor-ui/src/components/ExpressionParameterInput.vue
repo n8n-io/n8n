@@ -16,7 +16,7 @@ import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { ElPopover } from 'element-plus';
+import { N8nPopover } from '@n8n/design-system';
 import { CanvasKey, IsInExperimentalEmbeddedNdvKey } from '@/constants';
 import { useVueFlow } from '@vue-flow/core';
 
@@ -50,7 +50,7 @@ const emit = defineEmits<{
 	'modal-opener-click': [];
 	'update:model-value': [value: string];
 	focus: [];
-	blur: [];
+	blur: [FocusEvent | KeyboardEvent | undefined];
 }>();
 
 const telemetry = useTelemetry();
@@ -100,7 +100,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 	isFocused.value = false;
 
 	if (wasFocused) {
-		emit('blur');
+		emit('blur', event);
 
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
@@ -175,11 +175,11 @@ onBeforeUnmount(() => {
 	props.eventBus.off('drop', onDropOnFixedInput);
 });
 
-watch(isDragging, (newIsDragging) => {
-	if (newIsDragging) {
-		onBlur();
-	}
-});
+// watch(isDragging, (newIsDragging) => {
+// 	if (newIsDragging) {
+// 		onBlur();
+// 	}
+// });
 
 onClickOutside(container, (event) => onBlur(event));
 
@@ -188,7 +188,47 @@ defineExpose({ focus, select });
 
 <template>
 	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
-		<ElPopover
+		<div
+			:class="[
+				$style['all-sections'],
+				{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
+			]"
+		>
+			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
+				<span v-if="isAssignment">=</span>
+				<ExpressionFunctionIcon v-else />
+			</div>
+			<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+				<template #default="{ activeDrop, droppable }">
+					<InlineExpressionEditorInput
+						ref="inlineInput"
+						:model-value="modelValue"
+						:path="path"
+						:is-read-only="isReadOnly"
+						:rows="rows"
+						:additional-data="additionalExpressionData"
+						:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
+						@focus="onFocus"
+						@blur="onBlur"
+						@update:model-value="onValueChange"
+						@update:selection="onSelectionChange"
+					/>
+				</template>
+			</DraggableTarget>
+			<n8n-button
+				v-if="!isDragging"
+				square
+				outline
+				type="tertiary"
+				icon="external-link"
+				size="mini"
+				:class="$style['expression-editor-modal-opener']"
+				data-test-id="expander"
+				@click="emit('modal-opener-click')"
+			/>
+		</div>
+
+		<N8nPopover
 			:visible="isOutputPopoverVisible"
 			placement="bottom"
 			:append-to="isInExperimentalNdv ? (viewportRef ?? undefined) : undefined"
@@ -199,48 +239,10 @@ defineExpose({ focus, select });
 				modifiers: [{ name: 'flip', enabled: false }],
 			}"
 			:offset="0"
+			:persistent="false"
+			virtual-triggering
+			:virtual-ref="container"
 		>
-			<template #reference>
-				<div
-					:class="[
-						$style['all-sections'],
-						{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
-					]"
-				>
-					<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
-						<span v-if="isAssignment">=</span>
-						<ExpressionFunctionIcon v-else />
-					</div>
-					<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
-						<template #default="{ activeDrop, droppable }">
-							<InlineExpressionEditorInput
-								ref="inlineInput"
-								:model-value="modelValue"
-								:path="path"
-								:is-read-only="isReadOnly"
-								:rows="rows"
-								:additional-data="additionalExpressionData"
-								:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
-								@focus="onFocus"
-								@blur="onBlur"
-								@update:model-value="onValueChange"
-								@update:selection="onSelectionChange"
-							/>
-						</template>
-					</DraggableTarget>
-					<n8n-button
-						v-if="!isDragging"
-						square
-						outline
-						type="tertiary"
-						icon="external-link"
-						size="mini"
-						:class="$style['expression-editor-modal-opener']"
-						data-test-id="expander"
-						@click="emit('modal-opener-click')"
-					/>
-				</div>
-			</template>
 			<div ref="popoverContainer">
 				<InlineExpressionEditorOutput
 					:unresolved-expression="modelValue"
@@ -250,7 +252,7 @@ defineExpose({ focus, select });
 					:is-read-only="isReadOnly"
 				/>
 			</div>
-		</ElPopover>
+		</N8nPopover>
 	</div>
 </template>
 

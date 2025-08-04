@@ -18,9 +18,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, inject, useTemplateRef } from 'vue';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { stopImmediatePropagationIfPanelShouldScroll } from '@/components/canvas/experimental/experimentalNdv.utils';
+import { computed, useTemplateRef } from 'vue';
 
 type Props = {
 	parameter: INodeProperties;
@@ -156,53 +154,43 @@ defineExpose({
 	focusInput: () => param.value?.focusInput(),
 	selectInput: () => param.value?.selectInput(),
 });
-const ctx = inject(ExpressionLocalResolveContextSymbol, undefined);
-const node = computed(() => ctx?.value?.workflow.getNode(ctx.value.nodeName) ?? undefined);
 </script>
 
 <template>
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
-		<ExperimentalEmbeddedNdvMapper
-			:workflow="ctx?.workflow"
-			:node="node"
-			:container="param?.$el"
-			:input-node-name="ctx?.inputNode?.name"
-			@capture-wheel-data-container="stopImmediatePropagationIfPanelShouldScroll"
+		<ParameterInput
+			ref="param"
+			:input-size="inputSize"
+			:parameter="parameter"
+			:model-value="modelValue"
+			:path="path"
+			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
+			:droppable="droppable"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="resolvedExpression"
+			:additional-expression-data="resolvedAdditionalExpressionData"
+			:label="label"
+			:rows="rows"
+			:data-test-id="`parameter-input-${parsedParameterName}`"
+			:event-bus="eventBus"
+			:can-be-overridden="canBeOverridden"
+			@focus="onFocus"
+			@blur="onBlur"
+			@drop="onDrop"
+			@text-input="onTextInput"
+			@update="onValueChanged"
 		>
-			<ParameterInput
-				ref="param"
-				:input-size="inputSize"
-				:parameter="parameter"
-				:model-value="modelValue"
-				:path="path"
-				:is-read-only="isReadOnly"
-				:is-assignment="isAssignment"
-				:droppable="droppable"
-				:active-drop="activeDrop"
-				:force-show-expression="forceShowExpression"
-				:hide-issues="hideIssues"
-				:documentation-url="documentationUrl"
-				:error-highlight="errorHighlight"
-				:is-for-credential="isForCredential"
-				:event-source="eventSource"
-				:expression-evaluated="resolvedExpression"
-				:additional-expression-data="resolvedAdditionalExpressionData"
-				:label="label"
-				:rows="rows"
-				:data-test-id="`parameter-input-${parsedParameterName}`"
-				:event-bus="eventBus"
-				:can-be-overridden="canBeOverridden"
-				@focus="onFocus"
-				@blur="onBlur"
-				@drop="onDrop"
-				@text-input="onTextInput"
-				@update="onValueChanged"
-			>
-				<template #overrideButton>
-					<slot v-if="$slots.overrideButton" name="overrideButton" />
-				</template>
-			</ParameterInput>
-		</ExperimentalEmbeddedNdvMapper>
+			<template #overrideButton>
+				<slot v-if="$slots.overrideButton" name="overrideButton" />
+			</template>
+		</ParameterInput>
 		<div v-if="!hideHint && (resolvedExpressionString || parameterHint)" :class="$style.hint">
 			<div>
 				<InputHint
