@@ -46,7 +46,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlledFile[] };
+	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
 
 const loadingService = useLoadingService();
@@ -58,6 +58,43 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
+
+// Reactive status state - starts with props data or empty, then loads fresh data
+const status = ref<SourceControlledFile[]>(props.data.status ?? []);
+const isLoading = ref(false);
+
+// Load fresh source control status when modal opens
+async function loadSourceControlStatus() {
+	if (isLoading.value) return;
+
+	isLoading.value = true;
+	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
+
+	try {
+		const freshStatus = await sourceControlStore.getAggregatedStatus();
+
+		if (!freshStatus.length) {
+			toast.showMessage({
+				title: 'No changes to commit',
+				message: 'Everything is up to date',
+				type: 'info',
+			});
+			// Close modal since there's nothing to show
+			close();
+			return;
+		}
+
+		status.value = freshStatus;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+		close();
+	} finally {
+		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
+		isLoading.value = false;
+	}
+}
 
 const projectAdminCalloutDismissed = useStorage(
 	'SOURCE_CONTROL_PROJECT_ADMIN_CALLOUT_DISMISSED',
@@ -180,14 +217,12 @@ const workflowId = computed(
 		([VIEWS.WORKFLOW].includes(route.name as VIEWS) && route.params.name?.toString()) || undefined,
 );
 
-const changes = computed(() => classifyFilesByType(props.data.status, workflowId.value));
+const changes = computed(() => classifyFilesByType(status.value, workflowId.value));
 
 const selectedWorkflows = reactive<Set<string>>(new Set());
 
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
-
-onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
 const currentProject = computed(() => {
 	if (!route.params.projectId) {
@@ -360,7 +395,7 @@ function onToggleSelectAll() {
 
 function close() {
 	// Navigate back in history to maintain proper browser navigation
-	// The global route watcher will handle closing the modal
+	// The useWorkflowDiffRouting composable will handle closing the modal
 	router.back();
 }
 
@@ -606,10 +641,20 @@ function openDiffModal(id: string) {
 		},
 	});
 }
+
+// Load data when modal opens
+onMounted(async () => {
+	// Only load fresh data if we don't have any initial data
+	if (!props.data.status || props.data.status.length === 0) {
+		await loadSourceControlStatus();
+		maybeSelectCurrentWorkflow(changes.value.currentWorkflow);
+	}
+});
 </script>
 
 <template>
 	<Modal
+		v-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"

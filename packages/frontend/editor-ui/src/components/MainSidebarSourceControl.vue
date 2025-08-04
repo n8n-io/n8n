@@ -54,33 +54,13 @@ const sourceControlAvailable = computed(
 );
 
 async function pushWorkfolder() {
-	loadingService.startLoading();
-	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
-	try {
-		const status = await sourceControlStore.getAggregatedStatus();
-
-		if (!status.length) {
-			toast.showMessage({
-				title: 'No changes to commit',
-				message: 'Everything is up to date',
-				type: 'info',
-			});
-			return;
-		}
-
-		// Navigate to route with sourceControl param - modal will be opened by route watcher
-		void router.push({
-			query: {
-				...route.query,
-				sourceControl: 'push',
-			},
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
-	} finally {
-		loadingService.stopLoading();
-		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
-	}
+	// Navigate to route with sourceControl param - modal will handle data loading and loading states
+	void router.push({
+		query: {
+			...route.query,
+			sourceControl: 'push',
+		},
+	});
 }
 
 async function pullWorkfolder() {

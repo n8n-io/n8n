@@ -45,7 +45,7 @@ import { refDebounced } from '@vueuse/core';
 import dateformat from 'dateformat';
 import groupBy from 'lodash/groupBy';
 import orderBy from 'lodash/orderBy';
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, ref, onMounted } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
@@ -56,7 +56,7 @@ type SourceControlledFileStatus = SourceControlledFile['status'];
 type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlledFile[] };
+	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
 
 const telemetry = useTelemetry();
@@ -67,6 +67,43 @@ const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
+
+// Reactive status state - starts with props data or empty, then loads fresh data
+const status = ref<SourceControlledFile[]>(props.data.status || []);
+const isLoading = ref(false);
+
+// Load fresh source control status when modal opens
+async function loadSourceControlStatus() {
+	if (isLoading.value) return;
+
+	isLoading.value = true;
+	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
+
+	try {
+		const freshStatus = await sourceControlStore.getAggregatedStatus();
+
+		if (!freshStatus.length) {
+			toast.showMessage({
+				title: 'No changes to pull',
+				message: 'Everything is up to date',
+				type: 'info',
+			});
+			// Close modal since there's nothing to show
+			close();
+			return;
+		}
+
+		status.value = freshStatus;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+		close();
+	} finally {
+		isLoading.value = false;
+		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
+	}
+}
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
@@ -121,7 +158,7 @@ const resetFilters = () => {
 
 // Group files by type with project information
 const filesWithProjects = computed(() =>
-	props.data.status.map((file) => {
+	status.value.map((file) => {
 		const project = projectsStore.availableProjects.find(({ id }) => id === file.owner?.projectId);
 		return { ...file, project };
 	}),
@@ -352,10 +389,19 @@ const modalHeight = computed(() =>
 		? 'min(80vh, 850px)'
 		: 'auto',
 );
+
+// Load data when modal opens
+onMounted(() => {
+	// Only load fresh data if we don't have any initial data
+	if (!props.data.status || props.data.status.length === 0) {
+		void loadSourceControlStatus();
+	}
+});
 </script>
 
 <template>
 	<Modal
+		v-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"

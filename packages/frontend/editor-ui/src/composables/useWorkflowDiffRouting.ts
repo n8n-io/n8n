@@ -2,7 +2,6 @@ import { watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/stores/ui.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	WORKFLOW_DIFF_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -18,7 +17,6 @@ import {
 export function useWorkflowDiffRouting() {
 	const route = useRoute();
 	const uiStore = useUIStore();
-	const sourceControlStore = useSourceControlStore();
 
 	// Create event buses for modal communication
 	const workflowDiffEventBus = createEventBus();
@@ -95,21 +93,17 @@ export function useWorkflowDiffRouting() {
 	async function reopenSourceControlModal(direction: 'push' | 'pull') {
 		try {
 			if (direction === 'push') {
-				// Fetch fresh status for push modal
-				const status = await sourceControlStore.getAggregatedStatus();
-				if (status.length > 0) {
-					uiStore.openModalWithData({
-						name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-						data: { eventBus: createEventBus(), status },
-					});
-				}
+				// Open push modal without pre-fetched data - modal will handle loading
+				uiStore.openModalWithData({
+					name: SOURCE_CONTROL_PUSH_MODAL_KEY,
+					data: { eventBus: createEventBus() },
+				});
 			} else {
-				// For pull modal, we'd need to fetch status differently
-				// This is more complex as pull modal is usually opened due to conflicts
-				// For now, we'll just not reopen it automatically
-				console.log(
-					'Pull modal reopening not implemented - user should use source control buttons',
-				);
+				// Open pull modal without pre-fetched data - modal will handle loading
+				uiStore.openModalWithData({
+					name: SOURCE_CONTROL_PULL_MODAL_KEY,
+					data: { eventBus: createEventBus() },
+				});
 			}
 		} catch (error) {
 			console.warn('Failed to reopen source control modal:', error);
