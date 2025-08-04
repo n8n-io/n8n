@@ -76,18 +76,18 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflow = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 	const rootName = props.rootNode.name;
 
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflow.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflow.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 	};
 });
