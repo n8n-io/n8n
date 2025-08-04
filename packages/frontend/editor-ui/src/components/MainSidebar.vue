@@ -29,7 +29,6 @@ import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
-import { playground } from '@/features/dataStore/dataStore.api';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -360,10 +359,6 @@ const {
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
 });
-
-const customFunction = async () => {
-	await playground();
-};
 </script>
 
 <template>
@@ -375,7 +370,6 @@ const customFunction = async () => {
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
 	>
-		<N8nButton type="primary" @click="customFunction"> Do The Thing </N8nButton>
 		<div
 			id="collapse-change-button"
 			:class="['clickable', $style.sideMenuCollapseButton]"
