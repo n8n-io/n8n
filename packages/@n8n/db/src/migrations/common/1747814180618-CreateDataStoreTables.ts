@@ -10,7 +10,7 @@ export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
 				column('projectId').varchar(36).notNull,
-				column('sizeBytes').int.notNull,
+				column('sizeBytes').int.default(0).notNull,
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project',

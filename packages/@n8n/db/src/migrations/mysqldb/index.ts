@@ -1,4 +1,3 @@
-import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -48,6 +47,7 @@ import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTes
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
+import { AddMfaColumns1690000000030 } from '../common/1690000000040-AddMfaColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
@@ -86,6 +86,7 @@ import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvalu
 import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
 import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
+import { CreateDataStoreTables1747814180618 } from '../common/1747814180618-CreateDataStoreTables';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
@@ -182,6 +183,7 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowArchivedColumn1745934666076,
 	DropRoleTable1745934666077,
 	ClearEvaluation1745322634000,
+	CreateDataStoreTables1747814180618,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,
