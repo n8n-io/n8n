@@ -19,9 +19,11 @@ export class InsightsModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { AnnotationTagEntity } = await import('@n8n/db');
+		const { InsightsByPeriod } = await import('./database/entities/insights-by-period');
+		const { InsightsMetadata } = await import('./database/entities/insights-metadata');
+		const { InsightsRaw } = await import('./database/entities/insights-raw');
 
-		return [AnnotationTagEntity];
+		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
 	}
 
 	async settings() {
