@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nPopoverReka from '../N8nPopoverReka';
@@ -16,7 +17,8 @@ interface SuggestedAction {
 	completed?: boolean;
 }
 
-interface SuggestedActionsProps {
+export interface SuggestedActionsProps {
+	title: string;
 	actions: SuggestedAction[];
 	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
@@ -88,6 +90,9 @@ defineExpose({
 		</template>
 		<template #content>
 			<div :class="$style.popoverContent">
+				<div>
+					<N8nHeading tag="h4">{{ title }}</N8nHeading>
+				</div>
 				<div
 					v-for="action in actions"
 					:key="action.id"

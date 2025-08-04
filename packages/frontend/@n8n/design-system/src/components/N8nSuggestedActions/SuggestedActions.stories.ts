@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3';
 
+import type { SuggestedActionsProps } from './SuggestedActions.vue';
 import N8nSuggestedActions from './SuggestedActions.vue';
 
 export default {
@@ -41,24 +42,22 @@ Default.args = {
 			title: 'Evaluate your workflow with a dataset',
 			description: 'Set up an AI evaluation to be sure th WF is reliable.',
 			moreInfoLink: 'https://docs.n8n.io/evaluations',
-			buttonLabel: 'Go to evaluations',
 		},
 		{
 			id: 'track-errors',
 			title: 'Keep track of execution errors',
 			description: 'Setup a workflow error to track what is going on here.',
 			moreInfoLink: 'https://docs.n8n.io/error-workflows',
-			buttonLabel: 'Settings',
 		},
 		{
 			id: 'track-time',
 			title: 'Track the time you save',
 			description:
 				'Log how much time this workflow saves each run to measure your automation impact.',
-			buttonLabel: 'Settings',
 		},
 	],
-};
+	title: 'Suggested Actions',
+} satisfies SuggestedActionsProps;
 
 export const WithoutMoreInfoLinks = Template.bind({});
 WithoutMoreInfoLinks.args = {
@@ -85,9 +84,9 @@ LongContent.args = {
 		title: `Suggested Action ${i + 1}`,
 		description: `This is a longer description for action ${i + 1} that demonstrates how the component handles scrolling when there are many items in the list.`,
 		moreInfoLink: i % 2 === 0 ? 'https://docs.n8n.io' : undefined,
-		buttonLabel: `Action ${i + 1}`,
 	})),
-};
+	title: 'Title',
+} satisfies SuggestedActionsProps;
 
 const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 	setup() {
@@ -125,6 +124,7 @@ const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
 
 export const WithIgnoreAllOption = TemplateWithEvents.bind({});
 WithIgnoreAllOption.args = {
+	title: 'Suggested Actions',
 	ignoreAllLabel: 'Ignore for all workflows',
 	actions: [
 		{
@@ -132,17 +132,15 @@ WithIgnoreAllOption.args = {
 			title: 'Evaluate your workflow with a dataset',
 			description: 'Set up an AI evaluation to be sure th WF is reliable.',
 			moreInfoLink: 'https://docs.n8n.io/evaluations',
-			buttonLabel: 'Go to evaluations',
 		},
 		{
 			id: 'track-errors',
 			title: 'Keep track of execution errors',
 			description: 'Setup a workflow error to track what is going on here.',
 			moreInfoLink: 'https://docs.n8n.io/error-workflows',
-			buttonLabel: 'Settings',
 		},
 	],
-};
+} satisfies SuggestedActionsProps;
 
 export const SingleActionWithTurnOff = TemplateWithEvents.bind({});
 SingleActionWithTurnOff.args = {
@@ -190,10 +188,10 @@ PopoverAlignments.args = {
 			id: 'action1',
 			title: 'Test Alignment',
 			description: 'This demonstrates different popover alignments.',
-			buttonLabel: 'Action',
 		},
 	],
-};
+	title: 'Title',
+} satisfies SuggestedActionsProps;
 
 export const MultipleActionsWithIgnoreAll = TemplateWithEvents.bind({});
 MultipleActionsWithIgnoreAll.args = {
@@ -202,20 +200,18 @@ MultipleActionsWithIgnoreAll.args = {
 			id: 'action1',
 			title: 'First action',
 			description: 'This is the first action that can be ignored.',
-			buttonLabel: 'Do first thing',
 			completed: true,
 		},
 		{
 			id: 'action2',
 			title: 'Second action',
 			description: 'This is the second action that can be ignored.',
-			buttonLabel: 'Do second thing',
 		},
 		{
 			id: 'action3',
 			title: 'Third action',
 			description: 'This is the third action that can be ignored.',
-			buttonLabel: 'Do third thing',
 		},
 	],
-};
+	title: 'Title',
+} satisfies SuggestedActionsProps;

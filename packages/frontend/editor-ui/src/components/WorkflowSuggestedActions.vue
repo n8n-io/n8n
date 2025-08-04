@@ -203,6 +203,7 @@ onMounted(async () => {
 		v-if="availableActions.length > 0"
 		ref="suggestedActionsComponent"
 		popover-alignment="end"
+		:title="i18n.baseText('workflowSuggestedActions.title')"
 		:actions="availableActions"
 		:ignore-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
 		@action-click="handleActionClick"

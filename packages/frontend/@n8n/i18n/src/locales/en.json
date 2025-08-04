@@ -2492,6 +2492,7 @@
 	"workflowDetails.active": "Active",
 	"workflowDetails.addTag": "Add tag",
 	"workflowDetails.chooseOrCreateATag": "Choose or create a tag",
+	"workflowSuggestedActions.title": "Production Checklist",
 	"workflowSuggestedActions.ignoreAllConfirmation.title": "Ignore suggested actions globally",
 	"workflowSuggestedActions.ignoreAllConfirmation.description": "Turning this off dismisses these suggestions from every workflow",
 	"workflowSuggestedActions.ignoreAllConfirmation.confirm": "Ignore for all workflows",
