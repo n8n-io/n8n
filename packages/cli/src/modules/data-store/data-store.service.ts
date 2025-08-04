@@ -268,7 +268,7 @@ export class DataStoreService implements IDataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	private async validateRows(dataStoreId: string, rows: DataStoreRows) {
+	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
 			throw new UserError('no columns found for this data store or data store not found');
@@ -310,23 +310,16 @@ export class DataStoreService implements IDataStoreService {
 				}
 			}
 		}
-		return true;
 	}
 
 	async insertRows(dataStoreId: string, rows: DataStoreRows) {
-		const validationResult = await this.validateRows(dataStoreId, rows);
-		if (!validationResult) {
-			return validationResult;
-		}
+		await this.validateRows(dataStoreId, rows);
 
 		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows);
 	}
 
 	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
-		const validationResult = await this.validateRows(dataStoreId, dto.rows as DataStoreRows);
-		if (!validationResult) {
-			return validationResult;
-		}
+		await this.validateRows(dataStoreId, dto.rows);
 
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto);
 	}

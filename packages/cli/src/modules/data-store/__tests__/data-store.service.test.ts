@@ -35,7 +35,6 @@ describe('dataStore', () => {
 	let project1: Project;
 	let project2: Project;
 	let dataStore1: DataStoreEntity;
-	let dataStore2: DataStoreEntity;
 
 	beforeEach(async () => {
 		project1 = await createTeamProject();
@@ -45,7 +44,7 @@ describe('dataStore', () => {
 			name: 'myDataStore1',
 			columns: [],
 		});
-		dataStore2 = await dataStoreService.createDataStore(project2.id, {
+		await dataStoreService.createDataStore(project2.id, {
 			name: 'myDataStore2',
 			columns: [],
 		});

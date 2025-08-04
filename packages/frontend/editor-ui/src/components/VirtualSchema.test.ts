@@ -745,7 +745,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema for loop node done-branch with correct filtering', async () => {
-		// Mock customer dataStore output - 6 customer items
+		// Mock customer datastore output - 6 customer items
 		const customerData = Array.from({ length: 6 }, (_, i) => ({
 			json: {
 				id: i + 1,

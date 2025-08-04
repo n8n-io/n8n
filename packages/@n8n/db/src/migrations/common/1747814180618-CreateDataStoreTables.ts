@@ -13,11 +13,11 @@ export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
 				column('sizeBytes').int.notNull,
 			)
 			.withForeignKey('projectId', {
-				tableName: 'project', // @Review: this hardcodes a dependency on the project table, is this cool?
+				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['projectId', 'name'], true).withTimestamps; // @Review: The intention here is to ensure each name can only be used once per project, so [projectId, name] needs to be unique, right?...
+			.withIndexOn(['projectId', 'name'], true).withTimestamps;
 
 		await createTable(dataStoreColumnTableName)
 			.withColumns(
