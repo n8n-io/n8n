@@ -10,6 +10,5 @@
 		"types": ["vite/client", "vitest/globals"],
 		"isolatedModules": true
 	},
-	"include": ["src/**/*.ts", "src/configs/eslint.mjs"],
-	"exclude": ["src/templates"]
+	"include": ["src/**/*.ts", "src/configs/eslint.mjs"]
 }
