@@ -225,3 +225,14 @@ export {
 	NodeTypePerformanceRequestDto,
 	NodeTypePerformanceResponseDto,
 } from './monitoring/node-performance.dto';
+
+export {
+	WorkflowSearchQueryDto,
+	WorkflowSearchResultItemDto,
+	WorkflowSearchResponseDto,
+	AdvancedWorkflowSearchDto,
+	WorkflowSearchSuggestionsDto,
+	WorkflowSearchSuggestionsResponseDto,
+	isValidWorkflowSearchQuery,
+	isValidAdvancedWorkflowSearch,
+} from './workflow-search.dto';

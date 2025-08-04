@@ -12,6 +12,11 @@ import {
 	EnterpriseBatchProcessingRequestDto,
 	EnterpriseBatchProcessingResponseDto,
 	BatchOperationStatusDto,
+	WorkflowSearchQueryDto,
+	WorkflowSearchResponseDto,
+	AdvancedWorkflowSearchDto,
+	WorkflowSearchSuggestionsDto,
+	WorkflowSearchSuggestionsResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -80,6 +85,7 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BatchProcessingService } from './batch-processing.service';
+import { WorkflowSearchService } from '@/services/workflow-search.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -108,6 +114,7 @@ export class WorkflowsController {
 		private readonly nodeTypes: NodeTypes,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly batchProcessingService: BatchProcessingService,
+		private readonly workflowSearchService: WorkflowSearchService,
 	) {}
 
 	@Post('/')
@@ -2009,6 +2016,313 @@ export class WorkflowsController {
 		});
 
 		return results;
+	}
+
+	// Comprehensive Workflow Search Endpoints
+
+	@Get('/search')
+	async searchWorkflows(
+		req: AuthenticatedRequest<{}, {}, {}, WorkflowSearchQueryDto>,
+	): Promise<WorkflowSearchResponseDto> {
+		this.logger.debug('Workflow search requested', {
+			userId: req.user.id,
+			query: req.query.query,
+			searchIn: req.query.searchIn,
+		});
+
+		try {
+			const searchQuery = this.validateSearchQuery(req.query);
+			const result = await this.workflowSearchService.searchWorkflows(searchQuery, req.user);
+
+			this.logger.debug('Workflow search completed', {
+				userId: req.user.id,
+				resultsCount: result.results.length,
+				totalCount: result.pagination.total,
+				searchTimeMs: result.metadata.searchTimeMs,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Workflow search failed', {
+				userId: req.user.id,
+				query: req.query.query,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Workflow search failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Post('/search/advanced')
+	async advancedSearchWorkflows(
+		req: AuthenticatedRequest<{}, {}, AdvancedWorkflowSearchDto>,
+	): Promise<WorkflowSearchResponseDto> {
+		this.logger.debug('Advanced workflow search requested', {
+			userId: req.user.id,
+			queryStructure: {
+				mustClauses: req.body.query?.must?.length || 0,
+				shouldClauses: req.body.query?.should?.length || 0,
+				mustNotClauses: req.body.query?.mustNot?.length || 0,
+			},
+		});
+
+		try {
+			const result = await this.workflowSearchService.advancedSearch(req.body, req.user);
+
+			this.logger.debug('Advanced workflow search completed', {
+				userId: req.user.id,
+				resultsCount: result.results.length,
+				totalCount: result.pagination.total,
+				searchTimeMs: result.metadata.searchTimeMs,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Advanced workflow search failed', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Advanced workflow search failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/suggestions')
+	async getSearchSuggestions(
+		req: AuthenticatedRequest<{}, {}, {}, WorkflowSearchSuggestionsDto>,
+	): Promise<WorkflowSearchSuggestionsResponseDto> {
+		this.logger.debug('Search suggestions requested', {
+			userId: req.user.id,
+			query: req.query.query,
+			type: req.query.type,
+		});
+
+		try {
+			const result = await this.workflowSearchService.getSearchSuggestions(req.query, req.user);
+
+			this.logger.debug('Search suggestions completed', {
+				userId: req.user.id,
+				suggestionsCount: result.suggestions.length,
+				query: req.query.query,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Search suggestions failed', {
+				userId: req.user.id,
+				query: req.query.query,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			// Return empty suggestions on error rather than throwing
+			return {
+				suggestions: [],
+				query: req.query.query || '',
+				type: req.query.type || 'workflows',
+			};
+		}
+	}
+
+	@Get('/search/facets')
+	async getSearchFacets(
+		req: AuthenticatedRequest<{}, {}, {}, { projectId?: string; folderId?: string }>,
+	) {
+		this.logger.debug('Search facets requested', {
+			userId: req.user.id,
+			projectId: req.query.projectId,
+			folderId: req.query.folderId,
+		});
+
+		try {
+			// Get user accessible workflows
+			const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+				req.user,
+				['workflow:read'],
+				req.query.folderId,
+				req.query.projectId,
+			);
+
+			// Extract facet data
+			const nodeTypes = new Map<string, number>();
+			const tags = new Map<string, number>();
+			const projects = new Map<string, { name: string; count: number }>();
+			const folders = new Map<string, { name: string; count: number }>();
+			let activeCount = 0;
+			let inactiveCount = 0;
+
+			for (const workflow of workflows) {
+				// Count active/inactive
+				if (workflow.active) {
+					activeCount++;
+				} else {
+					inactiveCount++;
+				}
+
+				// Count node types
+				if (workflow.nodes) {
+					const uniqueNodeTypes = new Set(workflow.nodes.map((n) => n.type));
+					uniqueNodeTypes.forEach((nodeType) => {
+						nodeTypes.set(nodeType, (nodeTypes.get(nodeType) || 0) + 1);
+					});
+				}
+
+				// Count tags
+				if (workflow.tags) {
+					workflow.tags.forEach((tag) => {
+						tags.set(tag.name, (tags.get(tag.name) || 0) + 1);
+					});
+				}
+
+				// Count projects
+				if (workflow.projectId) {
+					const existing = projects.get(workflow.projectId);
+					if (existing) {
+						existing.count++;
+					} else {
+						projects.set(workflow.projectId, { name: 'Project', count: 1 });
+					}
+				}
+			}
+
+			// Convert maps to arrays and sort by count
+			const facets = {
+				tags: Array.from(tags.entries())
+					.map(([name, count]) => ({ name, count }))
+					.sort((a, b) => b.count - a.count)
+					.slice(0, 20),
+				nodeTypes: Array.from(nodeTypes.entries())
+					.map(([type, count]) => ({ type, count }))
+					.sort((a, b) => b.count - a.count)
+					.slice(0, 20),
+				projects: Array.from(projects.entries()).map(([id, data]) => ({
+					id,
+					name: data.name,
+					count: data.count,
+				})),
+				activeStatus: {
+					active: activeCount,
+					inactive: inactiveCount,
+				},
+			};
+
+			this.logger.debug('Search facets completed', {
+				userId: req.user.id,
+				totalWorkflows: workflows.length,
+				tagsCount: facets.tags.length,
+				nodeTypesCount: facets.nodeTypes.length,
+			});
+
+			return {
+				facets,
+				metadata: {
+					totalWorkflows: workflows.length,
+					generatedAt: new Date().toISOString(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Search facets failed', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Failed to get search facets: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Validate and sanitize search query parameters
+	 */
+	private validateSearchQuery(query: any): WorkflowSearchQueryDto {
+		// Basic validation and defaults
+		const validatedQuery: WorkflowSearchQueryDto = {
+			query: query.query ? String(query.query).trim() : undefined,
+			searchIn: Array.isArray(query.searchIn)
+				? query.searchIn
+				: query.searchIn
+					? [query.searchIn]
+					: ['all'],
+			active: query.active !== undefined ? Boolean(query.active) : undefined,
+			tags: Array.isArray(query.tags) ? query.tags : query.tags ? [query.tags] : undefined,
+			nodeTypes: Array.isArray(query.nodeTypes)
+				? query.nodeTypes
+				: query.nodeTypes
+					? [query.nodeTypes]
+					: undefined,
+			projectId: query.projectId ? String(query.projectId) : undefined,
+			folderId: query.folderId ? String(query.folderId) : undefined,
+			isArchived: query.isArchived !== undefined ? Boolean(query.isArchived) : undefined,
+
+			// Date filters
+			createdAfter: query.createdAfter ? String(query.createdAfter) : undefined,
+			createdBefore: query.createdBefore ? String(query.createdBefore) : undefined,
+			updatedAfter: query.updatedAfter ? String(query.updatedAfter) : undefined,
+			updatedBefore: query.updatedBefore ? String(query.updatedBefore) : undefined,
+
+			// Boolean options
+			hasWebhooks: query.hasWebhooks !== undefined ? Boolean(query.hasWebhooks) : undefined,
+			hasCronTriggers:
+				query.hasCronTriggers !== undefined ? Boolean(query.hasCronTriggers) : undefined,
+			fuzzySearch: query.fuzzySearch !== undefined ? Boolean(query.fuzzySearch) : false,
+			caseSensitive: query.caseSensitive !== undefined ? Boolean(query.caseSensitive) : false,
+			exactMatch: query.exactMatch !== undefined ? Boolean(query.exactMatch) : false,
+
+			// Execution count range
+			executionCount: query.executionCount
+				? {
+						min: query.executionCount.min ? Number(query.executionCount.min) : undefined,
+						max: query.executionCount.max ? Number(query.executionCount.max) : undefined,
+					}
+				: undefined,
+
+			// Sorting and pagination
+			sortBy: query.sortBy || 'relevance',
+			sortOrder: query.sortOrder || 'desc',
+			page: query.page ? Math.max(1, Number(query.page)) : 1,
+			limit: query.limit ? Math.min(100, Math.max(1, Number(query.limit))) : 20,
+
+			// Response options
+			includeContent: query.includeContent !== undefined ? Boolean(query.includeContent) : false,
+			includeStats: query.includeStats !== undefined ? Boolean(query.includeStats) : false,
+			includeHighlights:
+				query.includeHighlights !== undefined ? Boolean(query.includeHighlights) : true,
+		};
+
+		// Validate searchIn values
+		const validSearchInValues = ['name', 'description', 'nodes', 'tags', 'all'];
+		validatedQuery.searchIn = validatedQuery.searchIn?.filter((value) =>
+			validSearchInValues.includes(value),
+		) || ['all'];
+
+		// Validate sortBy
+		const validSortValues = ['name', 'createdAt', 'updatedAt', 'relevance', 'executionCount'];
+		if (!validSortValues.includes(validatedQuery.sortBy!)) {
+			validatedQuery.sortBy = 'relevance';
+		}
+
+		// Validate sortOrder
+		if (!['asc', 'desc'].includes(validatedQuery.sortOrder!)) {
+			validatedQuery.sortOrder = 'desc';
+		}
+
+		return validatedQuery;
 	}
 
 	@Licensed('feat:enterprise')
