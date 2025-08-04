@@ -1,25 +1,25 @@
 ![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
 
-# n8n - Secure Workflow Automation for Technical Teams
+# Nurx - Қазақстандағы алғашқы автоматтандыру жүйесі
 
-n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
+Nurx - техникалық командаларға арналған қауіпсіз жұмыс ағындарын автоматтандыру платформасы. Қазақ тіліндегі алғашқы толыққанды автоматтандыру шешімі ретінде, Nurx кодтың икемділігін код жазбай жұмыс істеудің жылдамдығымен біріктіреді. 400+ интеграция, жергілікті AI мүмкіндіктері және әділ код лицензиясымен Nurx сізге деректеріңіз бен орналастырыңыз үстінен толық бақылауды сақтай отырып, қуатты автоматтандыруларды құруға мүмкіндік береді.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
 
-## Key Capabilities
+## Негізгі мүмкіндіктер
 
-- **Code When You Need It**: Write JavaScript/Python, add npm packages, or use the visual interface
-- **AI-Native Platform**: Build AI agent workflows based on LangChain with your own data and models
-- **Full Control**: Self-host with our fair-code license or use our [cloud offering](https://app.n8n.cloud/login)
-- **Enterprise-Ready**: Advanced permissions, SSO, and air-gapped deployments
-- **Active Community**: 400+ integrations and 900+ ready-to-use [templates](https://n8n.io/workflows)
+- **Қажет болған кезде код жазыңыз**: JavaScript/Python жазыңыз, npm пакеттерін қосыңыз немесе визуалды интерфейсті пайдаланыңыз
+- **AI-ға негізделген платформа**: Өз деректеріңіз бен модельдеріңізбен LangChain негізінде AI агент жұмыс ағындарын құрыңыз
+- **Толық бақылау**: Біздің әділ код лицензиямызбен өз серверіңізде орналастырыңыз немесе [бұлтты ұсынысымызды](https://app.n8n.cloud/login) пайдаланыңыз
+- **Кәсіпорынға дайын**: Жетілдірілген рұқсаттар, SSO және ауа тосқауылымен орналастыру
+- **Белсенді қауымдастық**: 400+ интеграция және 900+ дайын [үлгілер](https://n8n.io/workflows)
 
-## Quick Start
+## Жылдам бастау
 
-Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
+Nurx жүйесін [npx](https://docs.n8n.io/hosting/installation/npm/) арқылы бірден сынаңыз ([Node.js](https://nodejs.org/en/) қажет):
 
 ```
-npx n8n
+npx nurx
 ```
 
 Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):

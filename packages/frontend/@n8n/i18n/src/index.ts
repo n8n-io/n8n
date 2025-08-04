@@ -3,6 +3,7 @@ import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } f
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
+import kazakhBaseText from './locales/kk.json';
 import type { BaseTextKey, INodeTranslationHeaders } from './types';
 import {
 	deriveMiddleKey,
@@ -15,9 +16,12 @@ export * from './types';
 
 export const i18nInstance = createI18n({
 	legacy: false,
-	locale: 'en',
+	locale: 'kk',
 	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	messages: { 
+		en: englishBaseText,
+		kk: kazakhBaseText 
+	},
 	warnHtmlMessage: false,
 });
 
@@ -375,10 +379,10 @@ export class I18nClass {
 	};
 }
 
-const loadedLanguages = ['en'];
+const loadedLanguages = ['en', 'kk'];
 
 async function setLanguage(language: string) {
-	i18nInstance.global.locale.value = language as 'en';
+	i18nInstance.global.locale.value = language as 'en' | 'kk';
 	document.querySelector('html')!.setAttribute('lang', language);
 
 	return language;
