@@ -879,7 +879,7 @@
       "description": "Add missing execution control endpoints for granular execution management, including retry from specific points, partial workflow execution, and execution cancellation at the node level.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/executions/:id/cancel-node endpoint implemented",
         "POST /api/v1/executions/:id/retry-from-node endpoint functional",
@@ -2108,8 +2108,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 215,
-  "last_hook_activation": 1754285084640,
+  "execution_count": 217,
+  "last_hook_activation": 1754285857774,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

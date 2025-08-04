@@ -1,0 +1,1 @@
+{"version":3,"file":"too-many-requests.error.js","sourceRoot":"","sources":["too-many-requests.error.ts"],"names":[],"mappings":";;;AAAA,8DAA0D;AAE1D,MAAa,oBAAqB,SAAQ,8BAAa;IACtD,YAAY,OAAe,EAAE,OAA2B,SAAS;QAChE,KAAK,CAAC,OAAO,EAAE,GAAG,EAAE,GAAG,EAAE,IAAI,CAAC,CAAC;IAChC,CAAC;CACD;AAJD,oDAIC"}

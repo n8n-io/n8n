@@ -1,0 +1,57 @@
+'use strict';
+var __decorate =
+	(this && this.__decorate) ||
+	function (decorators, target, key, desc) {
+		var c = arguments.length,
+			r =
+				c < 3
+					? target
+					: desc === null
+						? (desc = Object.getOwnPropertyDescriptor(target, key))
+						: desc,
+			d;
+		if (typeof Reflect === 'object' && typeof Reflect.decorate === 'function')
+			r = Reflect.decorate(decorators, target, key, desc);
+		else
+			for (var i = decorators.length - 1; i >= 0; i--)
+				if ((d = decorators[i]))
+					r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+		return c > 3 && r && Object.defineProperty(target, key, r), r;
+	};
+var __metadata =
+	(this && this.__metadata) ||
+	function (k, v) {
+		if (typeof Reflect === 'object' && typeof Reflect.metadata === 'function')
+			return Reflect.metadata(k, v);
+	};
+Object.defineProperty(exports, '__esModule', { value: true });
+exports.WorkflowSorting = exports.WorkflowSortByParameter = void 0;
+const class_validator_1 = require('class-validator');
+let WorkflowSortByParameter = class WorkflowSortByParameter {
+	validate(text, _) {
+		const [column, order] = text.split(':');
+		if (!column || !order) return false;
+		return ['name', 'createdAt', 'updatedAt'].includes(column) && ['asc', 'desc'].includes(order);
+	}
+	defaultMessage(_) {
+		return 'Invalid value for sortBy parameter';
+	}
+};
+exports.WorkflowSortByParameter = WorkflowSortByParameter;
+exports.WorkflowSortByParameter = WorkflowSortByParameter = __decorate(
+	[(0, class_validator_1.ValidatorConstraint)({ name: 'WorkflowSortByParameter', async: false })],
+	WorkflowSortByParameter,
+);
+class WorkflowSorting {}
+exports.WorkflowSorting = WorkflowSorting;
+__decorate(
+	[
+		(0, class_validator_1.IsString)(),
+		(0, class_validator_1.Validate)(WorkflowSortByParameter),
+		__metadata('design:type', String),
+	],
+	WorkflowSorting.prototype,
+	'sortBy',
+	void 0,
+);
+//# sourceMappingURL=workflow.sort-by.dto.js.map

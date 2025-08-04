@@ -1,0 +1,1 @@
+{"version":3,"file":"source-control-context.js","sourceRoot":"","sources":["source-control-context.ts"],"names":[],"mappings":";;;AACA,kDAAkD;AAElD,MAAa,oBAAoB;IAChC,YAA6B,YAAkB;QAAlB,iBAAY,GAAZ,YAAY,CAAM;IAAG,CAAC;IAEnD,IAAI,IAAI;QACP,OAAO,IAAI,CAAC,YAAY,CAAC;IAC1B,CAAC;IAED,sBAAsB;QACrB,OAAO,IAAA,4BAAc,EAAC,IAAI,CAAC,YAAY,EAAE,gBAAgB,CAAC,CAAC;IAC5D,CAAC;CACD;AAVD,oDAUC"}

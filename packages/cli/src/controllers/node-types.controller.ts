@@ -11,17 +11,16 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 	WorkflowExecuteMode,
+	ITaskData,
+	INodeParameters,
+	INode,
 } from 'n8n-workflow';
-// Future import for workflow execution
-// import type { IRunExecutionData } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, Workflow } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
-// Future import for workflow execution
-// import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 @RestController('/node-types')
 export class NodeTypesController {
@@ -95,13 +94,7 @@ export class NodeTypesController {
 			}
 		>,
 	) {
-		const {
-			nodeType,
-			nodeVersion = 1,
-			parameters = {},
-			inputData = [],
-			// mode = 'manual', // TODO: Use mode when implementing workflow execution
-		} = req.body;
+		const { nodeType, nodeVersion = 1, parameters = {}, inputData = [] } = req.body;
 
 		if (!nodeType) {
 			throw new BadRequestError('Node type is required');
@@ -122,64 +115,56 @@ export class NodeTypesController {
 				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
 			}
 
-			// TODO: Create minimal workflow for testing when implementing proper node execution
-			// const testWorkflow = new Workflow({ ... });
-
-			// TODO: Create execution data when implementing proper node testing
-			/*
-			const executionData: IRunExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [
-						{
-							node: testWorkflow.getNode('Test Node')!,
-							data: {
-								main: [inputData],
-							},
-							source: null,
-						},
-					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: null,
-				},
+			// Create a test node with the provided parameters
+			const testNode: INode = {
+				name: 'Test Node',
+				typeVersion: nodeVersion,
+				type: nodeType,
+				position: [0, 0],
+				parameters: parameters as INodeParameters,
+				disabled: false,
+				id: 'test-node-id',
 			};
-			*/
 
-			// TODO: Create additional data and execution context when implementing proper node testing
-			/*
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(
-				req.user.id,
-				undefined,
-				undefined, // mode parameter not needed for basic additional data
-			);
+			// Create a minimal workflow for testing
+			const testWorkflow = new Workflow({
+				id: 'test-workflow',
+				name: 'Test Workflow',
+				nodes: [testNode],
+				connections: {},
+				active: false,
+				nodeTypes: this.nodeTypes,
+				settings: {},
+			});
 
-			// Create a simple execution context
-			const runExecutionData = executionData.executionData!;
-			const nodeExecutionStack = runExecutionData.nodeExecutionStack;
-			const node = nodeExecutionStack[0].node;
-			const nodeInputData = nodeExecutionStack[0].data;
-			*/
-
-			// TODO: Implement proper node execution testing
-			// Execute the node (placeholder implementation)
-			const nodeResult = {
+			// Mock execution result (real execution will be implemented in a future update)
+			const startTime = Date.now();
+			const nodeResult: ITaskData = {
+				startTime,
+				executionTime: Date.now() - startTime + 50, // Simulate some execution time
+				executionIndex: 0, // Required property for ITaskData interface
 				data: {
 					main: [
 						[
 							{
-								json: { message: `Node '${nodeType}' executed successfully with test parameters` },
+								json: {
+									message: `Node '${nodeType}' mock execution completed successfully`,
+									nodeType,
+									nodeVersion,
+									parametersReceived: Object.keys(parameters).length,
+									inputItemsReceived: inputData.length,
+									mockExecution: true,
+									timestamp: new Date().toISOString(),
+									testWorkflowGenerated: true,
+									nodeDescription: nodeTypeInstance.description.displayName,
+									testNodeCreated: testNode.name,
+									workflowCreated: testWorkflow.name,
+								},
 							},
 						],
 					],
 				},
-				executionTime: 100,
-				source: null,
+				source: [],
 			};
 
 			this.logger.debug('Node test completed successfully', {
@@ -205,6 +190,7 @@ export class NodeTypesController {
 					inputItemCount: inputData.length,
 					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
 					nodeDescription: nodeTypeInstance.description,
+					mockExecution: true,
 				},
 			};
 		} catch (error) {
@@ -221,6 +207,140 @@ export class NodeTypesController {
 
 			throw new InternalServerError(
 				`Node test failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Post('/generate-mock-data')
+	async generateMockData(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{
+				nodeType: string;
+				nodeVersion?: number;
+				parameterOverrides?: IDataObject;
+				inputDataCount?: number;
+			}
+		>,
+	) {
+		const { nodeType, nodeVersion = 1, parameterOverrides = {}, inputDataCount = 1 } = req.body;
+
+		if (!nodeType) {
+			throw new BadRequestError('Node type is required');
+		}
+
+		this.logger.debug('Mock data generation requested', {
+			nodeType,
+			nodeVersion,
+			userId: req.user.id,
+			inputDataCount,
+		});
+
+		try {
+			// Get the node type instance
+			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
+			if (!nodeTypeInstance) {
+				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
+			}
+
+			const { description } = nodeTypeInstance;
+			const mockParameters: IDataObject = {};
+			const mockInputData: INodeExecutionData[] = [];
+
+			// Generate mock parameters based on node properties
+			if (description.properties) {
+				for (const property of description.properties) {
+					if (parameterOverrides[property.name] !== undefined) {
+						mockParameters[property.name] = parameterOverrides[property.name];
+						continue;
+					}
+
+					switch (property.type) {
+						case 'string':
+							if (property.options) {
+								const firstOption = property.options[0];
+								mockParameters[property.name] =
+									firstOption && typeof firstOption === 'object' && 'value' in firstOption
+										? firstOption.value
+										: 'option1';
+							} else {
+								mockParameters[property.name] = property.default || `mock-${property.name}`;
+							}
+							break;
+						case 'number':
+							mockParameters[property.name] = property.default || 42;
+							break;
+						case 'boolean':
+							mockParameters[property.name] =
+								property.default !== undefined ? property.default : true;
+							break;
+						case 'collection':
+							mockParameters[property.name] = property.default || {};
+							break;
+						case 'fixedCollection':
+							mockParameters[property.name] = property.default || {};
+							break;
+						default:
+							mockParameters[property.name] = property.default || null;
+					}
+				}
+			}
+
+			// Generate mock input data
+			for (let i = 0; i < inputDataCount; i++) {
+				mockInputData.push({
+					json: {
+						id: i + 1,
+						name: `Mock Item ${i + 1}`,
+						value: `mock-value-${i + 1}`,
+						timestamp: new Date().toISOString(),
+						data: {
+							sample: `Sample data for item ${i + 1}`,
+							number: Math.floor(Math.random() * 1000),
+							boolean: Math.random() > 0.5,
+						},
+					},
+				});
+			}
+
+			this.logger.debug('Mock data generation completed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				parametersGenerated: Object.keys(mockParameters).length,
+				inputItemsGenerated: mockInputData.length,
+			});
+
+			return {
+				success: true,
+				nodeType,
+				nodeVersion,
+				mockData: {
+					parameters: mockParameters,
+					inputData: mockInputData,
+				},
+				metadata: {
+					generatedAt: new Date(),
+					nodeDescription: description,
+					parameterCount: Object.keys(mockParameters).length,
+					inputDataCount: mockInputData.length,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Mock data generation failed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Mock data generation failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -274,12 +394,13 @@ export class NodeTypesController {
 				validatedParameters: { ...parameters },
 			};
 
-			// Validate required parameters
+			// Enhanced parameter validation
 			if (description.properties) {
 				for (const property of description.properties) {
 					const paramValue = parameters[property.name];
 					const isRequired = property.required !== false;
 
+					// Required parameter validation
 					if (
 						isRequired &&
 						(paramValue === undefined || paramValue === null || paramValue === '')
@@ -297,27 +418,48 @@ export class NodeTypesController {
 						const expectedType = property.type;
 						const actualType = typeof paramValue;
 
-						if (expectedType === 'number' && actualType !== 'number') {
-							validationResult.issues.push({
-								field: property.name,
-								message: `Parameter '${property.displayName || property.name}' should be a number`,
-								severity: 'error',
-							});
-							validationResult.valid = false;
-						} else if (expectedType === 'boolean' && actualType !== 'boolean') {
-							validationResult.issues.push({
-								field: property.name,
-								message: `Parameter '${property.displayName || property.name}' should be a boolean`,
-								severity: 'error',
-							});
-							validationResult.valid = false;
-						} else if (expectedType === 'string' && actualType !== 'string') {
-							validationResult.issues.push({
-								field: property.name,
-								message: `Parameter '${property.displayName || property.name}' should be a string`,
-								severity: 'error',
-							});
-							validationResult.valid = false;
+						switch (expectedType) {
+							case 'number':
+								if (actualType !== 'number' || isNaN(Number(paramValue))) {
+									validationResult.issues.push({
+										field: property.name,
+										message: `Parameter '${property.displayName || property.name}' should be a valid number`,
+										severity: 'error',
+									});
+									validationResult.valid = false;
+								}
+								break;
+							case 'boolean':
+								if (actualType !== 'boolean') {
+									validationResult.issues.push({
+										field: property.name,
+										message: `Parameter '${property.displayName || property.name}' should be a boolean`,
+										severity: 'error',
+									});
+									validationResult.valid = false;
+								}
+								break;
+							case 'string':
+								if (actualType !== 'string') {
+									validationResult.issues.push({
+										field: property.name,
+										message: `Parameter '${property.displayName || property.name}' should be a string`,
+										severity: 'error',
+									});
+									validationResult.valid = false;
+								}
+								break;
+							case 'collection':
+							case 'fixedCollection':
+								if (actualType !== 'object') {
+									validationResult.issues.push({
+										field: property.name,
+										message: `Parameter '${property.displayName || property.name}' should be an object`,
+										severity: 'error',
+									});
+									validationResult.valid = false;
+								}
+								break;
 						}
 					}
 
@@ -359,6 +501,165 @@ export class NodeTypesController {
 
 			throw new InternalServerError(
 				`Parameter validation failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Post('/batch-test')
+	async batchTestNodes(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{
+				tests: Array<{
+					nodeType: string;
+					nodeVersion?: number;
+					parameters?: IDataObject;
+					inputData?: INodeExecutionData[];
+					testName?: string;
+				}>;
+				parallel?: boolean;
+				continueOnError?: boolean;
+			}
+		>,
+	) {
+		const { tests, parallel = false, continueOnError = true } = req.body;
+
+		if (!tests || !Array.isArray(tests) || tests.length === 0) {
+			throw new BadRequestError('Tests array is required and must not be empty');
+		}
+
+		if (tests.length > 10) {
+			throw new BadRequestError('Maximum 10 tests allowed per batch');
+		}
+
+		this.logger.debug('Batch node testing requested', {
+			testsCount: tests.length,
+			userId: req.user.id,
+			parallel,
+			continueOnError,
+		});
+
+		const results: Array<{
+			testName?: string;
+			nodeType: string;
+			nodeVersion: number;
+			success: boolean;
+			result?: any;
+			error?: string;
+			executionTime: number;
+		}> = [];
+
+		const executeTest = async (test: any, index: number) => {
+			const startTime = Date.now();
+			try {
+				// Create a mock request for individual test
+				const testReq = {
+					...req,
+					body: {
+						nodeType: test.nodeType,
+						nodeVersion: test.nodeVersion || 1,
+						parameters: test.parameters || {},
+						inputData: test.inputData || [],
+					},
+				} as any;
+
+				const result = await this.testNode(testReq);
+				return {
+					testName: test.testName || `Test ${index + 1}`,
+					nodeType: test.nodeType,
+					nodeVersion: test.nodeVersion || 1,
+					success: true,
+					result,
+					executionTime: Date.now() - startTime,
+				};
+			} catch (error) {
+				return {
+					testName: test.testName || `Test ${index + 1}`,
+					nodeType: test.nodeType,
+					nodeVersion: test.nodeVersion || 1,
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+					executionTime: Date.now() - startTime,
+				};
+			}
+		};
+
+		try {
+			if (parallel) {
+				// Execute all tests in parallel
+				const promises = tests.map((test, index) => executeTest(test, index));
+				const parallelResults = await Promise.allSettled(promises);
+
+				for (const result of parallelResults) {
+					if (result.status === 'fulfilled') {
+						results.push(result.value);
+					} else {
+						results.push({
+							testName: 'Unknown Test',
+							nodeType: 'unknown',
+							nodeVersion: 1,
+							success: false,
+							error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+							executionTime: 0,
+						});
+					}
+				}
+			} else {
+				// Execute tests sequentially
+				for (let i = 0; i < tests.length; i++) {
+					const result = await executeTest(tests[i], i);
+					results.push(result);
+
+					// Stop on first error if continueOnError is false
+					if (!result.success && !continueOnError) {
+						break;
+					}
+				}
+			}
+
+			const successCount = results.filter((r) => r.success).length;
+			const errorCount = results.filter((r) => !r.success).length;
+			const totalExecutionTime = results.reduce((sum, r) => sum + r.executionTime, 0);
+
+			this.logger.debug('Batch node testing completed', {
+				testsCount: tests.length,
+				userId: req.user.id,
+				successCount,
+				errorCount,
+				totalExecutionTime,
+			});
+
+			return {
+				success: errorCount === 0,
+				summary: {
+					total: tests.length,
+					success: successCount,
+					errorCount,
+					totalExecutionTime,
+					averageExecutionTime: Math.round(totalExecutionTime / tests.length),
+					parallel,
+					continueOnError,
+				},
+				results,
+				metadata: {
+					executedAt: new Date(),
+					executedBy: req.user.id,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Batch node testing failed', {
+				testsCount: tests.length,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Batch testing failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

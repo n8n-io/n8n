@@ -1,0 +1,262 @@
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+const jest_mock_extended_1 = require('jest-mock-extended');
+const bad_request_error_1 = require('@/errors/response-errors/bad-request.error');
+const source_control_controller_ee_1 = require('../source-control.controller.ee');
+describe('SourceControlController', () => {
+	let controller;
+	let sourceControlService;
+	let sourceControlPreferencesService;
+	let sourceControlScopedService;
+	let eventService;
+	beforeEach(() => {
+		sourceControlService = {
+			pushWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200, statusResult: [] }),
+			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200, statusResult: [] }),
+			getStatus: jest.fn().mockResolvedValue([]),
+			setGitUserDetails: jest.fn(),
+			getBranches: jest
+				.fn()
+				.mockResolvedValue({ currentBranch: 'main', branches: ['main', 'develop'] }),
+			setBranch: jest
+				.fn()
+				.mockResolvedValue({ currentBranch: 'main', branches: ['main', 'develop'] }),
+			getCommitHistory: jest.fn().mockResolvedValue([
+				{
+					hash: 'abc123',
+					message: 'Initial commit',
+					author: 'John Doe',
+					date: '2025-07-31T12:00:00Z',
+				},
+			]),
+		};
+		sourceControlPreferencesService = {
+			getPreferences: jest.fn().mockReturnValue({
+				connected: true,
+				repositoryUrl: 'https://github.com/example/repo.git',
+				branchName: 'main',
+			}),
+		};
+		sourceControlScopedService = (0, jest_mock_extended_1.mock)();
+		eventService = (0, jest_mock_extended_1.mock)();
+		controller = new source_control_controller_ee_1.SourceControlController(
+			sourceControlService,
+			sourceControlPreferencesService,
+			sourceControlScopedService,
+			eventService,
+		);
+	});
+	describe('pushWorkfolder', () => {
+		it('should push workfolder with expected parameters', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = (0, jest_mock_extended_1.mock)();
+			const payload = { force: true };
+			await controller.pushWorkfolder(req, res, payload);
+			expect(sourceControlService.setGitUserDetails).toHaveBeenCalledWith(
+				'John Doe',
+				'john.doe@example.com',
+			);
+			expect(sourceControlService.pushWorkfolder).toHaveBeenCalledWith(req.user, payload);
+		});
+	});
+	describe('pullWorkfolder', () => {
+		it('should pull workfolder with expected parameters', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = (0, jest_mock_extended_1.mock)();
+			const payload = { force: true };
+			await controller.pullWorkfolder(req, res, payload);
+			expect(sourceControlService.pullWorkfolder).toHaveBeenCalledWith(req.user, payload);
+		});
+	});
+	describe('getStatus', () => {
+		it('should call getStatus with expected parameters', async () => {
+			const user = { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' };
+			const query = {
+				direction: 'pull',
+				preferLocalVersion: true,
+				verbose: false,
+			};
+			const req = (0, jest_mock_extended_1.mock)({
+				query,
+				user,
+			});
+			await controller.getStatus(req);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+		});
+	});
+	describe('status', () => {
+		it('should call getStatus with expected parameters', async () => {
+			const user = { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' };
+			const query = {
+				direction: 'pull',
+				preferLocalVersion: true,
+				verbose: false,
+			};
+			const req = (0, jest_mock_extended_1.mock)({
+				query,
+				user,
+			});
+			await controller.status(req);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+		});
+	});
+	describe('pullChanges', () => {
+		it('should pull changes successfully and emit event', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+			});
+			const res = (0, jest_mock_extended_1.mock)();
+			const result = await controller.pullChanges(req, res);
+			expect(sourceControlService.pullWorkfolder).toHaveBeenCalledWith(req.user, {
+				force: false,
+				variables: 'keep-mine',
+			});
+			expect(eventService.emit).toHaveBeenCalledWith('source-control-pull-completed', {
+				userId: 'user123',
+				timestamp: expect.any(String),
+			});
+			expect(result.success).toBe(true);
+			expect(result.message).toBe('Pull operation completed');
+		});
+		it('should handle pull failures', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			const res = (0, jest_mock_extended_1.mock)();
+			sourceControlService.pullWorkfolder.mockRejectedValue(new Error('Pull failed'));
+			await expect(controller.pullChanges(req, res)).rejects.toThrow(
+				bad_request_error_1.BadRequestError,
+			);
+		});
+	});
+	describe('getRepositoryStatus', () => {
+		it('should return repository status successfully', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			const result = await controller.getRepositoryStatus(req);
+			expect(result).toEqual({
+				connected: true,
+				branch: 'main',
+				branches: ['main', 'develop'],
+				hasChanges: false,
+				repositoryUrl: 'https://github.com/example/repo.git',
+			});
+			expect(sourceControlService.getBranches).toHaveBeenCalled();
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(req.user, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			});
+		});
+		it('should detect changes when files exist', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			sourceControlService.getStatus.mockResolvedValue([
+				{ name: 'workflow.json', status: 'modified' },
+			]);
+			const result = await controller.getRepositoryStatus(req);
+			expect(result.hasChanges).toBe(true);
+		});
+	});
+	describe('setBranch', () => {
+		it('should switch branch successfully and emit event', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+				body: { branch: 'develop' },
+			});
+			const result = await controller.setBranch(req);
+			expect(sourceControlService.getBranches).toHaveBeenCalled();
+			expect(sourceControlService.setBranch).toHaveBeenCalledWith('develop');
+			expect(eventService.emit).toHaveBeenCalledWith('source-control-branch-changed', {
+				userId: 'user123',
+				fromBranch: 'main',
+				toBranch: 'develop',
+				timestamp: expect.any(String),
+			});
+			expect(result.success).toBe(true);
+		});
+		it('should validate branch name', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+				body: { branch: '' },
+			});
+			await expect(controller.setBranch(req)).rejects.toThrow(bad_request_error_1.BadRequestError);
+		});
+		it('should check if branch exists when createIfNotExists is false', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+				body: { branch: 'nonexistent', createIfNotExists: false },
+			});
+			await expect(controller.setBranch(req)).rejects.toThrow(bad_request_error_1.BadRequestError);
+		});
+	});
+	describe('getCommitHistory', () => {
+		it('should return commit history with correct parameters', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+				query: { limit: '5', offset: '0' },
+			});
+			const result = await controller.getCommitHistory(req);
+			expect(sourceControlService.getCommitHistory).toHaveBeenCalledWith({ limit: 5, offset: 0 });
+			expect(result.commits).toEqual([
+				{
+					hash: 'abc123',
+					message: 'Initial commit',
+					author: 'John Doe',
+					date: '2025-07-31T12:00:00Z',
+				},
+			]);
+		});
+		it('should handle default pagination parameters', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+				query: {},
+			});
+			const result = await controller.getCommitHistory(req);
+			expect(result.commits).toEqual([]);
+		});
+	});
+	describe('syncCheck', () => {
+		it('should return sync status', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			const result = await controller.syncCheck(req);
+			expect(result.inSync).toBe(true);
+			expect(result.behind).toBe(0);
+			expect(result.ahead).toBe(0);
+			expect(result.conflicts).toEqual([]);
+		});
+		it('should detect when ahead of remote', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			sourceControlService.getStatus.mockResolvedValue([
+				{ name: 'workflow.json', status: 'modified', conflict: false },
+			]);
+			const result = await controller.syncCheck(req);
+			expect(result.inSync).toBe(false);
+			expect(result.ahead).toBe(1);
+		});
+		it('should detect conflicts', async () => {
+			const req = (0, jest_mock_extended_1.mock)({
+				user: { id: 'user123' },
+			});
+			sourceControlService.getStatus.mockResolvedValue([
+				{ name: 'workflow1.json', status: 'modified', conflict: true },
+				{ name: 'workflow2.json', status: 'modified', conflict: false },
+			]);
+			const result = await controller.syncCheck(req);
+			expect(result.inSync).toBe(false);
+			expect(result.ahead).toBe(2);
+			expect(result.conflicts).toEqual(['workflow1.json']);
+		});
+	});
+});
+//# sourceMappingURL=source-control.controller.ee.test.js.map
