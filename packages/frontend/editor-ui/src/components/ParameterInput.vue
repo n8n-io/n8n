@@ -73,7 +73,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useElementSize } from '@vueuse/core';
+import { onClickOutside, useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
@@ -1191,6 +1191,8 @@ onUpdated(async () => {
 		}
 	}
 });
+
+onClickOutside(wrapper, onBlur);
 </script>
 
 <template>

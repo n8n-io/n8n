@@ -26,7 +26,7 @@ const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 const container = ref<HTMLDivElement>();
-const popoverContainer = ref<HTMLDivElement>();
+const popoverContainer = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
 
 type Props = {
 	path: string;
@@ -58,7 +58,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const { viewportRef } = useVueFlow();
 
-const canvas = inject(CanvasKey);
+const canvas = inject(CanvasKey, undefined);
 const isInExperimentalNdv = inject(IsInExperimentalEmbeddedNdvKey, false);
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
@@ -91,7 +91,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (event?.target instanceof Element && popoverContainer.value?.contains(event.target)) {
+	if (event?.target instanceof Element && popoverContainer.value?.$el.contains(event.target)) {
 		return;
 	}
 
@@ -175,11 +175,12 @@ onBeforeUnmount(() => {
 	props.eventBus.off('drop', onDropOnFixedInput);
 });
 
-// watch(isDragging, (newIsDragging) => {
-// 	if (newIsDragging) {
-// 		onBlur();
-// 	}
-// });
+watch(isDragging, (newIsDragging) => {
+	// The input must stay focused in experimental NDV so that the input panel popover is open while dragging
+	if (newIsDragging && !isInExperimentalNdv) {
+		onBlur();
+	}
+});
 
 onClickOutside(container, (event) => onBlur(event));
 
@@ -243,15 +244,14 @@ defineExpose({ focus, select });
 			virtual-triggering
 			:virtual-ref="container"
 		>
-			<div ref="popoverContainer">
-				<InlineExpressionEditorOutput
-					:unresolved-expression="modelValue"
-					:selection="selection"
-					:editor-state="editorState"
-					:segments="segments"
-					:is-read-only="isReadOnly"
-				/>
-			</div>
+			<InlineExpressionEditorOutput
+				ref="popoverContainer"
+				:unresolved-expression="modelValue"
+				:selection="selection"
+				:editor-state="editorState"
+				:segments="segments"
+				:is-read-only="isReadOnly"
+			/>
 		</N8nPopover>
 	</div>
 </template>
