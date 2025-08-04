@@ -666,9 +666,6 @@ const modifiers = [
 }
 
 .changes {
-	list-style: none;
-	margin: 0;
-	padding: 0;
 	> li {
 		display: flex;
 		align-items: flex-start;
@@ -846,6 +843,12 @@ const modifiers = [
 .dropdownContent {
 	min-width: 300px;
 	padding: 2px 12px;
+
+	ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
 }
 
 .workflowDiffContent {
