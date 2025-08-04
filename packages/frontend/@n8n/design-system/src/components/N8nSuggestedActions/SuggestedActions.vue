@@ -77,9 +77,7 @@ const handleIgnoreClick = (actionId: string) => {
 		</template>
 		<template #content>
 			<div :class="$style.popoverContent">
-				<div>
-					<N8nHeading tag="h4">{{ title }}</N8nHeading>
-				</div>
+				<N8nHeading tag="h4">{{ title }}</N8nHeading>
 				<div
 					v-for="action in actions"
 					:key="action.id"
