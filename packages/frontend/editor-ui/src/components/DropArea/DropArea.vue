@@ -32,7 +32,7 @@ const onDrop = (value: string) => {
 	justify-content: center;
 	font-size: var(--font-size-s);
 	transition: border-color 0.1s ease-in;
-	box-shadow: inset 0 0 0px 1.5px var(--color-background-xlight);
+	box-shadow: inset 0 0 0 1.5px var(--color-background-xlight);
 
 	&:not(.active):hover {
 		border-color: var(--color-ndv-droppable-parameter);

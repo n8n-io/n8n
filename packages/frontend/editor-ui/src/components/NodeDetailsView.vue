@@ -205,14 +205,6 @@ const showTriggerPanel = computed(() => {
 	);
 });
 
-const hasOutputConnection = computed(() => {
-	if (!activeNode.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(activeNode.value.name);
-
-	// Check if there's at-least one output connection
-	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
-});
-
 const isExecutableTriggerNode = computed(() => {
 	if (!activeNodeType.value) return false;
 
@@ -712,7 +704,6 @@ onBeforeUnmount(() => {
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		data-test-id="ndv"
 		:z-index="APP_Z_INDEXES.NDV"
-		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -765,7 +756,7 @@ onBeforeUnmount(() => {
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
@@ -794,7 +785,7 @@ onBeforeUnmount(() => {
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:workflow="workflowObject"
+						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
@@ -848,10 +839,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
-}
 .ndv-wrapper {
 	overflow: visible;
 	margin-top: 0;

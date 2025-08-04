@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const { name } = useCanvasNode();
 const i18n = useI18n();
-const workflowHelpers = useWorkflowHelpers();
+const workflowsStore = useWorkflowsStore();
 
-const workflow = computed(() => workflowHelpers.getCurrentWorkflow());
-const node = computed(() => workflow.value.getNode(name.value));
+const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
 const size = 'medium';
 </script>
 

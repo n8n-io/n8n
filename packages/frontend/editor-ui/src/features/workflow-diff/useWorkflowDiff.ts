@@ -84,17 +84,20 @@ export function mapConnections(connections: CanvasConnection[]) {
 
 function createWorkflowRefs(
 	workflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
-	getWorkflow: (nodes: INodeUi[], connections: IConnections) => Workflow,
+	createWorkflowObject: (nodes: INodeUi[], connections: IConnections) => Workflow,
 ) {
 	const workflowRef = computed(() => toValue(workflow));
 	const workflowNodes = ref<INodeUi[]>([]);
 	const workflowConnections = ref<IConnections>({});
-	const workflowObjectRef = shallowRef<Workflow>(getWorkflow([], {}));
+	const workflowObjectRef = shallowRef<Workflow>(createWorkflowObject([], {}));
 
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
 		if (workflowValue) {
-			workflowObjectRef.value = getWorkflow(workflowValue.nodes, workflowValue.connections);
+			workflowObjectRef.value = createWorkflowObject(
+				workflowValue.nodes,
+				workflowValue.connections,
+			);
 			workflowNodes.value = workflowValue.nodes;
 			workflowConnections.value = workflowValue.connections;
 		}
@@ -153,8 +156,8 @@ export const useWorkflowDiff = (
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.getWorkflow);
-	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.getWorkflow);
+	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.createWorkflowObject);
+	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.createWorkflowObject);
 
 	const source = createWorkflowDiff(
 		sourceRefs.workflowRef,

@@ -649,7 +649,7 @@ const modifiers = [
 }
 
 .popper {
-	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
+	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
@@ -713,7 +713,7 @@ const modifiers = [
 	&[data-node-type='n8n-nodes-base.manualTrigger'] {
 		&::before {
 			left: auto;
-			right: 0px;
+			right: 0;
 			border-top-right-radius: 0;
 			border-top-left-radius: 2px;
 			border-bottom-left-radius: 0;

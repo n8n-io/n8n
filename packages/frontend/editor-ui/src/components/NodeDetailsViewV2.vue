@@ -738,7 +738,7 @@ onBeforeUnmount(() => {
 						/>
 						<InputPanel
 							v-else-if="!isTriggerNode"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
@@ -814,7 +814,7 @@ onBeforeUnmount(() => {
 					>
 						<OutputPanel
 							data-test-id="output-panel"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="outputRun"
 							:linked-runs="linked"
@@ -880,10 +880,13 @@ onBeforeUnmount(() => {
 }
 
 .main {
-	width: 0;
+	width: 100%;
 	flex-grow: 1;
 	display: flex;
 	align-items: stretch;
+	height: 100%;
+	min-height: 0;
+	position: relative;
 }
 
 .column {
@@ -917,14 +920,6 @@ onBeforeUnmount(() => {
 	border-top-right-radius: var(--border-radius-large);
 }
 
-.main {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	position: relative;
-}
-
 .settings {
 	overflow: hidden;
 	flex-grow: 1;
@@ -937,12 +932,5 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable-height);
-}
-</style>
-
-<style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
 }
 </style>
