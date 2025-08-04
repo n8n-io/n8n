@@ -1,8 +1,6 @@
+@use 'sass:meta';
 @use 'css';
 
 .n8n-chat {
-	// Unfortunately, @use cannot be used inside selectors in Sass modules
-	// This is a known limitation when migrating from @import to @use
-	// For third-party styles that need scoping, we need to use @import
-	@import 'highlight.js/styles/github';
+	@include meta.load-css('highlight.js/styles/github');
 }
