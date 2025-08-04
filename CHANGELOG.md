@@ -1,3 +1,57 @@
+# [1.106.0](https://github.com/n8n-io/n8n/compare/n8n@1.105.0...n8n@1.106.0) (2025-08-04)
+
+
+### Bug Fixes
+
+* **core:** Assign `execute` method to declarative nodes even if they have `methods` property ([#17796](https://github.com/n8n-io/n8n/issues/17796)) ([3f1016f](https://github.com/n8n-io/n8n/commit/3f1016f1adc90ce2e7f6905ab247098877f8d258))
+* **core:** Check that src folder exists an fallback to dist when loading modules ([#17754](https://github.com/n8n-io/n8n/issues/17754)) ([6c0be29](https://github.com/n8n-io/n8n/commit/6c0be292b16ab08c92deef037a2659a3d27b8e01))
+* **core:** Handle symlinks in blocked paths ([#17735](https://github.com/n8n-io/n8n/issues/17735)) ([c2c3e08](https://github.com/n8n-io/n8n/commit/c2c3e08cdf33570d9051e659812cbfbdd3c077fd))
+* **core:** Replace misleading "No path back to node" error with helpful execution message ([#17759](https://github.com/n8n-io/n8n/issues/17759)) ([164800f](https://github.com/n8n-io/n8n/commit/164800f6a40b1f8c36592c5367c48c3f5ef1a451))
+* **editor:** Account for subpath when serving `config.js` ([#17832](https://github.com/n8n-io/n8n/issues/17832)) ([b745cad](https://github.com/n8n-io/n8n/commit/b745cad72c6fcad23894150bf7edad0b568787b7))
+* **editor:** Change the checkbox logic for log streaming event selection ([#17653](https://github.com/n8n-io/n8n/issues/17653)) ([43f2675](https://github.com/n8n-io/n8n/commit/43f267535d106db4c2a9d9caddb414329129b140))
+* **editor:** Fix canvas moving check ([#17856](https://github.com/n8n-io/n8n/issues/17856)) ([ddc4c0b](https://github.com/n8n-io/n8n/commit/ddc4c0b7d99834db62ba935cda4c29cfc5197934))
+* **editor:** Fix invisible node creator icons ([#17870](https://github.com/n8n-io/n8n/issues/17870)) ([a83b76c](https://github.com/n8n-io/n8n/commit/a83b76cc23f59a78d768473339e40a6c907a88eb))
+* **editor:** Store last entered cURL command for each HTTP node ([#17834](https://github.com/n8n-io/n8n/issues/17834)) ([e8e7b23](https://github.com/n8n-io/n8n/commit/e8e7b23d47ca3fa7fb40e951763b7ad871110fc7))
+* Fix issue with icon themes not loading for preview nodes ([#17869](https://github.com/n8n-io/n8n/issues/17869)) ([6d1f2cb](https://github.com/n8n-io/n8n/commit/6d1f2cb67e416a14dc839308950dac4d1e51733c))
+* Fix issue with some community nodes not displaying correctly ([#17866](https://github.com/n8n-io/n8n/issues/17866)) ([f150343](https://github.com/n8n-io/n8n/commit/f150343141d53449f5a41bedc85ca9bd52cf1b1e))
+* **Gmail Trigger Node:** Filter sent emails from trigger results ([#17691](https://github.com/n8n-io/n8n/issues/17691)) ([4bab296](https://github.com/n8n-io/n8n/commit/4bab2960750bbf91f27171b53e8a206dc247e7fa))
+* **Google Gemini Node:** Don't pass hardcoded value for durationSeconds when generating a video ([#17793](https://github.com/n8n-io/n8n/issues/17793)) ([460e3b1](https://github.com/n8n-io/n8n/commit/460e3b1dfdb64bf4501dcf9ff1a480da34c64b6a))
+* **Google Sheets Node:** Make it possible to set cell values empty on updates ([#17224](https://github.com/n8n-io/n8n/issues/17224)) ([d924d82](https://github.com/n8n-io/n8n/commit/d924d82ee2862f398f66eb624815694893527d48))
+* Hide settings hint from log view ([#17813](https://github.com/n8n-io/n8n/issues/17813)) ([a46fa60](https://github.com/n8n-io/n8n/commit/a46fa6072e4d5bd02611625c60fe6fff7d31c731))
+* **Microsoft Teams Trigger Node:** Forbidden when trying to listen for channel messages ([#17777](https://github.com/n8n-io/n8n/issues/17777)) ([bc97584](https://github.com/n8n-io/n8n/commit/bc97584c0c6e58878dd0e9708062813c099687a2))
+* **Stop and Error Node:** Show error message when error type is an object ([#17898](https://github.com/n8n-io/n8n/issues/17898)) ([aced4bf](https://github.com/n8n-io/n8n/commit/aced4bf86f343f768ddb81485c24e69d5cf12530))
+* **Structured Output Parser Node:** Handle passed objects that do not match schema ([#17774](https://github.com/n8n-io/n8n/issues/17774)) ([1fb78cb](https://github.com/n8n-io/n8n/commit/1fb78cb0eabfaedad16568e21254c42dae6cebee))
+
+
+### Features
+
+* Abort AI builder requests on chat stop ([#17854](https://github.com/n8n-io/n8n/issues/17854)) ([ce98f7c](https://github.com/n8n-io/n8n/commit/ce98f7c175d1875e84bcfa0681bda6035e386dc6))
+* Add @n8n/node-cli package with an empty create command ([#17620](https://github.com/n8n-io/n8n/issues/17620)) ([79c6b60](https://github.com/n8n-io/n8n/commit/79c6b60fcb5ea9a3e22a8aa0fa516f270239df69))
+* **AWS Bedrock Chat Model Node:** Add inference profile support ([#17807](https://github.com/n8n-io/n8n/issues/17807)) ([80513ae](https://github.com/n8n-io/n8n/commit/80513ae66b95b768b30b8e3e3502f45867128db4))
+* **Beeminder Node:** Update Beeminder node to include all resources and operations ([#17713](https://github.com/n8n-io/n8n/issues/17713)) ([b491ed9](https://github.com/n8n-io/n8n/commit/b491ed99cea87ea0f3e5ea90baf85c388fa65cb4))
+* **ClickUp Node:** Add subtasks and markdown support to the get task operation ([#16811](https://github.com/n8n-io/n8n/issues/16811)) ([a5184e4](https://github.com/n8n-io/n8n/commit/a5184e4895d47f9b079ff7948cdd158a06d34aba))
+* **core:** Use hostname in host ID for Docker ([#16544](https://github.com/n8n-io/n8n/issues/16544)) ([308a6f6](https://github.com/n8n-io/n8n/commit/308a6f65dde20765bb27e21fceac4a5ca887bdc0))
+* **editor:** Add front-end for Data Store feature ([#17590](https://github.com/n8n-io/n8n/issues/17590)) ([b89c254](https://github.com/n8n-io/n8n/commit/b89c25439485576cbd7f1f3eabe5af825aa47311))
+* Env to disable webhook response iframe sandboxing ([#17851](https://github.com/n8n-io/n8n/issues/17851)) ([1ed8239](https://github.com/n8n-io/n8n/commit/1ed8239625eb85af4138b5431bc77038fda2e513))
+* **FTP Node:** Add support for concurrent reads when using SFTP ([#17896](https://github.com/n8n-io/n8n/issues/17896)) ([e437dac](https://github.com/n8n-io/n8n/commit/e437dace7069744c26eb1cce368f07d31f363ab5))
+* **Google BigQuery Node:** Add parameterized query support ([#14302](https://github.com/n8n-io/n8n/issues/14302)) ([096e535](https://github.com/n8n-io/n8n/commit/096e535f1ededcf6d21b42c10fee68d142a7da7c))
+* **MongoDB Node:** Add search index CRUD API to MongoDB CRUD Node  ([#16490](https://github.com/n8n-io/n8n/issues/16490)) ([1554e76](https://github.com/n8n-io/n8n/commit/1554e76500470613ddb310424f693c07fe0887cd))
+* **n8n Form Trigger Node:** Add CSS variable to customize input background ([#15460](https://github.com/n8n-io/n8n/issues/15460)) ([22f505d](https://github.com/n8n-io/n8n/commit/22f505de691b926f9e56122bbd07c63128e5703e))
+* **Slack Trigger Node:** Add support for signature verification ([#17838](https://github.com/n8n-io/n8n/issues/17838)) ([1330581](https://github.com/n8n-io/n8n/commit/133058183e90570f8272075a10d9257d05728085))
+* Table in confirm modal to see all workflows using nodes before updating / uninstalling ([#17488](https://github.com/n8n-io/n8n/issues/17488)) ([76230d2](https://github.com/n8n-io/n8n/commit/76230d2640f04da8a2a3c78dbdf5003b0ebd1771))
+* **Vercel AI Gateway Node:** Add Vercel AI Gateway model Node ([#17524](https://github.com/n8n-io/n8n/issues/17524)) ([e97cd8a](https://github.com/n8n-io/n8n/commit/e97cd8afa18bbf67dc296c79cd1057e5bab083ab))
+* **Webhook Node:** Add notices about using the 'Content-Type' header ([#17739](https://github.com/n8n-io/n8n/issues/17739)) ([1c5a27d](https://github.com/n8n-io/n8n/commit/1c5a27d3ee8216b6cb5e1894d38881b2de14c654))
+* **Wordpress Node:** Add date fields ([#17755](https://github.com/n8n-io/n8n/issues/17755)) ([724b5a5](https://github.com/n8n-io/n8n/commit/724b5a51f2259de29dac3be0b51e9d80fd5244de))
+
+
+### Performance Improvements
+
+* **core:** Detect event loop blocking ([#17805](https://github.com/n8n-io/n8n/issues/17805)) ([b8b8507](https://github.com/n8n-io/n8n/commit/b8b8507ad69cea3ca706ef8230eaf99067e07014))
+* **core:** Introduce decorator to report slow method calls ([#17729](https://github.com/n8n-io/n8n/issues/17729)) ([056302e](https://github.com/n8n-io/n8n/commit/056302ebe548862bf7550ed0aaf63cac61df0c9b))
+* **core:** Stop typechecking during build ([#17833](https://github.com/n8n-io/n8n/issues/17833)) ([08a7b36](https://github.com/n8n-io/n8n/commit/08a7b365b8d34fd3dcc4deb878afb8e35c14bb0c))
+
+
+
 # [1.105.0](https://github.com/n8n-io/n8n/compare/n8n@1.104.0...n8n@1.105.0) (2025-07-28)
 
 
