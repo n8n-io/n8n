@@ -1,0 +1,290 @@
+{
+  "version": "1.0.0",
+  "description": "Security configuration for n8n Python execution sandbox",
+  "security": {
+    "execution": {
+      "maxExecutionTime": 30000,
+      "maxMemoryMB": 512,
+      "maxCpuPercent": 80,
+      "maxConcurrentExecutions": 5,
+      "dockerImage": "n8n-python-executor:latest"
+    },
+    "network": {
+      "allowNetworkAccess": true,
+      "allowedDomains": [
+        "api.github.com",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "httpbin.org"
+      ],
+      "blockedDomains": [
+        "localhost",
+        "127.0.0.1",
+        "169.254.169.254",
+        "metadata.google.internal"
+      ],
+      "allowedPorts": [80, 443, 8080],
+      "maxConnections": 10
+    },
+    "filesystem": {
+      "allowRead": [
+        "/workspace",
+        "/tmp",
+        "/usr/local/lib/python*",
+        "/opt/miniconda*/lib/python*"
+      ],
+      "allowWrite": [
+        "/workspace",
+        "/tmp"
+      ],
+      "blocked": [
+        "/etc",
+        "/root",
+        "/home",
+        "/usr",
+        "/var",
+        "/sys",
+        "/proc",
+        "/dev"
+      ],
+      "maxFileSize": "100MB",
+      "maxTotalStorage": "1GB"
+    },
+    "packages": {
+      "allowed": [
+        "numpy",
+        "pandas",
+        "requests",
+        "matplotlib",
+        "scipy",
+        "scikit-learn",
+        "pillow",
+        "beautifulsoup4",
+        "lxml",
+        "openpyxl",
+        "xlrd",
+        "jsonschema",
+        "pydantic",
+        "fastapi",
+        "httpx",
+        "aiohttp",
+        "python-dateutil",
+        "pytz",
+        "cryptography",
+        "pyjwt",
+        "passlib",
+        "bcrypt",
+        "click",
+        "typer",
+        "jinja2",
+        "markupsafe",
+        "werkzeug",
+        "flask",
+        "django",
+        "sqlalchemy",
+        "psycopg2-binary",
+        "pymongo",
+        "redis",
+        "celery",
+        "boto3",
+        "google-cloud-storage",
+        "azure-storage-blob",
+        "stripe",
+        "twilio",
+        "sendgrid",
+        "slack-sdk",
+        "discord.py",
+        "tweepy",
+        "facebook-sdk",
+        "linkedin-api",
+        "instagram-basic-display",
+        "dropbox",
+        "pyodbc",
+        "cx-oracle",
+        "snowflake-connector-python",
+        "elasticsearch",
+        "kafka-python",
+        "pika",
+        "paramiko",
+        "fabric",
+        "ansible"
+      ],
+      "blocked": [
+        "subprocess32",
+        "pexpect",
+        "psutil",
+        "py-cpuinfo",
+        "GPUtil",
+        "wmi",
+        "pywin32",
+        "win32api",
+        "ctypes",
+        "cffi",
+        "os",
+        "sys",
+        "importlib",
+        "pkgutil",
+        "runpy",
+        "code",
+        "codeop",
+        "compile",
+        "marshal",
+        "pickle",
+        "dill",
+        "joblib"
+      ],
+      "maxPackageSize": "500MB",
+      "allowCustomPackages": false,
+      "packageSourceWhitelist": [
+        "https://pypi.org/simple/",
+        "https://files.pythonhosted.org/"
+      ]
+    },
+    "code": {
+      "blockedBuiltins": [
+        "eval",
+        "exec",
+        "compile",
+        "__import__",
+        "globals",
+        "locals",
+        "vars",
+        "dir",
+        "getattr",
+        "setattr",
+        "delattr",
+        "hasattr"
+      ],
+      "blockedModules": [
+        "subprocess",
+        "os",
+        "sys",
+        "socket",
+        "urllib",
+        "http.client",
+        "ftplib",
+        "telnetlib",
+        "smtplib",
+        "poplib",
+        "imaplib",
+        "multiprocessing",
+        "threading",
+        "asyncio",
+        "concurrent.futures",
+        "ctypes",
+        "marshal",
+        "pickle",
+        "dill",
+        "shelve",
+        "dbm",
+        "sqlite3"
+      ],
+      "maxCodeLength": 50000,
+      "maxLines": 1000,
+      "allowDynamicImports": false,
+      "allowReflection": false
+    },
+    "monitoring": {
+      "auditLogging": true,
+      "performanceLogging": true,
+      "securityEventLogging": true,
+      "logLevel": "INFO",
+      "logRetentionDays": 30,
+      "alertThresholds": {
+        "executionTime": 25000,
+        "memoryUsage": 400,
+        "cpuUsage": 70,
+        "errorRate": 0.1,
+        "securityViolations": 1
+      }
+    },
+    "docker": {
+      "image": "n8n-python-executor:latest",
+      "user": "1000:1000",
+      "workdir": "/workspace",
+      "readOnly": true,
+      "noNewPrivileges": true,
+      "dropCapabilities": "ALL",
+      "seccompProfile": "default",
+      "apparmorProfile": "docker-default",
+      "ulimits": {
+        "nproc": 1024,
+        "nofile": 1024,
+        "fsize": 104857600
+      },
+      "environmentVariables": {
+        "PYTHONPATH": "/workspace",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONSTARTUP": "",
+        "PYTHONHOME": "",
+        "HOME": "/workspace",
+        "USER": "n8nuser"
+      }
+    }
+  },
+  "profiles": {
+    "development": {
+      "security": {
+        "execution": {
+          "maxExecutionTime": 60000,
+          "maxMemoryMB": 1024
+        },
+        "network": {
+          "allowNetworkAccess": true
+        },
+        "packages": {
+          "allowCustomPackages": true
+        },
+        "code": {
+          "allowDynamicImports": true,
+          "maxCodeLength": 100000
+        }
+      }
+    },
+    "production": {
+      "security": {
+        "execution": {
+          "maxExecutionTime": 15000,
+          "maxMemoryMB": 256
+        },
+        "network": {
+          "allowNetworkAccess": false
+        },
+        "packages": {
+          "allowCustomPackages": false
+        },
+        "code": {
+          "allowDynamicImports": false,
+          "maxCodeLength": 25000
+        }
+      }
+    },
+    "enterprise": {
+      "security": {
+        "execution": {
+          "maxExecutionTime": 120000,
+          "maxMemoryMB": 2048,
+          "maxConcurrentExecutions": 20
+        },
+        "network": {
+          "allowNetworkAccess": true,
+          "maxConnections": 50
+        },
+        "packages": {
+          "allowCustomPackages": true,
+          "maxPackageSize": "2GB"
+        },
+        "monitoring": {
+          "logRetentionDays": 90,
+          "alertThresholds": {
+            "executionTime": 100000,
+            "memoryUsage": 1800,
+            "cpuUsage": 90
+          }
+        }
+      }
+    }
+  }
+}
