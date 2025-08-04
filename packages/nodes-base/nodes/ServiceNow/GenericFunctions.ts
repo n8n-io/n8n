@@ -40,10 +40,6 @@ export async function serviceNowApiRequest(
 
 	if (credentials.useCustomHost && credentials.customHost) {
 		baseUrl = String(credentials.customHost).replace(/\/$/, ''); // strip trailing slash
-	} else if (credentials.useCustomHost && !credentials.customHost) {
-		throw new NodeApiError(this.getNode(), {
-			message: 'Custom host is enabled but no custom host was provided.',
-		});
 	} else {
 		baseUrl = `https://${credentials.subdomain}.service-now.com`;
 	}

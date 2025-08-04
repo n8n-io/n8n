@@ -46,6 +46,7 @@ export class ServiceNowBasicApi implements ICredentialType {
 			type: 'string',
 			placeholder: 'https://sn.my-company.internal',
 			description: 'Full base-URL of the instance',
+			required: true,
 			default: '',
 			displayOptions: {
 				show: {
@@ -57,8 +58,9 @@ export class ServiceNowBasicApi implements ICredentialType {
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
-			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
 			default: '',
+			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
+			required: true,
 			displayOptions: {
 				show: {
 					useCustomHost: [false],
