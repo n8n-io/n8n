@@ -16,7 +16,7 @@ import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescript
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
-import { PythonSandbox } from './PythonSandbox';
+import { LocalPythonSandbox } from './LocalPythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
@@ -141,7 +141,7 @@ export class Code implements INodeType {
 				context.item = context.$input.item;
 			}
 
-			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
+			const Sandbox = language === 'python' ? LocalPythonSandbox : JavaScriptSandbox;
 			const sandbox = new Sandbox(context, code, this.helpers);
 			sandbox.on(
 				'output',
