@@ -189,3 +189,26 @@ export {
 	WorkflowExplanationFlowItemDto,
 	WorkflowExplanationResponseDto,
 } from './ai-helpers/ai-helpers.dto';
+
+export {
+	EnhancedCpuMetricsDto,
+	EnhancedMemoryMetricsDto,
+	EnhancedDiskMetricsDto,
+	NetworkMetricsDto,
+	WorkflowProcessMetricsDto,
+	ResourceAlertDto,
+	SystemHealthDto,
+	EnhancedSystemMetricsDto,
+	EnhancedSystemResourcesDto,
+	MonitoringConfigDto,
+	SystemMonitoringRequestDto,
+	AlertsQueryDto,
+	WorkflowMetricsQueryDto,
+	SystemMetricsHistoryDto,
+	WorkflowMetricsHistoryDto,
+	CreateAlertRuleDto,
+	UpdateAlertRuleDto,
+	AlertRuleDto,
+	AlertsResponseDto,
+	AlertRulesResponseDto,
+} from './monitoring/system-monitoring.dto';

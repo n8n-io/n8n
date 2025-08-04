@@ -52,6 +52,7 @@ import '@/controllers/folder.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
+import '@/controllers/system-monitoring.controller';
 import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
