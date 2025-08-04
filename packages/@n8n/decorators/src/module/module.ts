@@ -45,6 +45,5 @@ export const BackendModule =
 			licenseFlag: opts?.licenseFlag,
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Service()(target);
 	};

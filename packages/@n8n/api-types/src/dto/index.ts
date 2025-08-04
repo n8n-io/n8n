@@ -167,3 +167,25 @@ export {
 	BottleneckIssue,
 	BottleneckDto,
 } from './performance';
+
+export {
+	NodeSuggestionRequestDto,
+	NodeSuggestionDto,
+	NodeSuggestionResponseDto,
+	ParameterMappingRequestDto,
+	ParameterMappingDto,
+	ParameterMappingResponseDto,
+	WorkflowAssistanceRequestDto,
+	WorkflowAssistanceActionDto,
+	WorkflowAssistanceDto,
+	WorkflowAssistanceResponseDto,
+	NodeRecommendationDto,
+	NodeRecommendationsResponseDto,
+	WorkflowOptimizationRequestDto,
+	WorkflowOptimizationChangeDto,
+	WorkflowOptimizationItemDto,
+	WorkflowOptimizationResponseDto,
+	WorkflowExplanationRequestDto,
+	WorkflowExplanationFlowItemDto,
+	WorkflowExplanationResponseDto,
+} from './ai-helpers/ai-helpers.dto';

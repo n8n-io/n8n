@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Container } from '@n8n/di';
 import { spawn } from 'child_process';
 import glob from 'fast-glob';
@@ -96,7 +94,6 @@ export async function buildFiles({
 			buildProcess.on('exit', resolve);
 		});
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		let errorMessage = error.message;
 
 		if (error.stdout !== undefined) {

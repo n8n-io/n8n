@@ -1004,7 +1004,7 @@
       "description": "Add comprehensive folder management endpoints for organizing workflows hierarchically with proper permissions and inheritance.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "GET /api/v1/folders endpoint with hierarchical structure",
         "POST /api/v1/folders endpoint for folder creation",
@@ -1029,7 +1029,7 @@
       "description": "Add endpoints for managing OAuth2 authentication callbacks, token refresh, and credential flow completion for enhanced authentication workflows.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "GET /api/v1/oauth2/callback/:service endpoint implemented",
         "POST /api/v1/oauth2/refresh endpoint for token refresh",
@@ -2129,8 +2129,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 223,
-  "last_hook_activation": 1754292508938,
+  "execution_count": 225,
+  "last_hook_activation": 1754293371693,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
