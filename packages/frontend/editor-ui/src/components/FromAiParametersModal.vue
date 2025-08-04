@@ -45,8 +45,7 @@ const node = computed(() =>
 
 const parentNode = computed(() => {
 	if (!node.value) return undefined;
-	const workflow = workflowsStore.getCurrentWorkflow();
-	const parentNodes = workflow.getChildNodes(node.value.name, 'ALL', 1);
+	const parentNodes = workflowsStore.workflowObject.getChildNodes(node.value.name, 'ALL', 1);
 	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });

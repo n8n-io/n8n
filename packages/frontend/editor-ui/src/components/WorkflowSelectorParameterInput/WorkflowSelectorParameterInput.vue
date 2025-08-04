@@ -425,5 +425,5 @@ const onAddResourceClicked = async () => {
 </template>
 
 <style lang="scss" module>
-@import '@/components/ResourceLocator/resourceLocator.scss';
+@use '@/components/ResourceLocator/resourceLocator.scss';
 </style>

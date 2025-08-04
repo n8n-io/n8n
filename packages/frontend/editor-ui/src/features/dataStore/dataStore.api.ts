@@ -21,3 +21,14 @@ export const fetchDataStores = async (
 		},
 	);
 };
+
+export const createDataStore = async (
+	context: IRestApiContext,
+	name: string,
+	projectId?: string,
+) => {
+	return await getFullApiResponse<DataStoreEntity>(context, 'POST', '/data-stores', {
+		name,
+		projectId,
+	});
+};
