@@ -70,6 +70,17 @@ const availableActions = computed(() => {
 	}> = [];
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
+	// Error workflow action
+	if (!suggestedActionSettings.errorWorkflow?.ignored) {
+		actions.push({
+			id: 'errorWorkflow',
+			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
+			description: i18n.baseText('workflowSuggestedActions.errorWorkflow.description'),
+			moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+			completed: hasErrorWorkflow.value,
+		});
+	}
+
 	// Evaluations action
 	if (
 		hasAINode.value &&
@@ -82,17 +93,6 @@ const availableActions = computed(() => {
 			description: i18n.baseText('workflowSuggestedActions.evaluations.description'),
 			moreInfoLink: EVALUATIONS_DOCS_URL,
 			completed: hasEvaluationSetOutputsNode.value,
-		});
-	}
-
-	// Error workflow action
-	if (!suggestedActionSettings.errorWorkflow?.ignored) {
-		actions.push({
-			id: 'errorWorkflow',
-			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
-			description: i18n.baseText('workflowSuggestedActions.errorWorkflow.description'),
-			moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
-			completed: hasErrorWorkflow.value,
 		});
 	}
 
