@@ -1,0 +1,165 @@
+{
+	"name": "RAG with OpenAI Reranker Example",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [320, 240],
+			"id": "chat-trigger",
+			"name": "Chat Trigger"
+		},
+		{
+			"parameters": {
+				"model": "text-embedding-3-small",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"typeVersion": 1.2,
+			"position": [640, 360],
+			"id": "embeddings",
+			"name": "OpenAI Embeddings",
+			"credentials": {
+				"openAiApi": {
+					"id": "openai-creds",
+					"name": "OpenAI API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [640, 120],
+			"id": "chat-model",
+			"name": "OpenAI Chat Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "openai-creds",
+					"name": "OpenAI API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "You are a helpful assistant. Use the provided context to answer questions accurately. If the context doesn't contain relevant information, say so."
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.1,
+			"position": [800, 240],
+			"id": "ai-agent",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"toolDescription": "Search for relevant documents in the knowledge base",
+				"mongoCollection": {
+					"__rl": true,
+					"value": "documents",
+					"mode": "list"
+				},
+				"embedding": "embedding_vector",
+				"metadata_field": "content",
+				"vectorIndexName": "vector_index",
+				"topK": 10,
+				"useReranker": true,
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"typeVersion": 1.3,
+			"position": [960, 240],
+			"id": "vector-store",
+			"name": "MongoDB Atlas Vector Store",
+			"credentials": {
+				"mongoDb": {
+					"id": "mongodb-creds",
+					"name": "MongoDB Atlas"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"modelName": "Qwen/Qwen3-Reranker-8B",
+				"topN": 3
+			},
+			"type": "@n8n/n8n-nodes-langchain.rerankerOpenAI",
+			"typeVersion": 1,
+			"position": [960, 400],
+			"id": "reranker",
+			"name": "Reranker OpenAI",
+			"credentials": {
+				"openAIApi": {
+					"id": "siliconflow-creds",
+					"name": "SiliconFlow API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Embeddings": {
+			"ai_embedding": [
+				[
+					{
+						"node": "MongoDB Atlas Vector Store",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MongoDB Atlas Vector Store": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reranker OpenAI": {
+			"ai_reranker": [
+				[
+					{
+						"node": "MongoDB Atlas Vector Store",
+						"type": "ai_reranker",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true
+	}
+}
