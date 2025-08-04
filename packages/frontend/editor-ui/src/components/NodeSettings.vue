@@ -135,9 +135,8 @@ const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
-const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
-const currentWorkflow = computed(() =>
-	workflowsStore.getWorkflowById(currentWorkflowInstance.value.id),
+const currentWorkflow = computed(
+	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(

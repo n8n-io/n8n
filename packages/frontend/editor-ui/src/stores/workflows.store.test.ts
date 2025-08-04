@@ -18,6 +18,7 @@ import type {
 	IConnection,
 	INodeExecutionData,
 	INode,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
@@ -46,7 +47,12 @@ vi.mock('@/api/workflows', () => ({
 	getNewWorkflow: vi.fn(),
 }));
 
-const getNodeType = vi.fn();
+const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
+	inputs: [],
+	group: [],
+	webhooks: [],
+	properties: [],
+}));
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
@@ -86,50 +92,50 @@ describe('useWorkflowsStore', () => {
 
 	describe('isWaitingExecution', () => {
 		it('should return false if no activeNode and no waiting nodes in workflow', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: 'type1' },
 				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(false);
 		});
 
 		it('should return false if no activeNode and waiting node in workflow and waiting node is disabled', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: FORM_NODE_TYPE, disabled: true },
 				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(false);
 		});
 
 		it('should return true if no activeNode and wait node in workflow', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: WAIT_NODE_TYPE },
 				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(true);
 		});
 
 		it('should return true if no activeNode and form node in workflow', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: FORM_NODE_TYPE },
 				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(true);
 		});
 
 		it('should return true if no activeNode and sendAndWait node in workflow', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: 'type1', parameters: { operation: SEND_AND_WAIT_OPERATION } },
 				{ type: 'type2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(true);
@@ -180,22 +186,30 @@ describe('useWorkflowsStore', () => {
 
 	describe('workflowTriggerNodes', () => {
 		it('should return only nodes that are triggers', () => {
-			getNodeType.mockReturnValueOnce({ group: ['trigger'] });
+			getNodeType.mockImplementation(
+				(nodeTypeName: string) =>
+					({
+						group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
+						inputs: [],
+						webhooks: [],
+						properties: [],
+					}) as Partial<INodeTypeDescription> | null,
+			);
 
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: 'triggerNode', typeVersion: '1' },
 				{ type: 'nonTriggerNode', typeVersion: '1' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			expect(workflowsStore.workflowTriggerNodes).toHaveLength(1);
 			expect(workflowsStore.workflowTriggerNodes[0].type).toBe('triggerNode');
 		});
 
 		it('should return empty array when no nodes are triggers', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ type: 'nonTriggerNode1', typeVersion: '1' },
 				{ type: 'nonTriggerNode2', typeVersion: '1' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			expect(workflowsStore.workflowTriggerNodes).toHaveLength(0);
 		});
@@ -203,20 +217,20 @@ describe('useWorkflowsStore', () => {
 
 	describe('currentWorkflowHasWebhookNode', () => {
 		it('should return true when a node has a webhookId', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ name: 'Node1', webhookId: 'webhook1' },
 				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
 			expect(hasWebhookNode).toBe(true);
 		});
 
 		it('should return false when no nodes have a webhookId', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ name: 'Node1' },
 				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
 			expect(hasWebhookNode).toBe(false);
@@ -258,38 +272,38 @@ describe('useWorkflowsStore', () => {
 
 	describe('nodesIssuesExist', () => {
 		it('should return true when a node has issues and connected', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
+			});
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(true);
 		});
 
 		it('should return false when node has issues but it is not connected', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
 		});
 
 		it('should return false when no nodes have issues', () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.setNodes([
 				{ name: 'Node1' },
 				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
+			] as unknown as IWorkflowDb['nodes']);
 
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
+			});
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
@@ -353,65 +367,65 @@ describe('useWorkflowsStore', () => {
 
 	describe('isNodeInOutgoingNodeConnections()', () => {
 		it('should return false when no outgoing connections from root node', () => {
-			workflowsStore.workflow.connections = {};
+			workflowsStore.setConnections({});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
 			expect(result).toBe(false);
 		});
 
 		it('should return true when search node is directly connected to root node', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
 			expect(result).toBe(true);
 		});
 
 		it('should return true when search node is indirectly connected to root node', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
 				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
 			expect(result).toBe(true);
 		});
 
 		it('should return false when search node is not connected to root node', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
 				IntermediateNode: { main: [[{ node: 'AnotherNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
 			expect(result).toBe(false);
 		});
 
 		it('should return true if connection is indirect within `depth`', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
 				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 2);
 			expect(result).toBe(true);
 		});
 
 		it('should return false if connection is indirect beyond `depth`', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
 				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 1);
 			expect(result).toBe(false);
 		});
 
 		it('should return false if depth is 0', () => {
-			workflowsStore.workflow.connections = {
+			workflowsStore.setConnections({
 				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
+			});
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
 			expect(result).toBe(false);
@@ -632,6 +646,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
+			workflowsStore.workflow.pinData = {};
 			workflowsStore.setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
@@ -1092,6 +1107,8 @@ describe('useWorkflowsStore', () => {
 		it('should not update last parameter update time if parameters are set to the same value', () => {
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
 
+			console.log(workflowsStore.workflow.nodes, workflowsStore.workflowObject.nodes);
+
 			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
@@ -1294,7 +1311,7 @@ describe('useWorkflowsStore', () => {
 	});
 });
 
-function getMockEditFieldsNode() {
+function getMockEditFieldsNode(): Partial<INodeTypeDescription> {
 	return {
 		displayName: 'Edit Fields (Set)',
 		name: 'n8n-nodes-base.set',

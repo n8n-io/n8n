@@ -1965,7 +1965,7 @@ describe('WorkflowExecute', () => {
 
 		test('should return true when node has no input connections', () => {
 			workflow.nodes = {};
-			workflow.connectionsByDestinationNode = {};
+			workflow.setConnections({});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1978,11 +1978,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1996,11 +1996,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [[{ json: { test: 'data' } }]] };
 
@@ -2015,11 +2015,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [null] };
 

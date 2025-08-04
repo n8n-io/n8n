@@ -50,9 +50,11 @@ export function useTypescript(
 				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().variables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore
-							.getCurrentWorkflow()
-							.getParentNodes(activeNodeName, NodeConnectionTypes.Main, 1)
+					? workflowsStore.workflowObject.getParentNodes(
+							activeNodeName,
+							NodeConnectionTypes.Main,
+							1,
+						)
 					: [],
 				mode: toValue(mode),
 			},
