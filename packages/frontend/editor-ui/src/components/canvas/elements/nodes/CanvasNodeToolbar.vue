@@ -14,6 +14,7 @@ const emit = defineEmits<{
 	run: [];
 	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
+	focus: [id: string];
 }>();
 
 const props = defineProps<{
@@ -23,7 +24,7 @@ const props = defineProps<{
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { isExecuting } = useCanvas();
+const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
 const workflowsStore = useWorkflowsStore();
@@ -44,6 +45,7 @@ const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
 	[$style.readOnly]: props.readOnly,
 	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
+	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
 const isExecuteNodeVisible = computed(() => {
@@ -104,7 +106,7 @@ function onMouseLeave() {
 
 function onFocusNode() {
 	if (node.value) {
-		experimentalNdvStore.focusNode(node.value.id);
+		emit('focus', node.value.id);
 	}
 }
 </script>
@@ -128,7 +130,7 @@ function onFocusNode() {
 					type="tertiary"
 					text
 					size="small"
-					icon="play"
+					icon="node-play"
 					:disabled="isExecuting || isDisabled"
 					:title="i18n.baseText('node.testStep')"
 					@click="executeNode"
@@ -140,7 +142,7 @@ function onFocusNode() {
 				type="tertiary"
 				text
 				size="small"
-				icon="power"
+				icon="node-power"
 				:title="nodeDisabledTitle"
 				@click="onToggleNode"
 			/>
@@ -150,7 +152,7 @@ function onFocusNode() {
 				type="tertiary"
 				size="small"
 				text
-				icon="trash-2"
+				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
 			/>
@@ -172,7 +174,7 @@ function onFocusNode() {
 				type="tertiary"
 				size="small"
 				text
-				icon="ellipsis"
+				icon="node-ellipsis"
 				@click="onOpenContextMenu"
 			/>
 		</div>
@@ -185,6 +187,11 @@ function onFocusNode() {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+
+	&.isExperimentalNdvActive {
+		justify-content: center;
+		padding-bottom: var(--spacing-3xs);
+	}
 }
 
 .canvasNodeToolbarItems {

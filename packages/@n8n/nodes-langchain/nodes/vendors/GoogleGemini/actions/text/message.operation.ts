@@ -236,7 +236,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		responseMimeType: jsonOutput ? 'application/json' : undefined,
 	};
 
-	const availableTools = await getConnectedTools(this, true);
+	const nodeInputs = this.getNodeInputs();
+	const availableTools = nodeInputs.some((i) => i.type === 'ai_tool')
+		? await getConnectedTools(this, true)
+		: [];
 	const tools: Tool[] = [
 		{
 			functionDeclarations: availableTools.map((t) => ({

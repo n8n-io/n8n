@@ -66,6 +66,7 @@ import {
 	Workflow,
 	TelemetryHelpers,
 } from 'n8n-workflow';
+import * as workflowUtils from 'n8n-workflow/common';
 import findLast from 'lodash/findLast';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
@@ -294,9 +295,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
+	/**
+	 * This section contains functions migrated from the workflow class
+	 */
+
+	const connectionsBySourceNode = computed(() => workflow.value.connections);
 	const connectionsByDestinationNode = computed(() =>
-		Workflow.getConnectionsByDestination(workflow.value.connections),
+		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
 	);
+
+	// End section
 
 	const selectableTriggerNodes = computed(() =>
 		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
@@ -384,7 +392,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getNodeByName(nodeName: string): INodeUi | null {
-		return nodesByName.value[nodeName] || null;
+		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
@@ -612,15 +620,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return data;
 	}
 
-	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+	async function searchWorkflows({
+		projectId,
+		name,
+	}: { projectId?: string; name?: string }): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
+			name,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 		);
+		return workflows;
+	}
+
+	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+		const workflows = await searchWorkflows({ projectId });
 		setWorkflows(workflows);
 		return workflows;
 	}
@@ -629,6 +646,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
 		addWorkflow(workflowData);
 		return workflowData;
+	}
+
+	async function fetchWorkflowsWithNodesIncluded(nodeTypes: string[]) {
+		return await workflowsApi.getWorkflowsWithNodesIncluded(rootStore.restApiContext, nodeTypes);
 	}
 
 	async function getNewWorkflowData(
@@ -1955,6 +1976,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowResultDataByNodeName,
 		allConnections,
 		allNodes,
+		connectionsBySourceNode,
+		connectionsByDestinationNode,
 		isWaitingExecution,
 		isWorkflowRunning,
 		canvasNames,
@@ -1990,9 +2013,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getCurrentWorkflow,
 		getWorkflowFromUrl,
 		getActivationError,
+		searchWorkflows,
 		fetchAllWorkflows,
 		fetchWorkflowsPage,
 		fetchWorkflow,
+		fetchWorkflowsWithNodesIncluded,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
 		resetWorkflow,

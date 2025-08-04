@@ -86,7 +86,9 @@ import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTabl
 import { CreateDataStoreTables1747814180618 } from '../common/1747814180618-CreateDataStoreTables';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import type { Migration } from '../migration-types';
+
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
@@ -176,6 +178,7 @@ const sqliteMigrations: Migration[] = [
 	CreateDataStoreTables1747814180618,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
+	AddInputsOutputsToTestCaseExecution1752669793000,
 ];
 
 export { sqliteMigrations };

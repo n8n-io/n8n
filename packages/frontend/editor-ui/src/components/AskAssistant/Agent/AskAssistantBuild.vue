@@ -82,6 +82,7 @@ watch(
 
 						telemetry.track('Workflow modified by builder', {
 							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+							session_id: builderStore.trackingSessionId,
 							start_workflow_json: currentWorkflowJson,
 							end_workflow_json: msg.codeSnippet,
 							workflow_id: workflowsStore.workflowId,
@@ -104,12 +105,14 @@ function onFeedback(feedback: RatingFeedback) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
 			workflow_id: workflowsStore.workflowId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
 			workflow_id: workflowsStore.workflowId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 }
@@ -129,11 +132,13 @@ watch(currentRoute, () => {
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
+			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
+			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
 				<slot name="header" />

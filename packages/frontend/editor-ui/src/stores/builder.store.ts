@@ -36,6 +36,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
+	const streamingAbortController = ref<AbortController | null>(null);
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -51,6 +52,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const {
 		processAssistantMessages,
 		createUserMessage,
+		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
 		mapAssistantMessageToUI,
@@ -58,6 +60,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
+
+	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
@@ -149,6 +153,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function stopStreaming() {
 		streaming.value = false;
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+			streamingAbortController.value = null;
+		}
 	}
 
 	// Error handling
@@ -164,15 +172,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 
+		if (e.name === 'AbortError') {
+			// Handle abort errors as they are expected when stopping streaming
+			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			chatMessages.value = [...chatMessages.value, userMsg];
+			return;
+		}
+
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
+
 		chatMessages.value = [...chatMessages.value, errorMessage];
 
 		telemetry.track('Workflow generation errored', {
 			error: e.message,
+			session_id: trackingSessionId.value,
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
@@ -228,6 +245,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('User submitted builder message', {
 			source,
 			message: text,
+			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 		});
@@ -243,6 +261,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
+		// Abort previous streaming request if any
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+
+		streamingAbortController.value = new AbortController();
 		try {
 			chatWithBuilder(
 				rootStore.restApiContext,
@@ -265,6 +289,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
+				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);
@@ -388,9 +413,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowPrompt,
 		toolMessages,
 		workflowMessages,
+		trackingSessionId,
+		streamingAbortController,
 
 		// Methods
 		updateWindowWidth,
+		stopStreaming,
 		closeChat,
 		openChat,
 		resetBuilderChat,

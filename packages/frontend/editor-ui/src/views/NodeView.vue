@@ -54,7 +54,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
-	FOCUS_PANEL_EXPERIMENT,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -112,6 +111,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import CanvasThinkingPill from '@n8n/design-system/components/CanvasThinkingPill/CanvasThinkingPill.vue';
 import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -253,10 +253,6 @@ const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 
-const isFocusPanelFeatureEnabled = computed(() => {
-	return usePostHog().getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
-
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
@@ -296,7 +292,8 @@ const isCanvasReadOnly = computed(() => {
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived
+		editableWorkflow.value.isArchived ||
+		builderStore.streaming
 	);
 });
 
@@ -981,10 +978,6 @@ function onUpdateNodeOutputs(id: string) {
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
-	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-		focusPanelStore.hideFocusPanel();
-	}
-
 	nodeCreatorStore.openNodeCreatorForConnectingNode({
 		connection: {
 			source,
@@ -1218,10 +1211,6 @@ function onOpenSelectiveNodeCreator(
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
-	if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-		focusPanelStore.hideFocusPanel(options.createNodeActive);
-	}
-
 	if (!options.createNodeActive && !options.hasAddedNodes) {
 		uiStore.resetLastInteractedWith();
 	}
@@ -1236,20 +1225,17 @@ function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 }
 
 function onToggleFocusPanel() {
-	if (!isFocusPanelFeatureEnabled.value) {
-		return;
-	}
-
 	focusPanelStore.toggleFocusPanel();
+	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
+		source: 'canvasKeyboardShortcut',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		parameterCount: focusPanelStore.focusedNodeParametersInTelemetryFormat.length,
+	});
 }
 
 function closeNodeCreator() {
 	if (nodeCreatorStore.isCreateNodeActive) {
 		nodeCreatorStore.isCreateNodeActive = false;
-
-		if (isFocusPanelFeatureEnabled.value && focusPanelStore.focusPanelActive) {
-			focusPanelStore.hideFocusPanel(false);
-		}
 	}
 }
 
@@ -1852,29 +1838,34 @@ watch(
 		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
 	},
 	(isReadOnlyOrLoading) => {
-		const defaultFallbackNodes: INodeUi[] = [
-			{
-				id: CanvasNodeRenderType.AddNodes,
-				name: CanvasNodeRenderType.AddNodes,
-				type: CanvasNodeRenderType.AddNodes,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		if (builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled) {
-			defaultFallbackNodes.unshift({
-				id: CanvasNodeRenderType.AIPrompt,
-				name: CanvasNodeRenderType.AIPrompt,
-				type: CanvasNodeRenderType.AIPrompt,
-				typeVersion: 1,
-				position: [-690, -15],
-				parameters: {},
-			});
+		if (isReadOnlyOrLoading) {
+			fallbackNodes.value = [];
+			return;
 		}
 
-		fallbackNodes.value = isReadOnlyOrLoading ? [] : defaultFallbackNodes;
+		const addNodesItem: INodeUi = {
+			id: CanvasNodeRenderType.AddNodes,
+			name: CanvasNodeRenderType.AddNodes,
+			type: CanvasNodeRenderType.AddNodes,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const aiPromptItem: INodeUi = {
+			id: CanvasNodeRenderType.AIPrompt,
+			name: CanvasNodeRenderType.AIPrompt,
+			type: CanvasNodeRenderType.AIPrompt,
+			typeVersion: 1,
+			position: [-690, -15],
+			parameters: {},
+			draggable: false,
+		};
+
+		fallbackNodes.value =
+			builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled
+				? [aiPromptItem]
+				: [addNodesItem];
 	},
 );
 
@@ -2141,6 +2132,13 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<CanvasThinkingPill
+				v-if="builderStore.streaming"
+				:class="$style.thinkingPill"
+				show-stop
+				@stop="builderStore.stopStreaming"
+			/>
+
 			<Suspense>
 				<LazyNodeCreation
 					v-if="!isCanvasReadOnly"
@@ -2179,7 +2177,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="isFocusPanelFeatureEnabled"
+			v-if="!isLoading"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 		/>
@@ -2246,5 +2244,13 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.thinkingPill {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 10;
 }
 </style>

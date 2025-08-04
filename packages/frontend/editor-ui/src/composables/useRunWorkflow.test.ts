@@ -88,6 +88,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 vi.mock('@n8n/i18n', () => ({
+	i18n: { baseText: vi.fn().mockImplementation((key) => key) },
 	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
 }));
 
@@ -1043,6 +1044,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflowsStore.activeWorkflows = ['test-wf-id'];
 			workflowsStore.setActiveExecutionId('test-exec-id');
+			workflowsStore.executionWaitingForWebhook = false;
 
 			getExecutionSpy.mockResolvedValue(executionData);
 
@@ -1052,7 +1054,10 @@ describe('useRunWorkflow({ router })', () => {
 			// Assert that markExecutionAsStopped() isn't called yet after a simulated delay
 			await new Promise((resolve) => setTimeout(resolve, 10));
 			expect(markStoppedSpy).not.toHaveBeenCalled();
-			expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id');
+			await waitFor(() => expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id'));
+
+			getExecutionSpy.mockReset();
+			expect(getExecutionSpy).toHaveBeenCalledTimes(0);
 
 			// Simulated executionFinished event
 			getExecutionSpy.mockResolvedValue({
