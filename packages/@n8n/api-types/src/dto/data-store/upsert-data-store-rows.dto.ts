@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { dataStoreColumnNameSchema } from 'schemas/data-store.schema';
+import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
 
 const dataStoreValueSchema = z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]);
 
