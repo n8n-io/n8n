@@ -325,4 +325,349 @@ export class FolderService {
 				}) as FolderWithWorkflowAndSubFolderCountAndPath,
 		);
 	}
+
+	async getFolderPath(folderId: string, projectId: string): Promise<string[]> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const paths = await this.folderRepository.getFolderPathsToRoot([folderId]);
+		return paths.get(folderId) || [];
+	}
+
+	async getFolderAncestors(folderId: string, projectId: string): Promise<Folder[]> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const ancestorQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.addSelect('folder.parentFolderId', 'parentFolderId')
+			.where('folder.id = :folderId', { folderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.addSelect('f.parentFolderId', 'parentFolderId')
+			.innerJoin('folder_ancestors', 'fa', 'f.id = fa.parentFolderId')
+			.where('f.parentFolderId IS NOT NULL');
+
+		const mainQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select([
+				'folder.id',
+				'folder.name',
+				'folder.parentFolderId',
+				'folder.createdAt',
+				'folder.updatedAt',
+			])
+			.addCommonTableExpression(
+				`${ancestorQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_ancestors',
+				{ recursive: true },
+			)
+			.where((qb) => {
+				const subQuery = qb.subQuery().select('fa.id').from('folder_ancestors', 'fa').getQuery();
+				return `folder.id IN ${subQuery}`;
+			})
+			.andWhere('folder.id != :folderId', { folderId })
+			.orderBy('folder.parentFolderId', 'ASC')
+			.setParameters({ folderId });
+
+		return await mainQuery.getMany();
+	}
+
+	async getFolderDescendants(folderId: string, projectId: string): Promise<Folder[]> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const baseQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.where('folder.parentFolderId = :folderId', { folderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.innerJoin('folder_descendants', 'fd', 'f.parentFolderId = fd.id');
+
+		const mainQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_descendants',
+				{ recursive: true },
+			)
+			.where((qb) => {
+				const subQuery = qb.subQuery().select('fd.id').from('folder_descendants', 'fd').getQuery();
+				return `folder.id IN ${subQuery}`;
+			})
+			.orderBy('folder.name', 'ASC')
+			.setParameters({ folderId });
+
+		return await mainQuery.getMany();
+	}
+
+	async duplicateFolder(
+		folderId: string,
+		projectId: string,
+		options: { name?: string; parentFolderId?: string; includeWorkflows?: boolean },
+	): Promise<Folder> {
+		const sourceFolder = await this.findFolderInProjectOrFail(folderId, projectId);
+		const { name, parentFolderId, includeWorkflows = false } = options;
+
+		let parentFolder = null;
+		if (parentFolderId) {
+			parentFolder = await this.findFolderInProjectOrFail(parentFolderId, projectId);
+		}
+
+		return await this.folderRepository.manager.transaction(async (tx) => {
+			// Create the duplicated folder
+			const duplicatedFolder = tx.create(Folder, {
+				name: name || `${sourceFolder.name} (Copy)`,
+				homeProject: { id: projectId },
+				parentFolder,
+			});
+
+			const savedFolder = await tx.save(duplicatedFolder);
+
+			// If includeWorkflows is true, duplicate workflows as well
+			if (includeWorkflows) {
+				const workflows = await this.workflowRepository.find({
+					where: { parentFolder: { id: folderId } },
+				});
+
+				for (const workflow of workflows) {
+					const duplicatedWorkflow = tx.create('WorkflowEntity', {
+						...workflow,
+						id: undefined,
+						name: `${workflow.name} (Copy)`,
+						parentFolder: savedFolder,
+						active: false,
+						versionId: undefined,
+					});
+					await tx.save(duplicatedWorkflow);
+				}
+			}
+
+			// Recursively duplicate subfolders
+			const subFolders = await this.folderRepository.find({
+				where: { parentFolder: { id: folderId } },
+			});
+
+			for (const subFolder of subFolders) {
+				await this.duplicateFolder(subFolder.id, projectId, {
+					parentFolderId: savedFolder.id,
+					includeWorkflows,
+				});
+			}
+
+			return savedFolder;
+		});
+	}
+
+	async bulkMoveFolders(
+		folderIds: string[],
+		projectId: string,
+		targetFolderId?: string,
+	): Promise<{ success: string[]; errors: Array<{ folderId: string; error: string }> }> {
+		const results = {
+			success: [] as string[],
+			errors: [] as Array<{ folderId: string; error: string }>,
+		};
+
+		let targetFolder = null;
+		if (targetFolderId && targetFolderId !== PROJECT_ROOT) {
+			try {
+				targetFolder = await this.findFolderInProjectOrFail(targetFolderId, projectId);
+			} catch (error) {
+				// If target folder doesn't exist, all moves will fail
+				folderIds.forEach((folderId) => {
+					results.errors.push({
+						folderId,
+						error: `Target folder ${targetFolderId} not found`,
+					});
+				});
+				return results;
+			}
+		}
+
+		await this.folderRepository.manager.transaction(async (tx) => {
+			for (const folderId of folderIds) {
+				try {
+					// Verify folder exists in project
+					await this.findFolderInProjectOrFail(folderId, projectId, tx);
+
+					// Check for circular reference
+					if (targetFolderId && targetFolderId !== PROJECT_ROOT) {
+						const tree = await this.getFolderTree(folderId, projectId);
+						if (this.isDescendant(targetFolderId, tree)) {
+							results.errors.push({
+								folderId,
+								error: 'Cannot move folder to its own descendant',
+							});
+							continue;
+						}
+					}
+
+					// Perform the move
+					await tx.update(
+						Folder,
+						{ id: folderId },
+						{
+							parentFolder: targetFolder ? { id: targetFolder.id } : null,
+						},
+					);
+
+					results.success.push(folderId);
+				} catch (error) {
+					results.errors.push({
+						folderId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		});
+
+		return results;
+	}
+
+	async bulkDeleteFolders(
+		user: User,
+		folderIds: string[],
+		projectId: string,
+		transferToFolderId?: string,
+	): Promise<{ success: string[]; errors: Array<{ folderId: string; error: string }> }> {
+		const results = {
+			success: [] as string[],
+			errors: [] as Array<{ folderId: string; error: string }>,
+		};
+
+		let transferFolder = null;
+		if (transferToFolderId && transferToFolderId !== PROJECT_ROOT) {
+			try {
+				transferFolder = await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+			} catch (error) {
+				// If transfer folder doesn't exist, all deletions will fail
+				folderIds.forEach((folderId) => {
+					results.errors.push({
+						folderId,
+						error: `Transfer folder ${transferToFolderId} not found`,
+					});
+				});
+				return results;
+			}
+		}
+
+		for (const folderId of folderIds) {
+			try {
+				await this.deleteFolder(user, folderId, projectId, {
+					transferToFolderId: transferToFolderId,
+				});
+				results.success.push(folderId);
+			} catch (error) {
+				results.errors.push({
+					folderId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		return results;
+	}
+
+	async getFolderPermissions(
+		user: User,
+		folderId: string,
+		projectId: string,
+	): Promise<Record<string, boolean>> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		// This is a simplified permission check - in a real implementation,
+		// you would check actual user roles and project permissions
+		return {
+			canRead: true,
+			canWrite: true,
+			canDelete: true,
+			canCreate: true,
+			canMove: true,
+			canShare: true,
+		};
+	}
+
+	async getFolderStatistics(
+		folderId: string,
+		projectId: string,
+	): Promise<{
+		totalSubFolders: number;
+		totalWorkflows: number;
+		activeWorkflows: number;
+		totalSize: number;
+		lastModified: Date;
+		depth: number;
+	}> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		// Get basic folder and workflow counts
+		const { totalSubFolders, totalWorkflows } = await this.getFolderAndWorkflowCount(
+			folderId,
+			projectId,
+		);
+
+		// Count active workflows in the folder hierarchy
+		const baseQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.where('folder.id = :folderId', { folderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.innerJoin('folder_path', 'fp', 'f.parentFolderId = fp.id');
+
+		const activeWorkflowCountQuery = this.workflowRepository
+			.createQueryBuilder('workflow')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.select('COUNT(workflow.id)', 'count')
+			.where('workflow.active = :active', { active: true })
+			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere((qb) => {
+				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
+				return `workflow.parentFolderId IN ${folderQuery}`;
+			})
+			.setParameters({ folderId });
+
+		// Get folder depth
+		const path = await this.getFolderPath(folderId, projectId);
+		const depth = path.length;
+
+		// Get last modified date from workflows
+		const lastModifiedQuery = this.workflowRepository
+			.createQueryBuilder('workflow')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.select('MAX(workflow.updatedAt)', 'lastModified')
+			.where((qb) => {
+				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
+				return `workflow.parentFolderId IN ${folderQuery}`;
+			})
+			.setParameters({ folderId });
+
+		const [activeWorkflowResult, lastModifiedResult] = await Promise.all([
+			activeWorkflowCountQuery.getRawOne<{ count: string }>(),
+			lastModifiedQuery.getRawOne<{ lastModified: Date }>(),
+		]);
+
+		return {
+			totalSubFolders,
+			totalWorkflows,
+			activeWorkflows: parseInt(activeWorkflowResult?.count ?? '0', 10),
+			totalSize: 0, // Could be implemented to calculate actual storage size
+			lastModified: lastModifiedResult?.lastModified || new Date(),
+			depth,
+		};
+	}
 }

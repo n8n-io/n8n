@@ -258,4 +258,6 @@ local_settings.py
 
 TODO.json.*
 
-*.log
+*.logs
+
+.turbo/

@@ -199,4 +199,207 @@ export class ProjectController {
 			body.shareCredentials,
 		);
 	}
+
+	@Get('/:folderId')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolder(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const folder = await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			return folder;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/path')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderPath(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const path = await this.folderService.getFolderPath(folderId, projectId);
+			return { path };
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/ancestors')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderAncestors(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const ancestors = await this.folderService.getFolderAncestors(folderId, projectId);
+			return { ancestors };
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/descendants')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderDescendants(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const descendants = await this.folderService.getFolderDescendants(folderId, projectId);
+			return { descendants };
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Post('/:folderId/duplicate')
+	@ProjectScope('folder:create')
+	@Licensed('feat:folders')
+	async duplicateFolder(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+		@Body payload: { name?: string; parentFolderId?: string; includeWorkflows?: boolean },
+	) {
+		const { projectId, folderId } = req.params;
+		const { name, parentFolderId, includeWorkflows = false } = payload;
+
+		try {
+			const duplicatedFolder = await this.folderService.duplicateFolder(folderId, projectId, {
+				name,
+				parentFolderId,
+				includeWorkflows,
+			});
+			return duplicatedFolder;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Post('/bulk/move')
+	@ProjectScope('folder:update')
+	@Licensed('feat:folders')
+	async bulkMoveFolders(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Body payload: { folderIds: string[]; targetFolderId?: string },
+	) {
+		const { projectId } = req.params;
+		const { folderIds, targetFolderId } = payload;
+
+		if (!folderIds || folderIds.length === 0) {
+			throw new BadRequestError('folderIds is required and cannot be empty');
+		}
+
+		if (folderIds.length > 50) {
+			throw new BadRequestError('Cannot move more than 50 folders at once');
+		}
+
+		try {
+			const result = await this.folderService.bulkMoveFolders(folderIds, projectId, targetFolderId);
+			return result;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Post('/bulk/delete')
+	@ProjectScope('folder:delete')
+	@Licensed('feat:folders')
+	async bulkDeleteFolders(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Body payload: { folderIds: string[]; transferToFolderId?: string },
+	) {
+		const { projectId } = req.params;
+		const { folderIds, transferToFolderId } = payload;
+
+		if (!folderIds || folderIds.length === 0) {
+			throw new BadRequestError('folderIds is required and cannot be empty');
+		}
+
+		if (folderIds.length > 50) {
+			throw new BadRequestError('Cannot delete more than 50 folders at once');
+		}
+
+		try {
+			const result = await this.folderService.bulkDeleteFolders(
+				req.user,
+				folderIds,
+				projectId,
+				transferToFolderId,
+			);
+			return result;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/permissions')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderPermissions(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const permissions = await this.folderService.getFolderPermissions(
+				req.user,
+				folderId,
+				projectId,
+			);
+			return { permissions };
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/statistics')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderStatistics(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const statistics = await this.folderService.getFolderStatistics(folderId, projectId);
+			return statistics;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
 }

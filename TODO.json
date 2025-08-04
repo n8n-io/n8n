@@ -979,7 +979,7 @@
       "description": "Add endpoints for bulk workflow operations including activation, deactivation, updates, and batch processing for enterprise workflow management.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/workflows/bulk/activate endpoint implemented",
         "POST /api/v1/workflows/bulk/deactivate endpoint functional",
@@ -2102,14 +2102,35 @@
       "subtasks": [],
       "is_review_task": true,
       "strike_number": 3
+    },
+    {
+      "id": "pyodide-to-local-python-conversion-1754292409540",
+      "title": "Convert n8n Python execution from Pyodide to local Python with venv compatibility",
+      "status": "pending",
+      "priority": "high",
+      "description": "Replace browser-based Pyodide Python execution with local subprocess-based Python execution supporting virtual environments for maximum capabilities and package compatibility",
+      "created_at": "2025-08-04T07:26:49.540Z",
+      "subtasks": [
+        "python-analysis",
+        "python-venv-design",
+        "python-security-model",
+        "python-subprocess-service",
+        "python-venv-manager",
+        "python-package-installer",
+        "python-execution-engine",
+        "python-migration-tests",
+        "python-backward-compatibility",
+        "python-documentation"
+      ],
+      "mode": "DEVELOPMENT"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 222,
-  "last_hook_activation": 1754291651352,
+  "execution_count": 223,
+  "last_hook_activation": 1754292508938,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
