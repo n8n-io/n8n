@@ -103,7 +103,8 @@
       "brace-expansion@2": "2.0.2",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
-      "form-data": "4.0.4"
+      "form-data": "4.0.4",
+      "@n8n/node-cli": "link:../../../../Library/pnpm/global/5/node_modules/@n8n/node-cli"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -121,5 +122,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch"
     }
+  },
+  "dependencies": {
+    "@n8n/node-cli": "link:../../../../Library/pnpm/global/5/node_modules/@n8n/node-cli"
   }
 }

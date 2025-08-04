@@ -1,5 +1,8 @@
 {
-	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
 	"compilerOptions": {
 		"baseUrl": ".",
 		"rootDir": "src",
@@ -7,6 +10,6 @@
 		"types": ["vite/client", "vitest/globals"],
 		"isolatedModules": true
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "src/configs/eslint.mjs"],
 	"exclude": ["src/templates"]
 }

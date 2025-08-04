@@ -35,17 +35,12 @@
         ]
     },
     "devDependencies": {
-        "@eslint/js": "^9.29.0",
+        "@n8n/node-cli": "*",
         "eslint": "9.32.0",
-        "eslint-import-resolver-typescript": "^4.4.3",
-        "eslint-plugin-import-x": "^4.15.2",
-        "eslint-plugin-n8n-nodes-base": "1.16.3",
-        "fast-glob": "catalog:",
         "n8n-workflow": "*",
         "prettier": "3.6.2",
         "release-it": "^19.0.4",
-        "typescript": "5.9.2",
-        "typescript-eslint": "^8.35.0"
+        "typescript": "5.9.2"
     },
     "peerDependencies": {
         "n8n-workflow": "*"

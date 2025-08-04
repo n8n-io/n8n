@@ -1,11 +1,16 @@
 {
   "private": true,
-  "type": "module",
   "name": "@n8n/node-cli",
   "version": "0.1.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "./bin/n8n-node.js"
+  },
+  "exports": {
+    "./eslint": {
+      "default": "./dist/configs/eslint.js",
+      "types": "./dist/configs/eslint.d.js"
+    }
   },
   "files": [
     "bin",
@@ -41,8 +46,14 @@
     "prompts": "^2.4.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.29.0",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@oclif/test": "^4.1.13"
+    "@oclif/test": "^4.1.13",
+    "eslint-import-resolver-typescript": "^4.4.3",
+    "eslint-plugin-import-x": "^4.15.2",
+    "eslint-plugin-n8n-nodes-base": "1.16.3",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.35.0"
   }
 }
