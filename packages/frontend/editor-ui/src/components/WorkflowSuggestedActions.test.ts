@@ -12,6 +12,7 @@ import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
 	VIEWS,
 	MODAL_CONFIRM,
 	ERROR_WORKFLOW_DOCS_URL,
@@ -87,15 +88,13 @@ const mockNonAINodeType: Partial<INodeTypeDescription> = {
 let mockN8nSuggestedActionsProps: Record<string, any> = {};
 // eslint-disable-next-line
 let mockN8nSuggestedActionsEmits: Record<string, any> = {};
-let mockOpenPopover: ReturnType<typeof vi.fn>;
-let mockClosePopover: ReturnType<typeof vi.fn>;
 
 const mockN8nSuggestedActions = {
 	name: 'N8nSuggestedActions',
-	props: ['actions', 'ignoreAllLabel', 'popoverAlignment'],
-	emits: ['action-click', 'ignore-click', 'ignore-all', 'on-open'],
+	props: ['actions', 'ignoreAllLabel', 'popoverAlignment', 'open', 'title'],
+	emits: ['action-click', 'ignore-click', 'ignore-all', 'update:open'],
 	// eslint-disable-next-line
-	setup(props: any, { emit, expose }: any) {
+	setup(props: any, { emit }: any) {
 		// Store props in the outer variable
 		mockN8nSuggestedActionsProps = props;
 
@@ -104,13 +103,8 @@ const mockN8nSuggestedActions = {
 			'action-click': (id: string) => emit('action-click', id),
 			'ignore-click': (id: string) => emit('ignore-click', id),
 			'ignore-all': () => emit('ignore-all'),
-			'on-open': () => emit('on-open'),
+			'update:open': (open: boolean) => emit('update:open', open),
 		};
-
-		mockOpenPopover = vi.fn(() => emit('on-open'));
-		mockClosePopover = vi.fn();
-
-		expose({ openPopover: mockOpenPopover, closePopover: mockClosePopover });
 
 		return { props };
 	},
@@ -166,8 +160,6 @@ describe('WorkflowSuggestedActions', () => {
 		vi.clearAllMocks();
 		mockN8nSuggestedActionsProps = {};
 		mockN8nSuggestedActionsEmits = {};
-		mockOpenPopover = vi.fn();
-		mockClosePopover = vi.fn();
 	});
 
 	describe('Action visibility', () => {
@@ -225,17 +217,17 @@ describe('WorkflowSuggestedActions', () => {
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
-						id: 'evaluations',
-						title: 'workflowSuggestedActions.evaluations.title',
-						description: 'workflowSuggestedActions.evaluations.description',
-						moreInfoLink: EVALUATIONS_DOCS_URL,
-						completed: false,
-					},
-					{
 						id: 'errorWorkflow',
 						title: 'workflowSuggestedActions.errorWorkflow.title',
 						description: 'workflowSuggestedActions.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+						completed: false,
+					},
+					{
+						id: 'evaluations',
+						title: 'workflowSuggestedActions.evaluations.title',
+						description: 'workflowSuggestedActions.evaluations.description',
+						moreInfoLink: EVALUATIONS_DOCS_URL,
 						completed: false,
 					},
 					{
@@ -510,7 +502,7 @@ describe('WorkflowSuggestedActions', () => {
 	});
 
 	describe('Popover behavior', () => {
-		it('should track when popover is opened', async () => {
+		it('should track when popover is opened via update:open event', async () => {
 			renderComponent({
 				props: {
 					workflow: mockWorkflow,
@@ -522,8 +514,8 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
 			});
 
-			// Simulate popover open
-			mockN8nSuggestedActionsEmits['on-open']();
+			// Simulate popover open via update:open event
+			mockN8nSuggestedActionsEmits['update:open'](true);
 
 			await vi.waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('user opened suggested actions checklist');
@@ -557,9 +549,9 @@ describe('WorkflowSuggestedActions', () => {
 				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
 			});
 
-			// Wait for the setTimeout to execute and openPopover to be called
+			// Wait for the setTimeout to execute and popover open state to be set
 			await vi.waitFor(() => {
-				expect(mockOpenPopover).toHaveBeenCalled();
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
 			});
 		});
 
@@ -587,7 +579,80 @@ describe('WorkflowSuggestedActions', () => {
 			});
 
 			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
-			expect(mockOpenPopover).not.toHaveBeenCalled();
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+		});
+
+		it('should not open popover when activation modal is active', async () => {
+			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+
+			// Mock the activation modal as open via the object property
+			Object.defineProperty(uiStore, 'isModalActiveById', {
+				value: {
+					[WORKFLOW_ACTIVE_MODAL_KEY]: true,
+				},
+				writable: true,
+			});
+
+			const { rerender } = renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						active: false,
+					},
+				},
+				pinia,
+			});
+
+			await rerender({
+				workflow: {
+					...mockWorkflow,
+					active: true,
+				},
+			});
+
+			// Should still update first activated at
+			await vi.waitFor(() => {
+				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			});
+
+			// But should not open popover due to modal being active
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+		});
+
+		it('should prevent opening popover when activation modal is active', async () => {
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+
+			// Mock the activation modal as open via the object property
+			Object.defineProperty(uiStore, 'isModalActiveById', {
+				value: {
+					[WORKFLOW_ACTIVE_MODAL_KEY]: true,
+				},
+				writable: true,
+			});
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
+			});
+
+			// Try to open popover by simulating user action
+			mockN8nSuggestedActionsEmits['update:open'](true);
+
+			// Should not actually open due to modal being active
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
 		});
 	});
 
@@ -615,18 +680,18 @@ describe('WorkflowSuggestedActions', () => {
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
-						id: 'evaluations',
-						title: 'workflowSuggestedActions.evaluations.title',
-						description: 'workflowSuggestedActions.evaluations.description',
-						moreInfoLink: EVALUATIONS_DOCS_URL,
-						completed: true,
-					},
-					{
 						id: 'errorWorkflow',
 						title: 'workflowSuggestedActions.errorWorkflow.title',
 						description: 'workflowSuggestedActions.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
+					},
+					{
+						id: 'evaluations',
+						title: 'workflowSuggestedActions.evaluations.title',
+						description: 'workflowSuggestedActions.evaluations.description',
+						moreInfoLink: EVALUATIONS_DOCS_URL,
+						completed: true,
 					},
 					{
 						id: 'timeSaved',

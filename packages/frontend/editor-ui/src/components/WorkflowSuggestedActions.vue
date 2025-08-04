@@ -11,6 +11,7 @@ import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
 	VIEWS,
 	MODAL_CONFIRM,
 	EVALUATIONS_DOCS_URL,
@@ -33,7 +34,7 @@ const uiStore = useUIStore();
 const message = useMessage();
 const telemetry = useTelemetry();
 
-const suggestedActionsComponent = ref<InstanceType<typeof N8nSuggestedActions>>();
+const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
 
 const hasAINode = computed(() => {
@@ -54,6 +55,10 @@ const hasErrorWorkflow = computed(() => {
 
 const hasTimeSaved = computed(() => {
 	return props.workflow.settings?.timeSavedPerExecution !== undefined;
+});
+
+const isActivationModalOpen = computed(() => {
+	return uiStore.isModalActiveById[WORKFLOW_ACTIVE_MODAL_KEY];
 });
 
 const availableActions = computed(() => {
@@ -128,10 +133,10 @@ async function handleActionClick(actionId: string) {
 		// Open workflow settings modal
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	}
-	suggestedActionsComponent.value?.closePopover();
+	isPopoverOpen.value = false;
 }
 
-function isValidAction(action: string): action is 'evaluations' | 'errorWorkflow' | 'timeSaved' {
+function isValidAction(action: string): action is ActionType {
 	return ['evaluations', 'errorWorkflow', 'timeSaved'].includes(action);
 }
 
@@ -168,11 +173,20 @@ async function handleIgnoreAll() {
 }
 
 function openSuggestedActions() {
-	suggestedActionsComponent.value?.openPopover();
+	isPopoverOpen.value = true;
 }
 
 function onPopoverOpened() {
 	telemetry.track('user opened suggested actions checklist');
+}
+
+function handlePopoverOpenChange(open: boolean) {
+	if (open) {
+		isPopoverOpen.value = true;
+		onPopoverOpened();
+	} else if (!isActivationModalOpen.value) {
+		isPopoverOpen.value = false;
+	}
 }
 
 // Watch for workflow activation
@@ -201,14 +215,14 @@ onMounted(async () => {
 <template>
 	<N8nSuggestedActions
 		v-if="availableActions.length > 0"
-		ref="suggestedActionsComponent"
-		popover-alignment="end"
+		:open="isPopoverOpen"
 		:title="i18n.baseText('workflowSuggestedActions.title')"
 		:actions="availableActions"
 		:ignore-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
+		popover-alignment="end"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
 		@ignore-all="handleIgnoreAll"
-		@on-open="onPopoverOpened"
+		@update:open="handlePopoverOpenChange"
 	/>
 </template>

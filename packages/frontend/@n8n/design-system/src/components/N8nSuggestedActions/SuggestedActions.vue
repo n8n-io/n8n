@@ -20,6 +20,7 @@ interface SuggestedAction {
 export interface SuggestedActionsProps {
 	title: string;
 	actions: SuggestedAction[];
+	open: boolean;
 	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
 }
@@ -28,7 +29,7 @@ interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
 	(event: 'ignore-click', actionId: string): void;
 	(event: 'ignore-all'): void;
-	(event: 'on-open'): void;
+	(event: 'update:open', open: boolean): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
@@ -41,7 +42,6 @@ const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 const emit = defineEmits<SuggestedActionsEmits>();
 const { t } = useI18n();
 
-const isOpen = ref(false);
 const ignoringActions = ref<Set<string>>(new Set());
 
 const completedCount = computed(() => props.actions.filter((action) => action.completed).length);
@@ -59,29 +59,16 @@ const handleIgnoreClick = (actionId: string) => {
 		ignoringActions.value.delete(actionId);
 	}, 500);
 };
-
-const openPopover = () => {
-	isOpen.value = true;
-};
-
-const closePopover = () => {
-	isOpen.value = false;
-};
-
-defineExpose({
-	openPopover,
-	closePopover,
-});
 </script>
 
 <template>
 	<N8nPopoverReka
 		v-if="completedCount !== actions.length"
-		v-model:open="isOpen"
+		:open="open"
 		width="360px"
 		max-height="500px"
 		:align="popoverAlignment"
-		@update:open="(open) => open && emit('on-open')"
+		@update:open="$emit('update:open', $event)"
 	>
 		<template #trigger>
 			<div :class="$style.triggerContainer" data-test-id="suggested-action-count">
@@ -97,8 +84,8 @@ defineExpose({
 					v-for="action in actions"
 					:key="action.id"
 					:class="[
-						$style.actionItem,
 						{
+							[$style.actionItem]: true,
 							[$style.ignoring]: ignoringActions.has(action.id),
 							[$style.actionable]: !action.completed,
 						},

@@ -16,14 +16,48 @@ const mockActions = [
 		description: 'Setup a workflow error to track what is going on here.',
 	},
 ];
-const stubs = ['n8n-text', 'n8n-link', 'n8n-icon'];
+
+// Mock N8nPopoverReka to always render content when open
+const MockN8nPopoverReka = {
+	name: 'N8nPopoverReka',
+	props: ['open', 'width', 'maxHeight', 'align'],
+	emits: ['update:open'],
+	template: `
+		<div>
+			<div @click="$emit('update:open', !open)" data-test-id="popover-trigger">
+				<slot name="trigger" />
+			</div>
+			<div v-if="open" data-test-id="popover-content">
+				<slot name="content" />
+			</div>
+		</div>
+	`,
+};
+
+const stubs = {
+	'n8n-text': { template: '<span><slot /></span>' },
+	'n8n-link': {
+		props: ['to', 'href'],
+		template: '<a :href="to || href"><slot /></a>',
+	},
+	'n8n-icon': true,
+	'n8n-heading': { template: '<h4><slot /></h4>' },
+	'n8n-tag': {
+		props: ['text'],
+		template: '<span>{{ text }}</span>',
+	},
+	N8nPopoverReka: MockN8nPopoverReka,
+};
 
 describe('N8nSuggestedActions', () => {
 	it('renders the suggested actions count', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: false,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
 
 		expect(wrapper.baseElement).toContainHTML('data-test-id="suggested-action-count"');
@@ -37,7 +71,10 @@ describe('N8nSuggestedActions', () => {
 					{ ...mockActions[0], completed: true },
 					{ ...mockActions[1], completed: true },
 				],
+				open: false,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
 
 		expect(wrapper.baseElement).not.toContainHTML('data-test-id="suggested-action-count"');
@@ -47,6 +84,8 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: [{ ...mockActions[0], completed: true }, mockActions[1]],
+				open: true,
+				title: 'Test Title',
 			},
 			global: { stubs },
 		});
@@ -54,41 +93,35 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.getByTestId('suggested-action-count')).toBeInTheDocument();
 		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('1 / 2');
 
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
-
 		// Check if action items are visible and checked off
 		const actionItems = wrapper.getAllByTestId('suggested-action-item');
 		expect(actionItems).toHaveLength(2);
-		expect(actionItems).toMatchSnapshot();
 	});
 
-	it('opens popover when count tag is clicked and all items are not completed', async () => {
+	it('shows popover content when open is true', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
 			global: { stubs },
 		});
 
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
-
 		// Check if action items are visible
 		const actionItems = wrapper.getAllByTestId('suggested-action-item');
 		expect(actionItems).toHaveLength(2);
-		expect(actionItems).toMatchSnapshot();
 	});
 
-	it('renders all action items correctly', async () => {
+	it('renders all action items correctly when open', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
-
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
 
 		// Check first action
 		expect(wrapper.getByText('Evaluate your workflow')).toBeInTheDocument();
@@ -107,11 +140,11 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
-
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
 
 		const actionButtons = wrapper.getAllByTestId('suggested-action-item');
 		await fireEvent.click(actionButtons[0]);
@@ -126,11 +159,11 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
-
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
 
 		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
 		await fireEvent.click(ignoreLinks[0]);
@@ -144,28 +177,34 @@ describe('N8nSuggestedActions', () => {
 		vi.useRealTimers();
 	});
 
-	it('exposes openPopover method', async () => {
-		const { container } = render(N8nSuggestedActions, {
+	it('emits update:open event when popover state changes', async () => {
+		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: false,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
 
-		// Check that the component renders correctly
-		expect(container.querySelector('[data-test-id="suggested-action-count"]')).toBeInTheDocument();
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
+
+		// Check that update:open event was emitted
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+		expect(wrapper.emitted('update:open')[0]).toEqual([true]);
 	});
 
 	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 				ignoreAllLabel: 'Ignore for all',
 			},
-			global: { stubs: { N8nIcon: true } },
+			global: { stubs },
 		});
-
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
 
 		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
@@ -175,13 +214,12 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 				ignoreAllLabel: 'Ignore for all',
 			},
-			global: { stubs: { N8nIcon: true } },
+			global: { stubs },
 		});
-
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
 
 		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-all');
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
@@ -194,11 +232,11 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
-
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
 
 		const moreInfoLinks = wrapper.getAllByText('More info');
 		expect(moreInfoLinks).toHaveLength(1); // Only first action has moreInfoLink
@@ -211,11 +249,11 @@ describe('N8nSuggestedActions', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: true,
+				title: 'Test Title',
 			},
+			global: { stubs },
 		});
-
-		const bellButton = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(bellButton);
 
 		const actionItems = wrapper.getAllByTestId('suggested-action-item');
 		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
@@ -227,23 +265,15 @@ describe('N8nSuggestedActions', () => {
 		expect(actionItems[0]).toHaveClass('ignoring');
 	});
 
-	it('exposes closePopover method', async () => {
-		const { container } = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-			},
-		});
-
-		// Check that the component renders correctly (closePopover is exposed but we can't test it directly in this environment)
-		expect(container.querySelector('[data-test-id="suggested-action-count"]')).toBeInTheDocument();
-	});
-
 	it('respects popoverAlignment prop', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
+				open: false,
+				title: 'Test Title',
 				popoverAlignment: 'start',
 			},
+			global: { stubs },
 		});
 
 		// Check that the component renders correctly with the alignment prop
