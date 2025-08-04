@@ -13,8 +13,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStoreEntity']);
-	await testDb.truncate(['DataStoreColumnEntity']);
+	await testDb.truncate(['DataStoreColumnEntity', 'DataStoreEntity']);
 });
 
 afterAll(async () => {
