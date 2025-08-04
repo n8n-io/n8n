@@ -721,6 +721,100 @@
 				"fix-typescript-safety-cli-1754200021292"
 			],
 			"created_at": "2025-08-03T05:47:01.292Z"
+		},
+		{
+			"id": "fix-nodes-base-test-failures-1754284768734",
+			"title": "Fix Critical Node Test Failures in nodes-base Package",
+			"description": "Resolve 161 failing test suites in nodes-base package, primarily Slack and other node tests failing with \"Data for node is missing\" errors. This is a critical Strike 3 blocker preventing quality target achievement.",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"All 161 failing test suites in nodes-base package fixed and passing",
+				"Node test harness \"Data for node is missing\" errors resolved",
+				"Slack node tests executing successfully",
+				"Test snapshot inconsistencies resolved",
+				"nodes-base package test suite passes completely",
+				"Strike 3 quality metric improved from 30% toward 100%"
+			],
+			"important_files": [
+				"packages/nodes-base/nodes/Slack/test/",
+				"packages/core/nodes-testing/node-test-harness.ts",
+				"packages/nodes-base/jest.config.js",
+				"packages/nodes-base/test/"
+			],
+			"estimate": "6-8 hours",
+			"created_at": "2025-08-04T05:19:28.734Z"
+		},
+		{
+			"id": "fix-editor-ui-test-failures-1754284797297",
+			"title": "Fix Editor-UI Test Failures and Timeout Issues",
+			"description": "Resolve test failures in n8n-editor-ui package that are causing test execution to fail and timeout. These failures are contributing to Strike 3 quality issues and preventing comprehensive test suite execution.",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"n8n-editor-ui test suite executes without failures",
+				"Test timeout issues resolved",
+				"Editor-UI component tests pass reliably",
+				"Frontend test infrastructure stabilized",
+				"Contribution to Strike 3 quality improvement achieved"
+			],
+			"important_files": [
+				"packages/editor-ui/src/",
+				"packages/editor-ui/test/",
+				"packages/editor-ui/vitest.config.ts",
+				"packages/@n8n/vitest-config/"
+			],
+			"estimate": "4-6 hours",
+			"created_at": "2025-08-04T05:19:57.297Z"
+		},
+		{
+			"id": "investigate-node-test-harness-issues-1754284842044",
+			"title": "Investigate and Fix Node Test Harness Data Missing Errors",
+			"description": "Analyze the root cause of \"Data for node is missing\" errors in the NodeTestHarness class that are causing widespread test failures across multiple node implementations. This is a fundamental testing infrastructure issue blocking Strike 3 quality.",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"success_criteria": [
+				"Root cause of \"Data for node is missing\" errors identified",
+				"NodeTestHarness.getResultNodeData() method fixed",
+				"Test execution workflow for node testing restored",
+				"Missing node data handling improved",
+				"Test infrastructure reliability enhanced",
+				"Documentation updated for proper node test setup"
+			],
+			"important_files": [
+				"packages/core/nodes-testing/node-test-harness.ts",
+				"packages/core/nodes-testing/",
+				"packages/nodes-base/test/helpers/",
+				"packages/core/src/"
+			],
+			"estimate": "4-5 hours",
+			"created_at": "2025-08-04T05:20:42.044Z"
+		},
+		{
+			"id": "fix-test-snapshot-inconsistencies-1754284864470",
+			"title": "Fix Test Snapshot Inconsistencies Across Test Suites",
+			"description": "Resolve failing snapshots and snapshot inconsistencies that are contributing to test failures. Update outdated snapshots and ensure snapshot testing is working correctly across the monorepo.",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"success_criteria": [
+				"All failing snapshots updated and consistent",
+				"Snapshot testing framework working reliably",
+				"Snapshot update process documented",
+				"CI/CD snapshot validation improved",
+				"Test snapshot conflicts resolved"
+			],
+			"important_files": [
+				"packages/nodes-base/test/",
+				"packages/editor-ui/test/",
+				"packages/*/jest.config.*",
+				"packages/*/vitest.config.*"
+			],
+			"estimate": "2-3 hours",
+			"created_at": "2025-08-04T05:21:04.470Z"
 		}
 	],
 	"__removedLinterTasks": {
