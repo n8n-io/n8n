@@ -1,10 +1,6 @@
-import {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStoreRows,
-	type DataStoreCreateColumnSchema,
-} from '@n8n/api-types';
+import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
 
 import type { DataStoreUserTableName } from '../data-store.types';
 

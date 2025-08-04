@@ -60,8 +60,8 @@ export class DataStoreProxyService {
 							return await dataStoreService.getColumns(dataStoreId);
 						},
 
-						async appendRows(rows: DataStoreRows) {
-							return await dataStoreService.appendRows(dataStoreId, rows);
+						async insertRows(rows: DataStoreRows) {
+							return await dataStoreService.insertRows(dataStoreId, rows);
 						},
 					};
 		return {

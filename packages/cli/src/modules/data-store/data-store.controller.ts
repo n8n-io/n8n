@@ -6,7 +6,6 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -20,6 +19,7 @@ import {
 	ProjectScope,
 	RestController,
 } from '@n8n/decorators';
+import type { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreService } from './data-store.service';
 
