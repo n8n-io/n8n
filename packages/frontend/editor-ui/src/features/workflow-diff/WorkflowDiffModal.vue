@@ -20,7 +20,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -35,6 +36,8 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -260,7 +263,25 @@ const nodeDiffs = computed(() => {
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
+	router.back();
 }
+
+// Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', handleEscapeKey, true);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', handleEscapeKey, true);
+});
 
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
@@ -342,9 +363,10 @@ const modifiers = [
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		:close-on-press-escape="false"
 		@before-close="handleBeforeClose"
 	>
-		<template #header="{ closeDialog }">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
@@ -352,7 +374,7 @@ const modifiers = [
 						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
-						@click="closeDialog"
+						@click="handleBeforeClose"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
 						{{

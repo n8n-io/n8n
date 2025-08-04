@@ -1,17 +1,15 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
-import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useRoute, useRouter } from 'vue-router';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -22,13 +20,12 @@ const responseStatuses = {
 };
 
 const loadingService = useLoadingService();
-const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
 const toast = useToast();
 const i18n = useI18n();
-
-const eventBus = createEventBus();
+const route = useRoute();
+const router = useRouter();
 const tooltipOpenDelay = ref(300);
 
 const currentBranch = computed(() => {
@@ -71,9 +68,12 @@ async function pushWorkfolder() {
 			return;
 		}
 
-		uiStore.openModalWithData({
-			name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-			data: { eventBus, status },
+		// Navigate to route with sourceControl param - modal will be opened by route watcher
+		void router.push({
+			query: {
+				...route.query,
+				sourceControl: 'push',
+			},
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
@@ -97,9 +97,12 @@ async function pullWorkfolder() {
 		const errorResponse = error.response;
 
 		if (errorResponse?.status === responseStatuses.CONFLICT) {
-			uiStore.openModalWithData({
-				name: SOURCE_CONTROL_PULL_MODAL_KEY,
-				data: { eventBus, status: errorResponse.data.data },
+			// Navigate to route with sourceControl param - modal will be opened by route watcher
+			void router.push({
+				query: {
+					...route.query,
+					sourceControl: 'pull',
+				},
 			});
 		} else {
 			toast.showError(error, 'Error');

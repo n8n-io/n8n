@@ -4,7 +4,7 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import type { WorkflowResource } from '@/Interface';
@@ -43,9 +43,10 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { refDebounced } from '@vueuse/core';
 import dateformat from 'dateformat';
+import groupBy from 'lodash/groupBy';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
@@ -60,11 +61,12 @@ const props = defineProps<{
 
 const telemetry = useTelemetry();
 const loadingService = useLoadingService();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
+const route = useRoute();
+const router = useRouter();
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
@@ -266,7 +268,9 @@ const otherFiles = computed(() => {
 });
 
 function close() {
-	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
+	// Navigate back in history to maintain proper browser navigation
+	// The global route watcher will handle closing the modal
+	router.back();
 }
 
 async function pullWorkfolder() {
@@ -326,15 +330,19 @@ function castProject(project: ProjectListItem): WorkflowResource {
 }
 
 const workflowDiffEventBus = createEventBus();
-
 function openDiffModal(id: string) {
 	telemetry.track('User clicks compare workflows', {
 		workflow_id: id,
 		context: 'source_control_pull',
 	});
-	uiStore.openModalWithData({
-		name: WORKFLOW_DIFF_MODAL_KEY,
-		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'pull' },
+
+	// Only update route - modal will be opened by route watcher
+	void router.push({
+		query: {
+			...route.query,
+			diff: id,
+			direction: 'pull',
+		},
 	});
 }
 
@@ -353,6 +361,7 @@ const modalHeight = computed(() =>
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 		:height="modalHeight"
 		:custom-class="$style.sourceControlPull"
+		:before-close="close"
 	>
 		<template #header>
 			<N8nHeading tag="h1" size="xlarge">
