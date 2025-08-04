@@ -57,7 +57,13 @@ class MockOpenAIRerank {
 				// Sort by relevance score (descending) and map back to documents
 				const rankedResults = result.results
 					.sort((a: any, b: any) => (b.relevance_score || 0) - (a.relevance_score || 0))
-					.slice(0, this.topK) // Limit to topK results
+					.filter((item: any) => {
+						// Validate index is within bounds
+						return (
+							typeof item.index === 'number' && item.index >= 0 && item.index < documents.length
+						);
+					})
+					.slice(0, this.topK) // Limit to topK results after filtering
 					.map((item: any) => {
 						const originalDoc = documents[item.index];
 						return {
@@ -80,12 +86,23 @@ class MockOpenAIRerank {
 	}
 }
 
-// Mock fetch globally
-global.fetch = jest.fn();
-
 describe('OpenAIRerank', () => {
 	let reranker: MockOpenAIRerank;
-	const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+	let mockFetch: jest.MockedFunction<typeof fetch>;
+	let originalFetch: typeof fetch;
+
+	beforeAll(() => {
+		// Save the original fetch implementation
+		originalFetch = global.fetch;
+		// Mock fetch globally
+		mockFetch = jest.fn();
+		global.fetch = mockFetch;
+	});
+
+	afterAll(() => {
+		// Restore the original fetch implementation
+		global.fetch = originalFetch;
+	});
 
 	beforeEach(() => {
 		reranker = new MockOpenAIRerank({
@@ -256,6 +273,30 @@ describe('OpenAIRerank', () => {
 			});
 
 			expect((rerankerWithSlash as any).baseURL).toBe('https://api.example.com');
+		});
+
+		it('should handle invalid indices from API response', async () => {
+			const mockResponse = {
+				results: [
+					{ index: 0, relevance_score: 0.95 }, // Valid
+					{ index: 10, relevance_score: 0.9 }, // Out of bounds
+					{ index: -1, relevance_score: 0.85 }, // Negative
+					{ index: 1, relevance_score: 0.8 }, // Valid
+					{ index: 'invalid', relevance_score: 0.75 }, // Invalid type
+				],
+			};
+
+			mockFetch.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockResponse,
+			} as Response);
+
+			const result = await reranker.compressDocuments(mockDocuments, 'test query');
+
+			// Should only return documents with valid indices (0 and 1)
+			expect(result).toHaveLength(2);
+			expect(result[0].pageContent).toBe('Machine learning is a subset of artificial intelligence');
+			expect(result[1].pageContent).toBe('Cats are cute animals that like to sleep');
 		});
 	});
 });

@@ -36,7 +36,7 @@ class OpenAIRerank extends BaseDocumentCompressor {
 	async compressDocuments(
 		documents: DocumentInterface[],
 		query: string,
-		callbacks?: Callbacks,
+		_callbacks?: Callbacks,
 	): Promise<DocumentInterface[]> {
 		if (documents.length === 0) {
 			return [];
@@ -72,7 +72,13 @@ class OpenAIRerank extends BaseDocumentCompressor {
 				// Sort by relevance score (descending) and map back to documents
 				const rankedResults = result.results
 					.sort((a: any, b: any) => (b.relevance_score || 0) - (a.relevance_score || 0))
-					.slice(0, this.topK) // Limit to topK results
+					.filter((item: any) => {
+						// Validate index is within bounds
+						return (
+							typeof item.index === 'number' && item.index >= 0 && item.index < documents.length
+						);
+					})
+					.slice(0, this.topK) // Limit to topK results after filtering
 					.map((item: any) => {
 						const originalDoc = documents[item.index];
 						return {
