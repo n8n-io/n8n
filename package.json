@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.105.0",
+  "version": "1.106.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -30,6 +30,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",
+    "lint:styles": "turbo run lint:styles",
+    "lint:styles:fix": "turbo run lint:styles:fix",
     "lint:affected": "turbo run lint --affected",
     "lint:fix": "turbo run lint:fix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",

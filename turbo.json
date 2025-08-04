@@ -14,6 +14,12 @@
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
 		"lint:fix": {},
+		"lint:styles": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
+		"lint:styles:fix": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]

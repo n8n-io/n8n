@@ -3,10 +3,19 @@ import { useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import N8nButton from '../N8nButton';
 
 defineOptions({
 	name: 'CanvasThinkingPill',
 });
+
+defineProps<{
+	showStop?: boolean;
+}>();
+
+const emit = defineEmits<{
+	stop: [];
+}>();
 
 const { t } = useI18n();
 const $style = useCssModule();
@@ -17,7 +26,17 @@ const $style = useCssModule();
 		<div :class="$style.iconWrapper">
 			<AssistantIcon theme="blank" />
 		</div>
-		<span :class="$style.text">{{ t('aiAssistant.builder.canvas.thinking') }}</span>
+		<span :class="$style.text"
+			>{{ t('aiAssistant.builder.canvas.thinking') }}
+			<N8nButton
+				v-if="showStop"
+				:class="$style.stopButton"
+				:label="'Stop'"
+				type="secondary"
+				size="mini"
+				@click="emit('stop')"
+			/>
+		</span>
 	</div>
 </template>
 
@@ -28,7 +47,7 @@ const $style = useCssModule();
 	padding: 0 var(--spacing-s) 0 var(--spacing-xs);
 	justify-content: center;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-2xs);
 	border-radius: 22px;
 	border: 1px solid var(--prim-gray-740);
 	background: rgba(65, 66, 68, 0.92);
@@ -51,6 +70,9 @@ const $style = useCssModule();
 	justify-content: center;
 }
 
+.stopButton {
+	margin-left: var(--spacing-xs);
+}
 .text {
 	color: white;
 	font-size: var(--font-size-s);
