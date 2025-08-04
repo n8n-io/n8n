@@ -341,6 +341,7 @@ const modifiers = [
 						icon="arrow-left"
 						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
+						icon-size="large"
 						@click="closeDialog"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
@@ -359,7 +360,7 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-xs"
+						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
 						<N8nButton type="secondary">
@@ -397,7 +398,7 @@ const modifiers = [
 												@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
 											>
 												<DiffBadge :type="change.status" />
-												<NodeIcon :node-type="change.type" :size="16" />
+												<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
 												{{ change.node.name }}
 											</ElDropdownItem>
 										</ul>
@@ -418,7 +419,11 @@ const modifiers = [
 																setSelectedDetailId(change[1].connection.source?.id, activeTab)
 															"
 														>
-															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
+															<NodeIcon
+																:node-type="change[1].connection.sourceType"
+																:size="16"
+																class="ml-2xs mr-4xs"
+															/>
 															{{ change[1].connection.source?.name }}
 														</ElDropdownItem>
 														<div :class="$style.separator"></div>
@@ -432,7 +437,11 @@ const modifiers = [
 																setSelectedDetailId(change[1].connection.target?.id, activeTab)
 															"
 														>
-															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
+															<NodeIcon
+																:node-type="change[1].connection.targetType"
+																:size="16"
+																class="ml-2xs mr-4xs"
+															/>
 															{{ change[1].connection.target?.name }}
 														</ElDropdownItem>
 													</ul>
@@ -459,6 +468,7 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
+						class="mr-2xs"
 						:class="$style.navigationButton"
 						@click="previousNodeChange"
 					></N8nIconButton>
@@ -577,7 +587,7 @@ const modifiers = [
 	</Modal>
 </template>
 
-<style module>
+<style module lang="scss">
 /* Light theme diff colors */
 :root,
 [data-theme='light'] {
@@ -662,29 +672,40 @@ const modifiers = [
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: 8px;
-		padding: 8px;
+		gap: var(--spacing-2xs);
+		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+
+		ul {
+			margin-top: -3px;
+		}
+
+		.clickableChange {
+			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			margin-left: -4px;
+		}
 	}
+}
+
+.clickableChange {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing-2xs);
+	border-radius: 4px;
+	padding: var(--spacing-xs) var(--spacing-2xs);
+	line-height: unset;
+}
+
+.clickableChangeActive {
+	background-color: var(--color-background-medium);
 }
 
 .separator {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color-foreground-xdark);
-	margin: -5px 23px;
+	margin: 0 0 -5px var(--spacing-xs);
 	position: relative;
 	z-index: 1;
-}
-
-.clickableChange {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	border-radius: 4px;
-}
-
-.clickableChangeActive {
-	background-color: var(--color-background-medium);
 }
 
 .deleted,
@@ -707,18 +728,6 @@ const modifiers = [
 		display: inline-flex;
 		justify-content: center;
 		align-items: center;
-	}
-
-	&[data-node-type='n8n-nodes-base.stickyNote'],
-	&[data-node-type='n8n-nodes-base.manualTrigger'] {
-		&::before {
-			left: auto;
-			right: 0;
-			border-top-right-radius: 0;
-			border-top-left-radius: 2px;
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 6px;
-		}
 	}
 }
 
@@ -854,7 +863,6 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {
