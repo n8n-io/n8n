@@ -212,3 +212,16 @@ export {
 	AlertsResponseDto,
 	AlertRulesResponseDto,
 } from './monitoring/system-monitoring.dto';
+
+export {
+	NodePerformanceTrendDto,
+	NodePerformanceMetricsDto,
+	WorkflowNodeBreakdownDto,
+	NodeTypePerformanceDto,
+	LiveNodeExecutionDto,
+	NodePerformanceHistoryDto,
+	NodePerformanceRequestDto,
+	WorkflowNodeBreakdownRequestDto,
+	NodeTypePerformanceRequestDto,
+	NodeTypePerformanceResponseDto,
+} from './monitoring/node-performance.dto';

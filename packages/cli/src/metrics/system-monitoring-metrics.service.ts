@@ -57,6 +57,15 @@ interface SystemMonitoringMetrics {
 	diskIOOperations: Counter<'device' | 'operation'>;
 	diskIOBytes: Counter<'device' | 'operation'>;
 	diskIOTime: Histogram<'device' | 'operation'>;
+
+	// Node-level performance metrics
+	nodeExecutionDuration: Histogram<'workflowId' | 'nodeId' | 'nodeType' | 'status'>;
+	nodeExecutionMemoryUsage: Histogram<'workflowId' | 'nodeId' | 'nodeType'>;
+	nodeExecutionCpuUsage: Histogram<'workflowId' | 'nodeId' | 'nodeType'>;
+	nodeExecutionDataItems: Histogram<'workflowId' | 'nodeId' | 'nodeType' | 'direction'>;
+	nodeExecutionErrors: Counter<'workflowId' | 'nodeId' | 'nodeType' | 'errorType'>;
+	nodeExecutionBottlenecks: Gauge<'workflowId' | 'nodeId' | 'nodeType'>;
+	nodeExecutionActive: Gauge<'workflowId' | 'nodeId' | 'nodeType'>;
 }
 
 @Service()
@@ -306,6 +315,60 @@ export class SystemMonitoringMetricsService extends EventEmitter {
 				labelNames: ['device', 'operation'],
 				buckets: [0.001, 0.01, 0.1, 1, 10],
 			}),
+
+			// Node-level performance metrics
+			nodeExecutionDuration: new promClient.Histogram({
+				name: this.prefix + 'node_execution_duration_seconds',
+				help: 'Node execution duration in seconds',
+				labelNames: ['workflowId', 'nodeId', 'nodeType', 'status'],
+				buckets: [0.01, 0.1, 0.5, 1, 5, 10, 30, 60, 300, 600],
+			}),
+
+			nodeExecutionMemoryUsage: new promClient.Histogram({
+				name: this.prefix + 'node_execution_memory_bytes',
+				help: 'Node execution memory usage in bytes',
+				labelNames: ['workflowId', 'nodeId', 'nodeType'],
+				buckets: [
+					1024 * 1024,
+					10 * 1024 * 1024,
+					50 * 1024 * 1024,
+					100 * 1024 * 1024,
+					250 * 1024 * 1024,
+					500 * 1024 * 1024,
+				],
+			}),
+
+			nodeExecutionCpuUsage: new promClient.Histogram({
+				name: this.prefix + 'node_execution_cpu_percent',
+				help: 'Node execution CPU usage percentage',
+				labelNames: ['workflowId', 'nodeId', 'nodeType'],
+				buckets: [1, 5, 10, 25, 50, 75, 90, 100],
+			}),
+
+			nodeExecutionDataItems: new promClient.Histogram({
+				name: this.prefix + 'node_execution_data_items',
+				help: 'Number of data items processed by node',
+				labelNames: ['workflowId', 'nodeId', 'nodeType', 'direction'],
+				buckets: [1, 10, 50, 100, 500, 1000, 5000, 10000],
+			}),
+
+			nodeExecutionErrors: new promClient.Counter({
+				name: this.prefix + 'node_execution_errors_total',
+				help: 'Total number of node execution errors',
+				labelNames: ['workflowId', 'nodeId', 'nodeType', 'errorType'],
+			}),
+
+			nodeExecutionBottlenecks: new promClient.Gauge({
+				name: this.prefix + 'node_execution_bottleneck_score',
+				help: 'Node bottleneck score (0-100)',
+				labelNames: ['workflowId', 'nodeId', 'nodeType'],
+			}),
+
+			nodeExecutionActive: new promClient.Gauge({
+				name: this.prefix + 'node_execution_active',
+				help: 'Number of active node executions',
+				labelNames: ['workflowId', 'nodeId', 'nodeType'],
+			}),
 		};
 
 		this.logger.debug('System monitoring metrics initialized');
@@ -471,6 +534,122 @@ export class SystemMonitoringMetricsService extends EventEmitter {
 	}
 
 	/**
+	 * Record node execution metrics
+	 */
+	recordNodeExecution(data: {
+		workflowId: string;
+		nodeId: string;
+		nodeType: string;
+		duration: number;
+		memoryUsage?: number;
+		cpuUsage?: number;
+		inputItems: number;
+		outputItems: number;
+		status: 'success' | 'error' | 'timeout' | 'canceled';
+		errorType?: string;
+		bottleneckScore?: number;
+	}): void {
+		const {
+			workflowId,
+			nodeId,
+			nodeType,
+			duration,
+			memoryUsage,
+			cpuUsage,
+			inputItems,
+			outputItems,
+			status,
+			errorType,
+			bottleneckScore,
+		} = data;
+
+		try {
+			// Record execution duration
+			this.metrics.nodeExecutionDuration
+				.labels(workflowId, nodeId, nodeType, status)
+				.observe(duration / 1000); // Convert to seconds
+
+			// Record memory usage if available
+			if (memoryUsage !== undefined) {
+				this.metrics.nodeExecutionMemoryUsage
+					.labels(workflowId, nodeId, nodeType)
+					.observe(memoryUsage);
+			}
+
+			// Record CPU usage if available
+			if (cpuUsage !== undefined) {
+				this.metrics.nodeExecutionCpuUsage.labels(workflowId, nodeId, nodeType).observe(cpuUsage);
+			}
+
+			// Record data items processed
+			this.metrics.nodeExecutionDataItems
+				.labels(workflowId, nodeId, nodeType, 'input')
+				.observe(inputItems);
+
+			this.metrics.nodeExecutionDataItems
+				.labels(workflowId, nodeId, nodeType, 'output')
+				.observe(outputItems);
+
+			// Record errors
+			if (status === 'error' && errorType) {
+				this.metrics.nodeExecutionErrors.labels(workflowId, nodeId, nodeType, errorType).inc();
+			}
+
+			// Record bottleneck score if available
+			if (bottleneckScore !== undefined) {
+				this.metrics.nodeExecutionBottlenecks
+					.labels(workflowId, nodeId, nodeType)
+					.set(bottleneckScore);
+			}
+
+			this.logger.debug('Recorded node execution metrics', {
+				workflowId,
+				nodeId,
+				nodeType,
+				duration,
+				status,
+			});
+		} catch (error) {
+			this.logger.error('Failed to record node execution metrics', {
+				workflowId,
+				nodeId,
+				nodeType,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Update active node execution count
+	 */
+	updateActiveNodeExecutions(data: {
+		workflowId: string;
+		nodeId: string;
+		nodeType: string;
+		active: boolean;
+	}): void {
+		const { workflowId, nodeId, nodeType, active } = data;
+
+		try {
+			this.metrics.nodeExecutionActive.labels(workflowId, nodeId, nodeType).set(active ? 1 : 0);
+
+			this.logger.debug('Updated active node execution count', {
+				workflowId,
+				nodeId,
+				nodeType,
+				active,
+			});
+		} catch (error) {
+			this.logger.error('Failed to update active node execution count', {
+				workflowId,
+				nodeId,
+				nodeType,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
 	 * Set up event listeners for real-time metrics
 	 */
 	private setupEventListeners(): void {
@@ -487,6 +666,26 @@ export class SystemMonitoringMetricsService extends EventEmitter {
 		// Listen for workflow execution events
 		this.systemMonitoringService.on('workflowExecutionCompleted', (data) => {
 			this.recordWorkflowExecution(data);
+		});
+
+		// Listen for node execution events
+		this.systemMonitoringService.on('nodeExecutionStart', (data) => {
+			this.updateActiveNodeExecutions({
+				workflowId: data.workflowId,
+				nodeId: data.nodeId,
+				nodeType: data.nodeType,
+				active: true,
+			});
+		});
+
+		this.systemMonitoringService.on('nodeExecutionCompleted', (data) => {
+			this.recordNodeExecution(data);
+			this.updateActiveNodeExecutions({
+				workflowId: data.workflowId,
+				nodeId: data.nodeId,
+				nodeType: data.nodeType,
+				active: false,
+			});
 		});
 
 		// Listen for threshold breaches

@@ -12,6 +12,15 @@ import {
 	AlertRuleDto,
 	AlertRulesResponseDto,
 	MonitoringConfigDto,
+	NodePerformanceMetricsDto,
+	WorkflowNodeBreakdownDto,
+	NodeTypePerformanceDto,
+	LiveNodeExecutionDto,
+	NodePerformanceHistoryDto,
+	NodePerformanceRequestDto,
+	WorkflowNodeBreakdownRequestDto,
+	NodeTypePerformanceRequestDto,
+	NodeTypePerformanceResponseDto,
 } from '@n8n/api-types';
 import { Response } from 'express';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -712,6 +721,245 @@ export class SystemMonitoringController {
 			});
 
 			throw new InternalServerError('Failed to create test alert');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/:workflowId/nodes/:nodeId/performance
+	 * Get detailed performance metrics for a specific node
+	 */
+	@Get('/workflows/:workflowId/nodes/:nodeId/performance')
+	async getNodePerformanceMetrics(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('nodeId') nodeId: string,
+		@Query query: NodePerformanceRequestDto,
+	): Promise<NodePerformanceMetricsDto> {
+		try {
+			if (!workflowId || workflowId.trim() === '') {
+				throw new BadRequestError('Workflow ID is required');
+			}
+
+			if (!nodeId || nodeId.trim() === '') {
+				throw new BadRequestError('Node ID is required');
+			}
+
+			this.logger.debug('Getting node performance metrics', {
+				workflowId,
+				nodeId,
+				query,
+				userId: req.user.id,
+			});
+
+			const metrics = await this.systemMonitoringService.getNodePerformanceMetrics(
+				workflowId,
+				nodeId,
+				query,
+			);
+
+			return metrics;
+		} catch (error) {
+			this.logger.error('Failed to get node performance metrics', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get node performance metrics');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/:workflowId/nodes/breakdown
+	 * Get performance breakdown for all nodes in a workflow
+	 */
+	@Get('/workflows/:workflowId/nodes/breakdown')
+	async getWorkflowNodeBreakdown(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Query query: WorkflowNodeBreakdownRequestDto,
+	): Promise<WorkflowNodeBreakdownDto> {
+		try {
+			if (!workflowId || workflowId.trim() === '') {
+				throw new BadRequestError('Workflow ID is required');
+			}
+
+			this.logger.debug('Getting workflow node breakdown', {
+				workflowId,
+				query,
+				userId: req.user.id,
+			});
+
+			const breakdown = await this.systemMonitoringService.getWorkflowNodeBreakdown(
+				workflowId,
+				query,
+			);
+
+			return breakdown;
+		} catch (error) {
+			this.logger.error('Failed to get workflow node breakdown', {
+				workflowId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get workflow node breakdown');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/node-types/performance
+	 * Get performance comparison across different node types
+	 */
+	@Get('/node-types/performance')
+	async getNodeTypePerformance(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: NodeTypePerformanceRequestDto,
+	): Promise<NodeTypePerformanceResponseDto> {
+		try {
+			// Validate limit
+			if (query.limit && (query.limit < 1 || query.limit > 200)) {
+				throw new BadRequestError('Limit must be between 1 and 200');
+			}
+
+			this.logger.debug('Getting node type performance', {
+				query,
+				userId: req.user.id,
+			});
+
+			const performance = await this.systemMonitoringService.getNodeTypePerformance(query);
+
+			return {
+				nodeTypes: performance,
+				total: performance.length,
+				timeRange: query.timeRange,
+				generatedAt: new Date().toISOString(),
+			};
+		} catch (error) {
+			this.logger.error('Failed to get node type performance', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get node type performance');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/executions/:executionId/nodes/live
+	 * Get real-time node execution status for a running execution
+	 */
+	@Get('/executions/:executionId/nodes/live')
+	async getLiveNodeExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<LiveNodeExecutionDto> {
+		try {
+			if (!executionId || executionId.trim() === '') {
+				throw new BadRequestError('Execution ID is required');
+			}
+
+			this.logger.debug('Getting live node execution', {
+				executionId,
+				userId: req.user.id,
+			});
+
+			const liveExecution = await this.systemMonitoringService.getLiveNodeExecution(executionId);
+
+			return liveExecution;
+		} catch (error) {
+			this.logger.error('Failed to get live node execution', {
+				executionId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			if (error.message.includes('not found')) {
+				throw new NotFoundError(`Execution with ID '${executionId}' not found or not active`);
+			}
+
+			throw new InternalServerError('Failed to get live node execution');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/:workflowId/nodes/:nodeId/history
+	 * Get historical performance data for a specific node
+	 */
+	@Get('/workflows/:workflowId/nodes/:nodeId/history')
+	async getNodePerformanceHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('nodeId') nodeId: string,
+		@Query query: { timeRange?: string },
+	): Promise<NodePerformanceHistoryDto> {
+		try {
+			if (!workflowId || workflowId.trim() === '') {
+				throw new BadRequestError('Workflow ID is required');
+			}
+
+			if (!nodeId || nodeId.trim() === '') {
+				throw new BadRequestError('Node ID is required');
+			}
+
+			const validTimeRanges = ['1h', '6h', '24h', '7d', '30d'];
+			const timeRange = query.timeRange || '24h';
+
+			if (!validTimeRanges.includes(timeRange)) {
+				throw new BadRequestError(
+					`Invalid time range. Must be one of: ${validTimeRanges.join(', ')}`,
+				);
+			}
+
+			this.logger.debug('Getting node performance history', {
+				workflowId,
+				nodeId,
+				timeRange,
+				userId: req.user.id,
+			});
+
+			const history = await this.systemMonitoringService.getNodePerformanceHistory(
+				workflowId,
+				nodeId,
+				timeRange,
+			);
+
+			return history;
+		} catch (error) {
+			this.logger.error('Failed to get node performance history', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get node performance history');
 		}
 	}
 }
