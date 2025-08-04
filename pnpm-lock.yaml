@@ -256,9 +256,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n/eslint-config
-      '@n8n/stylelint-config':
-        specifier: workspace:*
-        version: link:packages/@n8n/stylelint-config
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
@@ -1908,6 +1905,9 @@ importers:
         specifier: workspace:*
         version: link:../../@n8n/extension-sdk
     devDependencies:
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/stylelint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config
@@ -1966,6 +1966,9 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../../../@n8n/storybook
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -2114,6 +2117,9 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../../../@n8n/storybook
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -2622,6 +2628,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/stylelint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config
@@ -16066,8 +16075,8 @@ packages:
   vue-component-type-helpers@2.2.10:
     resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
-  vue-component-type-helpers@3.0.4:
-    resolution: {integrity: sha512-WtR3kPk8vqKYfCK/HGyT47lK/T3FaVyWxaCNuosaHYE8h9/k0lYRZ/PI/+T/z2wP+uuNKmL6z30rOcBboOu/YA==}
+  vue-component-type-helpers@3.0.5:
+    resolution: {integrity: sha512-uoNZaJ+a1/zppa/Vgmi8zIOP2PHXDN2rT8NyF+zQRK6ZG94lNB9prcV0GdLJbY9i9lrD47JOVIH92SaiA7oJ1A==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -21599,7 +21608,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.3)
-      vue-component-type-helpers: 3.0.4
+      vue-component-type-helpers: 3.0.5
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -32814,7 +32823,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.10: {}
 
-  vue-component-type-helpers@3.0.4: {}
+  vue-component-type-helpers@3.0.5: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.3)):
     dependencies:

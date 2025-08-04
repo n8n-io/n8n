@@ -7,10 +7,6 @@
     "./base": {
       "default": "./dist/configs/base.js",
       "types": "./dist/configs/base.d.ts"
-    },
-    "./selective-import-check": {
-      "default": "./dist/configs/selective-import-check.js",
-      "types": "./dist/configs/selective-import-check.d.ts"
     }
   },
   "scripts": {

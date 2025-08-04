@@ -46,6 +46,13 @@ export const baseConfig: Config = {
 				],
 			},
 		],
+		'at-rule-disallowed-list': [
+			['import'],
+			{
+				message:
+					'@import is deprecated! Use @use for local SCSS files. For third-party libraries that need scoping: use @use "sass:meta"; and @include meta.load-css("library") inside a CSS selector.',
+			},
+		],
 
 		// SCSS specific rules
 		'scss/dollar-variable-colon-space-after': 'always-single-line',
