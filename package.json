@@ -1,5 +1,5 @@
 {
-  "name": "n8n-monorepo",
+  "name": "nurx-monorepo",
   "version": "1.105.0",
   "private": true,
   "engines": {
@@ -35,17 +35,17 @@
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
-    "start:default": "cd packages/cli/bin && ./n8n",
-    "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
-    "start:windows": "cd packages/cli/bin && n8n",
+    "start:default": "cd packages/cli/bin && ./nurx",
+    "start:tunnel": "./packages/cli/bin/nurx start --tunnel",
+    "start:windows": "cd packages/cli/bin && nurx",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright run test:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch",
-    "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "webhook": "./packages/cli/bin/nurx webhook",
+    "worker": "./packages/cli/bin/nurx worker"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",

@@ -1,7 +1,7 @@
 {
-  "name": "n8n",
+  "name": "nurx",
   "version": "1.105.0",
-  "description": "n8n Workflow Automation Tool",
+  "description": "Nurx Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -18,8 +18,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "start": "run-script-os",
-    "start:default": "cd bin && ./n8n",
-    "start:windows": "cd bin && n8n",
+    "start:default": "cd bin && ./nurx",
+    "start:windows": "cd bin && nurx",
     "test": "pnpm test:sqlite",
     "test:dev": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",

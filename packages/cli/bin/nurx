@@ -1,0 +1,64 @@
+#!/usr/bin/env node
+
+const path = require('path');
+
+// Make sure that it also find the config folder when it
+// did get started from another folder that the root one.
+process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname, 'config');
+
+// Check if version should be displayed
+const versionFlags = ['-v', '-V', '--version'];
+if (versionFlags.includes(process.argv.slice(-1)[0])) {
+	console.log(require('../package').version);
+	process.exit(0);
+}
+
+const satisfies = require('semver/functions/satisfies');
+const nodeVersion = process.versions.node;
+const {
+	engines: { node: supportedNodeVersions },
+} = require('../package.json');
+if (!satisfies(nodeVersion, supportedNodeVersions)) {
+	console.error(`
+Your Node.js version ${nodeVersion} is currently not supported by n8n.
+Please use a Node.js version that satisfies the following version range: ${supportedNodeVersions}
+`);
+	process.exit(1);
+}
+
+// Disable nodejs custom inspection across the app
+const { inspect } = require('util');
+inspect.defaultOptions.customInspect = false;
+
+require('source-map-support').install();
+require('reflect-metadata');
+
+// Skip loading dotenv in e2e tests.
+// Also, do not use `inE2ETests` from constants here, because that'd end up code that might read from `process.env` before the values are loaded from an `.env` file.
+if (process.env.E2E_TESTS !== 'true') {
+	// Loading dotenv early ensures that `process.env` is up-to-date everywhere in code
+	require('dotenv').config();
+}
+
+// Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
+// _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
+// `GlobalConfig.database.type` to decide on column types and timestamp syntax.
+require('../dist/config');
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	require('dns').setDefaultResultOrder('ipv4first');
+}
+
+// Node.js 20 enabled a Happy Eyeballs algorithm which enables support
+// for both IPv6 and IPv4 at the same time, favoring IPv6 when possible.
+// However there are some issues in the algorithm implementation that is causing
+// issues to our users with services like Telegram or Airtable. This restores the
+// behavior to pre v20
+// More details: https://github.com/nodejs/node/issues/48145
+require('net').setDefaultAutoSelectFamily?.(false);
+
+(async () => {
+	const { Container } = await import('@n8n/di');
+	const { CommandRegistry } = await import('../dist/command-registry.js');
+	await Container.get(CommandRegistry).execute();
+})();
