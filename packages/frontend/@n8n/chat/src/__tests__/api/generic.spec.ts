@@ -1,5 +1,6 @@
-import { postWithFiles } from '@n8n/chat/api/generic';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { postWithFiles } from '@n8n/chat/api/generic';
 
 describe('postWithFiles', () => {
 	beforeEach(() => {
