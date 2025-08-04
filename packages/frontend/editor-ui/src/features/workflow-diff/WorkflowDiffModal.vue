@@ -814,7 +814,7 @@ const modifiers = [
 
 .noNumberDiff {
 	min-height: 41px;
-	margin-bottom: 10px !important;
+	margin-bottom: 10px;
 	:global(.blob-num) {
 		display: none;
 	}
@@ -869,19 +869,19 @@ const modifiers = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+
+	.navigationButton {
+		height: 34px;
+		width: 34px;
+	}
+
+	.backButton {
+		border: none;
+	}
 }
 
 .headerLeft {
 	display: flex;
 	align-items: center;
-}
-
-.navigationButton {
-	height: 34px !important;
-	width: 34px !important;
-}
-
-.backButton {
-	border: none !important;
 }
 </style>
