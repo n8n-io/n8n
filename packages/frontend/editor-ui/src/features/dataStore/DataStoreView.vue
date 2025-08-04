@@ -10,7 +10,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
+import { fetchDataStores } from '@/features/dataStore/dataStore.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';

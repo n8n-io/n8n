@@ -8,9 +8,9 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
+import { fetchDataStores } from '@/features/dataStore/dataStore.api';
 
-vi.mock('@/features/dataStore/datastore.api');
+vi.mock('@/features/dataStore/dataStore.api');
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
