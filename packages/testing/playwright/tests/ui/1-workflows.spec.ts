@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/base';
+import { test, expect } from '../../fixtures/base';
 
 const NOTIFICATIONS = {
 	CREATED: 'Workflow successfully created',

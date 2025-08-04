@@ -974,7 +974,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.47(dc9073baf40e018f46d70486a38ca362)
+        version: 0.3.47(ec6ed58186d6a1a54e923341a6f0ab3b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
@@ -3063,26 +3063,26 @@ importers:
   packages/testing/playwright:
     devDependencies:
       '@currents/playwright':
-        specifier: 1.14.1
-        version: 1.14.1(magicast@0.3.5)
+        specifier: ^1.15.3
+        version: 1.15.3(magicast@0.3.5)
       '@playwright/test':
-        specifier: 1.53.0
-        version: 1.53.0
+        specifier: 1.54.2
+        version: 1.54.2
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
       eslint-plugin-playwright:
-        specifier: 2.2.0
-        version: 2.2.0(eslint@9.29.0(jiti@1.21.7))
+        specifier: 2.2.2
+        version: 2.2.2(eslint@9.29.0(jiti@1.21.7))
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
-      json-diff:
-        specifier: 1.0.6
-        version: 1.0.6
       n8n-containers:
         specifier: workspace:*
         version: link:../containers
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
 
   packages/workflow:
     dependencies:
@@ -4314,8 +4314,8 @@ packages:
     resolution: {integrity: sha512-gkn8E3UC+F4/fCla7QAGMGgGPzxZUL9bU9+4I+KZf9PtCU3DdQCdy7a+er2eg4ewfUzZ2Ic1HcfnHuPkuLPKIw==}
     engines: {node: '>=6'}
 
-  '@currents/playwright@1.14.1':
-    resolution: {integrity: sha512-ScnvvJ/Juku8j4QTvwzflaPTXxooYHI+hDIVvySUxjQJMLv/Y2ZUXJoQEoWpDWYuRXXVf58TADI1W3etNkux+A==}
+  '@currents/playwright@1.15.3':
+    resolution: {integrity: sha512-m2znwZx+y6Z62d03sfC3wv67bqcMzr4HOuh+aG9a6d1rlpbrc8sx+8NzNSAQmuSuBNrrBJXoVSG7G/uj0E2mLA==}
     hasBin: true
 
   '@cypress/grep@4.1.0':
@@ -6154,8 +6154,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@playwright/test@1.53.0':
-    resolution: {integrity: sha512-15hjKreZDcp7t6TL/7jkAo6Df5STZN09jGiv5dbP9A6vMVncXRqE7/B2SncsyOwrkZRBH2i6/TPOL8BVmm3c7w==}
+  '@playwright/test@1.54.2':
+    resolution: {integrity: sha512-A+znathYxPf+72riFd1r1ovOLqsIIB0jKIoPjyK2kqEIe30/6jF6BC7QNluHuwUmsD2tv1XZVugN8GqfTMOxsA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -10112,8 +10112,8 @@ packages:
     resolution: {integrity: sha512-edLX42Vg4B+y0kzkitTVDmHZQrG5/wUZO874N5Z9leBuxt5TG1pqMY4zdr35RlpM4p4REr/T9x+6DpsQSL63WA==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
-  eslint-plugin-playwright@2.2.0:
-    resolution: {integrity: sha512-qSQpAw7RcSzE3zPp8FMGkthaCWovHZ/BsXtpmnGax9vQLIovlh1bsZHEa2+j2lv9DWhnyeLM/qZmp7ffQZfQvg==}
+  eslint-plugin-playwright@2.2.2:
+    resolution: {integrity: sha512-j0jKpndIPOXRRP9uMkwb9l/nSmModOU3452nrFdgFJoEv/435J1onk8+aITzjDW8DfypxgmVaDMdmVIa6F7I0w==}
     engines: {node: '>=16.6.0'}
     peerDependencies:
       eslint: '>=8.40.0'
@@ -11945,8 +11945,8 @@ packages:
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
-  keyv@5.4.0:
-    resolution: {integrity: sha512-TMckyVjEoacG5IteUpUrOBsFORtheqziVyyY2dLUwg1jwTb8u48LX4TgmtogkNl9Y9unaEJ1luj10fGyjMGFOQ==}
+  keyv@5.5.0:
+    resolution: {integrity: sha512-QG7qR2tijh1ftOvClut4YKKg1iW6cx3GZsKoGyJPxHkGWK9oJhG9P3j5deP0QQOGDowBMVQFaP+Vm4NpGYvmIQ==}
 
   kind-of@6.0.3:
     resolution: {integrity: sha512-dcS1ul+9tmeD95T+x28/ehLgd9mENa3LsvDTtzm3vyBEO7RPptvAD+t44WVXaUjTBRcrpFeFlC8WCruUR456hw==}
@@ -13633,13 +13633,13 @@ packages:
   pkg-types@2.1.0:
     resolution: {integrity: sha512-wmJwA+8ihJixSoHKxZJRBQG1oY8Yr9pGLzRmSsNms0iNWyHHAlZCa7mmKiFR10YPZuz/2k169JiS/inOjBCZ2A==}
 
-  playwright-core@1.53.0:
-    resolution: {integrity: sha512-mGLg8m0pm4+mmtB7M89Xw/GSqoNC+twivl8ITteqvAndachozYe2ZA7srU6uleV1vEdAHYqjq+SV8SNxRRFYBw==}
+  playwright-core@1.54.2:
+    resolution: {integrity: sha512-n5r4HFbMmWsB4twG7tJLDN9gmBUeSPcsBZiWSE4DnYz9mJMAFqr2ID7+eGC9kpEnxExJ1epttwR59LEWCk8mtA==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.53.0:
-    resolution: {integrity: sha512-ghGNnIEYZC4E+YtclRn4/p6oYbdPiASELBIYkBXfaTVKreQUYbMUYQDwS12a8F0/HtIjr/CkGjtwABeFPGcS4Q==}
+  playwright@1.54.2:
+    resolution: {integrity: sha512-Hu/BMoA1NAdRUuulyvQC0pEqZ4vQbGfn8f7wPXcnqQmM+zct9UliKxsIkLNmz/ku7LElUNqmaiv1TG/aL5ACsw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -18497,11 +18497,11 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@1.9.0(@playwright/test@1.53.0)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)':
+  '@browserbasehq/stagehand@1.9.0(@playwright/test@1.54.2)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)':
     dependencies:
       '@anthropic-ai/sdk': 0.27.3(encoding@0.1.13)
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@playwright/test': 1.53.0
+      '@playwright/test': 1.54.2
       deepmerge: 4.3.1
       dotenv: 16.5.0
       openai: 5.8.1(ws@8.18.2)(zod@3.25.67)
@@ -18675,7 +18675,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@currents/playwright@1.14.1(magicast@0.3.5)':
+  '@currents/playwright@1.15.3(magicast@0.3.5)':
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
@@ -19552,9 +19552,9 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.47(dc9073baf40e018f46d70486a38ca362)':
+  '@langchain/community@0.3.47(ec6ed58186d6a1a54e923341a6f0ab3b)':
     dependencies:
-      '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.53.0)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
+      '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/core': 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
       '@langchain/openai': 0.5.16(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(ws@8.18.2)
@@ -19611,7 +19611,7 @@ snapshots:
       mysql2: 3.11.0
       pdf-parse: 1.1.1
       pg: 8.12.0
-      playwright: 1.53.0
+      playwright: 1.54.2
       redis: 4.6.12
       weaviate-client: 3.6.2(encoding@0.1.13)
       ws: 8.18.2
@@ -20524,9 +20524,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/test@1.53.0':
+  '@playwright/test@1.54.2':
     dependencies:
-      playwright: 1.53.0
+      playwright: 1.54.2
 
   '@prisma/instrumentation@6.11.1(@opentelemetry/api@1.9.0)':
     dependencies:
@@ -23776,7 +23776,7 @@ snapshots:
   cacheable@1.10.3:
     dependencies:
       hookified: 1.11.0
-      keyv: 5.4.0
+      keyv: 5.5.0
 
   cachedir@2.3.0: {}
 
@@ -25502,7 +25502,7 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-playwright@2.2.0(eslint@9.29.0(jiti@1.21.7)):
+  eslint-plugin-playwright@2.2.2(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
       eslint: 9.29.0(jiti@1.21.7)
       globals: 13.24.0
@@ -27515,7 +27515,7 @@ snapshots:
 
   jest-message-util@29.5.0:
     dependencies:
-      '@babel/code-frame': 7.27.1
+      '@babel/code-frame': 7.26.2
       '@jest/types': 29.6.1
       '@types/stack-utils': 2.0.1
       chalk: 4.1.2
@@ -27527,7 +27527,7 @@ snapshots:
 
   jest-message-util@29.6.2:
     dependencies:
-      '@babel/code-frame': 7.27.1
+      '@babel/code-frame': 7.26.2
       '@jest/types': 29.6.1
       '@types/stack-utils': 2.0.1
       chalk: 4.1.2
@@ -27981,7 +27981,7 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  keyv@5.4.0:
+  keyv@5.5.0:
     dependencies:
       '@keyv/serialize': 1.1.0
 
@@ -29678,7 +29678,7 @@ snapshots:
 
   parse-json@5.2.0:
     dependencies:
-      '@babel/code-frame': 7.27.1
+      '@babel/code-frame': 7.26.2
       error-ex: 1.3.2
       json-parse-even-better-errors: 2.3.1
       lines-and-columns: 1.2.4
@@ -29919,11 +29919,11 @@ snapshots:
       exsolve: 1.0.4
       pathe: 2.0.3
 
-  playwright-core@1.53.0: {}
+  playwright-core@1.54.2: {}
 
-  playwright@1.53.0:
+  playwright@1.54.2:
     dependencies:
-      playwright-core: 1.53.0
+      playwright-core: 1.54.2
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -29981,7 +29981,7 @@ snapshots:
   postcss-nested@6.0.1(postcss@8.4.49):
     dependencies:
       postcss: 8.4.49
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.0.16
 
   postcss-resolve-nested-selector@0.1.6: {}
 
