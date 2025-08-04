@@ -23,4 +23,4 @@
 	src: url('../src/css/fonts/CommitMonoVariable.woff2') format('woff2');
 }
 
-@import '../src/css/_tokens.scss';
+@use '../src/css/_tokens.scss';

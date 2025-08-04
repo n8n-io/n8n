@@ -138,6 +138,7 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -199,6 +200,7 @@ const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
+const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -501,6 +503,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
 			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+				workflowData.meta.templateId.split('-').pop() ?? '',
+			);
+		}
+
+		if (workflowData.meta?.templateId?.startsWith('37_onboarding_experiments_batch_aug11')) {
+			readyToRunWorkflowsStore.trackOpenWorkflow(
 				workflowData.meta.templateId.split('-').pop() ?? '',
 			);
 		}
@@ -2132,7 +2140,12 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill v-if="builderStore.streaming" :class="$style.thinkingPill" />
+			<CanvasThinkingPill
+				v-if="builderStore.streaming"
+				:class="$style.thinkingPill"
+				show-stop
+				@stop="builderStore.stopStreaming"
+			/>
 
 			<Suspense>
 				<LazyNodeCreation

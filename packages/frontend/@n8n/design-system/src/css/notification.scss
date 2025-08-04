@@ -52,7 +52,7 @@
 	@include mixins.e(content) {
 		font-size: var.$notification-content-font-size;
 		line-height: 1.5;
-		margin: 6px 0 0 0;
+		margin: 6px 0 0;
 		color: var.$notification-content-color;
 		text-align: justify;
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.103.0",
+  "version": "1.104.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -871,7 +871,7 @@
     "@types/rfc2047": "^2.0.1",
     "@types/sanitize-html": "^2.11.0",
     "@types/showdown": "^1.9.4",
-    "@types/ssh2-sftp-client": "^5.1.0",
+    "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
@@ -943,7 +943,7 @@
     "showdown": "2.1.0",
     "simple-git": "3.17.0",
     "snowflake-sdk": "2.1.0",
-    "ssh2-sftp-client": "7.2.3",
+    "ssh2-sftp-client": "12.0.1",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
