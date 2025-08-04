@@ -177,6 +177,18 @@ const versionDescription: INodeTypeDescription = {
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
+				{
+					displayName: 'Track Last Message ID',
+					name: 'trackLastMessageId',
+					type: 'boolean',
+					default: true,
+					description: 'Whether to get only emails after the last processed message ID',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -247,6 +259,7 @@ export class EmailReadImapV2 implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const node = this.getNode();
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
@@ -258,6 +271,15 @@ export class EmailReadImapV2 implements INodeType {
 		const activatedAt = DateTime.now();
 
 		const staticData = this.getWorkflowStaticData('node');
+		if (node.typeVersion <= 2) {
+			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
+			staticData.lastMessageUid = undefined;
+		}
+
+		if (options.trackLastMessageId === false) {
+			staticData.lastMessageUid = undefined;
+		}
+
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
 		let connection: ImapSimple;
@@ -387,7 +409,7 @@ export class EmailReadImapV2 implements INodeType {
 							 * by checking UIDValidity.
 							 */
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-						} else {
+						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
 							searchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 						}
 
