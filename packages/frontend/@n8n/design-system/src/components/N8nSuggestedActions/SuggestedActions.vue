@@ -216,7 +216,7 @@ defineExpose({
 }
 
 .checkboxContainer {
-	padding-top: var(--spacing-6xs);
+	padding-top: 1px;
 	padding-right: var(--spacing-xs);
 }
 
