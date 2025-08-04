@@ -1,10 +1,12 @@
-import type { DataStoreColumn } from '@n8n/api-types';
+import type { DataStoreColumn, DataStoreRows } from '@n8n/api-types';
 
 import {
 	createUserTableQuery,
 	addColumnQuery,
 	deleteColumnQuery,
 	buildInsertQuery,
+	buildUpdateQuery,
+	splitRowsByExistence,
 } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
@@ -88,6 +90,132 @@ describe('sql-utils', () => {
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);
+		});
+	});
+
+	describe('buildUpdateQuery', () => {
+		it('should generate a valid SQL update query with one match field', () => {
+			const tableName = 'data_store_user_abc';
+			const row = { name: 'Alice', age: 30, city: 'Paris' };
+			const matchFields = ['name'];
+
+			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
+
+			expect(query).toBe('UPDATE data_store_user_abc SET "age" = ?, "city" = ? WHERE "name" = ?');
+			expect(parameters).toEqual([30, 'Paris', 'Alice']);
+		});
+
+		it('should generate a valid SQL update query with multiple match fields', () => {
+			const tableName = 'data_store_user_abc';
+			const row = { name: 'Alice', age: 30, city: 'Paris' };
+			const matchFields = ['name', 'city'];
+
+			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
+
+			expect(query).toBe(
+				'UPDATE data_store_user_abc SET "age" = ? WHERE "name" = ? AND "city" = ?',
+			);
+			expect(parameters).toEqual([30, 'Alice', 'Paris']);
+		});
+
+		it('should return empty query and parameters if row is empty', () => {
+			const tableName = 'data_store_user_abc';
+			const row = {};
+			const matchFields = ['id'];
+
+			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
+
+			expect(query).toBe('');
+			expect(parameters).toEqual([]);
+		});
+
+		it('should return empty query and parameters if matchFields is empty', () => {
+			const tableName = 'data_store_user_abc';
+			const row = { name: 'Alice', age: 30 };
+			const matchFields: string[] = [];
+
+			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
+
+			expect(query).toBe('');
+			expect(parameters).toEqual([]);
+		});
+
+		it('should return empty query and parameters if only matchFields are present in row', () => {
+			const tableName = 'data_store_user_abc';
+			const row = { id: 1 };
+			const matchFields = ['id'];
+
+			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
+
+			expect(query).toBe('');
+			expect(parameters).toEqual([]);
+		});
+	});
+
+	describe('splitRowsByExistence', () => {
+		it('should correctly separate rows into insert and update based on matchFields', () => {
+			const existing = [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+			];
+			const matchFields = ['name'];
+			const rows: DataStoreRows = [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 26 },
+				{ name: 'Charlie', age: 35 },
+			];
+
+			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
+
+			expect(rowsToUpdate).toEqual([
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 26 },
+			]);
+			expect(rowsToInsert).toEqual([{ name: 'Charlie', age: 35 }]);
+		});
+
+		it('should treat rows as new if matchFields combination does not exist', () => {
+			const existing = [{ name: 'Bob', city: 'Berlin' }];
+			const matchFields = ['name', 'city'];
+			const rows: DataStoreRows = [{ name: 'Alice', city: 'Berlin' }];
+
+			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
+
+			expect(rowsToUpdate).toEqual([]);
+			expect(rowsToInsert).toEqual([{ name: 'Alice', city: 'Berlin' }]);
+		});
+
+		it('should insert all rows if existing set is empty', () => {
+			const existing: Array<Record<string, unknown>> = [];
+			const matchFields = ['name'];
+			const rows: DataStoreRows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
+
+			expect(rowsToUpdate).toEqual([]);
+			expect(rowsToInsert).toEqual(rows);
+		});
+
+		it('should update all rows if all keys match existing', () => {
+			const existing = [{ name: 'Alice' }, { name: 'Bob' }];
+			const matchFields = ['name'];
+			const rows: DataStoreRows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
+
+			expect(rowsToInsert).toEqual([]);
+			expect(rowsToUpdate).toEqual(rows);
+		});
+
+		it('should handle empty input rows', () => {
+			const existing = [{ name: 'Alice' }];
+			const matchFields = ['name'];
+			const rows: DataStoreRows = [];
+
+			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
+
+			expect(rowsToInsert).toEqual([]);
+			expect(rowsToUpdate).toEqual([]);
 		});
 	});
 });

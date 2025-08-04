@@ -2,11 +2,17 @@ import type {
 	ListDataStoreContentQueryDto,
 	DataStoreUserTableName,
 	DataStoreRows,
+	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
 
-import { buildInsertQuery, quoteIdentifier } from './utils/sql-utils';
+import {
+	buildInsertQuery,
+	buildUpdateQuery,
+	quoteIdentifier,
+	splitRowsByExistence,
+} from './utils/sql-utils';
 
 // type QueryBuilder = SelectQueryBuilder<Record<PropertyKey, unknown>>;
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -33,7 +39,36 @@ export class DataStoreRowsRepository {
 	constructor(private dataSource: DataSource) {}
 
 	async insertRows(tableName: DataStoreUserTableName, rows: DataStoreRows) {
-		await this.dataSource.query(...buildInsertQuery(tableName, rows));
+		const dbType = this.dataSource.options.type;
+		await this.dataSource.query(...buildInsertQuery(tableName, rows, dbType));
+		return true;
+	}
+
+	async upsertRows(tableName: DataStoreUserTableName, dto: UpsertDataStoreRowsDto) {
+		const dbType = this.dataSource.options.type;
+		const { rows, matchFields } = dto;
+
+		if (rows.length === 0) {
+			return false;
+		}
+
+		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
+			tableName,
+			matchFields,
+			rows,
+		);
+
+		if (rowsToInsert.length > 0) {
+			await this.insertRows(tableName, rowsToInsert);
+		}
+
+		if (rowsToUpdate.length > 0) {
+			for (const row of rowsToUpdate) {
+				const [query, parameters] = buildUpdateQuery(tableName, row, matchFields, dbType);
+				await this.dataSource.query(query, parameters);
+			}
+		}
+
 		return true;
 	}
 
@@ -107,5 +142,34 @@ export class DataStoreRowsRepository {
 	private applyPagination(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {
 		query.skip(dto.skip);
 		query.take(dto.take);
+	}
+
+	private async fetchAndSplitRowsByExistence(
+		tableName: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+	): Promise<{ rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows }> {
+		const whereClauses: string[] = [];
+		const params: unknown[] = [];
+
+		for (const row of rows) {
+			const clause = matchFields
+				.map((field) => {
+					params.push(row[field]);
+					return `"${field}" = $${params.length}`;
+				})
+				.join(' AND ');
+			whereClauses.push(`(${clause})`);
+		}
+
+		const query = `
+		SELECT ${matchFields.map((field) => `"${field}"`).join(', ')}
+		FROM "${tableName}"
+		WHERE ${whereClauses.join(' OR ')}
+	`;
+
+		const existing: Array<Record<string, unknown>> = await this.dataSource.query(query, params);
+
+		return splitRowsByExistence(existing, matchFields, rows);
 	}
 }

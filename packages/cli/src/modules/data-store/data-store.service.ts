@@ -8,6 +8,7 @@ import type {
 	DataStoreRows,
 	DataStoreUserTableName,
 	IDataStoreService,
+	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
 import { Logger } from '@n8n/backend-common';
@@ -319,5 +320,14 @@ export class DataStoreService implements IDataStoreService {
 		}
 
 		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows);
+	}
+
+	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
+		const validationResult = await this.validateRows(dataStoreId, dto.rows as DataStoreRows);
+		if (!validationResult) {
+			return validationResult;
+		}
+
+		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto);
 	}
 }

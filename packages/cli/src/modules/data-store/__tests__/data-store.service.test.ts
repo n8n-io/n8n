@@ -611,8 +611,6 @@ describe('dataStore', () => {
 				{},
 			);
 
-			console.log(data);
-
 			expect(count).toEqual(2);
 			expect(data).toEqual([
 				{ c1: 1, c2: 'foo', id: 1 },
@@ -711,6 +709,69 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow("value 'true' does not match column type 'number'");
+		});
+	});
+
+	describe('upsertRows', () => {
+		it('updates a row if filter matches', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { name: 'pid', type: 'string' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'fullName', type: 'string' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'age', type: 'number' });
+
+			// Insert initial row
+			await dataStoreService.insertRows(dataStore1.id, [
+				{ pid: '1995-111a', fullName: 'Alice', age: 30 },
+			]);
+
+			// ACT
+			const result = await dataStoreService.upsertRows(dataStore1.id, {
+				rows: [{ pid: '1995-111a', fullName: 'Alicia', age: 31 }],
+				matchFields: ['pid'],
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
+				toTableName(dataStore1.id),
+				{},
+			);
+
+			expect(count).toEqual(1);
+			expect(data).toEqual([{ fullName: 'Alicia', age: 31, id: 1, pid: '1995-111a' }]);
+		});
+
+		it('inserts a row if filter does not match', async () => {
+			// ARRANGE
+			await dataStoreService.addColumn(dataStore1.id, { name: 'pid', type: 'string' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'fullName', type: 'string' });
+			await dataStoreService.addColumn(dataStore1.id, { name: 'age', type: 'number' });
+
+			// Insert initial row
+			await dataStoreService.insertRows(dataStore1.id, [
+				{ pid: '1995-111a', fullName: 'Alice', age: 30 },
+			]);
+
+			// ACT
+			const result = await dataStoreService.upsertRows(dataStore1.id, {
+				rows: [{ pid: '1992-222b', fullName: 'Alice', age: 30 }],
+				matchFields: ['pid'],
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
+				toTableName(dataStore1.id),
+				{},
+			);
+
+			expect(count).toEqual(2);
+			expect(data).toEqual([
+				{ fullName: 'Alice', age: 30, id: 1, pid: '1995-111a' },
+				{ fullName: 'Alice', age: 30, id: 2, pid: '1992-222b' },
+			]);
 		});
 	});
 

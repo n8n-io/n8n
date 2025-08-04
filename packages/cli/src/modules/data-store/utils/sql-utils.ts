@@ -113,6 +113,61 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
+export function buildUpdateQuery(
+	tableName: DataStoreUserTableName,
+	row: Record<string, unknown>,
+	matchFields: string[],
+	dbType: DataSourceOptions['type'] = 'sqlite',
+): [string, unknown[]] {
+	if (Object.keys(row).length === 0 || matchFields.length === 0) {
+		return ['', []];
+	}
+
+	const allKeys = Object.keys(row);
+	const updateKeys = allKeys.filter((key) => !matchFields.includes(key));
+
+	if (updateKeys.length === 0) {
+		return ['', []];
+	}
+
+	const setClause = updateKeys.map((key) => `${quoteIdentifier(key, dbType)} = ?`).join(', ');
+
+	const whereClause = matchFields.map((key) => `${quoteIdentifier(key, dbType)} = ?`).join(' AND ');
+
+	const parameters = [...updateKeys.map((k) => row[k]), ...matchFields.map((k) => row[k])];
+
+	const query = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`;
+
+	return [query, parameters];
+}
+
+export function splitRowsByExistence(
+	existing: Array<Record<string, unknown>>,
+	matchFields: string[],
+	rows: DataStoreRows,
+): { rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows } {
+	// Extracts only the fields relevant to matching and serializes them for comparison
+	const getMatchKey = (row: Record<string, unknown>): string =>
+		JSON.stringify(Object.fromEntries(matchFields.map((field) => [field, row[field]])));
+
+	const existingSet = new Set(existing.map((row) => getMatchKey(row)));
+
+	const rowsToUpdate: DataStoreRows = [];
+	const rowsToInsert: DataStoreRows = [];
+
+	for (const row of rows) {
+		const key = getMatchKey(row);
+
+		if (existingSet.has(key)) {
+			rowsToUpdate.push(row);
+		} else {
+			rowsToInsert.push(row);
+		}
+	}
+
+	return { rowsToInsert, rowsToUpdate };
+}
+
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'postgres':
