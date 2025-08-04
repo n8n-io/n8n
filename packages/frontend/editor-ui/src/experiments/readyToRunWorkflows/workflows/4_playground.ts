@@ -364,12 +364,6 @@ export const PLAYGROUND_4: WorkflowDataCreate = {
 			name: 'Send output via email using Gmail',
 			webhookId: '65c7b462-bb4a-400c-a556-ef408efcd208',
 			notesInFlow: true,
-			credentials: {
-				gmailOAuth2: {
-					id: 'zEdT60CncZ38FCxE',
-					name: 'Gmail account 26',
-				},
-			},
 			notes: 'Double-click here to connect!',
 		},
 	],

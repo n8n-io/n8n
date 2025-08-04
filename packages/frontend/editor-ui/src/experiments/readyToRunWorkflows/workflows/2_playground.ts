@@ -8,7 +8,7 @@ export const PLAYGROUND_2: WorkflowDataCreate = {
 	settings: {
 		executionOrder: 'v1',
 	},
-	name: '▶ 2. Process user answers from a form',
+	name: '▶️ 2. Process user answers from a form',
 	nodes: [
 		{
 			parameters: {
