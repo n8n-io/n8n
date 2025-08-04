@@ -16,14 +16,14 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description:
-				'Enable if your ServiceNow instance lives on a custom domain or behind a reverse-proxy',
+				'Enable if your ServiceNow instance is hosted on a custom domain or behind a reverse-proxy',
 		},
 		{
 			displayName: 'Custom Host',
 			name: 'customHost',
 			type: 'string',
 			placeholder: 'https://sn.my-company.internal',
-			description: 'Full base URL **without** a trailing slash',
+			description: 'Full base-URL of the instance',
 			default: '',
 			displayOptions: {
 				show: {
@@ -35,7 +35,7 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
-			hint: 'For https://dev99890.service-now.com the subdomain is “dev99890”',
+			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
 			default: '',
 			required: true,
 			displayOptions: {
@@ -83,8 +83,8 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			default: 'response_type=code',
 		},
 		{
-			displayName: 'Token URI Query Parameters',
-			name: 'tokenQueryParameters',
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
 			type: 'hidden',
 			default: 'grant_type=authorization_code',
 		},
