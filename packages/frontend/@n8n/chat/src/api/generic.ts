@@ -62,7 +62,12 @@ export async function postWithFiles<T>(
 	const formData = new FormData();
 
 	for (const key in body) {
-		formData.append(key, body[key] as string);
+		const value = body[key];
+		if (typeof value === 'object' && value !== null) {
+			formData.append(key, JSON.stringify(value));
+		} else {
+			formData.append(key, value as string);
+		}
 	}
 
 	for (const file of files) {
