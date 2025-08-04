@@ -9,7 +9,12 @@ describe('Slack Utility Functions', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 1 } as any);
-		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/node123?token=abc');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+			'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+		);
 		jest.clearAllMocks();
 	});
 
@@ -69,7 +74,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -120,7 +125,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=false',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -131,7 +136,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -182,7 +187,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -234,7 +239,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=false',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -245,7 +250,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/node123?token=abc&approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',

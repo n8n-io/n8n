@@ -371,27 +371,36 @@ describe('NodeExecutionContext', () => {
 	describe('getSignedResumeUrl', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
-			testContext = new TestContext(workflow, node, additionalData, mode, {
-				validateSignature: true,
-				resultData: { runData: {} },
-			});
+			testContext = new TestContext(
+				workflow,
+				mock<INode>({
+					id: 'node456',
+				}),
+				mock<IWorkflowExecuteAdditionalData>({
+					executionId: '123',
+					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+				}),
+				mode,
+				{
+					validateSignature: true,
+					resultData: { runData: {} },
+				},
+			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
 		it('should return a signed resume URL with no query parameters', () => {
-			const url = 'https://example.com/webhook/execution123/node456';
-			const result = testContext.getSignedResumeUrl(url);
+			const result = testContext.getSignedResumeUrl();
 
 			expect(result).toBe(
-				'https://example.com/webhook/execution123/node456?signature=19e03c05769be8157d8c99377504f881bc8c82b604f4063f509aa7dcc6e8ea9f',
+				'http://localhost/waiting-webhook/123/node456?signature=44652825879d60bf60ad7c4896f63084b7f65e8e675ab3f1fd5baec67f257908',
 			);
 		});
 
 		it('should return a signed resume URL with query parameters', () => {
-			const url = 'https://example.com/webhook/execution123/node456?approved=true';
-			const result = testContext.getSignedResumeUrl(url);
+			const result = testContext.getSignedResumeUrl({ approved: 'true' });
 
 			expect(result).toBe(
-				'https://example.com/webhook/execution123/node456?approved=true&signature=68904afab338aeeb83d4cb9fd43a406d6a2986c576d7dd884899916f49070ddc',
+				'http://localhost/waiting-webhook/123/node456?approved=true&signature=2e66b030b105d62744839841eec280d2774079910296ca6955d36acfeb9a9234',
 			);
 		});
 	});

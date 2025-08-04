@@ -882,7 +882,8 @@ export interface FunctionsBase {
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
 	/** Get the waiting webhook url signed with the execution waiting token */
-	getSignedResumeUrl(url: string): string;
+	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },

@@ -59,9 +59,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		readonly runIndex = 0,
 		readonly connectionInputData: INodeExecutionData[] = [],
 		readonly executeData?: IExecuteData,
-	) {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
-	}
+	) {}
 
 	@Memoized
 	get logger() {
@@ -212,13 +210,28 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return token;
 	}
 
-	getSignedResumeUrl(url: string) {
-		const token = this.getExecutionWaitingToken(url);
-		if (url.includes('?')) {
-			return `${url}&${WAITING_TOKEN_QUERY_PARAM}=${token}`;
-		} else {
-			return `${url}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+	setSignatureValidationRequired() {
+		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	}
+
+	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new ApplicationError('Execution id is missing');
 		}
+
+		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+
+		for (const [key, value] of Object.entries(parameters)) {
+			baseURL.searchParams.set(key, value);
+		}
+
+		const token = this.getExecutionWaitingToken(baseURL.toString());
+
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+		return baseURL.toString();
 	}
 
 	getTimezone() {

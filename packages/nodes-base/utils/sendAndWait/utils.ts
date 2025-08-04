@@ -484,8 +484,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		.replace(/\\n/g, '\n')
 		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
-	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
 	const approvalOptions = context.getNodeParameter('approvalOptions.values', 0, {}) as {
 		approvalType?: 'single' | 'double';
 		approveLabel?: string;
@@ -505,9 +503,9 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
-	const baseUrl = `${resumeUrl}/${nodeId}`;
-	const approvedSignedResumeUrl = context.getSignedResumeUrl(`${baseUrl}?approved=true`);
-	const disapprovedSignedResumeUrl = context.getSignedResumeUrl(`${baseUrl}?approved=false`);
+	context.setSignatureValidationRequired();
+	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
+	const disapprovedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'false' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
 		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;

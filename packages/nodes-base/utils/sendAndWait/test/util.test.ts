@@ -63,18 +63,20 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
 			expect(config).toEqual({
+				appendAttribution: undefined,
 				title: 'Test subject',
 				message: 'Test message',
-				url: 'http://localhost/testNodeId',
 				options: [
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				],
 			});
@@ -96,7 +98,12 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+			);
 
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
@@ -105,13 +112,13 @@ describe('Send and Wait utils tests', () => {
 				expect.arrayContaining([
 					{
 						label: 'Reject',
-						value: 'false',
 						style: 'secondary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 					},
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				]),
 			);
