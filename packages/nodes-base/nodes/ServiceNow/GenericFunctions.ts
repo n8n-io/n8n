@@ -31,7 +31,7 @@ export async function serviceNowApiRequest(
 	}
 
 	/* -----------------------------------------------------------------------
-	   Build base URL – backwards-compatible
+	   Build base URL
 	   -----------------------------------------------------------------------
 	   • Using subdomain:  subdomain         → https://<sub>.service-now.com
 	   • Using full host:  customHost toggle → https://your.host.tld
@@ -39,7 +39,11 @@ export async function serviceNowApiRequest(
 	let baseUrl;
 
 	if (credentials.useCustomHost && credentials.customHost) {
-		baseUrl = credentials.customHost.replace(/\/$/, ''); /* strip 1 trailing “/” */
+		baseUrl = String(credentials.customHost).replace(/\/$/, ''); // strip trailing slash
+	} else if (credentials.useCustomHost && !credentials.customHost) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'Custom host is enabled but no custom host was provided.',
+		});
 	} else {
 		baseUrl = `https://${credentials.subdomain}.service-now.com`;
 	}

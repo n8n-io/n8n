@@ -7,12 +7,14 @@ import type {
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
+
 	extends = ['httpBasicAuth'];
+
 	displayName = 'ServiceNow Basic Auth API';
+
 	documentationUrl = 'serviceNow';
 
 	properties: INodeProperties[] = [
-		/* ───────────────────────── Credentials ───────────────────────── */
 		{
 			displayName: 'User',
 			name: 'user',
@@ -25,11 +27,11 @@ export class ServiceNowBasicApi implements ICredentialType {
 			name: 'password',
 			type: 'string',
 			required: true,
-			typeOptions: { password: true },
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
-
-		/* ─────────────────────── Instance selector ───────────────────── */
 		{
 			displayName: 'Use custom host?',
 			name: 'useCustomHost',
@@ -65,18 +67,16 @@ export class ServiceNowBasicApi implements ICredentialType {
 		},
 	];
 
-	/* ─────────────────────── Authentication ─────────────────────── */
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			auth: {
-				username: '={{ $credentials.user }}',
-				password: '={{ $credentials.password }}',
+				username: '={{$credentials.user}}',
+				password: '={{$credentials.password}}',
 			},
 		},
 	};
 
-	/* ───────────────────────── Credential test ─────────────────────── */
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:

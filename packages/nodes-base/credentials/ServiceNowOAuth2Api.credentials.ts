@@ -2,13 +2,14 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ServiceNowOAuth2Api implements ICredentialType {
 	name = 'serviceNowOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'ServiceNow OAuth2 API';
+
 	documentationUrl = 'serviceNow';
 
-	/* ────────────────────────── Properties ────────────────────────── */
 	properties: INodeProperties[] = [
-		/* ----------  Instance selector  ---------- */
 		{
 			displayName: 'Use custom host?',
 			name: 'useCustomHost',
@@ -24,7 +25,11 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			placeholder: 'https://sn.my-company.internal',
 			description: 'Full base URL **without** a trailing slash',
 			default: '',
-			displayOptions: { show: { useCustomHost: [true] } },
+			displayOptions: {
+				show: {
+					useCustomHost: [true],
+				},
+			},
 		},
 		{
 			displayName: 'Subdomain',
@@ -33,10 +38,12 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			hint: 'For https://dev99890.service-now.com the subdomain is “dev99890”',
 			default: '',
 			required: true,
-			displayOptions: { show: { useCustomHost: [false] } },
+			displayOptions: {
+				show: {
+					useCustomHost: [false],
+				},
+			},
 		},
-
-		/* ----------  OAuth2 settings  ---------- */
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',
@@ -48,18 +55,10 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			name: 'authUrl',
 			type: 'hidden',
 			required: true,
-			/*
-			 *  Builds:
-			 *    • https://<sub>.service-now.com/oauth_auth.do      (legacy)
-			 *    • https://<customHost>/oauth_auth.do               (custom)
-			 *
-			 *  .replace(/\/$/, '') strips **one** trailing slash in case
-			 *  the user pastes `https://host/` instead of `https://host`.
-			 */
 			default:
-				'= {{$self.useCustomHost' +
-				' ? $self.customHost.replace(/\\/$/, "")' +
-				' : "https://" + $self.subdomain + ".service-now.com"}}/oauth_auth.do',
+				'= {{$self.useCustomHost ? ' +
+				'$self.customHost.replace(/\\/$/, "") : ' +
+				'"https://" + $self.subdomain + ".service-now.com"}}/oauth_auth.do',
 		},
 		{
 			displayName: 'Access Token URL',
@@ -67,9 +66,9 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			required: true,
 			default:
-				'= {{$self.useCustomHost' +
-				' ? $self.customHost.replace(/\\/$/, "")' +
-				' : "https://" + $self.subdomain + ".service-now.com"}}/oauth_token.do',
+				'= {{$self.useCustomHost ? ' +
+				'$self.customHost.replace(/\\/$/, "") : ' +
+				'"https://" + $self.subdomain + ".service-now.com"}}/oauth_token.do',
 		},
 		{
 			displayName: 'Scope',
