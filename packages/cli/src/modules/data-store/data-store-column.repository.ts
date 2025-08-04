@@ -1,9 +1,8 @@
-import { DataStoreCreateColumnSchema } from '@n8n/api-types';
+import { DataStoreCreateColumnSchema, type DataStoreUserTableName } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
-import { DataStoreUserTableName } from './data-store.types';
 import { addColumnQuery, deleteColumnQuery } from './utils/sql-utils';
 
 @Service()

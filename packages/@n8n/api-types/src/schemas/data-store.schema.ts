@@ -1,3 +1,4 @@
+import type { DataStoreRows } from 'n8n-workflow/src/data-store.types';
 import { z } from 'zod';
 
 import type {
@@ -60,10 +61,6 @@ export type DataStoreListFilter = {
 export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
-
-export type DataStoreColumnJsType = string | number | boolean | Date;
-
-export type DataStoreRows = Array<Record<PropertyKey, DataStoreColumnJsType | null>>;
 
 export interface IDataStoreService {
 	createDataStore(projectId: string, dto: CreateDataStoreDto): Promise<DataStoreResultDto>;
