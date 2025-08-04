@@ -120,9 +120,7 @@ const { workflowRunData } = useExecutionData({ node });
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
-	const parentNode = workflowsStore
-		.getCurrentWorkflow()
-		.getParentNodes(node.value.name, 'main', 1)[0];
+	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
 	return Boolean(
 		parentNode &&
 			workflowRunData.value &&
