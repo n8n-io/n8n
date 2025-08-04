@@ -52,6 +52,7 @@ import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
+import { NodeTypes } from '@/node-types';
 import * as ResponseHelper from '@/response-helper';
 import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
@@ -93,6 +94,7 @@ export class WorkflowsController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	@Post('/')
@@ -713,5 +715,863 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	// Workflow Variable Discovery Endpoints
+
+	@Get('/context/variables')
+	async getAvailableVariables(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{},
+			{
+				workflowId?: string;
+				nodeId?: string;
+				includeFunctions?: boolean;
+				includeNodeContext?: boolean;
+			}
+		>,
+	) {
+		const { workflowId, nodeId, includeFunctions = true, includeNodeContext = true } = req.query;
+
+		this.logger.debug('Workflow variables discovery requested', {
+			workflowId,
+			nodeId,
+			userId: req.user.id,
+			includeFunctions,
+			includeNodeContext,
+		});
+
+		try {
+			const variables = {
+				// Core workflow context variables
+				core: {
+					$data: {
+						type: 'object',
+						description: 'JSON data from the current item',
+						example: '$data.propertyName',
+					},
+					$json: {
+						type: 'object',
+						description: 'Alias for $data - JSON data from the current item',
+						example: '$json.id',
+					},
+					$binary: {
+						type: 'object',
+						description: 'Binary data from the current item',
+						example: '$binary.fileName',
+					},
+					$item: {
+						type: 'function',
+						description: 'Access data from a specific item index',
+						example: '$item(0).json.propertyName',
+						parameters: [
+							{ name: 'itemIndex', type: 'number', description: 'Index of the item to access' },
+							{
+								name: 'runIndex',
+								type: 'number',
+								optional: true,
+								description: 'Run index (optional)',
+							},
+						],
+					},
+					$items: {
+						type: 'function',
+						description: 'Access all items from a node',
+						example: '$items("nodeName")',
+						parameters: [
+							{
+								name: 'nodeName',
+								type: 'string',
+								optional: true,
+								description: 'Node name (optional, defaults to previous node)',
+							},
+							{
+								name: 'outputIndex',
+								type: 'number',
+								optional: true,
+								description: 'Output index (optional)',
+							},
+							{
+								name: 'runIndex',
+								type: 'number',
+								optional: true,
+								description: 'Run index (optional)',
+							},
+						],
+					},
+					$node: {
+						type: 'object',
+						description: 'Access data from any node in the workflow',
+						example: '$node["Node Name"].json.property',
+						properties: {
+							json: { type: 'object', description: 'JSON data from the node' },
+							binary: { type: 'object', description: 'Binary data from the node' },
+							context: { type: 'object', description: 'Context data from the node' },
+							parameter: { type: 'object', description: 'Parameter values from the node' },
+							runIndex: { type: 'number', description: 'Current run index of the node' },
+						},
+					},
+					$prevNode: {
+						type: 'object',
+						description: 'Information about the previous node',
+						properties: {
+							name: { type: 'string', description: 'Name of the previous node' },
+							outputIndex: { type: 'number', description: 'Output index used' },
+							runIndex: { type: 'number', description: 'Run index used' },
+						},
+					},
+					$workflow: {
+						type: 'object',
+						description: 'Information about the current workflow',
+						properties: {
+							id: { type: 'string', description: 'Workflow ID' },
+							name: { type: 'string', description: 'Workflow name' },
+							active: { type: 'boolean', description: 'Whether workflow is active' },
+						},
+					},
+					$parameter: {
+						type: 'object',
+						description: 'Access parameter values from the current node',
+						example: '$parameter.parameterName',
+					},
+					$rawParameter: {
+						type: 'object',
+						description:
+							'Access raw parameter values (unresolved expressions) from the current node',
+						example: '$rawParameter.parameterName',
+					},
+					$self: {
+						type: 'object',
+						description: 'Access to self-data set by the node',
+						example: '$self.propertyName',
+					},
+				},
+				// Execution context variables
+				execution: {
+					$runIndex: {
+						type: 'number',
+						description: 'Current run index',
+						example: '$runIndex',
+					},
+					$itemIndex: {
+						type: 'number',
+						description: 'Current item index',
+						example: '$itemIndex',
+					},
+					$mode: {
+						type: 'string',
+						description: 'Current execution mode (manual, trigger, webhook, etc.)',
+						example: '$mode',
+					},
+					$now: {
+						type: 'DateTime',
+						description: 'Current date and time as DateTime object',
+						example: '$now.toISO()',
+					},
+					$today: {
+						type: 'DateTime',
+						description: 'Current date at midnight as DateTime object',
+						example: '$today.toFormat("yyyy-MM-dd")',
+					},
+				},
+				// Environment and utility variables
+				utility: {
+					$env: {
+						type: 'object',
+						description: 'Access environment variables',
+						example: '$env.MY_ENV_VAR',
+					},
+					$jmesPath: {
+						type: 'function',
+						description: 'Query JSON data using JMESPath',
+						example: '$jmesPath($json, "items[*].name")',
+						parameters: [
+							{ name: 'data', type: 'object', description: 'Data to query' },
+							{ name: 'query', type: 'string', description: 'JMESPath query string' },
+						],
+					},
+					$evaluateExpression: {
+						type: 'function',
+						description: 'Evaluate an expression dynamically',
+						example: '$evaluateExpression("1 + 1")',
+						parameters: [
+							{ name: 'expression', type: 'string', description: 'Expression to evaluate' },
+							{
+								name: 'itemIndex',
+								type: 'number',
+								optional: true,
+								description: 'Item index (optional)',
+							},
+						],
+					},
+					$getPairedItem: {
+						type: 'function',
+						description: 'Get paired item from previous nodes',
+						example: '$getPairedItem()',
+						parameters: [
+							{
+								name: 'destinationNodeName',
+								type: 'string',
+								optional: true,
+								description: 'Target node name',
+							},
+						],
+					},
+				},
+				// Node-specific context (if requested and available)
+				...(includeNodeContext && workflowId
+					? await this.getNodeSpecificContext(workflowId, nodeId, req.user)
+					: {}),
+			};
+
+			// Add available functions if requested
+			if (includeFunctions) {
+				(variables as any).functions = await this.getAvailableFunctions();
+			}
+
+			this.logger.debug('Workflow variables discovery completed', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				variableCount: Object.keys(variables).length,
+			});
+
+			return {
+				success: true,
+				variables,
+				metadata: {
+					workflowId,
+					nodeId,
+					requestedAt: new Date(),
+					includeFunctions,
+					includeNodeContext,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Workflow variables discovery failed', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Variables discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/context/functions')
+	async getAvailableFunctions(
+		req?: AuthenticatedRequest<
+			{},
+			{},
+			{},
+			{
+				category?: string;
+				includeExamples?: boolean;
+				includeNative?: boolean;
+			}
+		>,
+	) {
+		const category = req?.query?.category;
+		const includeExamples = req?.query?.includeExamples !== false;
+		const includeNative = req?.query?.includeNative !== false;
+
+		if (req) {
+			this.logger.debug('Available functions discovery requested', {
+				category,
+				includeExamples,
+				includeNative,
+				userId: req.user.id,
+			});
+		}
+
+		try {
+			const functions = {
+				// Built-in mathematical functions
+				math: {
+					$min: {
+						description: 'Returns the minimum value',
+						example: '$min(1, 2, 3)',
+						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to compare' }],
+						returnType: 'number',
+					},
+					$max: {
+						description: 'Returns the maximum value',
+						example: '$max(1, 2, 3)',
+						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to compare' }],
+						returnType: 'number',
+					},
+					$average: {
+						description: 'Calculates the average of numbers',
+						example: '$average(1, 2, 3)',
+						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to average' }],
+						returnType: 'number',
+					},
+				},
+				// String manipulation functions
+				string: {
+					length: {
+						description: 'Returns the length of a string',
+						example: '"hello".length()',
+						returnType: 'number',
+					},
+					toLowerCase: {
+						description: 'Converts string to lowercase',
+						example: '"HELLO".toLowerCase()',
+						returnType: 'string',
+					},
+					toUpperCase: {
+						description: 'Converts string to uppercase',
+						example: '"hello".toUpperCase()',
+						returnType: 'string',
+					},
+					split: {
+						description: 'Splits a string into an array',
+						example: '"a,b,c".split(",")',
+						parameters: [{ name: 'separator', type: 'string', description: 'Separator string' }],
+						returnType: 'string[]',
+					},
+					trim: {
+						description: 'Removes whitespace from both ends',
+						example: '" hello ".trim()',
+						returnType: 'string',
+					},
+					replace: {
+						description: 'Replaces text in string',
+						example: '"hello world".replace("world", "n8n")',
+						parameters: [
+							{ name: 'searchValue', type: 'string', description: 'Text to search for' },
+							{ name: 'replaceValue', type: 'string', description: 'Text to replace with' },
+						],
+						returnType: 'string',
+					},
+					substring: {
+						description: 'Extracts characters from a string',
+						example: '"hello".substring(1, 3)',
+						parameters: [
+							{ name: 'start', type: 'number', description: 'Start index' },
+							{ name: 'end', type: 'number', optional: true, description: 'End index' },
+						],
+						returnType: 'string',
+					},
+					includes: {
+						description: 'Checks if string contains substring',
+						example: '"hello world".includes("world")',
+						parameters: [
+							{ name: 'searchString', type: 'string', description: 'String to search for' },
+						],
+						returnType: 'boolean',
+					},
+				},
+				// Array manipulation functions
+				array: {
+					length: {
+						description: 'Returns the length of an array',
+						example: '[1, 2, 3].length',
+						returnType: 'number',
+					},
+					push: {
+						description: 'Adds elements to the end of array',
+						example: '[1, 2].push(3)',
+						parameters: [{ name: 'elements', type: 'any[]', description: 'Elements to add' }],
+						returnType: 'number',
+					},
+					pop: {
+						description: 'Removes and returns last element',
+						example: '[1, 2, 3].pop()',
+						returnType: 'any',
+					},
+					slice: {
+						description: 'Returns a portion of array',
+						example: '[1, 2, 3, 4].slice(1, 3)',
+						parameters: [
+							{ name: 'start', type: 'number', description: 'Start index' },
+							{ name: 'end', type: 'number', optional: true, description: 'End index' },
+						],
+						returnType: 'any[]',
+					},
+					map: {
+						description: 'Creates new array with results of calling function',
+						example: '[1, 2, 3].map(x => x * 2)',
+						parameters: [
+							{
+								name: 'callback',
+								type: 'function',
+								description: 'Function to call for each element',
+							},
+						],
+						returnType: 'any[]',
+					},
+					filter: {
+						description: 'Creates new array with elements that pass test',
+						example: '[1, 2, 3, 4].filter(x => x > 2)',
+						parameters: [
+							{ name: 'callback', type: 'function', description: 'Function to test each element' },
+						],
+						returnType: 'any[]',
+					},
+					find: {
+						description: 'Returns first element that satisfies condition',
+						example: '[1, 2, 3].find(x => x > 1)',
+						parameters: [
+							{ name: 'callback', type: 'function', description: 'Function to test each element' },
+						],
+						returnType: 'any',
+					},
+					includes: {
+						description: 'Checks if array contains element',
+						example: '[1, 2, 3].includes(2)',
+						parameters: [
+							{ name: 'searchElement', type: 'any', description: 'Element to search for' },
+						],
+						returnType: 'boolean',
+					},
+					join: {
+						description: 'Joins array elements into string',
+						example: '[1, 2, 3].join(",")',
+						parameters: [
+							{
+								name: 'separator',
+								type: 'string',
+								optional: true,
+								description: 'Separator string',
+							},
+						],
+						returnType: 'string',
+					},
+				},
+				// Object manipulation functions
+				object: {
+					keys: {
+						description: 'Returns array of object keys',
+						example: 'Object.keys({a: 1, b: 2})',
+						parameters: [{ name: 'obj', type: 'object', description: 'Object to get keys from' }],
+						returnType: 'string[]',
+					},
+					values: {
+						description: 'Returns array of object values',
+						example: 'Object.values({a: 1, b: 2})',
+						parameters: [{ name: 'obj', type: 'object', description: 'Object to get values from' }],
+						returnType: 'any[]',
+					},
+					entries: {
+						description: 'Returns array of key-value pairs',
+						example: 'Object.entries({a: 1, b: 2})',
+						parameters: [
+							{ name: 'obj', type: 'object', description: 'Object to get entries from' },
+						],
+						returnType: '[string, any][]',
+					},
+				},
+				// Date/time functions (DateTime/Luxon)
+				date: {
+					now: {
+						description: 'Creates DateTime for current time',
+						example: 'DateTime.now()',
+						returnType: 'DateTime',
+					},
+					fromISO: {
+						description: 'Creates DateTime from ISO string',
+						example: 'DateTime.fromISO("2023-01-01")',
+						parameters: [{ name: 'text', type: 'string', description: 'ISO date string' }],
+						returnType: 'DateTime',
+					},
+					toISO: {
+						description: 'Converts DateTime to ISO string',
+						example: '$now.toISO()',
+						returnType: 'string',
+					},
+					toFormat: {
+						description: 'Formats DateTime as string',
+						example: '$now.toFormat("yyyy-MM-dd")',
+						parameters: [{ name: 'format', type: 'string', description: 'Format string' }],
+						returnType: 'string',
+					},
+					plus: {
+						description: 'Adds time to DateTime',
+						example: '$now.plus({days: 1})',
+						parameters: [{ name: 'duration', type: 'object', description: 'Duration object' }],
+						returnType: 'DateTime',
+					},
+					minus: {
+						description: 'Subtracts time from DateTime',
+						example: '$now.minus({days: 1})',
+						parameters: [{ name: 'duration', type: 'object', description: 'Duration object' }],
+						returnType: 'DateTime',
+					},
+				},
+				// Utility functions
+				utility: {
+					$not: {
+						description: 'Logical NOT operation',
+						example: '$not(true)',
+						parameters: [{ name: 'value', type: 'any', description: 'Value to negate' }],
+						returnType: 'boolean',
+					},
+					$ifEmpty: {
+						description: 'Returns default value if input is empty',
+						example: '$ifEmpty($json.optional, "default")',
+						parameters: [
+							{ name: 'value', type: 'any', description: 'Value to check' },
+							{ name: 'defaultValue', type: 'any', description: 'Default value if empty' },
+						],
+						returnType: 'any',
+					},
+					numberList: {
+						description: 'Creates array of numbers in range',
+						example: 'numberList(1, 5)',
+						parameters: [
+							{ name: 'start', type: 'number', description: 'Start number' },
+							{ name: 'end', type: 'number', description: 'End number' },
+						],
+						returnType: 'number[]',
+					},
+					zip: {
+						description: 'Combines two arrays into object',
+						example: 'zip(["a", "b"], [1, 2])',
+						parameters: [
+							{ name: 'keys', type: 'any[]', description: 'Array of keys' },
+							{ name: 'values', type: 'any[]', description: 'Array of values' },
+						],
+						returnType: 'object',
+					},
+					isEmpty: {
+						description: 'Checks if value is empty',
+						example: '"".isEmpty()',
+						returnType: 'boolean',
+					},
+					isNotEmpty: {
+						description: 'Checks if value is not empty',
+						example: '"hello".isNotEmpty()',
+						returnType: 'boolean',
+					},
+				},
+			};
+
+			// Filter by category if specified
+			const result =
+				category && (functions as any)[category]
+					? { [category]: (functions as any)[category] }
+					: functions;
+
+			if (req) {
+				this.logger.debug('Available functions discovery completed', {
+					category,
+					userId: req.user.id,
+					functionCount: Object.keys(result).length,
+				});
+			}
+
+			return req
+				? {
+						success: true,
+						functions: result,
+						metadata: {
+							category,
+							includeExamples,
+							includeNative,
+							requestedAt: new Date(),
+							totalCategories: Object.keys(functions).length,
+						},
+					}
+				: result;
+		} catch (error) {
+			if (req) {
+				this.logger.error('Available functions discovery failed', {
+					category,
+					userId: req.user.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+
+				if (error instanceof ApplicationError) {
+					throw error;
+				}
+
+				throw new InternalServerError(
+					`Functions discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+			throw error;
+		}
+	}
+
+	@Get('/:workflowId/context')
+	@ProjectScope('workflow:read')
+	async getWorkflowExecutionContext(req: WorkflowRequest.Get) {
+		const { workflowId } = req.params;
+		const {
+			nodeId,
+			includeNodeDetails = true,
+			includeConnections = true,
+		} = req.query as {
+			nodeId?: string;
+			includeNodeDetails?: boolean;
+			includeConnections?: boolean;
+		};
+
+		this.logger.debug('Workflow execution context requested', {
+			workflowId,
+			nodeId,
+			userId: req.user.id,
+			includeNodeDetails,
+			includeConnections,
+		});
+
+		try {
+			// Get workflow with permissions check
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false },
+			);
+
+			if (!workflow) {
+				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			}
+
+			// Build execution context
+			const context = {
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					active: workflow.active,
+					createdAt: workflow.createdAt,
+					updatedAt: workflow.updatedAt,
+					settings: workflow.settings || {},
+				},
+				nodes: workflow.nodes.map((node) => ({
+					id: node.id,
+					name: node.name,
+					type: node.type,
+					typeVersion: node.typeVersion,
+					position: node.position,
+					disabled: node.disabled || false,
+					...(includeNodeDetails && {
+						parameters: node.parameters,
+						credentials: node.credentials ? Object.keys(node.credentials) : [],
+					}),
+				})),
+				...(includeConnections && {
+					connections: workflow.connections,
+				}),
+				...(nodeId && {
+					focusNode: workflow.nodes.find((n) => n.id === nodeId || n.name === nodeId),
+				}),
+			};
+
+			// Add node-specific context if nodeId provided
+			if (nodeId) {
+				const targetNode = workflow.nodes.find((n) => n.id === nodeId || n.name === nodeId);
+				if (targetNode) {
+					(context as any).nodeContext = await this.getNodeExecutionContext(workflow, targetNode);
+				}
+			}
+
+			this.logger.debug('Workflow execution context completed', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				nodeCount: workflow.nodes.length,
+			});
+
+			return {
+				success: true,
+				context,
+				metadata: {
+					workflowId,
+					nodeId,
+					requestedAt: new Date(),
+					includeNodeDetails,
+					includeConnections,
+					totalNodes: workflow.nodes.length,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Workflow execution context failed', {
+				workflowId,
+				nodeId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Context discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	// Helper methods for variable discovery
+
+	private async getNodeSpecificContext(workflowId: string, nodeId: string | undefined, user: any) {
+		if (!nodeId) return {};
+
+		try {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+			]);
+
+			if (!workflow) return {};
+
+			const node = workflow.nodes.find((n) => n.id === nodeId || n.name === nodeId);
+			if (!node) return {};
+
+			return {
+				nodeSpecific: {
+					currentNode: {
+						type: 'object',
+						description: `Context specific to node "${node.name}"`,
+						properties: {
+							name: { type: 'string', value: node.name },
+							type: { type: 'string', value: node.type },
+							typeVersion: { type: 'number', value: node.typeVersion },
+							parameters: { type: 'object', value: node.parameters },
+							position: { type: 'array', value: node.position },
+							disabled: { type: 'boolean', value: node.disabled || false },
+						},
+					},
+					connectedNodes: {
+						type: 'array',
+						description: 'Nodes connected to this node',
+						value: this.getConnectedNodes(workflow, node.name),
+					},
+					availableInputs: {
+						type: 'object',
+						description: 'Available input data based on connected nodes',
+						value: this.getAvailableInputs(workflow, node.name),
+					},
+				},
+			};
+		} catch (error) {
+			this.logger.debug('Failed to get node-specific context', { workflowId, nodeId, error });
+			return {};
+		}
+	}
+
+	private getConnectedNodes(workflow: any, nodeName: string) {
+		const connections = [];
+
+		// Find parent nodes (inputs)
+		if (workflow.connections) {
+			for (const [sourceNodeName, sourceConnections] of Object.entries(workflow.connections)) {
+				if (sourceConnections && typeof sourceConnections === 'object') {
+					const mainConnections = (sourceConnections as any).main;
+					if (Array.isArray(mainConnections)) {
+						for (const connectionGroup of mainConnections) {
+							if (Array.isArray(connectionGroup)) {
+								for (const connection of connectionGroup) {
+									if (connection.node === nodeName) {
+										connections.push({
+											source: sourceNodeName,
+											target: nodeName,
+											type: 'input',
+											sourceIndex: connection.sourceIndex || 0,
+											targetIndex: connection.targetIndex || 0,
+										});
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Find child nodes (outputs)
+		if (workflow.connections && workflow.connections[nodeName]) {
+			const nodeConnections = workflow.connections[nodeName];
+			if (nodeConnections.main && Array.isArray(nodeConnections.main)) {
+				for (let outputIndex = 0; outputIndex < nodeConnections.main.length; outputIndex++) {
+					const outputConnections = nodeConnections.main[outputIndex];
+					if (Array.isArray(outputConnections)) {
+						for (const connection of outputConnections) {
+							connections.push({
+								source: nodeName,
+								target: connection.node,
+								type: 'output',
+								sourceIndex: outputIndex,
+								targetIndex: connection.targetIndex || 0,
+							});
+						}
+					}
+				}
+			}
+		}
+
+		return connections;
+	}
+
+	private getAvailableInputs(workflow: any, nodeName: string) {
+		const inputs: Record<string, any> = {};
+		const connectedNodes = this.getConnectedNodes(workflow, nodeName);
+
+		const inputNodes = connectedNodes.filter((conn) => conn.type === 'input');
+		for (const conn of inputNodes) {
+			const sourceNode = workflow.nodes.find((n: any) => n.name === conn.source);
+			if (sourceNode) {
+				inputs[conn.source] = {
+					nodeType: sourceNode.type,
+					available: true,
+					connectionIndex: conn.sourceIndex,
+					example: `$node["${conn.source}"].json`,
+				};
+			}
+		}
+
+		return inputs;
+	}
+
+	private async getNodeExecutionContext(workflow: any, node: any) {
+		// Get node type information for more detailed context
+		const nodeType = await this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		return {
+			node: {
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+				displayName: nodeType?.description?.displayName || node.type,
+				description: nodeType?.description?.description || '',
+				parameters: node.parameters,
+				position: node.position,
+				disabled: node.disabled || false,
+			},
+			nodeType: nodeType
+				? {
+						displayName: nodeType.description.displayName,
+						description: nodeType.description.description,
+						version: nodeType.description.version,
+						defaults: nodeType.description.defaults,
+						inputs: nodeType.description.inputs,
+						outputs: nodeType.description.outputs,
+						properties:
+							nodeType.description.properties?.map((prop) => ({
+								name: prop.name,
+								displayName: prop.displayName,
+								type: prop.type,
+								required: prop.required,
+								description: prop.description,
+							})) || [],
+					}
+				: null,
+			availableVariables: {
+				$parameter: Object.keys(node.parameters || {}),
+				$node: this.getConnectedNodes(workflow, node.name).map((conn) =>
+					conn.type === 'input' ? conn.source : conn.target,
+				),
+			},
+		};
 	}
 }
