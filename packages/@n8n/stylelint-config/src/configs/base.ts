@@ -1,6 +1,8 @@
 import type { Config } from 'stylelint';
 
 export const baseConfig: Config = {
+	// TODO: Extending with standard config requires a lot of manual fixes but would be great to have
+	// extends: 'stylelint-config-standard-scss',
 	// Basic SCSS support with essential rules
 	plugins: ['stylelint-scss'],
 	rules: {
