@@ -7,10 +7,12 @@ import * as fs from 'fs';
 import GenerateSchema from 'generate-schema';
 import * as path from 'path';
 
+import { findPackagesRoot } from '../../utils/path-helper';
+
 // --- Configuration ---
 const IGNORE_SKIPLIST = process.env.IGNORE_SKIPLIST === 'true';
 const SCHEMA_MODE = process.env.SCHEMA === 'true';
-const WORKFLOWS_DIR = path.join(__dirname, '../test-workflows/workflows');
+const WORKFLOWS_DIR = path.join(__dirname, '../cli-workflows/workflows');
 const WORKFLOW_CONFIG_PATH = path.join(__dirname, 'workflowConfig.json');
 
 interface Workflow {
@@ -72,7 +74,9 @@ function loadWorkflows(): Workflow[] {
  * @returns An object containing the execution status, data, and any errors.
  */
 function executeWorkflow(workflowId: string): ExecutionResult {
-	const command = `../../cli/bin/n8n execute --id="${workflowId}"`;
+	const packagesRoot = findPackagesRoot('cli');
+	const n8nExecutablePath = path.join(packagesRoot, 'cli/bin/n8n');
+	const command = `"${n8nExecutablePath}" execute --id="${workflowId}"`;
 	const options = {
 		encoding: 'utf-8' as const,
 		maxBuffer: 10 * 1024 * 1024,
