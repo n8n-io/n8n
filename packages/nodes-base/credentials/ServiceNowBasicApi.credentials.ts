@@ -69,8 +69,6 @@ export class ServiceNowBasicApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			baseURL:
-				'={{ $credentials.useCustomHost ? $credentials.customHost.replace(/\\/$/, "") : `https://${$credentials.subdomain}.service-now.com` }}',
 			auth: {
 				username: '={{ $credentials.user }}',
 				password: '={{ $credentials.password }}',
