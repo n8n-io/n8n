@@ -1,5 +1,6 @@
-@import '@n8n/chat/css';
-@import 'styles';
+@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/chat/css';
+@use 'styles';
 
 :root {
 	// Using native css variable enables us to use this value in JS
@@ -11,10 +12,10 @@
 	cursor: pointer !important;
 }
 .primary-color {
-	color: $color-primary;
+	color: var(--color-primary);
 }
 .text-light {
-	color: $custom-font-light;
+	color: var(--color-text-lighter);
 	font-weight: var(--font-weight-regular);
 }
 
@@ -29,7 +30,7 @@
 
 .el-dialog {
 	border: var(--border-base);
-	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
+	box-shadow: 0 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
 
 	&.classic {
@@ -59,26 +60,26 @@
 			}
 		}
 		.el-dialog__body {
-			color: $custom-dialog-text-color;
-			padding: 0 20px 20px 20px;
+			color: var(--color-text-dark);
+			padding: 0 20px 20px;
 		}
 		.el-dialog__title {
-			color: $custom-dialog-text-color;
+			color: var(--color-text-dark);
 		}
 	}
 }
 
 .el-message-box {
-	background-color: $custom-dialog-background;
+	background-color: var(--color-background-base);
 	border: none;
 	.el-message-box__headerbtn {
 		.el-message-box__close {
-			color: $custom-dialog-text-color;
+			color: var(--color-text-dark);
 		}
 	}
 	.el-message-box__content,
 	.el-message-box__title {
-		color: $custom-dialog-text-color;
+		color: var(--color-text-dark);
 	}
 	.el-message-box-icon {
 		width: var(--spacing-l);
@@ -126,7 +127,7 @@
 
 .el-tabs__content {
 	border: 1px solid var(--color-foreground-base);
-	border-radius: 0px var(--border-radius-base) var(--border-radius-base);
+	border-radius: 0 var(--border-radius-base) var(--border-radius-base);
 }
 .el-tabs__header {
 	border-bottom: 0 !important;
@@ -208,7 +209,7 @@
 
 		.el-notification__closeBtn {
 			height: 100%;
-			top: 0px;
+			top: 0;
 			right: var(--spacing-xs);
 		}
 	}
@@ -238,7 +239,7 @@
 			margin-left: var(--spacing-4xs);
 
 			&:hover {
-				background-color: $tag-close-background-hover-color !important;
+				background-color: var(--color-background-light) !important;
 			}
 		}
 	}

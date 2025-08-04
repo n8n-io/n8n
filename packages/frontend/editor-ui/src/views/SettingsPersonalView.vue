@@ -428,10 +428,11 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .container {
+	padding-bottom: 100px;
+
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
 }
 
 .header {

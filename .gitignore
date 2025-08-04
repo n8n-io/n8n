@@ -18,6 +18,7 @@ nodelinter.config.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
+.stylelintcache
 *.swp
 CHANGELOG-*.md
 *.mdx

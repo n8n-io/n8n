@@ -31,5 +31,3 @@ const onUserAction = (action: string) => {
 		/>
 	</div>
 </template>
-
-<style lang="scss" module></style>

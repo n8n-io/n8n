@@ -70,7 +70,7 @@ const countNodesToBeSliced = (nodes: ITemplatesNode[]): number => {
 	margin-left: var(--spacing-xs);
 }
 .button {
-	top: 0px;
+	top: 0;
 	position: relative;
 	display: flex;
 	justify-content: center;

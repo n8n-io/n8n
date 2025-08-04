@@ -33,5 +33,3 @@ const i18n = useI18n();
 		</template>
 	</Card>
 </template>
-
-<style lang="scss" module></style>

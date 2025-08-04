@@ -78,7 +78,7 @@ const alertBoxClassNames = computed(() => {
 </template>
 
 <style lang="scss" module>
-@import '../../css/common/var.scss';
+@use '../../css/common/var.scss';
 
 .alert {
 	display: flex;
@@ -87,7 +87,7 @@ const alertBoxClassNames = computed(() => {
 	border-bottom: 1px solid transparent;
 	align-items: center;
 	justify-content: space-between;
-	padding: $alert-padding;
+	padding: var.$alert-padding;
 
 	&.center {
 		justify-content: center;
@@ -98,7 +98,7 @@ const alertBoxClassNames = computed(() => {
 			color: var(--color-success);
 
 			&.background {
-				background-color: $color-success-lighter;
+				background-color: var.$color-success-lighter;
 				border-color: var(--color-success);
 			}
 
@@ -108,7 +108,7 @@ const alertBoxClassNames = computed(() => {
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
 				color: var(--color-success);
@@ -116,7 +116,7 @@ const alertBoxClassNames = computed(() => {
 
 			&.background {
 				background-color: var(--color-success);
-				border-color: $color-white;
+				border-color: var.$color-white;
 			}
 		}
 	}
@@ -126,13 +126,13 @@ const alertBoxClassNames = computed(() => {
 			color: var(--color-info);
 
 			&.background {
-				background-color: $alert-info-color;
+				background-color: var.$alert-info-color;
 				border-color: var(--color-info);
 			}
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
 				color: var(--color-info);
@@ -140,7 +140,7 @@ const alertBoxClassNames = computed(() => {
 
 			&.background {
 				background-color: var(--color-info);
-				border-color: $color-white;
+				border-color: var.$color-white;
 			}
 		}
 
@@ -154,7 +154,7 @@ const alertBoxClassNames = computed(() => {
 			color: var(--color-warning);
 
 			&.background {
-				background-color: $alert-warning-color;
+				background-color: var.$alert-warning-color;
 				border-color: var(--color-warning);
 			}
 
@@ -164,7 +164,7 @@ const alertBoxClassNames = computed(() => {
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
 				color: var(--color-warning);
@@ -172,7 +172,7 @@ const alertBoxClassNames = computed(() => {
 
 			&.background {
 				background-color: var(--color-warning);
-				border-color: $color-white;
+				border-color: var.$color-white;
 			}
 		}
 	}
@@ -182,7 +182,7 @@ const alertBoxClassNames = computed(() => {
 			color: var(--color-danger);
 
 			&.background {
-				background-color: $alert-danger-color;
+				background-color: var.$alert-danger-color;
 				border-color: var(--color-danger);
 			}
 
@@ -192,7 +192,7 @@ const alertBoxClassNames = computed(() => {
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
 				color: var(--color-danger);
@@ -200,7 +200,7 @@ const alertBoxClassNames = computed(() => {
 
 			&.background {
 				background-color: var(--color-danger);
-				border-color: $color-white;
+				border-color: var.$color-white;
 			}
 		}
 	}
@@ -226,16 +226,16 @@ const alertBoxClassNames = computed(() => {
 }
 
 .title {
-	font-size: $alert-title-font-size;
+	font-size: var.$alert-title-font-size;
 	line-height: 18px;
 	font-weight: var(--font-weight-bold);
 }
 
 .description {
-	font-size: $alert-description-font-size;
+	font-size: var.$alert-description-font-size;
 
 	&.hasTitle {
-		margin: 5px 0 0 0;
+		margin: 5px 0 0;
 	}
 }
 
