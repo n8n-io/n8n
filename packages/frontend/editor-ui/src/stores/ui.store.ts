@@ -140,7 +140,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		[IMPORT_CURL_MODAL_KEY]: {
 			open: false,
 			data: {
-				curlCommand: '',
+				curlCommands: {},
 			},
 		},
 		[LOG_STREAM_MODAL_KEY]: {
