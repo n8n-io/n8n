@@ -50,11 +50,39 @@ export declare namespace ExecutionRequest {
 			reason?: string;
 			timeout?: number;
 		};
+
+		type Step = {
+			steps?: number;
+			nodeNames?: string[];
+		};
+
+		type RetryNode = {
+			modifiedParameters?: IDataObject;
+			resetState?: boolean;
+		};
+
+		type SkipNode = {
+			reason?: string;
+			mockOutputData?: IDataObject;
+		};
 	}
 
 	namespace RouteParams {
 		type ExecutionId = {
 			id: ExecutionEntity['id'];
+		};
+
+		type NodeName = {
+			id: ExecutionEntity['id'];
+			nodeName: string;
+		};
+	}
+
+	namespace QueryParams {
+		type GetDebugInfo = {
+			includeStackTrace?: 'true' | 'false';
+			includeMemoryUsage?: 'true' | 'false';
+			includeErrorDetails?: 'true' | 'false';
 		};
 	}
 
@@ -106,6 +134,26 @@ export declare namespace ExecutionRequest {
 	type GetProgress = AuthenticatedRequest<RouteParams.ExecutionId>;
 
 	type BulkCancel = AuthenticatedRequest<object, object, BodyParams.BulkCancel>;
+
+	// New granular execution control types
+	type Pause = AuthenticatedRequest<RouteParams.ExecutionId>;
+
+	type Resume = AuthenticatedRequest<RouteParams.ExecutionId>;
+
+	type Step = AuthenticatedRequest<RouteParams.ExecutionId, object, BodyParams.Step>;
+
+	type GetNodeStatus = AuthenticatedRequest<RouteParams.NodeName>;
+
+	type RetryNode = AuthenticatedRequest<RouteParams.NodeName, object, BodyParams.RetryNode>;
+
+	type SkipNode = AuthenticatedRequest<RouteParams.NodeName, object, BodyParams.SkipNode>;
+
+	type GetDebugInfo = AuthenticatedRequest<
+		RouteParams.ExecutionId,
+		object,
+		object,
+		QueryParams.GetDebugInfo
+	>;
 }
 
 export type StopResult = {
@@ -182,4 +230,80 @@ export type BulkCancelResult = {
 		error?: string;
 		cancelledAt?: Date;
 	}>;
+};
+
+export type PauseResult = {
+	executionId: string;
+	status: ExecutionStatus;
+	paused: boolean;
+	pausedAt: Date;
+	currentNodeName?: string;
+};
+
+export type ResumeResult = {
+	executionId: string;
+	status: ExecutionStatus;
+	resumed: boolean;
+	resumedAt: Date;
+	fromNodeName?: string;
+};
+
+export type StepResult = {
+	executionId: string;
+	status: ExecutionStatus;
+	stepsExecuted: number;
+	currentNodeName?: string;
+	nextNodeNames?: string[];
+};
+
+export type NodeStatus = {
+	executionId: string;
+	nodeName: string;
+	status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+	executionTime?: number;
+	error?: string;
+	inputData?: IDataObject;
+	outputData?: IDataObject;
+	startTime?: Date;
+	endTime?: Date;
+};
+
+export type RetryNodeResult = {
+	executionId: string;
+	nodeName: string;
+	retried: boolean;
+	retriedAt: Date;
+	status: ExecutionStatus;
+};
+
+export type SkipNodeResult = {
+	executionId: string;
+	nodeName: string;
+	skipped: boolean;
+	skippedAt: Date;
+	reason?: string;
+	mockOutputData?: IDataObject;
+};
+
+export type ExecutionDebugInfo = {
+	executionId: string;
+	execution: ExecutionEntity;
+	debugInfo: {
+		stackTrace?: string[];
+		memoryUsage?: {
+			heapUsed: number;
+			heapTotal: number;
+			external: number;
+			rss: number;
+		};
+		errorDetails?: {
+			message: string;
+			stack?: string;
+			code?: string;
+			context?: IDataObject;
+		};
+		nodeExecutionOrder: string[];
+		totalExecutionTime: number;
+		lastNodeExecuted?: string;
+	};
 };

@@ -300,4 +300,152 @@ export class ExecutionsController {
 
 		return result;
 	}
+
+	@Post('/:id/pause')
+	async pause(req: ExecutionRequest.Pause) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Execution pause requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+		});
+
+		const result = await this.executionService.pause(req.params.id, workflowIds);
+
+		this.eventService.emit('workflow-paused', {
+			user: req.user,
+			workflowId: req.params.id,
+			publicApi: false,
+		});
+
+		return result;
+	}
+
+	@Post('/:id/resume')
+	async resume(req: ExecutionRequest.Resume) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Execution resume requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+		});
+
+		const result = await this.executionService.resume(req.params.id, workflowIds);
+
+		this.eventService.emit('workflow-resumed', {
+			user: req.user,
+			workflowId: req.params.id,
+			publicApi: false,
+		});
+
+		return result;
+	}
+
+	@Post('/:id/step')
+	async step(req: ExecutionRequest.Step) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Execution step requested', {
+			executionId: req.params.id,
+			userId: req.user.id,
+			steps: req.body.steps,
+		});
+
+		const result = await this.executionService.step(req.params.id, workflowIds, req.body);
+
+		return result;
+	}
+
+	@Get('/:id/node/:nodeName/status')
+	async getNodeStatus(req: ExecutionRequest.GetNodeStatus) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		return await this.executionService.getNodeStatus(
+			req.params.id,
+			req.params.nodeName,
+			workflowIds,
+		);
+	}
+
+	@Post('/:id/node/:nodeName/retry')
+	async retryNode(req: ExecutionRequest.RetryNode) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Node retry requested', {
+			executionId: req.params.id,
+			nodeName: req.params.nodeName,
+			userId: req.user.id,
+		});
+
+		const result = await this.executionService.retryNode(
+			req.params.id,
+			req.params.nodeName,
+			workflowIds,
+			req.body,
+		);
+
+		return result;
+	}
+
+	@Post('/:id/node/:nodeName/skip')
+	async skipNode(req: ExecutionRequest.SkipNode) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		this.logger.debug('Node skip requested', {
+			executionId: req.params.id,
+			nodeName: req.params.nodeName,
+			userId: req.user.id,
+		});
+
+		const result = await this.executionService.skipNode(
+			req.params.id,
+			req.params.nodeName,
+			workflowIds,
+			req.body,
+		);
+
+		return result;
+	}
+
+	@Get('/:id/debug-info')
+	async getDebugInfo(req: ExecutionRequest.GetDebugInfo) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		return await this.executionService.getDebugInfo(req.params.id, workflowIds, req.query);
+	}
 }

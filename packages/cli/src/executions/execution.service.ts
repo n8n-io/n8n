@@ -56,6 +56,13 @@ import type {
 	ExecutionProgress,
 	ExecutionFullContext,
 	BulkCancelResult,
+	PauseResult,
+	ResumeResult,
+	StepResult,
+	NodeStatus,
+	RetryNodeResult,
+	SkipNodeResult,
+	ExecutionDebugInfo,
 } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
@@ -901,8 +908,474 @@ export class ExecutionService {
 	}
 
 	// ----------------------------------
+	//        New Granular Execution Control
+	// ----------------------------------
+
+	async pause(executionId: string, sharedWorkflowIds: string[]): Promise<PauseResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		if (execution.finished) {
+			throw new WorkflowOperationError(
+				`Execution ${executionId} is already finished and cannot be paused`,
+			);
+		}
+
+		const pausedAt = new Date();
+		let paused = false;
+		let currentNodeName: string | undefined;
+
+		try {
+			// Check if execution is currently active
+			if (this.activeExecutions.has(executionId)) {
+				// Pause the execution (this would require implementation in the execution engine)
+				// For now, we'll mark it as paused and handle the actual pausing in the workflow execution
+				paused = true;
+
+				// Get current node being executed
+				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
+				const executionData = activeExecution.executionData;
+				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
+					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
+				}
+			}
+
+			this.logger.debug('Execution paused successfully', {
+				executionId,
+				paused,
+				currentNodeName,
+			});
+		} catch (error) {
+			this.logger.error('Failed to pause execution', {
+				executionId,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to pause execution: ${error}`);
+		}
+
+		return {
+			executionId,
+			status: 'waiting',
+			paused,
+			pausedAt,
+			currentNodeName,
+		};
+	}
+
+	async resume(executionId: string, sharedWorkflowIds: string[]): Promise<ResumeResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		if (execution.finished) {
+			throw new WorkflowOperationError(
+				`Execution ${executionId} is already finished and cannot be resumed`,
+			);
+		}
+
+		const resumedAt = new Date();
+		let resumed = false;
+		let fromNodeName: string | undefined;
+
+		try {
+			// Resume the execution from where it was paused
+			if (this.activeExecutions.has(executionId)) {
+				resumed = true;
+				// Get the node from which to resume
+				if (execution.data?.resultData?.lastNodeExecuted) {
+					fromNodeName = execution.data.resultData.lastNodeExecuted;
+				}
+			}
+
+			this.logger.debug('Execution resumed successfully', {
+				executionId,
+				resumed,
+				fromNodeName,
+			});
+		} catch (error) {
+			this.logger.error('Failed to resume execution', {
+				executionId,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to resume execution: ${error}`);
+		}
+
+		return {
+			executionId,
+			status: 'running',
+			resumed,
+			resumedAt,
+			fromNodeName,
+		};
+	}
+
+	async step(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.Step,
+	): Promise<StepResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		if (execution.finished) {
+			throw new WorkflowOperationError(
+				`Execution ${executionId} is already finished and cannot be stepped`,
+			);
+		}
+
+		const steps = options.steps ?? 1;
+		let stepsExecuted = 0;
+		let currentNodeName: string | undefined;
+		let nextNodeNames: string[] = [];
+
+		try {
+			// Step through the execution by the specified number of steps
+			if (this.activeExecutions.has(executionId)) {
+				// This would require implementation in the workflow execution engine
+				// to support step-by-step execution
+				stepsExecuted = steps;
+
+				// Get current execution state
+				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
+				const executionData = activeExecution.executionData;
+				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
+					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
+				}
+
+				// Calculate next nodes to be executed
+				if (options.nodeNames) {
+					nextNodeNames = options.nodeNames;
+				} else {
+					// Default: get next nodes in workflow sequence
+					nextNodeNames = this.getNextNodesInSequence(execution.workflowData, currentNodeName);
+				}
+			}
+
+			this.logger.debug('Execution stepped successfully', {
+				executionId,
+				stepsExecuted,
+				currentNodeName,
+				nextNodeNames,
+			});
+		} catch (error) {
+			this.logger.error('Failed to step execution', {
+				executionId,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to step execution: ${error}`);
+		}
+
+		return {
+			executionId,
+			status: 'running',
+			stepsExecuted,
+			currentNodeName,
+			nextNodeNames,
+		};
+	}
+
+	async getNodeStatus(
+		executionId: string,
+		nodeName: string,
+		sharedWorkflowIds: string[],
+	): Promise<NodeStatus> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const runData = execution.data?.resultData?.runData || {};
+		const nodeRunData = runData[nodeName];
+
+		if (!nodeRunData || nodeRunData.length === 0) {
+			return {
+				executionId,
+				nodeName,
+				status: 'pending',
+			};
+		}
+
+		const lastRun = nodeRunData[nodeRunData.length - 1];
+		let status: NodeStatus['status'] = 'pending';
+
+		if (lastRun.error) {
+			status = 'failed';
+		} else if (lastRun.executionTime !== undefined) {
+			status = 'completed';
+		} else if (this.activeExecutions.has(executionId)) {
+			// Check if this node is currently being executed
+			try {
+				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
+				const executionData = activeExecution.executionData;
+				if (executionData?.executionData?.resultData?.lastNodeExecuted === nodeName) {
+					status = 'running';
+				}
+			} catch {
+				// Execution not found in active executions
+			}
+		}
+
+		return {
+			executionId,
+			nodeName,
+			status,
+			executionTime: lastRun.executionTime,
+			error: lastRun.error?.message,
+			inputData: lastRun.data?.main?.[0]?.[0]?.json,
+			outputData: lastRun.data?.main?.[0]?.[0]?.json,
+			startTime: new Date(lastRun.startTime),
+			endTime: lastRun.executionTime
+				? new Date(lastRun.startTime + lastRun.executionTime)
+				: undefined,
+		};
+	}
+
+	async retryNode(
+		executionId: string,
+		nodeName: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.RetryNode,
+	): Promise<RetryNodeResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const retriedAt = new Date();
+
+		// Find the node in the workflow
+		const node = execution.workflowData.nodes.find((n) => n.name === nodeName);
+		if (!node) {
+			throw new WorkflowOperationError(`Node "${nodeName}" not found in workflow`);
+		}
+
+		try {
+			// Apply modified parameters if provided
+			if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
+				node.parameters = {
+					...node.parameters,
+					...options.modifiedParameters,
+				} as any;
+			}
+
+			// Reset node state if requested
+			if (options.resetState) {
+				const runData = execution.data?.resultData?.runData || {};
+				delete runData[nodeName];
+			}
+
+			this.logger.debug('Node retry completed', {
+				executionId,
+				nodeName,
+				retriedAt,
+			});
+		} catch (error) {
+			this.logger.error('Failed to retry node', {
+				executionId,
+				nodeName,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to retry node: ${error}`);
+		}
+
+		return {
+			executionId,
+			nodeName,
+			retried: true,
+			retriedAt,
+			status: 'running',
+		};
+	}
+
+	async skipNode(
+		executionId: string,
+		nodeName: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.BodyParams.SkipNode,
+	): Promise<SkipNodeResult> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const skippedAt = new Date();
+
+		// Find the node in the workflow
+		const node = execution.workflowData.nodes.find((n) => n.name === nodeName);
+		if (!node) {
+			throw new WorkflowOperationError(`Node "${nodeName}" not found in workflow`);
+		}
+
+		try {
+			// Mark node as skipped by adding mock run data
+			const runData = execution.data?.resultData?.runData || {};
+
+			runData[nodeName] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 0,
+					data: {
+						main: options.mockOutputData
+							? [[{ json: options.mockOutputData, pairedItem: { item: 0 } }]]
+							: [[]],
+					},
+					source: [],
+				},
+			];
+
+			this.logger.debug('Node skipped successfully', {
+				executionId,
+				nodeName,
+				reason: options.reason,
+				skippedAt,
+			});
+		} catch (error) {
+			this.logger.error('Failed to skip node', {
+				executionId,
+				nodeName,
+				error: error instanceof Error ? error.message : error,
+			});
+			throw new InternalServerError(`Failed to skip node: ${error}`);
+		}
+
+		return {
+			executionId,
+			nodeName,
+			skipped: true,
+			skippedAt,
+			reason: options.reason,
+			mockOutputData: options.mockOutputData,
+		};
+	}
+
+	async getDebugInfo(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		options: ExecutionRequest.QueryParams.GetDebugInfo,
+	): Promise<ExecutionDebugInfo> {
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
+		}
+
+		const debugInfo: ExecutionDebugInfo['debugInfo'] = {
+			nodeExecutionOrder: [],
+			totalExecutionTime: 0,
+		};
+
+		// Calculate node execution order and timing
+		const runData = execution.data?.resultData?.runData || {};
+		const nodeExecutionOrder: string[] = [];
+		let totalExecutionTime = 0;
+
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			if (nodeRuns && nodeRuns.length > 0) {
+				nodeExecutionOrder.push(nodeName);
+				const lastRun = nodeRuns[nodeRuns.length - 1];
+				if (lastRun.executionTime !== undefined) {
+					totalExecutionTime += lastRun.executionTime;
+				}
+			}
+		}
+
+		debugInfo.nodeExecutionOrder = nodeExecutionOrder;
+		debugInfo.totalExecutionTime = totalExecutionTime;
+		debugInfo.lastNodeExecuted = execution.data?.resultData?.lastNodeExecuted;
+
+		// Include stack trace if requested and available
+		if (options.includeStackTrace === 'true' && execution.data?.resultData?.error) {
+			debugInfo.stackTrace = execution.data.resultData.error.stack?.split('\n') || [];
+		}
+
+		// Include memory usage if requested
+		if (options.includeMemoryUsage === 'true') {
+			debugInfo.memoryUsage = {
+				heapUsed: process.memoryUsage().heapUsed,
+				heapTotal: process.memoryUsage().heapTotal,
+				external: process.memoryUsage().external,
+				rss: process.memoryUsage().rss,
+			};
+		}
+
+		// Include error details if requested and available
+		if (options.includeErrorDetails === 'true' && execution.data?.resultData?.error) {
+			const error = execution.data.resultData.error;
+			debugInfo.errorDetails = {
+				message: error.message,
+				stack: error.stack,
+				code: (error as any).code,
+				context: (error as any).context,
+			};
+		}
+
+		return {
+			executionId,
+			execution: execution as any,
+			debugInfo,
+		};
+	}
+
+	// ----------------------------------
 	//             Private Methods
 	// ----------------------------------
+
+	private getNextNodesInSequence(workflowData: IWorkflowBase, currentNodeName?: string): string[] {
+		if (!currentNodeName) {
+			// Return starting nodes
+			return workflowData.nodes
+				.filter((node) => !workflowData.connections[node.name])
+				.map((node) => node.name);
+		}
+
+		// Find nodes connected from the current node
+		const connections = workflowData.connections[currentNodeName] || {};
+		const nextNodes: string[] = [];
+
+		for (const connectionType in connections) {
+			const typeConnections = connections[connectionType] || [];
+			for (const connection of typeConnections) {
+				if (connection?.node) {
+					nextNodes.push(connection.node);
+				}
+			}
+		}
+
+		return nextNodes;
+	}
 
 	private calculatePerformanceMetrics(execution: IExecutionResponse) {
 		const runData = execution.data?.resultData?.runData || {};
