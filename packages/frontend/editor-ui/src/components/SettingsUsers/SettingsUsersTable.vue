@@ -188,5 +188,3 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		</N8nDataTableServer>
 	</div>
 </template>
-
-<style lang="scss" module></style>

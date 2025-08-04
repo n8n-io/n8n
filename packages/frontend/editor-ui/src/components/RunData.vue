@@ -2119,15 +2119,15 @@ defineExpose({ enterEditMode });
 }
 
 .spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
 	* {
 		color: var(--color-primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--ndv-spacing);
 }
 
 .editMode {
