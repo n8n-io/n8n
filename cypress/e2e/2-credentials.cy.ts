@@ -193,7 +193,6 @@ describe('Credentials', () => {
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
 		saveCredential();
 		credentialsModal.getters.closeButton().click();
@@ -211,7 +210,6 @@ describe('Credentials', () => {
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
 		saveCredential();
 		credentialsModal.getters.closeButton().click();
@@ -236,7 +234,6 @@ describe('Credentials', () => {
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
 		saveCredential();
 		credentialsModal.getters.closeButton().click();

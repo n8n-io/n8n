@@ -105,4 +105,24 @@ describe('N8nInlineTextEdit', () => {
 		const emittedEvents = wrapper.emitted('update:model-value');
 		expect(emittedEvents).toBeUndefined();
 	});
+
+	it('should focus input when any child element is clicked', async () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+			},
+		});
+		const editableArea = wrapper.getByTestId('inline-editable-area');
+		const rect = editableArea.getBoundingClientRect();
+
+		// Click the bottom right corner of the parent element
+		await userEvent.pointer([
+			{ coords: { clientX: rect.right - 1, clientY: rect.bottom - 1 } },
+			{ target: editableArea },
+			{ keys: '[MouseLeft]' },
+		]);
+
+		const input = wrapper.getByTestId('inline-edit-input');
+		expect(input).toHaveFocus();
+	});
 });
