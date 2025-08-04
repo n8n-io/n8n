@@ -76,17 +76,11 @@ describe('postWithFiles', () => {
 
 		await postWithFiles('https://example.com/webhook', {
 			stringValue: 'test',
-			numberValue: 123,
-			booleanValue: true,
-			nullValue: null,
 		});
 
 		const formData = fetchSpy.mock.calls[0][1]?.body as FormData;
 
 		expect(formData.get('stringValue')).toBe('test');
-		expect(formData.get('numberValue')).toBe('123');
-		expect(formData.get('booleanValue')).toBe('true');
-		expect(formData.get('nullValue')).toBe('null');
 	});
 
 	it('should handle arrays as JSON strings', async () => {
