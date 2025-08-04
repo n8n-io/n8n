@@ -14,7 +14,6 @@ import {
 	MonitoringConfigDto,
 	NodePerformanceMetricsDto,
 	WorkflowNodeBreakdownDto,
-	NodeTypePerformanceDto,
 	LiveNodeExecutionDto,
 	NodePerformanceHistoryDto,
 	NodePerformanceRequestDto,
@@ -24,17 +23,7 @@ import {
 } from '@n8n/api-types';
 import { Response } from 'express';
 import type { AuthenticatedRequest } from '@n8n/db';
-import {
-	Get,
-	Post,
-	Put,
-	Delete,
-	RestController,
-	Param,
-	Query,
-	Body,
-	Licensed,
-} from '@n8n/decorators';
+import { Get, Post, Put, Delete, RestController, Param, Query, Licensed } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

@@ -1367,9 +1367,13 @@ export class ExecutionService {
 
 		for (const connectionType in connections) {
 			const typeConnections = connections[connectionType] || [];
-			for (const connection of typeConnections) {
-				if (connection?.node) {
-					nextNodes.push(connection.node);
+			for (const connectionArray of typeConnections) {
+				if (Array.isArray(connectionArray)) {
+					for (const connection of connectionArray) {
+						if (connection?.node) {
+							nextNodes.push(connection.node);
+						}
+					}
 				}
 			}
 		}

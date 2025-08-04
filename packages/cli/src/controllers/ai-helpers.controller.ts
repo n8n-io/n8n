@@ -1,4 +1,4 @@
-import { Post, RestController, Body, Get, Query } from '@n8n/decorators';
+import { Post, RestController, Get } from '@n8n/decorators';
 import { AuthenticatedRequest } from '@n8n/db';
 import { ApplicationError } from 'n8n-workflow';
 import type { Response } from 'express';

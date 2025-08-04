@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Logger } from '@n8n/backend-common';
-import { ApplicationError } from 'n8n-workflow';
 import { Container } from '@n8n/di';
 import { PythonSandboxService } from '../security/python-sandbox.service';
 import rateLimit from 'express-rate-limit';
@@ -277,7 +276,7 @@ export const sanitizePythonRequest = (
 
 	// Sanitize timeout
 	if (body.timeout !== undefined) {
-		body.timeout = Math.min(Math.max(parseInt(body.timeout, 10) || 30000, 1000), 120000);
+		body.timeout = Math.min(Math.max(parseInt(String(body.timeout), 10) || 30000, 1000), 120000);
 	}
 
 	// Sanitize context
@@ -358,7 +357,7 @@ export const monitorSecurityEvents = (
 /**
  * Security health check middleware
  */
-export const securityHealthCheck = (req: Request, res: Response, next: NextFunction): void => {
+export const securityHealthCheck = (_req: Request, res: Response, next: NextFunction): void => {
 	const metrics = securityMetrics.getMetrics();
 	const failureRate = securityMetrics.getFailureRate();
 

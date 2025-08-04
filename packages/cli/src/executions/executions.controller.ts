@@ -317,11 +317,12 @@ export class ExecutionsController {
 
 		const result = await this.executionService.pause(req.params.id, workflowIds);
 
-		this.eventService.emit('workflow-paused', {
-			user: req.user,
-			workflowId: req.params.id,
-			publicApi: false,
-		});
+		// TODO: Use proper event type for execution pause
+		// this.eventService.emit('execution-stopped', {
+		// 	user: req.user,
+		// 	executionId: req.params.id,
+		// 	publicApi: false,
+		// });
 
 		return result;
 	}
@@ -342,11 +343,12 @@ export class ExecutionsController {
 
 		const result = await this.executionService.resume(req.params.id, workflowIds);
 
-		this.eventService.emit('workflow-resumed', {
-			user: req.user,
-			workflowId: req.params.id,
-			publicApi: false,
-		});
+		// TODO: Use proper event type for execution resume
+		// this.eventService.emit('execution-started', {
+		// 	user: req.user,
+		// 	executionId: req.params.id,
+		// 	publicApi: false,
+		// });
 
 		return result;
 	}

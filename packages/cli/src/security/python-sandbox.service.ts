@@ -3,8 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { ApplicationError } from 'n8n-workflow';
 import { spawn, execFile } from 'child_process';
 import { promisify } from 'util';
-import { writeFile, readFile, mkdir, access, constants } from 'fs/promises';
-import { join, dirname, resolve } from 'path';
+import { mkdir } from 'fs/promises';
+import { join } from 'path';
 import { randomUUID } from 'crypto';
 import type { PythonExecutionOptions, PythonExecutionResult } from '../types/python-executor.types';
 
@@ -190,15 +190,9 @@ export class PythonSandboxService {
 			maxConcurrentExecutions: parseInt(process.env.N8N_PYTHON_MAX_CONCURRENT || '5', 10),
 		};
 
-		// Try to load custom config
-		try {
-			const configPath = join(__dirname, '../../../../docker/python-executor/security-config.json');
-			// Config will be loaded dynamically if it exists
-			return defaultConfig;
-		} catch {
-			this.logger.debug('Using default security configuration');
-			return defaultConfig;
-		}
+		// Using default configuration for now
+		this.logger.debug('Using default security configuration');
+		return defaultConfig;
 	}
 
 	/**
@@ -478,7 +472,7 @@ finally:
 	 */
 	private async auditExecution(
 		context: SecurityContext,
-		result: { result: any; stdout: string; stderr: string } | null,
+		_result: { result: any; stdout: string; stderr: string } | null,
 		error: Error | null,
 	): Promise<void> {
 		const auditLog: ExecutionAuditLog = {
@@ -499,7 +493,7 @@ finally:
 		this.auditLogs.push(auditLog);
 
 		// In production, this would write to a persistent audit log
-		this.logger.info('Python execution audit', auditLog);
+		this.logger.info('Python execution audit', auditLog as any);
 	}
 
 	/**

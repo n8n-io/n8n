@@ -77,7 +77,7 @@ export class SystemMonitoringMetricsService extends EventEmitter {
 
 	constructor(
 		private readonly systemMonitoringService: SystemMonitoringService,
-		private readonly prometheusMetricsService: PrometheusMetricsService,
+		private readonly _prometheusMetricsService: PrometheusMetricsService,
 	) {
 		super();
 		this.prefix = 'n8n_system_monitoring_';
