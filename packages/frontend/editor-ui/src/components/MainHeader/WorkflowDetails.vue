@@ -943,6 +943,26 @@ $--header-spacing: 20px;
 		}
 	}
 }
+
+@media (max-width: 1390px) {
+	.name-container {
+		margin-right: var(--spacing-xs);
+	}
+
+	.actions {
+		gap: var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1350px) {
+	.name-container {
+		margin-right: var(--spacing-2xs);
+	}
+
+	.actions {
+		gap: var(--spacing-2xs);
+	}
+}
 </style>
 
 <style module lang="scss">

@@ -351,4 +351,23 @@ function hideGithubButton() {
 .github-button:hover .close-github-button {
 	display: block;
 }
+
+@media (max-width: 1390px) {
+	.github-button {
+		padding: var(--spacing-5xs) var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1340px) {
+	.github-button {
+		border-left: 0;
+		padding-left: 0;
+	}
+}
+
+@media (max-width: 1290px) {
+	.github-button {
+		display: none;
+	}
+}
 </style>
