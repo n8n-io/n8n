@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.50.0",
+  "version": "0.51.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -12,6 +12,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "format": "biome format --write src .storybook && prettier --write src/ --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci src .storybook && prettier --check src/ --ignore-path ../../../../.prettierignore",
     "storybook": "storybook dev -p 6006 --no-open",
@@ -48,6 +50,7 @@
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",

@@ -100,11 +100,13 @@
 		@include button.button-small();
 		@include button.button-round();
 
-		vertical-align: middle;
-		margin-left: var(--spacing-2xs);
-
 		&.is-plain {
 			@include button.button-just-primary();
+		}
+
+		& {
+			vertical-align: middle;
+			margin-left: var(--spacing-2xs);
 		}
 	}
 }

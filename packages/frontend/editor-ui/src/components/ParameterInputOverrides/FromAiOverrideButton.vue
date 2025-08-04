@@ -32,7 +32,7 @@ const emit = defineEmits<{
 .overrideButton {
 	display: flex;
 	justify-content: center;
-	border: 0px;
+	border: 0;
 	height: 30px;
 	width: 30px;
 	background-color: var(--color-foreground-base);

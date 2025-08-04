@@ -50,7 +50,7 @@ defineExpose({
 			:style="{
 				maxHeight: `calc(${vf.viewportRef.value?.offsetHeight ?? 0}px - var(--spacing-s) * 2)`,
 			}"
-			:workflow="workflow"
+			:workflow-object="workflow"
 			:run-index="0"
 			compact
 			push-ref=""

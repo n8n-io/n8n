@@ -46,6 +46,13 @@ export class AiController {
 		@Body payload: AiBuilderChatRequestDto,
 	) {
 		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+
+			const handleClose = () => abortController.abort();
+
+			res.on('close', handleClose);
+
 			const { text, workflowContext } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
@@ -57,6 +64,7 @@ export class AiController {
 					},
 				},
 				req.user,
+				signal,
 			);
 
 			res.header('Content-type', 'application/json-lines').flush();
@@ -83,6 +91,9 @@ export class AiController {
 					],
 				};
 				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			} finally {
+				// Clean up event listener
+				res.off('close', handleClose);
 			}
 
 			res.end();

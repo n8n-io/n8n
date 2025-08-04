@@ -92,10 +92,7 @@ export function createCanvasGraphNode({
 		isParent: false,
 		selected: false,
 		resizing: false,
-		handleBounds: {
-			source: null,
-			target: null,
-		},
+		handleBounds: {},
 		events: {},
 		data: createCanvasNodeData({ id, type, ...data }),
 		...rest,

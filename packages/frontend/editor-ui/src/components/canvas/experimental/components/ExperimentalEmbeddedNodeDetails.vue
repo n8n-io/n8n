@@ -12,6 +12,7 @@ import { computed, provide, ref } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
+import type { Workflow } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
 import {
 	getNodeSubTitleText,
@@ -79,7 +80,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 			};
 		}
 
-		const inputs = workflow.value.getParentNodesByDepth(nodeName, 1);
+		const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
 
 		if (inputs.length > 0) {
 			return {
@@ -95,7 +96,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	return {
 		localResolve: true,
 		envVars: useEnvironmentsStore().variablesAsObject,
-		workflow: workflow.value,
+		workflow: workflowObject.value,
 		execution,
 		nodeName,
 		additionalKeys: {},
@@ -104,8 +105,8 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -145,6 +146,7 @@ watchOnce(isVisible, (visible) => {
 			:class="$style.settingsView"
 			:is-read-only="isReadOnly"
 			:sub-title="subTitle"
+			:input-node-name="expressionResolveCtx?.inputNode?.name"
 			@capture-wheel-body="stopImmediatePropagationIfPanelShouldScroll"
 		>
 			<template #actions>

@@ -41,11 +41,11 @@ $header-height: calc(var(--header-height) * 1px);
 $sidebar-width: 65px;
 $sidebar-expanded-width: 200px;
 $sidebar-inactive-color: var(--color-foreground-xdark);
-$sidebar-active-color: $color-primary;
+$sidebar-active-color: var(--color-primary);
 
 // gifts notification
-$gift-notification-active-color: $color-primary;
-$gift-notification-inner-color: $color-primary;
+$gift-notification-active-color: var(--color-primary);
+$gift-notification-inner-color: var(--color-primary);
 $gift-notification-outer-color: var(--color-text-xlight);
 
 // based on element.io breakpoints
@@ -87,7 +87,7 @@ $trigger-icon-background-color: var(--color-background-xlight);
 $drawer-background-color: var(--color-background-xlight);
 
 // updates-panel
-$updates-panel-info-url-color: $color-primary;
+$updates-panel-info-url-color: var(--color-primary);
 $updates-panel-border: var(--border-base);
 $updates-panel-dark-background-color: var(--color-background-light);
 $updates-panel-description-text-color: var(--color-text-base);
