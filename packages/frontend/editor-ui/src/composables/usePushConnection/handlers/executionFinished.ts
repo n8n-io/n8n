@@ -1,33 +1,34 @@
-import type { ExecutionFinished } from '@n8n/api-types/push/execution';
-import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	clearPopupWindowState,
+	getExecutionErrorMessage,
+	getExecutionErrorToastConfiguration,
 	hasTrimmedData,
 	hasTrimmedItem,
-	getExecutionErrorToastConfiguration,
-	getExecutionErrorMessage,
 } from '@/utils/executionUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { parse } from 'flatted';
-import { useToast } from '@/composables/useToast';
-import type { useRouter } from 'vue-router';
-import { useI18n } from '@n8n/i18n';
-import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
-import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import type { ExecutionFinished } from '@n8n/api-types/push/execution';
+import { useI18n } from '@n8n/i18n';
+import { parse } from 'flatted';
+import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
+import type { useRouter } from 'vue-router';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -44,6 +45,7 @@ export async function executionFinished(
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
+	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 
 	workflowsStore.lastAddedExecutingNode = null;
 
@@ -67,6 +69,12 @@ export async function executionFinished(
 		}
 		if (workflow.meta.templateId.startsWith('035_template_onboarding')) {
 			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
+				workflow.meta.templateId.split('-').pop() ?? '',
+				data.status,
+			);
+		}
+		if (workflow.meta.templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
+			readyToRunWorkflowsStore.trackExecuteWorkflow(
 				workflow.meta.templateId.split('-').pop() ?? '',
 				data.status,
 			);
