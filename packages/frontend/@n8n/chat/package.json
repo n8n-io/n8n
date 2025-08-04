@@ -3,7 +3,7 @@
   "version": "0.50.0",
   "scripts": {
     "dev": "pnpm run storybook",
-    "build": "pnpm build:vite && pnpm build:bundle",
+    "build": "NODE_OPTIONS=--max_old_space_size=2048 pnpm build:vite && pnpm build:bundle",
     "build:vite": "cross-env vite build",
     "build:bundle": "cross-env INCLUDE_VUE=true vite build",
     "preview": "vite preview",
