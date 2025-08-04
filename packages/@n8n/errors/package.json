@@ -11,8 +11,10 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "echo \"WARNING: no test specified\" && exit 0",
-    "test:dev": "echo \"WARNING: no test specified\" && exit 0"
+    "test": "jest",
+    "test:dev": "jest --watch",
+    "test:unit": "jest",
+    "test:coverage": "jest --coverage"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -22,7 +24,10 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@sentry/node": "catalog:"
+    "@sentry/node": "catalog:",
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:"
   },
   "dependencies": {
     "callsites": "catalog:"

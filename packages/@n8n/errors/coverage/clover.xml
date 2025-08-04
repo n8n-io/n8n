@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1754332859328" clover="3.2.0">
+  <project timestamp="1754332859328" name="All files">
+    <metrics statements="10" coveredstatements="10" conditionals="7" coveredconditionals="7" methods="1" coveredmethods="1" elements="18" coveredelements="18" complexity="0" loc="10" ncloc="10" packages="1" files="1" classes="1"/>
+    <file name="application.error.ts" path="/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/packages/@n8n/errors/src/application.error.ts">
+      <metrics statements="10" coveredstatements="10" conditionals="7" coveredconditionals="7" methods="1" coveredmethods="1"/>
+      <line num="2" count="2" type="stmt"/>
+      <line num="9" count="2" type="stmt"/>
+      <line num="22" count="48" type="stmt"/>
+      <line num="23" count="48" type="cond" truecount="2" falsecount="0"/>
+      <line num="24" count="48" type="stmt"/>
+      <line num="25" count="48" type="stmt"/>
+      <line num="27" count="48" type="stmt"/>
+      <line num="28" count="48" type="cond" truecount="2" falsecount="0"/>
+      <line num="30" count="47" type="stmt"/>
+      <line num="32" count="47" type="cond" truecount="1" falsecount="0"/>
+    </file>
+  </project>
+</coverage>
