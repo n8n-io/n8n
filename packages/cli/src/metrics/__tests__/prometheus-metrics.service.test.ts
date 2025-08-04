@@ -174,7 +174,7 @@ describe('PrometheusMetricsService', () => {
 				includeStatusCode: false,
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_last_activity',
 				help: 'last instance activity (backend request) in Unix time (seconds).',
 			});
@@ -209,12 +209,12 @@ describe('PrometheusMetricsService', () => {
 
 			// call 1 is for `n8n_version_info` (always enabled)
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
 				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(4, {
 				name: 'n8n_scaling_mode_queue_jobs_active',
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
 			});
@@ -238,7 +238,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -260,9 +260,9 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			// First call is n8n version metric
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_active_workflow_count',
 				help: 'Total number of active workflows.',
 				collect: expect.any(Function),

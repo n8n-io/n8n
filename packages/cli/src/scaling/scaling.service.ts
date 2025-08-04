@@ -405,8 +405,7 @@ export class ScalingService {
 	get isQueueMetricsEnabled() {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isSingleMain
+			this.instanceSettings.instanceType === 'main'
 		);
 	}
 
