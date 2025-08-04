@@ -4,11 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
+
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
-import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	workbookRLC,

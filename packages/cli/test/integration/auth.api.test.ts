@@ -1,16 +1,15 @@
-import { Container } from 'typedi';
+import { randomValidPassword, testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -43,7 +42,7 @@ describe('POST /login', () => {
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -87,7 +86,7 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
@@ -131,7 +130,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -146,6 +145,18 @@ describe('POST /login', () => {
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
+		config.set('userManagement.authenticationMethod', 'email');
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid email address');
 	});
 });
 

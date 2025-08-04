@@ -6,10 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
+
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleBigQueryApiRequest } from '../../transport';
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

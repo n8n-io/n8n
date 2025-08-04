@@ -41,7 +41,6 @@ export async function getresponseApiRequest(
 		if (authentication === 'apiKey') {
 			return await this.helpers.requestWithAuthentication.call(this, 'getResponseApi', options);
 		} else {
-			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'getResponseOAuth2Api', options);
 		}
 	} catch (error) {

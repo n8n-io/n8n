@@ -1,0 +1,41 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@include mixins.b(page-header) {
+	display: flex;
+	line-height: 24px;
+
+	@include mixins.e(left) {
+		display: flex;
+		cursor: pointer;
+		margin-right: 40px;
+		position: relative;
+
+		&::after {
+			content: '';
+			position: absolute;
+			width: 1px;
+			height: 16px;
+			right: -20px;
+			top: 50%;
+			transform: translateY(-50%);
+			background-color: var(--border-color-base);
+		}
+
+		.el-icon-back {
+			font-size: 18px;
+			margin-right: 6px;
+			align-self: center;
+		}
+
+		@include mixins.e(title) {
+			font-size: 14px;
+			font-weight: var(--font-weight-medium);
+		}
+	}
+
+	@include mixins.e(content) {
+		font-size: 18px;
+		color: var(--color-text-dark);
+	}
+}

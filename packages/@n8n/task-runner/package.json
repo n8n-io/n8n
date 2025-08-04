@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.9.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -12,7 +12,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "main": "dist/start.js",
@@ -35,17 +35,20 @@
   },
   "dependencies": {
     "@n8n/config": "workspace:*",
-    "@sentry/integrations": "catalog:",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:^",
     "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "nanoid": "^3.3.6",
-    "typedi": "catalog:",
+    "nanoid": "catalog:",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "luxon": "catalog:"
+    "@n8n/typescript-config": "workspace:*",
+    "@types/lodash": "catalog:"
   }
 }

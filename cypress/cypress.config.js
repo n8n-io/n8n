@@ -14,6 +14,8 @@ module.exports = defineConfig({
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
+		viewportWidth: 1536,
+		viewportHeight: 960,
 		video: true,
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
@@ -24,5 +26,13 @@ module.exports = defineConfig({
 		downloadsFolder: 'downloads',
 		screenshotsFolder: 'screenshots',
 		videosFolder: 'videos',
+		setupNodeEvents(on, config) {
+			require('@cypress/grep/src/plugin')(config);
+			return config;
+		},
+	},
+	reporter: 'mocha-junit-reporter',
+	reporterOptions: {
+		mochaFile: 'test-results-[hash].xml',
 	},
 });

@@ -8,14 +8,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { leadFields, leadOperations } from './LeadDescription';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { companyFields, companyOperations } from './CompanyDescription';
+import type { ICompany } from './CompanyInteface';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { leadFields, leadOperations } from './LeadDescription';
 import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser, IUserCompany } from './UserInterface';
-import { companyFields, companyOperations } from './CompanyDescription';
-import type { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,8 +31,9 @@ export class Intercom implements INodeType {
 		defaults: {
 			name: 'Intercom',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'intercomApi',

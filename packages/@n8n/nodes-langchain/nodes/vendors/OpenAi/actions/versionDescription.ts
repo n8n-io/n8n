@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as assistant from './assistant';
 import * as audio from './audio';
@@ -50,34 +50,30 @@ const configureNodeInputs = (
 ) => {
 	if (resource === 'assistant' && operation === 'message') {
 		const inputs: INodeInputConfiguration[] = [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: 'main' },
+			{ type: 'ai_tool', displayName: 'Tools' },
 		];
 		if (memory !== 'threadId') {
-			inputs.push({ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 });
+			inputs.push({ type: 'ai_memory', displayName: 'Memory', maxConnections: 1 });
 		}
 		return inputs;
 	}
 	if (resource === 'text' && operation === 'message') {
 		if (hideTools === 'hide') {
-			return [NodeConnectionType.Main];
+			return ['main'];
 		}
-		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
-		];
+		return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
 	}
 
-	return [NodeConnectionType.Main];
+	return ['main'];
 };
 
-// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'OpenAI',
 	name: 'openAi',
 	icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 	group: ['transform'],
-	version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
+	version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
@@ -98,7 +94,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	},
 	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools, $parameter.memory ?? undefined)}}`,
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'openAiApi',

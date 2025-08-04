@@ -1,21 +1,21 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { Cohere } from '@langchain/cohere';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Cohere } from '@langchain/cohere';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmCohere',
 		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
@@ -38,10 +38,10 @@ export class LmCohere implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -50,7 +50,7 @@ export class LmCohere implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

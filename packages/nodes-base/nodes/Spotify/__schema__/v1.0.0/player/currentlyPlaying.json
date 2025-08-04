@@ -1,0 +1,183 @@
+{
+    "type": "object",
+    "properties": {
+        "actions": {
+            "type": "object",
+            "properties": {
+                "disallows": {
+                    "type": "object",
+                    "properties": {
+                        "resuming": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "currently_playing_type": {
+            "type": "string"
+        },
+        "is_playing": {
+            "type": "boolean"
+        },
+        "item": {
+            "type": "object",
+            "properties": {
+                "album": {
+                    "type": "object",
+                    "properties": {
+                        "artists": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "external_urls": {
+                                        "type": "object",
+                                        "properties": {
+                                            "spotify": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "href": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "uri": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "available_markets": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "external_urls": {
+                            "type": "object",
+                            "properties": {
+                                "spotify": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "images": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "height": {
+                                        "type": "integer"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "total_tracks": {
+                            "type": "integer"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "artists": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "external_urls": {
+                                "type": "object",
+                                "properties": {
+                                    "spotify": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "available_markets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "disc_number": {
+                    "type": "integer"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "explicit": {
+                    "type": "boolean"
+                },
+                "external_ids": {
+                    "type": "object",
+                    "properties": {
+                        "isrc": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "external_urls": {
+                    "type": "object",
+                    "properties": {
+                        "spotify": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "is_local": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "popularity": {
+                    "type": "integer"
+                },
+                "track_number": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "progress_ms": {
+            "type": "integer"
+        },
+        "timestamp": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

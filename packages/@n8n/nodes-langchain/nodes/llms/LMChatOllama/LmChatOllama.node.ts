@@ -1,23 +1,23 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { ChatOllamaInput } from '@langchain/ollama';
+import { ChatOllama } from '@langchain/ollama';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatOllamaInput } from '@langchain/ollama';
-import { ChatOllama } from '@langchain/ollama';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatOllama',
 		icon: 'file:ollama.svg',
 		group: ['transform'],
@@ -40,14 +40,14 @@ export class LmChatOllama implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		...ollamaDescription,
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			ollamaModel,
 			ollamaOptions,
 		],

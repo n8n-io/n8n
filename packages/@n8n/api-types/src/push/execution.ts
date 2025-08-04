@@ -1,6 +1,11 @@
-import type { ExecutionStatus, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ITaskData,
+	ITaskStartedData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
-type ExecutionStarted = {
+export type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
 		executionId: string;
@@ -13,14 +18,14 @@ type ExecutionStarted = {
 	};
 };
 
-type ExecutionWaiting = {
+export type ExecutionWaiting = {
 	type: 'executionWaiting';
 	data: {
 		executionId: string;
 	};
 };
 
-type ExecutionFinished = {
+export type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
 		executionId: string;
@@ -31,27 +36,39 @@ type ExecutionFinished = {
 	};
 };
 
-type ExecutionRecovered = {
+export type ExecutionRecovered = {
 	type: 'executionRecovered';
 	data: {
 		executionId: string;
 	};
 };
 
-type NodeExecuteBefore = {
+export type NodeExecuteBefore = {
 	type: 'nodeExecuteBefore';
 	data: {
 		executionId: string;
 		nodeName: string;
+		data: ITaskStartedData;
 	};
 };
 
-type NodeExecuteAfter = {
+export type NodeExecuteAfter = {
 	type: 'nodeExecuteAfter';
 	data: {
 		executionId: string;
 		nodeName: string;
 		data: ITaskData;
+
+		/**
+		 * When a worker relays updates about a manual execution to main, if the
+		 * payload size is above a limit, we send only a placeholder to the client.
+		 * Later we fetch the entire execution data and fill in any placeholders.
+		 *
+		 * When sending a placheolder, we also send the number of output items, so
+		 * the client knows ahead of time how many items are there, to prevent the
+		 * items count from jumping up when the execution finishes.
+		 */
+		itemCount?: number;
 	};
 };
 

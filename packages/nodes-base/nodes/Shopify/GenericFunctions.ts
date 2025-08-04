@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,8 +8,6 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-
-import { snakeCase } from 'change-case';
 
 export async function shopifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -66,7 +65,7 @@ export async function shopifyApiRequest(
 
 	// Only limit and fields are allowed for page_info links
 	// https://shopify.dev/docs/api/usage/pagination-rest#limitations-and-considerations
-	if (uri && uri.includes('page_info')) {
+	if (uri?.includes('page_info')) {
 		options.qs = {};
 
 		if (query.limit) {

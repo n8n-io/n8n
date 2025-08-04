@@ -1,9 +1,8 @@
-import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
+import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
-import { Service } from 'typedi';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
@@ -14,17 +13,17 @@ import {
 } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { getNodeTypes } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	async report(workflows: WorkflowEntity[]) {
+	async report(workflows: IWorkflowBase[]) {
 		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
 			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
 		);
@@ -87,7 +86,7 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!this.globalConfig.nodes.communityPackages.enabled) return [];
+		if (!Container.get(CommunityPackagesConfig).enabled) return [];
 
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 

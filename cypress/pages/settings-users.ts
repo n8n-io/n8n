@@ -3,12 +3,21 @@ import { MainSidebar } from './sidebar/main-sidebar';
 import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
+import { getVisiblePopper } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const workflowsPage = new WorkflowsPage();
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class SettingsUsersPage extends BasePage {
 	url = '/settings/users';
 
@@ -17,12 +26,12 @@ export class SettingsUsersPage extends BasePage {
 		inviteButton: () => cy.getByTestId('settings-users-invite-button').last(),
 		inviteUsersModal: () => cy.getByTestId('inviteUser-modal').last(),
 		inviteUsersModalEmailsInput: () => cy.getByTestId('emails').find('input').first(),
-		userListItems: () => cy.get('[data-test-id^="user-list-item"]'),
-		userItem: (email: string) => cy.getByTestId(`user-list-item-${email.toLowerCase()}`),
+		userListItems: () => cy.get('[data-test-id="settings-users-table"] tbody tr'),
+		userItem: (email: string) => this.getters.userListItems().contains(email).closest('tr'),
 		userActionsToggle: (email: string) =>
 			this.getters.userItem(email).find('[data-test-id="action-toggle"]'),
 		userRoleSelect: (email: string) =>
-			this.getters.userItem(email).find('[data-test-id="user-role-select"]'),
+			this.getters.userItem(email).find('[data-test-id="user-role-dropdown"]'),
 		deleteUserAction: () =>
 			cy.getByTestId('action-toggle-dropdown').find('li:contains("Delete"):visible'),
 		confirmDeleteModal: () => cy.getByTestId('deleteUser-modal').last(),
@@ -53,8 +62,8 @@ export class SettingsUsersPage extends BasePage {
 			}
 		},
 		opedDeleteDialog: (email: string) => {
-			this.getters.userActionsToggle(email).click();
-			this.getters.deleteUserAction().realClick();
+			this.getters.userRoleSelect(email).find('button').should('be.visible').click();
+			getVisiblePopper().find('span').contains('Remove user').click();
 			this.getters.confirmDeleteModal().should('be.visible');
 		},
 	};

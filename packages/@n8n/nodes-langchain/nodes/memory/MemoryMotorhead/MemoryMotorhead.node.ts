@@ -1,16 +1,16 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 
 export class MemoryMotorhead implements INodeType {
@@ -18,6 +18,7 @@ export class MemoryMotorhead implements INodeType {
 		displayName: 'Motorhead',
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Motorhead Memory',
@@ -28,6 +29,7 @@ export class MemoryMotorhead implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['Other memories'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -37,10 +39,10 @@ export class MemoryMotorhead implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
 			{
@@ -49,7 +51,7 @@ export class MemoryMotorhead implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',

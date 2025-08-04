@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -21,7 +21,6 @@ import {
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{
@@ -41,8 +40,8 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -52,6 +51,24 @@ export class Supabase implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Use Custom Schema',
+				name: 'useCustomSchema',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description:
+					'Whether to use a database schema different from the default "public" schema (requires schema exposure in the <a href="https://supabase.com/docs/guides/api/using-custom-schemas?queryGroups=language&language=curl#exposing-custom-schemas">Supabase API</a>)',
+			},
+			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				default: 'public',
+				description: 'Name of database schema to use for table',
+				noDataExpression: false,
+				displayOptions: { show: { useCustomSchema: [true] } },
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -294,8 +311,8 @@ export class Supabase implements INodeType {
 
 						if (keys.length !== 0) {
 							if (matchType === 'allFilters') {
-								const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-								Object.assign(qs, data);
+								const data = keys.map((key) => buildOrQuery(key));
+								Object.assign(qs, { and: `(${data.join(',')})` });
 							}
 							if (matchType === 'anyFilter') {
 								const data = keys.map((key) => buildOrQuery(key));

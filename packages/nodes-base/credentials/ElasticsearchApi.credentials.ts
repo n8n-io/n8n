@@ -56,7 +56,7 @@ export class ElasticsearchApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}',
+			baseURL: '={{$credentials.baseUrl}}'.replace(/\/$/, ''),
 			url: '/_xpack?human=false',
 			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
 		},

@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -6,12 +7,9 @@ import type {
 	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
-	JsonObject,
-	IRequestOptions,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 import { query } from './Queries';
 
@@ -24,24 +22,44 @@ export async function linearApiRequest(
 	const endpoint = 'https://api.linear.app/graphql';
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken') as string;
 
-	let options: IRequestOptions = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
 		body,
-		uri: endpoint,
+		url: endpoint,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.requestWithAuthentication.call(
+		const response = await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
 			options,
 		);
+
+		if (response?.errors) {
+			throw new NodeApiError(this.getNode(), response.errors, {
+				message: response.errors[0].message ?? 'Unknown API Error',
+			});
+		}
+
+		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message:
+					error.errorResponse?.[0]?.message ||
+					error.context.data.errors[0]?.message ||
+					'Unknown API error',
+				description:
+					error.errorResponse?.[0]?.extensions?.userPresentableMessage ||
+					error.context.data.errors[0]?.extensions?.userPresentableMessage,
+			},
+		);
 	}
 }
 
@@ -85,7 +103,7 @@ export async function validateCredentials(
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,
@@ -97,7 +115,7 @@ export async function validateCredentials(
 				first: 1,
 			},
 		},
-		uri: 'https://api.linear.app/graphql',
+		url: 'https://api.linear.app/graphql',
 		json: true,
 	};
 

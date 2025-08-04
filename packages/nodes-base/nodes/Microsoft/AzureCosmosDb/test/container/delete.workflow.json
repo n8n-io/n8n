@@ -1,0 +1,60 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "fabb9c53-ca91-4b11-84e3-3b172b10b83a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"container": {
+					"__rl": true,
+					"value": "container1",
+					"mode": "list",
+					"cachedResultName": "container1"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "134e2bbd-937a-4ee8-9ad7-7a745cf0905f",
+			"name": "Azure Cosmos DB",
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Azure Cosmos DB",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Azure Cosmos DB": {
+			"main": [[]]
+		}
+	},
+	"pinData": {
+		"Azure Cosmos DB": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		]
+	}
+}

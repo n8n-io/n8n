@@ -1,12 +1,17 @@
+import * as amqplib from 'amqplib';
 import type {
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
 import { jsonParse, sleep } from 'n8n-workflow';
-import * as amqplib from 'amqplib';
+
 import { formatPrivateKey } from '@utils/utilities';
+
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
 
 const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as const;
@@ -112,11 +117,11 @@ export class MessageTracker {
 
 	isClosing = false;
 
-	received(message: amqplib.ConsumeMessage) {
+	received(message: amqplib.Message) {
 		this.messages.push(message.fields.deliveryTag);
 	}
 
-	answered(message: amqplib.ConsumeMessage) {
+	answered(message: amqplib.Message) {
 		if (this.messages.length === 0) {
 			return;
 		}
@@ -129,14 +134,16 @@ export class MessageTracker {
 		return this.messages.length;
 	}
 
-	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
+	async closeChannel(channel: amqplib.Channel, consumerTag?: string) {
 		if (this.isClosing) {
 			return;
 		}
 		this.isClosing = true;
 
 		// Do not accept any new messages
-		await channel.cancel(consumerTag);
+		if (consumerTag) {
+			await channel.cancel(consumerTag);
+		}
 
 		let count = 0;
 		let unansweredMessages = this.unansweredMessages();
@@ -182,10 +189,10 @@ export const parseMessage = async (
 		};
 	} else {
 		let content: IDataObject | string = message.content.toString();
-		if (options.jsonParseBody) {
+		if ('jsonParseBody' in options && options.jsonParseBody) {
 			content = jsonParse(content);
 		}
-		if (options.onlyContent) {
+		if ('onlyContent' in options && options.onlyContent) {
 			return { json: content as IDataObject };
 		} else {
 			message.content = content as unknown as Buffer;
@@ -193,3 +200,70 @@ export const parseMessage = async (
 		}
 	}
 };
+
+export async function handleMessage(
+	this: ITriggerFunctions,
+	message: amqplib.Message,
+	channel: amqplib.Channel,
+	messageTracker: MessageTracker,
+	acknowledgeMode: string,
+	options: TriggerOptions,
+) {
+	try {
+		if (acknowledgeMode !== 'immediately') {
+			messageTracker.received(message);
+		}
+
+		const item = await parseMessage(message, options, this.helpers);
+
+		let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+		let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined = undefined;
+		if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
+			responsePromise = this.helpers.createDeferredPromise();
+		} else if (acknowledgeMode === 'laterMessageNode') {
+			responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
+		}
+		if (responsePromiseHook) {
+			this.emit([[item]], responsePromiseHook, undefined);
+		} else {
+			this.emit([[item]], undefined, responsePromise);
+		}
+		if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
+			// Acknowledge message after the execution finished
+			await responsePromise.promise.then(async (data: IRun) => {
+				if (data.data.resultData.error) {
+					// The execution did fail
+					if (acknowledgeMode === 'executionFinishesSuccessfully') {
+						channel.nack(message);
+						messageTracker.answered(message);
+						return;
+					}
+				}
+				channel.ack(message);
+				messageTracker.answered(message);
+			});
+		} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
+			await responsePromiseHook.promise.then(() => {
+				channel.ack(message);
+				messageTracker.answered(message);
+			});
+		} else {
+			// Acknowledge message directly
+			channel.ack(message);
+		}
+	} catch (error) {
+		const workflow = this.getWorkflow();
+		const node = this.getNode();
+		if (acknowledgeMode !== 'immediately') {
+			messageTracker.answered(message);
+		}
+
+		this.logger.error(
+			`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
+			{
+				node: node.name,
+				workflowId: workflow.id,
+			},
+		);
+	}
+}

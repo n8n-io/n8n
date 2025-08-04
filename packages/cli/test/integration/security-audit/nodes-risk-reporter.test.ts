@@ -1,18 +1,17 @@
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
-import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/test-db';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
@@ -29,7 +28,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['WorkflowEntity']);
 });
 
 afterAll(async () => {

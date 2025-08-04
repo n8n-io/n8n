@@ -1,7 +1,5 @@
-import { Service } from 'typedi';
-
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 
 @Service()
 export class LicenseMetricsService {
@@ -18,10 +16,14 @@ export class LicenseMetricsService {
 			totalUsers,
 			totalCredentials,
 			productionExecutions,
+			productionRootExecutions,
 			manualExecutions,
 		} = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
 
-		const activeTriggerCount = await this.workflowRepository.getActiveTriggerCount();
+		const [activeTriggerCount, workflowsWithEvaluationsCount] = await Promise.all([
+			this.workflowRepository.getActiveTriggerCount(),
+			this.workflowRepository.getWorkflowsWithEvaluationCount(),
+		]);
 
 		return [
 			{ name: 'activeWorkflows', value: activeWorkflows },
@@ -30,14 +32,18 @@ export class LicenseMetricsService {
 			{ name: 'totalUsers', value: totalUsers },
 			{ name: 'totalCredentials', value: totalCredentials },
 			{ name: 'productionExecutions', value: productionExecutions },
+			{ name: 'productionRootExecutions', value: productionRootExecutions },
 			{ name: 'manualExecutions', value: manualExecutions },
 			{ name: 'activeWorkflowTriggers', value: activeTriggerCount },
+			{ name: 'evaluations', value: workflowsWithEvaluationsCount },
 		];
 	}
 
 	async collectPassthroughData() {
 		return {
-			activeWorkflowIds: await this.workflowRepository.getActiveIds(),
+			// Get only the first 1000 active workflow IDs to avoid sending too much data to License Server
+			// Passthrough data is forwarded to Telemetry for further analysis, such as quota excesses
+			activeWorkflowIds: await this.workflowRepository.getActiveIds({ maxResults: 1000 }),
 		};
 	}
 }

@@ -1,3 +1,4 @@
+import { OperationalError } from 'n8n-workflow';
 import { RateLimitError } from 'openai';
 import { OpenAIError } from 'openai/error';
 
@@ -35,13 +36,15 @@ describe('error-handling', () => {
 				429,
 				{ code: 'rate_limit_exceeded' },
 				'Rate limit exceeded',
-				{},
+				new Headers(),
 			);
 
 			try {
 				openAiFailedAttemptHandler(error);
 			} catch (e) {
-				expect(e).toBe(error);
+				expect(e).toBeInstanceOf(OperationalError);
+				expect(e.level).toBe('warning');
+				expect(e.cause).toBe(error);
 				expect(e.message).toBe('OpenAI: Rate limit reached');
 			}
 		});

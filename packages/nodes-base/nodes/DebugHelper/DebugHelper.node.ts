@@ -1,3 +1,4 @@
+import { setSeed, array as mfArray } from 'minifaker';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,10 +8,11 @@ import type {
 import {
 	ApplicationError,
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { setSeed, array as mfArray } from 'minifaker';
+
+import { generateGarbageMemory, runGarbageCollector } from './functions';
 import {
 	generateCreditCard,
 	generateIPv4,
@@ -25,7 +27,6 @@ import {
 	generateUUID,
 	generateVersion,
 } from './randomData';
-import { generateGarbageMemory, runGarbageCollector } from './functions';
 
 export class DebugHelper implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,8 +40,8 @@ export class DebugHelper implements INodeType {
 		defaults: {
 			name: 'DebugHelper',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			{

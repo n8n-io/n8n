@@ -7,6 +7,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleBigQueryApiRequest(

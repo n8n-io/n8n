@@ -1,3 +1,6 @@
+import { camelCase, capitalCase, snakeCase } from 'change-case';
+import set from 'lodash/set';
+import moment from 'moment-timezone';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -16,15 +19,10 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { camelCase, capitalCase, snakeCase } from 'change-case';
-
-import moment from 'moment-timezone';
-
 import { validate as uuidValidate } from 'uuid';
-import set from 'lodash/set';
-import { filters } from './descriptions/Filters';
+
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
+import { filters } from './descriptions/Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
@@ -273,8 +271,7 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-expect-error any
-						[text.mentionType]: { id: text[text.mentionType] as string },
+						[text.mentionType]: { id: text[text.mentionType as keyof TextData] as string },
 					},
 					annotations: text.annotationUi,
 				});
@@ -765,7 +762,7 @@ export function getConditions() {
 		number: [
 			'equals',
 			'does_not_equal',
-			'grater_than',
+			'greater_than',
 			'less_than',
 			'greater_than_or_equal_to',
 			'less_than_or_equal_to',

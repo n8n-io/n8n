@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "liveViewUrl": {
+                    "type": "string"
+                },
+                "targetId": {
+                    "type": "string"
+                },
+                "windowId": {
+                    "type": "string"
+                }
+            }
+        },
+        "errors": {
+            "type": "null"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                }
+            }
+        },
+        "sessionId": {
+            "type": "string"
+        },
+        "warnings": {
+            "type": "null"
+        },
+        "windowId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

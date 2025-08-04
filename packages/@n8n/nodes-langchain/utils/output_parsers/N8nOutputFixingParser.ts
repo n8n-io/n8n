@@ -4,7 +4,7 @@ import type { AIMessage } from '@langchain/core/messages';
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import type { PromptTemplate } from '@langchain/core/prompts';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
 import { logAiEvent } from '../helpers';
@@ -33,16 +33,21 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 	 * @throws Error if both parsing attempts fail
 	 */
 	async parse(completion: string, callbacks?: Callbacks) {
-		const { index } = this.context.addInputData(NodeConnectionType.AiOutputParser, [
+		const { index } = this.context.addInputData(NodeConnectionTypes.AiOutputParser, [
 			[{ json: { action: 'parse', text: completion } }],
 		]);
 
 		try {
 			// First attempt to parse the completion
-			const response = await this.outputParser.parse(completion, callbacks, (e) => e);
+			const response = await this.outputParser.parse(completion, callbacks, (e) => {
+				if (e instanceof OutputParserException) {
+					return e;
+				}
+				return new OutputParserException(e.message, completion);
+			});
 			logAiEvent(this.context, 'ai-output-parsed', { text: completion, response });
 
-			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
+			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, [
 				[{ json: { action: 'parse', response } }],
 			]);
 
@@ -63,14 +68,14 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 				const parsed = await this.outputParser.parse(resultText, callbacks);
 
 				// Add the successfully parsed output to the context
-				this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
+				this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, [
 					[{ json: { action: 'parse', response: parsed } }],
 				]);
 
 				return parsed;
 			} catch (autoParseError) {
 				// If both attempts fail, add the error to the output and throw
-				this.context.addOutputData(NodeConnectionType.AiOutputParser, index, autoParseError);
+				this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, autoParseError);
 				throw autoParseError;
 			}
 		}

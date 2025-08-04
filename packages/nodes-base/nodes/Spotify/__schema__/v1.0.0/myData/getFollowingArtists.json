@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "properties": {
+        "external_urls": {
+            "type": "object",
+            "properties": {
+                "spotify": {
+                    "type": "string"
+                }
+            }
+        },
+        "followers": {
+            "type": "object",
+            "properties": {
+                "href": {
+                    "type": "null"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "genres": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "images": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "height": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "popularity": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,21 +1,21 @@
-import { createSecureContext } from 'tls';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import { MongoClient, ObjectId } from 'mongodb';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { createSecureContext } from 'tls';
 
-import get from 'lodash/get';
-import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
-import { formatPrivateKey } from '../../utils/utilities';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
+import { formatPrivateKey } from '../../utils/utilities';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -80,13 +80,21 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
-export function prepareItems(
-	items: INodeExecutionData[],
-	fields: string[],
+export function prepareItems({
+	items,
+	fields,
 	updateKey = '',
 	useDotNotation = false,
-	dateFields: string[] = [],
-) {
+	dateFields = [],
+	isUpdate = false,
+}: {
+	items: INodeExecutionData[];
+	fields: string[];
+	updateKey?: string;
+	useDotNotation?: boolean;
+	dateFields?: string[];
+	isUpdate?: boolean;
+}) {
 	let data = items;
 
 	if (updateKey) {
@@ -112,7 +120,7 @@ export function prepareItems(
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (useDotNotation) {
+			if (useDotNotation && !isUpdate) {
 				set(updateItem, field, fieldData);
 			} else {
 				updateItem[field] = fieldData;

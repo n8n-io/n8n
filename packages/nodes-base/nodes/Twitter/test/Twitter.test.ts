@@ -1,7 +1,8 @@
-import nock from 'nock';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import nock from 'nock';
+
 import { returnId } from '../V2/GenericFunctions';
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 const searchResult = {
 	data: [
@@ -70,9 +71,17 @@ const meResult = {
 };
 
 describe('Test Twitter Request Node', () => {
+	const credentials = {
+		twitterOAuth2Api: {
+			scope: '',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+			},
+		},
+	};
+
 	beforeAll(() => {
 		const baseUrl = 'https://api.twitter.com/2';
-		nock.disableNetConnect();
 		//GET
 		nock(baseUrl).get('/users/me').reply(200, meResult);
 
@@ -81,12 +90,7 @@ describe('Test Twitter Request Node', () => {
 			.reply(200, searchResult);
 	});
 
-	afterEach(() => {
-		nock.restore();
-	});
-
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({ credentials });
 });
 
 describe('X / Twitter Node unit tests', () => {

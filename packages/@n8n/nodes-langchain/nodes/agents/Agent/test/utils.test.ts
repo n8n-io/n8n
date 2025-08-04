@@ -4,7 +4,9 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ZodObjectAny } from '../../../../types/types';
 import { checkForStructuredTools } from '../agents/utils';
+import { getInputs } from '../V2/utils';
 
 describe('checkForStructuredTools', () => {
 	let mockNode: INode;
@@ -41,7 +43,7 @@ describe('checkForStructuredTools', () => {
 			func: async () => 'result',
 		});
 
-		const tools: Array<Tool | DynamicStructuredTool> = [dynamicTool];
+		const tools: Array<Tool | DynamicStructuredTool<ZodObjectAny>> = [dynamicTool];
 
 		await expect(checkForStructuredTools(tools, mockNode, 'Conversation Agent')).rejects.toThrow(
 			NodeOperationError,
@@ -102,5 +104,174 @@ describe('checkForStructuredTools', () => {
 				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
 			description: 'Incompatible connected tools: "dynamic-tool"',
 		});
+	});
+});
+
+describe('getInputs', () => {
+	it('should include all inputs when no flags are set to false', () => {
+		const inputs = getInputs(true, true, true);
+		expect(inputs).toEqual([
+			'main',
+			{
+				type: 'ai_languageModel',
+				displayName: 'Chat Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_languageModel',
+				displayName: 'Fallback Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_memory',
+				displayName: 'Memory',
+				maxConnections: 1,
+			},
+			{
+				type: 'ai_tool',
+				displayName: 'Tool',
+			},
+			{
+				type: 'ai_outputParser',
+				displayName: 'Output Parser',
+				maxConnections: 1,
+			},
+		]);
+	});
+
+	it('should exclude Output Parser when hasOutputParser is false', () => {
+		const inputs = getInputs(true, false, true);
+		expect(inputs).toEqual([
+			'main',
+			{
+				type: 'ai_languageModel',
+				displayName: 'Chat Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_languageModel',
+				displayName: 'Fallback Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_memory',
+				displayName: 'Memory',
+				maxConnections: 1,
+			},
+			{
+				type: 'ai_tool',
+				displayName: 'Tool',
+			},
+		]);
+	});
+
+	it('should exclude Fallback Model when needsFallback is false', () => {
+		const inputs = getInputs(true, true, false);
+		expect(inputs).toEqual([
+			'main',
+			{
+				type: 'ai_languageModel',
+				displayName: 'Chat Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_memory',
+				displayName: 'Memory',
+				maxConnections: 1,
+			},
+			{
+				type: 'ai_tool',
+				displayName: 'Tool',
+			},
+			{
+				type: 'ai_outputParser',
+				displayName: 'Output Parser',
+				maxConnections: 1,
+			},
+		]);
+	});
+
+	it('should include main input when hasMainInput is true', () => {
+		const inputs = getInputs(true, true, true);
+		expect(inputs[0]).toBe('main');
+	});
+
+	it('should exclude main input when hasMainInput is false', () => {
+		const inputs = getInputs(false, true, true);
+		expect(inputs).not.toContain('main');
+	});
+
+	it('should handle all flags set to false', () => {
+		const inputs = getInputs(false, false, false);
+		expect(inputs).toEqual([
+			{
+				type: 'ai_languageModel',
+				displayName: 'Chat Model',
+				required: true,
+				maxConnections: 1,
+				filter: {
+					excludedNodes: [
+						'@n8n/n8n-nodes-langchain.lmCohere',
+						'@n8n/n8n-nodes-langchain.lmOllama',
+						'n8n/n8n-nodes-langchain.lmOpenAi',
+						'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference',
+					],
+				},
+			},
+			{
+				type: 'ai_memory',
+				displayName: 'Memory',
+				maxConnections: 1,
+			},
+			{
+				type: 'ai_tool',
+				displayName: 'Tool',
+			},
+		]);
 	});
 });

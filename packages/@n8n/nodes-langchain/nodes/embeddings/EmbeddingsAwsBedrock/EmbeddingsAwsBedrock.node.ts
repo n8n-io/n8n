@@ -1,15 +1,14 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { BedrockEmbeddings } from '@langchain/aws';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,17 +41,17 @@ export class EmbeddingsAwsBedrock implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Model',
 				name: 'model',

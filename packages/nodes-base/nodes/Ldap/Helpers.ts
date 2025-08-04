@@ -1,7 +1,6 @@
 import { Client } from 'ldapts';
 import type { ClientOptions, Entry } from 'ldapts';
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, Logger } from 'n8n-workflow';
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -18,6 +17,7 @@ export const resolveBinaryAttributes = (entries: Entry[]): void => {
 };
 
 export async function createLdapClient(
+	context: { logger: Logger },
 	credentials: ICredentialDataDecryptedObject,
 	nodeDebug?: boolean,
 	nodeType?: string,
@@ -45,7 +45,7 @@ export async function createLdapClient(
 	}
 
 	if (nodeDebug) {
-		Logger.info(
+		context.logger.info(
 			`[${nodeType} | ${nodeName}] - LDAP Options: ${JSON.stringify(ldapOptions, null, 2)}`,
 		);
 	}

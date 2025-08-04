@@ -13,7 +13,13 @@ export function validateNoDisallowedMethodsInRunForEach(code: string, itemIndex:
 
 		const lineNumber =
 			code.split('\n').findIndex((line) => {
-				return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
+				line = line.trimStart();
+				return (
+					line.includes(disallowedMethod) &&
+					!line.startsWith('//') &&
+					!line.startsWith('/*') &&
+					!line.startsWith('*')
+				);
 			}) + 1;
 
 		const disallowedMethodFound = lineNumber !== 0;

@@ -1,5 +1,3 @@
-import { parse as urlParse } from 'url';
-
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -9,8 +7,9 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { parse as urlParse } from 'url';
 
 import { mauticApiRequest } from './GenericFunctions';
 
@@ -26,7 +25,7 @@ export class MauticTrigger implements INodeType {
 			name: 'Mautic Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mauticApi',

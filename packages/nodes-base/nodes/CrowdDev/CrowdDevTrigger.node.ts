@@ -5,7 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	type IHttpRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 interface ICrowdDevCreds {
@@ -45,7 +45,7 @@ export class CrowdDevTrigger implements INodeType {
 			name: 'crowd.dev Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'crowdDevApi',

@@ -6,20 +6,19 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	Mysql2Pool,
+	ParameterMatch,
 	QueryMode,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
 	WhereClause,
 } from './interfaces';
-
 import { BATCH_MODE } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
@@ -37,11 +36,119 @@ export function escapeSqlIdentifier(identifier: string): string {
 		.join('.');
 }
 
-export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
+function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[] {
+	const matches: ParameterMatch[] = [];
+	let match: RegExpExecArray | null;
+
+	while ((match = regex.exec(rawQuery)) !== null) {
+		matches.push({
+			match: match[0],
+			index: match.index,
+			paramNumber: match[1],
+			isName: match[0].includes(':name'),
+		});
+	}
+
+	return matches;
+}
+
+function isInsideQuotes(rawQuery: string, index: number): boolean {
+	const beforeMatch = rawQuery.substring(0, index);
+	const singleQuoteCount = (beforeMatch.match(/'/g) || []).length;
+	const doubleQuoteCount = (beforeMatch.match(/"/g) || []).length;
+	return singleQuoteCount % 2 !== 0 || doubleQuoteCount % 2 !== 0;
+}
+
+function filterValidMatches(matches: ParameterMatch[], rawQuery: string): ParameterMatch[] {
+	return matches.filter(({ index }) => !isInsideQuotes(rawQuery, index));
+}
+
+function processParameterReplacements(
+	query: string,
+	validMatches: ParameterMatch[],
+	replacements: QueryValues,
+): string {
+	let processedQuery = query;
+
+	for (const { match: matchStr, paramNumber, isName } of validMatches.reverse()) {
+		const matchIndex = Number(paramNumber) - 1;
+
+		if (matchIndex >= 0 && matchIndex < replacements.length) {
+			if (isName) {
+				processedQuery = processedQuery.replace(
+					matchStr,
+					escapeSqlIdentifier(replacements[matchIndex].toString()),
+				);
+			} else {
+				processedQuery = processedQuery.replace(matchStr, '?');
+			}
+		}
+	}
+
+	return processedQuery;
+}
+
+function extractValuesFromMatches(
+	validMatches: ParameterMatch[],
+	replacements: QueryValues,
+): QueryValues {
+	const nonNameMatches = validMatches.filter((match) => !match.isName);
+	nonNameMatches.sort((a, b) => Number(a.paramNumber) - Number(b.paramNumber));
+
+	const values: QueryValues = [];
+	for (const { paramNumber } of nonNameMatches) {
+		const matchIndex = Number(paramNumber) - 1;
+		if (matchIndex >= 0 && matchIndex < replacements.length) {
+			values.push(replacements[matchIndex]);
+		}
+	}
+
+	return values;
+}
+
+function validateReferencedParameters(
+	validMatches: ParameterMatch[],
+	replacements: QueryValues,
+): void {
+	for (const match of validMatches) {
+		const paramIndex = Number(match.paramNumber) - 1;
+		if (paramIndex >= replacements.length || paramIndex < 0) {
+			throw new Error(
+				`Parameter $${match.paramNumber} referenced in query but no replacement value provided at index ${paramIndex + 1}`,
+			);
+		}
+	}
+}
+
+export const prepareQueryAndReplacements = (
+	rawQuery: string,
+	nodeVersion: number,
+	replacements?: QueryValues,
+) => {
 	if (replacements === undefined) {
 		return { query: rawQuery, values: [] };
 	}
-	// in UI for replacements we use syntax identical to Postgres Query Replacement, but we need to convert it to mysql2 replacement syntax
+
+	if (nodeVersion >= 2.5) {
+		const regex = /\$(\d+)(?::name)?/g;
+		const matches = findParameterMatches(rawQuery, regex);
+		const validMatches = filterValidMatches(matches, rawQuery);
+
+		validateReferencedParameters(validMatches, replacements);
+
+		const query = processParameterReplacements(rawQuery, validMatches, replacements);
+		const values = extractValuesFromMatches(validMatches, replacements);
+
+		return { query, values };
+	}
+
+	return prepareQueryLegacy(rawQuery, replacements);
+};
+
+export const prepareQueryLegacy = (
+	rawQuery: string,
+	replacements: QueryValues,
+): QueryWithValues => {
 	let query: string = rawQuery;
 	const values: QueryValues = [];
 

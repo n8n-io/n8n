@@ -1,0 +1,263 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "hide_from_guests": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "type_config": {
+                        "type": "object",
+                        "properties": {
+                            "options": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "orderindex": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            },
+                            "sorting": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "custom_item_id": {
+            "type": "integer"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_updated": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "list": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "string"
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "points": {
+            "type": "null"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "sharing": {
+            "type": "object",
+            "properties": {
+                "public": {
+                    "type": "boolean"
+                },
+                "public_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "public_share_expires_on": {
+                    "type": "null"
+                },
+                "seo_optimized": {
+                    "type": "boolean"
+                },
+                "token": {
+                    "type": "null"
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "orderindex": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tag_bg": {
+                        "type": "string"
+                    },
+                    "tag_fg": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "team_id": {
+            "type": "string"
+        },
+        "text_content": {
+            "type": "string"
+        },
+        "time_spent": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        },
+        "watchers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

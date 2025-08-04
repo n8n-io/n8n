@@ -15,7 +15,7 @@ export async function gotifyApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string | undefined,
+	uri?: string,
 	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
@@ -30,14 +30,13 @@ export async function gotifyApiRequest(
 		qs,
 		uri: uri || `${credentials.url}${path}`,
 		json: true,
-		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
+		rejectUnauthorized: !credentials.ignoreSSLIssues,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

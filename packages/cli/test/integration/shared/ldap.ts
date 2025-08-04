@@ -1,9 +1,8 @@
+import type { LdapConfig } from '@n8n/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
+import { SettingsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-import Container from 'typedi';
-
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
-import type { LdapConfig } from '@/ldap/types';
 
 export const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,

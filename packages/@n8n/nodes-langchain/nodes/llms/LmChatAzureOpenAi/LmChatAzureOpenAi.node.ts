@@ -1,21 +1,31 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { AzureChatOpenAI } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeOperationError,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOpenAI } from '@langchain/openai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getProxyAgent } from '@utils/httpProxyAgent';
+
+import { setupApiKeyAuthentication } from './credentials/api-key';
+import { setupOAuth2Authentication } from './credentials/oauth2';
+import { properties } from './properties';
+import { AuthenticationType } from './types';
+import type {
+	AzureOpenAIApiKeyModelConfig,
+	AzureOpenAIOAuth2ModelConfig,
+	AzureOpenAIOptions,
+} from './types';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Azure OpenAI Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
 		group: ['transform'],
@@ -38,172 +48,100 @@ export class LmChatAzureOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
 				name: 'azureOpenAiApi',
 				required: true,
-			},
-		],
-		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
-			{
-				displayName:
-					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
 				displayOptions: {
 					show: {
-						'/options.responseFormat': ['json_object'],
+						authentication: [AuthenticationType.ApiKey],
 					},
 				},
 			},
 			{
-				displayName: 'Model (Deployment) Name',
-				name: 'model',
-				type: 'string',
-				description: 'The name of the model(deployment) to use',
-				default: '',
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				placeholder: 'Add Option',
-				description: 'Additional options to add',
-				type: 'collection',
-				default: {},
-				options: [
-					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
-						type: 'number',
+				name: 'azureEntraCognitiveServicesOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [AuthenticationType.EntraOAuth2],
 					},
-					{
-						displayName: 'Maximum Number of Tokens',
-						name: 'maxTokens',
-						default: -1,
-						description:
-							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
-						type: 'number',
-						typeOptions: {
-							maxValue: 32768,
-						},
-					},
-					{
-						displayName: 'Response Format',
-						name: 'responseFormat',
-						default: 'text',
-						type: 'options',
-						options: [
-							{
-								name: 'Text',
-								value: 'text',
-								description: 'Regular text response',
-							},
-							{
-								name: 'JSON',
-								value: 'json_object',
-								description:
-									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
-							},
-						],
-					},
-					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-						type: 'number',
-					},
-					{
-						displayName: 'Sampling Temperature',
-						name: 'temperature',
-						default: 0.7,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-						type: 'number',
-					},
-					{
-						displayName: 'Timeout',
-						name: 'timeout',
-						default: 60000,
-						description: 'Maximum amount of time a request is allowed to take in milliseconds',
-						type: 'number',
-					},
-					{
-						displayName: 'Max Retries',
-						name: 'maxRetries',
-						default: 2,
-						description: 'Maximum number of retries to attempt',
-						type: 'number',
-					},
-					{
-						displayName: 'Top P',
-						name: 'topP',
-						default: 1,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
-						type: 'number',
-					},
-				],
+				},
 			},
 		],
+		properties,
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			apiKey: string;
-			resourceName: string;
-			apiVersion: string;
-			endpoint?: string;
-		}>('azureOpenAiApi');
+		try {
+			const authenticationMethod = this.getNodeParameter(
+				'authentication',
+				itemIndex,
+			) as AuthenticationType;
+			const modelName = this.getNodeParameter('model', itemIndex) as string;
+			const options = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
-			presencePenalty?: number;
-			temperature?: number;
-			topP?: number;
-			responseFormat?: 'text' | 'json_object';
-		};
+			// Set up Authentication based on selection and get configuration
+			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
+			switch (authenticationMethod) {
+				case AuthenticationType.ApiKey:
+					modelConfig = await setupApiKeyAuthentication.call(this, 'azureOpenAiApi');
+					break;
+				case AuthenticationType.EntraOAuth2:
+					modelConfig = await setupOAuth2Authentication.call(
+						this,
+						'azureEntraCognitiveServicesOAuth2Api',
+					);
+					break;
+				default:
+					throw new NodeOperationError(this.getNode(), 'Invalid authentication method');
+			}
 
-		const model = new ChatOpenAI({
-			azureOpenAIApiDeploymentName: modelName,
-			// instance name only needed to set base url
-			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
-			azureOpenAIApiKey: credentials.apiKey,
-			azureOpenAIApiVersion: credentials.apiVersion,
-			azureOpenAIEndpoint: credentials.endpoint,
-			...options,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
-		});
+			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
-		return {
-			response: model,
-		};
+			// Create and return the model
+			const model = new AzureChatOpenAI({
+				azureOpenAIApiDeploymentName: modelName,
+				...modelConfig,
+				...options,
+				timeout: options.timeout ?? 60000,
+				maxRetries: options.maxRetries ?? 2,
+				callbacks: [new N8nLlmTracing(this)],
+				configuration: {
+					fetchOptions: {
+						dispatcher: getProxyAgent(),
+					},
+				},
+				modelKwargs: options.responseFormat
+					? {
+							response_format: { type: options.responseFormat },
+						}
+					: undefined,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			});
+
+			this.logger.info(`Azure OpenAI client initialized for deployment: ${modelName}`);
+
+			return {
+				response: model,
+			};
+		} catch (error) {
+			this.logger.error(`Error in LmChatAzureOpenAi.supplyData: ${error.message}`, error);
+
+			// Re-throw NodeOperationError directly, wrap others
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+
+			throw new NodeOperationError(
+				this.getNode(),
+				`Failed to initialize Azure OpenAI client: ${error.message}`,
+				error,
+			);
+		}
 	}
 }

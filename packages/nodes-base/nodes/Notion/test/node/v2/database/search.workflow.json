@@ -1,0 +1,265 @@
+{
+	"name": "tests notion",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4260fdbd-e92f-4712-8114-38b85f8289ea",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "database",
+				"operation": "search",
+				"text": "t",
+				"limit": 2,
+				"simple": false,
+				"options": {
+					"sort": {
+						"sortValue": {
+							"direction": "ascending"
+						}
+					}
+				}
+			},
+			"id": "5ab80e6a-c9c4-4cc5-9332-2fc7a3f8ae24",
+			"name": "Notion",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [1040, 360],
+			"credentials": {
+				"notionApi": {
+					"id": "CiZXWkDmjiZzpcL1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a664f506-72a5-4e50-80b4-97ed2e6eb334",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"object": "database",
+					"id": "e9c354e3-e506-4c42-83e2-d9c81a083f05",
+					"cover": null,
+					"icon": null,
+					"created_time": "2022-03-07T11:05:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"last_edited_time": "2023-09-29T08:00:00.000Z",
+					"title": [
+						{
+							"type": "text",
+							"text": {
+								"content": "n8n-trigger",
+								"link": null
+							},
+							"annotations": {
+								"bold": false,
+								"italic": false,
+								"strikethrough": false,
+								"underline": false,
+								"code": false,
+								"color": "default"
+							},
+							"plain_text": "n8n-trigger",
+							"href": null
+						}
+					],
+					"description": [],
+					"is_inline": false,
+					"properties": {
+						"Total": {
+							"id": "A%3DdW",
+							"name": "Total",
+							"type": "formula",
+							"formula": {
+								"expression": "((({{notion:block_property:n%7DI%5E:00000000-0000-0000-0000-000000000000:fe91914e-2dc5-4510-82f8-399dd9b2daf8}} + {{notion:block_property:MH~%3B:00000000-0000-0000-0000-000000000000:fe91914e-2dc5-4510-82f8-399dd9b2daf8}}) - {{notion:block_property:MwMd:00000000-0000-0000-0000-000000000000:fe91914e-2dc5-4510-82f8-399dd9b2daf8}}) + {{notion:block_property:fJea:00000000-0000-0000-0000-000000000000:fe91914e-2dc5-4510-82f8-399dd9b2daf8}}) - {{notion:block_property:rSrM:00000000-0000-0000-0000-000000000000:fe91914e-2dc5-4510-82f8-399dd9b2daf8}}"
+							}
+						},
+						"Total Incomes": {
+							"id": "MH~%3B",
+							"name": "Total Incomes",
+							"type": "number",
+							"number": {
+								"format": "number"
+							}
+						},
+						"Total Expenses": {
+							"id": "MwMd",
+							"name": "Total Expenses",
+							"type": "number",
+							"number": {
+								"format": "number"
+							}
+						},
+						"Created time": {
+							"id": "Z%3BGM",
+							"name": "Created time",
+							"type": "created_time",
+							"created_time": {}
+						},
+						"Last edited time": {
+							"id": "%60%5ElG",
+							"name": "Last edited time",
+							"type": "last_edited_time",
+							"last_edited_time": {}
+						},
+						"Total Transfer-In": {
+							"id": "fJea",
+							"name": "Total Transfer-In",
+							"type": "number",
+							"number": {
+								"format": "number"
+							}
+						},
+						"Starting Balance": {
+							"id": "n%7DI%5E",
+							"name": "Starting Balance",
+							"type": "number",
+							"number": {
+								"format": "number"
+							}
+						},
+						"Total Transfer-Out": {
+							"id": "rSrM",
+							"name": "Total Transfer-Out",
+							"type": "number",
+							"number": {
+								"format": "number"
+							}
+						},
+						"Name": {
+							"id": "title",
+							"name": "Name",
+							"type": "title",
+							"title": {}
+						}
+					},
+					"parent": {
+						"type": "page_id",
+						"page_id": "cc3d2b3c-f31a-4773-ab39-17a60c54567a"
+					},
+					"url": "https://www.notion.so/e9c354e3e5064c4283e2d9c81a083f05",
+					"public_url": null,
+					"archived": false,
+					"in_trash": false
+				}
+			},
+			{
+				"json": {
+					"object": "database",
+					"id": "138fb9cb-4cf0-804c-8663-d8ecdd5e692f",
+					"cover": null,
+					"icon": null,
+					"created_time": "2024-11-08T07:59:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"last_edited_time": "2024-11-08T07:59:00.000Z",
+					"title": [
+						{
+							"type": "text",
+							"text": {
+								"content": "TEST_DB",
+								"link": null
+							},
+							"annotations": {
+								"bold": false,
+								"italic": false,
+								"strikethrough": false,
+								"underline": false,
+								"code": false,
+								"color": "default"
+							},
+							"plain_text": "TEST_DB",
+							"href": null
+						}
+					],
+					"description": [],
+					"is_inline": false,
+					"properties": {
+						"Tags": {
+							"id": "%40~Tp",
+							"name": "Tags",
+							"type": "multi_select",
+							"multi_select": {
+								"options": []
+							}
+						},
+						"Name": {
+							"id": "title",
+							"name": "Name",
+							"type": "title",
+							"title": {}
+						}
+					},
+					"parent": {
+						"type": "page_id",
+						"page_id": "cc3d2b3c-f31a-4773-ab39-17a60c54567a"
+					},
+					"url": "https://www.notion.so/138fb9cb4cf0804c8663d8ecdd5e692f",
+					"public_url": null,
+					"archived": false,
+					"in_trash": false
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notion": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "08dad8e3-abcc-42d1-8ad3-c026644d1280",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "Ucav6QC99JNMCkd3",
+	"tags": []
+}

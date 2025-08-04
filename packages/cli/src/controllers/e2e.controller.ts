@@ -1,24 +1,23 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { SettingsRepository, UserRepository } from '@n8n/db';
+import { Get, Patch, Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { Request } from 'express';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Patch, Post, RestController } from '@/decorators';
+import { inE2ETests } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
-import type { UserSetupPayload } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
+import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {
@@ -48,6 +47,16 @@ const tablesToTruncate = [
 	'workflows_tags',
 ];
 
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
+
 type ResetRequest = Request<
 	{},
 	{},
@@ -58,14 +67,12 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest<T extends PushType> = Request<
+type PushRequest = Request<
 	{},
 	{},
 	{
-		type: T;
 		pushRef: string;
-		data: PushPayload<T>;
-	}
+	} & PushMessage
 >;
 
 @RestController('/e2e')
@@ -93,14 +100,49 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
+		[LICENSE_FEATURES.FOLDERS]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA]: false,
+		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
+		[LICENSE_FEATURES.OIDC]: false,
+		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 	};
 
-	private numericFeatures: Record<NumericLicenseFeature, number> = {
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
 		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
 		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]: 7,
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]: 30,
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]: 180,
+		[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT]: 1,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TRIGGER_LIMIT],
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.VARIABLES_LIMIT],
+		[LICENSE_QUOTAS.USERS_LIMIT]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.USERS_LIMIT],
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT],
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
+		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
+
+		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS],
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS],
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS],
+		[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT],
 	};
 
 	constructor(
@@ -113,10 +155,9 @@ export class E2EController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
-		private readonly authUserRepository: AuthUserRepository,
+		private readonly frontendService: FrontendService,
 	) {
-		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
-			this.enabledFeatures[feature] ?? false;
+		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
 		// Ugly hack to satisfy biome parser
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
@@ -128,7 +169,7 @@ export class E2EController {
 				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
 			}
 		};
-		license.getFeatureValue = getFeatureValue;
+		license.getValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
@@ -144,8 +185,9 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest<any>) {
-		this.push.broadcast(req.body.type, req.body.data);
+	async pushSend(req: PushRequest) {
+		const { pushRef: _, ...pushMsg } = req.body;
+		this.push.broadcast(pushMsg);
 	}
 
 	@Patch('/feature', { skipAuth: true })
@@ -167,9 +209,55 @@ export class E2EController {
 		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
 	}
 
+	@Get('/env-feature-flags', { skipAuth: true })
+	async getEnvFeatureFlags() {
+		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
+		return currentFlags;
+	}
+
+	@Patch('/env-feature-flags', { skipAuth: true })
+	async setEnvFeatureFlags(req: Request<{}, {}, { flags: Record<string, string> }>) {
+		const { flags } = req.body;
+
+		// Validate that all flags start with N8N_ENV_FEAT_
+		for (const key of Object.keys(flags)) {
+			if (!key.startsWith('N8N_ENV_FEAT_')) {
+				return {
+					success: false,
+					message: `Invalid flag key: ${key}. Must start with N8N_ENV_FEAT_`,
+				};
+			}
+		}
+
+		// Clear existing N8N_ENV_FEAT_ environment variables
+		for (const key of Object.keys(process.env)) {
+			if (key.startsWith('N8N_ENV_FEAT_')) {
+				delete process.env[key];
+			}
+		}
+
+		// Set new environment variables
+		for (const [key, value] of Object.entries(flags)) {
+			process.env[key] = value;
+		}
+
+		// Return the current environment feature flags
+		const currentFlags = this.frontendService.getSettings().envFeatureFlags;
+		return {
+			success: true,
+			message: 'Environment feature flags updated',
+			flags: currentFlags,
+		};
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 
@@ -181,18 +269,25 @@ export class E2EController {
 	private async resetLogStreaming() {
 		for (const id in this.eventBus.destinations) {
 			await this.eventBus.removeDestination(id, false);
+			await this.eventBus.deleteDestination(id);
 		}
 	}
 
 	private async truncateAll() {
+		const { connection } = this.settingsRepo.manager;
+		const dbType = connection.options.type;
 		for (const table of tablesToTruncate) {
 			try {
-				const { connection } = this.settingsRepo.manager;
-				await connection.query(
-					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
-				);
+				if (dbType === 'postgres') {
+					await connection.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE;`);
+				} else {
+					await connection.query(`DELETE FROM "${table}";`);
+					if (dbType === 'sqlite') {
+						await connection.query(`DELETE FROM sqlite_sequence WHERE name = '${table}';`);
+					}
+				}
 			} catch (error) {
-				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+				Container.get(Logger).warn(`Dropping Table "${table}" for E2E Reset error`, {
 					error: error as Error,
 				});
 			}
@@ -239,7 +334,7 @@ export class E2EController {
 			const { encryptedRecoveryCodes, encryptedSecret } =
 				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
 
-			await this.authUserRepository.update(newOwner.user.id, {
+			await this.userRepository.update(newOwner.user.id, {
 				mfaSecret: encryptedSecret,
 				mfaRecoveryCodes: encryptedRecoveryCodes,
 			});

@@ -1,0 +1,177 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "archive_time": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "creator_user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "currency": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "formatted_value": {
+            "type": "string"
+        },
+        "formatted_weighted_value": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "org_hidden": {
+            "type": "boolean"
+        },
+        "org_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "cc_email": {
+                    "type": "string"
+                },
+                "label_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "people_count": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "origin": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "participants_count": {
+            "type": "integer"
+        },
+        "person_hidden": {
+            "type": "boolean"
+        },
+        "pipeline_id": {
+            "type": "integer"
+        },
+        "products_count": {
+            "type": "integer"
+        },
+        "stage_id": {
+            "type": "integer"
+        },
+        "stage_order_nr": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "weighted_value_currency": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 
-import { CONFIG_MODES } from '../BinaryData/utils';
+import { CONFIG_MODES } from '../binary-data/utils';
 
 export class InvalidModeError extends ApplicationError {
 	constructor() {

@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "ETag": {
+            "type": "string"
+        },
+        "LastModified": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

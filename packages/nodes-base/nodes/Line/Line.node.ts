@@ -5,10 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
-
 import { notificationFields, notificationOperations } from './NotificationDescription';
 
 export class Line implements INodeType {
@@ -24,8 +23,9 @@ export class Line implements INodeType {
 		defaults: {
 			name: 'Line',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'lineNotifyOAuth2Api',

@@ -1,0 +1,75 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "activeChecklistItemCount": {
+            "type": "integer"
+        },
+        "assigneePriority": {
+            "type": "string"
+        },
+        "checklistItemCount": {
+            "type": "integer"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasDescription": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "orderHint": {
+            "type": "string"
+        },
+        "percentComplete": {
+            "type": "integer"
+        },
+        "planId": {
+            "type": "string"
+        },
+        "previewType": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "referenceCount": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

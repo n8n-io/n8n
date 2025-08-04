@@ -1,0 +1,44 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "git": {
+                    "type": "string"
+                },
+                "html": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "git_url": {
+            "type": "string"
+        },
+        "html_url": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "sha": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,24 +1,24 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		host: 'localhost',
 		path: '/',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
+		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
+	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
@@ -38,7 +38,7 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
+				Pick<User, 'password' | 'updatedAt' | 'authIdentities' | 'mfaSecret' | 'mfaRecoveryCodes'>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -47,6 +47,8 @@ describe('UserService', () => {
 			expect(publicUser.password).toBeUndefined();
 			expect(publicUser.updatedAt).toBeUndefined();
 			expect(publicUser.authIdentities).toBeUndefined();
+			expect(publicUser.mfaSecret).toBeUndefined();
+			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 		});
 
 		it('should add scopes if requested', async () => {
@@ -78,7 +80,7 @@ describe('UserService', () => {
 
 	describe('update', () => {
 		// We need to use `save` so that that the subscriber in
-		// packages/cli/src/databases/entities/Project.ts receives the full user.
+		// packages/@n8n/db/src/entities/Project.ts receives the full user.
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		it('should use `save` instead of `update`', async () => {

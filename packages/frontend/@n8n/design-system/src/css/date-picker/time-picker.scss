@@ -1,0 +1,87 @@
+@use '../common/var';
+@use '../mixins/mixins';
+
+@include mixins.b(time-panel) {
+	margin: 5px 0;
+	border: solid 1px var.$datepicker-border-color;
+	background-color: var.$color-white;
+	box-shadow: var.$box-shadow-light;
+	border-radius: 2px;
+	position: absolute;
+	width: 180px;
+	left: 0;
+	z-index: var.$index-top;
+	user-select: none;
+	box-sizing: content-box;
+
+	@include mixins.e(content) {
+		font-size: 0;
+		position: relative;
+		overflow: hidden;
+
+		&::after,
+		&::before {
+			content: '';
+			top: 50%;
+			position: absolute;
+			margin-top: -15px;
+			height: 32px;
+			z-index: -1;
+			left: 0;
+			right: 0;
+			box-sizing: border-box;
+			padding-top: 6px;
+			text-align: left;
+			border-top: 1px solid var(--border-color-base);
+			border-bottom: 1px solid var(--border-color-base);
+		}
+
+		&::after {
+			left: 50%;
+			margin-left: 12%;
+			margin-right: 12%;
+		}
+
+		&::before {
+			padding-left: 50%;
+			margin-right: 12%;
+			margin-left: 12%;
+		}
+
+		&.has-seconds {
+			&::after {
+				left: calc(100% / 3 * 2);
+			}
+
+			&::before {
+				padding-left: calc(100% / 3);
+			}
+		}
+	}
+
+	@include mixins.e(footer) {
+		border-top: 1px solid var.$datepicker-inner-border-color;
+		padding: 4px;
+		height: 36px;
+		line-height: 25px;
+		text-align: right;
+		box-sizing: border-box;
+	}
+
+	@include mixins.e(btn) {
+		border: none;
+		line-height: 28px;
+		padding: 0 5px;
+		margin: 0 5px;
+		cursor: pointer;
+		background-color: transparent;
+		outline: none;
+		font-size: 12px;
+		color: var(--color-text-dark);
+
+		&.confirm {
+			font-weight: var(--font-weight-bold);
+			color: var.$datepicker-active-color;
+		}
+	}
+}

@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "phones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "result_score": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
+        }
+    },
+    "version": 4
+}

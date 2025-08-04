@@ -2,9 +2,9 @@ import { Config, Env } from '@n8n/config';
 
 @Config
 export class SentryConfig {
-	/** Sentry DSN */
+	/** Sentry DSN (data source name) */
 	@Env('N8N_SENTRY_DSN')
-	sentryDsn: string = '';
+	dsn: string = '';
 
 	//#region Metadata about the environment
 

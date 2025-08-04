@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "deleted_TS": {
+            "type": "null"
+        },
+        "dropbox_thumbnailURL": {
+            "type": "null"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

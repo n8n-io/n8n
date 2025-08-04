@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nInfoTip > should render correctly as note 1`] = `
+"<div class="n8n-info-tip infoTip info note bold">
+  <!-- Note that the branching is required to support displaying
+		 the slot either in the tooltip of the icon or following it --><span class="iconText"><n8n-icon-stub icon="info" spin="false" color="text-base"></n8n-icon-stub><span>Need help doing something?<a href="/docs" target="_blank">Open docs</a></span></span>
+</div>"
+`;
+
+exports[`N8nInfoTip > should render correctly as tooltip 1`] = `
+"<div class="n8n-info-tip infoTip info tooltip bold">
+  <!-- Note that the branching is required to support displaying
+		 the slot either in the tooltip of the icon or following it --><span class="iconText el-tooltip__trigger el-tooltip__trigger"><n8n-icon-stub icon="info" spin="false" color="text-base"></n8n-icon-stub></span>
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`N8nInfoTip > should render correctly with a specific size 1`] = `
+"<div class="n8n-info-tip infoTip info note bold">
+  <!-- Note that the branching is required to support displaying
+		 the slot either in the tooltip of the icon or following it --><span class="iconText"><n8n-icon-stub icon="info" size="large" spin="false" color="text-base"></n8n-icon-stub><span>Need help doing something?<a href="/docs" target="_blank">Open docs</a></span></span>
+</div>"
+`;

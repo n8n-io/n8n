@@ -1,6 +1,10 @@
-import type { SecureContextOptions } from 'tls';
+import FormData from 'form-data';
+import get from 'lodash/get';
+import isPlainObject from 'lodash/isPlainObject';
+import set from 'lodash/set';
 import {
 	deepCopy,
+	setSafeObjectProperty,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INodeExecutionData,
@@ -8,14 +12,10 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
+import type { SecureContextOptions } from 'tls';
 
-import set from 'lodash/set';
-import isPlainObject from 'lodash/isPlainObject';
-
-import FormData from 'form-data';
-import get from 'lodash/get';
-import { formatPrivateKey } from '../../utils/utilities';
 import type { HttpSslAuthCredentials } from './interfaces';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -49,7 +49,7 @@ function redact<T = unknown>(obj: T, secrets: string[]): T {
 		return obj.map((item) => redact(item, secrets)) as T;
 	} else if (isObject(obj)) {
 		for (const [key, value] of Object.entries(obj)) {
-			(obj as IDataObject)[key] = redact(value, secrets);
+			setSafeObjectProperty(obj, key, redact(value, secrets));
 		}
 	}
 
@@ -83,7 +83,6 @@ export function sanitizeUiMessage(
 		sendRequest = {
 			...sendRequest,
 			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
 						? REDACTED
@@ -176,6 +175,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		},
 		mauticOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
+		},
+		microsoftAzureMonitorOAuth2Api: {
+			tokenExpiredStatusCode: 403,
 		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',

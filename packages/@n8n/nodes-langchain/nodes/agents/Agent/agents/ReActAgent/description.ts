@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { HUMAN_MESSAGE_TEMPLATE, PREFIX, SUFFIX, SUFFIX_CHAT } from './prompt';
 
 export const reActAgentAgentProperties: INodeProperties[] = [
@@ -94,6 +95,13 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				typeOptions: {
 					rows: 6,
 				},
+			},
+			{
+				displayName: 'Max Iterations',
+				name: 'maxIterations',
+				type: 'number',
+				default: 10,
+				description: 'The maximum number of iterations the agent will run before stopping',
 			},
 			{
 				displayName: 'Return Intermediate Steps',

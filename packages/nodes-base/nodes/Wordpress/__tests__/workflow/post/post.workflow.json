@@ -1,0 +1,779 @@
+{
+	"name": "Wordpress Test - Posts",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-100, 100],
+			"id": "da734910-1187-408a-bfa9-1f38cd8faf73",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [340, 0],
+			"id": "086a9b07-77ee-4c99-9d4e-05fdb63914a4",
+			"name": "Update Response"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"postId": "1",
+				"updateFields": {
+					"title": "New Title",
+					"content": "Some new content",
+					"status": "publish",
+					"date": "2025-03-27T18:05:01"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [120, 0],
+			"id": "11bb21ca-d2c2-4ac8-8559-a0f44adcb9a4",
+			"name": "Post > Update",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [120, -200],
+			"id": "01a19b2c-c0e6-49dc-9deb-4f1a52fbe9d4",
+			"name": "Post > Get Many",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [340, -200],
+			"id": "7353362c-e6dd-4812-b8e8-cc52044b0cf3",
+			"name": "Get Many"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"postId": "1",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [120, 200],
+			"id": "702ca685-91f4-416d-8f91-9a75409b8460",
+			"name": "Post > Get",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [340, 200],
+			"id": "ca376415-c336-40ab-8ed7-7ddcf0d180cd",
+			"name": "Get Response"
+		},
+		{
+			"parameters": {
+				"title": "New Post",
+				"additionalFields": {
+					"authorId": 1,
+					"content": "This is my content",
+					"slug": "new-post",
+					"status": "future",
+					"commentStatus": "closed",
+					"pingStatus": "closed",
+					"format": "standard",
+					"sticky": true,
+					"categories": [1],
+					"date": "2025-03-27T18:30:04"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [120, 400],
+			"id": "3a022ad5-8ce7-4ff2-988f-a449c7f1466e",
+			"name": "Post > Create",
+			"credentials": {
+				"wordpressApi": {
+					"id": "vNOAnwp9mSIq39cD",
+					"name": "nodeqa"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [340, 400],
+			"id": "54e3d212-9d19-4aa1-ad32-1ca0cc64c32b",
+			"name": "Create Response"
+		}
+	],
+	"pinData": {
+		"Update Response": [
+			{
+				"json": {
+					"id": 1,
+					"date": "2025-03-27T18:05:01",
+					"date_gmt": "2025-03-27T18:05:01",
+					"guid": {
+						"rendered": "https://myblog.com/?p=1",
+						"raw": "https://myblog.com/?p=1"
+					},
+					"modified": "2025-03-27T18:22:36",
+					"modified_gmt": "2025-03-27T18:22:36",
+					"password": "",
+					"slug": "hello-world",
+					"status": "publish",
+					"type": "post",
+					"link": "https://myblog.com/2025/03/27/hello-world/",
+					"title": {
+						"raw": "New Title",
+						"rendered": "New Title"
+					},
+					"content": {
+						"raw": "Some new content",
+						"rendered": "<p>Some new content</p>\n",
+						"protected": false,
+						"block_version": 0
+					},
+					"excerpt": {
+						"raw": "",
+						"rendered": "<p>Some new content</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"comment_status": "open",
+					"ping_status": "open",
+					"sticky": false,
+					"template": "",
+					"format": "standard",
+					"meta": {
+						"footnotes": ""
+					},
+					"categories": [1],
+					"tags": [],
+					"permalink_template": "https://myblog.com/2025/03/27/%postname%/",
+					"generated_slug": "new-title",
+					"class_list": [
+						"post-1",
+						"post",
+						"type-post",
+						"status-publish",
+						"format-standard",
+						"hentry",
+						"category-uncategorised"
+					],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/post"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=1"
+							}
+						],
+						"version-history": [
+							{
+								"count": 1,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions"
+							}
+						],
+						"predecessor-version": [
+							{
+								"id": 6,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions/6"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=1"
+							}
+						],
+						"wp:term": [
+							{
+								"taxonomy": "category",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/categories?post=1"
+							},
+							{
+								"taxonomy": "post_tag",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/tags?post=1"
+							}
+						],
+						"wp:action-publish": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-unfiltered-html": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-sticky": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-assign-author": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-create-categories": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-assign-categories": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-create-tags": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"wp:action-assign-tags": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
+		],
+		"Get Many": [
+			{
+				"json": {
+					"id": 1,
+					"date": "2025-03-27T18:05:01",
+					"date_gmt": "2025-03-27T18:05:01",
+					"guid": {
+						"rendered": "https://myblog.com/?p=1"
+					},
+					"modified": "2025-03-27T18:22:36",
+					"modified_gmt": "2025-03-27T18:22:36",
+					"slug": "hello-world",
+					"status": "publish",
+					"type": "post",
+					"link": "https://myblog.com/2025/03/27/hello-world/",
+					"title": {
+						"rendered": "Hello world!"
+					},
+					"content": {
+						"rendered": "\n<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n",
+						"protected": false
+					},
+					"excerpt": {
+						"rendered": "<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"comment_status": "open",
+					"ping_status": "open",
+					"sticky": false,
+					"template": "",
+					"format": "standard",
+					"meta": {
+						"footnotes": ""
+					},
+					"categories": [1],
+					"tags": [],
+					"class_list": [
+						"post-1",
+						"post",
+						"type-post",
+						"status-publish",
+						"format-standard",
+						"hentry",
+						"category-uncategorised"
+					],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/post"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=1"
+							}
+						],
+						"version-history": [
+							{
+								"count": 1,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions"
+							}
+						],
+						"predecessor-version": [
+							{
+								"id": 6,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions/6"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=1"
+							}
+						],
+						"wp:term": [
+							{
+								"taxonomy": "category",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/categories?post=1"
+							},
+							{
+								"taxonomy": "post_tag",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/tags?post=1"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
+		],
+		"Get Response": [
+			{
+				"json": {
+					"id": 1,
+					"date": "2025-03-27T18:05:01",
+					"date_gmt": "2025-03-27T18:05:01",
+					"guid": {
+						"rendered": "https://myblog.com/?p=1"
+					},
+					"modified": "2025-03-27T18:22:36",
+					"modified_gmt": "2025-03-27T18:22:36",
+					"slug": "hello-world",
+					"status": "publish",
+					"type": "post",
+					"link": "https://myblog.com/2025/03/27/hello-world/",
+					"title": {
+						"rendered": "New Title"
+					},
+					"content": {
+						"rendered": "<p>Some new content</p>\n",
+						"protected": false
+					},
+					"excerpt": {
+						"rendered": "<p>Some new content</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"comment_status": "open",
+					"ping_status": "open",
+					"sticky": false,
+					"template": "",
+					"format": "standard",
+					"meta": {
+						"footnotes": ""
+					},
+					"categories": [1],
+					"tags": [],
+					"class_list": [
+						"post-1",
+						"post",
+						"type-post",
+						"status-publish",
+						"format-standard",
+						"hentry",
+						"category-uncategorised"
+					],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/post"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=1"
+							}
+						],
+						"version-history": [
+							{
+								"count": 1,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions"
+							}
+						],
+						"predecessor-version": [
+							{
+								"id": 6,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions/6"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=1"
+							}
+						],
+						"wp:term": [
+							{
+								"taxonomy": "category",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/categories?post=1"
+							},
+							{
+								"taxonomy": "post_tag",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/tags?post=1"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
+		],
+		"Create Response": [
+			{
+				"json": {
+					"id": 7,
+					"date": "2025-03-27T18:30:04",
+					"date_gmt": "2025-03-27T18:30:04",
+					"guid": {
+						"rendered": "https://myblog.com/2025/03/27/new-post/",
+						"raw": "https://myblog.com/2025/03/27/new-post/"
+					},
+					"modified": "2025-03-27T18:30:04",
+					"modified_gmt": "2025-03-27T18:30:04",
+					"password": "",
+					"slug": "new-post",
+					"status": "publish",
+					"type": "post",
+					"link": "https://myblog.com/2025/03/27/new-post/",
+					"title": {
+						"raw": "New Post",
+						"rendered": "New Post"
+					},
+					"content": {
+						"raw": "This is my content",
+						"rendered": "<p>This is my content</p>\n",
+						"protected": false,
+						"block_version": 0
+					},
+					"excerpt": {
+						"raw": "",
+						"rendered": "<p>This is my content</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"comment_status": "closed",
+					"ping_status": "closed",
+					"sticky": true,
+					"template": "",
+					"format": "standard",
+					"meta": {
+						"footnotes": ""
+					},
+					"categories": [1],
+					"tags": [],
+					"permalink_template": "https://myblog.com/2025/03/27/%postname%/",
+					"generated_slug": "new-post",
+					"class_list": [
+						"post-7",
+						"post",
+						"type-post",
+						"status-publish",
+						"format-standard",
+						"hentry",
+						"category-uncategorised"
+					],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/post"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=7"
+							}
+						],
+						"version-history": [
+							{
+								"count": 0,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7/revisions"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=7"
+							}
+						],
+						"wp:term": [
+							{
+								"taxonomy": "category",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/categories?post=7"
+							},
+							{
+								"taxonomy": "post_tag",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/tags?post=7"
+							}
+						],
+						"wp:action-publish": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-unfiltered-html": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-sticky": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-assign-author": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-create-categories": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-assign-categories": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-create-tags": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"wp:action-assign-tags": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/7"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Post > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post > Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post > Update": {
+			"main": [
+				[
+					{
+						"node": "Update Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post > Get Many": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post > Get": {
+			"main": [
+				[
+					{
+						"node": "Get Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post > Create": {
+			"main": [
+				[
+					{
+						"node": "Create Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2665dd64-c5ba-429b-a96d-c9ef88d22f35",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "TJ2kzGNKbZt6fvPV",
+	"tags": []
+}

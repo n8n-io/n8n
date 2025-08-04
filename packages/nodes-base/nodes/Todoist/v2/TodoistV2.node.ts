@@ -8,13 +8,12 @@ import {
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import { todoistApiRequest } from '../GenericFunctions';
 
 import type { OperationType, TodoistProjectType } from './Service';
 import { TodoistService } from './Service';
+import { todoistApiRequest } from '../GenericFunctions';
 
 // interface IBodyCreateTask {
 // 	content?: string;
@@ -42,8 +41,9 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Todoist',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'todoistApi',

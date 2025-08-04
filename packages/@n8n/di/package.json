@@ -1,0 +1,29 @@
+{
+  "name": "@n8n/di",
+  "version": "0.9.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/di.js",
+  "module": "src/di.ts",
+  "types": "dist/di.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "reflect-metadata": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}

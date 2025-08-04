@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "properties": {
+        "Contract ID": {
+            "type": "string"
+        },
+        "Contract Link": {
+            "type": "string"
+        },
+        "Contract Notes": {
+            "type": "string"
+        },
+        "Contract Signature Date": {
+            "type": "string"
+        },
+        "contractTextOutput": {
+            "type": "string"
+        },
+        "Created on": {
+            "type": "string"
+        },
+        "Do not use name/logo?": {
+            "type": "boolean"
+        },
+        "extractText": {
+            "type": "string"
+        },
+        "fileSize": {
+            "type": "string"
+        },
+        "Full Deletion Required?": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "IT Addendum?": {
+            "type": "boolean"
+        },
+        "lastUpdated": {
+            "type": "string"
+        },
+        "over4MB?": {
+            "type": "boolean"
+        },
+        "Processing Organization": {
+            "type": "string"
+        },
+        "rowID": {
+            "type": "integer"
+        },
+        "Status Date": {
+            "type": "string"
+        },
+        "Summarize": {
+            "type": "string"
+        },
+        "Summary": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

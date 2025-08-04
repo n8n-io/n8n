@@ -22,8 +22,8 @@
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "lint": "eslint . --ext .ts --quiet",
-    "lintfix": "eslint . --ext .ts --fix",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
@@ -33,6 +33,7 @@
     "@lezer/lr": "^1.4.0"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@lezer/generator": "^1.7.0"
   }
 }

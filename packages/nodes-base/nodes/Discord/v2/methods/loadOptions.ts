@@ -1,6 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { discordApiRequest } from '../transport';
+
 import { checkAccessToGuild } from '../helpers/utils';
+import { discordApiRequest } from '../transport';
 
 export async function getRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const guildId = this.getNodeParameter('guildId', undefined, {

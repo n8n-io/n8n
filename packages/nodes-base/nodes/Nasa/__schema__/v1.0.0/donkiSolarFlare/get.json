@@ -1,0 +1,53 @@
+{
+    "type": "object",
+    "properties": {
+        "activeRegionNum": {
+            "type": "integer"
+        },
+        "beginTime": {
+            "type": "string"
+        },
+        "catalog": {
+            "type": "string"
+        },
+        "classType": {
+            "type": "string"
+        },
+        "endTime": {
+            "type": "string"
+        },
+        "flrID": {
+            "type": "string"
+        },
+        "instruments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "link": {
+            "type": "string"
+        },
+        "note": {
+            "type": "string"
+        },
+        "peakTime": {
+            "type": "string"
+        },
+        "sourceLocation": {
+            "type": "string"
+        },
+        "submissionTime": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "integer"
+        }
+    },
+    "version": 4
+}

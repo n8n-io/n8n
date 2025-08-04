@@ -5,6 +5,7 @@ const workflowPage = new WorkflowPage();
 const credentialsModal = new CredentialsModal();
 
 export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
+export const getPersonalProjectsButton = () => cy.getByTestId('project-personal-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
 export const getAddProjectButton = () => {
 	cy.getByTestId('universal-add').should('be.visible').click();
@@ -29,7 +30,11 @@ export const getAddProjectButton = () => {
 
 	return cy.get('@button');
 };
-
+export const getAddFirstProjectButton = () => cy.getByTestId('add-first-project-button');
+export const getIconPickerButton = () => cy.getByTestId('icon-picker-button');
+export const getIconPickerTab = (tab: string) => cy.getByTestId('icon-picker-tabs').contains(tab);
+export const getIconPickerIcons = () => cy.getByTestId('icon-picker-icon');
+export const getIconPickerEmojis = () => cy.getByTestId('icon-picker-emoji');
 // export const getAddProjectButton = () =>
 // 	cy.getByTestId('universal-add').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
@@ -58,6 +63,8 @@ export const addProjectMember = (email: string, role?: string) => {
 };
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
+export const getProjectSharingSelect = () => cy.getByTestId('project-sharing-select');
+export const getMoveToFolderSelect = () => cy.getByTestId('move-to-folder-dropdown');
 
 export function createProject(name: string) {
 	getAddProjectButton().click();
