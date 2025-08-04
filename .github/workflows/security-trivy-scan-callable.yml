@@ -4,35 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
+        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
         required: true
         default: 'ghcr.io/n8n-io/n8n:latest'
   workflow_call:
     inputs:
       image_ref:
         type: string
-        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
+        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
         required: true
     secrets:
       SLACK_WEBHOOK_URL:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   security_scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Pull Docker image with retry
-        run: |
-          for i in {1..4}; do
-            docker pull "${{ inputs.image_ref }}" && break
-            [ $i -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
-          done
-
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.30.0
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
+        id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
           format: 'json'
@@ -42,85 +36,128 @@ jobs:
           ignore-unfixed: false
           exit-code: '0'
 
-      - name: Process vulnerability results
-        id: process_vulns
+      - name: Process scan results and generate reports
+        id: process_results
         run: |
-          if [ -f trivy-results.json ]; then
-            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json)
-            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json)
-            MEDIUM_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-results.json)
-            LOW_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length' trivy-results.json)
-
-            TOTAL_VULNS=$((CRITICAL_COUNT + HIGH_COUNT + MEDIUM_COUNT + LOW_COUNT))
-
-            echo "critical_count=${CRITICAL_COUNT}" >> $GITHUB_OUTPUT
-            echo "high_count=${HIGH_COUNT}" >> $GITHUB_OUTPUT
-            echo "medium_count=${MEDIUM_COUNT}" >> $GITHUB_OUTPUT
-            echo "low_count=${LOW_COUNT}" >> $GITHUB_OUTPUT
-            echo "total_count=${TOTAL_VULNS}" >> $GITHUB_OUTPUT
-
-            if [ $TOTAL_VULNS -gt 0 ]; then
-              echo "vulnerabilities_found=true" >> $GITHUB_OUTPUT
-
-              # Extract top vulnerabilities for display (limit to 10 for readability)
-              TOP_VULNS=$(jq -r '
-                .Results[]?
-                | .Vulnerabilities[]?
-                | select(.Severity == "CRITICAL" or .Severity == "HIGH" or .Severity == "MEDIUM" or .Severity == "LOW")
-                | "• \(.VulnerabilityID): \(.Title // "No title") (\(.Severity))"
-              ' trivy-results.json | head -10)
-
-              echo "top_vulnerabilities<<EOF" >> $GITHUB_OUTPUT
-              echo "$TOP_VULNS" >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            else
-              echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
-            fi
+          # Check if results file is empty or missing
+          if [ ! -s trivy-results.json ]; then
+            echo "Trivy results file not found or is empty. Assuming no vulnerabilities."
+            TOTAL_VULNS=0
+            COUNTS='{"critical":0, "high":0, "medium":0, "low":0}'
           else
-            echo "Trivy results file not found."
-            echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+            COUNTS=$(jq '{
+              critical: ([.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length),
+              high:     ([.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length),
+              medium:   ([.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length),
+              low:      ([.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length)
+            }' trivy-results.json)
+            TOTAL_VULNS=$(echo $COUNTS | jq '.critical + .high + .medium + .low')
+
+            # Generate vulnerability lists if vulnerabilities found
+            if [ $TOTAL_VULNS -gt 0 ]; then
+              # GitHub summary list (up to 50)
+              {
+                echo "vulnerabilities_list<<EOF"
+                jq -r '.Results[]? | .Vulnerabilities[]? | "• \(.VulnerabilityID): \(.Title // "No title") (\(.Severity))"' trivy-results.json | head -50
+                echo "EOF"
+              } >> $GITHUB_OUTPUT
+
+              # Slack list (up to 10) - format with proper newlines for JSON
+              SLACK_CVE_LIST=$(jq -r '.Results[]?.Vulnerabilities[]? | "• \(.VulnerabilityID): \(.Title // "No title") (\(.Severity))"' trivy-results.json | head -10 | sed ':a;N;$!ba;s/\n/\\n/g')
+              echo "slack_cve_list=$SLACK_CVE_LIST" >> $GITHUB_OUTPUT
+
+              # Also create unescaped version for bot token method (if you switch)
+              {
+                echo "slack_cve_list_raw<<EOF"
+                jq -r '.Results[]?.Vulnerabilities[]? | "• \(.VulnerabilityID): \(.Title // "No title") (\(.Severity))"' trivy-results.json | head -10
+                echo "EOF"
+              } >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Notify Slack - Vulnerabilities Found
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        if: steps.process_vulns.outputs.vulnerabilities_found == 'true'
+          # Set outputs
+          echo "critical_count=$(echo $COUNTS | jq .critical)" >> $GITHUB_OUTPUT
+          echo "high_count=$(echo $COUNTS | jq .high)" >> $GITHUB_OUTPUT
+          echo "medium_count=$(echo $COUNTS | jq .medium)" >> $GITHUB_OUTPUT
+          echo "low_count=$(echo $COUNTS | jq .low)" >> $GITHUB_OUTPUT
+          echo "total_count=$TOTAL_VULNS" >> $GITHUB_OUTPUT
+          echo "vulnerabilities_found=$(if [ $TOTAL_VULNS -gt 0 ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
+
+      - name: Post scan summary
+        run: |
+          if [ "${{ steps.process_results.outputs.vulnerabilities_found }}" = "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
+          # Trivy Security Scan Report :warning:
+
+          **Image:** \`${{ inputs.image_ref }}\`
+
+          Found **${{ steps.process_results.outputs.total_count }}** vulnerabilities.
+
+          | Severity | Count |
+          |:---|:---:|
+          | Critical | ${{ steps.process_results.outputs.critical_count }} |
+          | High     | ${{ steps.process_results.outputs.high_count }} |
+          | Medium   | ${{ steps.process_results.outputs.medium_count }} |
+          | Low      | ${{ steps.process_results.outputs.low_count }} |
+
+          ### CVEs Found
+          ${{ steps.process_results.outputs.vulnerabilities_list }}
+          EOF
+          else
+            echo "## Trivy Security Scan Report :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+            echo "No vulnerabilities found in \`${{ inputs.image_ref }}\`." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Send Slack notification on failure
+        if: steps.process_results.outputs.vulnerabilities_found == 'true'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
-          status: 'warning'
-          channel: '#mission-security'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            :warning: *Trivy Scan: Vulnerabilities Detected*
-
-            *Repository:* `${{ github.repository }}`
-            *Image Ref:* `${{ inputs.image_ref }}`
-
-            *Vulnerability Summary:*
-            • *Critical:* ${{ steps.process_vulns.outputs.critical_count }}
-            • *High:* ${{ steps.process_vulns.outputs.high_count }}
-            • *Medium:* ${{ steps.process_vulns.outputs.medium_count }}
-            • *Low:* ${{ steps.process_vulns.outputs.low_count }}
-            • *Total:* ${{ steps.process_vulns.outputs.total_count }}
-
-            *Top Vulnerabilities (showing first 10):*
-            ```
-            ${{ steps.process_vulns.outputs.top_vulnerabilities }}
-            ```
-
-            :point_right: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Full Scan Results>
-
-      - name: Notify Slack - No Vulnerabilities
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        if: steps.process_vulns.outputs.vulnerabilities_found == 'false'
-        with:
-          status: 'success'
-          channel: '#mission-security'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            :white_check_mark: *Trivy Scan: All Clear*
-
-            *Repository:* `${{ github.repository }}`
-            *Image Ref:* `${{ inputs.image_ref }}`
-
-            No vulnerabilities detected in the Docker image scan.
-
-            :point_right: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Scan Results>
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": ":warning: Trivy Scan: Vulnerabilities Detected" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n`${{ github.repository }}`" },
+                    { "type": "mrkdwn", "text": "*Image Scanned:*\n`${{ inputs.image_ref }}`" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Vulnerability Summary:*\n• *Critical:* ${{ steps.process_results.outputs.critical_count }}\n• *High:* ${{ steps.process_results.outputs.high_count }}\n• *Medium:* ${{ steps.process_results.outputs.medium_count }}\n• *Low:* ${{ steps.process_results.outputs.low_count }}\n• *Total:* *${{ steps.process_results.outputs.total_count }}*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*CVEs Found (showing up to 10):*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*CVEs Found (showing up to 10):*\n${{ steps.process_results.outputs.slack_cve_list }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View Job Summary" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
