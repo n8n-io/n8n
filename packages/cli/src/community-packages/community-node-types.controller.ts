@@ -2,7 +2,7 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 
-import { CommunityNodeTypesService } from '@/services/community-node-types.service';
+import { CommunityNodeTypesService } from '@/community-packages/community-node-types.service';
 
 @RestController('/community-node-types')
 export class CommunityNodeTypesController {
