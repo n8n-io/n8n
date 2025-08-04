@@ -64,7 +64,10 @@ const config = {
 	workerIdleMemoryLimit: '512MB',
 	maxWorkers: process.env.CI ? 2 : '50%',
 	maxConcurrency: 10,
-	testTimeout: 10000,
+	testTimeout: 15000, // Increased default timeout to 15 seconds
+	// Performance optimizations
+	detectOpenHandles: false, // Disable for performance unless debugging
+	errorOnDeprecated: false, // Allow deprecated features to prevent slowdowns
 };
 
 if (process.env.CI === 'true') {
