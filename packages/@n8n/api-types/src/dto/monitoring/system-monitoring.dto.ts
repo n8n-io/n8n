@@ -267,11 +267,11 @@ export class AlertsQueryDto extends Z.class({
 	limit: z
 		.string()
 		.optional()
-		.transform((val) => parseInt(val || '50', 10)),
+		.transform((val) => parseInt(val ?? '50', 10)),
 	offset: z
 		.string()
 		.optional()
-		.transform((val) => parseInt(val || '0', 10)),
+		.transform((val) => parseInt(val ?? '0', 10)),
 	workflowId: z.string().optional(),
 	startDate: z.string().datetime().optional(),
 	endDate: z.string().datetime().optional(),
@@ -291,7 +291,7 @@ export class WorkflowMetricsQueryDto extends Z.class({
 	limit: z
 		.string()
 		.optional()
-		.transform((val) => parseInt(val || '100', 10)),
+		.transform((val) => parseInt(val ?? '100', 10)),
 }) {}
 
 // Historical Data DTOs

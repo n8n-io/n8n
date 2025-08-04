@@ -7,6 +7,7 @@ export default tseslint.config(
 	globalIgnores([
 		'node_modules/**',
 		'dist/**',
+		'coverage/**',
 		'eslint.config.mjs',
 		'jest.config.js',
 		'src/expressions/grammar*.ts',

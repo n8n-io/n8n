@@ -181,7 +181,7 @@ export class WorkflowNodeBreakdownRequestDto extends Z.class({
 	minExecutions: z
 		.string()
 		.optional()
-		.transform((val) => parseInt(val || '5', 10)),
+		.transform((val) => parseInt(val ?? '5', 10)),
 }) {}
 
 export class NodeTypePerformanceRequestDto extends Z.class({
@@ -192,7 +192,7 @@ export class NodeTypePerformanceRequestDto extends Z.class({
 	limit: z
 		.string()
 		.optional()
-		.transform((val) => parseInt(val || '50', 10)),
+		.transform((val) => parseInt(val ?? '50', 10)),
 }) {}
 
 // Response wrappers
