@@ -1,4 +1,4 @@
-import type {
+import {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
@@ -18,6 +18,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 
@@ -42,7 +43,7 @@ export class DataStoreController {
 	async listDataStores(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Body payload: Partial<ListDataStoreQueryDto> = {},
+		@Query payload: ListDataStoreQueryDto,
 	) {
 		const providedFilter = payload?.filter ?? {};
 		return await this.dataStoreService.getManyAndCount({
