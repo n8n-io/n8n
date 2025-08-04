@@ -1499,7 +1499,7 @@
       "description": "Create comprehensive test coverage for the @n8n/errors package which currently has 0% test coverage, focusing on ApplicationError class, Sentry integration, and error handling patterns.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "backend-utils-test-coverage-1754084008691",
       "success_criteria": [
         "ApplicationError class fully tested with all constructor variations",
@@ -2128,9 +2128,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 247,
-  "last_hook_activation": 1754330995911,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 248,
+  "last_hook_activation": 1754333192876,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
