@@ -1424,7 +1424,7 @@
       "description": "Write comprehensive unit tests for untested controller files to improve CLI package test coverage",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "Unit tests written for all priority controller files",
         "Tests follow established CLI testing patterns",
@@ -1449,7 +1449,7 @@
       "description": "Write comprehensive unit tests for untested service files to improve CLI package test coverage",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "Unit tests written for all priority service files",
         "Tests cover core service functionality and error cases",
@@ -2129,8 +2129,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 242,
-  "last_hook_activation": 1754325605968,
+  "execution_count": 245,
+  "last_hook_activation": 1754328596580,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
