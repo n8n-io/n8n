@@ -38,6 +38,7 @@ jobs:
             - Check if changes affect any existing documentation
             - Determine if new features/systems require documentation
             - Verify that any referenced documentation is still accurate
+            - Verify that class, variable, function, file names mentioned in docs aren't changed
 
             **What to Document:**
             - New architectural patterns or significant design changes
@@ -61,7 +62,7 @@ jobs:
 
             If no updates needed, respond: "No documentation updates needed" with a brief explanation.
 
-            **Important:** 
+            **Important:**
             - Only suggest documentation changes, do not modify files directly
             - Focus on architecture documentation that helps developers understand the system
             - Ensure all suggestions follow the standards in ./docs/CLAUDE.md
