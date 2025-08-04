@@ -34,7 +34,8 @@ async function globalSetup() {
 	}
 
 	console.log(`🔄 Resetting database for ${n8nBaseUrl}...`);
-
+	// Quick hack till we find out a better health check for the database reset command!
+	await new Promise((resolve) => setTimeout(resolve, 3000));
 	// Create standalone API request context
 	const requestContext = await request.newContext({
 		baseURL: n8nBaseUrl,
