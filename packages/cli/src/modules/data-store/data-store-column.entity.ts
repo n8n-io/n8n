@@ -1,4 +1,4 @@
-import type { DataStoreColumnResultDto } from '@n8n/api-types/src/dto/data-store/data-store-column-result.dto';
+import type { DataStoreColumnResultDto } from '@n8n/api-types';
 import { WithStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 

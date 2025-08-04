@@ -701,27 +701,22 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 				>
 					<template #append>
 						<span
-							v-if="projectsStore.currentProject || projectsStore.personalProject"
+							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
 							:class="$style['path-separator']"
 							>/</span
 						>
-						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-							<template #default="{ shortenedName }">
-								<InlineTextEdit
-									:model-value="name"
-									:preview-value="shortenedName"
-									:is-edit-enabled="isNameEditEnabled"
-									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="
-										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
-									"
-									placeholder="Enter workflow name"
-									class="name"
-									@toggle="onNameToggle"
-									@submit="onNameSubmit"
-								/>
-							</template>
-						</ShortenName>
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="id"
+							placeholder="Workflow name"
+							data-test-id="workflow-name-input"
+							class="name"
+							:model-value="name"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							@update:model-value="onNameSubmit"
+						/>
 					</template>
 				</FolderBreadcrumbs>
 			</template>

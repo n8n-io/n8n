@@ -1,4 +1,4 @@
-import type { DataStoreRows } from 'n8n-workflow/src/data-store.types';
+import type { DataStoreRows } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type {
