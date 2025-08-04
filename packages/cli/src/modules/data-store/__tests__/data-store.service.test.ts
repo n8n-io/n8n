@@ -13,9 +13,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	try {
-		await testDb.truncate(['DataStoreEntity']);
-	} catch {}
+	await testDb.truncate(['DataStoreEntity', 'DataStoreColumnEntity']);
 });
 
 afterAll(async () => {
@@ -52,7 +50,7 @@ describe('dataStore', () => {
 	});
 
 	afterEach(async () => {
-		// this kinda sucks
+		// Clean up any created user data stores
 		await dataStoreService.deleteDataStoreAll();
 	});
 
