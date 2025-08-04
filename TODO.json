@@ -929,7 +929,7 @@
       "description": "Add endpoints for discovering available variables, functions, and context within workflow execution scope for enhanced development experience.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "GET /api/v1/workflows/:id/variables endpoint implemented",
         "GET /api/v1/workflows/:id/functions endpoint for available functions",
@@ -954,7 +954,7 @@
       "description": "Add endpoints for testing credential validity outside of workflow execution context, enabling credential validation and troubleshooting.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/credentials/:id/test endpoint implemented",
         "Credential validation without workflow execution",
@@ -2108,8 +2108,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 219,
-  "last_hook_activation": 1754287726165,
+  "execution_count": 222,
+  "last_hook_activation": 1754291651352,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

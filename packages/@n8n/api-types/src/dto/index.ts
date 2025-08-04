@@ -101,6 +101,18 @@ export {
 	BatchTransferWorkflowsResponseDto,
 	TransferWorkflowResponseDto,
 } from './workflows/batch-transfer.dto';
+export {
+	BulkActivateWorkflowsRequestDto,
+	BulkActivateWorkflowsResponseDto,
+	BulkDeactivateWorkflowsRequestDto,
+	BulkDeactivateWorkflowsResponseDto,
+	BulkUpdateWorkflowsRequestDto,
+	BulkUpdateWorkflowsResponseDto,
+	BatchOperationStatusDto,
+	WorkflowOperationSummaryDto,
+	EnterpriseBatchProcessingRequestDto,
+	EnterpriseBatchProcessingResponseDto,
+} from './workflows/bulk-operations.dto';
 
 export {
 	TransferCredentialBodyDto,
