@@ -160,6 +160,15 @@ describe('isFilePathBlocked', () => {
 		);
 		expect(await isFilePathBlocked(allowedPath)).toBe(true);
 	});
+
+	it('should handle non-existent file', async () => {
+		const filePath = '/non/existent/file';
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		expect(await isFilePathBlocked(filePath)).toBe(true);
+	});
 });
 
 describe('getFileSystemHelperFunctions', () => {

@@ -39,6 +39,7 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	try {
 		resolvedFilePath = await fsRealpath(filePath);
 	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (error.code === 'ENOENT') {
 			resolvedFilePath = resolve(filePath);
 		} else {
