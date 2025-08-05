@@ -15,14 +15,14 @@ function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':
-			return 'DATETIME';
+			return 'DATETIME'; // Postgres has no DATETIME
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
 }
 
 function columnToWildcardAndType(column: DataStoreCreateColumnSchema) {
-	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`;
+	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`; // Postgres identifiers use double quotes
 }
 
 function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
@@ -69,7 +69,6 @@ export function addColumnQuery(
 	tableName: DataStoreUserTableName,
 	column: DataStoreCreateColumnSchema,
 ) {
-	console.log(isValidColumnName(column.name), column.name);
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
 		throw new UnexpectedError('bad column name');
@@ -179,4 +178,8 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 		default:
 			return `\`${name}\``;
 	}
+}
+
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
+	return `data_store_user_${dataStoreId}`;
 }

@@ -5,8 +5,6 @@ import type {
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
-	DataStoreUserTableName,
-	IDataStoreService,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
@@ -14,63 +12,34 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { DataStoreRows, UserError } from 'n8n-workflow';
 
-import { DataStoreConfig } from './data-store';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
-
-export function toTableName(dataStoreId: string): DataStoreUserTableName {
-	return `data_store_user_${dataStoreId}`;
-}
+import { toTableName } from './utils/sql-utils';
 
 @Service()
-export class DataStoreService implements IDataStoreService {
-	private intervalId?: NodeJS.Timeout;
-
+export class DataStoreService {
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
-		private readonly config: DataStoreConfig,
 	) {
 		this.logger = this.logger.scoped('data-store');
 	}
 
-	start() {
-		this.logger.debug('Starting feature work...');
-
-		this.intervalId = setInterval(
-			() => {
-				this.logger.debug('Running scheduled task...');
-			},
-			this.config.taskInterval * 60 * 1000,
-		);
-	}
-
-	async shutdown() {
-		this.logger.debug('Shutting down...');
-
-		if (this.intervalId) {
-			clearInterval(this.intervalId);
-		}
-
-		await Promise.resolve();
-	}
+	async start() {}
+	async shutdown() {}
 
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
-		const dataStore = this.dataStoreRepository.create({ ...dto, projectId });
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,
 			projectId,
 		});
 		if (existingTable !== null) {
-			throw new UserError(`data store name '${dto.name}' already exists in this project`);
+			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
 		}
-		await this.dataStoreRepository.insert(dataStore);
-		await this.dataStoreRepository.createUserTable(toTableName(dataStore.id), dto.columns);
-
-		return dataStore;
+		return await this.dataStoreRepository.createUserTable(projectId, dto.name, dto.columns);
 	}
 
 	// Currently only renames data stores
@@ -86,7 +55,7 @@ export class DataStoreService implements IDataStoreService {
 		});
 
 		if (existingTable === null) {
-			throw new UserError('Cannot rename a non-existent data store');
+			throw new UserError(`Tried to rename non-existent data store '${dataStoreId}'`);
 		}
 
 		const hasNameClash = await this.dataStoreRepository.existsBy({
@@ -104,150 +73,62 @@ export class DataStoreService implements IDataStoreService {
 	}
 
 	async deleteDataStoreByProjectId(projectId: string) {
-		const existingTables = await this.dataStoreRepository.findBy({ projectId });
-
-		let changed = false;
-		for (const match of existingTables) {
-			const result = await this.deleteDataStore(match.id);
-			changed = changed || result;
-		}
-
-		return changed;
+		return await this.dataStoreRepository.deleteDataStoreByProjectId(projectId);
 	}
 
 	async deleteDataStoreAll() {
-		const existingMatches = await this.dataStoreRepository.findBy({});
-		let changed = false;
-		for (const match of existingMatches) {
-			const result = await this.deleteDataStore(match.id);
-			changed = changed || result;
-		}
-
-		return changed;
+		return await this.dataStoreRepository.deleteDataStoreAll();
 	}
 
 	async deleteDataStore(dataStoreId: string) {
-		const existingMatch = await this.dataStoreRepository.existsBy({
-			id: dataStoreId,
-		});
+		await this.validateDataStoreExists(
+			dataStoreId,
+			`Tried to delete non-existent data store '${dataStoreId}'`,
+		);
 
-		if (!existingMatch) {
-			throw new Error('tried to delete non-existent data store');
-		}
-
-		await this.dataStoreRepository.delete({ id: dataStoreId });
-		await this.dataStoreRepository.deleteUserTable(toTableName(dataStoreId));
+		await this.dataStoreRepository.deleteUserTable(dataStoreId);
 
 		return true;
 	}
 
 	async addColumn(dataStoreId: string, dto: AddDataStoreColumnDto) {
-		const existingTableMatch = await this.dataStoreRepository.findOneBy({
-			id: dataStoreId,
-		});
-
-		if (existingTableMatch === null) {
-			throw new UserError('tried to add column to non-existent data store');
-		}
-
-		const existingColumnMatch = await this.dataStoreColumnRepository.existsBy({
-			name: dto.name,
+		await this.validateDataStoreExists(
 			dataStoreId,
-		});
+			`Tried to add column to non-existent data store '${dataStoreId}'`,
+		);
 
-		if (existingColumnMatch) {
-			throw new UserError(
-				`column name '${dto.name}' already taken in data store '${existingTableMatch.name}'`,
-			);
-		}
-
-		if (dto.columnIndex === undefined) {
-			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-			dto.columnIndex = columns.length;
-		} else {
-			await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.columnIndex, 1);
-		}
-
-		const column = this.dataStoreColumnRepository.create({
-			...dto,
-			dataStoreId,
-		});
-
-		await this.dataStoreColumnRepository.insert(column);
-		await this.dataStoreColumnRepository.addColumn(toTableName(dataStoreId), column);
-
-		return column;
+		return await this.dataStoreColumnRepository.addColumn(dataStoreId, dto);
 	}
 
 	async moveColumn(dataStoreId: string, columnId: string, dto: MoveDataStoreColumnDto) {
-		const existingTable = await this.dataStoreRepository.findOneBy({
-			id: dataStoreId,
-		});
-
-		if (existingTable === null) {
-			throw new UserError('tried to move columns from non-existent data store');
-		}
-
-		const columnCount = await this.dataStoreColumnRepository.countBy({ dataStoreId });
-
-		if (dto.targetIndex >= columnCount) {
-			throw new UserError('tried to move column to index larger than column count');
-		}
-
-		if (dto.targetIndex < 0) {
-			throw new UserError('tried to move column to negative index');
-		}
-
-		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
-			id: columnId,
+		await this.validateDataStoreExists(
 			dataStoreId,
-		});
-
-		if (existingColumn === null) {
-			throw new UserError(`tried to move column not present in data store '${existingTable.name}'`);
-		}
-
-		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, existingColumn.columnIndex, -1);
-		await this.dataStoreColumnRepository.shiftColumns(dataStoreId, dto.targetIndex, 1);
-		await this.dataStoreColumnRepository.update(
-			{ id: existingColumn.id },
-			{ columnIndex: dto.targetIndex },
+			`Tried to move column from non-existent data store '${dataStoreId}'`,
 		);
+
+		await this.dataStoreColumnRepository.moveColumn(dataStoreId, columnId, dto.targetIndex);
 
 		return true;
 	}
 
 	async deleteColumn(dataStoreId: string, dto: DeleteDataStoreColumnDto) {
-		const existingTable = await this.dataStoreRepository.findOneBy({
-			id: dataStoreId,
-		});
+		await this.validateDataStoreExists(
+			dataStoreId,
+			`Tried to delete column from non-existent data store '${dataStoreId}'`,
+		);
 
-		if (!existingTable) {
-			throw new UserError('tried to delete column from non-existent table');
-		}
-
-		const existingColumnMatch = await this.dataStoreColumnRepository.findBy({
+		const existingColumnMatch = await this.dataStoreColumnRepository.findOneBy({
 			id: dto.columnId,
 			dataStoreId,
 		});
 
-		if (existingColumnMatch.length === 0) {
+		if (existingColumnMatch === null) {
 			throw new UserError(
-				`tried to delete column with name not present in data store '${existingTable.name}'`,
+				`Tried to delete column with name not present in data store '${dataStoreId}'`,
 			);
 		}
 
-		await this.dataStoreColumnRepository.remove(existingColumnMatch);
-		await this.dataStoreColumnRepository.deleteColumn(
-			toTableName(dataStoreId),
-			existingColumnMatch[0].name,
-		);
-		await this.dataStoreColumnRepository.shiftColumns(
-			dataStoreId,
-			existingColumnMatch[0].columnIndex,
-			-1,
-		);
-		// should we update the main table entry's `updatedAt` field here?
+		await this.dataStoreColumnRepository.deleteColumn(dataStoreId, existingColumnMatch);
 
 		return true;
 	}
@@ -270,7 +151,7 @@ export class DataStoreService implements IDataStoreService {
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
-			throw new UserError('no columns found for this data store or data store not found');
+			throw new UserError('No columns found for this data store or data store not found');
 		}
 
 		const columnNames = new Set(columns.map((x) => x.name));
@@ -321,5 +202,15 @@ export class DataStoreService implements IDataStoreService {
 		await this.validateRows(dataStoreId, dto.rows);
 
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto);
+	}
+
+	private async validateDataStoreExists(dataStoreId: string, msg?: string) {
+		const existingTable = await this.dataStoreRepository.findOneBy({
+			id: dataStoreId,
+		});
+
+		if (!existingTable) {
+			throw new UserError(msg ?? `Data Store '${dataStoreId}' does not exist.`);
+		}
 	}
 }

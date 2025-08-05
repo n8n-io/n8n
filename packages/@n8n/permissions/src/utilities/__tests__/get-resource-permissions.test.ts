@@ -1,7 +1,7 @@
+import type { Scope } from '@/types.ee';
+
 import type { PermissionsRecord } from '../get-resource-permissions.ee';
 import { getResourcePermissions } from '../get-resource-permissions.ee';
-
-import type { Scope } from '@/types.ee';
 
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
@@ -31,6 +31,7 @@ describe('permissions', () => {
 			workflow: {},
 			folder: {},
 			insights: {},
+			dataStore: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -128,11 +129,7 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
-			dataStore: {
-				read: true,
-				readRow: true,
-				list: true,
-			},
+			dataStore: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

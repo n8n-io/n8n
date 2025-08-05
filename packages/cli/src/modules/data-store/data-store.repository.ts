@@ -1,13 +1,9 @@
-import type {
-	DataStoreCreateColumnSchema,
-	DataStoreListOptions,
-	DataStoreUserTableName,
-} from '@n8n/api-types';
+import type { DataStoreCreateColumnSchema, ListDataStoreQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { DataStoreEntity } from './data-store.entity';
-import { createUserTableQuery } from './utils/sql-utils';
+import { createUserTableQuery, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStoreEntity> {
@@ -15,27 +11,69 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
-	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreCreateColumnSchema[]) {
-		const dbType = this.manager.connection.options.type;
-		await this.manager.query(createUserTableQuery(tableName, columns, dbType));
+	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
+		return await this.manager.transaction(async (em) => {
+			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
+			await this.insert(dataStore);
+			const dbType = this.manager.connection.options.type;
+			await this.manager.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
+			return dataStore;
+		});
 	}
 
-	async deleteUserTable(tableName: DataStoreUserTableName) {
-		await this.manager.query(`DROP TABLE ${tableName}`);
+	async deleteUserTable(dataStoreId: string, entityManager?: EntityManager) {
+		const executor = entityManager ?? this.manager;
+		return await executor.transaction(async (em) => {
+			await em.delete(DataStoreEntity, { id: dataStoreId });
+			await em.query(`DROP TABLE ${toTableName(dataStoreId)}`);
+
+			return true;
+		});
 	}
 
-	async getManyAndCount(options: DataStoreListOptions) {
+	async deleteDataStoreByProjectId(projectId: string) {
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataStoreEntity, { projectId });
+
+			let changed = false;
+			for (const match of existingTables) {
+				const result = await this.deleteUserTable(match.id, em);
+				changed = changed || result;
+			}
+
+			return changed;
+		});
+	}
+
+	async deleteDataStoreAll() {
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataStoreEntity, {});
+
+			let changed = false;
+			for (const match of existingTables) {
+				const result = await em.delete(DataStoreEntity, { id: match.id });
+				await em.query(`DROP TABLE ${toTableName(match.id)}`);
+				changed = changed || (result.affected ?? 0) > 0;
+			}
+
+			return changed;
+		});
+	}
+
+	async getManyAndCount(options: Partial<ListDataStoreQueryDto>) {
 		const query = this.getManyQuery(options);
 		const [data, count] = await query.getManyAndCount();
 		return { count, data };
 	}
 
-	async getMany(options: DataStoreListOptions) {
+	async getMany(options: Partial<ListDataStoreQueryDto>) {
 		const query = this.getManyQuery(options);
 		return await query.getMany();
 	}
 
-	private getManyQuery(options: DataStoreListOptions): SelectQueryBuilder<DataStoreEntity> {
+	private getManyQuery(
+		options: Partial<ListDataStoreQueryDto>,
+	): SelectQueryBuilder<DataStoreEntity> {
 		const query = this.createQueryBuilder('dataStore');
 
 		this.applySelections(query);
@@ -52,7 +90,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<DataStoreEntity>,
-		filter: DataStoreListOptions['filter'],
+		filter: Partial<ListDataStoreQueryDto>['filter'],
 	): void {
 		for (const x of ['id', 'projectId'] as const) {
 			const content = [filter?.[x]].flat().filter((x) => x !== undefined);
@@ -105,7 +143,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	private applyPagination(
 		query: SelectQueryBuilder<DataStoreEntity>,
-		options: DataStoreListOptions,
+		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
 		query.take(options.take ?? 0);

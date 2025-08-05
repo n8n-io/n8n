@@ -54,5 +54,4 @@ export {
 	type DataStoreListFilter,
 	type DataStoreListOptions,
 	type DataStoreUserTableName,
-	type IDataStoreService,
 } from './schemas/data-store.schema';

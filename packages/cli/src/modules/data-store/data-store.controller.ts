@@ -17,6 +17,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import type { DataStoreRows } from 'n8n-workflow';
@@ -42,7 +43,7 @@ export class DataStoreController {
 	async listDataStores(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Body payload: Partial<ListDataStoreQueryDto> = {},
+		@Query payload: ListDataStoreQueryDto,
 	) {
 		const providedFilter = payload?.filter ?? {};
 		return await this.dataStoreService.getManyAndCount({
