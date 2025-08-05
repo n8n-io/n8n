@@ -17,6 +17,16 @@ import {
 	AdvancedWorkflowSearchDto,
 	WorkflowSearchSuggestionsDto,
 	WorkflowSearchSuggestionsResponseDto,
+	FunctionDocumentationQueryDto,
+	FunctionDocumentationResponseDto,
+	VariableDocumentationQueryDto,
+	VariableDocumentationResponseDto,
+	ExpressionSyntaxQueryDto,
+	ExpressionSyntaxResponseDto,
+	ContextualDocumentationQueryDto,
+	ContextualDocumentationResponseDto,
+	DocumentationSearchQueryDto,
+	DocumentationSearchResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -86,6 +96,7 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BatchProcessingService } from './batch-processing.service';
 import { WorkflowSearchService } from '@/services/workflow-search.service';
+import { ExpressionDocsService } from '@/services/expression-docs.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -115,6 +126,7 @@ export class WorkflowsController {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly batchProcessingService: BatchProcessingService,
 		private readonly workflowSearchService: WorkflowSearchService,
+		private readonly expressionDocsService: ExpressionDocsService,
 	) {}
 
 	@Post('/')
@@ -989,324 +1001,57 @@ export class WorkflowsController {
 
 	@Get('/context/functions')
 	async getAvailableFunctions(
-		req?: AuthenticatedRequest<
-			{},
-			{},
-			{},
-			{
-				category?: string;
-				includeExamples?: boolean;
-				includeNative?: boolean;
-			}
-		>,
-	) {
-		const category = req?.query?.category;
-		const includeExamples = req?.query?.includeExamples !== false;
-		const includeNative = req?.query?.includeNative !== false;
-
+		req?: AuthenticatedRequest<{}, {}, {}, FunctionDocumentationQueryDto>,
+	): Promise<FunctionDocumentationResponseDto> {
 		if (req) {
-			this.logger.debug('Available functions discovery requested', {
-				category,
-				includeExamples,
-				includeNative,
+			this.logger.debug('Function documentation requested', {
+				functionName: req.query?.functionName,
+				category: req.query?.category,
 				userId: req.user.id,
 			});
 		}
 
 		try {
-			const functions = {
-				// Built-in mathematical functions
-				math: {
-					$min: {
-						description: 'Returns the minimum value',
-						example: '$min(1, 2, 3)',
-						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to compare' }],
-						returnType: 'number',
-					},
-					$max: {
-						description: 'Returns the maximum value',
-						example: '$max(1, 2, 3)',
-						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to compare' }],
-						returnType: 'number',
-					},
-					$average: {
-						description: 'Calculates the average of numbers',
-						example: '$average(1, 2, 3)',
-						parameters: [{ name: 'values', type: 'number[]', description: 'Numbers to average' }],
-						returnType: 'number',
-					},
-				},
-				// String manipulation functions
-				string: {
-					length: {
-						description: 'Returns the length of a string',
-						example: '"hello".length()',
-						returnType: 'number',
-					},
-					toLowerCase: {
-						description: 'Converts string to lowercase',
-						example: '"HELLO".toLowerCase()',
-						returnType: 'string',
-					},
-					toUpperCase: {
-						description: 'Converts string to uppercase',
-						example: '"hello".toUpperCase()',
-						returnType: 'string',
-					},
-					split: {
-						description: 'Splits a string into an array',
-						example: '"a,b,c".split(",")',
-						parameters: [{ name: 'separator', type: 'string', description: 'Separator string' }],
-						returnType: 'string[]',
-					},
-					trim: {
-						description: 'Removes whitespace from both ends',
-						example: '" hello ".trim()',
-						returnType: 'string',
-					},
-					replace: {
-						description: 'Replaces text in string',
-						example: '"hello world".replace("world", "n8n")',
-						parameters: [
-							{ name: 'searchValue', type: 'string', description: 'Text to search for' },
-							{ name: 'replaceValue', type: 'string', description: 'Text to replace with' },
-						],
-						returnType: 'string',
-					},
-					substring: {
-						description: 'Extracts characters from a string',
-						example: '"hello".substring(1, 3)',
-						parameters: [
-							{ name: 'start', type: 'number', description: 'Start index' },
-							{ name: 'end', type: 'number', optional: true, description: 'End index' },
-						],
-						returnType: 'string',
-					},
-					includes: {
-						description: 'Checks if string contains substring',
-						example: '"hello world".includes("world")',
-						parameters: [
-							{ name: 'searchString', type: 'string', description: 'String to search for' },
-						],
-						returnType: 'boolean',
-					},
-				},
-				// Array manipulation functions
-				array: {
-					length: {
-						description: 'Returns the length of an array',
-						example: '[1, 2, 3].length',
-						returnType: 'number',
-					},
-					push: {
-						description: 'Adds elements to the end of array',
-						example: '[1, 2].push(3)',
-						parameters: [{ name: 'elements', type: 'any[]', description: 'Elements to add' }],
-						returnType: 'number',
-					},
-					pop: {
-						description: 'Removes and returns last element',
-						example: '[1, 2, 3].pop()',
-						returnType: 'any',
-					},
-					slice: {
-						description: 'Returns a portion of array',
-						example: '[1, 2, 3, 4].slice(1, 3)',
-						parameters: [
-							{ name: 'start', type: 'number', description: 'Start index' },
-							{ name: 'end', type: 'number', optional: true, description: 'End index' },
-						],
-						returnType: 'any[]',
-					},
-					map: {
-						description: 'Creates new array with results of calling function',
-						example: '[1, 2, 3].map(x => x * 2)',
-						parameters: [
-							{
-								name: 'callback',
-								type: 'function',
-								description: 'Function to call for each element',
-							},
-						],
-						returnType: 'any[]',
-					},
-					filter: {
-						description: 'Creates new array with elements that pass test',
-						example: '[1, 2, 3, 4].filter(x => x > 2)',
-						parameters: [
-							{ name: 'callback', type: 'function', description: 'Function to test each element' },
-						],
-						returnType: 'any[]',
-					},
-					find: {
-						description: 'Returns first element that satisfies condition',
-						example: '[1, 2, 3].find(x => x > 1)',
-						parameters: [
-							{ name: 'callback', type: 'function', description: 'Function to test each element' },
-						],
-						returnType: 'any',
-					},
-					includes: {
-						description: 'Checks if array contains element',
-						example: '[1, 2, 3].includes(2)',
-						parameters: [
-							{ name: 'searchElement', type: 'any', description: 'Element to search for' },
-						],
-						returnType: 'boolean',
-					},
-					join: {
-						description: 'Joins array elements into string',
-						example: '[1, 2, 3].join(",")',
-						parameters: [
-							{
-								name: 'separator',
-								type: 'string',
-								optional: true,
-								description: 'Separator string',
-							},
-						],
-						returnType: 'string',
-					},
-				},
-				// Object manipulation functions
-				object: {
-					keys: {
-						description: 'Returns array of object keys',
-						example: 'Object.keys({a: 1, b: 2})',
-						parameters: [{ name: 'obj', type: 'object', description: 'Object to get keys from' }],
-						returnType: 'string[]',
-					},
-					values: {
-						description: 'Returns array of object values',
-						example: 'Object.values({a: 1, b: 2})',
-						parameters: [{ name: 'obj', type: 'object', description: 'Object to get values from' }],
-						returnType: 'any[]',
-					},
-					entries: {
-						description: 'Returns array of key-value pairs',
-						example: 'Object.entries({a: 1, b: 2})',
-						parameters: [
-							{ name: 'obj', type: 'object', description: 'Object to get entries from' },
-						],
-						returnType: '[string, any][]',
-					},
-				},
-				// Date/time functions (DateTime/Luxon)
-				date: {
-					now: {
-						description: 'Creates DateTime for current time',
-						example: 'DateTime.now()',
-						returnType: 'DateTime',
-					},
-					fromISO: {
-						description: 'Creates DateTime from ISO string',
-						example: 'DateTime.fromISO("2023-01-01")',
-						parameters: [{ name: 'text', type: 'string', description: 'ISO date string' }],
-						returnType: 'DateTime',
-					},
-					toISO: {
-						description: 'Converts DateTime to ISO string',
-						example: '$now.toISO()',
-						returnType: 'string',
-					},
-					toFormat: {
-						description: 'Formats DateTime as string',
-						example: '$now.toFormat("yyyy-MM-dd")',
-						parameters: [{ name: 'format', type: 'string', description: 'Format string' }],
-						returnType: 'string',
-					},
-					plus: {
-						description: 'Adds time to DateTime',
-						example: '$now.plus({days: 1})',
-						parameters: [{ name: 'duration', type: 'object', description: 'Duration object' }],
-						returnType: 'DateTime',
-					},
-					minus: {
-						description: 'Subtracts time from DateTime',
-						example: '$now.minus({days: 1})',
-						parameters: [{ name: 'duration', type: 'object', description: 'Duration object' }],
-						returnType: 'DateTime',
-					},
-				},
-				// Utility functions
-				utility: {
-					$not: {
-						description: 'Logical NOT operation',
-						example: '$not(true)',
-						parameters: [{ name: 'value', type: 'any', description: 'Value to negate' }],
-						returnType: 'boolean',
-					},
-					$ifEmpty: {
-						description: 'Returns default value if input is empty',
-						example: '$ifEmpty($json.optional, "default")',
-						parameters: [
-							{ name: 'value', type: 'any', description: 'Value to check' },
-							{ name: 'defaultValue', type: 'any', description: 'Default value if empty' },
-						],
-						returnType: 'any',
-					},
-					numberList: {
-						description: 'Creates array of numbers in range',
-						example: 'numberList(1, 5)',
-						parameters: [
-							{ name: 'start', type: 'number', description: 'Start number' },
-							{ name: 'end', type: 'number', description: 'End number' },
-						],
-						returnType: 'number[]',
-					},
-					zip: {
-						description: 'Combines two arrays into object',
-						example: 'zip(["a", "b"], [1, 2])',
-						parameters: [
-							{ name: 'keys', type: 'any[]', description: 'Array of keys' },
-							{ name: 'values', type: 'any[]', description: 'Array of values' },
-						],
-						returnType: 'object',
-					},
-					isEmpty: {
-						description: 'Checks if value is empty',
-						example: '"".isEmpty()',
-						returnType: 'boolean',
-					},
-					isNotEmpty: {
-						description: 'Checks if value is not empty',
-						example: '"hello".isNotEmpty()',
-						returnType: 'boolean',
-					},
+			const functionName = req?.query?.functionName;
+			const category = req?.query?.category;
+
+			// Get function documentation from service
+			const functionDocs = this.expressionDocsService.getFunctionDocumentation(functionName);
+
+			let data;
+			if (Array.isArray(functionDocs)) {
+				// Filter by category if specified
+				data = category ? functionDocs.filter((func) => func.category === category) : functionDocs;
+			} else {
+				data = functionDocs;
+			}
+
+			const response: FunctionDocumentationResponseDto = {
+				success: true,
+				data: data || [],
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					functionName,
+					category,
+					totalCount: Array.isArray(data) ? data.length : data ? 1 : 0,
 				},
 			};
 
-			// Filter by category if specified
-			const result =
-				category && (functions as any)[category]
-					? { [category]: (functions as any)[category] }
-					: functions;
-
 			if (req) {
-				this.logger.debug('Available functions discovery completed', {
+				this.logger.debug('Function documentation completed', {
+					functionName,
 					category,
 					userId: req.user.id,
-					functionCount: Object.keys(result).length,
+					totalCount: response.metadata.totalCount,
 				});
 			}
 
-			return req
-				? {
-						success: true,
-						functions: result,
-						metadata: {
-							category,
-							includeExamples,
-							includeNative,
-							requestedAt: new Date(),
-							totalCategories: Object.keys(functions).length,
-						},
-					}
-				: result;
+			return response;
 		} catch (error) {
 			if (req) {
-				this.logger.error('Available functions discovery failed', {
-					category,
+				this.logger.error('Function documentation failed', {
+					functionName: req.query?.functionName,
+					category: req.query?.category,
 					userId: req.user.id,
 					error: error instanceof Error ? error.message : String(error),
 				});
@@ -1316,10 +1061,260 @@ export class WorkflowsController {
 				}
 
 				throw new InternalServerError(
-					`Functions discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+					`Function documentation failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 			throw error;
+		}
+	}
+
+	@Get('/context/variables')
+	async getVariableDocumentation(
+		req: AuthenticatedRequest<{}, {}, {}, VariableDocumentationQueryDto>,
+	): Promise<VariableDocumentationResponseDto> {
+		this.logger.debug('Variable documentation requested', {
+			variableName: req.query?.variableName,
+			category: req.query?.category,
+			userId: req.user.id,
+		});
+
+		try {
+			const variableName = req.query?.variableName;
+			const category = req.query?.category;
+
+			// Get variable documentation from service
+			const variableDocs = this.expressionDocsService.getVariableDocumentation(variableName);
+
+			let data;
+			if (Array.isArray(variableDocs)) {
+				// Filter by category if specified
+				data = category
+					? variableDocs.filter((variable) => variable.category === category)
+					: variableDocs;
+			} else {
+				data = variableDocs;
+			}
+
+			const response: VariableDocumentationResponseDto = {
+				success: true,
+				data: data || [],
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					variableName,
+					category,
+					context: req.query?.context,
+					totalCount: Array.isArray(data) ? data.length : data ? 1 : 0,
+				},
+			};
+
+			this.logger.debug('Variable documentation completed', {
+				variableName,
+				category,
+				userId: req.user.id,
+				totalCount: response.metadata.totalCount,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Variable documentation failed', {
+				variableName: req.query?.variableName,
+				category: req.query?.category,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Variable documentation failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/context/syntax')
+	async getExpressionSyntaxDocumentation(
+		req: AuthenticatedRequest<{}, {}, {}, ExpressionSyntaxQueryDto>,
+	): Promise<ExpressionSyntaxResponseDto> {
+		this.logger.debug('Expression syntax documentation requested', {
+			topic: req.query?.topic,
+			userId: req.user.id,
+		});
+
+		try {
+			const topic = req.query?.topic;
+
+			// Get syntax documentation from service
+			const syntaxDocs = this.expressionDocsService.getExpressionSyntaxDocs(topic);
+
+			const response: ExpressionSyntaxResponseDto = {
+				success: true,
+				data: syntaxDocs || [],
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					topic,
+					totalCount: Array.isArray(syntaxDocs) ? syntaxDocs.length : syntaxDocs ? 1 : 0,
+				},
+			};
+
+			this.logger.debug('Expression syntax documentation completed', {
+				topic,
+				userId: req.user.id,
+				totalCount: response.metadata.totalCount,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Expression syntax documentation failed', {
+				topic: req.query?.topic,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Expression syntax documentation failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/context/help/:nodeType')
+	async getContextualHelp(
+		req: AuthenticatedRequest<{ nodeType: string }, {}, {}, ContextualDocumentationQueryDto>,
+	): Promise<ContextualDocumentationResponseDto> {
+		const { nodeType } = req.params;
+
+		this.logger.debug('Contextual help requested', {
+			nodeType,
+			context: req.query?.context,
+			userId: req.user.id,
+		});
+
+		try {
+			const context = req.query?.context;
+
+			// Get contextual documentation from service
+			const contextualDocs = this.expressionDocsService.getContextualDocumentation(
+				nodeType,
+				context,
+			);
+
+			const response: ContextualDocumentationResponseDto = {
+				success: true,
+				data: contextualDocs,
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					nodeType,
+					context,
+					totalFunctions: contextualDocs.relevantFunctions.length,
+					totalVariables: contextualDocs.relevantVariables.length,
+					totalTips: contextualDocs.contextSpecificTips.length,
+				},
+			};
+
+			this.logger.debug('Contextual help completed', {
+				nodeType,
+				context,
+				userId: req.user.id,
+				totalFunctions: response.metadata.totalFunctions,
+				totalVariables: response.metadata.totalVariables,
+				totalTips: response.metadata.totalTips,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Contextual help failed', {
+				nodeType,
+				context: req.query?.context,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Contextual help failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/context/search')
+	async searchDocumentation(
+		req: AuthenticatedRequest<{}, {}, {}, DocumentationSearchQueryDto>,
+	): Promise<DocumentationSearchResponseDto> {
+		this.logger.debug('Documentation search requested', {
+			query: req.query.query,
+			type: req.query?.type,
+			userId: req.user.id,
+		});
+
+		try {
+			const startTime = Date.now();
+			const { query, type, limit } = req.query;
+
+			// Search documentation using service
+			const searchResults = this.expressionDocsService.searchDocumentation(query, type);
+
+			// Apply limit to results
+			if (limit) {
+				if (searchResults.functions.length > limit) {
+					searchResults.functions = searchResults.functions.slice(0, limit);
+				}
+				if (searchResults.variables.length > limit) {
+					searchResults.variables = searchResults.variables.slice(0, limit);
+				}
+				if (searchResults.syntax.length > limit) {
+					searchResults.syntax = searchResults.syntax.slice(0, limit);
+				}
+			}
+
+			const totalResults =
+				searchResults.functions.length +
+				searchResults.variables.length +
+				searchResults.syntax.length;
+
+			const response: DocumentationSearchResponseDto = {
+				success: true,
+				data: searchResults,
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					query,
+					type,
+					totalResults,
+					searchTimeMs: Date.now() - startTime,
+				},
+			};
+
+			this.logger.debug('Documentation search completed', {
+				query,
+				type,
+				userId: req.user.id,
+				totalResults,
+				searchTimeMs: response.metadata.searchTimeMs,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Documentation search failed', {
+				query: req.query.query,
+				type: req.query?.type,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Documentation search failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 
@@ -2408,6 +2403,121 @@ export class WorkflowsController {
 
 			throw new InternalServerError(
 				`Failed to get batch status: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Get all available expression function categories
+	 */
+	@Get('/expressions/categories')
+	async getExpressionCategories(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+	): Promise<ExpressionCategoriesResponseDto> {
+		this.logger.debug('Expression categories requested', {
+			userId: req.user.id,
+		});
+
+		try {
+			const categories = this.expressionDocsService.getCategories();
+
+			return {
+				categories,
+				total: categories.length,
+			};
+		} catch (error) {
+			this.logger.error('Failed to get expression categories', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new InternalServerError(
+				`Failed to get expression categories: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Get expression functions for a specific category
+	 */
+	@Get('/expressions/functions/:category')
+	async getExpressionFunctions(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Param('category') category: string,
+		@Query() queryDto: ExpressionFunctionsCategoryQueryDto,
+	): Promise<ExpressionFunctionsResponseDto> {
+		this.logger.debug('Expression functions requested', {
+			userId: req.user.id,
+			category,
+			search: queryDto.search,
+		});
+
+		try {
+			let functions = this.expressionDocsService.getFunctionsByCategory(category);
+
+			// Apply search filter if provided
+			if (queryDto.search) {
+				const searchTerm = queryDto.search.toLowerCase();
+				functions = functions.filter(
+					(func) =>
+						func.name.toLowerCase().includes(searchTerm) ||
+						func.description?.toLowerCase().includes(searchTerm) ||
+						func.aliases?.some((alias) => alias.toLowerCase().includes(searchTerm)),
+				);
+			}
+
+			return {
+				functions,
+				category,
+				total: functions.length,
+			};
+		} catch (error) {
+			this.logger.error('Failed to get expression functions', {
+				userId: req.user.id,
+				category,
+				search: queryDto.search,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new InternalServerError(
+				`Failed to get expression functions: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Get context-aware variables for expression editor
+	 */
+	@Get('/expressions/variables/context')
+	async getExpressionVariables(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Query() queryDto: ExpressionVariablesContextQueryDto,
+	): Promise<ExpressionVariablesResponseDto> {
+		this.logger.debug('Expression variables requested', {
+			userId: req.user.id,
+			context: queryDto.context,
+		});
+
+		try {
+			const variables = this.expressionDocsService.getContextVariables(queryDto.context);
+
+			return {
+				variables,
+				context: queryDto.context,
+				total: variables.length,
+			};
+		} catch (error) {
+			this.logger.error('Failed to get expression variables', {
+				userId: req.user.id,
+				context: queryDto.context,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new InternalServerError(
+				`Failed to get expression variables: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
