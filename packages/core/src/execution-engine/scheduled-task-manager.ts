@@ -11,7 +11,7 @@ import { InstanceSettings } from '@/instance-settings';
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
 type Cron = { job: CronJob; summary: string; ctx: CronContext };
 type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
-export type SettingsCron = CronContext & { workflowId: string };
+type SettingsCron = CronContext & { workflowId: string };
 
 @Service()
 export class ScheduledTaskManager {
