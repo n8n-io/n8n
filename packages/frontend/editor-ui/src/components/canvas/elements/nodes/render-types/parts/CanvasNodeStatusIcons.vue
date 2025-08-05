@@ -57,22 +57,7 @@ const commonClasses = computed(() => [
 </script>
 
 <template>
-	<div v-if="isDisabled" :class="[...commonClasses, $style.disabled]">
-		<N8nIcon icon="power" :size="size" />
-	</div>
-	<div
-		v-else-if="hasIssues && !hideNodeIssues"
-		:class="[...commonClasses, $style.issues]"
-		data-test-id="node-issues"
-	>
-		<N8nTooltip :show-after="500" placement="bottom">
-			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
-			</template>
-			<N8nIcon icon="node-error" :size="size" />
-		</N8nTooltip>
-	</div>
-	<div v-else-if="executionWaiting || executionStatus === 'waiting'">
+	<div v-if="executionWaiting || executionStatus === 'waiting'">
 		<div :class="[...commonClasses, $style.waiting]">
 			<N8nTooltip placement="bottom">
 				<template #content>
@@ -88,15 +73,30 @@ const commonClasses = computed(() => [
 			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
-	<div v-else-if="executionStatus === 'unknown'">
-		<!-- Do nothing, unknown means the node never executed -->
-	</div>
 	<div
 		v-else-if="isNodeExecuting"
 		data-test-id="canvas-node-status-running"
 		:class="[...commonClasses, $style.running]"
 	>
 		<N8nIcon icon="refresh-cw" spin />
+	</div>
+	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
+		<N8nIcon icon="power" :size="size" />
+	</div>
+	<div
+		v-else-if="hasIssues && !hideNodeIssues"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-issues"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+			</template>
+			<N8nIcon icon="node-error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div v-else-if="executionStatus === 'unknown'">
+		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
