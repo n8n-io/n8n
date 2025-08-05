@@ -1,6 +1,5 @@
 name: Build & Push (daily-tag)
 
-# هر بار که روی main پوش یا به صورت دستی اجرا شود
 on:
   push:
     branches: [ main ]
@@ -11,28 +10,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) دریافت سورس
+      # 1) سورس
       - uses: actions/checkout@v4
 
-      # 2) Buildx برای بیلد چند-پلتفرم (اینجا فقط x86_64)
+      # 2) Node 22 + pnpm (برای build)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install deps & build
+        run: |
+          corepack enable          # فعال‌کردن pnpm با ورژن قفل‌شده
+          pnpm install --frozen-lockfile
+          pnpm build:n8n           # خروجی در ./compiled ایجاد می‌شود
+
+      # 3) Buildx
       - uses: docker/setup-buildx-action@v3
 
-      # 3) لاگین به GHCR
+      # 4) login به GHCR
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4) تولید تگ تاریخ روز (YYYY-MM-DD)
+      # 5) تگ تاریخ
       - name: Set date tag
         id: date
         run: echo "TAG=$(date +'%Y-%m-%d')" >>"$GITHUB_OUTPUT"
 
-      # 5) Build و Push
+      # 6) build & push
       - uses: docker/build-push-action@v5
         with:
-          context: .                     # ریشهٔ مخزن یا هر مسیری که Dockerfile آنجاست
-          file: ./docker/images/n8n/Dockerfile  # مسیر Dockerfile را طبق پروژه خود تنظیم کنید
+          context: .                               # ریشه‌ی ریپو
+          file: ./docker/images/n8n/Dockerfile     # مسیر Dockerfile
           tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.date.outputs.TAG }}
-          push: true                     # حتماً Push شود
+          push: true
