@@ -32,6 +32,10 @@ export class CanvasPage extends BasePage {
 		return this.nodeToolbar(nodeName).getByTestId('delete-node-button');
 	}
 
+	nodeDisableButton(nodeName: string): Locator {
+		return this.nodeToolbar(nodeName).getByTestId('disable-node-button');
+	}
+
 	async clickCanvasPlusButton(): Promise<void> {
 		await this.clickByTestId('canvas-plus-button');
 	}
@@ -56,6 +60,15 @@ export class CanvasPage extends BasePage {
 		await this.clickNodeCreatorPlusButton();
 		await this.fillNodeCreatorSearchBar(text);
 		await this.clickNodeCreatorItemName(text);
+	}
+
+	async addNodeAndCloseNDV(text: string, subItemText?: string): Promise<void> {
+		if (subItemText) {
+			await this.addNodeToCanvasWithSubItem(text, subItemText);
+		} else {
+			await this.addNode(text);
+		}
+		await this.page.keyboard.press('Escape');
 	}
 
 	async addNodeToCanvasWithSubItem(searchText: string, subItemText: string): Promise<void> {

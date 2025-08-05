@@ -1,5 +1,11 @@
 # Playwright E2E Test Guide
 
+## Development setup
+```bash
+pnpm install-browsers:local # in playwright directory
+pnpm build:docker # from root first to test against local changes
+```
+
 ## Quick Start
 ```bash
 pnpm test:all                 									# Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
