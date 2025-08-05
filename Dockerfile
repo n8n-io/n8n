@@ -3,8 +3,8 @@
 ###############################
 # 1) Builder – compile n8n   #
 ###############################
-ARG NODE_VERSION=20
-ARG TARGETPLATFORM
+ARG NODE_VERSION=22
+ARG TARGETPLATFORM=linux/amd64
 
 FROM --platform=$TARGETPLATFORM n8nio/base:${NODE_VERSION} AS builder
 
