@@ -15,7 +15,13 @@ import fs from 'fs/promises';
 import path from 'node:path';
 import color from 'picocolors';
 
-import { copyFolder, delayAtLeast, folderExists } from '../utils';
+import {
+	copyFolder,
+	delayAtLeast,
+	detectPackageManager,
+	folderExists,
+	installDependencies,
+} from '../utils';
 
 export default class Create extends Command {
 	static override description = 'Create a new n8n community node';
@@ -25,19 +31,22 @@ export default class Create extends Command {
 	};
 	static override flags = {
 		force: Flags.boolean({ char: 'f' }),
-		skipInstall: Flags.boolean(),
-		template: Flags.string({ char: 't', options: ['declarative', 'programmatic'] as const }),
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		'skip-install': Flags.boolean(),
+		type: Flags.string({ char: 't', options: ['declarative', 'programmatic'] as const }),
 	};
 
 	async run(): Promise<void> {
 		const { flags, args } = await this.parse(Create);
 
-		const onCancel = () => {
-			cancel('Cancelled');
-			process.exit(0);
+		const onCancel = (message = 'Cancelled', code = 0) => {
+			cancel(message);
+			process.exit(code);
 		};
 
-		intro(color.inverse(' create @n8n/node '));
+		const packageManager = detectPackageManager();
+
+		intro(color.inverse(` ${packageManager} create @n8n/node `));
 
 		const nodeName =
 			args.name ??
@@ -69,18 +78,24 @@ export default class Create extends Command {
 			await fs.rm(destination, { recursive: true, force: true });
 		}
 
-		const type = await select<'declarative' | 'programmatic'>({
-			message: 'What kind of node are looking to build?',
-			options: [
-				{
-					label: 'HTTP API',
-					value: 'declarative',
-					hint: 'Low-code, faster approval for n8n Cloud',
-				},
-				{ label: 'Other', value: 'programmatic', hint: 'Programmatic node with full flexibility' },
-			],
-			initialValue: 'declarative',
-		});
+		const type =
+			flags.type ??
+			(await select<'declarative' | 'programmatic'>({
+				message: 'What kind of node are you building?',
+				options: [
+					{
+						label: 'HTTP API',
+						value: 'declarative',
+						hint: 'Low-code, faster approval for n8n Cloud',
+					},
+					{
+						label: 'Other',
+						value: 'programmatic',
+						hint: 'Programmatic node with full flexibility',
+					},
+				],
+				initialValue: 'declarative',
+			}));
 
 		if (isCancel(type)) return onCancel();
 
@@ -112,11 +127,39 @@ export default class Create extends Command {
 					const ignore = ['dist', 'node_modules'];
 
 					await delayAtLeast(copyFolder({ source: templateFolder, destination, ignore }), 1000);
-					copyingSpinner.stop('Done');
+					copyingSpinner.stop('✓ Files copied');
+
+					if (!flags['skip-install']) {
+						const installingSpinner = spinner();
+						installingSpinner.start('Installing dependencies');
+
+						try {
+							await delayAtLeast(installDependencies({ dir: destination, packageManager }), 1000);
+						} catch (error: unknown) {
+							installingSpinner.stop('Could not install dependencies', 1);
+							return onCancel((error as Error).message, 1);
+						}
+						installingSpinner.stop('✓ Dependencies installed');
+					}
 				}
 
 				if (template === 'minimal') {
-					const credentialType = await select({
+					const baseUrl = await text({
+						message: "What's the base URL of the API?",
+						placeholder: 'https://api.example.com/v2',
+						validate: (value) => {
+							if (!value.startsWith('https://') && !value.startsWith('http://')) {
+								return 'Base URL must start with http(s)://';
+							}
+							return;
+						},
+					});
+
+					if (isCancel(baseUrl)) return onCancel();
+
+					log.info(baseUrl);
+
+					const credentialType = await select<'apiKey' | 'oauth2' | 'none'>({
 						message: 'What type of authentication does your API use?',
 						options: [
 							{
@@ -129,11 +172,6 @@ export default class Create extends Command {
 								value: 'oauth2',
 							},
 							{
-								label: 'Other',
-								value: 'other',
-								hint: 'Will generate an empty credential',
-							},
-							{
 								label: 'None',
 								value: 'none',
 							},
@@ -144,6 +182,29 @@ export default class Create extends Command {
 					if (isCancel(credentialType)) return onCancel();
 
 					log.info(credentialType);
+
+					if (credentialType === 'oauth2') {
+						const flow = await select<'clientCredentials' | 'authorizationCode'>({
+							message: 'What type of authentication does your API use?',
+							options: [
+								{
+									label: 'Authorization code',
+									value: 'authorizationCode',
+									hint: 'Users log in and approve access (use this if unsure)',
+								},
+								{
+									label: 'Client credentials',
+									value: 'clientCredentials',
+									hint: 'Server-to-server auth without user interaction',
+								},
+							],
+							initialValue: 'authorizationCode',
+						});
+
+						if (isCancel(flow)) return onCancel();
+
+						log.info(flow);
+					}
 				}
 
 				break;

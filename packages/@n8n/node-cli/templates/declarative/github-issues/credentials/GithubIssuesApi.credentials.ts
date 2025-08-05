@@ -11,7 +11,7 @@ export class GithubIssuesApi implements ICredentialType {
 
 	displayName = 'GitHub Issues API';
 
-	icon: Icon = { light: 'file:github.svg', dark: 'file:github.dark.svg' };
+	icon: Icon = { light: 'file:../icons/github.svg', dark: 'file:../icons/github.dark.svg' };
 
 	documentationUrl =
 		'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#deleting-a-personal-access-token';

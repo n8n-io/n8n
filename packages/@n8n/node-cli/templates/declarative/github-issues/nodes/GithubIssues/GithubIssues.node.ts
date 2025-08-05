@@ -1,4 +1,4 @@
-import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { issueDescription } from './resources/issue';
 import { issueCommentDescription } from './resources/issueComment';
 import { getRepositories } from './listSearch/getRepositories';
@@ -9,7 +9,7 @@ export class GithubIssues implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Issues',
 		name: 'githubIssues',
-		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
+		icon: { light: 'file:../../icons/github.svg', dark: 'file:../../icons/github.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -18,8 +18,8 @@ export class GithubIssues implements INodeType {
 			name: 'Github Issues',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'githubIssuesApi',

@@ -16,8 +16,8 @@
         "url": ""
     },
     "scripts": {
-        "build": "tsc && node ./scripts/copy-static-files.mjs",
-        "dev": "tsc --watch",
+        "build": "n8n-node build",
+        "dev": "n8n-node dev",
         "lint": "eslint .",
         "release": "release-it"
     },
