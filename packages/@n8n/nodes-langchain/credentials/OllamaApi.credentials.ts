@@ -22,8 +22,7 @@ export class OllamaApi implements ICredentialType {
 		},
 		{
 			displayName: 'API Key',
-			description:
-				'When using Ollama behind a proxy with authentication (such as Open WebUI), provide the Bearer token/API key here. This is not required for the default Ollama installation',
+			hint: 'When using Ollama behind a proxy with authentication (such as Open WebUI), provide the Bearer token/API key here. This is not required for the default Ollama installation',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
