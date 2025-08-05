@@ -74,7 +74,7 @@ Expert senior developer with 10x engineer mindset:
 
 **FAILURE TO USE SUBAGENTS OR THINKING = FAILED EXECUTION**
 
-Agents MUST use subagents (Task tool) as the PRIMARY approach for ALL complex work. Deploy **MAXIMUM POSSIBLE SUBAGENTS** (8-16+) in parallel for comprehensive coverage.
+Agents MUST use subagents (Task tool) as the PRIMARY approach for ALL complex work. Deploy **UP TO 3 SUBAGENTS** in parallel for comprehensive coverage.
 
 **🎯 MICRO-SPECIALIZATION PRINCIPLE:**
 Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can run in parallel. Each subagent:
@@ -136,7 +136,7 @@ Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can
 - **Think First**: Assess ALL possible parallel work domains before deployment
 - **Map Intelligently**: Assign each subagent unique, valuable micro-specialization  
 - **Balance Dynamically**: Adjust scope so all subagents complete within 1-2 minutes
-- **Deploy Aggressively**: Launch maximum beneficial subagents simultaneously
+- **Deploy Efficiently**: Launch up to 3 beneficial subagents simultaneously
 - **Avoid Redundancy**: Zero overlap between subagent responsibilities
 
 **COORDINATION TECHNIQUES:**
@@ -147,14 +147,13 @@ Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can
 - **Synchronized Timing**: All subagents complete within 1-2 minutes
 
 **🚀 DEPLOYMENT PATTERNS:**
-- **8-12 Subagents**: MINIMUM for complex tasks
-- **12-16 Subagents**: Standard for system-wide analysis  
-- **16-20+ Subagents**: Maximum beneficial deployment for comprehensive coverage
+- **1-2 Subagents**: For moderate tasks
+- **2-3 Subagents**: Maximum deployment for comprehensive coverage
 
-**MICRO-TASK EXAMPLES:**
-- "Security Analysis" → 3 subagents: "Auth Vulnerability Scan", "Data Encryption Review", "Input Validation Check"
-- "Performance Review" → 4 subagents: "Memory Usage Analysis", "Database Query Optimization", "API Response Times", "Frontend Bundle Size"
-- "Code Quality" → 3 subagents: "ESLint Rule Analysis", "Type Safety Review", "Function Complexity Assessment"
+**FOCUSED TASK EXAMPLES:**
+- "Security Analysis" → 3 subagents: "Auth & Permissions Review", "Data Security & Encryption", "Input Validation & XSS Prevention"
+- "Performance Review" → 3 subagents: "Memory & CPU Analysis", "Database & Query Optimization", "API & Network Performance"
+- "Code Quality" → 3 subagents: "Standards & Linting", "Type Safety & Logic", "Complexity & Maintainability"
 
 ### **🚨 Maximum Thinking & Execution Patterns**
 
@@ -173,34 +172,33 @@ Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can
 
 **🚀 DEPLOYMENT EXAMPLES:**
 
-**Feature Implementation (14 subagents):** Auth pattern analysis | Database schema design | API endpoints | Password hashing | JWT security | Session vulnerabilities | Input validation | DB connection pooling | Session storage | Unit testing | Integration testing | Security testing | Frontend integration | External auth providers → **2-3 min vs 20+ min (7x faster)**
+**Feature Implementation (3 subagents):** Auth pattern analysis & API design | Security validation & testing | Database schema & integration → **2-3 min vs 6+ min (2x faster)**
 
-**Bug Investigation (16 subagents):** API timeout config | Middleware handling | Error patterns | Async/await usage | Memory profiling | CPU spikes | DB query timing | External API duration | Server config | Load balancer | Network latency | Log analysis | Error correlation | Metrics dashboard | Timeout reproduction | Load testing → **2-3 min vs 40+ min (13x faster)**
+**Bug Investigation (3 subagents):** Config & middleware analysis | Performance & timing analysis | Error patterns & logging analysis → **2-3 min vs 6+ min (2x faster)**
 
-**Code Review (12 subagents):** ESLint compliance | Function complexity | Naming conventions | Code duplication | Input sanitization | Auth bypass check | Data exposure risk | Algorithm efficiency | Memory leak potential | Test coverage gaps | Edge case adequacy | Design pattern adherence → **1-2 min vs 15+ min (10x faster)**
+**Code Review (3 subagents):** Code quality & standards | Security & performance | Testing & edge cases → **1-2 min vs 4+ min (2x faster)**
 
 **🎯 DEPLOYMENT DECISION MATRIX:**
-- **Simple**: 0-2 subagents (trivial single-file changes only)
-- **Moderate**: 4-8 subagents (focused micro-specialized investigation)  
-- **Complex**: 8-12 subagents (comprehensive parallel analysis)
-- **System-wide**: 12-20 subagents (maximum micro-specialization coverage)
+- **Simple**: 0-1 subagents (trivial single-file changes only)
+- **Moderate**: 1-2 subagents (focused investigation)  
+- **Complex**: 2-3 subagents (comprehensive analysis)
 
-**MINDSET SHIFT:** "How can I break this into maximum parallel micro-tasks?"
-**PRINCIPLE:** 20 subagents × 2 minutes each = **2 minutes total** vs 1 agent × 40 minutes
+**MINDSET SHIFT:** "How can I break this into focused parallel tasks?"
+**PRINCIPLE:** 3 subagents × 2 minutes each = **2 minutes total** vs 1 agent × 6 minutes
 
-Think autonomously about **ALL POSSIBLE MICRO-ASPECTS** for **MAXIMUM SIMULTANEOUS COVERAGE**.
+Think autonomously about **KEY ASPECTS** for **EFFICIENT PARALLEL COVERAGE**.
 
 ### **Maximum Concurrent Subagent Patterns**
 
 **SPEED MULTIPLIER FORMULA:** `Time Saved = (Sequential Time ÷ Parallel Subagents) - Coordination Overhead`
-**Example:** 40-minute task ÷ 20 subagents = 2 min + 30s coordination = **2.5 min total (16x faster)**
+**Example:** 6-minute task ÷ 3 subagents = 2 min + 30s coordination = **2.5 min total (2.4x faster)**
 
 **TASK TYPE PATTERNS:**
-- **Research Tasks**: 12-20 subagents across micro-domains
-- **Feature Implementation**: 10-16 subagents covering all aspects  
-- **Bug Investigation**: 8-16 subagents investigating different causes
-- **Code Review**: 8-12 subagents checking quality aspects
-- **System Analysis**: 16-20 subagents analyzing components
+- **Research Tasks**: 2-3 subagents across key domains
+- **Feature Implementation**: 2-3 subagents covering main aspects  
+- **Bug Investigation**: 2-3 subagents investigating different causes
+- **Code Review**: 2-3 subagents checking quality aspects
+- **System Analysis**: 2-3 subagents analyzing components
 
 ## Essential Workflow Patterns
 
@@ -368,7 +366,7 @@ Agents MUST create tasks using TaskManager API for ALL complex work. Every task 
 **✅ SUCCESS CONDITIONS:**
 - **USER INSTRUCTION COMPLIANCE** - Follow all directions absolutely
 - **MAXIMUM THINKING UTILIZATION** - Use maximum beneficial thinking level
-- **MAXIMUM PARALLEL SUBAGENT DEPLOYMENT** - Deploy 8-16+ micro-specialized subagents for ALL non-trivial work
+- **EFFICIENT PARALLEL SUBAGENT DEPLOYMENT** - Deploy up to 3 specialized subagents for complex work
 - **SYNCHRONIZED PARALLEL EXECUTION** - Coordinated completion within 1-2 minutes
 - **AUTONOMOUS DOMAIN MAPPING** - Think independently about optimal specializations
 - **QUALITY STANDARDS** - 250/400 lines, documentation, testing maintained
@@ -384,7 +382,7 @@ Single-agent complex work | No subagents for research | Under-utilizing parallel
 1. **ALWAYS follow user instructions** - highest priority, never override
 2. **MAXIMIZE thinking usage** - use maximum beneficial thinking level  
 3. **THINKING-FIRST approach** - think strategically before acting
-4. **MAXIMUM PARALLEL DEPLOYMENT** - deploy 8-16+ micro-specialized subagents with hyper-focused domains
+4. **EFFICIENT PARALLEL DEPLOYMENT** - deploy up to 3 specialized subagents with focused domains
 5. **SPEED THROUGH INTELLIGENCE** - coordinated parallel execution, never corner-cutting
 6. **ATTENTIVE WAITING** - wait for user direction before proceeding
 7. **AUTONOMOUS SUBAGENT STRATEGY** - think independently about optimal parallel work streams

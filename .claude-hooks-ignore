@@ -62,6 +62,17 @@ test_*.py
 *_spec.js
 *_spec.ts
 
+# Specific problematic test files with intentional syntax errors
+hooks/spec/smart-lint/fixtures/scripts-project/main.py
+hooks/spec/test-tilt/fixtures/edge-cases/directory*
+hooks/spec/test-tilt/fixtures/edge-cases/测试文件_test.py
+hooks/spec/test-tilt/fixtures/edge-cases/Tiltfile_test.py
+
+# Node.js modules with linting issues (third-party code)
+node_modules/.pnpm/node-gyp@*/
+node_modules/.pnpm/curlconverter@*/
+node_modules/.pnpm/flatted@*/
+node_modules/.pnpm/walkdir@*/
+
 # Documentation
 *.md
-EOF < /dev/null

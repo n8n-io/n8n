@@ -18,6 +18,7 @@ import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
+import type { SavedSearch } from './saved-search';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
@@ -83,6 +84,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 	@OneToMany('ProjectRelation', 'user')
 	projectRelations: ProjectRelation[];
+
+	@OneToMany('SavedSearch', 'user')
+	savedSearches: SavedSearch[];
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;

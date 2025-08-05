@@ -913,15 +913,45 @@ export class WorkflowSearchService {
 	 * Get workflow execution statistics
 	 */
 	private async getWorkflowStats(workflowId: string) {
-		// This would typically query the execution repository
-		// For now, return a placeholder
-		return {
-			totalExecutions: 0,
-			successfulExecutions: 0,
-			failedExecutions: 0,
-			lastExecutedAt: undefined,
-			avgExecutionTime: undefined,
-		};
+		try {
+			// Get execution statistics from the execution repository
+			const executionStats = await this.executionRepository
+				.createQueryBuilder('execution')
+				.select([
+					'COUNT(*) as totalExecutions',
+					'COUNT(CASE WHEN execution.finished = true AND execution.status = :successStatus THEN 1 END) as successfulExecutions',
+					'COUNT(CASE WHEN execution.finished = true AND execution.status != :successStatus THEN 1 END) as failedExecutions',
+					'MAX(execution.startedAt) as lastExecutedAt',
+					'AVG(CASE WHEN execution.finished = true AND execution.stoppedAt IS NOT NULL AND execution.startedAt IS NOT NULL THEN EXTRACT(EPOCH FROM execution.stoppedAt - execution.startedAt) * 1000 END) as avgExecutionTime',
+				])
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.setParameter('successStatus', 'success')
+				.getRawOne();
+
+			return {
+				totalExecutions: parseInt(executionStats.totalExecutions) || 0,
+				successfulExecutions: parseInt(executionStats.successfulExecutions) || 0,
+				failedExecutions: parseInt(executionStats.failedExecutions) || 0,
+				lastExecutedAt: executionStats.lastExecutedAt || undefined,
+				avgExecutionTime: executionStats.avgExecutionTime
+					? Math.round(parseFloat(executionStats.avgExecutionTime))
+					: undefined,
+			};
+		} catch (error) {
+			this.logger.warn('Failed to get workflow execution statistics', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			// Return default stats on error
+			return {
+				totalExecutions: 0,
+				successfulExecutions: 0,
+				failedExecutions: 0,
+				lastExecutedAt: undefined,
+				avgExecutionTime: undefined,
+			};
+		}
 	}
 
 	/**
@@ -1026,8 +1056,44 @@ export class WorkflowSearchService {
 		executionCount: { min?: number; max?: number },
 		context: SearchContext,
 	): Promise<void> {
-		// This would require joining with execution statistics
-		// Implementation would depend on how execution counts are stored/calculated
+		try {
+			// Build subquery to get workflows with execution counts in the specified range
+			const executionCountSubquery = this.executionRepository
+				.createQueryBuilder('execution')
+				.select('execution.workflowId')
+				.addSelect('COUNT(*)', 'executionCount')
+				.where('execution.workflowId IN (:...workflowIds)', {
+					workflowIds: context.userWorkflowIds.length > 0 ? context.userWorkflowIds : [''],
+				})
+				.groupBy('execution.workflowId');
+
+			// Apply min filter
+			if (executionCount.min !== undefined) {
+				executionCountSubquery.having('COUNT(*) >= :minCount', { minCount: executionCount.min });
+			}
+
+			// Apply max filter
+			if (executionCount.max !== undefined) {
+				executionCountSubquery.having('COUNT(*) <= :maxCount', { maxCount: executionCount.max });
+			}
+
+			// Get the workflow IDs that match the execution count criteria
+			const matchingWorkflows = await executionCountSubquery.getRawMany();
+			const matchingWorkflowIds = matchingWorkflows.map((row) => row.workflowId);
+
+			if (matchingWorkflowIds.length > 0) {
+				where.push({ id: In(matchingWorkflowIds) });
+			} else {
+				// No workflows match the criteria, add impossible condition
+				where.push({ id: In(['__no_match__']) });
+			}
+		} catch (error) {
+			this.logger.warn('Failed to apply execution count filter', {
+				executionCount,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			// On error, don't filter by execution count
+		}
 	}
 
 	/**
@@ -1097,9 +1163,220 @@ export class WorkflowSearchService {
 	 * Generate facets for filtering UI
 	 */
 	private async generateFacets(userWorkflowIds: string[], query: WorkflowSearchQueryDto) {
-		// This would generate aggregated data for filtering UI
-		// Implementation would depend on specific requirements
-		return undefined;
+		try {
+			if (userWorkflowIds.length === 0) {
+				return undefined;
+			}
+
+			// Get workflows with basic info for facet generation
+			const workflows = await this.workflowRepository
+				.createQueryBuilder('workflow')
+				.leftJoinAndSelect('workflow.tags', 'tags')
+				.leftJoinAndSelect('workflow.shared', 'shared')
+				.leftJoinAndSelect('shared.project', 'project')
+				.leftJoinAndSelect('workflow.parentFolder', 'parentFolder')
+				.select([
+					'workflow.id',
+					'workflow.active',
+					'workflow.isArchived',
+					'workflow.createdAt',
+					'workflow.updatedAt',
+					'workflow.nodes',
+					'tags.id',
+					'tags.name',
+					'shared.projectId',
+					'project.id',
+					'project.name',
+					'parentFolder.id',
+					'parentFolder.name',
+				])
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: userWorkflowIds })
+				.getMany();
+
+			// Generate facets
+			const facets = {
+				activeStatus: this.generateActiveStatusFacet(workflows),
+				archiveStatus: this.generateArchiveStatusFacet(workflows),
+				tags: this.generateTagsFacet(workflows),
+				nodeTypes: this.generateNodeTypesFacet(workflows),
+				projects: this.generateProjectsFacet(workflows),
+				folders: this.generateFoldersFacet(workflows),
+				dateRanges: this.generateDateRangesFacet(workflows),
+			};
+
+			return facets;
+		} catch (error) {
+			this.logger.warn('Failed to generate search facets', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
+	private generateActiveStatusFacet(workflows: WorkflowEntity[]) {
+		const activeCount = workflows.filter((w) => w.active).length;
+		const inactiveCount = workflows.length - activeCount;
+
+		return {
+			active: { count: activeCount, label: 'Active' },
+			inactive: { count: inactiveCount, label: 'Inactive' },
+		};
+	}
+
+	private generateArchiveStatusFacet(workflows: WorkflowEntity[]) {
+		const archivedCount = workflows.filter((w) => w.isArchived).length;
+		const notArchivedCount = workflows.length - archivedCount;
+
+		return {
+			archived: { count: archivedCount, label: 'Archived' },
+			notArchived: { count: notArchivedCount, label: 'Not Archived' },
+		};
+	}
+
+	private generateTagsFacet(workflows: WorkflowEntity[]) {
+		const tagCounts = new Map<string, { count: number; name: string }>();
+
+		workflows.forEach((workflow) => {
+			if (workflow.tags) {
+				workflow.tags.forEach((tag) => {
+					const existing = tagCounts.get(tag.id);
+					if (existing) {
+						existing.count++;
+					} else {
+						tagCounts.set(tag.id, { count: 1, name: tag.name });
+					}
+				});
+			}
+		});
+
+		return Array.from(tagCounts.entries())
+			.map(([id, data]) => ({
+				id,
+				name: data.name,
+				count: data.count,
+			}))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 20); // Limit to top 20 tags
+	}
+
+	private generateNodeTypesFacet(workflows: WorkflowEntity[]) {
+		const nodeTypeCounts = new Map<string, number>();
+
+		workflows.forEach((workflow) => {
+			if (workflow.nodes && Array.isArray(workflow.nodes)) {
+				const uniqueNodeTypes = new Set<string>();
+				workflow.nodes.forEach((node: any) => {
+					if (node.type && typeof node.type === 'string') {
+						uniqueNodeTypes.add(node.type);
+					}
+				});
+
+				uniqueNodeTypes.forEach((nodeType) => {
+					nodeTypeCounts.set(nodeType, (nodeTypeCounts.get(nodeType) || 0) + 1);
+				});
+			}
+		});
+
+		return Array.from(nodeTypeCounts.entries())
+			.map(([nodeType, count]) => ({
+				nodeType,
+				count,
+			}))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 15); // Limit to top 15 node types
+	}
+
+	private generateProjectsFacet(workflows: WorkflowEntity[]) {
+		const projectCounts = new Map<string, { count: number; name: string }>();
+
+		workflows.forEach((workflow) => {
+			if (workflow.shared && workflow.shared.length > 0) {
+				const sharedInfo = workflow.shared[0]; // Take first shared info
+				if (sharedInfo.project) {
+					const projectId = sharedInfo.project.id;
+					const existing = projectCounts.get(projectId);
+					if (existing) {
+						existing.count++;
+					} else {
+						projectCounts.set(projectId, {
+							count: 1,
+							name: sharedInfo.project.name,
+						});
+					}
+				}
+			}
+		});
+
+		return Array.from(projectCounts.entries())
+			.map(([id, data]) => ({
+				id,
+				name: data.name,
+				count: data.count,
+			}))
+			.sort((a, b) => b.count - a.count);
+	}
+
+	private generateFoldersFacet(workflows: WorkflowEntity[]) {
+		const folderCounts = new Map<string, { count: number; name: string }>();
+
+		workflows.forEach((workflow) => {
+			if (workflow.parentFolder) {
+				const folderId = workflow.parentFolder.id;
+				const existing = folderCounts.get(folderId);
+				if (existing) {
+					existing.count++;
+				} else {
+					folderCounts.set(folderId, {
+						count: 1,
+						name: workflow.parentFolder.name,
+					});
+				}
+			} else {
+				// Root folder
+				const existing = folderCounts.get('root');
+				if (existing) {
+					existing.count++;
+				} else {
+					folderCounts.set('root', {
+						count: 1,
+						name: 'Root',
+					});
+				}
+			}
+		});
+
+		return Array.from(folderCounts.entries())
+			.map(([id, data]) => ({
+				id,
+				name: data.name,
+				count: data.count,
+			}))
+			.sort((a, b) => b.count - a.count);
+	}
+
+	private generateDateRangesFacet(workflows: WorkflowEntity[]) {
+		const now = new Date();
+		const ranges = {
+			lastDay: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+			lastWeek: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+			lastMonth: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+			lastYear: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
+		};
+
+		return {
+			createdAt: {
+				lastDay: workflows.filter((w) => w.createdAt >= ranges.lastDay).length,
+				lastWeek: workflows.filter((w) => w.createdAt >= ranges.lastWeek).length,
+				lastMonth: workflows.filter((w) => w.createdAt >= ranges.lastMonth).length,
+				lastYear: workflows.filter((w) => w.createdAt >= ranges.lastYear).length,
+			},
+			updatedAt: {
+				lastDay: workflows.filter((w) => w.updatedAt >= ranges.lastDay).length,
+				lastWeek: workflows.filter((w) => w.updatedAt >= ranges.lastWeek).length,
+				lastMonth: workflows.filter((w) => w.updatedAt >= ranges.lastMonth).length,
+				lastYear: workflows.filter((w) => w.updatedAt >= ranges.lastYear).length,
+			},
+		};
 	}
 
 	/**
@@ -1139,9 +1416,56 @@ export class WorkflowSearchService {
 	 * Get node type suggestions
 	 */
 	private async getNodeTypeSuggestions(query: string, user: User, limit: number) {
-		// This would require analyzing workflow nodes to extract unique node types
-		// For now, return empty array
-		return [];
+		try {
+			// Get user's accessible workflows
+			const userWorkflowIds = await this.getUserAccessibleWorkflowIds(user);
+
+			if (userWorkflowIds.length === 0) {
+				return [];
+			}
+
+			// Query workflows to extract node types that match the search query
+			const workflows = await this.workflowRepository
+				.createQueryBuilder('workflow')
+				.select(['workflow.id', 'workflow.nodes'])
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: userWorkflowIds })
+				.getMany();
+
+			// Extract and count unique node types
+			const nodeTypeCount = new Map<string, number>();
+
+			workflows.forEach((workflow) => {
+				if (workflow.nodes && Array.isArray(workflow.nodes)) {
+					workflow.nodes.forEach((node: any) => {
+						if (node.type && typeof node.type === 'string') {
+							const nodeType = node.type;
+							// Filter by query if provided
+							if (!query || nodeType.toLowerCase().includes(query.toLowerCase())) {
+								nodeTypeCount.set(nodeType, (nodeTypeCount.get(nodeType) || 0) + 1);
+							}
+						}
+					});
+				}
+			});
+
+			// Convert to suggestions array and sort by count
+			const suggestions = Array.from(nodeTypeCount.entries())
+				.map(([nodeType, count]) => ({
+					text: nodeType,
+					type: 'nodeType' as const,
+					count,
+				}))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, limit);
+
+			return suggestions;
+		} catch (error) {
+			this.logger.warn('Failed to get node type suggestions', {
+				query,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
 	}
 
 	/**
@@ -1160,9 +1484,174 @@ export class WorkflowSearchService {
 		query: AdvancedWorkflowSearchDto,
 		context: SearchContext,
 	): Promise<SearchFilters> {
-		// Implementation for advanced boolean query building
-		// This would be more complex than basic search
-		return { where: [], joins: [], parameters: {} };
+		const where: FindOptionsWhere<WorkflowEntity>[] = [];
+		const joins: string[] = [];
+		const parameters: Record<string, any> = {};
+
+		// Base filter: only accessible workflows
+		where.push({ id: In(context.userWorkflowIds) });
+
+		// Process boolean query structure
+		if (query.query) {
+			if (query.query.must && query.query.must.length > 0) {
+				await this.processBooleanClauses(query.query.must, 'must', where, joins, parameters);
+			}
+
+			if (query.query.should && query.query.should.length > 0) {
+				await this.processBooleanClauses(query.query.should, 'should', where, joins, parameters);
+			}
+
+			if (query.query.mustNot && query.query.mustNot.length > 0) {
+				await this.processBooleanClauses(query.query.mustNot, 'mustNot', where, joins, parameters);
+			}
+		}
+
+		// Process filters
+		if (query.filters) {
+			await this.processAdvancedFilters(query.filters, where, joins, parameters);
+		}
+
+		// Process ranges
+		if (query.ranges) {
+			this.processAdvancedRanges(query.ranges, where, parameters);
+		}
+
+		return { where, joins, parameters };
+	}
+
+	private async processBooleanClauses(
+		clauses: any[],
+		clauseType: 'must' | 'should' | 'mustNot',
+		where: FindOptionsWhere<WorkflowEntity>[],
+		joins: string[],
+		parameters: Record<string, any>,
+	): Promise<void> {
+		for (const clause of clauses) {
+			if (clause.match) {
+				// Handle match clauses (field: value)
+				const field = Object.keys(clause.match)[0];
+				const value = clause.match[field];
+
+				if (field === 'name') {
+					const condition = { name: ILike(`%${value}%`) };
+					if (clauseType === 'mustNot') {
+						where.push({ name: Not(ILike(`%${value}%`)) });
+					} else {
+						where.push(condition);
+					}
+				} else if (field === 'description') {
+					const condition = { description: ILike(`%${value}%`) };
+					if (clauseType === 'mustNot') {
+						where.push({ description: Not(ILike(`%${value}%`)) });
+					} else {
+						where.push(condition);
+					}
+				}
+			} else if (clause.term) {
+				// Handle term clauses (exact match)
+				const field = Object.keys(clause.term)[0];
+				const value = clause.term[field];
+
+				if (field === 'active') {
+					const condition = { active: value };
+					if (clauseType === 'mustNot') {
+						where.push({ active: Not(value) });
+					} else {
+						where.push(condition);
+					}
+				} else if (field === 'isArchived') {
+					const condition = { isArchived: value };
+					if (clauseType === 'mustNot') {
+						where.push({ isArchived: Not(value) });
+					} else {
+						where.push(condition);
+					}
+				}
+			} else if (clause.terms) {
+				// Handle terms clauses (multiple values)
+				const field = Object.keys(clause.terms)[0];
+				const values = clause.terms[field];
+
+				if (field === 'tags.name') {
+					if (!joins.includes('workflow.tags')) {
+						joins.push('workflow.tags');
+					}
+					const condition = { tags: { name: In(values) } };
+					if (clauseType === 'mustNot') {
+						where.push({ tags: { name: Not(In(values)) } });
+					} else {
+						where.push(condition);
+					}
+				}
+			}
+		}
+	}
+
+	private async processAdvancedFilters(
+		filters: Record<string, any>,
+		where: FindOptionsWhere<WorkflowEntity>[],
+		joins: string[],
+		parameters: Record<string, any>,
+	): Promise<void> {
+		// Process standard filters
+		Object.entries(filters).forEach(([key, value]) => {
+			switch (key) {
+				case 'active':
+					if (typeof value === 'boolean') {
+						where.push({ active: value });
+					}
+					break;
+				case 'isArchived':
+					if (typeof value === 'boolean') {
+						where.push({ isArchived: value });
+					}
+					break;
+				case 'tags':
+					if (Array.isArray(value) && value.length > 0) {
+						joins.push('workflow.tags');
+						where.push({ tags: { name: In(value) } });
+					}
+					break;
+				case 'nodeTypes':
+					if (Array.isArray(value) && value.length > 0) {
+						this.addNodeTypesFilter(where, value, parameters);
+					}
+					break;
+				case 'projectId':
+					if (typeof value === 'string') {
+						joins.push('workflow.shared');
+						where.push({ shared: { projectId: value } });
+					}
+					break;
+				case 'folderId':
+					if (value === 'root') {
+						where.push({ parentFolder: IsNull() });
+					} else if (typeof value === 'string') {
+						where.push({ parentFolder: { id: value } });
+					}
+					break;
+			}
+		});
+	}
+
+	private processAdvancedRanges(
+		ranges: Record<string, any>,
+		where: FindOptionsWhere<WorkflowEntity>[],
+		parameters: Record<string, any>,
+	): void {
+		Object.entries(ranges).forEach(([field, range]) => {
+			if (field === 'createdAt' || field === 'updatedAt') {
+				if (range.gte && range.lte) {
+					where.push({
+						[field]: Between(new Date(range.gte), new Date(range.lte)),
+					});
+				} else if (range.gte) {
+					where.push({ [field]: MoreThan(new Date(range.gte)) });
+				} else if (range.lte) {
+					where.push({ [field]: LessThan(new Date(range.lte)) });
+				}
+			}
+		});
 	}
 
 	/**
@@ -1173,8 +1662,53 @@ export class WorkflowSearchService {
 		query: AdvancedWorkflowSearchDto,
 		context: SearchContext,
 	) {
-		// Implementation for advanced search execution
-		return { workflows: [], totalCount: 0 };
+		const queryBuilder = this.workflowRepository.createQueryBuilder('workflow');
+
+		// Apply where conditions
+		if (filters.where.length > 0) {
+			filters.where.forEach((condition, index) => {
+				if (index === 0) {
+					queryBuilder.where(condition);
+				} else {
+					queryBuilder.andWhere(condition);
+				}
+			});
+		}
+
+		// Apply joins
+		filters.joins.forEach((join) => {
+			const [relation, alias] = join.split(' as ');
+			queryBuilder.leftJoinAndSelect(relation, alias || relation.split('.')[1]);
+		});
+
+		// Set parameters
+		queryBuilder.setParameters(filters.parameters);
+
+		// Apply sorting
+		if (query.sort && query.sort.length > 0) {
+			query.sort.forEach((sortConfig, index) => {
+				const direction = sortConfig.order.toUpperCase() as 'ASC' | 'DESC';
+				if (index === 0) {
+					queryBuilder.orderBy(`workflow.${sortConfig.field}`, direction);
+				} else {
+					queryBuilder.addOrderBy(`workflow.${sortConfig.field}`, direction);
+				}
+			});
+		} else {
+			queryBuilder.orderBy('workflow.updatedAt', 'DESC');
+		}
+
+		// Get total count
+		const totalCount = await queryBuilder.getCount();
+
+		// Apply pagination
+		const offset = ((query.page || 1) - 1) * (query.limit || 20);
+		queryBuilder.skip(offset).take(query.limit || 20);
+
+		// Execute query
+		const workflows = await queryBuilder.getMany();
+
+		return { workflows, totalCount };
 	}
 
 	/**
@@ -1185,8 +1719,130 @@ export class WorkflowSearchService {
 		query: AdvancedWorkflowSearchDto,
 		context: SearchContext,
 	): Promise<WorkflowSearchResultItemDto[]> {
-		// Implementation for advanced search result processing
-		return [];
+		const results: WorkflowSearchResultItemDto[] = [];
+
+		for (const workflow of workflows) {
+			// Build result item
+			const resultItem: WorkflowSearchResultItemDto = {
+				id: workflow.id,
+				name: workflow.name,
+				description: workflow.description || undefined,
+				active: workflow.active,
+				isArchived: workflow.isArchived,
+				createdAt: workflow.createdAt.toISOString(),
+				updatedAt: workflow.updatedAt.toISOString(),
+				projectId: '', // Will be filled from shared workflow info
+				projectName: '', // Will be filled from shared workflow info
+				relevanceScore: 1.0, // Advanced search doesn't use text-based relevance scoring
+			};
+
+			// Add optional fields based on query options
+			if (query.include?.content) {
+				resultItem.content = {
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					settings: workflow.settings,
+				};
+			}
+
+			if (query.include?.stats) {
+				resultItem.stats = await this.getWorkflowStats(workflow.id);
+			}
+
+			if (query.include?.highlights) {
+				// For advanced search, we can highlight based on the query clauses
+				resultItem.highlights = this.generateAdvancedHighlights(workflow, query);
+			}
+
+			// Add metadata
+			this.addWorkflowMetadata(resultItem, workflow);
+
+			results.push(resultItem);
+		}
+
+		return results;
+	}
+
+	/**
+	 * Generate highlights for advanced search results
+	 */
+	private generateAdvancedHighlights(
+		workflow: WorkflowEntity,
+		query: AdvancedWorkflowSearchDto,
+	): any {
+		const highlights: any = {};
+
+		// Extract search terms from boolean query clauses
+		const searchTerms = this.extractSearchTermsFromAdvancedQuery(query);
+
+		if (searchTerms.length === 0) {
+			return undefined;
+		}
+
+		// Generate highlights for each search term
+		searchTerms.forEach((term) => {
+			// Name highlights
+			if (workflow.name.toLowerCase().includes(term.toLowerCase())) {
+				if (!highlights.name) highlights.name = [];
+				highlights.name.push(this.highlightText(workflow.name, term));
+			}
+
+			// Description highlights
+			if (workflow.description && workflow.description.toLowerCase().includes(term.toLowerCase())) {
+				if (!highlights.description) highlights.description = [];
+				highlights.description.push(this.highlightText(workflow.description, term));
+			}
+
+			// Tag highlights
+			if (workflow.tags) {
+				const matchingTags = workflow.tags.filter((t) =>
+					t.name.toLowerCase().includes(term.toLowerCase()),
+				);
+				if (matchingTags.length > 0) {
+					if (!highlights.tags) highlights.tags = [];
+					highlights.tags.push(...matchingTags.map((t) => this.highlightText(t.name, term)));
+				}
+			}
+		});
+
+		return Object.keys(highlights).length > 0 ? highlights : undefined;
+	}
+
+	/**
+	 * Extract search terms from advanced query for highlighting
+	 */
+	private extractSearchTermsFromAdvancedQuery(query: AdvancedWorkflowSearchDto): string[] {
+		const terms: string[] = [];
+
+		if (query.query) {
+			// Extract terms from must clauses
+			if (query.query.must) {
+				query.query.must.forEach((clause) => {
+					if (clause.match) {
+						Object.values(clause.match).forEach((value) => {
+							if (typeof value === 'string') {
+								terms.push(value);
+							}
+						});
+					}
+				});
+			}
+
+			// Extract terms from should clauses
+			if (query.query.should) {
+				query.query.should.forEach((clause) => {
+					if (clause.match) {
+						Object.values(clause.match).forEach((value) => {
+							if (typeof value === 'string') {
+								terms.push(value);
+							}
+						});
+					}
+				});
+			}
+		}
+
+		return [...new Set(terms)]; // Remove duplicates
 	}
 
 	/**

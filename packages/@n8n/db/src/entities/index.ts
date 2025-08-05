@@ -33,6 +33,7 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import { SavedSearch } from './saved-search';
 
 export {
 	EventDestinations,
@@ -70,6 +71,7 @@ export {
 	AuditEvent,
 	ComplianceReport,
 	SecurityEvent,
+	SavedSearch,
 };
 
 // Export types from entity files
@@ -122,4 +124,5 @@ export const entities = {
 	AuditEvent,
 	ComplianceReport,
 	SecurityEvent,
+	SavedSearch,
 };

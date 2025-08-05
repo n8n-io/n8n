@@ -436,3 +436,66 @@ export const isValidWorkflowSearchQuery = (data: unknown): data is WorkflowSearc
 export const isValidAdvancedWorkflowSearch = (data: unknown): data is AdvancedWorkflowSearchDto => {
 	return AdvancedWorkflowSearchDto.safeParse(data).success;
 };
+
+// Saved Search DTOs
+export const SavedSearchDto = z.object({
+	id: z.string().describe('Saved search ID'),
+	name: z.string().min(1).max(100).describe('Saved search name'),
+	description: z.string().optional().describe('Optional description'),
+	query: z.record(z.any()).describe('Search query parameters'),
+	metadata: z
+		.object({
+			resultsCount: z.number().optional(),
+			lastExecutedAt: z.string().datetime().optional(),
+			executionCount: z.number().optional(),
+			tags: z.array(z.string()).optional(),
+		})
+		.optional()
+		.describe('Search execution metadata'),
+	isPublic: z.boolean().describe('Whether search is publicly visible'),
+	isPinned: z.boolean().describe('Whether search is pinned for quick access'),
+	userId: z.string().describe('Owner user ID'),
+	createdAt: z.string().datetime().describe('Creation timestamp'),
+	updatedAt: z.string().datetime().describe('Last update timestamp'),
+});
+
+export type SavedSearchDto = z.infer<typeof SavedSearchDto>;
+
+export const CreateSavedSearchDto = z.object({
+	name: z.string().min(1).max(100).describe('Saved search name'),
+	description: z.string().optional().describe('Optional description'),
+	query: z.record(z.any()).describe('Search query parameters to save'),
+	isPublic: z.boolean().optional().default(false).describe('Make search publicly visible'),
+	isPinned: z.boolean().optional().default(false).describe('Pin search for quick access'),
+	tags: z.array(z.string()).optional().describe('Optional tags for categorization'),
+});
+
+export type CreateSavedSearchDto = z.infer<typeof CreateSavedSearchDto>;
+
+export const UpdateSavedSearchDto = z.object({
+	name: z.string().min(1).max(100).optional().describe('Updated search name'),
+	description: z.string().optional().describe('Updated description'),
+	query: z.record(z.any()).optional().describe('Updated search query parameters'),
+	isPublic: z.boolean().optional().describe('Update public visibility'),
+	isPinned: z.boolean().optional().describe('Update pinned status'),
+	tags: z.array(z.string()).optional().describe('Updated tags'),
+});
+
+export type UpdateSavedSearchDto = z.infer<typeof UpdateSavedSearchDto>;
+
+export const SavedSearchListResponseDto = z.object({
+	searches: z.array(SavedSearchDto).describe('List of saved searches'),
+	pagination: z
+		.object({
+			page: z.number(),
+			limit: z.number(),
+			total: z.number(),
+			totalPages: z.number(),
+			hasNext: z.boolean(),
+			hasPrev: z.boolean(),
+		})
+		.optional()
+		.describe('Pagination information'),
+});
+
+export type SavedSearchListResponseDto = z.infer<typeof SavedSearchListResponseDto>;

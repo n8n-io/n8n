@@ -18,6 +18,7 @@ export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository } from './project.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
+export { SavedSearchRepository } from './saved-search.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';

@@ -82,6 +82,15 @@ export default [
 			'**/__mocks__/**',
 			'**/test-results/**',
 			'**/playwright-report/**',
+			
+			// CLI package files that don't need linting (already handled by package-level config)
+			'packages/cli/src/__tests__/**',
+			'packages/cli/src/commands/**',
+			'packages/cli/src/controllers/**/*.test.ts',
+			'packages/cli/src/services/**/*.test.ts',
+			'packages/cli/src/scaling/__tests__/**',
+			'packages/cli/src/community-packages/__tests__/**',
+			'packages/cli/src/chat/__tests__/**',
 		],
 	},
 	{

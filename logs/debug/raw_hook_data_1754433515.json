@@ -1,0 +1,12 @@
+{
+  "session_id": "b161235a-0560-4629-8087-49cad5cc9f70",
+  "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/b161235a-0560-4629-8087-49cad5cc9f70.jsonl",
+  "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Task",
+  "tool_input": {
+    "description": "Analyze workflow data structure and searchable fields",
+    "prompt": "Analyze the n8n workflow data structure to identify all searchable fields and relationships. Focus on:\n\n1. Workflow entity schema and properties\n2. Relationship with nodes, credentials, and executions\n3. Metadata fields, tags, and categorization\n4. Execution history and performance data\n5. User and sharing permissions considerations\n6. Version control and change tracking\n\nKey areas to examine:\n- Database schema for workflows and related entities\n- Current indexing strategies and constraints\n- Performance implications of different search approaches\n- Security and permission filtering requirements\n\nProvide a comprehensive mapping of searchable fields, their data types, relationships, and recommended indexing strategies for optimal search performance. Include specific database queries and optimization recommendations.",
+    "subagent_type": "general-purpose"
+  }
+}

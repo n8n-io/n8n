@@ -27,6 +27,13 @@ import {
 	ContextualDocumentationResponseDto,
 	DocumentationSearchQueryDto,
 	DocumentationSearchResponseDto,
+	CreateSavedSearchDto,
+	UpdateSavedSearchDto,
+	SavedSearchResponseDto,
+	ListSavedSearchesQueryDto,
+	ListSavedSearchesResponseDto,
+	ExecuteSavedSearchDto,
+	SavedSearchStatsDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -96,6 +103,7 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BatchProcessingService } from './batch-processing.service';
 import { WorkflowSearchService } from '@/services/workflow-search.service';
+import { SavedSearchService } from '@/services/saved-search.service';
 import { ExpressionDocsService } from '@/services/expression-docs.service';
 import { AiHelpersService } from '@/services/ai-helpers.service';
 
@@ -127,6 +135,7 @@ export class WorkflowsController {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly batchProcessingService: BatchProcessingService,
 		private readonly workflowSearchService: WorkflowSearchService,
+		private readonly savedSearchService: SavedSearchService,
 		private readonly expressionDocsService: ExpressionDocsService,
 		private readonly aiHelpersService: AiHelpersService,
 	) {}
@@ -2743,6 +2752,233 @@ export class WorkflowsController {
 
 			throw new ApplicationError(
 				`Failed to trigger reindexing: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	// Saved Search Endpoints
+
+	@Post('/search/saved')
+	async createSavedSearch(
+		req: AuthenticatedRequest<{}, {}, CreateSavedSearchDto>,
+	): Promise<SavedSearchResponseDto> {
+		this.logger.debug('Create saved search requested', {
+			userId: req.user.id,
+			name: req.body.name,
+		});
+
+		try {
+			const result = await this.savedSearchService.createSavedSearch(req.body, req.user);
+
+			this.logger.debug('Saved search created successfully', {
+				userId: req.user.id,
+				savedSearchId: result.id,
+				name: result.name,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Create saved search failed', {
+				userId: req.user.id,
+				name: req.body.name,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to create saved search: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/saved')
+	async getSavedSearches(
+		req: AuthenticatedRequest<{}, {}, {}, ListSavedSearchesQueryDto>,
+	): Promise<ListSavedSearchesResponseDto> {
+		this.logger.debug('Get saved searches requested', {
+			userId: req.user.id,
+			includePublic: req.query.includePublic,
+			pinnedOnly: req.query.pinnedOnly,
+			limit: req.query.limit,
+		});
+
+		try {
+			const result = await this.savedSearchService.listSavedSearches(req.query, req.user);
+
+			this.logger.debug('Saved searches retrieved successfully', {
+				userId: req.user.id,
+				count: result.savedSearches.length,
+				totalCount: result.pagination.total,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Get saved searches failed', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new ApplicationError(
+				`Failed to get saved searches: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/saved/:id')
+	async getSavedSearchById(
+		req: AuthenticatedRequest<{ id: string }>,
+	): Promise<SavedSearchResponseDto> {
+		this.logger.debug('Get saved search by ID requested', {
+			userId: req.user.id,
+			savedSearchId: req.params.id,
+		});
+
+		try {
+			const result = await this.savedSearchService.getSavedSearch(req.params.id, req.user);
+
+			this.logger.debug('Saved search retrieved successfully', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Get saved search failed', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to get saved search: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Patch('/search/saved/:id')
+	async updateSavedSearch(
+		req: AuthenticatedRequest<{ id: string }, {}, UpdateSavedSearchDto>,
+	): Promise<SavedSearchDto> {
+		this.logger.debug('Update saved search requested', {
+			userId: req.user.id,
+			savedSearchId: req.params.id,
+		});
+
+		try {
+			const result = await this.savedSearchService.updateSavedSearch(
+				req.params.id,
+				req.body,
+				req.user,
+			);
+
+			this.logger.debug('Saved search updated successfully', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Update saved search failed', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to update saved search: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Delete('/search/saved/:id')
+	async deleteSavedSearch(
+		req: AuthenticatedRequest<{ id: string }>,
+	): Promise<{ success: boolean }> {
+		this.logger.debug('Delete saved search requested', {
+			userId: req.user.id,
+			savedSearchId: req.params.id,
+		});
+
+		try {
+			await this.savedSearchService.deleteSavedSearch(req.params.id, req.user);
+
+			this.logger.debug('Saved search deleted successfully', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+			});
+
+			return { success: true };
+		} catch (error) {
+			this.logger.error('Delete saved search failed', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to delete saved search: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Post('/search/saved/:id/execute')
+	async executeSavedSearch(
+		req: AuthenticatedRequest<{ id: string }>,
+	): Promise<WorkflowSearchResponseDto> {
+		this.logger.debug('Execute saved search requested', {
+			userId: req.user.id,
+			savedSearchId: req.params.id,
+		});
+
+		try {
+			// Get the saved search
+			const savedSearch = await this.savedSearchService.getSavedSearchById(req.params.id, req.user);
+
+			// Execute the search using the saved query
+			const result = await this.workflowSearchService.searchWorkflows(savedSearch.query, req.user);
+
+			// Update execution statistics
+			await this.savedSearchService.executeSavedSearch(
+				req.params.id,
+				req.user,
+				result.results.length,
+			);
+
+			this.logger.debug('Saved search executed successfully', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+				resultsCount: result.results.length,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Execute saved search failed', {
+				userId: req.user.id,
+				savedSearchId: req.params.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to execute saved search: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

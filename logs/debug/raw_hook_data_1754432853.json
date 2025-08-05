@@ -1,0 +1,12 @@
+{
+  "session_id": "35cd89b5-cac2-44ba-9fb0-f2828bac70bd",
+  "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/35cd89b5-cac2-44ba-9fb0-f2828bac70bd.jsonl",
+  "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Task",
+  "tool_input": {
+    "description": "Testing Strategy Analysis",
+    "prompt": "Research existing testing patterns and strategies used in n8n for similar features. Analyze:\n\n1. Unit testing patterns for services and controllers\n2. Integration testing approaches for API endpoints\n3. Performance testing strategies for search operations\n4. Test data setup and teardown patterns\n5. Mock strategies for external dependencies\n6. Test coverage requirements and standards\n\nProvide comprehensive testing strategy recommendations for the advanced workflow search API implementation following established n8n testing conventions.",
+    "subagent_type": "general-purpose"
+  }
+}

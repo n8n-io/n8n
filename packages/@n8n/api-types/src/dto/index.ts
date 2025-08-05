@@ -235,6 +235,10 @@ export {
 	AdvancedWorkflowSearchDto,
 	WorkflowSearchSuggestionsDto,
 	WorkflowSearchSuggestionsResponseDto,
+	SavedSearchDto,
+	CreateSavedSearchDto,
+	UpdateSavedSearchDto,
+	SavedSearchListResponseDto,
 	isValidWorkflowSearchQuery,
 	isValidAdvancedWorkflowSearch,
 } from './workflow-search.dto';

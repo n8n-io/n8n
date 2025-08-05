@@ -382,7 +382,7 @@
       "description": "Add comprehensive workflow search capabilities beyond templates, including full-text search, metadata filtering, and complex query support.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "GET /api/v1/workflows/search endpoint with advanced filtering",
         "Full-text search across workflow content and metadata",
@@ -2773,14 +2773,151 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-05T17:13:23.205Z"
+    },
+    {
+      "id": "task_1754433524819_eogat877k",
+      "title": "Research Advanced Workflow Search Requirements and API Patterns",
+      "description": "Comprehensive analysis of workflow search requirements, API patterns, and n8n architecture for advanced search implementation",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "completed",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754433524819_eogat877k.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433524819_eogat877k.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:38:44.819Z"
+    },
+    {
+      "id": "task_1754433526298_41mzon60b",
+      "title": "Workflow Search Service Analysis",
+      "description": "Analyze workflow-search.service.ts implementation, capabilities, and architecture patterns",
+      "mode": "RESEARCH",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/services/workflow-search.service.ts",
+        "./development/research-reports/research-report-task_1754433526298_41mzon60b.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433526298_41mzon60b.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:38:46.298Z"
+    },
+    {
+      "id": "task_1754433531427_cpen0ngac",
+      "title": "Database Repository Pattern Analysis",
+      "description": "Examine workflow repository methods, database queries, and schema patterns for search functionality",
+      "mode": "RESEARCH",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "@n8n/db/src/repositories/workflow.repository.ts",
+        "./development/research-reports/research-report-task_1754433531427_cpen0ngac.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433531427_cpen0ngac.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:38:51.427Z"
+    },
+    {
+      "id": "task_1754433536570_45gbsb9ge",
+      "title": "Search Architecture and Performance Analysis",
+      "description": "Investigate search service patterns, API endpoints, indexing strategies, and performance considerations",
+      "mode": "RESEARCH",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/services/search.service.ts",
+        "./development/research-reports/research-report-task_1754433536570_45gbsb9ge.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433536570_45gbsb9ge.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:38:56.570Z"
+    },
+    {
+      "id": "task_1754433573858_83d2odeck",
+      "title": "Database Schema & Entity Analysis",
+      "description": "Analyze workflow entity schemas, database tables, relationships, and constraints. Focus on WorkflowEntity, ExecutionEntity, CredentialsEntity, and related database structures.",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754433573858_83d2odeck.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433573858_83d2odeck.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:39:33.858Z"
+    },
+    {
+      "id": "task_1754433573870_ghwpp8x20",
+      "title": "Current Search Implementation Analysis",
+      "description": "Examine existing workflow search functionality, indexing strategies, query patterns, and performance optimizations in workflow.service.ts and search-related files.",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754433573870_ghwpp8x20.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433573870_ghwpp8x20.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:39:33.870Z"
+    },
+    {
+      "id": "task_1754433573880_862fxuf9o",
+      "title": "Workflow Data Structure & Metadata Analysis",
+      "description": "Analyze workflow properties, metadata fields, tags, versioning, sharing permissions, and execution history structures. Map all searchable fields and their types.",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754433573880_862fxuf9o.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754433573880_862fxuf9o.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T22:39:33.880Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 314,
-  "last_hook_activation": 1754430810600,
+  "execution_count": 321,
+  "last_hook_activation": 1754435825485,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
