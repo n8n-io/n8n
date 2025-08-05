@@ -130,7 +130,7 @@ export class DataStore implements INodeType {
 							});
 					}
 					if (operation === 'get') {
-						const response = await dataStoreProxy.getManyAndCount({});
+						const response = await dataStoreProxy.getManyRowsAndCount({});
 
 						(response?.data ?? []).forEach((item) => {
 							returnData.push({
