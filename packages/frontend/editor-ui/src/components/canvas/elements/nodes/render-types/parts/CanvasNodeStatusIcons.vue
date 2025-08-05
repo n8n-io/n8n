@@ -61,6 +61,13 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
+	<div
+		v-else-if="isNodeExecuting"
+		data-test-id="canvas-node-status-running"
+		:class="[...commonClasses, $style.running]"
+	>
+		<N8nIcon icon="refresh-cw" spin />
+	</div>
 	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />
 	</div>
@@ -78,13 +85,6 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
-	</div>
-	<div
-		v-else-if="isNodeExecuting"
-		data-test-id="canvas-node-status-running"
-		:class="[...commonClasses, $style.running]"
-	>
-		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
