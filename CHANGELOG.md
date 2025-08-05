@@ -1,3 +1,17 @@
+## [1.105.3](https://github.com/n8n-io/n8n/compare/n8n@1.105.2...n8n@1.105.3) (2025-08-05)
+
+
+### Bug Fixes
+
+* **editor:** Connection port mapped incorrectly when changed dynamically ([#17958](https://github.com/n8n-io/n8n/issues/17958)) ([bab9ca2](https://github.com/n8n-io/n8n/commit/bab9ca20da312d0eeaf81624028dd0d8b8c3a359))
+
+
+### Features
+
+* Env to disable webhook response iframe sandboxing ([#17851](https://github.com/n8n-io/n8n/issues/17851)) ([06adcd8](https://github.com/n8n-io/n8n/commit/06adcd8488ec1cd9f6d7897e6beac072b6c1ae4c))
+
+
+
 ## [1.105.2](https://github.com/n8n-io/n8n/compare/n8n@1.105.1...n8n@1.105.2) (2025-08-01)
 
 
