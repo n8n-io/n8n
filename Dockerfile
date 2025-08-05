@@ -44,9 +44,8 @@ FROM n8nio/base:${NODE_VERSION}
 
 ENV NODE_ENV=production \
     N8N_PORT=5678 \
-    GENERIC_TIMEZONE="UTC" \
-    N8N_RELEASE_TYPE=dev \
-    N8N_DISABLE_TELEMETRY=true
+		N8N_RELEASE_TYPE=stable
+		
 
 WORKDIR /home/node
 
