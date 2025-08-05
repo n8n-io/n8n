@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { stopImmediatePropagationIfPanelShouldScroll } from '@/components/canvas/experimental/experimentalNdv.utils';
 import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
@@ -42,7 +41,7 @@ defineExpose({
 		:popper-class="$style.component"
 		:width="360"
 		:offset="8"
-		:append-to="vf.viewportRef?.value"
+		append-to="#canvas"
 		:popper-options="{
 			modifiers: [{ name: 'flip', enabled: false }],
 		}"
@@ -68,7 +67,6 @@ defineExpose({
 			:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 			:focused-mappable-input="ndvStore.focusedMappableInput"
 			node-not-run-message-variant="simple"
-			@capture-wheel-data-container="stopImmediatePropagationIfPanelShouldScroll"
 		/>
 	</N8nPopover>
 </template>

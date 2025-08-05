@@ -18,7 +18,6 @@ import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { N8nPopover } from '@n8n/design-system';
 import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useVueFlow } from '@vue-flow/core';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -56,7 +55,6 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const { viewportRef } = useVueFlow();
 
 const canvas = inject(CanvasKey, undefined);
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
@@ -233,7 +231,7 @@ defineExpose({ focus, select });
 		<N8nPopover
 			:visible="isOutputPopoverVisible"
 			placement="bottom"
-			:append-to="isInExperimentalNdv ? (viewportRef ?? undefined) : undefined"
+			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
 			:popper-class="$style.popper"
 			:show-arrow="false"
 			:width="container?.offsetWidth"

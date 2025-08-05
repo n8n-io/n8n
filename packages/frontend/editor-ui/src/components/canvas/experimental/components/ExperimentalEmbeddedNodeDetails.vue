@@ -14,10 +14,7 @@ import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue
 import { useI18n } from '@n8n/i18n';
 import type { Workflow } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
-import {
-	getNodeSubTitleText,
-	stopImmediatePropagationIfPanelShouldScroll,
-} from '@/components/canvas/experimental/experimentalNdv.utils';
+import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/composables/useCanvas';
 
@@ -146,7 +143,6 @@ watchOnce(isVisible, (visible) => {
 			:is-read-only="isReadOnly"
 			:sub-title="subTitle"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
-			@capture-wheel-body="stopImmediatePropagationIfPanelShouldScroll"
 		>
 			<template #actions>
 				<ExperimentalEmbeddedNdvActions
