@@ -120,13 +120,13 @@ const handleIgnoreClick = (actionId: string) => {
 							</N8nText>
 						</div>
 					</div>
-					<N8nLink theme="text" :title="t('generic.ignore')">
-						<N8nIcon
-							v-if="!action.completed"
-							icon="x"
-							size="large"
-							@click.prevent.stop="handleIgnoreClick(action.id)"
-						/>
+					<N8nLink
+						theme="text"
+						:title="t('generic.ignore')"
+						data-test-id="suggested-action-ignore"
+						@click.prevent.stop="handleIgnoreClick(action.id)"
+					>
+						<N8nIcon v-if="!action.completed" icon="x" size="large" />
 					</N8nLink>
 				</div>
 				<div :class="$style.ignoreAllContainer">
