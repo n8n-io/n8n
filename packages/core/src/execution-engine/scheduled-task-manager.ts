@@ -32,10 +32,9 @@ export class ScheduledTaskManager {
 		);
 	}
 
-	registerCron(
-		{ workflowId, timezone, nodeId, expression, recurrence }: CronContext,
-		onTick: () => void,
-	) {
+	registerCron(ctx: CronContext, onTick: () => void) {
+		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
+
 		const summary = recurrence?.activated
 			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
 			: expression;
