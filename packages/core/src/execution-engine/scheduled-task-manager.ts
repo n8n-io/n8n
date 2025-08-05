@@ -7,8 +7,9 @@ import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
+type CronKey = string; // specifically: `JSON.stringify(cronMetadata)`
 type Cron = { job: CronJob; summary: string };
-type CronsByWorkflow = Map<Workflow['id'], Cron[]>;
+type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
 
 @Service()
 export class ScheduledTaskManager {
@@ -39,6 +40,20 @@ export class ScheduledTaskManager {
 			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
 			: expression;
 
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
+
+		if (workflowCrons?.has(key)) {
+			// @TODO: Report to Sentry
+			this.logger.debug('Skipped registration for already registered cron', {
+				workflowId,
+				nodeId,
+				cron: summary,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+			return;
+		}
+
 		const job = new CronJob(
 			expression,
 			() => {
@@ -59,9 +74,12 @@ export class ScheduledTaskManager {
 		);
 
 		const cron: Cron = { job, summary };
-		const workflowCrons = this.cronsByWorkflow.get(workflowId) ?? [];
-		workflowCrons.push(cron);
-		this.cronsByWorkflow.set(workflowId, workflowCrons);
+
+		if (!workflowCrons) {
+			this.cronsByWorkflow.set(workflowId, new Map([[key, cron]]));
+		} else {
+			workflowCrons.set(key, cron);
+		}
 
 		this.logger.debug('Registered cron for workflow', {
 			workflowId,
@@ -71,25 +89,22 @@ export class ScheduledTaskManager {
 	}
 
 	deregisterCrons(workflowId: string) {
-		const cronsByWorkflow = this.cronsByWorkflow.get(workflowId) ?? [];
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 
-		if (cronsByWorkflow.length === 0) return;
+		if (!workflowCrons || workflowCrons.size === 0) return;
 
-		const cronsToLog: string[] = [];
+		const summariesToLog: string[] = [];
 
-		while (cronsByWorkflow.length > 0) {
-			const cron = cronsByWorkflow.pop();
-			if (cron) {
-				cronsToLog.push(cron.summary);
-				cron.job.stop();
-			}
+		for (const cron of workflowCrons.values()) {
+			summariesToLog.push(cron.summary);
+			cron.job.stop();
 		}
 
 		this.cronsByWorkflow.delete(workflowId);
 
 		this.logger.info('Deregistered all crons for workflow', {
 			workflowId,
-			crons: cronsToLog,
+			crons: summariesToLog,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
@@ -106,11 +121,35 @@ export class ScheduledTaskManager {
 		const active: Record<string, string[]> = {};
 
 		for (const [workflowId, crons] of this.cronsByWorkflow) {
-			active[`workflowId:${workflowId}`] = crons.map(({ summary }) => summary);
+			active[`workflowId:${workflowId}`] = Array.from(crons.values()).map(({ summary }) => summary);
 		}
 
 		if (Object.keys(active).length === 0) return;
 
 		this.logger.debug('Currently active crons', { active });
+	}
+
+	private toCronKey(ctx: CronContext): CronKey {
+		const { recurrence, ...rest } = ctx;
+		const flattened: Record<string, unknown> = !recurrence
+			? rest
+			: {
+					...rest,
+					recurrenceActivated: recurrence.activated,
+					...(recurrence.activated && {
+						recurrenceIndex: recurrence.index,
+						recurrenceIntervalSize: recurrence.intervalSize,
+						recurrenceTypeInterval: recurrence.typeInterval,
+					}),
+				};
+
+		const sorted = Object.keys(flattened)
+			.sort()
+			.reduce<Record<string, unknown>>((result, key) => {
+				result[key] = flattened[key];
+				return result;
+			}, {});
+
+		return JSON.stringify(sorted);
 	}
 }
