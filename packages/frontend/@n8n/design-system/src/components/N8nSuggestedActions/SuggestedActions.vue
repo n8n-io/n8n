@@ -8,6 +8,7 @@ import N8nLink from '../N8nLink';
 import N8nPopoverReka from '../N8nPopoverReka';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
+import { N8nIconButton } from '..';
 
 interface SuggestedAction {
 	id: string;
@@ -99,8 +100,6 @@ const handleIgnoreClick = (actionId: string) => {
 					<div :class="$style.actionItemBody">
 						<div :class="[action.completed ? '' : 'mb-3xs', $style.actionHeader]">
 							<N8nText size="medium" :bold="true">{{ action.title }}</N8nText>
-
-							<N8nIcon v-if="!action.completed" icon="chevron-right" />
 						</div>
 						<div v-if="!action.completed">
 							<N8nText size="small" color="text-base">
@@ -118,18 +117,15 @@ const handleIgnoreClick = (actionId: string) => {
 								</N8nLink>
 							</N8nText>
 						</div>
-						<div v-if="!action.completed" :class="$style.actionButtons">
-							<N8nLink
-								theme="text"
-								size="small"
-								data-test-id="suggested-action-ignore"
-								underline
-								@click.prevent.stop="handleIgnoreClick(action.id)"
-							>
-								{{ t('generic.ignore') }}
-							</N8nLink>
-						</div>
 					</div>
+					<N8nLink theme="text">
+						<N8nIcon
+							v-if="!action.completed"
+							icon="x"
+							size="large"
+							@click.prevent.stop="handleIgnoreClick(action.id)"
+						/>
+					</N8nLink>
 				</div>
 				<div :class="$style.ignoreAllContainer">
 					<N8nLink
@@ -167,6 +163,7 @@ const handleIgnoreClick = (actionId: string) => {
 	transition:
 		opacity 0.3s ease,
 		filter 0.3s ease;
+	border-bottom: var(--border-base);
 
 	&.ignoring {
 		opacity: 0.5;
@@ -196,7 +193,6 @@ const handleIgnoreClick = (actionId: string) => {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
-	border-bottom: var(--border-base);
 	padding-bottom: var(--spacing-s);
 }
 
@@ -205,20 +201,7 @@ const handleIgnoreClick = (actionId: string) => {
 	padding-right: var(--spacing-xs);
 }
 
-.actionHeader {
-	display: flex;
-	align-items: flex-start;
-
-	> :first-child {
-		flex-grow: 1;
-	}
-}
-
-.actionButtons {
-	margin-top: var(--spacing-2xs);
-}
-
 .ignoreAllContainer {
-	padding-left: var(--spacing-l);
+	padding-left: var(--spacing-5xs);
 }
 </style>
