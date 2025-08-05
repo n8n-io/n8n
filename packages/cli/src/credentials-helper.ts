@@ -278,6 +278,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * Returns the credentials instance by name (for dynamic credential resolution)
+	 */
+	async getCredentialsByName(credentialName: string, type: string): Promise<Credentials> {
+		let credential: CredentialsEntity;
+
+		try {
+			credential = await this.credentialsRepository.findOneByOrFail({
+				name: credentialName,
+				type,
+			});
+		} catch (error) {
+			if (error instanceof EntityNotFoundError) {
+				throw new CredentialNotFoundError(credentialName, type);
+			}
+			throw error;
+		}
+
+		return new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			credential.data,
+		);
+	}
+
+	/**
 	 * Returns all the properties of the credentials with the given name
 	 */
 	getCredentialsProperties(type: string): INodeProperties[] {
@@ -330,7 +355,39 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type);
+		let credentials: Credentials;
+
+		// Check if credential name is a dynamic expression
+		if (nodeCredentials.name && nodeCredentials.name.startsWith('=')) {
+			if (!expressionResolveValues) {
+				// If we have a dynamic credential but no expression context, we can't resolve it
+				// This happens during workflow validation - return a placeholder credential
+				// The actual credential will be resolved during execution
+				return {}; // Return empty credentials for validation contexts
+			}
+
+			// Resolve the expression to get the actual credential name
+			const { workflow, node, runExecutionData, runIndex, itemIndex, connectionInputData } =
+				expressionResolveValues;
+			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+
+			const resolvedCredentialName = workflow.expression.getParameterValue(
+				nodeCredentials.name,
+				runExecutionData || null,
+				runIndex || 0,
+				itemIndex || 0,
+				node.name,
+				connectionInputData || [],
+				mode,
+				additionalKeys,
+			) as string;
+
+			// Get credentials by the resolved name
+			credentials = await this.getCredentialsByName(resolvedCredentialName, type);
+		} else {
+			// Use traditional credential resolution by ID
+			credentials = await this.getCredentials(nodeCredentials, type);
+		}
 		const decryptedDataOriginal = credentials.getData();
 
 		if (raw === true) {
@@ -465,6 +522,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
+		// Skip OAuth token updates for dynamic credentials (expressions)
+		// Dynamic credentials resolve at runtime and don't store OAuth tokens
+		if (nodeCredentials.name && nodeCredentials.name.startsWith('=')) {
+			return; // Skip OAuth token update for dynamic credentials
+		}
+
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });

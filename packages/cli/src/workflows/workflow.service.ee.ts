@@ -149,8 +149,18 @@ export class EnterpriseWorkflowService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id;
-				if (credentialId === undefined) return;
+				const credential = node.credentials?.[credentialType];
+				if (!credential) return;
+
+				const credentialId = credential.id;
+				const credentialName = credential.name;
+
+				// Skip validation for dynamic credentials (expressions)
+				if (credentialId === null && credentialName?.startsWith('=')) {
+					return;
+				}
+
+				if (credentialId === undefined || credentialId === null) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
 					throw new UserError('The workflow contains credentials that you do not have access to');

@@ -5,6 +5,7 @@ import {
 	type ICredentialType,
 	type INodeCredentialDescription,
 	type INodeCredentialsDetails,
+	type INodeProperties,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -13,6 +14,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 
 import TitledList from '@/components/TitledList.vue';
+import ParameterInput from '@/components/ParameterInput.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
@@ -417,6 +419,74 @@ function onCredentialSelected(
 	emit('credentialSelected', updateInformation);
 }
 
+// Dynamic credential mode methods
+function isDynamicMode(credentialType: string): boolean {
+	const credential = selected.value[credentialType];
+	return credential?.name?.startsWith('=') || false;
+}
+
+function toggleDynamicMode(credentialType: string) {
+	if (isDynamicMode(credentialType)) {
+		// Switch from dynamic to static mode - clear the expression
+		const updateInformation: INodeUpdatePropertiesInformation = {
+			name: props.node.name,
+			properties: {
+				credentials: {
+					...(props.node.credentials ?? {}),
+					[credentialType]: {
+						id: null,
+						name: '',
+					},
+				},
+			},
+		};
+		emit('credentialSelected', updateInformation);
+	} else {
+		// Switch from static to dynamic mode - set to expression placeholder
+		const updateInformation: INodeUpdatePropertiesInformation = {
+			name: props.node.name,
+			properties: {
+				credentials: {
+					...(props.node.credentials ?? {}),
+					[credentialType]: {
+						id: null,
+						name: '=',
+					},
+				},
+			},
+		};
+		emit('credentialSelected', updateInformation);
+	}
+}
+
+function onDynamicCredentialChanged(credentialType: string, value: string) {
+	const updateInformation: INodeUpdatePropertiesInformation = {
+		name: props.node.name,
+		properties: {
+			credentials: {
+				...(props.node.credentials ?? {}),
+				[credentialType]: {
+					id: null,
+					name: value,
+				},
+			},
+		},
+	};
+	emit('credentialSelected', updateInformation);
+}
+
+function getDynamicCredentialParameter(credentialType: string): INodeProperties {
+	return {
+		displayName: `${credentialType} Credential Expression`,
+		name: `dynamicCredential_${credentialType}`,
+		type: 'string' as const,
+		default: '',
+		placeholder: '={{ $input.json.tenantId + "-api" }}',
+		description: 'Expression to dynamically select credential by name',
+		noDataExpression: false,
+	};
+}
+
 function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
 	if (credentialTypeDescription.displayOptions === undefined) {
 		// If it is not defined no need to do a proper check
@@ -534,43 +604,79 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>
-					<N8nSelect
-						ref="selectRefs"
-						:model-value="getSelectedId(type.name)"
-						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
-						size="small"
-						filterable
-						:filter-method="setFilter"
-						:popper-class="$style.selectPopper"
-						@update:model-value="
-							(value: string) => onCredentialSelected(type.name, value, showMixedCredentials(type))
-						"
-						@blur="emit('blur', 'credentials')"
-					>
-						<N8nOption
-							v-for="item in options.filter((o) => matches(filter, o.name))"
-							:key="item.id"
-							:data-test-id="`node-credentials-select-item-${item.id}`"
-							:label="item.name"
-							:value="item.id"
+					<div :class="$style.credentialInputContainer">
+						<!-- Expression Input for Dynamic Mode -->
+						<ParameterInput
+							v-if="isDynamicMode(type.name)"
+							:class="$style.expressionInput"
+							:parameter="getDynamicCredentialParameter(type.name)"
+							:model-value="getSelectedName(type.name) || ''"
+							:expression-evaluated="getSelectedName(type.name) || ''"
+							:node="props.node"
+							:path="`credentials.${type.name}.name`"
+							:hide-issues="true"
+							@update="(update: any) => onDynamicCredentialChanged(type.name, update.value)"
+							@blur="emit('blur', 'credentials')"
+						/>
+
+						<!-- Traditional Dropdown for Static Mode -->
+						<N8nSelect
+							v-else
+							ref="selectRefs"
+							:class="$style.credentialSelect"
+							:model-value="getSelectedId(type.name)"
+							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
+							size="small"
+							filterable
+							:filter-method="setFilter"
+							:popper-class="$style.selectPopper"
+							@update:model-value="
+								(value: string) =>
+									onCredentialSelected(type.name, value, showMixedCredentials(type))
+							"
+							@blur="emit('blur', 'credentials')"
 						>
-							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<N8nText bold>{{ item.name }}</N8nText>
-								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
-							</div>
-						</N8nOption>
-						<template #empty> </template>
-						<template #footer>
-							<div
-								data-test-id="node-credentials-select-item-new"
-								:class="['clickable', $style.newCredential]"
-								@click="onClickCreateCredential(type)"
+							<N8nOption
+								v-for="item in options.filter((o) => matches(filter, o.name))"
+								:key="item.id"
+								:data-test-id="`node-credentials-select-item-${item.id}`"
+								:label="item.name"
+								:value="item.id"
 							>
-								<N8nIcon size="xsmall" icon="plus" />
-								<N8nText bold>{{ NEW_CREDENTIALS_TEXT }}</N8nText>
-							</div>
-						</template>
-					</N8nSelect>
+								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+									<N8nText bold>{{ item.name }}</N8nText>
+									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+								</div>
+							</N8nOption>
+							<template #empty> </template>
+							<template #footer>
+								<div
+									data-test-id="node-credentials-select-item-new"
+									:class="['clickable', $style.newCredential]"
+									@click="onClickCreateCredential(type)"
+								>
+									<N8nIcon size="xsmall" icon="plus" />
+									<N8nText bold>{{ NEW_CREDENTIALS_TEXT }}</N8nText>
+								</div>
+							</template>
+						</N8nSelect>
+					</div>
+
+					<!-- Dynamic Credentials Toggle Button -->
+					<div :class="$style.credentialModeToggle">
+						<n8n-button
+							:type="isDynamicMode(type.name) ? 'primary' : 'tertiary'"
+							size="mini"
+							@click="toggleDynamicMode(type.name)"
+							:title="
+								isDynamicMode(type.name)
+									? 'Switch to static credential selection'
+									: 'Switch to dynamic credential expression'
+							"
+						>
+							<n8n-icon icon="code" size="xsmall" />
+						</n8n-button>
+					</div>
 
 					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
 						<N8nTooltip placement="top">
@@ -672,5 +778,30 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	&:hover {
 		color: var(--color-primary);
 	}
+}
+
+.input {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+}
+
+.credentialInputContainer {
+	flex: 1;
+	min-width: 0; /* Allow flex item to shrink */
+}
+
+.expressionInput {
+	width: 100%;
+}
+
+.credentialSelect {
+	width: 100%;
+}
+
+.credentialModeToggle {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
 }
 </style>
