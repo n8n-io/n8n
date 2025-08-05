@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { resolveFromRoot } from '../utils/path-helper';
@@ -160,5 +160,14 @@ export class CanvasPage extends BasePage {
 
 	getWorkflowTags() {
 		return this.page.getByTestId('workflow-tags').locator('.el-tag');
+	}
+
+	async activateWorkflow(page: Page) {
+		const responsePromise = page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
+		);
+		await page.getByTestId('workflow-activate-switch').click();
+		await responsePromise;
 	}
 }

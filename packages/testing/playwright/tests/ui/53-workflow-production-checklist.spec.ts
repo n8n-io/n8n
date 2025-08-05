@@ -1,6 +1,15 @@
-import type { Page } from '@playwright/test';
-
 import { test, expect } from '../../fixtures/base';
+import {
+	getErrorActionItem,
+	getEvaluationsActionItem,
+	getIgnoreAllButton,
+	getSuggestedActionItem,
+	getSuggestedActionsButton,
+	getSuggestedActionsPopover,
+	getTimeSavedActionItem,
+} from '../../composables/ProductionChecklist';
+import { closeActivationModal } from '../../composables/WorkflowActivationModal';
+import { openWorkflowSettings } from '../../composables/WorklfowSettingsModal';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
@@ -9,52 +18,6 @@ test.describe('Workflow Suggested Actions', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 	});
-
-	// Helper functions for suggested actions UI
-	const getSuggestedActionsButton = (page: Page) => page.getByTestId('suggested-action-count');
-	const getSuggestedActionItem = (page: Page, text?: string) => {
-		const items = page.getByTestId('suggested-action-item');
-		if (text) {
-			return items.getByText(text);
-		}
-		return items;
-	};
-	const getSuggestedActionsPopover = (page: Page) =>
-		page.locator('[data-reka-popper-content-wrapper=""]').filter({ hasText: /./ });
-	const getActivationModal = (page: Page) => page.getByTestId('activation-modal');
-	const getErrorActionItem = (page: Page) =>
-		getSuggestedActionItem(page, 'Set up error notifications');
-	const getTimeSavedActionItem = (page: Page) => getSuggestedActionItem(page, 'Track time saved');
-	const getEvaluationsActionItem = (page: Page) =>
-		getSuggestedActionItem(page, 'Test reliability of AI steps');
-	const getIgnoreAllButton = (page: Page) => page.getByTestId('suggested-action-ignore-all');
-
-	const closeActivationModal = async (page: Page) => {
-		await expect(getActivationModal(page)).toBeVisible();
-
-		// click checkbox so it does not show again
-		await getActivationModal(page).getByText("Don't show again").click();
-
-		// confirm modal
-		await getActivationModal(page).getByRole('button', { name: 'Got it' }).click();
-	};
-
-	// Helper to activate workflow
-	const activateWorkflow = async (page: Page) => {
-		const responsePromise = page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
-		);
-		await page.getByTestId('workflow-activate-switch').click();
-		await responsePromise;
-	};
-
-	// Helper to open workflow settings modal
-	const openWorkflowSettings = async (page: Page) => {
-		await page.getByTestId('workflow-menu').click();
-		await page.getByTestId('workflow-menu-item-settings').click();
-		await expect(page.getByTestId('workflow-settings-dialog')).toBeVisible();
-	};
 
 	test('should show suggested actions automatically when workflow is first activated', async ({
 		n8n,
@@ -67,7 +30,7 @@ test.describe('Workflow Suggested Actions', () => {
 		await expect(getSuggestedActionsButton(n8n.page)).toBeHidden();
 
 		// Activate the workflow
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 
 		// Activation Modal should be visible since it's first activation
 		await closeActivationModal(n8n.page);
@@ -94,7 +57,7 @@ test.describe('Workflow Suggested Actions', () => {
 		await n8n.canvas.nodeDisableButton('Create an assistant').click();
 
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions should be open
@@ -115,7 +78,7 @@ test.describe('Workflow Suggested Actions', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
@@ -134,7 +97,7 @@ test.describe('Workflow Suggested Actions', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
@@ -151,7 +114,7 @@ test.describe('Workflow Suggested Actions', () => {
 	test('should allow ignoring individual actions', async ({ n8n }) => {
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions popover should be open
@@ -176,7 +139,7 @@ test.describe('Workflow Suggested Actions', () => {
 		// Add schedule trigger and activate workflow
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		// Open workflow settings and set error workflow
@@ -202,7 +165,7 @@ test.describe('Workflow Suggested Actions', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow(n8n.page);
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions should be open
