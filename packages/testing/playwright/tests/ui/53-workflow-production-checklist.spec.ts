@@ -1,4 +1,3 @@
-import { test, expect } from '../../fixtures/base';
 import {
 	getErrorActionItem,
 	getEvaluationsActionItem,
@@ -10,6 +9,7 @@ import {
 } from '../../composables/ProductionChecklist';
 import { closeActivationModal } from '../../composables/WorkflowActivationModal';
 import { openWorkflowSettings } from '../../composables/WorklfowSettingsModal';
+import { test, expect } from '../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 

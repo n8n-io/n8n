@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 export const getSuggestedActionsButton = (page: Page) => page.getByTestId('suggested-action-count');
 export const getSuggestedActionItem = (page: Page, text?: string) => {

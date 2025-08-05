@@ -1,4 +1,5 @@
-import { expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 // Helper to open workflow settings modal
 export const openWorkflowSettings = async (page: Page) => {
