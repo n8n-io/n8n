@@ -48,7 +48,20 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 </script>
 
 <template>
-	<div v-if="isDisabled" :class="[...commonClasses, $style.disabled]">
+	<div v-if="executionWaiting || executionStatus === 'waiting'">
+		<div :class="[...commonClasses, $style.waiting]">
+			<N8nTooltip placement="bottom">
+				<template #content>
+					<div v-text="executionWaiting"></div>
+				</template>
+				<N8nIcon icon="clock" :size="size" />
+			</N8nTooltip>
+		</div>
+		<div :class="[...commonClasses, $style['node-waiting-spinner']]">
+			<N8nIcon icon="refresh-cw" spin />
+		</div>
+	</div>
+	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
@@ -62,19 +75,6 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 			</template>
 			<N8nIcon icon="node-error" :size="size" />
 		</N8nTooltip>
-	</div>
-	<div v-else-if="executionWaiting || executionStatus === 'waiting'">
-		<div :class="[...commonClasses, $style.waiting]">
-			<N8nTooltip placement="bottom">
-				<template #content>
-					<div v-text="executionWaiting"></div>
-				</template>
-				<N8nIcon icon="clock" :size="size" />
-			</N8nTooltip>
-		</div>
-		<div :class="[...commonClasses, $style['node-waiting-spinner']]">
-			<N8nIcon icon="refresh-cw" spin />
-		</div>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
