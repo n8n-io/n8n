@@ -14,9 +14,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
 		return await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
-			await this.insert(dataStore);
+			await em.insert(DataStoreEntity, dataStore);
 			const dbType = this.manager.connection.options.type;
-			await this.manager.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
+			await em.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
 			return dataStore;
 		});
 	}
