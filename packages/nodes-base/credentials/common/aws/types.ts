@@ -225,8 +225,14 @@ export type AwsAssumeRoleCredentialsType = AwsCredentialsTypeBase & {
 	stsSessionToken?: string;
 };
 
+export type AwsSystemCredentialsType = AwsCredentialsTypeBase;
+
+export type AwsCredentials = AwsIamCredentialsType | AwsAssumeRoleCredentialsType | AwsSystemCredentialsType;
+
+export type AwsCredentialsType = 'aws' | 'awsAssumeRole' | 'awsSystem';
+
 export type AwsSecurityHeaders = {
 	accessKeyId: string;
 	secretAccessKey: string;
-	sessionToken: string | undefined;
+	sessionToken?: string;
 };

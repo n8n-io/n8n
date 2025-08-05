@@ -1,3 +1,4 @@
+import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@aws-sdk/types';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -87,16 +88,24 @@ export class Aws implements ICredentialType {
 			region,
 		);
 
-		const securityHeaders = {
+		const securityHeaders = await Aws.getSecurityHeaders(credentials);
+
+		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+	}
+
+	test = awsCredentialsTest;
+
+	static async getSecurityHeaders(credentials: AwsIamCredentialsType): Promise<AwsCredentialIdentity> {
+		return {
 			accessKeyId: `${credentials.accessKeyId}`.trim(),
 			secretAccessKey: `${credentials.secretAccessKey}`.trim(),
 			sessionToken: credentials.temporaryCredentials
 				? `${credentials.sessionToken}`.trim()
 				: undefined,
 		};
-
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
-	test = awsCredentialsTest;
+	static getCredentialProvider(credentials: AwsIamCredentialsType): AwsCredentialIdentityProvider {
+		return () => Aws.getSecurityHeaders(credentials);
+	}
 }

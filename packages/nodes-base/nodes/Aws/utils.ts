@@ -19,6 +19,15 @@ export const awsNodeCredentials: INodeCredentialDescription[] = [
 			},
 		},
 	},
+	{
+		name: 'awsSystem',
+		required: true,
+		displayOptions: {
+			show: {
+				authentication: ['system'],
+			},
+		},
+	},
 ];
 export const awsNodeAuthOptions: INodeProperties = {
 	displayName: 'Authentication',
@@ -32,6 +41,10 @@ export const awsNodeAuthOptions: INodeProperties = {
 		{
 			name: 'AWS (Assume Role)',
 			value: 'assumeRole',
+		},
+		{
+			name: 'AWS (System)',
+			value: 'system',
 		},
 	],
 	default: 'iam',

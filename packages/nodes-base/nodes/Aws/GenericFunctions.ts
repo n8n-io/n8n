@@ -3,36 +3,57 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
+	ISupplyDataFunctions,
 	IHttpRequestOptions,
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { parseString as parseXml } from 'xml2js';
+import { Aws } from '../../credentials/Aws.credentials';
+import { AwsAssumeRole } from '../../credentials/AwsAssumeRole.credentials';
+import { AwsSystem } from '../../credentials/AwsSystem.credentials';
 import type {
-	AwsAssumeRoleCredentialsType,
-	AwsIamCredentialsType,
+	AwsCredentials,
+	AwsCredentialsType,
+	AwsSecurityHeaders,
 } from '../../credentials/common/aws/types';
 
+const CredentialNameByAuthType = {
+	'iam' : 'aws',
+	'assumeRole' : 'awsAssumeRole',
+	'system' : 'awsSystem',
+}
+
+const ClassByCredentialType = {
+	'aws' : Aws,
+	'awsAssumeRole' : AwsAssumeRole,
+	'awsSystem' : AwsSystem,
+}
+
+export async function getAwsCredentialSecurityHeaders(credentials: AwsCredentials, credentialsType: AwsCredentialsType) : Promise<AwsSecurityHeaders> {
+	return await ClassByCredentialType[credentialsType].getSecurityHeaders(credentials as any)
+}
+export function getAwsCredentialProvider(credentials: AwsCredentials, credentialsType: AwsCredentialsType) : () => Promise<AwsSecurityHeaders> {
+	return ClassByCredentialType[credentialsType].getCredentialProvider(credentials as any)
+}
+
 export async function getAwsCredentials(
-	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-) {
-	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
+	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions | ISupplyDataFunctions,
+) : Promise<{credentials: AwsCredentials, credentialsType: AwsCredentialsType}> {
+	let credentialsType: string = 'aws';
 
 	try {
-		const authentication = context.getNodeParameter('authentication', 0) as 'iam' | 'assumeRole';
+		const authentication = context.getNodeParameter('authentication', 0) as 'iam' | 'assumeRole' | 'system';
 
-		if (authentication === 'assumeRole') {
-			credentialsType = 'awsAssumeRole';
-		}
+		credentialsType = CredentialNameByAuthType[authentication];
 	} catch (error) {
 		context.logger.warn('Could not get authentication type');
 	}
 
-	const credentials: AwsIamCredentialsType | AwsAssumeRoleCredentialsType =
-		await context.getCredentials(credentialsType);
+	const credentials: AwsCredentials = await context.getCredentials(credentialsType);
 
-	return { credentials, credentialsType };
+	return { credentials, credentialsType: credentialsType as AwsCredentialsType };
 }
 
 export async function awsApiRequest(

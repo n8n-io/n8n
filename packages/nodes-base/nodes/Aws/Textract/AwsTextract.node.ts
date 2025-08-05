@@ -1,19 +1,15 @@
 import {
 	BINARY_ENCODING,
 	NodeConnectionTypes,
-	type ICredentialDataDecryptedObject,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
-	type INodeCredentialTestResult,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { IExpenseDocument } from './GenericFunctions';
-import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
+import { awsApiRequestREST, simplify } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsTextract implements INodeType {
@@ -75,33 +71,6 @@ export class AwsTextract implements INodeType {
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
-	};
-
-	methods = {
-		credentialTest: {
-			async awsTextractApiCredentialTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(
-						this,
-						credential.data as ICredentialDataDecryptedObject,
-						'sts',
-					);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The security token included in the request is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
