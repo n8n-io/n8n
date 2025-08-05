@@ -6,8 +6,9 @@ import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nPopover } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
+import { watchOnce } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
-import { computed, inject, useTemplateRef } from 'vue';
+import { computed, inject, ref, useTemplateRef } from 'vue';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -21,6 +22,12 @@ const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
 const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
+const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
+const isOnceVisible = ref(isVisible.value);
+
+watchOnce(isVisible, (value) => {
+	isOnceVisible.value = isOnceVisible.value || value;
+});
 
 defineExpose({
 	contentRef: computed<HTMLElement>(() => contentRef.value?.$el ?? null),
@@ -29,7 +36,7 @@ defineExpose({
 
 <template>
 	<N8nPopover
-		:visible="visible && !canvas?.isPaneMoving.value"
+		:visible="isVisible"
 		placement="left"
 		:show-arrow="false"
 		:popper-class="$style.component"
@@ -39,7 +46,7 @@ defineExpose({
 		:popper-options="{
 			modifiers: [{ name: 'flip', enabled: false }],
 		}"
-		:persistent="false"
+		:persistent="isOnceVisible /* works like lazy initialization */"
 		virtual-triggering
 		:virtual-ref="virtualRef"
 	>
