@@ -1,4 +1,4 @@
-import type { DataStoreCreateColumnSchema, DataStoreListOptions } from '@n8n/api-types';
+import type { DataStoreCreateColumnSchema, ListDataStoreQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
@@ -59,18 +59,20 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		});
 	}
 
-	async getManyAndCount(options: DataStoreListOptions) {
+	async getManyAndCount(options: Partial<ListDataStoreQueryDto>) {
 		const query = this.getManyQuery(options);
 		const [data, count] = await query.getManyAndCount();
 		return { count, data };
 	}
 
-	async getMany(options: DataStoreListOptions) {
+	async getMany(options: Partial<ListDataStoreQueryDto>) {
 		const query = this.getManyQuery(options);
 		return await query.getMany();
 	}
 
-	private getManyQuery(options: DataStoreListOptions): SelectQueryBuilder<DataStoreEntity> {
+	private getManyQuery(
+		options: Partial<ListDataStoreQueryDto>,
+	): SelectQueryBuilder<DataStoreEntity> {
 		const query = this.createQueryBuilder('dataStore');
 
 		this.applySelections(query);
@@ -87,7 +89,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<DataStoreEntity>,
-		filter: DataStoreListOptions['filter'],
+		filter: Partial<ListDataStoreQueryDto>['filter'],
 	): void {
 		for (const x of ['id', 'projectId'] as const) {
 			const content = [filter?.[x]].flat().filter((x) => x !== undefined);
@@ -140,7 +142,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	private applyPagination(
 		query: SelectQueryBuilder<DataStoreEntity>,
-		options: DataStoreListOptions,
+		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
 		query.take(options.take ?? 0);

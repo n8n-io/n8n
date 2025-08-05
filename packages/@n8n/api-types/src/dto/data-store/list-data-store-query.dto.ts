@@ -20,6 +20,7 @@ export type ListDataStoreQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
 const FILTER_OPTIONS = {
 	id: z.union([z.string(), z.array(z.string())]).optional(),
 	name: z.union([z.string(), z.array(z.string())]).optional(),
+	projectId: z.union([z.string(), z.array(z.string())]).optional(),
 	// todo: can probably include others here as well?
 };
 

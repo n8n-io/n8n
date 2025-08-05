@@ -29,6 +29,9 @@ export class DataStoreService {
 		this.logger = this.logger.scoped('data-store');
 	}
 
+	async start() {}
+	async shutdown() {}
+
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,
