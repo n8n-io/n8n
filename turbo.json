@@ -39,8 +39,9 @@
 			"cache": false,
 			"inputs": ["package.json"]
 		},
-		"test:standard": {
+		"test:container:standard": {
 			"dependsOn": ["install-browsers:local"],
+			"env": ["E2E_TESTS"],
 			"cache": false
 		}
 	}

@@ -17,7 +17,9 @@ export type ExecutionSaveSettings = {
  * - `manual`: Whether to save successful or failed manual executions.
  * - `progress`: Whether to save execution progress, i.e. after each node's execution.
  */
-export function toSaveSettings(workflowSettings: IWorkflowSettings = {}): ExecutionSaveSettings {
+export function toSaveSettings(
+	workflowSettings: IWorkflowSettings | null = {},
+): ExecutionSaveSettings {
 	const DEFAULTS = {
 		ERROR: config.getEnv('executions.saveDataOnError'),
 		SUCCESS: config.getEnv('executions.saveDataOnSuccess'),
@@ -30,7 +32,7 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}): Execut
 		saveDataSuccessExecution = DEFAULTS.SUCCESS,
 		saveManualExecutions = DEFAULTS.MANUAL,
 		saveExecutionProgress = DEFAULTS.PROGRESS,
-	} = workflowSettings;
+	} = workflowSettings ?? {};
 
 	return {
 		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution === 'all',
