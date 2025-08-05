@@ -1,6 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowEntity } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type {
@@ -147,6 +146,23 @@ describe('ActiveWorkflowManager', () => {
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
+		});
+	});
+
+	describe('addActiveWorkflows', () => {
+		test('should prevent concurrent activations', async () => {
+			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+
+			workflowRepository.getAllActiveIds.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
+			);
+
+			await Promise.all([
+				activeWorkflowManager.addActiveWorkflows('init'),
+				activeWorkflowManager.addActiveWorkflows('leadershipChange'),
+			]);
+
+			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
 import config from '@/config';
-import { Time } from '@/constants';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
@@ -39,7 +39,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			const { RedisClientService } = await import('../redis-client.service');
 			const redisClientService = Container.get(RedisClientService);
 
-			const prefixBase = config.getEnv('redis.prefix');
+			const prefixBase = this.globalConfig.redis.prefix;
 			const prefix = redisClientService.toValidPrefix(
 				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
 			);

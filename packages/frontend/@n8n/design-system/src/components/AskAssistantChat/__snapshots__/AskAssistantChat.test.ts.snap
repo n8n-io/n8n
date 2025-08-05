@@ -54,11 +54,6 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -69,6 +64,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -154,6 +150,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -174,13 +171,21 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -242,11 +247,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -257,6 +257,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -342,6 +343,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -601,16 +603,24 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                   class="actions"
                 >
                   <n8n-button-stub
+                    active="false"
+                    block="false"
                     data-test-id="replace-code-button"
                     disabled="false"
-                    icon="refresh"
+                    element="button"
+                    icon="refresh-cw"
+                    label=""
                     loading="false"
+                    outline="false"
                     size="mini"
+                    square="false"
+                    text="false"
                     type="primary"
                   />
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -625,8 +635,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               >
                 
                 <n8n-avatar-stub
-                  first-name="Kobi"
-                  last-name="Dog"
+                  colors="--color-primary,--color-secondary,--color-avatar-accent-1,--color-avatar-accent-2,--color-primary-tint-1"
+                  firstname="Kobi"
+                  lastname="Dog"
                   size="xsmall"
                 />
                 <span>
@@ -654,6 +665,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -785,6 +797,7 @@ Testing more code
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -897,16 +910,24 @@ Testing more code
                   class="actions"
                 >
                   <n8n-button-stub
+                    active="false"
+                    block="false"
                     data-test-id="replace-code-button"
                     disabled="false"
-                    icon="refresh"
+                    element="button"
+                    icon="refresh-cw"
+                    label=""
                     loading="false"
+                    outline="false"
                     size="mini"
+                    square="false"
+                    text="false"
                     type="primary"
                   />
                 </div>
               </div>
               
+              <!--v-if-->
             </div>
             <div
               class="quickReplies"
@@ -921,7 +942,16 @@ Testing more code
                 data-test-id="quick-replies"
               >
                 <n8n-button-stub
+                  active="false"
+                  block="false"
+                  disabled="false"
+                  element="button"
+                  label=""
+                  loading="false"
+                  outline="false"
                   size="mini"
+                  square="false"
+                  text="false"
                   type="secondary"
                 />
               </div>
@@ -929,7 +959,16 @@ Testing more code
                 data-test-id="quick-replies"
               >
                 <n8n-button-stub
+                  active="false"
+                  block="false"
+                  disabled="false"
+                  element="button"
+                  label=""
+                  loading="false"
+                  outline="false"
                   size="mini"
+                  square="false"
+                  text="false"
                   type="secondary"
                 />
               </div>
@@ -953,13 +992,21 @@ Testing more code
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -1021,11 +1068,6 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1036,6 +1078,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -1134,13 +1177,21 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -1202,11 +1253,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1217,6 +1263,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -1302,6 +1349,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1310,6 +1358,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           >
             <div
               class="message"
+              is-last-message="true"
+              streaming="false"
             >
               <!--v-if-->
               
@@ -1378,6 +1428,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 </span>
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1399,13 +1450,21 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -1467,11 +1526,6 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1482,6 +1536,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -1498,6 +1553,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           >
             <div
               class="message"
+              is-last-message="true"
+              streaming="false"
             >
               <div
                 class="roleName userSection"
@@ -1556,19 +1613,30 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 >
                   <n8n-icon-stub
                     class="errorIcon"
-                    icon="exclamation-triangle"
+                    icon="triangle-alert"
                     size="small"
+                    spin="false"
                   />
                    This is an error message.
                 </p>
                 <n8n-button-stub
+                  active="false"
+                  block="false"
                   class="retryButton"
                   data-test-id="error-retry-button"
+                  disabled="false"
+                  element="button"
+                  label=""
+                  loading="false"
+                  outline="false"
                   size="mini"
+                  square="false"
+                  text="false"
                   type="secondary"
                 />
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1589,13 +1657,21 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -1657,11 +1733,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1672,6 +1743,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -1827,6 +1899,7 @@ catch(e) {
                 <!--v-if-->
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -1847,13 +1920,21 @@ catch(e) {
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>
@@ -1915,11 +1996,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
             AI Assistant
           </span>
         </div>
-        <div
-          class="beta"
-        >
-          beta
-        </div>
         
         
       </div>
@@ -1930,6 +2006,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         <n8n-icon-stub
           color="text-base"
           icon="arrow-right"
+          spin="false"
         />
       </div>
     </div>
@@ -2017,6 +2094,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                 />
               </div>
               
+              <!--v-if-->
             </div>
             <!--v-if-->
           </data>
@@ -2038,13 +2116,21 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
+        active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
-        icon="paper-plane"
+        element="button"
+        icon="send"
+        label=""
+        loading="false"
+        outline="false"
         size="large"
-        type="text"
+        square="true"
+        text="true"
+        type="primary"
       />
       
     </div>

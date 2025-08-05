@@ -257,14 +257,10 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 function applyOverride() {
 	if (!fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: activeNode.value?.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: activeNode.value?.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, String(props.value));
 	const value = buildValueFromOverride(fromAIOverride.value, props, true);
 	valueChanged({
@@ -277,14 +273,10 @@ function applyOverride() {
 function removeOverride(clearField = false) {
 	if (!fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: activeNode.value?.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: activeNode.value?.type,
+		parameter: props.path,
+	});
 	valueChanged({
 		node: activeNode.value?.name,
 		name: props.path,
@@ -336,6 +328,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -398,6 +391,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

@@ -24,11 +24,12 @@ import {
 	ExecutionBaseError,
 	ApplicationError,
 	UserError,
+	sleepWithAbort,
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
@@ -50,41 +51,91 @@ export function makeHandleToolInvocation(
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
 	return async (toolArgs: IDataObject) => {
-		// Increment the runIndex for the next invocation
-		const localRunIndex = runIndex++;
-		const context = contextFactory(localRunIndex);
-		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
+		let maxTries = 1;
+		if (node.retryOnFail === true) {
+			maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
+		}
 
-		try {
-			// Execute the sub-node with the proxied context
-			const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
+		let waitBetweenTries = 0;
+		if (node.retryOnFail === true) {
+			waitBetweenTries = Math.min(5000, Math.max(0, node.waitBetweenTries ?? 1000));
+		}
 
-			// Process and map the results
-			const mappedResults = result?.[0]?.flatMap((item) => item.json);
-			let response: string | typeof mappedResults = mappedResults;
+		let lastError: NodeOperationError | undefined;
 
-			// Warn if any (unusable) binary data was returned
-			if (result?.some((x) => x.some((y) => y.binary))) {
-				if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
-					response =
-						'Error: The Tool attempted to return binary data, which is not supported in Agents';
-				} else {
-					context.logger.warn(
-						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
-					);
+		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+			// Increment the runIndex for the next invocation
+			const localRunIndex = runIndex++;
+			const context = contextFactory(localRunIndex);
+
+			// Get abort signal from context for cancellation support
+			const abortSignal = context.getExecutionCancelSignal?.();
+
+			// Check if execution was cancelled before retry
+			if (abortSignal?.aborted) {
+				return 'Error during node execution: Execution was cancelled';
+			}
+
+			if (tryIndex !== 0) {
+				// Reset error from previous attempt
+				lastError = undefined;
+				if (waitBetweenTries !== 0) {
+					try {
+						await sleepWithAbort(waitBetweenTries, abortSignal);
+					} catch (abortError) {
+						return 'Error during node execution: Execution was cancelled';
+					}
 				}
 			}
 
-			// Add output data to the context
-			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [[{ json: { response } }]]);
+			context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
-			// Return the stringified results
-			return JSON.stringify(response);
-		} catch (error) {
-			const nodeError = new NodeOperationError(node, error as Error);
-			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, nodeError);
-			return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
+			try {
+				// Execute the sub-node with the proxied context
+				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
+
+				// Process and map the results
+				const mappedResults = result?.[0]?.flatMap((item) => item.json);
+				let response: string | typeof mappedResults = mappedResults;
+
+				// Warn if any (unusable) binary data was returned
+				if (result?.some((x) => x.some((y) => y.binary))) {
+					if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
+						response =
+							'Error: The Tool attempted to return binary data, which is not supported in Agents';
+					} else {
+						context.logger.warn(
+							`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+						);
+					}
+				}
+
+				// Add output data to the context
+				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
+					[{ json: { response } }],
+				]);
+
+				// Return the stringified results
+				return JSON.stringify(response);
+			} catch (error) {
+				// Check if error is due to cancellation
+				if (abortSignal?.aborted) {
+					return 'Error during node execution: Execution was cancelled';
+				}
+
+				const nodeError = new NodeOperationError(node, error as Error);
+				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, nodeError);
+
+				lastError = nodeError;
+
+				// If this is the last attempt, throw the error
+				if (tryIndex === maxTries - 1) {
+					return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
+				}
+			}
 		}
+
+		return 'Error during node execution : ' + (lastError?.description ?? lastError?.message);
 	};
 }
 

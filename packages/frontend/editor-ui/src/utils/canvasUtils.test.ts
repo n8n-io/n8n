@@ -992,7 +992,7 @@ describe('insertSpacersBetweenEndpoints', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
 		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
-		expect(result).toEqual([{ index: 0, required: true }, null, null, null, null]);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
 	});
 
 	it('should not insert spacers when there are at least min endpoints count', () => {
@@ -1012,14 +1012,14 @@ describe('insertSpacersBetweenEndpoints', () => {
 		const endpoints = [{ index: 0, required: false }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
 		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
-		expect(result).toEqual([null, null, null, null, { index: 0, required: false }]);
+		expect(result).toEqual([null, null, null, { index: 0, required: false }]);
 	});
 
 	it('should handle no endpoints', () => {
 		const endpoints: Array<{ index: number; required: boolean }> = [];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
 		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
-		expect(result).toEqual([null, null, null, null, null]);
+		expect(result).toEqual([null, null, null, null]);
 	});
 
 	it('should handle required endpoints greater than NODE_MIN_INPUT_ITEMS_COUNT', () => {
@@ -1040,7 +1040,6 @@ describe('insertSpacersBetweenEndpoints', () => {
 			{ index: 0, required: true },
 			{ index: 1, required: true },
 			null,
-			null,
 			{ index: 2 },
 		]);
 	});
@@ -1049,6 +1048,6 @@ describe('insertSpacersBetweenEndpoints', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
 		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
-		expect(result).toEqual([{ index: 0, required: true }, null, null, null, null]);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
 	});
 });

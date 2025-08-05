@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import {
 	NodeConnectionTypes,
@@ -16,7 +15,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hugging Face Inference Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOpenHuggingFaceInference',
 		icon: 'file:huggingface.svg',
 		group: ['transform'],
@@ -39,9 +38,9 @@ export class LmOpenHuggingFaceInference implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [

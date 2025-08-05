@@ -14,13 +14,21 @@ function closestNumber(value: number, divisor: number): number {
 	return n2;
 }
 
-function getSize(min: number, virtual: number, gridSize: number): number {
-	const target = closestNumber(virtual, gridSize);
-	if (target >= min && virtual > 0) {
-		return target;
+function getSize(min: number, virtual: number, gridSize: number, max: number): number {
+	if (virtual <= 0) {
+		return min;
 	}
 
-	return min;
+	const target = closestNumber(virtual, gridSize);
+
+	if (target <= min) {
+		return min;
+	}
+	if (target >= max) {
+		return max;
+	}
+
+	return target;
 }
 
 interface ResizeProps {
@@ -28,7 +36,9 @@ interface ResizeProps {
 	height?: number;
 	width?: number;
 	minHeight?: number;
+	maxHeight?: number;
 	minWidth?: number;
+	maxWidth?: number;
 	scale?: number;
 	gridSize?: number;
 	supportedDirections?: Direction[];
@@ -41,7 +51,9 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	height: 0,
 	width: 0,
 	minHeight: 0,
+	maxHeight: Number.POSITIVE_INFINITY,
 	minWidth: 0,
+	maxWidth: Number.POSITIVE_INFINITY,
 	scale: 1,
 	gridSize: 20,
 	outset: false,
@@ -109,8 +121,8 @@ const mouseMove = (event: MouseEvent) => {
 
 	state.vHeight.value = state.vHeight.value + deltaHeight;
 	state.vWidth.value = state.vWidth.value + deltaWidth;
-	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize);
-	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize);
+	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize, props.maxHeight);
+	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize, props.maxWidth);
 
 	const dX = left && width !== props.width ? -1 * (width - props.width) : 0;
 	const dY = top && height !== props.height ? -1 * (height - props.height) : 0;

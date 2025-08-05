@@ -53,7 +53,7 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 		target="_blank"
 		@click.stop="trackOpeningRelatedExecution(taskMetadata, displayMode)"
 	>
-		<N8nIcon icon="external-link-alt" size="xsmall" />
+		<N8nIcon icon="external-link" size="xsmall" />
 		{{ getExecutionLinkLabel(taskMetadata) }}
 	</a>
 </template>

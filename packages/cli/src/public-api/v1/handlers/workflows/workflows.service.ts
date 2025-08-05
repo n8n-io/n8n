@@ -40,7 +40,7 @@ export async function getSharedWorkflowIds(
 
 export async function getSharedWorkflow(
 	user: User,
-	workflowId?: string | undefined,
+	workflowId?: string,
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {

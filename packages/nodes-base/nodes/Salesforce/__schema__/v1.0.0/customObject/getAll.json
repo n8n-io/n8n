@@ -11,7 +11,10 @@
                     "type": "string"
                 }
             }
+        },
+        "Id": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

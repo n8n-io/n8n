@@ -1,7 +1,6 @@
 import type { DataRequestResponse, TaskDataRequestParams } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { type INode, type INodeExecutionData } from 'n8n-workflow';
+import type { IWorkflowExecuteAdditionalData, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { DataRequestResponseStripper } from '../data-request-response-stripper';
 

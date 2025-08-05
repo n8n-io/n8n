@@ -21,7 +21,7 @@ function onButtonClick() {
 
 <template>
 	<div :class="$style.container">
-		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
+		<n8n-icon icon="triangle-alert" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">

@@ -179,7 +179,7 @@ export async function execute(
 		},
 	};
 
-	const { sessionId } = await createSession.call(this, body);
+	const { sessionId, data } = await createSession.call(this, body);
 
 	if (saveProfileOnTermination) {
 		await apiRequest.call(
@@ -189,5 +189,5 @@ export async function execute(
 		);
 	}
 
-	return this.helpers.returnJsonArray({ sessionId } as IDataObject);
+	return this.helpers.returnJsonArray({ sessionId, ...data });
 }

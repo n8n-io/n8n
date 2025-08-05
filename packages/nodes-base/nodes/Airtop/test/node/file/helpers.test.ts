@@ -10,10 +10,6 @@ const mockFileCreateResponse = {
 	},
 };
 
-const mockFileEvent = `
-event: fileEvent
-data: {"event":"file_upload_status","status":"available","fileId":"file-123"}`;
-
 // Mock the transport and other dependencies
 jest.mock('../../../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../../../transport');
@@ -30,6 +26,7 @@ describe('Test Airtop file helpers', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		(transport.apiRequest as jest.Mock).mockReset();
 	});
 
 	describe('requestAllFiles', () => {
@@ -198,42 +195,33 @@ describe('Test Airtop file helpers', () => {
 	});
 
 	describe('waitForFileInSession', () => {
-		it('should resolve when file is available', async () => {
-			// Create a mock stream
-			const mockStream = {
-				on: jest.fn().mockImplementation((event, callback) => {
-					if (event === 'data') {
-						callback(mockFileEvent);
-					}
-				}),
-				removeAllListeners: jest.fn(),
-			};
-
-			const mockHttpRequestWithAuthentication = jest.fn().mockResolvedValueOnce(mockStream);
-			const mockExecuteFunction = createMockExecuteFunction({});
-			mockExecuteFunction.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
-
-			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 100);
-
-			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith('airtopApi', {
-				method: 'GET',
-				url: `${BASE_URL}/sessions/session-123/events?all=true`,
-				encoding: 'stream',
+		it('should resolve when file is available in session', async () => {
+			const apiRequestMock = transport.apiRequest as jest.Mock;
+			apiRequestMock.mockResolvedValueOnce({
+				data: {
+					sessionIds: ['session-123', 'other-session'],
+				},
 			});
 
-			expect(mockStream.removeAllListeners).toHaveBeenCalled();
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
+
+			expect(apiRequestMock).toHaveBeenCalledTimes(1);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
 		});
 
-		it('should timeout if no event is received', async () => {
-			// Create a mock stream
-			const mockStream = {
-				on: jest.fn().mockImplementation(() => {}),
-				removeAllListeners: jest.fn(),
-			};
-			const mockHttpRequestWithAuthentication = jest.fn().mockResolvedValueOnce(mockStream);
+		it('should timeout if file never becomes available in session', async () => {
+			const apiRequestMock = transport.apiRequest as jest.Mock;
+
+			// Mock to always return file not in session
+			apiRequestMock.mockResolvedValue({
+				data: {
+					sessionIds: ['other-session'],
+				},
+			});
 
 			const mockExecuteFunction = createMockExecuteFunction({});
-			mockExecuteFunction.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
 
 			const waitPromise = helpers.waitForFileInSession.call(
 				mockExecuteFunction,
@@ -243,6 +231,24 @@ describe('Test Airtop file helpers', () => {
 			);
 
 			await expect(waitPromise).rejects.toThrow();
+		});
+
+		it('should resolve immediately if file is already in session', async () => {
+			const apiRequestMock = transport.apiRequest as jest.Mock;
+
+			// Mock to return file already in session
+			apiRequestMock.mockResolvedValueOnce({
+				data: {
+					sessionIds: ['session-123', 'other-session'],
+				},
+			});
+
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
+
+			expect(apiRequestMock).toHaveBeenCalledTimes(1);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
 		});
 	});
 
@@ -280,17 +286,22 @@ describe('Test Airtop file helpers', () => {
 			const mockWindowId = 'window-123';
 			const mockSessionId = 'session-123';
 
-			await helpers.triggerFileInput.call(
-				createMockExecuteFunction({}),
-				mockFileId,
-				mockWindowId,
-				mockSessionId,
-			);
+			await helpers.triggerFileInput.call(createMockExecuteFunction({}), {
+				fileId: mockFileId,
+				windowId: mockWindowId,
+				sessionId: mockSessionId,
+				elementDescription: 'test',
+				includeHiddenElements: false,
+			});
 
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				`/sessions/${mockSessionId}/windows/${mockWindowId}/file-input`,
-				{ fileId: mockFileId },
+				{
+					fileId: mockFileId,
+					elementDescription: 'test',
+					includeHiddenElements: false,
+				},
 			);
 		});
 	});

@@ -68,7 +68,7 @@ function handleSelectMenuItem(selected: string) {
 		<N8nActionDropdown
 			v-if="isOpen"
 			icon-size="small"
-			activator-icon="ellipsis-h"
+			activator-icon="ellipsis"
 			activator-size="small"
 			:items="menuItems"
 			:teleported="false /* for PiP window */"

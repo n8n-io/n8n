@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import { isBuiltin } from 'node:module';
 
 import { ExecutionError } from './errors/execution-error';
@@ -37,7 +37,6 @@ export function createRequireResolver({
 			throw new ExecutionError(error);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		return require(request) as unknown;
 	};
 }

@@ -19,6 +19,13 @@ const getBrowserId = () => {
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
+export class MfaRequiredError extends ApplicationError {
+	constructor() {
+		super('MFA is required to access this resource. Please set up MFA in your user settings.');
+		this.name = 'MfaRequiredError';
+	}
+}
+
 export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
@@ -114,6 +121,9 @@ export async function request(config: {
 		}
 
 		const errorResponseData = error.response?.data;
+		if (errorResponseData?.mfaRequired === true) {
+			throw new MfaRequiredError();
+		}
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
@@ -209,6 +219,7 @@ export async function streamRequest<T extends object>(
 	onDone?: () => void,
 	onError?: (e: Error) => void,
 	separator = STREAM_SEPERATOR,
+	abortSignal?: AbortSignal,
 ): Promise<void> {
 	const headers: Record<string, string> = {
 		'browser-id': getBrowserId(),
@@ -219,6 +230,7 @@ export async function streamRequest<T extends object>(
 		method: 'POST',
 		credentials: 'include',
 		body: JSON.stringify(payload),
+		signal: abortSignal,
 	};
 	try {
 		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);

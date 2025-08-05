@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
@@ -11,7 +12,6 @@ import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
 import { WebSocketPush } from '@/push/websocket.push';
-import { mockInstance } from '@test/mocking';
 
 import type { PushConfig } from '../push.config';
 

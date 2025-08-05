@@ -5,7 +5,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
@@ -35,10 +34,6 @@ vi.mock('@/stores/users.store', () => ({
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(),
-}));
-
-vi.mock('@/stores/posthog.store', () => ({
-	usePostHog: vi.fn(),
 }));
 
 vi.mock('@/stores/projects.store', () => ({
@@ -100,10 +95,6 @@ describe('FreeAiCreditsCallout', () => {
 			activeNode: { type: '@n8n/n8n-nodes-langchain.openAi' },
 		});
 
-		(usePostHog as any).mockReturnValue({
-			getVariant: vi.fn().mockReturnValue('variant'),
-		});
-
 		(useProjectsStore as any).mockReturnValue({
 			currentProject: { id: 'test-project-id' },
 		});
@@ -161,16 +152,6 @@ describe('FreeAiCreditsCallout', () => {
 		(useSettingsStore as any).mockReturnValue({
 			isAiCreditsEnabled: false,
 			aiCreditsQuota: 0,
-		});
-
-		renderComponent(FreeAiCreditsCallout);
-
-		assertUserCannotClaimCredits();
-	});
-
-	it('should not be able to claim credits if user it is not in experiment', async () => {
-		(usePostHog as any).mockReturnValue({
-			getVariant: vi.fn().mockReturnValue('control'),
 		});
 
 		renderComponent(FreeAiCreditsCallout);

@@ -1,5 +1,6 @@
 process.argv[2] = 'worker';
 
+import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
@@ -15,13 +16,11 @@ import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
-
-import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -10,7 +11,7 @@ import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
-import { N8N_VERSION, Time } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -50,6 +51,7 @@ export class PrometheusMetricsService {
 			apiPath: this.globalConfig.endpoints.metrics.includeApiPathLabel,
 			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
 			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
+			workflowName: this.globalConfig.endpoints.metrics.includeWorkflowNameLabel,
 		},
 	};
 
@@ -316,32 +318,45 @@ export class PrometheusMetricsService {
 			case EventMessageTypeNames.audit:
 				if (eventName.startsWith('n8n.audit.user.credentials')) {
 					return this.includes.labels.credentialsType
-						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
+						? {
+								credential_type: String(
+									(event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
+								),
+							}
 						: {};
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
-					return this.includes.labels.workflowId
-						? { workflow_id: payload.workflowId ?? 'unknown' }
-						: {};
+					return this.buildWorkflowLabels(payload);
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				return this.includes.labels.nodeType
-					? {
-							node_type: (payload.nodeType ?? 'unknown')
-								.replace('n8n-nodes-', '')
-								.replace(/\./g, '_'),
-						}
-					: {};
+				const nodeLabels: Record<string, string> = this.buildWorkflowLabels(payload);
+
+				if (this.includes.labels.nodeType) {
+					nodeLabels.node_type = String(
+						(payload.nodeType ?? 'unknown').replace('n8n-nodes-', '').replace(/\./g, '_'),
+					);
+				}
+
+				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
-				return this.includes.labels.workflowId
-					? { workflow_id: payload.workflowId ?? 'unknown' }
-					: {};
+				return this.buildWorkflowLabels(payload);
 		}
 
 		return {};
+	}
+
+	private buildWorkflowLabels(payload: any): Record<string, string> {
+		const labels: Record<string, string> = {};
+		if (this.includes.labels.workflowId) {
+			labels.workflow_id = String(payload.workflowId ?? 'unknown');
+		}
+		if (this.includes.labels.workflowName) {
+			labels.workflow_name = String(payload.workflowName ?? 'unknown');
+		}
+		return labels;
 	}
 }

@@ -185,13 +185,37 @@ export abstract class Sandbox extends EventEmitter {
 	}
 
 	private validateTopLevelKeys(item: INodeExecutionData, itemIndex: number) {
-		Object.keys(item).forEach((key) => {
-			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
+		let foundReservedKey: string | null = null;
+		const unknownKeys: string[] = [];
+
+		for (const key in item) {
+			if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
+
+			if (REQUIRED_N8N_ITEM_KEYS.has(key)) {
+				foundReservedKey ??= key;
+			} else {
+				unknownKeys.push(key);
+			}
+		}
+
+		if (unknownKeys.length > 0) {
+			if (foundReservedKey) throw new ReservedKeyFoundError(foundReservedKey, itemIndex);
+
 			throw new ValidationError({
-				message: `Unknown top-level item key: ${key}`,
+				message: `Unknown top-level item key: ${unknownKeys[0]}`,
 				description: 'Access the properties of an item under `.json`, e.g. `item.json`',
 				itemIndex,
 			});
+		}
+	}
+}
+
+class ReservedKeyFoundError extends ValidationError {
+	constructor(reservedKey: string, itemIndex: number) {
+		super({
+			message: 'Invalid output format',
+			description: `An output item contains the reserved key <code>${reservedKey}</code>. To get around this, please wrap each item in an object, under a key called <code>json</code>. <a href="https://docs.n8n.io/data/data-structure/#data-structure" target="_blank">Example</a>`,
+			itemIndex,
 		});
 	}
 }

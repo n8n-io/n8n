@@ -66,7 +66,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			if (e instanceof SyntaxError) {
 				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
 			} else if (
-				text.trim() === '{}' ||
+				(typeof text === 'string' && text.trim() === '{}') ||
 				(e instanceof z.ZodError &&
 					e.issues?.[0] &&
 					e.issues?.[0].code === 'invalid_type' &&

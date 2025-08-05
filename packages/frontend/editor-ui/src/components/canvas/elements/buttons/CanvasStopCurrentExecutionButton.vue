@@ -17,7 +17,7 @@ const title = computed(() =>
 
 <template>
 	<N8nIconButton
-		icon="stop"
+		icon="square"
 		size="large"
 		class="stop-execution"
 		type="secondary"

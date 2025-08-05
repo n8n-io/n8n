@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watchEffect } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -26,80 +26,82 @@ const emit = defineEmits<{
 }>();
 
 const editableRoot = useTemplateRef('editableRoot');
+const measureSpan = useTemplateRef('measureSpan');
+
+// Internal editing value
+const editingValue = ref(props.modelValue);
+
+// Content for width calculation
+const displayContent = computed(() => editingValue.value || props.placeholder);
+
+// Sync when modelValue prop changes
+watchEffect(() => {
+	editingValue.value = props.modelValue;
+});
+
+// Resize logic
+const { width: measuredWidth } = useElementSize(measureSpan);
+const inputWidth = computed(() =>
+	Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth)),
+);
+
+const computedInlineStyles = computed(() => ({
+	width: `${inputWidth.value}px`,
+	maxWidth: `${props.maxWidth}px`,
+	zIndex: 1,
+}));
 
 function forceFocus() {
-	if (editableRoot.value && !props.readOnly) {
+	if (editableRoot.value && !props.readOnly && !props.disabled) {
 		editableRoot.value.edit();
 	}
 }
 
 function forceCancel() {
 	if (editableRoot.value) {
-		newValue.value = props.modelValue;
+		editingValue.value = props.modelValue;
 		editableRoot.value.cancel();
 	}
 }
 
-defineExpose({ forceFocus, forceCancel });
-
 function onSubmit() {
-	if (newValue.value === '') {
-		newValue.value = props.modelValue;
-		temp.value = props.modelValue;
+	const trimmed = editingValue.value.trim();
+	if (!trimmed) {
+		editingValue.value = props.modelValue;
 		return;
 	}
-	emit('update:model-value', newValue.value);
+	if (trimmed !== props.modelValue) {
+		emit('update:model-value', trimmed);
+	}
 }
 
 function onInput(value: string) {
-	newValue.value = value;
+	editingValue.value = value;
 }
 
 function onStateChange(state: string) {
 	if (state === 'cancel') {
-		temp.value = newValue.value;
+		editingValue.value = props.modelValue;
 	}
 }
 
-// Resize logic
-const newValue = ref(props.modelValue);
-const temp = ref(props.modelValue || props.placeholder);
-
-const measureSpan = useTemplateRef('measureSpan');
-const { width: measuredWidth } = useElementSize(measureSpan);
-
-const inputWidth = computed(() => {
-	return Math.max(props.minWidth, Math.min(measuredWidth.value + 1, props.maxWidth));
-});
-
-function onChange(event: Event) {
-	const { value } = event.target as HTMLInputElement;
-	const processedValue = value.replace(/\s/g, '.');
-	temp.value = processedValue.trim() !== '' ? processedValue : props.placeholder;
-}
-
-const computedInlineStyles = computed(() => {
-	return {
-		width: `${inputWidth.value}px`,
-		maxWidth: `${props.maxWidth}px`,
-		zIndex: 1,
-	};
-});
+defineExpose({ forceFocus, forceCancel });
 </script>
 
 <template>
 	<EditableRoot
 		ref="editableRoot"
 		:placeholder="placeholder"
-		:model-value="newValue"
+		:model-value="editingValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
-		:title="modelValue"
+		:title="props.modelValue"
 		:disabled="disabled"
 		:max-length="maxLength"
 		:readonly="readOnly"
 		select-on-focus
 		auto-resize
+		@click="forceFocus"
 		@submit="onSubmit"
 		@update:model-value="onInput"
 		@update:state="onStateChange"
@@ -107,10 +109,10 @@ const computedInlineStyles = computed(() => {
 		<EditableArea
 			:style="computedInlineStyles"
 			:class="$style.inlineRenameArea"
-			@click="forceFocus"
+			data-test-id="inline-editable-area"
 		>
 			<span ref="measureSpan" :class="$style.measureSpan">
-				{{ temp }}
+				{{ displayContent }}
 			</span>
 			<EditablePreview
 				data-test-id="inline-edit-preview"
@@ -122,7 +124,7 @@ const computedInlineStyles = computed(() => {
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
 				:style="computedInlineStyles"
-				@input="onChange"
+				@input="onInput($event.target.value)"
 			/>
 		</EditableArea>
 	</EditableRoot>
@@ -184,7 +186,7 @@ const computedInlineStyles = computed(() => {
 	position: absolute;
 	top: 0;
 	visibility: hidden;
-	white-space: nowrap;
+	white-space: pre;
 	font-family: inherit;
 	font-size: inherit;
 	font-weight: inherit;

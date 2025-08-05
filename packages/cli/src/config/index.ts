@@ -23,7 +23,7 @@ if (inE2ETests) {
 	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	globalConfig.auth.cookie.secure = false;
-	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'false';
 }
 
 // Load schema after process.env has been overwritten
@@ -111,7 +111,7 @@ setGlobalState({
 	defaultTimezone: globalConfig.generic.timezone,
 });
 
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default config;
 
 export type Config = typeof config;

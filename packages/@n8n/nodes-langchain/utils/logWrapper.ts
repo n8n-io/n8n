@@ -441,8 +441,8 @@ export function logWrapper<
 					return async (
 						query: string,
 						k?: number,
-						filter?: BiquadFilterType | undefined,
-						_callbacks?: Callbacks | undefined,
+						filter?: BiquadFilterType,
+						_callbacks?: Callbacks,
 					): Promise<Document[]> => {
 						connectionType = NodeConnectionTypes.AiVectorStore;
 						const { index } = executeFunctions.addInputData(connectionType, [

@@ -1,11 +1,14 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+type DataToSave = {
+	values: Array<{ key: string; value: string }>;
+};
 
 export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,7 +17,7 @@ export class ExecutionData implements INodeType {
 		icon: 'fa:tasks',
 		group: ['input'],
 		iconColor: 'light-green',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Add execution data for search',
 		defaults: {
 			name: 'Execution Data',
@@ -70,6 +73,7 @@ export class ExecutionData implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'e.g. myKey',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Value',
@@ -102,26 +106,51 @@ export class ExecutionData implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const context = this.getWorkflowDataProxy(0);
+		const dataProxy = this.getWorkflowDataProxy(0);
+		const nodeVersion = this.getNode().typeVersion;
 
 		const items = this.getInputData();
 		const operations = this.getNodeParameter('operation', 0);
 
+		const returnData: INodeExecutionData[] = [];
+
 		if (operations === 'save') {
 			for (let i = 0; i < items.length; i++) {
-				const dataToSave =
-					((this.getNodeParameter('dataToSave', i, {}) as IDataObject).values as IDataObject[]) ||
-					[];
+				try {
+					const dataToSave =
+						(this.getNodeParameter('dataToSave', i, {}) as DataToSave).values || [];
 
-				const values = dataToSave.reduce((acc, { key, value }) => {
-					acc[key as string] = value;
-					return acc;
-				}, {} as IDataObject);
+					const values = dataToSave.reduce(
+						(acc, { key, value }) => {
+							const valueToSet = value ? value : nodeVersion >= 1.1 ? '' : value;
+							acc[key] = valueToSet;
+							return acc;
+						},
+						{} as { [key: string]: string },
+					);
 
-				context.$execution.customData.setAll(values);
+					dataProxy.$execution.customData.setAll(values);
+
+					returnData.push(items[i]);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+						continue;
+					}
+					throw new NodeOperationError(this.getNode(), error);
+				}
 			}
+		} else {
+			return [items];
 		}
 
-		return [items];
+		return [returnData];
 	}
 }

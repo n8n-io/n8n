@@ -2,7 +2,7 @@ import type { CurrentUserResponse } from '@/Interface';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, identify, inviteUsers } = vi.hoisted(() => {
+const { loginCurrentUser, inviteUsers } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
@@ -16,12 +16,6 @@ vi.mock('@/api/users', () => ({
 
 vi.mock('@/api/invitation', () => ({
 	inviteUsers,
-}));
-
-vi.mock('@/composables/useTelemetry', () => ({
-	useTelemetry: vi.fn(() => ({
-		identify,
-	})),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -59,8 +53,6 @@ describe('users.store', () => {
 				isDefaultUser: false,
 				isPendingUser: false,
 			});
-
-			expect(identify).toHaveBeenCalledWith('test-instance-id', mockUser.id);
 		});
 	});
 

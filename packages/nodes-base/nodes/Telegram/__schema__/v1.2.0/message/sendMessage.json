@@ -30,6 +30,26 @@
                 "date": {
                     "type": "integer"
                 },
+                "entities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "length": {
+                                "type": "integer"
+                            },
+                            "offset": {
+                                "type": "integer"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "from": {
                     "type": "object",
                     "properties": {
@@ -47,6 +67,14 @@
                         }
                     }
                 },
+                "link_preview_options": {
+                    "type": "object",
+                    "properties": {
+                        "is_disabled": {
+                            "type": "boolean"
+                        }
+                    }
+                },
                 "message_id": {
                     "type": "integer"
                 },
@@ -56,5 +84,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

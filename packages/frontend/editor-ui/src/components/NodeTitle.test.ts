@@ -70,9 +70,10 @@ describe('NodeTitle', () => {
 			},
 		});
 		const renameInput = getByTestId('inline-edit-input');
-		await userEvent.type(renameInput, 'New Node Name');
+		const area = getByTestId('inline-editable-area');
+
+		await userEvent.type(area, 'New Node Name');
 		await userEvent.keyboard('{Escape}');
-		await userEvent.click(renameInput);
 		expect(renameInput).toHaveValue('Test Node');
 		expect(emitted('update:model-value')).toBeUndefined();
 	});

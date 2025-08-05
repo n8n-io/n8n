@@ -43,7 +43,7 @@ type FieldName = 'user' | 'inviter' | 'invitee';
 export const Redactable =
 	(fieldName: FieldName = 'user'): MethodDecorator =>
 	(_target, _propertyName, propertyDescriptor: PropertyDescriptor) => {
-		// eslint-disable-next-line @typescript-eslint/ban-types
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const originalMethod = propertyDescriptor.value as Function;
 
 		type MethodArgs = Array<{ [fieldName: string]: UserLike }>;

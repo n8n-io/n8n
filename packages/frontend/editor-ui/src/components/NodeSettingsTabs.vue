@@ -1,35 +1,43 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
-import {
-	BUILTIN_NODES_DOCS_URL,
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	NPM_PACKAGE_DOCS_BASE_URL,
-} from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, PublicInstalledPackage } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { N8nTabs } from '@n8n/design-system';
+import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
-type Tab = 'settings' | 'params';
 type Props = {
-	modelValue?: Tab;
+	modelValue?: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
+	hideDocs?: boolean;
+	tabsVariant?: 'modern' | 'legacy';
+	includeAction?: boolean;
+	includeCredential?: boolean;
+	hasCredentialIssue?: boolean;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	modelValue: 'params',
 	nodeType: undefined,
 	pushRef: '',
+	tabsVariant: undefined,
+	hasCredentialIssue: false,
 });
 const emit = defineEmits<{
-	'update:model-value': [tab: Tab];
+	'update:model-value': [tab: NodeSettingsTab];
 }>();
 
 const externalHooks = useExternalHooks();
@@ -37,8 +45,12 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
+const communityNodesStore = useCommunityNodesStore();
 
 const activeNode = computed(() => ndvStore.activeNode);
+
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 const isCommunityNode = computed(() => {
 	const nodeType = props.nodeType;
@@ -51,51 +63,54 @@ const isCommunityNode = computed(() => {
 const packageName = computed(() => props.nodeType?.name.split('.')[0] ?? '');
 
 const documentationUrl = computed(() => {
-	const nodeType = props.nodeType;
-
-	if (!nodeType) {
+	if (props.hideDocs) {
 		return '';
 	}
 
-	if (nodeType.documentationUrl && nodeType.documentationUrl.startsWith('http')) {
-		return nodeType.documentationUrl;
-	}
-
-	const utmParams = new URLSearchParams({
-		utm_source: 'n8n_app',
-		utm_medium: 'node_settings_modal-credential_link',
-		utm_campaign: nodeType.name,
-	});
-
-	// Built-in node documentation available via its codex entry
-	const primaryDocUrl = nodeType.codex?.resources?.primaryDocumentation?.[0]?.url;
-	if (primaryDocUrl) {
-		return `${primaryDocUrl}?${utmParams.toString()}`;
-	}
-
-	if (isCommunityNode.value) {
-		return `${NPM_PACKAGE_DOCS_BASE_URL}${packageName.value}`;
-	}
-
-	// Fallback to the root of the node documentation
-	return `${BUILTIN_NODES_DOCS_URL}?${utmParams.toString()}`;
+	return docsUrl.value;
 });
 
-const options = computed<ITab[]>(() => {
-	const options: ITab[] = [
+const options = computed(() => {
+	const ret: Array<ITab<NodeSettingsTab>> = [];
+
+	if (props.includeAction) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.action'),
+			value: 'action',
+		});
+	}
+
+	if (props.includeCredential) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.credential'),
+			value: 'credential',
+			...(props.hasCredentialIssue && {
+				icon: 'triangle-alert',
+				iconPosition: 'right',
+				variant: 'danger',
+			}),
+		});
+	}
+
+	ret.push(
 		{
-			label: i18n.baseText('nodeSettings.parameters'),
+			label: i18n.baseText(
+				props.compact ? 'nodeSettings.parametersShort' : 'nodeSettings.parameters',
+			),
 			value: 'params',
 		},
 		{
-			label: i18n.baseText('nodeSettings.settings'),
 			value: 'settings',
+			notification: installedPackage.value?.updateAvailable ? true : undefined,
+			...(props.compact
+				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
+				: { label: i18n.baseText('nodeSettings.settings') }),
 		},
-	];
+	);
 
 	if (isCommunityNode.value) {
-		options.push({
-			icon: 'cube',
+		ret.push({
+			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
 			tooltip: i18n.baseText('generic.communityNode.tooltip', {
@@ -108,18 +123,20 @@ const options = computed<ITab[]>(() => {
 	}
 
 	if (documentationUrl.value) {
-		options.push({
-			label: i18n.baseText('nodeSettings.docs'),
+		ret.push({
 			value: 'docs',
 			href: documentationUrl.value,
 			align: 'right',
+			...(props.compact
+				? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
+				: { label: i18n.baseText('nodeSettings.docs') }),
 		});
 	}
 
-	return options;
+	return ret;
 });
 
-function onTabSelect(tab: string) {
+function onTabSelect(tab: NodeSettingsTab) {
 	if (tab === 'docs' && props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
@@ -142,22 +159,30 @@ function onTabSelect(tab: string) {
 		});
 	}
 
-	if (tab === 'settings' || tab === 'params') {
+	if (tab === 'settings' || tab === 'params' || tab === 'action' || tab === 'credential') {
 		emit('update:model-value', tab);
 	}
 }
 
-function onTooltipClick(tab: string, event: MouseEvent) {
+function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}
 }
+
+onMounted(async () => {
+	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
+		installedPackage.value = await communityNodesStore.getInstalledPackage(packageName.value);
+	}
+});
 </script>
 
 <template>
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
+		:variant="tabsVariant"
+		:size="compact ? 'small' : 'medium'"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	/>

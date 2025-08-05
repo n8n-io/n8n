@@ -15,6 +15,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function useDataSchema() {
 	function getSchema(
@@ -242,7 +243,7 @@ export type SchemaNode = {
 export type RenderItem = {
 	type: 'item';
 	id: string;
-	icon: string;
+	icon: IconName;
 	title?: string;
 	path?: string;
 	level?: number;
@@ -271,7 +272,7 @@ export type RenderHeader = {
 export type RenderIcon = {
 	id: string;
 	type: 'icon';
-	icon: string;
+	icon: IconName;
 	tooltip: string;
 };
 
@@ -292,20 +293,20 @@ export type RenderEmpty = {
 
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
-const icons = {
-	object: 'cube',
+const icons: { [key: string]: IconName } = {
+	object: 'box',
 	array: 'list',
-	['string']: 'font',
-	null: 'font',
-	['number']: 'hashtag',
-	['boolean']: 'check-square',
+	['string']: 'case-upper',
+	null: 'case-upper',
+	['number']: 'hash',
+	['boolean']: 'square-check',
 	function: 'code',
 	bigint: 'calculator',
 	symbol: 'sun',
 	['undefined']: 'ban',
 } as const;
 
-const getIconBySchemaType = (type: Schema['type']): string => icons[type];
+const getIconBySchemaType = (type: Schema['type']): IconName => icons[type];
 
 const emptyItem = (
 	key: RenderEmpty['key'],
@@ -321,7 +322,7 @@ const emptyItem = (
 const moreFieldsItem = (): RenderIcon => ({
 	id: `moreFields-${window.crypto.randomUUID()}`,
 	type: 'icon',
-	icon: 'ellipsis-h',
+	icon: 'ellipsis',
 	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 

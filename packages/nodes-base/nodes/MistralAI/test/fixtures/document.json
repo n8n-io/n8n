@@ -1,0 +1,20 @@
+{
+	"pages": [
+		{
+			"index": 0,
+			"markdown": "# Dummy PDF file",
+			"images": [],
+			"dimensions": {
+				"dpi": 200,
+				"height": 2339,
+				"width": 1653
+			}
+		}
+	],
+	"model": "mistral-ocr-2505-completion",
+	"document_annotation": null,
+	"usage_info": {
+		"pages_processed": 1,
+		"doc_size_bytes": 13264
+	}
+}

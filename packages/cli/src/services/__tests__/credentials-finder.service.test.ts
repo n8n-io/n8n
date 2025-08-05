@@ -1,6 +1,5 @@
 import { SharedCredentials } from '@n8n/db';
-import type { CredentialsEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';

@@ -337,8 +337,8 @@ onMounted(() => {
 			/>
 		</div>
 		<CommunityNodeFooter
-			:class="$style.communityNodeFooter"
 			v-if="communityNodeDetails"
+			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
 			:show-manage="communityNodeDetails.installed && isInstanceOwner"
 		/>

@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { isChatNode } from '@/utils/aiUtils';
+import { I18nT } from 'vue-i18n';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -51,7 +52,7 @@ const actions = computed(() =>
 		})
 		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 25),
-			disabled: !!node.disabled,
+			disabled: !!node.disabled || props.executing,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
 		})),
@@ -83,7 +84,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:loading="executing"
 				:disabled="disabled"
 				size="large"
-				icon="flask"
+				icon="flask-conical"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
@@ -93,7 +94,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				<span :class="$style.buttonContent">
 					{{ label }}
 					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
-						<I18nT keypath="nodeView.runButtonText.from">
+						<I18nT keypath="nodeView.runButtonText.from" scope="global">
 							<template #nodeName>
 								<N8nText bold size="mini">
 									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
@@ -105,6 +106,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 		<template v-if="isSplitButton">
+			<div role="presentation" :class="$style.divider" />
 			<N8nActionDropdown
 				:class="$style.menu"
 				:items="actions"
@@ -115,18 +117,18 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				<template #activator>
 					<N8nButton
 						type="primary"
-						size="large"
-						:disabled="disabled || executing"
+						icon-size="large"
+						:disabled="disabled"
 						:class="$style.chevron"
 						aria-label="Select trigger node"
-						icon="angle-down"
+						icon="chevron-down"
 					/>
 				</template>
 				<template #menuItem="item">
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
 						<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
 						<span>
-							<I18nT keypath="nodeView.runButtonText.from">
+							<I18nT keypath="nodeView.runButtonText.from" scope="global">
 								<template #nodeName>
 									<N8nText bold size="small">{{ item.label }}</N8nText>
 								</template>
@@ -151,28 +153,21 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		height: var(--spacing-2xl);
 
 		padding-inline-start: var(--spacing-xs);
-		padding-inline-end: var(--spacing-xl);
 		padding-block: 0;
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 }
 
+.divider {
+	width: 1px;
+	background-color: var(--button-font-color, var(--color-button-primary-font));
+}
+
 .chevron {
-	position: absolute;
-	right: var(--spacing-3xs);
-	top: var(--spacing-3xs);
-	width: 18px;
-	height: calc(100% - var(--spacing-3xs) * 2);
-	border: none;
-	padding: 0;
-	background-color: transparent;
-
-	&:not(:disabled):hover {
-		background-color: var(--prim-color-primary-tint-100);
-	}
-
-	&:disabled {
-		background-color: transparent !important;
-	}
+	width: 40px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 .menu :global(.el-dropdown) {

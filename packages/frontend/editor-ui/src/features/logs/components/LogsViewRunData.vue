@@ -9,11 +9,17 @@ import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PiPWindowSymbol } from '@/constants';
+import { isSubNodeLog } from '../logs.utils';
 
-const { title, logEntry, paneType } = defineProps<{
+const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
+	collapsingTableColumnName: string | null;
+}>();
+
+const emit = defineEmits<{
+	collapsingTableColumnChanged: [columnName: string | null];
 }>();
 
 const locale = useI18n();
@@ -28,7 +34,7 @@ const isMultipleInput = computed(
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
-	if (logEntry.depth > 0 || paneType === 'output') {
+	if (isSubNodeLog(logEntry) || paneType === 'output') {
 		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
@@ -69,7 +75,8 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		v-if="runDataProps"
 		v-bind="runDataProps"
 		:key="`run-data${pipWindow ? '-pip' : ''}`"
-		:workflow="logEntry.workflow"
+		:class="$style.component"
+		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
@@ -80,11 +87,14 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
+		:disable-settings-hint="true"
 		:display-mode="displayMode"
-		:disable-ai-content="logEntry.depth === 0"
+		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"
 		table-header-bg-color="light"
+		:collapsing-table-column-name="collapsingTableColumnName"
 		@display-mode-change="handleChangeDisplayMode"
+		@collapsing-table-column-changed="emit('collapsingTableColumnChanged', $event)"
 	>
 		<template #header>
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">
@@ -110,7 +120,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template v-if="isMultipleInput" #callout-message>
-			<I18nT keypath="logs.details.body.multipleInputs">
+			<I18nT keypath="logs.details.body.multipleInputs" scope="global">
 				<template #button>
 					<N8nLink size="small" @click="handleClickOpenNdv">
 						{{ locale.baseText('logs.details.body.multipleInputs.openingTheNode') }}
@@ -122,6 +132,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 </template>
 
 <style lang="scss" module>
+.component {
+	--color-run-data-background: var(--color-background-light);
+}
+
 .title {
 	text-transform: uppercase;
 	letter-spacing: 3px;

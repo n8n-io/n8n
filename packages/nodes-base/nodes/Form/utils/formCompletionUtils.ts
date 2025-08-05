@@ -68,7 +68,7 @@ export const renderFormCompletion = async (
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
-		message: completionMessage,
+		message: sanitizeHtml(completionMessage),
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),

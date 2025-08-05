@@ -1,5 +1,5 @@
-import type { IExecutionResponse } from '@n8n/db';
-import type { ExecutionRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 
@@ -13,7 +13,6 @@ import type { ExecutionRequest } from '@/executions/execution.types';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { WaitTracker } from '@/wait-tracker';
-import { mockInstance } from '@test/mocking';
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);

@@ -11,7 +11,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "develop": "cd ..; pnpm dev:e2e:server",
     "start": "cd ..; pnpm start"
   },
@@ -19,7 +19,8 @@
     "@cypress/grep": "^4.1.0",
     "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
-    "eslint-plugin-cypress": "^3.5.0",
+    "eslint-plugin-cypress": "^4.3.0",
+    "mocha-junit-reporter": "^2.2.1",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {

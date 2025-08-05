@@ -27,8 +27,10 @@ jobs:
     steps:
       - name: Check Version Format
         id: check_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          input_version="${{ github.event.inputs.version }}"
+          input_version="${{ env.INPUT_VERSION }}"
           version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
 
           if [[ "$input_version" =~ $version_regex ]]; then

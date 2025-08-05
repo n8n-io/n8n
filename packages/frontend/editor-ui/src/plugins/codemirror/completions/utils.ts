@@ -4,7 +4,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
@@ -215,18 +215,18 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
-export function autocompletableNodeNames(contextNodeName?: string) {
+export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
 	const activeNode =
-		contextNodeName === undefined
+		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
-			: useWorkflowsStore().getNodeByName(contextNodeName);
+			: useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];
 
 	const activeNodeName = activeNode.name;
 
-	const workflow = useWorkflowHelpers().getCurrentWorkflow();
-	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+	const workflowObject = useWorkflowsStore().workflowObject;
+	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
@@ -237,8 +237,8 @@ export function autocompletableNodeNames(contextNodeName?: string) {
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflow = useWorkflowHelpers().getCurrentWorkflow();
-	return workflow
+	const workflowObject = useWorkflowsStore().workflowObject;
+	return workflowObject
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
 		.filter((name) => name !== nodeName);

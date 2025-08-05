@@ -9,11 +9,13 @@ import type {
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
+import type { IUser } from 'n8n-workflow';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	items: WorkflowHistory[];
 	activeItem: WorkflowHistory | null;
-	actions: UserAction[];
+	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
 	evaluatedPruneTime: number;
@@ -141,13 +143,13 @@ const onItemMounted = ({
 					})
 				}}
 			</span>
-			<i18n-t keypath="workflowHistory.upgrade" tag="span">
+			<I18nT keypath="workflowHistory.upgrade" tag="span" scope="global">
 				<template #link>
 					<a href="#" @click="emit('upgrade')">
 						{{ i18n.baseText('workflowHistory.upgrade.link') }}
 					</a>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</li>
 	</ul>
 </template>

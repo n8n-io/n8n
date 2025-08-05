@@ -14,7 +14,6 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 			if (!node.computed) {
 				// This is static, so we're safe to error here
 				if (node.property.type !== 'Identifier') {
-					// eslint-disable-next-line n8n-local-rules/no-plain-errors
 					throw new ExpressionError(
 						`Unknown property type ${node.property.type} while sanitising expression`,
 					);

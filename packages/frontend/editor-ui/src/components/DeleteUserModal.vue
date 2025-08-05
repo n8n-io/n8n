@@ -11,7 +11,10 @@ import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	modalName: string;
-	activeId: string;
+	data: {
+		userId: string;
+		afterDelete?: () => Promise<void>;
+	};
 }>();
 
 const modalBus = createEventBus();
@@ -25,17 +28,18 @@ const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 
 const userToDelete = computed(() => {
-	if (!props.activeId) return null;
+	if (!props.data?.userId) return null;
 
-	return usersStore.usersById[props.activeId];
+	return usersStore.usersList.state.items.find((user) => user.id === props.data.userId);
 });
 
-const isPending = computed(() => {
-	return userToDelete.value ? !userToDelete.value.firstName : false;
-});
+const isPending = computed(() => !userToDelete.value?.firstName);
 
 const title = computed(() => {
-	const user = userToDelete.value?.fullName ?? userToDelete.value?.email ?? '';
+	const user =
+		userToDelete.value?.firstName && userToDelete.value.lastName
+			? `${userToDelete.value.firstName} ${userToDelete.value.lastName}`
+			: (userToDelete.value?.email ?? '');
 
 	return i18n.baseText('settings.users.deleteUser', { interpolate: { user } });
 });
@@ -52,11 +56,7 @@ const enabled = computed(() => {
 		return true;
 	}
 
-	if (operation.value === 'transfer' && selectedProject.value) {
-		return true;
-	}
-
-	return false;
+	return !!(operation.value === 'transfer' && selectedProject.value);
 });
 
 const projects = computed(() => {
@@ -81,7 +81,7 @@ async function onSubmit() {
 	try {
 		loading.value = true;
 
-		const params = { id: props.activeId } as { id: string; transferId?: string };
+		const params = { id: props.data.userId } as { id: string; transferId?: string };
 		if (operation.value === 'transfer' && selectedProject.value) {
 			params.transferId = selectedProject.value.id;
 		}
@@ -104,6 +104,7 @@ async function onSubmit() {
 			message,
 		});
 
+		await props.data.afterDelete?.();
 		modalBus.emit('close');
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.userDeletedError'));

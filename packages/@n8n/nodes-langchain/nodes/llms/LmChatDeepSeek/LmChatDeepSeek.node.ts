@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -9,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getHttpProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
@@ -20,7 +18,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepSeek Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatDeepSeek',
 		icon: 'file:deepseek.svg',
 		group: ['transform'],
@@ -43,9 +41,9 @@ export class LmChatDeepSeek implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -230,7 +228,9 @@ export class LmChatDeepSeek implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			httpAgent: getHttpProxyAgent(),
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.url),
+			},
 		};
 
 		const model = new ChatOpenAI({

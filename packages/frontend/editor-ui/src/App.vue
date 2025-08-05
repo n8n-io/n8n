@@ -38,7 +38,10 @@ useHistoryHelper(route);
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
-const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
+const showAssistantFloatingButton = computed(
+	() =>
+		assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.hideAssistantFloatingButton,
+);
 const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
@@ -129,7 +132,7 @@ watch(
 				<Modals />
 			</div>
 			<Telemetry />
-			<AskAssistantFloatingButton v-if="showAssistantButton" />
+			<AskAssistantFloatingButton v-if="showAssistantFloatingButton" />
 		</div>
 		<AssistantsHub />
 	</div>

@@ -1,6 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { existsSync } from 'fs';
 import path from 'path';
 
 import { MissingModuleError } from './errors/missing-module.error';
@@ -48,8 +49,20 @@ export class ModuleRegistry {
 	 * setup.
 	 */
 	async loadModules(modules?: ModuleName[]) {
-		const moduleDir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
-		const modulesDir = path.resolve(__dirname, `../../../../cli/${moduleDir}/modules`);
+		let modulesDir: string;
+
+		try {
+			// docker + tests
+			const n8nPackagePath = require.resolve('n8n/package.json');
+			const n8nRoot = path.dirname(n8nPackagePath);
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
+			modulesDir = path.join(n8nRoot, dir, 'modules');
+		} catch {
+			// local dev
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
+		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
@@ -64,7 +77,7 @@ export class ModuleRegistry {
 		}
 
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
-			const entities = Container.get(ModuleClass).entities?.();
+			const entities = await Container.get(ModuleClass).entities?.();
 
 			if (!entities || entities.length === 0) continue;
 
@@ -93,14 +106,28 @@ export class ModuleRegistry {
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
-			if (!moduleSettings) continue;
-
-			this.settings.set(moduleName, moduleSettings);
+			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 
 			this.activeModules.push(moduleName);
 		}
+	}
+
+	async shutdownModule(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping shutdown for unregistered module', { moduleName });
+			return;
+		}
+
+		await Container.get(moduleEntry.class).shutdown?.();
+
+		const index = this.activeModules.indexOf(moduleName);
+		if (index > -1) this.activeModules.splice(index, 1);
+
+		this.logger.debug(`Shut down module "${moduleName}"`);
 	}
 
 	isActive(moduleName: ModuleName) {

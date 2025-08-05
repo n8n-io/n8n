@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 type Props = {
 	limit: number;
@@ -24,7 +25,7 @@ const goToUpgrade = async () => {
 		width="500"
 	>
 		<div class="pt-l">
-			<i18n-t keypath="projects.settings.role.upgrade.message">
+			<I18nT keypath="projects.settings.role.upgrade.message" scope="global">
 				<template #planName>{{ props.planName }}</template>
 				<template #limit>
 					{{
@@ -34,7 +35,7 @@ const goToUpgrade = async () => {
 						})
 					}}
 				</template>
-			</i18n-t>
+			</I18nT>
 		</div>
 		<template #footer>
 			<N8nButton type="secondary" native-type="button" @click="visible = false">{{
