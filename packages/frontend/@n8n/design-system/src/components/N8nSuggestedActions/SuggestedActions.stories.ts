@@ -49,11 +49,11 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="padding: 50px;">
 			<p style="margin-bottom: 20px;">Popover is: {{ isOpen ? 'Open' : 'Closed' }}</p>
-			<N8nSuggestedActions 
-				v-bind="args" 
+			<N8nSuggestedActions
+				v-bind="args"
 				v-model:open="isOpen"
-				@action-click="onActionClick" 
-				@ignore-click="onIgnoreClick" 
+				@action-click="onActionClick"
+				@ignore-click="onIgnoreClick"
 			/>
 		</div>
 	`,
@@ -89,7 +89,7 @@ export const InitiallyOpen = Template.bind({});
 InitiallyOpen.args = {
 	...Default.args,
 	open: true,
-} satisfies SuggestedActionsProps;
+};
 
 export const WithoutMoreInfoLinks = Template.bind({});
 WithoutMoreInfoLinks.args = {
@@ -334,11 +334,11 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 				<button @click="forceClose">Force Close</button>
 				<p style="margin-top: 10px;">Popover is: {{ isOpen ? 'Open' : 'Closed' }}</p>
 			</div>
-			<N8nSuggestedActions 
-				v-bind="args" 
+			<N8nSuggestedActions
+				v-bind="args"
 				v-model:open="isOpen"
-				@action-click="onActionClick" 
-				@ignore-click="onIgnoreClick" 
+				@action-click="onActionClick"
+				@ignore-click="onIgnoreClick"
 			/>
 		</div>
 	`,
