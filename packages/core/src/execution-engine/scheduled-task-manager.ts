@@ -7,7 +7,7 @@ import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
-type CronKey = string; // specifically: `JSON.stringify(cronMetadata)`
+type CronKey = string; // see `ScheduledTaskManager.toCronKey`
 type Cron = { job: CronJob; summary: string };
 type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
 
