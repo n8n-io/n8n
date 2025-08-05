@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
+import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
 
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
@@ -21,6 +22,7 @@ export class ScheduledTaskManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -43,12 +45,15 @@ export class ScheduledTaskManager {
 		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
 
 		if (workflowCrons?.has(key)) {
-			// @TODO: Report to Sentry
-			this.logger.debug('Skipped registration for already registered cron', {
-				workflowId,
-				nodeId,
-				cron: summary,
-				instanceRole: this.instanceSettings.instanceRole,
+			this.errorReporter.error('Skipped registration for already registered cron', {
+				extra: {
+					workflowId,
+					timezone,
+					nodeId,
+					expression,
+					recurrence,
+					instanceRole: this.instanceSettings.instanceRole,
+				},
 			});
 			return;
 		}
