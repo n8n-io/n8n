@@ -27,10 +27,10 @@ Pending functionality:
 
 A **locale identifier** is a language code compatible with the [`Accept-Language` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language), e.g. `de` (German), `es` (Spanish), `ja` (Japanese). Regional variants of locale identifiers, such as `-AT` in `de-AT`, are _not_ supported. For a list of all locale identifiers, see [column 639-1 in this table](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
 
-By default, n8n runs in the `en` (English) locale. To have run it in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable to a locale identifier. When running in a non-`en` locale, n8n will display UI strings for the selected locale and fall back to `en` for any untranslated strings.
+By default, Nurx runs in the `kk` (Kazakh) locale. To run it in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable to a locale identifier. When running in a non-`kk` locale, Nurx will display UI strings for the selected locale and fall back to `en` for any untranslated strings.
 
 ```
-export N8N_DEFAULT_LOCALE=de
+export N8N_DEFAULT_LOCALE=kk
 pnpm start
 ```
 
@@ -40,12 +40,19 @@ Output:
 Initializing n8n process
 n8n ready on 0.0.0.0, port 5678
 Version: 0.156.0
-Locale: de
+Locale: kk
 
 Editor is now accessible via:
 http://localhost:5678/
 
 Press "o" to open in Browser.
+```
+
+To switch to English (or another language), you can set:
+
+```
+export N8N_DEFAULT_LOCALE=en
+pnpm start
 ```
 
 ## Base text
