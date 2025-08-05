@@ -4,6 +4,17 @@
 	// Primary tokens
 	--color-danger: var(--prim-color-alt-k);
 
+	// Diff colors (dark theme overrides)
+	--diff-new: #38cb7a;
+	--diff-new-light: #43674f;
+	--diff-new-faint: #3a463e;
+	--diff-modified: #d6a625;
+	--diff-modified-light: #6a5c38;
+	--diff-modified-faint: #464236;
+	--diff-del: #fb887a;
+	--diff-del-light: #7a524e;
+	--diff-del-faint: #4d3e3d;
+
 	// Text
 	--color-text-dark: var(--prim-gray-40);
 	--color-text-base: var(--prim-gray-200);

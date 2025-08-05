@@ -42,6 +42,17 @@
 	--color-danger-tint-1: var(--prim-color-alt-c-tint-400);
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
+	// Diff colors
+	--diff-new: #0eab54;
+	--diff-new-light: #b4efc4;
+	--diff-new-faint: #ddfbe7;
+	--diff-modified: #bf941f;
+	--diff-modified-light: #f3dca1;
+	--diff-modified-faint: #fbf1d4;
+	--diff-del: #f51f32;
+	--diff-del-light: #fad3d0;
+	--diff-del-faint: #ffedec;
+
 	// Text
 	--color-text-dark: var(--prim-gray-740);
 	--color-text-base: var(--prim-gray-540);
