@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { DATA_STORE_STORE } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchDataStores, createDataStore } from '@/features/dataStore/datastore.api';
+import { fetchDataStores, createDataStore } from '@/features/dataStore/dataStore.api';
 import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
