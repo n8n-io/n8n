@@ -223,6 +223,9 @@ export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
+// template categories
+export const TEMPLATE_CATEGORY_AI = 'categories/ai';
+
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
