@@ -974,7 +974,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.47(ec6ed58186d6a1a54e923341a6f0ab3b)
+        version: 0.3.47(438356ed01a7485a5354296e4de89428)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
@@ -19540,7 +19540,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.47(ec6ed58186d6a1a54e923341a6f0ab3b)':
+  '@langchain/community@0.3.47(438356ed01a7485a5354296e4de89428)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -29966,8 +29966,8 @@ snapshots:
 
   postcss-nested@6.0.1(postcss@8.5.6):
     dependencies:
-      postcss: 8.4.49
-      postcss-selector-parser: 6.0.16
+      postcss: 8.5.6
+      postcss-selector-parser: 6.1.2
 
   postcss-resolve-nested-selector@0.1.6: {}
 
