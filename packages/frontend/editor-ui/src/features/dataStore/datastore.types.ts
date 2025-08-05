@@ -1,4 +1,4 @@
-import { ProjectSharingData } from 'n8n-workflow';
+import type { ProjectSharingData } from 'n8n-workflow';
 
 export type DataStoreEntity = {
 	id: string;
