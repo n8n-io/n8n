@@ -28,6 +28,7 @@ interface Props {
 	placeholder?: string;
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
+	maxLength?: number;
 }
 
 const emit = defineEmits<{
@@ -249,7 +250,7 @@ watch(
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
-					:maxlength="1000"
+					:maxlength="maxLength"
 					data-test-id="chat-input"
 					@keydown.enter.exact.prevent="onSendMessage"
 					@input.prevent="growInput"
