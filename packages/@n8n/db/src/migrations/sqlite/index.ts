@@ -83,6 +83,7 @@ import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvalu
 import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
 import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
+import { CreateDataStoreTables1747814180618 } from '../common/1747814180618-CreateDataStoreTables';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
@@ -174,6 +175,7 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowArchivedColumn1745934666076,
 	DropRoleTable1745934666077,
 	ClearEvaluation1745322634000,
+	CreateDataStoreTables1747814180618,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,

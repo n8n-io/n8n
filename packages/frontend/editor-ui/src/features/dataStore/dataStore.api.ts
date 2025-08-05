@@ -5,7 +5,7 @@ import { type DataStoreEntity } from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
-	projectId?: string,
+	projectId: string,
 	options?: {
 		skip?: number;
 		take?: number;
