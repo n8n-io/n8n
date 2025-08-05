@@ -582,7 +582,7 @@ export class LoadNodesAndCredentials {
 					}
 				};
 
-				await subscribe(watchPath, onFileEvent, { ignore: [] });
+				await subscribe(watchPath, onFileEvent, { ignore: ['**/node_modules/**/node_modules/**'] });
 			}
 		});
 	}
