@@ -40,7 +40,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
@@ -81,7 +80,6 @@ const props = defineProps<{
 const $style = useCssModule();
 
 const rootStore = useRootStore();
-const canvasStore = useCanvasStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const tagsStore = useTagsStore();

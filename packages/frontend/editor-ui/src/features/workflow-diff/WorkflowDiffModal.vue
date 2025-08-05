@@ -21,7 +21,7 @@ import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { computed, ref, useCssModule, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -36,7 +36,6 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
-const route = useRoute();
 const router = useRouter();
 
 const workflowsStore = useWorkflowsStore();
