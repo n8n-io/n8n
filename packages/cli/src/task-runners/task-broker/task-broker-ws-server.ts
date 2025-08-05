@@ -101,7 +101,9 @@ export class TaskBrokerWsServer {
 			try {
 				const buffer = Array.isArray(data)
 					? Buffer.concat(data)
-					: Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
 
 				const message: RunnerMessage.ToBroker.All = JSON.parse(
 					buffer.toString('utf8'),

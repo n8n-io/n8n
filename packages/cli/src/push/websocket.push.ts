@@ -22,7 +22,9 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 			try {
 				const buffer = Array.isArray(data)
 					? Buffer.concat(data)
-					: Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
 
 				const msg: unknown = JSON.parse(buffer.toString('utf8'));
 

@@ -266,8 +266,9 @@ export class ChatService {
 	private stringifyRawData(data: RawData) {
 		const buffer = Array.isArray(data)
 			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
-			: Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
-
+			: data instanceof ArrayBuffer
+				? Buffer.from(data)
+				: data;
 		return buffer.toString('utf8');
 	}
 
