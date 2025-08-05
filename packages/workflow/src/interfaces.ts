@@ -852,10 +852,21 @@ type RecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
-export type Cron = { expression: CronExpression; recurrence?: RecurrenceRule };
+export type CronContext = WorkflowCronContext & NodeCronContext;
+
+type WorkflowCronContext = {
+	workflowId: string;
+	timezone: string;
+};
+
+export type NodeCronContext = {
+	nodeId: string;
+	expression: CronExpression;
+	recurrence?: RecurrenceRule;
+};
 
 export interface SchedulingFunctions {
-	registerCron(cron: Cron, onTick: () => void): void;
+	registerCron(ctx: NodeCronContext, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {

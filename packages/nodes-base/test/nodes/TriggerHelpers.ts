@@ -22,6 +22,7 @@ import {
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
+	type CronContext,
 } from 'n8n-workflow';
 
 const logger = mock({
@@ -89,8 +90,14 @@ export async function testTriggerNode(
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (nodeCronContext, onTick) => {
+			const ctx: CronContext = {
+				...nodeCronContext,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
 	});
 
 	const triggerFunctions = mock<ITriggerFunctions>({
@@ -152,8 +159,14 @@ export async function testWebhookTriggerNode(
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (nodeCronContext, onTick) => {
+			const ctx: CronContext = {
+				...nodeCronContext,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
 	});
 

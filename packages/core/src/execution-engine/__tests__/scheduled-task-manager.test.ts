@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
-import type { Workflow } from 'n8n-workflow';
+import type { CronContext, Workflow } from 'n8n-workflow';
 
 import type { InstanceSettings } from '@/instance-settings';
 
@@ -25,8 +25,12 @@ describe('ScheduledTaskManager', () => {
 	it('should throw when workflow timezone is invalid', () => {
 		expect(() =>
 			scheduledTaskManager.registerCron(
-				mock<Workflow>({ timezone: 'somewhere' }),
-				{ expression: everyMinute },
+				{
+					workflowId: workflow.id,
+					nodeId: 'test-node-id',
+					timezone: 'somewhere',
+					expression: everyMinute,
+				},
 				onTick,
 			),
 		).toThrow('Invalid timezone.');
@@ -40,7 +44,15 @@ describe('ScheduledTaskManager', () => {
 	});
 
 	it('should register valid CronJobs', () => {
-		scheduledTaskManager.registerCron(workflow, { expression: everyMinute }, onTick);
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'test-node-id',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
 
 		expect(onTick).not.toHaveBeenCalled();
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
@@ -53,23 +65,38 @@ describe('ScheduledTaskManager', () => {
 			logger,
 			mock(),
 		);
-		scheduledTaskManager.registerCron(workflow, { expression: everyMinute }, onTick);
+
+		const ctx: CronContext = {
+			workflowId: workflow.id,
+			nodeId: 'test-node-id',
+			timezone: workflow.timezone,
+			expression: everyMinute,
+		};
+
+		scheduledTaskManager.registerCron(ctx, onTick);
 
 		expect(onTick).not.toHaveBeenCalled();
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
 	});
 
-	it('should deregister CronJobs for a workflow', async () => {
-		scheduledTaskManager.registerCron(workflow, { expression: everyMinute }, onTick);
-		scheduledTaskManager.registerCron(workflow, { expression: everyMinute }, onTick);
-		scheduledTaskManager.registerCron(workflow, { expression: everyMinute }, onTick);
+	it('should deregister CronJobs for a workflow', () => {
+		const ctx: CronContext = {
+			workflowId: workflow.id,
+			nodeId: 'test-node-id',
+			timezone: workflow.timezone,
+			expression: everyMinute,
+		};
 
-		expect(scheduledTaskManager.cronMap.get(workflow.id)).toHaveLength(3);
+		scheduledTaskManager.registerCron(ctx, onTick);
+		scheduledTaskManager.registerCron(ctx, onTick);
+		scheduledTaskManager.registerCron(ctx, onTick);
+
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toHaveLength(3);
 
 		scheduledTaskManager.deregisterCrons(workflow.id);
 
-		expect(scheduledTaskManager.cronMap.get(workflow.id)).toBeUndefined();
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toBeUndefined();
 
 		expect(onTick).not.toHaveBeenCalled();
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes

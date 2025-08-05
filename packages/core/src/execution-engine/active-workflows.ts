@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
+	CronContext,
 	INode,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -185,7 +186,14 @@ export class ActiveWorkflows {
 				);
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, { expression }, executeTrigger);
+			const ctx: CronContext = {
+				nodeId: workflow.id,
+				expression,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+
+			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
 		}
 	}
 
