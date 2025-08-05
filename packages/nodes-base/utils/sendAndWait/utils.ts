@@ -356,13 +356,6 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const res = this.getResponseObject();
 	const req = this.getRequestObject();
 
-	const isTokenValid = this.validateExecutionWaitingToken();
-
-	if (!isTokenValid) {
-		res.status(401).json({ error: 'Invalid token' });
-		return { noWebhookResponse: true };
-	}
-
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
@@ -507,7 +500,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	context.setSignatureValidationRequired();
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
-	const disapprovedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'false' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
 		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;
@@ -521,6 +513,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
 		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
 		const buttonDisapprovalStyle = approvalOptions.buttonDisapprovalStyle || 'secondary';
+		const disapprovedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'false' });
 
 		config.options.push({
 			label: disapproveLabel,

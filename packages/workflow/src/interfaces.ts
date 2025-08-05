@@ -1144,8 +1144,6 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
-	/** Validate the signature token in the request */
-	validateExecutionWaitingToken(): boolean;
 }
 
 export interface INodeCredentialsDetails {

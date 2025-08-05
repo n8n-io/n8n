@@ -23,7 +23,6 @@ import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
-import { validateSignatureInRequest } from './utils/signature-helpers';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
@@ -171,13 +170,5 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			connectionType,
 			itemIndex,
 		);
-	}
-
-	validateExecutionWaitingToken() {
-		// if execution was started before the validation was added then bypass
-		if (!this.runExecutionData?.validateSignature) return true;
-
-		const req = this.getRequestObject();
-		return validateSignatureInRequest(req, this.instanceSettings.hmacSignatureSecret);
 	}
 }

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type express from 'express';
 import {
 	FORM_NODE_TYPE,
@@ -25,6 +25,8 @@ import type {
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
+import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import crypto from 'crypto';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -82,6 +84,32 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
+	private getHmacSecret() {
+		return Container.get(InstanceSettings).hmacSignatureSecret;
+	}
+
+	private validateSignatureInRequest(req: express.Request, secret: string) {
+		try {
+			const actualToken = req.query[WAITING_TOKEN_QUERY_PARAM];
+
+			if (typeof actualToken !== 'string') return false;
+
+			const protocol = req.headers['x-forwarded-proto']
+				? req.headers['x-forwarded-proto'].toString().split(',')[0].trim()
+				: req.protocol;
+			const parsedUrl = new URL(req.url, `${protocol}://${req.headers.host}`);
+			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+			const url = parsedUrl.toString();
+
+			const expectedToken = crypto.createHmac('sha256', secret).update(url).digest('hex');
+
+			const valid = crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
+			return valid;
+		} catch (error) {
+			return false;
+		}
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -96,6 +124,17 @@ export class WaitingWebhooks implements IWebhookManager {
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		if (execution && execution.data.validateSignature) {
+			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
+			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
+
+			if (shouldValidate && !this.validateSignatureInRequest(req, this.getHmacSecret())) {
+				res.status(401).json({ error: 'Invalid token' });
+				return { noWebhookResponse: true };
+			}
+		}
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
