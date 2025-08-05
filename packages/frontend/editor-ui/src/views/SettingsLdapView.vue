@@ -747,15 +747,13 @@ onMounted(async () => {
 
 .enableFeatureContainer {
 	margin-bottom: var(--spacing-1xl);
-}
 
-.enableFeatureContainer > span {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-	padding: 0;
-}
+	> span {
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-bold);
+		padding: 0;
+	}
 
-.enableFeatureContainer {
 	> * {
 		padding: 0.5em;
 	}

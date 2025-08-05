@@ -1,3 +1,5 @@
+@use '../src/css/_tokens.scss';
+
 /* Storybook-specific font paths */
 @font-face {
 	font-family: InterVariable;
@@ -22,5 +24,3 @@
 	font-display: swap;
 	src: url('../src/css/fonts/CommitMonoVariable.woff2') format('woff2');
 }
-
-@import '../src/css/_tokens.scss';

@@ -76,7 +76,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		v-bind="runDataProps"
 		:key="`run-data${pipWindow ? '-pip' : ''}`"
 		:class="$style.component"
-		:workflow="logEntry.workflow"
+		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"

@@ -236,4 +236,23 @@ describe('AskAssistantChat', () => {
 		expect(wrapper.container).toMatchSnapshot();
 		expect(wrapper.queryByTestId('error-retry-button')).not.toBeInTheDocument();
 	});
+
+	it('limits maximum input length when maxLength prop is specified', async () => {
+		const wrapper = render(AskAssistantChat, {
+			global: {
+				directives: {
+					n8nHtml,
+				},
+				stubs,
+			},
+			props: {
+				user: { firstName: 'Kobi', lastName: 'Dog' },
+				maxLength: 100,
+			},
+		});
+
+		expect(wrapper.container).toMatchSnapshot();
+		const textarea = wrapper.queryByTestId('chat-input');
+		expect(textarea).toHaveAttribute('maxLength', '100');
+	});
 });
