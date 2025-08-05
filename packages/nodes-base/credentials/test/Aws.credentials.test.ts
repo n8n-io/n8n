@@ -255,7 +255,7 @@ describe('Aws Credential', () => {
 			// Mock fetch for role assumption
 			global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-			const result = await aws.authenticate(oldCredentials as AwsCredentialsType, requestOptions);
+			await aws.authenticate(oldCredentials as AwsCredentialsType, requestOptions);
 
 			// Check that the final sign call uses the assumed credentials
 			expect(mockSign).toHaveBeenCalledTimes(2);
@@ -308,7 +308,7 @@ describe('Aws Credential', () => {
 			// Mock fetch for role assumption
 			global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-			const result = await aws.authenticate(roleCredentials, requestOptions);
+			await aws.authenticate(roleCredentials, requestOptions);
 
 			// Check that the final sign call uses the assumed credentials
 			expect(mockSign).toHaveBeenCalledTimes(2);
@@ -359,7 +359,7 @@ describe('Aws Credential', () => {
 			// Mock fetch for role assumption
 			global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-			const result = await aws.authenticate(roleCredentials, requestOptions);
+			await aws.authenticate(roleCredentials, requestOptions);
 
 			// Check that the final sign call uses the assumed credentials
 			expect(mockSign).toHaveBeenCalledTimes(2);
@@ -408,7 +408,7 @@ describe('Aws Credential', () => {
 			// Mock fetch for role assumption
 			global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-			const result = await aws.authenticate(roleCredentials, requestOptions);
+			await aws.authenticate(roleCredentials, requestOptions);
 
 			// Check that the final sign call uses the assumed credentials
 			expect(mockSign).toHaveBeenCalledTimes(2);
@@ -457,7 +457,7 @@ describe('Aws Credential', () => {
 			// Mock fetch for role assumption
 			global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-			const result = await aws.authenticate(roleCredentials, requestOptions);
+			await aws.authenticate(roleCredentials, requestOptions);
 
 			// Check that the final sign call uses the assumed credentials
 			expect(mockSign).toHaveBeenCalledTimes(2);
@@ -663,7 +663,7 @@ describe('Aws Credential', () => {
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+				await aws.authenticate(legacyRoleCredentials, requestOptions);
 
 				expect(mockSign).toHaveBeenCalledTimes(2);
 				const lastCall = mockSign.mock.calls[1];
@@ -711,7 +711,7 @@ describe('Aws Credential', () => {
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+				await aws.authenticate(legacyRoleCredentials, requestOptions);
 
 				expect(mockSign).toHaveBeenCalledTimes(2);
 				const lastCall = mockSign.mock.calls[1];
@@ -759,7 +759,7 @@ describe('Aws Credential', () => {
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-				const result = await aws.authenticate(legacyRoleCredentials, requestOptions);
+				await aws.authenticate(legacyRoleCredentials, requestOptions);
 
 				expect(mockSign).toHaveBeenCalledTimes(2);
 				const lastCall = mockSign.mock.calls[1];
@@ -834,7 +834,7 @@ describe('Aws Credential', () => {
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
 
-				const result = await aws.authenticate(newFormatCredentials, requestOptions);
+				await aws.authenticate(newFormatCredentials, requestOptions);
 
 				expect(mockSign).toHaveBeenCalledTimes(2);
 				const lastCall = mockSign.mock.calls[1];
