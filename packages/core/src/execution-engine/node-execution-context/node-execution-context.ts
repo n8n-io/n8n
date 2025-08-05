@@ -33,13 +33,6 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { cleanupParameterData } from './utils/cleanup-parameter-data';
-import { ensureType } from './utils/ensure-type';
-import { extractValue } from './utils/extract-value';
-import { getAdditionalKeys } from './utils/get-additional-keys';
-import { generateUrlSignature } from './utils/signature-helpers';
-import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-
 import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
@@ -47,6 +40,13 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+
+import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { ensureType } from './utils/ensure-type';
+import { extractValue } from './utils/extract-value';
+import { getAdditionalKeys } from './utils/get-additional-keys';
+import { generateUrlSignature } from './utils/signature-helpers';
+import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
