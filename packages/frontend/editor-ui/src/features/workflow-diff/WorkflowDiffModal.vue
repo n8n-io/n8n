@@ -622,7 +622,7 @@ const modifiers = [
 }
 
 .popper {
-	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
+	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
@@ -666,8 +666,8 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
+		bottom: 0;
+		left: 0;
 		border-bottom-left-radius: 6px;
 		border-top-right-radius: 2px;
 		color: var(--color-text-xlight);
@@ -686,7 +686,7 @@ const modifiers = [
 	&[data-node-type='n8n-nodes-base.manualTrigger'] {
 		&::before {
 			left: auto;
-			right: 0px;
+			right: 0;
 			border-top-right-radius: 0;
 			border-top-left-radius: 2px;
 			border-bottom-left-radius: 0;
@@ -722,9 +722,6 @@ const modifiers = [
 		background-color: var(--color-node-icon-green);
 	}
 	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
-	}
-	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--color-node-icon-green);
 	}
 	:global(.canvas-node-handle-main-input .target) {

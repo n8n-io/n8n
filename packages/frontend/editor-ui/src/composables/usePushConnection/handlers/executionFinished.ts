@@ -251,7 +251,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	const workflowSettings = workflowsStore.workflowSettings;
 	const saveManualExecutions =
@@ -285,7 +285,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -375,7 +375,7 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 	const i18n = useI18n();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
 
