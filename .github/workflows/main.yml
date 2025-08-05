@@ -1,49 +1,64 @@
-name: Build & Push (daily-tag)
+name: Build and Publish n8n Docker Image (AMD64)
 
+# Trigger: manual dispatch only
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-push:
+    # Use a single Ubuntu runner (x64 architecture by default)
     runs-on: ubuntu-latest
 
     steps:
-      # 1) سورس
-      - uses: actions/checkout@v4
+      # 1. Check out the repository code
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      # 2) Node 22 + pnpm (برای build)
-      - uses: actions/setup-node@v4
+      # 2. Set up Node.js (ensuring correct version for n8n)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'pnpm'
+          node-version: 22.x  # نسخه Node.js مورد نیاز (مثلاً 22.x مطابق engines پروژه)
+          cache: 'pnpm'       # فعال کردن کش بر اساس pnpm-lock.yaml برای تسریع نصب‌ها
 
-      - name: Install deps & build
-        run: |
-          corepack enable          # فعال‌کردن pnpm با ورژن قفل‌شده
-          pnpm install --frozen-lockfile
-          pnpm build:n8n           # خروجی در ./compiled ایجاد می‌شود
+      # 3. Install pnpm package manager
+      - name: Install PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10  # نسخه‌ی PNPM (با توجه به نیاز پروژه n8n، مثلاً 10.x)
 
-      # 3) Buildx
-      - uses: docker/setup-buildx-action@v3
+      # 4. Install project dependencies using pnpm
+      - name: Install Dependencies
+        run: pnpm install
 
-      # 4) login به GHCR
-      - uses: docker/login-action@v3
+      # 5. Build the n8n project to generate the compiled folder
+      - name: Build Project
+        run: pnpm run build
+
+      # 6. (Optional) Verify that the compiled folder exists
+      - name: Verify compiled folder
+        run: ls -la compiled
+
+      # 7. Log in to GitHub Container Registry (GHCR) using GitHub token
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 5) تگ تاریخ
-      - name: Set date tag
-        id: date
-        run: echo "TAG=$(date +'%Y-%m-%d')" >>"$GITHUB_OUTPUT"
+      # 8. Set image tag (current date YYYY-MM-DD) as an environment variable
+      - name: Set Image Tag (Date)
+        id: tagStep
+        run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      # 6) build & push
-      - uses: docker/build-push-action@v5
+      # 9. Build and push the Docker image to GHCR
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
         with:
-          context: .                               # ریشه‌ی ریپو
-          file: ./docker/images/n8n/Dockerfile     # مسیر Dockerfile
-          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.date.outputs.TAG }}
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          platforms: linux/amd64    # بیلد فقط برای معماری amd64
           push: true
+          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ env.IMAGE_TAG }}
+          # نکته: نام ایمیج (پس از owner/) را در صورت لزوم اصلاح کنید
