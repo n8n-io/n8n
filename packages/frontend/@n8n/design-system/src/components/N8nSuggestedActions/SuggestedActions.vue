@@ -8,7 +8,6 @@ import N8nLink from '../N8nLink';
 import N8nPopoverReka from '../N8nPopoverReka';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
-import { N8nIconButton } from '..';
 
 interface SuggestedAction {
 	id: string;
@@ -72,7 +71,10 @@ const handleIgnoreClick = (actionId: string) => {
 		@update:open="$emit('update:open', $event)"
 	>
 		<template #trigger>
-			<div :class="$style.triggerContainer" data-test-id="suggested-action-count">
+			<div
+				:class="[$style.triggerContainer, open ? $style.activeTrigger : '']"
+				data-test-id="suggested-action-count"
+			>
 				<N8nTag :text="`${completedCount} / ${actions.length}`" />
 			</div>
 		</template>
@@ -148,6 +150,11 @@ const handleIgnoreClick = (actionId: string) => {
 	display: inline-block;
 	position: relative;
 	--tag-height: 24px;
+}
+
+.activeTrigger {
+	--tag-text-color: var(--color-primary);
+	--tag-border-color: var(--color-primary);
 }
 
 .popoverContent {
