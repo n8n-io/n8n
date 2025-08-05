@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
@@ -19,13 +18,12 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
-import { WAITING_TOKEN_QUERY_PARAM } from '@/constants';
-
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
+import { validateSignatureInRequest } from './utils/signature-helpers';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
@@ -176,26 +174,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	validateExecutionWaitingToken() {
-		try {
-			// if execution was started before the validation was added then bypass
-			if (!this.runExecutionData?.validateSignature) return true;
+		// if execution was started before the validation was added then bypass
+		if (!this.runExecutionData?.validateSignature) return true;
 
-			const req = this.getRequestObject();
-
-			const token = req.query[WAITING_TOKEN_QUERY_PARAM];
-
-			if (typeof token !== 'string') return false;
-
-			const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
-			const url = parsedUrl.toString();
-
-			const expectedToken = this.getExecutionWaitingToken(url);
-
-			const valid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
-			return valid;
-		} catch (error) {
-			return false;
-		}
+		const req = this.getRequestObject();
+		return validateSignatureInRequest(req, this.instanceSettings.hmacSignatureSecret);
 	}
 }

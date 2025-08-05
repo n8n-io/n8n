@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import crypto from 'crypto';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -31,6 +30,7 @@ import {
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import {
@@ -45,6 +45,7 @@ import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
+import { generateSignatureToken } from './utils/signature-helpers';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
@@ -202,14 +203,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	getExecutionWaitingToken(url: string) {
-		const token = crypto
-			.createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
-			.update(url)
-			.digest('hex');
-		return token;
-	}
-
 	setSignatureValidationRequired() {
 		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
 	}
@@ -218,7 +211,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {
-			throw new ApplicationError('Execution id is missing');
+			throw new UnexpectedError('Execution id is missing');
 		}
 
 		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
@@ -227,7 +220,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
-		const token = this.getExecutionWaitingToken(baseURL.toString());
+		const token = generateSignatureToken(
+			baseURL.toString(),
+			this.instanceSettings.hmacSignatureSecret,
+		);
 
 		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
 

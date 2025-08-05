@@ -4,7 +4,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	tryToParseJsonToFormFields,
 	updateDisplayOptions,
-	UserError,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -359,7 +358,10 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	const isTokenValid = this.validateExecutionWaitingToken();
 
-	if (!isTokenValid) throw new UserError('Invalid signature token');
+	if (!isTokenValid) {
+		res.status(401).json({ error: 'Invalid token' });
+		return { noWebhookResponse: true };
+	}
 
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'

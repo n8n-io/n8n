@@ -13,8 +13,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { WAITING_TOKEN_QUERY_PARAM } from '@/constants';
-
 import { WebhookContext } from '../webhook-context';
 
 describe('WebhookContext', () => {
@@ -158,31 +156,6 @@ describe('WebhookContext', () => {
 			const parameter = webhookContext.getNodeParameter('otherParameter', 'fallback');
 
 			expect(parameter).toBe('fallback');
-		});
-	});
-
-	describe('validateExecutionWaitingToken', () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(webhookContext as any).runExecutionData = {
-			...(webhookContext.runExecutionData ?? {}),
-			validateSignature: true,
-		};
-		it('should return true for a valid token', () => {
-			additionalData.httpRequest!.query[WAITING_TOKEN_QUERY_PARAM] = 'aaabbbccc';
-			jest.spyOn(webhookContext, 'getExecutionWaitingToken').mockReturnValue('aaabbbccc');
-			expect(webhookContext.validateExecutionWaitingToken()).toBe(true);
-		});
-
-		it('should return false for an invalid token', () => {
-			additionalData.httpRequest!.query[WAITING_TOKEN_QUERY_PARAM] = 'xxxyyyzzz';
-			jest.spyOn(webhookContext, 'getExecutionWaitingToken').mockReturnValue('aaabbbccc');
-			expect(webhookContext.validateExecutionWaitingToken()).toBe(false);
-		});
-
-		it('should return false if no token in the request', () => {
-			additionalData.httpRequest!.query[WAITING_TOKEN_QUERY_PARAM] = undefined;
-			jest.spyOn(webhookContext, 'getExecutionWaitingToken').mockReturnValue('aaabbbccc');
-			expect(webhookContext.validateExecutionWaitingToken()).toBe(false);
 		});
 	});
 });

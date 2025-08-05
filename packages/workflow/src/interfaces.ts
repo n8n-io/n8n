@@ -881,8 +881,9 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	/** Get the waiting webhook url signed with the execution waiting token */
+	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/** Set requirement in the execution for signature token validation */
 	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
@@ -1143,7 +1144,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
-	/** Validate the token in the request query parameters against the execution waiting token */
+	/** Validate the signature token in the request */
 	validateExecutionWaitingToken(): boolean;
 }
 
