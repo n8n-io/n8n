@@ -70,6 +70,7 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
 import identity from 'lodash/identity';
+import * as modalRegistry from '@/moduleInitializer/modalRegistry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -577,6 +578,54 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		options.banners.forEach(pushBannerToStack);
 	};
 
+	/**
+	 * Register a modal dynamically
+	 */
+	const registerModal = (modalKey: string, initialState?: ModalState) => {
+		if (!modalsById.value[modalKey]) {
+			modalsById.value[modalKey] = initialState || { open: false };
+		}
+	};
+
+	/**
+	 * Unregister a modal
+	 */
+	const unregisterModal = (modalKey: string) => {
+		if (modalsById.value[modalKey]) {
+			// Close the modal if it's open
+			if (modalsById.value[modalKey].open) {
+				closeModal(modalKey);
+			}
+			delete modalsById.value[modalKey];
+		}
+	};
+
+	/**
+	 * Initialize modals from the registry
+	 */
+	const initializeModalsFromRegistry = () => {
+		modalRegistry.getAll().forEach((modalDef, key) => {
+			registerModal(key, modalDef.initialState);
+		});
+	};
+
+	// Subscribe to registry changes
+	const unsubscribeFromModalRegistry = modalRegistry.subscribe((modals) => {
+		// Add new modals that aren't registered yet
+		modals.forEach((modalDef, key) => {
+			if (!modalsById.value[key]) {
+				registerModal(key, modalDef.initialState);
+			}
+		});
+	});
+
+	/**
+	 * Clean up modal registry subscription
+	 */
+	const cleanup = () => {
+		unsubscribeFromModalRegistry();
+	};
+
 	return {
 		appGridDimensions,
 		appliedTheme,
@@ -633,6 +682,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		initialize,
 		moduleTabs,
 		registerCustomTabs,
+		registerModal,
+		unregisterModal,
+		initializeModalsFromRegistry,
+		cleanup,
 	};
 });
 
@@ -649,7 +702,7 @@ export const listenForModalChanges = (opts: {
 
 	return store.$onAction((result) => {
 		const { name, after, args } = result;
-		after(async () => {
+		after(() => {
 			if (!listeningForActions.includes(name)) {
 				return;
 			}

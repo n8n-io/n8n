@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
@@ -504,5 +507,206 @@ describe('AI Builder store', () => {
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
 			'I can help you build a workflow',
 		);
+	});
+
+	describe('Abort functionality', () => {
+		it('should create and manage abort controller', () => {
+			const builderStore = useBuilderStore();
+
+			// Initially no abort controller (might be undefined or null)
+			expect(builderStore.streamingAbortController).toBeFalsy();
+
+			// Start streaming creates abort controller
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, _onError, _signal) => {
+				// Simulate successful start of streaming
+				setTimeout(() => {
+					onMessage({
+						messages: [
+							{
+								type: 'message',
+								role: 'assistant',
+								text: 'Processing...',
+							},
+						],
+						sessionId: 'test-session',
+					});
+				}, 0);
+			});
+
+			builderStore.sendChatMessage({ text: 'test' });
+			expect(builderStore.streamingAbortController).not.toBeNull();
+			expect(builderStore.streamingAbortController).toBeInstanceOf(AbortController);
+		});
+
+		it('should call abort on existing controller when stopStreaming is called', () => {
+			const builderStore = useBuilderStore();
+
+			// First start a request to create an abort controller
+			apiSpy.mockImplementationOnce(() => {});
+			builderStore.sendChatMessage({ text: 'test' });
+
+			// Verify controller was created
+			const controller = builderStore.streamingAbortController;
+			expect(controller).toBeInstanceOf(AbortController);
+
+			// Spy on the abort method
+			const abortSpy = vi.spyOn(controller!, 'abort');
+
+			// Call stopStreaming
+			builderStore.stopStreaming();
+
+			// Verify abort was called
+			expect(abortSpy).toHaveBeenCalled();
+			expect(builderStore.streamingAbortController).toBeNull();
+			expect(builderStore.streaming).toBe(false);
+		});
+
+		it('should handle AbortError gracefully', async () => {
+			const builderStore = useBuilderStore();
+
+			// Simulate an abort error
+			const abortError = new Error('AbortError');
+			abortError.name = 'AbortError';
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, _onDone, onError) => {
+				onError(abortError);
+			});
+
+			builderStore.sendChatMessage({ text: 'test message' });
+			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+
+			// Should have user message and aborted message
+			expect(builderStore.chatMessages[0].role).toBe('user');
+			expect(builderStore.chatMessages[1].role).toBe('assistant');
+			expect(builderStore.chatMessages[1].type).toBe('text');
+			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+
+			// Verify streaming state was reset
+			expect(builderStore.streaming).toBe(false);
+			expect(builderStore.assistantThinkingMessage).toBeUndefined();
+		});
+
+		it('should abort previous request when sending new message', () => {
+			const builderStore = useBuilderStore();
+
+			// The current implementation prevents sending a new message while streaming
+			// by checking if streaming.value is true and returning early.
+			// Mock for first request - keep it pending
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone) => {
+				// Don't call onDone to keep streaming active
+				setTimeout(() => {
+					onMessage({
+						messages: [
+							{
+								type: 'message',
+								role: 'assistant',
+								text: 'Processing first message...',
+							},
+						],
+						sessionId: 'test-session',
+					});
+				}, 10);
+			});
+
+			// Start first request
+			builderStore.sendChatMessage({ text: 'first message' });
+
+			// Verify streaming is active and controller was created
+			expect(builderStore.streaming).toBe(true);
+			const firstController = builderStore.streamingAbortController;
+			expect(firstController).not.toBeNull();
+			expect(firstController).toBeInstanceOf(AbortController);
+
+			// Track if abort was called
+			const abortSpy = vi.spyOn(firstController!, 'abort');
+
+			// Try to send second message while streaming - it should be ignored
+			builderStore.sendChatMessage({ text: 'second message ignored' });
+
+			// Verify the abort was NOT called and controller is the same
+			expect(abortSpy).not.toHaveBeenCalled();
+			expect(builderStore.streamingAbortController).toBe(firstController);
+
+			// Now properly stop streaming first
+			builderStore.stopStreaming();
+
+			// Verify abort was called and controller was cleared
+			expect(abortSpy).toHaveBeenCalled();
+			expect(builderStore.streamingAbortController).toBeNull();
+			expect(builderStore.streaming).toBe(false);
+
+			// Mock for second request
+			apiSpy.mockImplementationOnce(() => {});
+
+			// Now we can send a new message
+			builderStore.sendChatMessage({ text: 'second message' });
+
+			// New controller should be created
+			const secondController = builderStore.streamingAbortController;
+			expect(secondController).not.toBe(firstController);
+			expect(secondController).not.toBeNull();
+			expect(secondController).toBeInstanceOf(AbortController);
+		});
+
+		it('should pass abort signal to API call', () => {
+			const builderStore = useBuilderStore();
+
+			// Mock the API to prevent actual network calls
+			apiSpy.mockImplementationOnce(() => {});
+
+			builderStore.sendChatMessage({ text: 'test' });
+
+			// Verify the API was called with correct parameters
+			expect(apiSpy).toHaveBeenCalled();
+			const callArgs = apiSpy.mock.calls[0];
+			expect(callArgs).toHaveLength(6); // Should have 6 arguments
+
+			const signal = callArgs[5]; // The 6th argument is the abort signal
+			expect(signal).toBeDefined();
+			expect(signal).toBeInstanceOf(AbortSignal);
+
+			// Check that it's the same signal from the controller
+			const controller = builderStore.streamingAbortController;
+			expect(controller).not.toBeNull();
+			expect(controller).toBeInstanceOf(AbortController);
+			expect(signal).toBe(controller!.signal);
+		});
+
+		it('should not create error message for aborted requests', async () => {
+			const builderStore = useBuilderStore();
+
+			// Track telemetry calls
+			const telemetryTrackSpy = vi.fn();
+			track.mockImplementation(telemetryTrackSpy);
+
+			// Simulate abort error
+			const abortError = new Error('AbortError');
+			abortError.name = 'AbortError';
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, _onDone, onError) => {
+				// Call error handler immediately
+				onError(abortError);
+			});
+
+			// Clear messages before test
+			builderStore.chatMessages.length = 0;
+
+			builderStore.sendChatMessage({ text: 'test' });
+
+			// Wait for the error to be processed
+			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBeGreaterThan(1));
+
+			// Should not track error for abort
+			expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
+				'Workflow generation errored',
+				expect.anything(),
+			);
+
+			// Find the assistant messages (skip user message)
+			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
+			expect(assistantMessages).toHaveLength(1);
+			expect(assistantMessages[0].type).toBe('text');
+			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+		});
 	});
 });

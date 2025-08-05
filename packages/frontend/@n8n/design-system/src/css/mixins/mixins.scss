@@ -4,6 +4,10 @@
 @use '../common/var';
 @use 'config';
 
+// Module-level variables for BEM mixins
+$B: null;
+$E: null;
+
 /* Break-points
  -------------------------- */
 @mixin res($key, $map: var.$breakpoints) {
