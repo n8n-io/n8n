@@ -123,7 +123,7 @@ test.describe('Workflow Production Checklist', () => {
 		// Verify error workflow action is visible
 		await expect(getSuggestedActionItem(n8n.page).first()).toContainText('error');
 		await getSuggestedActionItem(n8n.page).first().getByTitle('Ignore').click();
-		await n8n.page.waitForTimeout(500); // items disappear after timeout
+		await n8n.page.waitForTimeout(500); // items disappear after timeout, not arbitrary
 		await expect(getErrorActionItem(n8n.page)).toBeHidden();
 
 		// Close and reopen popover
