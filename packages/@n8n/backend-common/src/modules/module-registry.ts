@@ -24,7 +24,7 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets', 'data-store'];
+	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
 
 	private readonly activeModules: string[] = [];
 
