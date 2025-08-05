@@ -19,14 +19,14 @@ function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':
-			return 'DATETIME';
+			return 'DATETIME'; // Postgres has no DATETIME
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
 }
 
 function columnToWildcardAndType(column: DataStoreCreateColumnSchema) {
-	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`;
+	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`; // Postgres identifiers use double quotes
 }
 
 function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
