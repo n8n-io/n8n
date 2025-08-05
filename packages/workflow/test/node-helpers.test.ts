@@ -1,4 +1,3 @@
-import { fa } from 'zod/v4/locales';
 import {
 	NodeConnectionTypes,
 	type INodeType,
