@@ -4,7 +4,7 @@
 # 1) Builder – compile n8n   #
 ###############################
 ARG NODE_VERSION=20
-ARG TARGETPLATFORM=linux/amd64
+ARG TARGETPLATFORM
 
 FROM --platform=$TARGETPLATFORM n8nio/base:${NODE_VERSION} AS builder
 
@@ -14,6 +14,7 @@ WORKDIR /src
 # Install pnpm via Corepack (Node 20 ships Corepack but disabled)
 RUN corepack enable \
     && corepack prepare pnpm@10.12.1 --activate
+
 COPY . /src
 
 # Use BuildKit cache mounts for pnpm store & metadata
@@ -24,9 +25,14 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 
 #–––– Slim down the tree ––––#
 RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp && mv package.json.tmp package.json \
-    && node .github/scripts/trim-fe-packageJson.js \
-    # Remove TS, maps, Vue SFCs, etc.
-    && find . \( -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" \) -delete
+    # Run the trim script only if it exists (repo forks may omit .github folder)
+    && if [ -f .github/scripts/trim-fe-packageJson.js ]; then \
+         node .github/scripts/trim-fe-packageJson.js; \
+       else \
+         echo "trim-fe-packageJson.js not found – skipping"; \
+       fi \
+    # Remove TS, sourcemaps, Vue SFCs, etc. to shrink final image size
+    && find . -type f \( -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" \) -delete
 
 # Deploy only the n8n package (+ its prod deps) into /compiled
 RUN mkdir /compiled \
@@ -48,8 +54,8 @@ WORKDIR /home/node
 # Copy the compiled artefacts
 COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
 
-# Bundle entrypoint & task‑runner config from repo
-COPY docker/images/n8n/docker-entrypoint.sh /
+# Bundle entrypoint & task‑runner config from repo (paths may vary in forks)
+COPY docker/images/n8n/docker-entrypoint.sh /docker-entrypoint.sh
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
 
 #–––– Task‑runner launcher ––––#
