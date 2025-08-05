@@ -4,11 +4,12 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
-import { onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
+import { N8nPopover } from '@n8n/design-system';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
@@ -16,6 +17,9 @@ interface InlineExpressionEditorOutputProps {
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	isReadOnly?: boolean;
+	visible: boolean;
+	virtualRef?: HTMLElement;
+	appendTo?: string;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
@@ -28,40 +32,67 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
+const contentRef = useTemplateRef('content');
 
 onBeforeUnmount(() => {
 	ndvStore.expressionOutputItemIndex = 0;
 });
+
+defineExpose({
+	contentRef,
+});
 </script>
 
 <template>
-	<div :class="$style.dropdown">
-		<div :class="$style.header">
-			<n8n-text bold size="small" compact>
-				{{ i18n.baseText('parameterInput.result') }}
-			</n8n-text>
+	<N8nPopover
+		:visible="visible"
+		placement="bottom"
+		:show-arrow="false"
+		:offset="0"
+		:persistent="false"
+		:virtual-triggering="virtualRef !== undefined"
+		:virtual-ref="virtualRef"
+		:width="virtualRef?.offsetWidth"
+		:popper-class="$style.popper"
+		:popper-options="{
+			modifiers: [{ name: 'flip', enabled: false }],
+		}"
+		:append-to="appendTo"
+	>
+		<div ref="content" :class="$style.dropdown">
+			<div :class="$style.header">
+				<n8n-text bold size="small" compact>
+					{{ i18n.baseText('parameterInput.result') }}
+				</n8n-text>
 
-			<OutputItemSelect />
+				<OutputItemSelect />
+			</div>
+			<n8n-text :class="$style.body">
+				<ExpressionOutput
+					data-test-id="inline-expression-editor-output"
+					:segments="segments"
+					:extensions="theme"
+				>
+				</ExpressionOutput>
+			</n8n-text>
+			<div v-if="!isReadOnly" :class="$style.footer">
+				<InlineExpressionTip
+					:editor-state="editorState"
+					:selection="selection"
+					:unresolved-expression="unresolvedExpression"
+				/>
+			</div>
 		</div>
-		<n8n-text :class="$style.body">
-			<ExpressionOutput
-				data-test-id="inline-expression-editor-output"
-				:segments="segments"
-				:extensions="theme"
-			>
-			</ExpressionOutput>
-		</n8n-text>
-		<div v-if="!isReadOnly" :class="$style.footer">
-			<InlineExpressionTip
-				:editor-state="editorState"
-				:selection="selection"
-				:unresolved-expression="unresolvedExpression"
-			/>
-		</div>
-	</div>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>
+.popper {
+	background-color: transparent !important;
+	padding: 0 !important;
+	border: none !important;
+}
+
 .dropdown {
 	display: flex;
 	flex-direction: column;

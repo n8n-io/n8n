@@ -16,7 +16,6 @@ import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { N8nPopover } from '@n8n/design-system';
 import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
 
 const isFocused = ref(false);
@@ -25,7 +24,7 @@ const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 const container = ref<HTMLDivElement>();
-const popoverContainer = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
+const outputPopover = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
 
 type Props = {
 	path: string;
@@ -90,7 +89,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (event?.target instanceof Element && popoverContainer.value?.$el.contains(event.target)) {
+	if (event?.target instanceof Element && outputPopover.value?.contentRef?.contains(event.target)) {
 		return;
 	}
 
@@ -228,30 +227,17 @@ defineExpose({ focus, select });
 			/>
 		</div>
 
-		<N8nPopover
+		<InlineExpressionEditorOutput
+			ref="outputPopover"
 			:visible="isOutputPopoverVisible"
-			placement="bottom"
-			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
-			:popper-class="$style.popper"
-			:show-arrow="false"
-			:width="container?.offsetWidth"
-			:popper-options="{
-				modifiers: [{ name: 'flip', enabled: false }],
-			}"
-			:offset="0"
-			:persistent="false"
-			virtual-triggering
+			:unresolved-expression="modelValue"
+			:selection="selection"
+			:editor-state="editorState"
+			:segments="segments"
+			:is-read-only="isReadOnly"
 			:virtual-ref="container"
-		>
-			<InlineExpressionEditorOutput
-				ref="popoverContainer"
-				:unresolved-expression="modelValue"
-				:selection="selection"
-				:editor-state="editorState"
-				:segments="segments"
-				:is-read-only="isReadOnly"
-			/>
-		</N8nPopover>
+			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
+		/>
 	</div>
 </template>
 
@@ -347,11 +333,5 @@ defineExpose({ focus, select });
 		cursor: grabbing !important;
 		border-width: 1px;
 	}
-}
-
-.popper {
-	background-color: transparent !important;
-	padding: 0 !important;
-	border: none !important;
 }
 </style>
