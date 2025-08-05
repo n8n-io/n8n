@@ -20,10 +20,7 @@ describe('eligibleModules', () => {
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
-			'external-secrets',
-			'data-store',
-		]);
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(['external-secrets']);
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {
