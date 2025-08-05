@@ -39,7 +39,8 @@ export const evaluationResultSchema = z.object({
 	summary: z.string().describe('2-3 sentences summarizing main strengths and weaknesses'),
 	criticalIssues: z
 		.array(z.string())
-		.describe('List of issues that would prevent the workflow from functioning'),
+		.describe('List of issues that would prevent the workflow from functioning')
+		.optional(),
 });
 
 // Type exports

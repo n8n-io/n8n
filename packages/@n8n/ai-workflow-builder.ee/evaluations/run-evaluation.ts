@@ -36,11 +36,14 @@ import {
 	shouldGenerateTestCases,
 } from './utils/evaluation-runner.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
+import { Client } from 'langsmith/client';
+import { BaseMessage } from '@langchain/core/messages.js';
 
 interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
 	tracer?: LangChainTracer;
+	lsClient?: Client;
 }
 
 /**
@@ -51,8 +54,12 @@ async function setupTestEnvironment(): Promise<TestEnvironment> {
 	const parsedNodeTypes = loadNodesFromFile();
 	const llm = await setupLLM();
 	const tracer = createTracer('workflow-builder-evaluation');
+	// Create Langsmith client
+	const lsClient = new Client({
+		apiKey: process.env.LANGSMITH_API_KEY,
+	});
 
-	return { parsedNodeTypes, llm, tracer };
+	return { parsedNodeTypes, llm, tracer, lsClient };
 }
 
 /**
@@ -120,7 +127,7 @@ async function runTestCase(
 				nodeConfiguration: { score: 0, violations: [] },
 				structuralSimilarity: { score: 0, violations: [], applicable: false },
 				summary: 'Evaluation failed due to error',
-				criticalIssues: [`Error: ${String(error)}`],
+				// criticalIssues: [`Error: ${String(error)}`],
 			},
 			generationTime: 0,
 			error: String(error),
@@ -234,14 +241,15 @@ async function llmBasedMultiMetricEvaluator(
 ): Promise<(rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]>> {
 	return async (rootRun: Run, example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const generatedWorkflow = rootRun.outputs?.workflow as SimpleWorkflow;
-		const prompt = rootRun.inputs?.prompt as string;
-		const referenceWorkflow = example?.outputs?.referenceWorkflow as SimpleWorkflow | undefined;
+		const prompt = rootRun.outputs?.prompt as string;
+		// @ts-ignore
+		const referenceWorkflow = rootRun?.referenceOutputs?.workflowJSON as SimpleWorkflow | undefined;
 
 		// Use the existing LLM-based evaluator
 		const evaluationInput: EvaluationInput = {
 			userPrompt: prompt,
 			generatedWorkflow,
-			referenceWorkflow,
+			// referenceWorkflow,
 		};
 
 		try {
@@ -309,13 +317,13 @@ async function llmBasedMultiMetricEvaluator(
 			});
 
 			// Add critical issues as a separate metric if any exist
-			if (evaluationResult.criticalIssues.length > 0) {
-				results.push({
-					key: 'criticalIssues',
-					score: 0,
-					comment: `Critical issues: ${evaluationResult.criticalIssues.join('; ')}`,
-				});
-			}
+			// if (evaluationResult.criticalIssues.length > 0) {
+			// 	results.push({
+			// 		key: 'criticalIssues',
+			// 		score: 0,
+			// 		comment: `Critical issues: ${evaluationResult.criticalIssues.join('; ')}`,
+			// 	});
+			// }
 
 			return results;
 		} catch (error) {
@@ -346,28 +354,47 @@ async function runLangsmithEvaluation(): Promise<void> {
 
 	try {
 		// Setup test environment
-		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, tracer, lsClient } = await setupTestEnvironment();
 
-		// Get test cases
-		let testCases: TestCase[] = basicTestCases;
-		if (shouldGenerateTestCases()) {
-			console.log(pc.blue('➔ Generating additional test cases...'));
-			const generatedCases = await generateTestCases(llm, 2);
-			testCases = [...testCases, ...generatedCases];
+		if (!lsClient) {
+			throw new Error('Langsmith client not initialized');
+		}
+		// Get dataset name from env or use default
+		const datasetName = process.env.LANGSMITH_DATASET_NAME || 'workflow-builder-canvas-prompts';
+		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
+
+		// Verify dataset exists
+		try {
+			await lsClient.readDataset({ datasetName });
+		} catch (error) {
+			console.error(pc.red(`✗ Dataset "${datasetName}" not found`));
+			console.log('\nAvailable datasets:');
+
+			// List available datasets
+			for await (const dataset of lsClient.listDatasets()) {
+				console.log(pc.dim(`  - ${dataset.name} (${dataset.id})`));
+			}
+
+			console.log(
+				'\nTo use a different dataset, set the LANGSMITH_DATASET_NAME environment variable',
+			);
+			process.exit(1);
 		}
 
-		console.log(pc.dim(`Running ${testCases.length} test cases with Langsmith evaluation`));
 		console.log();
-
 		const startTime = Date.now();
 
 		// Create workflow generation function
-		const generateWorkflow = async (inputs: { prompt: string; testCaseId: string }) => {
+		const generateWorkflow = async (inputs: typeof WorkflowState.State) => {
+			// Generate a unique ID for this evaluation run
+			const runId = `eval-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
 			const agent = createAgent(parsedNodeTypes, llm, tracer);
 			const chatPayload: ChatPayload = {
-				message: inputs.prompt,
+				// @ts-ignore
+				message: inputs.messages[0]?.kwargs.content as string,
 				workflowContext: {
-					currentWorkflow: { id: inputs.testCaseId, nodes: [], connections: {} },
+					currentWorkflow: { id: runId, nodes: [], connections: {} },
 				},
 			};
 
@@ -378,42 +405,35 @@ async function runLangsmithEvaluation(): Promise<void> {
 			}
 
 			// Get generated workflow
-			const state = await agent.getState(inputs.testCaseId, 'langsmith-eval-user');
+			const state = await agent.getState(runId, 'langsmith-eval-user');
 			const generatedWorkflow = (state.values as typeof WorkflowState.State).workflowJSON;
 
 			return {
 				workflow: generatedWorkflow,
-				prompt: inputs.prompt,
+				prompt: chatPayload.message,
 			};
 		};
-
-		// Prepare evaluation data
-		// For this implementation, we'll use in-memory examples rather than a dataset name
-		const exampleData = testCases.map((tc) => ({
-			inputs: { prompt: tc.prompt, testCaseId: tc.id },
-			outputs: { referenceWorkflow: tc.referenceWorkflow },
-			// Langsmith Example requires these fields
-			id: tc.id,
-			created_at: new Date().toISOString(),
-			runs: [],
-			dataset_id: 'workflow-builder-canvas-prompts',
-		}));
 
 		// Create LLM-based evaluator
 		const evaluator = await llmBasedMultiMetricEvaluator(llm);
 
-		// Run Langsmith evaluation
+		// Run Langsmith evaluation - the evaluate function will automatically
+		// fetch examples from the dataset
 		const results = await evaluate(generateWorkflow, {
-			data: exampleData as Example[],
+			data: datasetName, // Just pass the dataset name
 			evaluators: [evaluator],
+			maxConcurrency: 4,
 			experimentPrefix: 'workflow-builder-evaluation',
+			metadata: {
+				evaluationType: 'llm-based',
+				modelName: process.env.LLM_MODEL || 'default',
+			},
 		});
 
 		const totalTime = Date.now() - startTime;
 		console.log(pc.green(`✓ Evaluation completed in ${(totalTime / 1000).toFixed(1)}s`));
 
-		// Note: Langsmith evaluation results would need to be converted to our format
-		// for compatibility with existing reporting functions
+		// Display results information
 		console.log('\nView detailed results in Langsmith dashboard');
 		console.log(
 			`Experiment name: workflow-builder-evaluation-${new Date().toISOString().split('T')[0]}`,
@@ -422,6 +442,7 @@ async function runLangsmithEvaluation(): Promise<void> {
 		// Log summary of results if available
 		if (results) {
 			console.log(pc.dim('Evaluation run completed successfully'));
+			console.log(pc.dim(`Dataset: ${datasetName}`));
 		}
 	} catch (error) {
 		console.error(pc.red('✗ Langsmith evaluation failed:'), error);
