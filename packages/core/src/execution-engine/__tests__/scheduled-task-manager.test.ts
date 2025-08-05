@@ -20,7 +20,7 @@ describe('ScheduledTaskManager', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
-		scheduledTaskManager = new ScheduledTaskManager(instanceSettings, logger, mock());
+		scheduledTaskManager = new ScheduledTaskManager(instanceSettings, logger, mock(), mock());
 	});
 
 	it('should not register duplicate crons', () => {
@@ -80,6 +80,7 @@ describe('ScheduledTaskManager', () => {
 			mock<InstanceSettings>({ isLeader: false }),
 			logger,
 			mock(),
+			mock(),
 		);
 
 		const ctx: CronContext = {
@@ -133,7 +134,12 @@ describe('ScheduledTaskManager', () => {
 
 	it('should not set up log interval when activeInterval is 0', () => {
 		const configWithZeroInterval = mock({ activeInterval: 0 });
-		const manager = new ScheduledTaskManager(instanceSettings, logger, configWithZeroInterval);
+		const manager = new ScheduledTaskManager(
+			instanceSettings,
+			logger,
+			configWithZeroInterval,
+			mock(),
+		);
 
 		// @ts-expect-error Private property
 		expect(manager.logInterval).toBeUndefined();
