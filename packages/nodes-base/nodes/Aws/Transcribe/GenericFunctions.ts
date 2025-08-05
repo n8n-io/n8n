@@ -1,3 +1,4 @@
+import { Aws, AwsCredentialsType } from '../../../credentials/Aws.credentials';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 import get from 'lodash/get';
@@ -38,20 +39,14 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const credentials = await this.getCredentials<AwsCredentialsType>('aws');
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
+	const securityHeaders = await Aws.getSecurityHeaders(credentials);
 
 	sign(signOpts, securityHeaders);
 

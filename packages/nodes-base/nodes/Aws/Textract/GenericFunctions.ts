@@ -1,3 +1,4 @@
+import { Aws, AwsCredentialsType } from '../../../credentials/Aws.credentials';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 import type {
@@ -139,7 +140,7 @@ export async function validateCredentials(
 	decryptedCredentials: ICredentialDataDecryptedObject,
 	service: string,
 ): Promise<any> {
-	const credentials = decryptedCredentials;
+	const credentials = decryptedCredentials as AwsCredentialsType;
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(
@@ -152,13 +153,7 @@ export async function validateCredentials(
 		method: 'POST',
 		path: '?Action=GetCallerIdentity&Version=2011-06-15',
 	} as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
+	const securityHeaders = await Aws.getSecurityHeaders(credentials);
 
 	sign(signOpts, securityHeaders);
 

@@ -2752,6 +2752,12 @@ importers:
       '@aws-sdk/client-sso-oidc':
         specifier: 3.808.0
         version: 3.808.0
+      '@aws-sdk/credential-providers':
+        specifier: 3.808.0
+        version: 3.808.0
+      '@aws-sdk/types':
+        specifier: 3.804.0
+        version: 3.804.0
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
@@ -17456,7 +17462,7 @@ snapshots:
   '@aws-sdk/types@3.804.0':
     dependencies:
       '@smithy/types': 4.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   '@aws-sdk/util-arn-parser@3.804.0':
     dependencies:
