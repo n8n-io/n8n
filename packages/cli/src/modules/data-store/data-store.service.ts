@@ -31,6 +31,17 @@ export class DataStoreService {
 	async start() {}
 	async shutdown() {}
 
+	async createDataStoreRaw(projectId: string, dto: CreateDataStoreDto) {
+		const existingTable = await this.dataStoreRepository.findOneBy({
+			name: dto.name,
+			projectId,
+		});
+		if (existingTable !== null) {
+			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
+		}
+		return await this.dataStoreRepository.createUserTableRaw(projectId, dto.name, dto.columns);
+	}
+
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,

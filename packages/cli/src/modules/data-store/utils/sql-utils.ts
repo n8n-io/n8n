@@ -1,10 +1,30 @@
 import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
+import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { DataStoreUserTableName } from '../data-store.types';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
+	return columns.map((col) => {
+		const name = new DslColumn(col.name.trim());
+
+		switch (col.type) {
+			case 'number':
+				return name.int;
+			case 'boolean':
+				return name.bool;
+			case 'string':
+				return name.text;
+			case 'date':
+				return name.timestampTimezone();
+			default:
+				return name.text;
+		}
+	});
+}
 
 function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 	switch (type) {

@@ -23,7 +23,7 @@ export class DataStoreSharedService {
 		let projectIds = projects.map((x) => x.projectId);
 		if (options.filter?.projectId) {
 			const mask = [options.filter?.projectId].flat();
-			projectIds = projectIds.filter(mask.includes);
+			projectIds = projectIds.filter((x) => mask.includes(x));
 		}
 		return await this.dataStoreRepository.getManyAndCount({
 			...options,

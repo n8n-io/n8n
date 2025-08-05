@@ -1,10 +1,10 @@
 import { DataStoreCreateColumnSchema, type DataStoreUserTableName } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
 import { addColumnQuery, deleteColumnQuery, toTableName } from './utils/sql-utils';
-import { UserError } from 'n8n-workflow';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity> {
@@ -16,7 +16,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		const executor = em ?? this.manager;
 		return await executor
 			.createQueryBuilder(DataStoreColumnEntity, 'dsc')
-			.where(`dsc.dataStoreId = '${rawDataStoreId}'`)
+			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
 			.getMany();
 	}
 
@@ -78,7 +78,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			});
 
 			if (existingColumn === null) {
-				throw new UserError(`tried to move column not present in data store '${rawDataStoreId}`);
+				throw new UserError(`tried to move column not present in data store '${rawDataStoreId}'`);
 			}
 
 			await this.shiftColumns(rawDataStoreId, existingColumn.columnIndex, -1, em);

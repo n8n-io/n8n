@@ -1,4 +1,5 @@
 import {
+	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
@@ -134,9 +135,9 @@ export class DataStoreController {
 		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: DataStoreRows,
+		@Body dto: AddDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.insertRows(dataStoreId, dto);
+		return await this.dataStoreService.insertRows(dataStoreId, dto.data);
 	}
 
 	@Post('/:dataStoreId/upsert')

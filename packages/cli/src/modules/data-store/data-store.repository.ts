@@ -1,9 +1,15 @@
-import type { DataStoreCreateColumnSchema, ListDataStoreQueryDto } from '@n8n/api-types';
+import {
+	DATA_STORE_COLUMN_REGEX,
+	type DataStoreCreateColumnSchema,
+	type ListDataStoreQueryDto,
+} from '@n8n/api-types';
+import { DslColumn, CreateTable } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreEntity } from './data-store.entity';
-import { createUserTableQuery, toTableName } from './utils/sql-utils';
+import { createUserTableQuery, toDslColumns, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStoreEntity> {
@@ -11,12 +17,37 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
-	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
+	async createUserTableRaw(
+		projectId: string,
+		name: string,
+		columns: DataStoreCreateColumnSchema[],
+	) {
 		return await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
 			await em.insert(DataStoreEntity, dataStore);
-			const dbType = this.manager.connection.options.type;
+			const dbType = em.connection.options.type;
 			await em.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
+			return dataStore;
+		});
+	}
+
+	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
+		if (columns.some((c) => !DATA_STORE_COLUMN_REGEX.test(c.name))) {
+			throw new UnexpectedError('bad column name');
+		}
+
+		return await this.manager.transaction(async (em) => {
+			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
+			await em.insert(DataStoreEntity, dataStore);
+
+			const tableName = toTableName(dataStore.id);
+			const queryRunner = em.queryRunner!;
+			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
+
+			const createTable = new CreateTable(tableName, '', queryRunner);
+			createTable.withColumns.apply(createTable, dslColumns);
+			await createTable.execute(queryRunner);
+
 			return dataStore;
 		});
 	}
@@ -146,7 +177,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
-		query.take(options.take ?? 0);
+		if (options?.take) {
+			query.skip(options.skip ?? 0).take(options.take);
+		}
 	}
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataStoreEntity>): void {

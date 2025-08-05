@@ -33,8 +33,8 @@ export const dataStoreSchema = z.object({
 	id: dataStoreIdSchema,
 	name: dataStoreNameSchema,
 	columns: z.array(dataStoreColumnSchema),
-	createdAt: z.date(),
-	updatedAt: z.date(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
 });
 export type DataStore = z.infer<typeof dataStoreSchema>;
 export type DataStoreColumn = z.infer<typeof dataStoreColumnSchema>;
@@ -50,3 +50,7 @@ export type DataStoreListFilter = {
 export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
+
+export type DataStoreColumnJsType = string | number | boolean | Date;
+
+export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
