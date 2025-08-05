@@ -86,6 +86,6 @@ export interface IDataStoreProjectService {
 
 	getManyRowsAndCount(
 		dto: Partial<ListDataStoreRowsOptions>,
-	): Promise<{ count: number; data: DataStoreRows[] }>;
+	): Promise<{ count: number; data: DataStoreRows }>;
 	appendRows(rows: DataStoreRows): Promise<boolean>;
 }
