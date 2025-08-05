@@ -1711,7 +1711,7 @@
       "description": "Complete test coverage for @n8n/backend-common package by adding tests for module registry, environment detection, and licensing functionality.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "backend-utils-test-coverage-1754084008691",
       "success_criteria": [
         "Module registry dynamic loading and configuration tested",
@@ -1738,7 +1738,7 @@
       "description": "Improve @n8n/design-system test coverage from 47% to 80% by adding tests for untested components and improving function coverage from 45%",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "in_progress",
       "parent_task_id": "frontend-test-coverage-1754084008692",
       "success_criteria": [
         "Design system package reaches 80%+ statement coverage",
@@ -2090,8 +2090,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 255,
-  "last_hook_activation": 1754362391302,
+  "execution_count": 257,
+  "last_hook_activation": 1754363190807,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
