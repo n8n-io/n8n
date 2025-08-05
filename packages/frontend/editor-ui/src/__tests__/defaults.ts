@@ -154,4 +154,5 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	activeCrons: [],
 };
