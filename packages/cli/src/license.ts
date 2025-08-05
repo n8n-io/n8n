@@ -218,9 +218,14 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		if (feature === LICENSE_FEATURES.API_DISABLED) {
+			return false;
+		}
+		if (feature === LICENSE_FEATURES.SHOW_NON_PROD_BANNER) {
+			return false;
+		}
+		return true;
 	}
-
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
 	isSharingEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SHARING);

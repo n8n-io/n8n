@@ -227,14 +227,6 @@ export class ProjectService {
 		data: CreateProjectDto,
 		trx: EntityManager,
 	) {
-		const limit = this.licenseState.getMaxTeamProjects();
-		if (limit !== UNLIMITED_LICENSE_QUOTA) {
-			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
-			if (teamProjectCount >= limit) {
-				throw new TeamProjectOverQuotaError(limit);
-			}
-		}
-
 		const project = await trx.save(
 			Project,
 			this.projectRepository.create({ ...data, type: 'team' }),
