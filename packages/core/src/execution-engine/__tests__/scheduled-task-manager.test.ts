@@ -12,6 +12,7 @@ describe('ScheduledTaskManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const workflow = mock<Workflow>({ timezone: 'GMT' });
 	const everyMinute = '0 * * * * *';
+
 	const onTick = jest.fn();
 
 	let scheduledTaskManager: ScheduledTaskManager;
@@ -20,6 +21,21 @@ describe('ScheduledTaskManager', () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
 		scheduledTaskManager = new ScheduledTaskManager(instanceSettings, logger, mock());
+	});
+
+	it('should not register duplicate crons', () => {
+		const ctx1: CronContext = {
+			workflowId: workflow.id,
+			nodeId: 'test-node-id',
+			timezone: workflow.timezone,
+			expression: everyMinute,
+		};
+
+		scheduledTaskManager.registerCron(ctx1, onTick);
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(1);
+
+		scheduledTaskManager.registerCron(ctx1, onTick);
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(1);
 	});
 
 	it('should throw when workflow timezone is invalid', () => {
