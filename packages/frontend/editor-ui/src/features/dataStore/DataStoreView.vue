@@ -232,7 +232,7 @@ onMounted(() => {
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"
-				@click="onAddModalClick"
+				@click:button="onAddModalClick"
 			/>
 		</template>
 		<template #item="{ item: data }">
