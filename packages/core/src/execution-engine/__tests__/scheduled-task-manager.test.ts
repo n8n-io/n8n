@@ -81,18 +81,30 @@ describe('ScheduledTaskManager', () => {
 	});
 
 	it('should deregister CronJobs for a workflow', () => {
-		const ctx: CronContext = {
+		const ctx1: CronContext = {
 			workflowId: workflow.id,
-			nodeId: 'test-node-id',
+			nodeId: 'test-node-id-1',
+			timezone: workflow.timezone,
+			expression: everyMinute,
+		};
+		const ctx2: CronContext = {
+			workflowId: workflow.id,
+			nodeId: 'test-node-id-2',
+			timezone: workflow.timezone,
+			expression: everyMinute,
+		};
+		const ctx3: CronContext = {
+			workflowId: workflow.id,
+			nodeId: 'test-node-id-3',
 			timezone: workflow.timezone,
 			expression: everyMinute,
 		};
 
-		scheduledTaskManager.registerCron(ctx, onTick);
-		scheduledTaskManager.registerCron(ctx, onTick);
-		scheduledTaskManager.registerCron(ctx, onTick);
+		scheduledTaskManager.registerCron(ctx1, onTick);
+		scheduledTaskManager.registerCron(ctx2, onTick);
+		scheduledTaskManager.registerCron(ctx3, onTick);
 
-		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toHaveLength(3);
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(3);
 
 		scheduledTaskManager.deregisterCrons(workflow.id);
 

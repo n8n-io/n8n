@@ -7,7 +7,7 @@ import { ScheduledTaskManager } from '../../../scheduled-task-manager';
 import { getSchedulingFunctions } from '../scheduling-helper-functions';
 
 describe('getSchedulingFunctions', () => {
-	const workflow = mock<Workflow>({ id: 'test-workflow' });
+	const workflow = mock<Workflow>({ id: 'test-workflow', timezone: 'Europe/Berlin' });
 	const cronExpression = '* * * * * 0';
 	const onTick = jest.fn();
 	const scheduledTaskManager = mockInstance(ScheduledTaskManager);
@@ -32,11 +32,7 @@ describe('getSchedulingFunctions', () => {
 
 			schedulingFunctions.registerCron(nodeCronContext, onTick);
 
-			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
-				cronContext,
-				{ expression: cronExpression },
-				onTick,
-			);
+			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(cronContext, onTick);
 		});
 	});
 });
