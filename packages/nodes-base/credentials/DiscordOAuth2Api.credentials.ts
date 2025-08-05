@@ -1,11 +1,6 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const defaultScopes = [
-	'identify',
-	'guilds',
-	'guilds.join',
-	'bot'
-];
+const defaultScopes = ['identify', 'guilds', 'guilds.join', 'bot'];
 
 export class DiscordOAuth2Api implements ICredentialType {
 	name = 'discordOAuth2Api';
