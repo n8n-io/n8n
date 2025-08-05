@@ -64,6 +64,9 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { I18nT } from 'vue-i18n';
 
+const WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS = 150;
+const WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS = 200;
+
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -694,7 +697,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			class="name-container"
 			data-test-id="canvas-breadcrumbs"
 		>
-			<template #default>
+			<template #default="{ bp }">
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
@@ -714,6 +717,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:max-width="
+								['XS', 'SM'].includes(bp)
+									? WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS
+									: WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS
+							"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
