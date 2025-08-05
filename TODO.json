@@ -1551,7 +1551,7 @@
       "description": "Create comprehensive test coverage for @n8n/config decorators (@Config, @Env, @Nested) and type coercion system which handles environment variable parsing and validation.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "backend-utils-test-coverage-1754084008691",
       "success_criteria": [
         "@Config decorator tested with various configuration scenarios",
@@ -1572,12 +1572,89 @@
       "created_at": "2025-08-03T07:06:16.630Z"
     },
     {
+      "id": "analyze-frontend-coverage-baseline-1754230629258",
+      "title": "Analyze Current Frontend Test Coverage Baseline",
+      "description": "Generate comprehensive coverage baseline report for design-system (47%), chat (74%), and editor-ui packages to identify specific gaps and establish improvement targets",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "completed",
+      "parent_task_id": "frontend-test-coverage-1754084008692",
+      "success_criteria": [
+        "Coverage baseline report generated for all three packages",
+        "Specific component gaps identified with coverage percentages",
+        "Editor-ui test performance issues documented and analyzed",
+        "Priority component list created for coverage improvement",
+        "Coverage improvement roadmap established"
+      ],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/coverage/",
+        "packages/@n8n/chat/coverage/",
+        "packages/editor-ui/coverage/",
+        "packages/frontend/@n8n/design-system/vitest.config.ts",
+        "packages/@n8n/vitest-config/"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-03T14:17:09.258Z"
+    },
+    {
+      "id": "extract-test-utilities-1754237724157",
+      "title": "Extract Reusable Test Utilities from Large Test Files",
+      "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead.",
+      "mode": "REFACTORING",
+      "priority": "high",
+      "status": "completed",
+      "success_criteria": [
+        "Common test utilities extracted into separate modules",
+        "Test helper functions modularized and reusable",
+        "Large test files broken into focused test suites",
+        "All tests continue to pass",
+        "Test execution time maintained or improved",
+        "Code duplication eliminated"
+      ],
+      "important_files": [
+        "packages/workflow/test/workflow.test.ts",
+        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
+        "packages/workflow/test/helpers/",
+        "packages/frontend/editor-ui/src/test-utils/"
+      ],
+      "estimate": "4-6 hours",
+      "created_at": "2025-08-03T16:15:24.157Z"
+    },
+    {
+      "id": "test_perf_baseline_1754279928986",
+      "title": "Analyze n8n monorepo test execution performance and establish baseline metrics",
+      "description": "Comprehensive analysis of test performance across all packages including timing data, bottlenecks, flaky tests, and parallelization opportunities",
+      "status": "completed",
+      "priority": "high",
+      "created_at": "2025-08-04T03:58:48.986Z",
+      "important_files": [],
+      "mode": "DEVELOPMENT"
+    },
+    {
+      "id": "python_integration_investigation_1754283790404",
+      "title": "Investigate n8n Python Integration and Local Execution",
+      "description": "Comprehensive investigation of how n8n integrates with Python environments, subprocess execution, and local Python capabilities",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "completed",
+      "success_criteria": [
+        "Python execution mechanisms identified",
+        "Environment management patterns documented",
+        "Docker/deployment Python integration analyzed",
+        "Code node Python capabilities analyzed",
+        "Local execution security patterns documented"
+      ],
+      "important_files": [],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-04T05:03:10.404Z"
+    },
+    {
       "id": "db-core-entities-tests-1754204776630",
       "title": "Create Entity Tests for @n8n/db User-Facing and Security Entities",
       "description": "Implement comprehensive tests for critical @n8n/db entities focusing on user-facing entities, security-sensitive entities, and core business logic entities.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "backend-utils-test-coverage-1754084008691",
       "success_criteria": [
         "user.ts entity fully tested including validation and relationships",
@@ -1654,31 +1731,6 @@
       ],
       "estimate": "2-3 hours",
       "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "analyze-frontend-coverage-baseline-1754230629258",
-      "title": "Analyze Current Frontend Test Coverage Baseline",
-      "description": "Generate comprehensive coverage baseline report for design-system (47%), chat (74%), and editor-ui packages to identify specific gaps and establish improvement targets",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "Coverage baseline report generated for all three packages",
-        "Specific component gaps identified with coverage percentages",
-        "Editor-ui test performance issues documented and analyzed",
-        "Priority component list created for coverage improvement",
-        "Coverage improvement roadmap established"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/coverage/",
-        "packages/@n8n/chat/coverage/",
-        "packages/editor-ui/coverage/",
-        "packages/frontend/@n8n/design-system/vitest.config.ts",
-        "packages/@n8n/vitest-config/"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
     },
     {
       "id": "enhance-design-system-coverage-1754230629258",
@@ -1775,30 +1827,6 @@
       "created_at": "2025-08-03T14:17:09.258Z"
     },
     {
-      "id": "extract-test-utilities-1754237724157",
-      "title": "Extract Reusable Test Utilities from Large Test Files",
-      "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead.",
-      "mode": "REFACTORING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Common test utilities extracted into separate modules",
-        "Test helper functions modularized and reusable",
-        "Large test files broken into focused test suites",
-        "All tests continue to pass",
-        "Test execution time maintained or improved",
-        "Code duplication eliminated"
-      ],
-      "important_files": [
-        "packages/workflow/test/workflow.test.ts",
-        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
-        "packages/workflow/test/helpers/",
-        "packages/frontend/editor-ui/src/test-utils/"
-      ],
-      "estimate": "4-6 hours",
-      "created_at": "2025-08-03T16:15:24.157Z"
-    },
-    {
       "id": "fix-workflow-test-failures-1754270940227",
       "title": "Fix n8n-workflow Package Test Failures",
       "description": "Resolve 22 failed tests in n8n-workflow package, primarily TypeError: workflow.nodes.map is not a function and missing method implementations",
@@ -1843,34 +1871,6 @@
       ],
       "estimate": "2-3 hours",
       "created_at": "2025-08-04T01:29:00.227Z"
-    },
-    {
-      "id": "test_perf_baseline_1754279928986",
-      "title": "Analyze n8n monorepo test execution performance and establish baseline metrics",
-      "description": "Comprehensive analysis of test performance across all packages including timing data, bottlenecks, flaky tests, and parallelization opportunities",
-      "status": "completed",
-      "priority": "high",
-      "created_at": "2025-08-04T03:58:48.986Z",
-      "important_files": [],
-      "mode": "DEVELOPMENT"
-    },
-    {
-      "id": "python_integration_investigation_1754283790404",
-      "title": "Investigate n8n Python Integration and Local Execution",
-      "description": "Comprehensive investigation of how n8n integrates with Python environments, subprocess execution, and local Python capabilities",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Python execution mechanisms identified",
-        "Environment management patterns documented",
-        "Docker/deployment Python integration analyzed",
-        "Code node Python capabilities analyzed",
-        "Local execution security patterns documented"
-      ],
-      "important_files": [],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T05:03:10.404Z"
     },
     {
       "id": "optimize-large-test-files-1754284115795",
@@ -2090,8 +2090,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 250,
-  "last_hook_activation": 1754344273551,
+  "execution_count": 253,
+  "last_hook_activation": 1754355612913,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

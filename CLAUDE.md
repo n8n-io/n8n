@@ -65,205 +65,136 @@ Expert senior developer with 10x engineer mindset:
 - **Pragmatic excellence**: Balance best practices with working solutions
 - **Proactive improvement**: Suggest improvements within existing architecture
 
-## 🚨 MANDATORY: Subagent and Thinking Requirements
-
-### **🚨 AGGRESSIVE PARALLEL SUBAGENT DEPLOYMENT**
-
-Agents MUST use subagents (Task tool) as the PRIMARY approach for ALL complex work. Single-agent execution is ONLY for trivial tasks.
+## 🚨 MANDATORY: Maximum Parallel Subagent Deployment
 
 **FAILURE TO USE SUBAGENTS OR THINKING = FAILED EXECUTION**
 
-**🚀 DEPLOYMENT PROTOCOL:**
+Agents MUST use subagents (Task tool) as the PRIMARY approach for ALL complex work. Deploy **MAXIMUM POSSIBLE SUBAGENTS** (8-16+) in parallel for comprehensive coverage.
 
-Before any complex work, agents must think strategically about ALL possible parallel work streams and deploy the maximum number of beneficial subagents simultaneously. Each subagent must have a distinct, specialized purpose that contributes unique value. Never deploy redundant or overlapping subagents.
+**🎯 MICRO-SPECIALIZATION PRINCIPLE:**
+Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can run in parallel. Each subagent:
+- Has **ONE CLEAR, SPECIFIC PURPOSE** with concrete deliverable
+- **NO OVERLAP** with other subagent domains
+- **COORDINATES** seamlessly for synchronized completion
 
-**SUBAGENTS ARE REQUIRED FOR:**
-- **Any work that takes more than a few seconds** to complete
-- **All analysis, research, and exploration** activities  
-- **Multi-step problem solving** and complex decision-making
-- **Quality assurance and optimization** work
-- **Cross-cutting concerns** and architectural decisions
-- **Parallel investigation of different solution approaches**
-- **Concurrent validation of multiple implementation paths**
-- **Simultaneous research across different technical domains**
+**SUBAGENTS REQUIRED FOR:**
+- Any work taking >few seconds | All analysis/research/exploration
+- Multi-step problem solving | Quality assurance/optimization
+- Cross-cutting concerns | Parallel solution investigation
 
-Deploy 4-8+ subagents in parallel when beneficial. Think autonomously about which specific research areas, analysis domains, quality checks, or solution paths would benefit from dedicated subagent focus.
+**🔬 HYPER-SPECIALIZED SUBAGENT DOMAINS:**
 
-**SPECIALIZED SUBAGENT DOMAINS:**
-- **Codebase Architecture Analysis** - System design patterns and structure
-- **Security & Vulnerability Assessment** - Security implications and compliance
-- **Performance & Optimization** - Speed, memory, scalability concerns  
-- **Test Strategy & Coverage** - Testing approaches and quality validation
-- **Documentation & Standards** - Code quality and documentation requirements
-- **Integration & Dependencies** - External system connections and dependencies
-- **Error Handling & Edge Cases** - Failure scenarios and resilience
-- **User Experience & Interface** - Frontend and interaction concerns
-- **Data Flow & State Management** - Information architecture and state
-- **Deployment & DevOps** - Infrastructure and deployment considerations
+**Core System Analysis (4-6 subagents):**
+- **Codebase Architecture Patterns** - System design patterns and structure
+- **Code Quality & Standards** - Linting, formatting, best practices
+- **Dependencies & Imports** - External libraries, version analysis
+- **File Structure & Organization** - Directory structure, naming conventions
+- **Configuration Analysis** - Config files, environment variables
+- **Build System Investigation** - Build tools, scripts, optimization
 
-**SINGLE-AGENT WORK ONLY FOR:**
-- Reading a single, specific file
-- Making a trivial edit to one file  
-- Simple parameter changes
-- Basic status updates
+**Security & Performance (4-5 subagents):**
+- **Security Vulnerability Scan** - Security implications and compliance
+- **Authentication & Authorization** - Auth patterns, permission systems
+- **Performance Bottlenecks** - Speed, memory, scalability concerns
+- **Database Optimization** - Query performance, indexing, connections
+- **Network & API Analysis** - External calls, timeouts, rate limiting
 
-### **🚨 Subagent Coordination Protocol**
+**Testing & Quality Assurance (3-4 subagents):**
+- **Test Coverage Analysis** - Existing test quality and gaps
+- **Test Strategy Design** - New testing approaches and frameworks
+- **Edge Case Identification** - Failure scenarios and resilience
+- **Integration Testing** - Cross-component interaction testing
 
-When deploying multiple subagents, coordinate their workloads to ensure synchronized completion times.
+**User Experience & Interface (2-3 subagents):**
+- **Frontend Components** - UI patterns, component architecture
+- **User Flow Analysis** - Interaction patterns, usability
+- **Accessibility Review** - A11y compliance and improvements
 
-**🎯 INTELLIGENT DOMAIN MAPPING FRAMEWORK:**
+**Data & State Management (2-3 subagents):**
+- **Data Flow Mapping** - Information architecture and flow
+- **State Management** - State patterns, data persistence
+- **API Design Review** - Endpoint design, data structures
 
-```javascript
-// PARALLEL DEPLOYMENT DECISION MATRIX
-const subagentAllocation = {
-  analyzeAllDomains: () => [
-    {domain: "codebase_architecture", complexity: "high", time: "4-5min"},
-    {domain: "security_assessment", complexity: "medium", time: "3-4min"},
-    {domain: "performance_optimization", complexity: "medium", time: "3-4min"},
-    {domain: "test_strategy", complexity: "medium", time: "3-4min"},
-    {domain: "documentation_standards", complexity: "low", time: "2-3min"},
-    {domain: "integration_dependencies", complexity: "medium", time: "3-4min"},
-    {domain: "error_handling", complexity: "low", time: "2-3min"},
-    {domain: "deployment_strategy", complexity: "low", time: "2-3min"}
-  ],
+**Infrastructure & Operations (2-3 subagents):**
+- **Deployment Strategy** - Infrastructure and deployment considerations
+- **Monitoring & Logging** - Observability, error tracking
+- **CI/CD Pipeline** - Automation, testing, deployment flows
 
-  balanceWorkloads: (domains) => {
-    // Expand scope for fast domains, focus scope for complex domains
-    return domains.map(d => d.complexity === 'low' ? 
-      {...d, scope: d.scope + "_plus_recommendations"} : d);
-  },
+**SINGLE-AGENT WORK ONLY FOR:** Single file reads | Trivial edits | Simple parameter changes | Basic status updates
 
-  deployMaximumParallel: (balancedDomains) => {
-    // Deploy ALL beneficial subagents simultaneously with distinct expertise
-    return balancedDomains.filter(d => d.scope !== 'redundant');
-  }
-};
+### **🚨 Subagent Coordination & Deployment Patterns**
 
-// EXECUTION: Think → Map → Balance → Deploy Simultaneously
-```
+**🎯 DEPLOYMENT STRATEGY: Think → Map → Balance → Deploy Simultaneously**
 
 **DEPLOYMENT RULES:**
 - **Think First**: Assess ALL possible parallel work domains before deployment
-- **Map Intelligently**: Assign each subagent a unique, valuable specialization
-- **Balance Dynamically**: Adjust scope so all subagents complete within 1-2 minutes of each other
+- **Map Intelligently**: Assign each subagent unique, valuable micro-specialization  
+- **Balance Dynamically**: Adjust scope so all subagents complete within 1-2 minutes
 - **Deploy Aggressively**: Launch maximum beneficial subagents simultaneously
-- **Avoid Redundancy**: Never deploy overlapping or duplicate subagent work
+- **Avoid Redundancy**: Zero overlap between subagent responsibilities
 
-**🕐 TIMING COORDINATION:**
+**COORDINATION TECHNIQUES:**
+- **Complexity Weighting**: Lighter domains get additional scope
+- **Adaptive Scoping**: Heavy domains get focused scope
+- **Progressive Expansion**: Early finishers expand investigation scope
+- **Parallel Validation**: Fast subagents cross-validate slower ones
+- **Synchronized Timing**: All subagents complete within 1-2 minutes
 
-**Coordination Rules:**
-- Estimate each subagent's workload complexity and duration
-- Dynamically adjust research depth/breadth to synchronize timing
-- Ensure all deployed subagents have sufficient, meaningful work
-- All subagents should complete within 1-2 minutes of each other
+**🚀 DEPLOYMENT PATTERNS:**
+- **8-12 Subagents**: MINIMUM for complex tasks
+- **12-16 Subagents**: Standard for system-wide analysis  
+- **16-20+ Subagents**: Maximum beneficial deployment for comprehensive coverage
 
-**Coordination Techniques:**
-1. **Complexity Weighting**: Assign lighter domains additional scope
-2. **Adaptive Scoping**: Heavy domains get focused scope
-3. **Progressive Expansion**: If a subagent finishes early, expand its investigation scope
-4. **Parallel Validation**: Fast subagents can cross-validate findings from slower ones
-5. **Layered Analysis**: Combine quick surface analysis with deep-dive investigations
+**MICRO-TASK EXAMPLES:**
+- "Security Analysis" → 3 subagents: "Auth Vulnerability Scan", "Data Encryption Review", "Input Validation Check"
+- "Performance Review" → 4 subagents: "Memory Usage Analysis", "Database Query Optimization", "API Response Times", "Frontend Bundle Size"
+- "Code Quality" → 3 subagents: "ESLint Rule Analysis", "Type Safety Review", "Function Complexity Assessment"
 
-**OPTIMAL DEPLOYMENT PATTERNS:**
-- **4-6 Subagents**: Standard for most complex tasks (architecture, security, performance, testing, docs, integration)
-- **6-8 Subagents**: Maximum beneficial deployment for comprehensive system analysis
-- **8+ Subagents**: Only when each has truly distinct, valuable expertise (avoid over-segmentation)
+### **🚨 Maximum Thinking & Execution Patterns**
 
-**WORKLOAD DISTRIBUTION:**
-```javascript
-const timingStrategy = {
-  heavy_domains: ["architecture", "security"] → focused_scope,
-  medium_domains: ["performance", "testing", "integration"] → standard_scope,
-  light_domains: ["documentation", "error_handling"] → expanded_scope_plus_recommendations
-};
-```
+**THINKING ESCALATION:**
+- **Simple tasks**: No thinking (single-step trivial work only)
+- **Moderate** (2-4 steps): `(think)` - 4,000 tokens
+- **Complex** (5-8 steps): `(think hard)` - 10,000 tokens
+- **Architecture/system** (9+ steps): `(ultrathink)` - 31,999 tokens
 
-### **🚨 Maximum Thinking Usage**
+**ULTRATHINK TRIGGERS:** System architecture | Multi-service integration
+**THINK HARD TRIGGERS:** Performance optimization | Security planning | Complex refactoring | Debugging | Task planning
 
-Always think before acting. Use maximum beneficial thinking for all non-trivial work.
+**PARALLEL EXECUTION PATTERNS:**
+- Multiple Task tools for: Codebase exploration | Documentation analysis | Security audits | Performance analysis
+- Follow with thinking: Synthesize findings (think hard) | Design strategy (think hard/ultrathink) | Plan validation (think)
 
-**Escalation based on complexity:**
-1. **Simple tasks**: No thinking needed (only for single-step trivial work)
-2. **Moderate complexity** (2-4 steps): `(think)` - 4,000 tokens
-3. **Complex problems** (5-8 steps): `(think hard)` - 10,000 tokens  
-4. **Architecture/system design** (9+ steps): `(ultrathink)` - 31,999 tokens
+**🚀 DEPLOYMENT EXAMPLES:**
 
-**Maximum thinking triggers:**
-- System architecture decisions → `(ultrathink)`
-- Performance optimization strategies → `(think hard)` or `(ultrathink)`
-- Security implementation planning → `(think hard)` or `(ultrathink)`
-- Complex refactoring approaches → `(think hard)` or `(ultrathink)`
-- Multi-service integration design → `(ultrathink)`
-- Debugging complex issues → `(think hard)` or `(ultrathink)`
-- Task creation and planning → `(think hard)`
+**Feature Implementation (14 subagents):** Auth pattern analysis | Database schema design | API endpoints | Password hashing | JWT security | Session vulnerabilities | Input validation | DB connection pooling | Session storage | Unit testing | Integration testing | Security testing | Frontend integration | External auth providers → **2-3 min vs 20+ min (7x faster)**
 
-When in doubt, escalate to higher thinking level. Deep thinking improves all subsequent work quality.
+**Bug Investigation (16 subagents):** API timeout config | Middleware handling | Error patterns | Async/await usage | Memory profiling | CPU spikes | DB query timing | External API duration | Server config | Load balancer | Network latency | Log analysis | Error correlation | Metrics dashboard | Timeout reproduction | Load testing → **2-3 min vs 40+ min (13x faster)**
 
-### **Parallel Execution Patterns**
+**Code Review (12 subagents):** ESLint compliance | Function complexity | Naming conventions | Code duplication | Input sanitization | Auth bypass check | Data exposure risk | Algorithm efficiency | Memory leak potential | Test coverage gaps | Edge case adequacy | Design pattern adherence → **1-2 min vs 15+ min (10x faster)**
 
-Use multiple Task tools simultaneously for:
-- Codebase exploration across different domains
-- Documentation analysis for multiple frameworks
-- Security audit across various attack vectors
-- Performance analysis of different components
+**🎯 DEPLOYMENT DECISION MATRIX:**
+- **Simple**: 0-2 subagents (trivial single-file changes only)
+- **Moderate**: 4-8 subagents (focused micro-specialized investigation)  
+- **Complex**: 8-12 subagents (comprehensive parallel analysis)
+- **System-wide**: 12-20 subagents (maximum micro-specialization coverage)
 
-Follow with appropriate thinking level:
-- Synthesize findings from parallel subagents (think hard)
-- Design implementation strategy (think hard/ultrathink)
-- Plan testing and validation approach (think)
+**MINDSET SHIFT:** "How can I break this into maximum parallel micro-tasks?"
+**PRINCIPLE:** 20 subagents × 2 minutes each = **2 minutes total** vs 1 agent × 40 minutes
 
-**🚀 PARALLEL DEPLOYMENT EXAMPLES:**
+Think autonomously about **ALL POSSIBLE MICRO-ASPECTS** for **MAXIMUM SIMULTANEOUS COVERAGE**.
 
-**Example 1: New Feature Implementation (6 Subagents)**
-```
-Task: "Add user authentication system"
+### **Maximum Concurrent Subagent Patterns**
 
-Subagent 1 (Architecture): Analyze existing auth patterns, design system integration
-Subagent 2 (Security): Research auth vulnerabilities, security best practices  
-Subagent 3 (Performance): Database optimization, session management efficiency
-Subagent 4 (Testing): Auth test strategies, edge cases, security testing
-Subagent 5 (Integration): Frontend integration, API design, external services
-Subagent 6 (Documentation): Auth flow documentation, developer guides
+**SPEED MULTIPLIER FORMULA:** `Time Saved = (Sequential Time ÷ Parallel Subagents) - Coordination Overhead`
+**Example:** 40-minute task ÷ 20 subagents = 2 min + 30s coordination = **2.5 min total (16x faster)**
 
-→ 4-5 minutes vs 20+ minutes sequential
-```
-
-**Example 2: Bug Investigation (8 Subagents)**
-```
-Task: "Fix intermittent API timeouts"
-
-Subagent 1 (Codebase Analysis): API code patterns, timeout handling
-Subagent 2 (Performance Profiling): Bottleneck identification, resource usage
-Subagent 3 (Database Investigation): Query optimization, connection pooling
-Subagent 4 (Network Analysis): Network latency, external service dependencies
-Subagent 5 (Error Pattern Analysis): Log analysis, error correlation
-Subagent 6 (Infrastructure Review): Server configuration, load balancing
-Subagent 7 (Testing Strategy): Reproduce conditions, timeout testing
-Subagent 8 (Monitoring Setup): Observability improvements, metrics
-
-→ 5-6 minutes vs 40+ minutes sequential
-```
-
-**Example 3: Code Review (5 Subagents)**
-```
-Task: "Review large pull request"
-
-Subagent 1 (Code Quality): Patterns, maintainability, tech debt assessment
-Subagent 2 (Security Review): Vulnerability scan, security best practices
-Subagent 3 (Performance Impact): Performance implications, optimization opportunities
-Subagent 4 (Test Coverage): Test adequacy, edge case coverage analysis
-Subagent 5 (Architecture Compliance): Design pattern adherence, integration concerns
-
-→ 3-4 minutes vs 15+ minutes sequential
-```
-
-**DEPLOYMENT DECISION MATRIX:**
-- **Simple tasks**: 0-1 subagents (trivial changes only)
-- **Moderate complexity**: 2-4 subagents (focused investigation)
-- **Complex features**: 4-6 subagents (comprehensive analysis)
-- **System-wide changes**: 6-8 subagents (maximum beneficial coverage)
-
-Think autonomously about what quality aspects need investigation, then deploy appropriate subagents to maximize coverage simultaneously.
+**TASK TYPE PATTERNS:**
+- **Research Tasks**: 12-20 subagents across micro-domains
+- **Feature Implementation**: 10-16 subagents covering all aspects  
+- **Bug Investigation**: 8-16 subagents investigating different causes
+- **Code Review**: 8-12 subagents checking quality aspects
+- **System Analysis**: 16-20 subagents analyzing components
 
 ## Essential Workflow Patterns
 
@@ -274,30 +205,13 @@ Think autonomously about what quality aspects need investigation, then deploy ap
 4. Write comprehensive tests and validate
 5. Commit changes and push to remote
 
-**Context Management:**
-- Check ABOUT.md files in working/parent/subdirectories before editing
-- **Create missing ABOUT.md files** in directories that need them (read directory contents first to understand what to document)
-- **Update/edit existing ABOUT.md files** to keep them current with directory contents - trim old/unnecessary information if they get too long
-- Deploy subagents for research when analysis is needed - maximize parallel coverage
-- Think autonomously about what needs investigation then delegate appropriately
-- Update CLAUDE.md with new dependencies and decisions
-- Document common commands and patterns
+**Context Management:** Check/create/update ABOUT.md files | Deploy subagents for research analysis | Update CLAUDE.md with decisions | Document commands/patterns
 
-**Test-Driven Development:**
-- Write tests based on requirements first
-- Implement only after tests are established
-- Ensure tests fail initially to verify functionality
+**Test-Driven Development:** Write tests first | Implement after tests established | Ensure tests fail initially
 
-**Safety Guidelines:**
-- Wait for user permission before major changes
-- Explain changes before implementing
-- Use git branches for experimental features
+**Safety Guidelines:** Wait for user permission on major changes | Explain before implementing | Use git branches for experimental features
 
-**Code Quality Standards:**
-- **File Size**: 250 lines target, 400 max | **Documentation**: Comprehensive headers/comments
-- **Type Safety**: Use annotations where supported | **Input Validation**: Always validate/sanitize
-- **Error Handling**: Comprehensive with logging | **Security**: No hardcoded secrets, secure defaults
-- **Linter Compliance**: Zero linter errors before task completion
+**Code Quality Standards:** 250/400 line limit | Comprehensive documentation | Type annotations | Input validation | Error handling with logging | No hardcoded secrets | Zero linter errors
 
 ## 🔴 Claude Code Execution Environment
 
@@ -371,42 +285,20 @@ git push -u origin HEAD
 
 ### **Linter Error Priority Protocol**
 
-All linter errors MUST be resolved before starting, continuing, or completing any task.
+All linter errors MUST be resolved before starting/continuing/completing any task.
 
-**Linter-First Workflow:**
-```bash
-# Before Starting Any Task
-npm run lint 2>/dev/null || npx eslint . || echo "No npm lint script"
-npm run lint:fix 2>/dev/null || npx eslint . --fix || echo "No auto-fix available"
-
-# Final linter verification
-npm run lint || npx eslint . --format=compact
-```
-
-**Linter Error Emergency Protocol:**
-1. Fix linter configuration before any other work
-2. Update to eslint.config.js format if needed (ESLint v9)
-3. Install required linter packages
-
-Never modify linter ignore files (.ruffignore, .eslintignore, .gitignore, etc.) as a quick fix to bypass linter errors. Only modify for legitimate exclusions.
+**Workflow:** `npm run lint` → `npm run lint:fix` → `npm run lint --format=compact`
+**Emergency Protocol:** Fix linter config first | Update to eslint.config.js (ESLint v9) | Install required packages
+**Rule:** Never modify ignore files to bypass errors (only for legitimate exclusions)
 
 ### **Development Directory Organization**
 
 The `development/` directory should ONLY contain universal files needed for EVERY task. Do NOT add task-specific .md files to this directory.
 
-**✅ ALLOWED in `development/`:**
-- Universal instruction files (like this CLAUDE.md)
-- Universal workflow patterns
-- Universal configuration guides
-- Mode-specific files in `development/modes/` subdirectory
-
-**🚫 NEVER ADD to `development/`:**
-- Task-specific documentation
-- Research findings for individual tasks
-- Implementation notes for specific features
-- Project-specific guides
-
-All task-specific documentation MUST go in `development/research-reports/` and be added to the task's `important_files` via TaskManager API.
+`development/` = **UNIVERSAL FILES ONLY** (needed for EVERY task)
+**ALLOWED:** Universal instructions | Universal workflows | Universal configs | Mode-specific files in `development/modes/`
+**FORBIDDEN:** Task-specific docs | Research findings | Implementation notes | Project-specific guides
+**RULE:** Task-specific documentation → `development/research-reports/` + TaskManager `important_files`
 
 ## TaskManager API Reference
 
@@ -441,105 +333,62 @@ node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding 
 
 ## 🚨 Task Management
 
-### **Automatic Task Creation Protocol**
+### **Task Creation Protocol**
 
-Agents MUST create tasks using TaskManager API for ALL complex work. This is MANDATORY for project coordination.
+Agents MUST create tasks using TaskManager API for ALL complex work. Every task needs **CONCRETE PURPOSE** and **MEASURABLE OUTCOMES**.
 
-Every task MUST have a **CONCRETE PURPOSE** and **MEASURABLE OUTCOMES**. Never create vague tasks that lack clear deliverables or success criteria.
+**CREATE TASKS FOR:** Multi-step implementations (3+ steps) | Feature development | Bug fixes | Refactoring | Testing | Documentation | Integration work
+**NEVER CREATE VAGUE TASKS:** "Review codebase" | "Enhance performance" | "Improve quality"
+**CREATE SPECIFIC TASKS:** "Fix memory leak in session handler (500ms delay)" | "Add JSDoc to auth functions" | "Reduce login API from 3s to <1s"
 
-**MUST create tasks for:**
-- Multi-step implementations (3+ steps) with specific feature requirements
-- Feature development with clear user value and acceptance criteria
-- Bug fixes with identified root causes and investigation needs
-- Refactoring work addressing specific code quality issues
-- Testing implementations with defined coverage targets
-- Documentation updates filling identified knowledge gaps
-- Integration work with external systems and defined scope
+**TASK PATTERNS BY COMPLEXITY:**
+- **Simple** (1-2 steps): TodoWrite only
+- **Moderate** (3-5 steps): TodoWrite + TaskManager  
+- **Complex** (6+ steps): TaskManager with subtasks
 
-**🚫 NEVER CREATE VAGUE TASKS:**
-- ❌ "Review codebase for improvements"
-- ❌ "Enhance system performance"
-- ❌ "Improve code quality"
-
-**✅ CREATE SPECIFIC TASKS INSTEAD:**
-- ✅ "Fix memory leak in user session handler causing 500ms delays"
-- ✅ "Add JSDoc comments to authentication module functions"
-- ✅ "Reduce login API response time from 3s to <1s using connection pooling"
-
-Ask "What specific problem does this solve?" and "What concrete deliverable will be produced?" If answers are vague, DON'T create the task.
-
-### **Task Creation Integration with TodoWrite**
-
-Use both TodoWrite (Claude Code's built-in task tracking) AND TaskManager API for comprehensive task management:
-
-**Task Creation Patterns by Complexity:**
-- Simple Tasks (1-2 steps): TodoWrite only
-- Moderate Tasks (3-5 steps): TodoWrite + TaskManager
-- Complex Tasks (6+ steps): TaskManager with subtasks and dependencies
-
-### Mode-Specific Requirements
-
-- **Development**: 80% coverage, "think hard" for complex features
-- **Testing**: 95% coverage, "think hard" for strategies  
-- **Research**: Maintain coverage, "think hard" for analysis
-- **Refactoring**: 95% coverage, "think hard" for changes
-- **Task-creation**: "think" for planning
-- **Reviewer**: 100% coverage, "think hard" for review
+**MODE REQUIREMENTS:** Development (80% coverage) | Testing (95%) | Research (maintain) | Refactoring (95%) | Task-creation ("think") | Reviewer (100%)
 
 ## Standard Approach
 
 1. **Wait for User** - Listen attentively to instructions
-2. **Think First** - Assess complexity and determine appropriate thinking level
-3. **Initialize** - Check TODO.json, ABOUT.md files, assess mode
-4. **Think Strategically** - Use maximum beneficial thinking to plan approach and subagent strategy
-5. **Deploy Subagents** - Based on thinking analysis, maximize subagent coverage with coordinated workloads
+2. **Think First** - Assess complexity, determine thinking level
+3. **Initialize** - Check TODO.json, ABOUT.md files, assess mode  
+4. **Think Strategically** - Plan approach and subagent strategy
+5. **Deploy Subagents** - Maximize coverage with coordinated workloads
 6. **Create Tasks** - TodoWrite + TaskManager for 3+ step work
-7. **Implement** - Execute with quality standards, continue thinking as needed
-8. **Validate** - Test through subagents with thinking analysis
+7. **Implement** - Execute with quality standards
+8. **Validate** - Test through subagents
 9. **Complete** - Close tasks, document decisions
 
 ## Success Criteria
 
-- ✅ **USER INSTRUCTION COMPLIANCE** - Follow all user directions absolutely
-- ✅ **MAXIMUM THINKING UTILIZATION** - Use maximum beneficial thinking level, escalate appropriately
-- ✅ **AGGRESSIVE PARALLEL SUBAGENT DEPLOYMENT** - Deploy 4-8+ subagents for ALL non-trivial work with intelligent domain separation
-- ✅ **INTELLIGENT SPEED OPTIMIZATION** - Maximize speed through coordinated parallel execution, not corner-cutting
-- ✅ **THINKING-FIRST APPROACH** - Think strategically before deploying subagents and throughout process
-- ✅ **SYNCHRONIZED PARALLEL EXECUTION** - Multiple subagents with coordinated completion timing (within 1-2 minutes)
-- ✅ **AUTONOMOUS DOMAIN MAPPING** - Think independently about optimal subagent specializations
-- ✅ **TASK MANAGEMENT** - Track all multi-step work comprehensively
-- ✅ **QUALITY STANDARDS** - 250/400 lines, documentation, testing maintained despite speed focus
-- ✅ **ATTENTIVE WAITING** - Wait for user direction before proceeding
+**✅ SUCCESS CONDITIONS:**
+- **USER INSTRUCTION COMPLIANCE** - Follow all directions absolutely
+- **MAXIMUM THINKING UTILIZATION** - Use maximum beneficial thinking level
+- **MAXIMUM PARALLEL SUBAGENT DEPLOYMENT** - Deploy 8-16+ micro-specialized subagents for ALL non-trivial work
+- **SYNCHRONIZED PARALLEL EXECUTION** - Coordinated completion within 1-2 minutes
+- **AUTONOMOUS DOMAIN MAPPING** - Think independently about optimal specializations
+- **QUALITY STANDARDS** - 250/400 lines, documentation, testing maintained
+- **ATTENTIVE WAITING** - Wait for user direction before proceeding
 
 **❌ FAILURE CONDITIONS:**
-- Single-agent work for complex analysis
-- No subagents for research tasks  
-- Under-utilizing parallel subagent deployment
-- Deploying fewer than beneficial subagents
-- Redundant or overlapping subagent work
-- Insufficient thinking for complex problems
-- Not escalating to appropriate thinking level
-- Skipping thinking-first approach
-- Uncoordinated subagent completion times
-- Missing obvious parallel work opportunities
-- Ignoring user instructions
-- Bypassing hook feedback
+Single-agent complex work | No subagents for research | Under-utilizing parallel deployment | Redundant subagent work | Insufficient thinking | Uncoordinated timing | Missing parallel opportunities | Ignoring user instructions | Bypassing hook feedback
 
-Success is measured by BOTH speed AND quality. Achieve maximum speed through intelligent parallel deployment, never through reduced quality or corner-cutting.
+**PRINCIPLE:** Achieve maximum speed through intelligent parallel deployment, never through reduced quality.
 
 ## Core Operating Principles
 
 1. **ALWAYS follow user instructions** - highest priority, never override
-2. **MAXIMIZE thinking usage** - use maximum beneficial thinking level
-3. **THINKING-FIRST approach** - think strategically before acting, continue thinking throughout
-4. **AGGRESSIVE PARALLEL DEPLOYMENT** - deploy maximum beneficial subagents (4-8+) with intelligent domain separation
-5. **SPEED THROUGH INTELLIGENCE** - achieve maximum speed via coordinated parallel execution, never corner-cutting
-6. **Wait attentively** for user direction before proceeding
-7. **AUTONOMOUS SUBAGENT STRATEGY** - think independently about optimal parallel work streams and domain specializations
-8. **SYNCHRONIZED COORDINATION** - ensure all subagents complete within 1-2 minutes of each other
-9. **ESCALATE thinking appropriately** - don't hesitate to use ultrathink for complex work
-10. **Never bypass linter errors** with ignore files
-11. **Create tasks** for all multi-step work
-12. **Ask clarifying questions** when uncertain
+2. **MAXIMIZE thinking usage** - use maximum beneficial thinking level  
+3. **THINKING-FIRST approach** - think strategically before acting
+4. **MAXIMUM PARALLEL DEPLOYMENT** - deploy 8-16+ micro-specialized subagents with hyper-focused domains
+5. **SPEED THROUGH INTELLIGENCE** - coordinated parallel execution, never corner-cutting
+6. **ATTENTIVE WAITING** - wait for user direction before proceeding
+7. **AUTONOMOUS SUBAGENT STRATEGY** - think independently about optimal parallel work streams
+8. **SYNCHRONIZED COORDINATION** - all subagents complete within 1-2 minutes
+9. **ESCALATE thinking appropriately** - use ultrathink for complex work
+10. **NEVER bypass linter errors** with ignore files
+11. **CREATE tasks** for all multi-step work
+12. **ASK clarifying questions** when uncertain
 
-**Success Formula**: User Instructions + Maximum Thinking + Aggressive Parallel Subagent Deployment + Intelligent Domain Separation + Synchronized Coordination + Attentive Waiting = **MAXIMUM SPEED WITH QUALITY**
+**Success Formula:** User Instructions + Maximum Thinking + Maximum Parallel Micro-Specialized Subagent Deployment + Hyper-Focused Domain Separation + Synchronized Coordination + Attentive Waiting = **MAXIMUM SPEED WITH QUALITY**
