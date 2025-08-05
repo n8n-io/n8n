@@ -14,7 +14,6 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { DataStoreConfig } from './data-store';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
@@ -22,37 +21,13 @@ import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreService implements IDataStoreService {
-	private intervalId?: NodeJS.Timeout;
-
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
-		private readonly config: DataStoreConfig,
 	) {
 		this.logger = this.logger.scoped('data-store');
-	}
-
-	start() {
-		this.logger.debug('Starting feature work...');
-
-		this.intervalId = setInterval(
-			() => {
-				this.logger.debug('Running scheduled task...');
-			},
-			this.config.taskInterval * 60 * 1000,
-		);
-	}
-
-	async shutdown() {
-		this.logger.debug('Shutting down...');
-
-		if (this.intervalId) {
-			clearInterval(this.intervalId);
-		}
-
-		await Promise.resolve();
 	}
 
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {

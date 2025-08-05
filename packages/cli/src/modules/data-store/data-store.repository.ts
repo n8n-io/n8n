@@ -1,8 +1,4 @@
-import type {
-	DataStoreCreateColumnSchema,
-	DataStoreListOptions,
-	DataStoreUserTableName,
-} from '@n8n/api-types';
+import type { DataStoreCreateColumnSchema, DataStoreListOptions } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
