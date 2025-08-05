@@ -50,7 +50,3 @@ export type DataStoreListFilter = {
 export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
-
-export type DataStoreColumnJsType = string | number | boolean | Date;
-
-export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;

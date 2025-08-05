@@ -1,11 +1,11 @@
 import type {
 	ListDataStoreContentQueryDto,
 	DataStoreUserTableName,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
+import type { DataStoreRows } from 'n8n-workflow';
 
 import {
 	buildInsertQuery,

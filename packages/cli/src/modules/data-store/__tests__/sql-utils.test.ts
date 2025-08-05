@@ -1,4 +1,5 @@
-import type { DataStoreColumn, DataStoreRows } from '@n8n/api-types';
+import type { DataStoreColumn } from '@n8n/api-types';
+import type { DataStoreRows } from 'n8n-workflow';
 
 import {
 	createUserTableQuery,
