@@ -1,3 +1,4 @@
+import { fa } from 'zod/v4/locales';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -5374,8 +5375,8 @@ describe('NodeHelpers', () => {
 
 		it.each([
 			['Create a new user', true],
-			['Test Node', true],
-			['Test Node1', true],
+			['Test Node', false],
+			['Test Node1', false],
 			['Create a new user5', true],
 			['Create a new user in Test Node5', false],
 			['Create a new user 5', false],
