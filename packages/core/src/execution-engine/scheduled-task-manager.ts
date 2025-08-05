@@ -46,6 +46,7 @@ export class ScheduledTaskManager {
 
 		if (workflowCrons?.has(key)) {
 			this.errorReporter.error('Skipped registration for already registered cron', {
+				tags: { cron: 'duplicate' },
 				extra: {
 					workflowId,
 					timezone,
