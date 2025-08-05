@@ -127,6 +127,7 @@ function onAddNodeClick() {
 					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 					:read-only="false"
 					:rows="15"
+					:maxlength="1000"
 					@focus="isFocused = true"
 					@blur="isFocused = false"
 					@keydown.meta.enter.stop="onSubmit"
