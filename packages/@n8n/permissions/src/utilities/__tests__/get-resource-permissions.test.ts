@@ -31,6 +31,7 @@ describe('permissions', () => {
 			workflow: {},
 			folder: {},
 			insights: {},
+			dataStore: {},
 		});
 	});
 	it('getResourcePermissions', () => {

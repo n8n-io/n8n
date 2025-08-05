@@ -10,10 +10,10 @@ export class DataStoreModule implements ModuleInterface {
 		await import('./data-store-shared.controller');
 
 		const { DataStoreService } = await import('./data-store.service');
-		Container.get(DataStoreService).start();
+		await Container.get(DataStoreService).start();
 
 		const { DataStoreSharedService } = await import('./data-store-shared.service');
-		Container.get(DataStoreSharedService).start();
+		await Container.get(DataStoreSharedService).start();
 	}
 
 	@OnShutdown()
@@ -22,7 +22,7 @@ export class DataStoreModule implements ModuleInterface {
 		await Container.get(DataStoreService).shutdown();
 
 		const { DataStoreSharedService } = await import('./data-store-shared.service');
-		Container.get(DataStoreSharedService).start();
+		await Container.get(DataStoreSharedService).start();
 	}
 
 	// Default modules aren't loaded without a settings() function
