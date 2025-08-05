@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { Workflow } from 'n8n-workflow';
+import type { CronContext, NodeCronContext, Workflow } from 'n8n-workflow';
 
 import { mockInstance } from '@test/utils';
 
@@ -19,10 +19,21 @@ describe('getSchedulingFunctions', () => {
 
 	describe('registerCron', () => {
 		it('should invoke scheduledTaskManager.registerCron', () => {
-			schedulingFunctions.registerCron({ expression: cronExpression }, onTick);
+			const nodeCronContext: NodeCronContext = {
+				nodeId: 'test-node',
+				expression: cronExpression,
+			};
+
+			const cronContext: CronContext = {
+				...nodeCronContext,
+				workflowId: 'test-workflow',
+				timezone: 'Europe/Berlin',
+			};
+
+			schedulingFunctions.registerCron(nodeCronContext, onTick);
 
 			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(
-				workflow,
+				cronContext,
 				{ expression: cronExpression },
 				onTick,
 			);
