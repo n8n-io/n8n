@@ -31,7 +31,7 @@ onMounted(() => {
 
 const onSubmit = async () => {
 	try {
-		await dataStoreStore.createNewDataStore(dataStoreName.value, route.params.projectId as string);
+		await dataStoreStore.createDataStore(dataStoreName.value, route.params.projectId as string);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	} finally {
