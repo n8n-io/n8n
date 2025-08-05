@@ -7,13 +7,13 @@ import { BaseEntity } from '@n8n/typeorm';
 export class DataStoreModule implements ModuleInterface {
 	async init() {
 		await import('./data-store.controller');
-		await import('./data-store-shared.controller');
+		// await import('./data-store-shared.controller');
 
 		const { DataStoreService } = await import('./data-store.service');
 		await Container.get(DataStoreService).start();
 
-		const { DataStoreSharedService } = await import('./data-store-shared.service');
-		await Container.get(DataStoreSharedService).start();
+		// const { DataStoreSharedService } = await import('./data-store-shared.service');
+		// await Container.get(DataStoreSharedService).start();
 	}
 
 	@OnShutdown()
@@ -21,8 +21,8 @@ export class DataStoreModule implements ModuleInterface {
 		const { DataStoreService } = await import('./data-store.service');
 		await Container.get(DataStoreService).shutdown();
 
-		const { DataStoreSharedService } = await import('./data-store-shared.service');
-		await Container.get(DataStoreSharedService).start();
+		// const { DataStoreSharedService } = await import('./data-store-shared.service');
+		// await Container.get(DataStoreSharedService).start();
 	}
 
 	// Default modules aren't loaded without a settings() function
