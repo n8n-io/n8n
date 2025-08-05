@@ -238,8 +238,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: async () =>
-					Promise.resolve(`
+				text: async () => `
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
 							<Credentials>
@@ -249,7 +248,7 @@ describe('Aws Credential', () => {
 							</Credentials>
 						</AssumeRoleResult>
 					</AssumeRoleResponse>
-				`),
+				`,
 			};
 
 			// Mock fetch for role assumption
@@ -291,8 +290,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: async () =>
-					Promise.resolve(`
+				text: async () => `
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
 							<Credentials>
@@ -302,7 +300,7 @@ describe('Aws Credential', () => {
 							</Credentials>
 						</AssumeRoleResult>
 					</AssumeRoleResponse>
-				`),
+				`,
 			};
 
 			// Mock fetch for role assumption
@@ -342,8 +340,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: async () =>
-					Promise.resolve(`
+				text: async () => `
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
 							<Credentials>
@@ -353,7 +350,7 @@ describe('Aws Credential', () => {
 							</Credentials>
 						</AssumeRoleResult>
 					</AssumeRoleResponse>
-				`),
+				`,
 			};
 
 			// Mock fetch for role assumption
@@ -391,8 +388,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: async () =>
-					Promise.resolve(`
+				text: async () => `
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
 							<Credentials>
@@ -402,7 +398,7 @@ describe('Aws Credential', () => {
 							</Credentials>
 						</AssumeRoleResult>
 					</AssumeRoleResponse>
-				`),
+				`,
 			};
 
 			// Mock fetch for role assumption
@@ -440,8 +436,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: async () =>
-					Promise.resolve(`
+				text: async () => `
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
 							<Credentials>
@@ -451,7 +446,7 @@ describe('Aws Credential', () => {
 							</Credentials>
 						</AssumeRoleResult>
 					</AssumeRoleResponse>
-				`),
+				`,
 			};
 
 			// Mock fetch for role assumption
@@ -647,8 +642,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: async () =>
-						Promise.resolve(`
+					text: async () => `
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
 								<Credentials>
@@ -658,7 +652,7 @@ describe('Aws Credential', () => {
 								</Credentials>
 							</AssumeRoleResult>
 						</AssumeRoleResponse>
-					`),
+					`,
 				};
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
@@ -695,8 +689,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: async () =>
-						Promise.resolve(`
+					text: async () => `
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
 								<Credentials>
@@ -706,7 +699,7 @@ describe('Aws Credential', () => {
 								</Credentials>
 							</AssumeRoleResult>
 						</AssumeRoleResponse>
-					`),
+					`,
 				};
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
@@ -743,8 +736,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: async () =>
-						Promise.resolve(`
+					text: async () => `
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
 								<Credentials>
@@ -754,7 +746,7 @@ describe('Aws Credential', () => {
 								</Credentials>
 							</AssumeRoleResult>
 						</AssumeRoleResponse>
-					`),
+					`,
 				};
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
@@ -818,8 +810,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: async () =>
-						Promise.resolve(`
+					text: async () => `
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
 								<Credentials>
@@ -829,7 +820,7 @@ describe('Aws Credential', () => {
 								</Credentials>
 							</AssumeRoleResult>
 						</AssumeRoleResponse>
-					`),
+					`,
 				};
 
 				global.fetch = jest.fn().mockResolvedValue(mockStsResponse);
