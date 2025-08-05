@@ -29,12 +29,12 @@ export class MigratePythonCommand extends Command {
 			description: 'Output directory for migrated workflows',
 			default: './migrated-workflows',
 		}),
-		'dry-run': Flags.boolean({
+		dryRun: Flags.boolean({
 			char: 'd',
 			description: 'Perform a dry run without making changes',
 			default: false,
 		}),
-		'analyze-only': Flags.boolean({
+		analyzeOnly: Flags.boolean({
 			char: 'a',
 			description: 'Only analyze workflows and generate compatibility report',
 			default: false,
@@ -44,7 +44,7 @@ export class MigratePythonCommand extends Command {
 			description: 'Create backup of original workflows',
 			default: false,
 		}),
-		'single-workflow': Flags.string({
+		singleWorkflow: Flags.string({
 			char: 's',
 			description: 'Migrate a single workflow file',
 		}),
@@ -58,15 +58,15 @@ export class MigratePythonCommand extends Command {
 			description: 'Interactive mode with prompts for each workflow',
 			default: false,
 		}),
-		'output-format': Flags.string({
+		outputFormat: Flags.string({
 			description: 'Output format for reports',
 			options: ['json', 'yaml', 'text'],
 			default: 'text',
 		}),
-		'include-patterns': Flags.string({
+		includePatterns: Flags.string({
 			description: 'Comma-separated patterns to include (e.g., "*.json,workflow-*.json")',
 		}),
-		'exclude-patterns': Flags.string({
+		excludePatterns: Flags.string({
 			description: 'Comma-separated patterns to exclude',
 		}),
 		verbose: Flags.boolean({

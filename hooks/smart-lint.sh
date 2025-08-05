@@ -35,8 +35,23 @@ set +e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common-helpers.sh"
 
+# Initialize logging
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LOG_DIR="${PROJECT_ROOT}/logs"
+LOG_FILE="${LOG_DIR}/smart-lint-hook.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Function to log to file with timestamp
+log_to_file() {
+    local message="$1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message" >> "$LOG_FILE"
+}
+
 # Debug output after sourcing helpers so we have log_debug
 log_debug "smart-lint.sh started"
+log_to_file "Hook execution started in directory: $(pwd)"
 
 # ============================================================================
 # PROJECT DETECTION
@@ -292,7 +307,18 @@ lint_javascript() {
     if [[ -f "package.json" ]] && grep -q "eslint" package.json 2>/dev/null; then
         if command_exists npm; then
             local eslint_output
-            if ! eslint_output=$(npm run lint --if-present 2>&1); then
+            local eslint_exit_code
+            
+            # Run npm lint and capture both output and exit code
+            eslint_output=$(npm run lint --if-present 2>&1)
+            eslint_exit_code=$?
+            
+            # Log the command execution to our log file
+            log_to_file "ESLint execution: exit_code=$eslint_exit_code"
+            log_to_file "ESLint output: $eslint_output"
+            
+            # Check if the command actually failed (non-zero exit code)
+            if [[ $eslint_exit_code -ne 0 ]]; then
                 add_error "ESLint found issues"
                 echo "$eslint_output" >&2
             fi

@@ -24,28 +24,53 @@ SHELL_SCRIPTS := $(wildcard *.sh) $(wildcard */*.sh)
 TEST_SCRIPTS := $(wildcard tests/*_spec.sh) $(wildcard tests/*_test.sh)
 SHELLSPEC_EXISTS := $(shell command -v shellspec 2>/dev/null)
 
-# Lint all shell scripts with shellcheck
+# Lint all shell scripts with shellcheck (if available)
 lint:
-	@echo "Running shellcheck on all scripts..."
-	@echo "===================================="
-	@failed=0; \
-	for script in $(SHELL_SCRIPTS); do \
-		echo -n "Checking $$script... "; \
-		if shellcheck -x "$$script" >/dev/null 2>&1; then \
-			echo "✅ OK"; \
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		echo "Running shellcheck on all scripts..."; \
+		echo "===================================="; \
+		failed=0; \
+		for script in $(SHELL_SCRIPTS); do \
+			echo -n "Checking $$script... "; \
+			if shellcheck -x "$$script" >/dev/null 2>&1; then \
+				echo "✅ OK"; \
+			else \
+				echo "❌ FAILED"; \
+				shellcheck -x "$$script"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 0 ]; then \
+			echo ""; \
+			echo "✅ All scripts passed shellcheck!"; \
 		else \
-			echo "❌ FAILED"; \
-			shellcheck -x "$$script"; \
-			failed=1; \
+			echo ""; \
+			echo "❌ Some scripts failed shellcheck"; \
+			exit 1; \
 		fi; \
-	done; \
-	if [ $$failed -eq 0 ]; then \
-		echo ""; \
-		echo "✅ All scripts passed shellcheck!"; \
 	else \
-		echo ""; \
-		echo "❌ Some scripts failed shellcheck"; \
-		exit 1; \
+		echo "shellcheck not found - running basic syntax checks..."; \
+		echo "===================================================="; \
+		failed=0; \
+		for script in $(SHELL_SCRIPTS); do \
+			echo -n "Checking $$script... "; \
+			if bash -n "$$script" 2>/dev/null; then \
+				echo "✅ Syntax OK"; \
+			else \
+				echo "❌ Syntax Error"; \
+				bash -n "$$script"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 0 ]; then \
+			echo ""; \
+			echo "✅ All scripts passed basic syntax checks!"; \
+			echo "ℹ️  Install shellcheck for more comprehensive linting"; \
+		else \
+			echo ""; \
+			echo "❌ Some scripts have syntax errors"; \
+			exit 1; \
+		fi; \
 	fi
 
 # Run all tests (legacy + shellspec)

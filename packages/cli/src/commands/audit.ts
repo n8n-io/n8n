@@ -14,7 +14,7 @@ const flagsSchema = z.object({
 		.string()
 		.default(RISK_CATEGORIES.join(','))
 		.describe('Comma-separated list of categories to include in the audit'),
-	'days-abandoned-workflow': z
+	daysAbandonedWorkflow: z
 		.number()
 		.int()
 		.default(Container.get(SecurityConfig).daysAbandonedWorkflow)

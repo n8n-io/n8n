@@ -76,7 +76,7 @@ const processRunExecutionData = jest.fn();
 jest.mock('n8n-core', () => ({
 	__esModule: true,
 	...jest.requireActual('n8n-core'),
-	WorkflowExecute: jest.fn().mockImplementation(() => ({
+	workflowExecute: jest.fn().mockImplementation(() => ({
 		processRunExecutionData,
 	})),
 }));

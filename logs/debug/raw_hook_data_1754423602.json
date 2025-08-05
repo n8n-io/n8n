@@ -1,0 +1,12 @@
+{
+  "session_id": "40de08a8-1ca5-4933-8db2-7957478defd6",
+  "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/40de08a8-1ca5-4933-8db2-7957478defd6.jsonl",
+  "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Task",
+  "tool_input": {
+    "description": "Examine workflows controller structure",
+    "prompt": "Examine the workflows controller at packages/cli/src/workflows/workflows.controller.ts. Focus on:\n1. Existing endpoint patterns and structure\n2. Authentication/authorization mechanisms used\n3. Error handling patterns  \n4. Response format conventions\n5. How workflows are currently accessed and managed\n6. Integration with workflow services\n7. Any existing bulk or batch operation patterns\n\nProvide a detailed analysis of the current structure to understand how to best integrate bulk workflow operations.",
+    "subagent_type": "general-purpose"
+  }
+}

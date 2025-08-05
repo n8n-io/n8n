@@ -1,41 +1,67 @@
-# Test fixtures and generated files
-**/fixtures/
-**/test-data/
-node_modules/
+# Claude Hooks Ignore Patterns
+# Files and directories to ignore during lint checks
+
+# Version control
 .git/
-dist/
-build/
-target/
+.svn/
+.hg/
+
+# Dependencies
+node_modules/
+vendor/
 venv/
 .venv/
 __pycache__/
-*.min.js
-*.min.css
+pnpm-lock.yaml
+package-lock.json
+
+# Build outputs
+dist/
+build/
+target/
+*.o
+*.so
+*.dylib
 coverage/
-.turbo/
-.nyc_output/
+htmlcov/
 
-# Hook test files with intentional errors
-hooks/spec/**
-hooks/test/**
+# Temporary files
+*.tmp
+*.temp
+*.log
+.DS_Store
+Thumbs.db
 
-# Python files with intentional syntax errors or third-party code
-**/测试文件_test.py
-**/*test*.py
-**/directory with spaces/**
-node_modules/**/*.py
-**/node_modules/**
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Specific problematic paths identified by ruff
-**/edge-cases/directory
-**/edge-cases/测试文件_test.py
-**/edge-cases/Tiltfile_test.py
-**/scripts-project/main.py
-**/node-gyp/**/*.py
-**/curlconverter/**/*.py
-**/flatted/**/*.py
-**/walkdir/**/*.py
+# Generated files
+*.generated.*
+*_gen.go
+*_pb.go
+tsconfig.tsbuildinfo
 
-# Files that don't exist but are being scanned
-spaces/test_spaces.py
-with
+# n8n specific patterns
+packages/*/dist/
+packages/*/build/
+packages/*/coverage/
+cypress/videos/
+cypress/screenshots/
+patches/
+assets/
+
+# Test fixtures (intentionally broken for testing)
+hooks/spec/*/fixtures/
+*_test.go
+*_test.js
+*_test.ts
+test_*.py
+*_spec.js
+*_spec.ts
+
+# Documentation
+*.md
+EOF < /dev/null

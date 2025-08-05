@@ -272,7 +272,7 @@ describe('enqueueExecution', () => {
 
 	beforeAll(() => {
 		jest.mock('@/scaling/scaling.service', () => ({
-			ScalingService: MockScalingService,
+			scalingService: MockScalingService,
 		}));
 	});
 

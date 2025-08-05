@@ -97,6 +97,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BatchProcessingService } from './batch-processing.service';
 import { WorkflowSearchService } from '@/services/workflow-search.service';
 import { ExpressionDocsService } from '@/services/expression-docs.service';
+import { AiHelpersService } from '@/services/ai-helpers.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -127,6 +128,7 @@ export class WorkflowsController {
 		private readonly batchProcessingService: BatchProcessingService,
 		private readonly workflowSearchService: WorkflowSearchService,
 		private readonly expressionDocsService: ExpressionDocsService,
+		private readonly aiHelpersService: AiHelpersService,
 	) {}
 
 	@Post('/')
@@ -3021,6 +3023,154 @@ export class WorkflowsController {
 
 			throw new InternalServerError(
 				`Failed to get expression variables: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * AI-powered workflow assistance endpoints
+	 */
+
+	/**
+	 * Suggest node connections for a specific workflow
+	 */
+	@Post('/:id/suggest-connections')
+	@ProjectScope('workflow:read')
+	async suggestConnections(
+		req: AuthenticatedRequest<
+			{ id: string },
+			{},
+			{
+				currentNodeId?: string;
+				contextType?: 'next_node' | 'previous_node' | 'general';
+			}
+		>,
+		_res: express.Response,
+		@Param('id') workflowId: string,
+	) {
+		const { currentNodeId, contextType = 'general' } = req.body;
+
+		this.logger.debug('AI connection suggestions requested', {
+			userId: req.user.id,
+			workflowId,
+			currentNodeId,
+			contextType,
+		});
+
+		try {
+			const workflow = await this.workflowFinderService.findForUser(req.user, workflowId, [
+				'workflow:read',
+			]);
+
+			if (!workflow) {
+				throw new NotFoundError('Workflow not found');
+			}
+
+			const workflowData = {
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			};
+
+			const suggestions = await this.aiHelpersService.suggestNodes(workflowData, req.user, {
+				currentNodeId,
+				contextType,
+			});
+
+			return {
+				success: true,
+				workflowId,
+				suggestions,
+				metadata: {
+					contextType,
+					currentNodeId,
+					suggestedAt: new Date().toISOString(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to generate connection suggestions', {
+				userId: req.user.id,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Connection suggestions failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Get workflow optimization suggestions
+	 */
+	@Get('/:id/optimization-suggestions')
+	@ProjectScope('workflow:read')
+	async getOptimizationSuggestions(
+		req: AuthenticatedRequest<
+			{ id: string },
+			{},
+			{},
+			{
+				optimizationType?: 'performance' | 'readability' | 'structure' | 'all';
+			}
+		>,
+		_res: express.Response,
+		@Param('id') workflowId: string,
+		@Query() queryDto: { optimizationType?: 'performance' | 'readability' | 'structure' | 'all' },
+	) {
+		const { optimizationType = 'all' } = queryDto;
+
+		this.logger.debug('AI optimization suggestions requested', {
+			userId: req.user.id,
+			workflowId,
+			optimizationType,
+		});
+
+		try {
+			const workflow = await this.workflowFinderService.findForUser(req.user, workflowId, [
+				'workflow:read',
+			]);
+
+			if (!workflow) {
+				throw new NotFoundError('Workflow not found');
+			}
+
+			const workflowData = {
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			};
+
+			const optimization = await this.aiHelpersService.optimizeWorkflow(workflowData, req.user, {
+				optimizationType,
+			});
+
+			return {
+				success: true,
+				workflowId,
+				optimization,
+				metadata: {
+					originalNodeCount: workflow.nodes.length,
+					optimizationType,
+					optimizedAt: new Date().toISOString(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to generate optimization suggestions', {
+				userId: req.user.id,
+				workflowId,
+				optimizationType,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Optimization suggestions failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

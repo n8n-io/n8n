@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
+import * as NodeHelpers from 'n8n-workflow/src/node-helpers';
 import { NodeTypes } from '@/node-types';
 
 // Import AI workflow builder if available (enterprise feature)
@@ -406,34 +407,95 @@ export class AiHelpersService {
 		const mappings: ParameterMapping[] = [];
 		const suggestions: string[] = [];
 
-		// Simple field name matching
-		const sourceData = sourceNode.parameters || {};
+		// Get node type descriptions for enhanced analysis
+		const sourceNodeType = this.nodeTypes.getByNameAndVersion(
+			sourceNode.type,
+			sourceNode.typeVersion,
+		);
 		const targetNodeType = this.nodeTypes.getByNameAndVersion(
 			targetNode.type,
 			targetNode.typeVersion,
 		);
 
-		if (targetNodeType?.properties) {
+		if (!sourceNodeType || !targetNodeType) {
+			suggestions.push('Could not analyze node types for parameter mapping');
+			return { mappings, suggestions };
+		}
+
+		// Use NodeHelpers to get parameter information
+		const sourceData = sourceNode.parameters || {};
+		const targetOutputs = NodeHelpers.getNodeOutputs(targetNodeType, targetNode.parameters);
+		const sourceInputs = NodeHelpers.getNodeInputs(sourceNodeType, sourceNode.parameters);
+
+		if (targetNodeType.properties) {
 			targetNodeType.properties.forEach((prop) => {
+				// Enhanced parameter analysis using NodeHelpers
+				const isDisplayed = NodeHelpers.displayParameter(
+					targetNode.parameters || {},
+					prop,
+					targetNodeType,
+				);
+
+				if (!isDisplayed) return;
+
+				// Type-aware field matching
 				if (prop.type === 'string' && sourceData) {
-					// Look for similar field names
-					const similarFields = Object.keys(sourceData).filter(
-						(key) =>
-							key.toLowerCase().includes(prop.name.toLowerCase()) ||
-							prop.name.toLowerCase().includes(key.toLowerCase()),
-					);
+					// Look for similar field names with type consideration
+					const similarFields = Object.keys(sourceData).filter((key) => {
+						const similarity = this.calculateFieldSimilarity(key, prop.name);
+						return similarity > 0.6;
+					});
 
 					if (similarFields.length > 0) {
+						const bestMatch = similarFields[0];
+						const confidence = this.calculateMappingConfidence(
+							sourceNodeType,
+							targetNodeType,
+							bestMatch,
+							prop,
+						);
+
 						mappings.push({
 							targetParameter: prop.name,
-							sourceExpression: `{{ $json.${similarFields[0]} }}`,
-							sourceDescription: `Map from ${sourceNode.name}.${similarFields[0]}`,
-							confidence: 0.7,
-							mappingType: 'direct',
+							sourceExpression: `{{ $json.${bestMatch} }}`,
+							sourceDescription: `Map from ${sourceNode.name}.${bestMatch}`,
+							confidence,
+							mappingType: this.determineMappingType(sourceNodeType, targetNodeType, prop),
 						});
 					}
 				}
+
+				// Special handling for common parameter types
+				if (prop.name === 'url' && sourceData.url) {
+					mappings.push({
+						targetParameter: 'url',
+						sourceExpression: `{{ $json.url }}`,
+						sourceDescription: `Direct URL mapping from ${sourceNode.name}`,
+						confidence: 0.95,
+						mappingType: 'direct',
+					});
+				}
+
+				if (prop.name === 'email' && (sourceData.email || sourceData.emailAddress)) {
+					const sourceField = sourceData.email ? 'email' : 'emailAddress';
+					mappings.push({
+						targetParameter: 'email',
+						sourceExpression: `{{ $json.${sourceField} }}`,
+						sourceDescription: `Email mapping from ${sourceNode.name}`,
+						confidence: 0.9,
+						mappingType: 'direct',
+					});
+				}
 			});
+		}
+
+		// Enhanced suggestions based on node types
+		if (sourceNodeType.group?.includes('trigger') && targetNodeType.group?.includes('action')) {
+			suggestions.push('Trigger to action node: Consider mapping event data to action parameters');
+		}
+
+		if (this.isDataProcessingNode(sourceNodeType) && this.isDataProcessingNode(targetNodeType)) {
+			suggestions.push('Data processing nodes: Use expressions to transform data structure');
 		}
 
 		suggestions.push(
@@ -745,5 +807,101 @@ export class AiHelpersService {
 		}
 
 		return issues;
+	}
+
+	// Enhanced helper methods for NodeHelpers integration
+	private calculateFieldSimilarity(field1: string, field2: string): number {
+		const f1 = field1.toLowerCase();
+		const f2 = field2.toLowerCase();
+
+		// Exact match
+		if (f1 === f2) return 1.0;
+
+		// Substring match
+		if (f1.includes(f2) || f2.includes(f1)) return 0.8;
+
+		// Common prefixes/suffixes
+		const commonWords = ['id', 'name', 'email', 'url', 'address', 'phone', 'date', 'time'];
+		for (const word of commonWords) {
+			if (f1.includes(word) && f2.includes(word)) return 0.7;
+		}
+
+		// Levenshtein distance similarity
+		const distance = this.levenshteinDistance(f1, f2);
+		const maxLength = Math.max(f1.length, f2.length);
+		return 1 - distance / maxLength;
+	}
+
+	private levenshteinDistance(str1: string, str2: string): number {
+		const matrix = [];
+		for (let i = 0; i <= str2.length; i++) {
+			matrix[i] = [i];
+		}
+		for (let j = 0; j <= str1.length; j++) {
+			matrix[0][j] = j;
+		}
+		for (let i = 1; i <= str2.length; i++) {
+			for (let j = 1; j <= str1.length; j++) {
+				if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+					matrix[i][j] = matrix[i - 1][j - 1];
+				} else {
+					matrix[i][j] = Math.min(
+						matrix[i - 1][j - 1] + 1,
+						matrix[i][j - 1] + 1,
+						matrix[i - 1][j] + 1,
+					);
+				}
+			}
+		}
+		return matrix[str2.length][str1.length];
+	}
+
+	private calculateMappingConfidence(
+		sourceNodeType: INodeTypeDescription,
+		targetNodeType: INodeTypeDescription,
+		sourceField: string,
+		targetProperty: any,
+	): number {
+		let confidence = 0.5;
+
+		// Type compatibility
+		if (targetProperty.type === 'string') confidence += 0.2;
+
+		// Node type compatibility
+		if (sourceNodeType.group?.some((g) => targetNodeType.group?.includes(g))) {
+			confidence += 0.2;
+		}
+
+		// Field name similarity
+		const similarity = this.calculateFieldSimilarity(sourceField, targetProperty.name);
+		confidence += similarity * 0.3;
+
+		return Math.min(confidence, 1.0);
+	}
+
+	private determineMappingType(
+		sourceNodeType: INodeTypeDescription,
+		targetNodeType: INodeTypeDescription,
+		targetProperty: any,
+	): 'direct' | 'transformation' | 'calculated' {
+		// Simple type matching suggests direct mapping
+		if (targetProperty.type === 'string' || targetProperty.type === 'number') {
+			return 'direct';
+		}
+
+		// Complex types or different node categories suggest transformation
+		if (
+			sourceNodeType.group?.some((g) => !targetNodeType.group?.includes(g)) ||
+			targetProperty.type === 'collection'
+		) {
+			return 'transformation';
+		}
+
+		return 'calculated';
+	}
+
+	private isDataProcessingNode(nodeType: INodeTypeDescription): boolean {
+		const dataProcessingGroups = ['transform', 'utility', 'output'];
+		return nodeType.group?.some((group) => dataProcessingGroups.includes(group)) ?? false;
 	}
 }

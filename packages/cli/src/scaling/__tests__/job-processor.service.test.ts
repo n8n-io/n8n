@@ -40,7 +40,7 @@ jest.mock('n8n-core', () => {
 	// Mock class constructor and prototype methods
 	return {
 		...original,
-		WorkflowExecute: jest.fn().mockImplementation(() => ({
+		workflowExecute: jest.fn().mockImplementation(() => ({
 			processRunExecutionData: processRunExecutionDataMock,
 		})),
 	};

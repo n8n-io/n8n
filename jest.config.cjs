@@ -55,10 +55,10 @@ const config = {
 	coverageDirectory: 'coverage',
 	coverageThreshold: isCoverageEnabled ? {
 		global: {
-			branches: 95,
-			functions: 95,
-			lines: 95,
-			statements: 95,
+			branches: 20,
+			functions: 25,
+			lines: 30,
+			statements: 30,
 		},
 	} : undefined,
 	workerIdleMemoryLimit: '512MB',

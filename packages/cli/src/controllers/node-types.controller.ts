@@ -25,6 +25,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { WorkflowExecute } from '@n8n/core';
 import { NodeTestingService } from '@/services/node-testing.service';
+import { AiHelpersService } from '@/services/ai-helpers.service';
 
 @RestController('/node-types')
 export class NodeTypesController {
@@ -33,6 +34,7 @@ export class NodeTypesController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly nodeTestingService: NodeTestingService,
+		private readonly aiHelpersService: AiHelpersService,
 	) {}
 
 	@Post('/')
@@ -103,10 +105,10 @@ export class NodeTypesController {
 			}
 		>,
 	) {
-		const { 
-			nodeType, 
-			nodeVersion = 1, 
-			parameters = {}, 
+		const {
+			nodeType,
+			nodeVersion = 1,
+			parameters = {},
 			inputData = [],
 			timeoutMs = 30000,
 			safetyLevel = 'moderate',
@@ -140,7 +142,7 @@ export class NodeTypesController {
 					safetyLevel,
 					mockExternalCalls,
 					validateCredentials,
-				}
+				},
 			);
 
 			this.logger.debug('Enhanced node test completed', {
@@ -220,7 +222,7 @@ export class NodeTypesController {
 				nodeType,
 				nodeVersion,
 				parameterOverrides,
-				inputDataCount
+				inputDataCount,
 			);
 
 			this.logger.debug('Enhanced mock data generation completed', {
@@ -302,7 +304,7 @@ export class NodeTypesController {
 			const validationResult = await this.nodeTestingService.validateNodeParameters(
 				nodeType,
 				nodeVersion,
-				parameters
+				parameters,
 			);
 
 			this.logger.debug('Enhanced node parameter validation completed', {
@@ -415,7 +417,7 @@ export class NodeTypesController {
 					safetyLevel,
 					mockExternalCalls: true, // Enable mocking for safety
 					validateCredentials: false, // Skip credential validation for safety
-				}
+				},
 			);
 
 			this.logger.debug('Safe node test completed', {
@@ -624,4 +626,68 @@ export class NodeTypesController {
 		}
 	}
 
+	/**
+	 * Auto-map parameters between nodes using AI assistance
+	 */
+	@Post('/auto-map-parameters')
+	async autoMapParameters(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{
+				sourceNodeId: string;
+				targetNodeId: string;
+				workflowData: {
+					nodes: any[];
+					connections: any;
+				};
+			}
+		>,
+	) {
+		const { sourceNodeId, targetNodeId, workflowData } = req.body;
+
+		if (!sourceNodeId || !targetNodeId || !workflowData?.nodes) {
+			throw new BadRequestError('sourceNodeId, targetNodeId, and workflow data are required');
+		}
+
+		this.logger.debug('AI parameter mapping requested', {
+			userId: req.user.id,
+			sourceNodeId,
+			targetNodeId,
+		});
+
+		try {
+			const mapping = await this.aiHelpersService.mapParameters(
+				sourceNodeId,
+				targetNodeId,
+				workflowData,
+				req.user,
+			);
+
+			return {
+				success: true,
+				mapping,
+				metadata: {
+					sourceNodeId,
+					targetNodeId,
+					mappedAt: new Date().toISOString(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to generate parameter mapping', {
+				userId: req.user.id,
+				sourceNodeId,
+				targetNodeId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Parameter mapping failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
 }

@@ -1,0 +1,13 @@
+Timeout Debug Summary for Agent 40de08a8-1ca5-4933-8db2-7957478defd6_Task_4053
+==========================================
+
+Timestamp: 2025-08-05T14:56:54.655463
+Elapsed Time: 3m 31.7s
+Timeout Limit: 120s
+Timeout Exceeded: True
+Hook Type: SubagentStop
+Tool Name: unknown
+Heartbeat Age: 0m 0.0s
+Heartbeat Timeout: False
+
+Full report: logs/debug/debug_report_40de08a8-1ca5-4933-8db2-7957478defd6_Task_4053_1754423814.json
