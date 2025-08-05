@@ -5,7 +5,8 @@ import { Container } from '@n8n/di';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import type { DataStoreEntity } from '../data-store.entity';
 import { DataStoreRepository } from '../data-store.repository';
-import { DataStoreService, toTableName } from '../data-store.service';
+import { DataStoreService } from '../data-store.service';
+import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -225,7 +226,7 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
-				"column name 'myColumn1' already taken in data store 'myDataStore1'",
+				`column name 'myColumn1' already taken in data store '${dataStore1.id}'`,
 			);
 		});
 

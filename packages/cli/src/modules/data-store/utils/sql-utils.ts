@@ -184,3 +184,7 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 			return `\`${name}\``;
 	}
 }
+
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
+	return `data_store_user_${dataStoreId}`;
+}
