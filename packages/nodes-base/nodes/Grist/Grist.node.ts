@@ -28,6 +28,7 @@ import type {
 	GristCredentials,
 	GristGetAllOptions,
 	GristUpdateRowPayload,
+	GristUpsertRowPayload,
 	SendingOptions,
 } from './types';
 
@@ -203,6 +204,55 @@ export class Grist implements INodeType {
 					await gristApiRequest.call(this, 'PATCH', endpoint, body);
 					responseData = {
 						id: rowId,
+						...body.records[0].fields,
+					};
+				} else if (operation === 'upsert') {
+					// ----------------------------------
+					//            upsert
+					// ----------------------------------
+
+					// https://support.getgrist.com/api/#tag/records/operation/replaceRecords
+
+					const body = { records: [] } as GristUpsertRowPayload;
+
+					const { properties: upsertCriteriaProperties } = this.getNodeParameter(
+						'upsertCriteria',
+						i,
+						[],
+					) as FieldsToSend;
+					throwOnZeroDefinedFields.call(this, upsertCriteriaProperties);
+					const require = parseDefinedFields(upsertCriteriaProperties);
+
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as SendingOptions;
+
+					let fields: { [key: string]: any } = {};
+
+					if (dataToSend === 'autoMapInputs') {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+						fields = parseAutoMappedInputs(incomingKeys, inputsToIgnore, items[i].json);
+					} else if (dataToSend === 'defineInNode') {
+						const { properties } = this.getNodeParameter('fieldsToSend', i, []) as FieldsToSend;
+						throwOnZeroDefinedFields.call(this, properties);
+						fields = parseDefinedFields(properties);
+					}
+
+					body.records.push({ require, fields });
+
+					const docId = this.getNodeParameter('docId', 0) as string;
+					const tableId = this.getNodeParameter('tableId', 0) as string;
+					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+
+					const qs: IDataObject = {};
+					const onMany = this.getNodeParameter('onMany', i, 'first') as string;
+					if (onMany !== 'first') {
+						qs.onmany = onMany;
+					}
+
+					responseData = await gristApiRequest.call(this, 'PUT', endpoint, body, qs);
+					responseData = {
+						id: responseData.records[0].id,
 						...body.records[0].fields,
 					};
 				} else if (operation === 'getAll') {
