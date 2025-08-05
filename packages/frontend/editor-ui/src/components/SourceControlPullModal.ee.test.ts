@@ -21,6 +21,7 @@ const mockRoute = reactive({
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
 	useRouter: () => ({
+		back: vi.fn(),
 		push: vi.fn(),
 		replace: vi.fn(),
 		go: vi.fn(),
@@ -29,6 +30,14 @@ vi.mock('vue-router', () => ({
 		template: '<a><slot></slot></a>',
 		props: ['to', 'target'],
 	},
+}));
+
+vi.mock('@/composables/useLoadingService', () => ({
+	useLoadingService: () => ({
+		startLoading: vi.fn(),
+		stopLoading: vi.fn(),
+		setLoadingText: vi.fn(),
+	}),
 }));
 
 // Mock the toast composable to prevent Element Plus DOM errors
@@ -47,6 +56,7 @@ const DynamicScrollerStub = {
 		minItemSize: Number,
 		class: String,
 		style: [String, Object],
+		itemClass: String,
 	},
 	template:
 		'<div><template v-for="(item, index) in items" :key="index"><slot v-bind="{ item, index, active: false }"></slot></template></div>',
@@ -87,6 +97,10 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 				template: '<button><slot></slot></button>',
 				props: ['icon', 'type', 'class'],
 			},
+			'router-link': {
+				template: '<a><slot /></a>',
+				props: ['to'],
+			},
 		},
 	},
 });
@@ -116,18 +130,25 @@ const sampleFiles = [
 
 describe('SourceControlPullModal', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		createTestingPinia();
+		vi.clearAllMocks();
+
+		// Setup store with default mock to prevent automatic data loading
+		pinia = createTestingPinia();
 		sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.getAggregatedStatus = vi.fn().mockResolvedValue([]);
+		sourceControlStore.pullWorkfolder = vi.fn().mockResolvedValue([]);
 	});
 
 	it('mounts', () => {
 		const { getByText } = renderModal({
+			pinia,
 			props: {
 				data: {
 					eventBus,
-					status: [],
+					status: [], // Provide initial status to prevent auto-loading
 				},
 			},
 		});
@@ -136,6 +157,7 @@ describe('SourceControlPullModal', () => {
 
 	it('should renders the changes', () => {
 		const { getAllByTestId } = renderModal({
+			pinia,
 			props: {
 				data: {
 					eventBus,
@@ -150,7 +172,9 @@ describe('SourceControlPullModal', () => {
 	});
 
 	it('should force pull', async () => {
+		// Use the existing store instance from beforeEach
 		const { getByTestId } = renderModal({
+			pinia,
 			props: {
 				data: {
 					eventBus,

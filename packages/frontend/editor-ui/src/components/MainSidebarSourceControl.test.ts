@@ -3,19 +3,17 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
+import { reactive } from 'vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/stores/projects.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
-let uiStore: ReturnType<typeof useUIStore>;
 let rbacStore: ReturnType<typeof useRBACStore>;
 let projectStore: ReturnType<typeof useProjectsStore>;
 
@@ -26,11 +24,32 @@ vi.mock('@/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
 }));
 
+const mockRoute = reactive({
+	query: {},
+});
+
+const mockRouterPush = vi.fn();
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	useRouter: () => ({
+		push: mockRouterPush,
+	}),
+	RouterLink: vi.fn(),
+}));
+
 const renderComponent = createComponentRenderer(MainSidebarSourceControl);
 
 describe('MainSidebarSourceControl', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+
+		// Reset route mock to default values
+		mockRoute.query = {};
+
+		// Reset router push mock
+		mockRouterPush.mockReset();
+
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -45,8 +64,6 @@ describe('MainSidebarSourceControl', () => {
 
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-
-		uiStore = useUIStore();
 	});
 
 	it('should render nothing when not instance owner', async () => {
@@ -186,12 +203,10 @@ describe('MainSidebarSourceControl', () => {
 			await waitFor(() => expect(showError).toHaveBeenCalled());
 		});
 
-		it('should show confirm if pull response http status code is 409', async () => {
-			const status = {};
+		it('should navigate to pull route if pull response http status code is 409', async () => {
 			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockRejectedValueOnce({
-				response: { status: 409, data: { data: status } },
+				response: { status: 409, data: { data: {} } },
 			});
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
 			const { getAllByRole } = renderComponent({
 				pinia,
@@ -200,20 +215,15 @@ describe('MainSidebarSourceControl', () => {
 
 			await userEvent.click(getAllByRole('button')[0]);
 			await waitFor(() =>
-				expect(openModalSpy).toHaveBeenCalledWith(
-					expect.objectContaining({
-						name: SOURCE_CONTROL_PULL_MODAL_KEY,
-						data: expect.objectContaining({
-							status,
-						}),
-					}),
-				),
+				expect(mockRouterPush).toHaveBeenCalledWith({
+					query: {
+						sourceControl: 'pull',
+					},
+				}),
 			);
 		});
 
-		it('should show toast when there are no changes', async () => {
-			vi.spyOn(sourceControlStore, 'getAggregatedStatus').mockResolvedValueOnce([]);
-
+		it('should navigate to push route when push button is clicked', async () => {
 			const { getAllByRole } = renderComponent({
 				pinia,
 				props: { isCollapsed: false },
@@ -221,43 +231,11 @@ describe('MainSidebarSourceControl', () => {
 
 			await userEvent.click(getAllByRole('button')[1]);
 			await waitFor(() =>
-				expect(showMessage).toHaveBeenCalledWith(
-					expect.objectContaining({ title: 'No changes to commit' }),
-				),
-			);
-		});
-
-		it('should open push modal when there are changes', async () => {
-			const status = [
-				{
-					id: '014da93897f146d2b880-baa374b9d02d',
-					name: 'vuelfow2',
-					type: 'workflow' as const,
-					status: 'created' as const,
-					location: 'local' as const,
-					conflict: false,
-					file: '/014da93897f146d2b880-baa374b9d02d.json',
-					updatedAt: '2025-01-09T13:12:24.580Z',
-				},
-			];
-			vi.spyOn(sourceControlStore, 'getAggregatedStatus').mockResolvedValueOnce(status);
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-
-			const { getAllByRole } = renderComponent({
-				pinia,
-				props: { isCollapsed: false },
-			});
-
-			await userEvent.click(getAllByRole('button')[1]);
-			await waitFor(() =>
-				expect(openModalSpy).toHaveBeenCalledWith(
-					expect.objectContaining({
-						name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-						data: expect.objectContaining({
-							status,
-						}),
-					}),
-				),
+				expect(mockRouterPush).toHaveBeenCalledWith({
+					query: {
+						sourceControl: 'push',
+					},
+				}),
 			);
 		});
 	});
