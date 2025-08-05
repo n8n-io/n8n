@@ -66,7 +66,7 @@
     "comlink": "^4.4.1",
     "core-js": "^3.40.0",
     "curlconverter": "^4.12.0",
-    "dateformat": "^3.0.3",
+    "dateformat": "catalog:frontend",
     "element-plus": "catalog:frontend",
     "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",

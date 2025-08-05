@@ -1,0 +1,4 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"include": ["src/frontend/**/*.ts", "src/frontend/**/*.vue"]
+}

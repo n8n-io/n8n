@@ -62,6 +62,7 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4
+    dateformat: ^3.0.3
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
     unplugin-vue-components: ^0.27.2

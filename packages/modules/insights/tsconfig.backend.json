@@ -1,0 +1,4 @@
+{
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"include": ["src/backend/**/*.ts"]
+}
