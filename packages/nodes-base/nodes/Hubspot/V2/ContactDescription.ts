@@ -502,6 +502,1555 @@ export const contactFields: INodeProperties[] = [
 				description:
 					"A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
+			{
+				displayName: 'Buying Role',
+				name: 'buyingRole',
+				description:
+					'Role the contact plays during the sales process. Contacts can have multiple roles, and can share roles with others.',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'Blocker',
+						value: 'BLOCKER',
+					},
+					{
+						name: 'Budget Holder',
+						value: 'BUDGET_HOLDER',
+					},
+					{
+						name: 'Champion',
+						value: 'CHAMPION',
+					},
+					{
+						name: 'Decision Maker',
+						value: 'DECISION_MAKER',
+					},
+					{
+						name: 'End User',
+						value: 'END_USER',
+					},
+					{
+						name: 'Executive Sponsor',
+						value: 'EXECUTIVE_SPONSOR',
+					},
+					{
+						name: 'Influencer',
+						value: 'INFLUENCER',
+					},
+					{
+						name: 'Legal & Compliance',
+						value: 'LEGAL_AND_COMPLIANCE',
+					},
+					{
+						name: 'Other',
+						value: 'OTHER',
+					},
+				],
+			},
+			{
+				displayName: 'Country/Region Code',
+				name: 'countryRegionCode',
+				description: "The contact's two-letter country code",
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email Address Quarantine Reason',
+				name: 'emailCustomerQuarantinedReason',
+				description: 'The reason why the email address has been quarantined',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Suspension Remediation',
+						value: 'SUSPENSION_REMEDIATION',
+					},
+					{
+						name: 'Blocklist Remediation',
+						value: 'BLOCKLIST_REMEDIATION',
+					},
+					{
+						name: 'Trust & Safety Remediation',
+						value: 'TRUST_SAFETY_REMEDIATION',
+					},
+				],
+			},
+			{
+				displayName: 'Employment Role',
+				name: 'employmentRole',
+				description: 'Job role',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Accounting',
+						value: 'accounting',
+					},
+					{
+						name: 'Administrative',
+						value: 'administrative',
+					},
+					{
+						name: 'Business Development',
+						value: 'business_development',
+					},
+					{
+						name: 'Communications',
+						value: 'communications',
+					},
+					{
+						name: 'Consulting',
+						value: 'consulting',
+					},
+					{
+						name: 'Customer Service',
+						value: 'customer_service',
+					},
+					{
+						name: 'Design',
+						value: 'design',
+					},
+					{
+						name: 'Education',
+						value: 'education',
+					},
+					{
+						name: 'Engineering',
+						value: 'engineering',
+					},
+					{
+						name: 'Entrepreneurship',
+						value: 'entrepreneurship',
+					},
+					{
+						name: 'Finance',
+						value: 'finance',
+					},
+					{
+						name: 'Health Professional',
+						value: 'health_professional',
+					},
+					{
+						name: 'Human Resources',
+						value: 'human_resources',
+					},
+					{
+						name: 'Information Technology',
+						value: 'information_technology',
+					},
+					{
+						name: 'Legal',
+						value: 'legal',
+					},
+					{
+						name: 'Marketing',
+						value: 'marketing',
+					},
+					{
+						name: 'Operations',
+						value: 'operations',
+					},
+					{
+						name: 'Product',
+						value: 'product',
+					},
+					{
+						name: 'Project Management',
+						value: 'project_management',
+					},
+					{
+						name: 'Public Relations',
+						value: 'public_relations',
+					},
+					{
+						name: 'Quality Assurance',
+						value: 'quality_assurance',
+					},
+					{
+						name: 'Real Estate',
+						value: 'real_estate',
+					},
+					{
+						name: 'Recruiting',
+						value: 'recruiting',
+					},
+					{
+						name: 'Research',
+						value: 'research',
+					},
+					{
+						name: 'Retired',
+						value: 'retired',
+					},
+					{
+						name: 'Sales',
+						value: 'sales',
+					},
+					{
+						name: 'Support',
+						value: 'support',
+					},
+				],
+			},
+			{
+				displayName: 'Enriched Email Bounce Detected',
+				name: 'enrichedEmailBounceDetected',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Employment Seniority',
+				name: 'employmentSeniority',
+				description: 'Job Seniority',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Director',
+						value: 'director',
+					},
+					{
+						name: 'Employee',
+						value: 'employee',
+					},
+					{
+						name: 'Entry',
+						value: 'entry',
+					},
+					{
+						name: 'Executive',
+						value: 'executive',
+					},
+					{
+						name: 'Manager',
+						value: 'manager',
+					},
+					{
+						name: 'Owner',
+						value: 'owner',
+					},
+					{
+						name: 'Partner',
+						value: 'partner',
+					},
+					{
+						name: 'Senior',
+						value: 'senior',
+					},
+					{
+						name: 'VP',
+						value: 'vp',
+					},
+				],
+			},
+			{
+				displayName: 'Employment Sub Role',
+				name: 'employmentSubRole',
+				description: 'Job sub role',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Account Executive',
+						value: 'account_executive',
+					},
+					{
+						name: 'Account Manager',
+						value: 'account_manager',
+					},
+					{
+						name: 'Accountant',
+						value: 'accountant',
+					},
+					{
+						name: 'Accounting Manager',
+						value: 'accounting_manager',
+					},
+					{
+						name: 'Administrative Assistant',
+						value: 'administrative_assistant',
+					},
+					{
+						name: 'Appraisal',
+						value: 'appraisal',
+					},
+					{
+						name: 'Architect IT',
+						value: 'architect_it',
+					},
+					{
+						name: 'Assistant',
+						value: 'assistant',
+					},
+					{
+						name: 'Attorney',
+						value: 'attorney',
+					},
+					{
+						name: 'Auditor',
+						value: 'auditor',
+					},
+					{
+						name: 'Brand Marketing',
+						value: 'brand_marketing',
+					},
+					{
+						name: 'Business Analyst',
+						value: 'business_analyst',
+					},
+					{
+						name: 'Business Consultant',
+						value: 'business_consultant',
+					},
+					{
+						name: 'Business Manager',
+						value: 'business_manager',
+					},
+					{
+						name: 'Chief Compliance Officer',
+						value: 'chief_compliance_officer',
+					},
+					{
+						name: 'Chief Data Officer',
+						value: 'chief_data_officer',
+					},
+					{
+						name: 'Chief Executive Officer',
+						value: 'chief_executive_officer',
+					},
+					{
+						name: 'Chief Experience Officer',
+						value: 'chief_experience_officer',
+					},
+					{
+						name: 'Chief Financial Officer',
+						value: 'chief_financial_officer',
+					},
+					{
+						name: 'Chief Human Resources Officer',
+						value: 'chief_human_resources_officer',
+					},
+					{
+						name: 'Chief Information Officer',
+						value: 'chief_information_officer',
+					},
+					{
+						name: 'Chief Innovation Officer',
+						value: 'chief_innovation_officer',
+					},
+					{
+						name: 'Chief Legal Officer',
+						value: 'chief_legal_officer',
+					},
+					{
+						name: 'Chief Marketing Officer',
+						value: 'chief_marketing_officer',
+					},
+					{
+						name: 'Chief Operating Officer',
+						value: 'chief_operating_officer',
+					},
+					{
+						name: 'Chief Product Officer',
+						value: 'chief_product_officer',
+					},
+					{
+						name: 'Chief Revenue Officer',
+						value: 'chief_revenue_officer',
+					},
+					{
+						name: 'Chief Risk Officer',
+						value: 'chief_risk_officer',
+					},
+					{
+						name: 'Chief Security Officer',
+						value: 'chief_security_officer',
+					},
+					{
+						name: 'Chief Sustainability Officer',
+						value: 'chief_sustainability_officer',
+					},
+					{
+						name: 'Chief Technology Officer',
+						value: 'chief_technology_officer',
+					},
+					{
+						name: 'Communications Manager',
+						value: 'communications_manager',
+					},
+					{
+						name: 'Community',
+						value: 'community',
+					},
+					{
+						name: 'Content Marketing',
+						value: 'content_marketing',
+					},
+					{
+						name: 'Contracts',
+						value: 'contracts',
+					},
+					{
+						name: 'Creative',
+						value: 'creative',
+					},
+					{
+						name: 'Customer Service Specialist',
+						value: 'customer_service_specialist',
+					},
+					{
+						name: 'Customer Success',
+						value: 'customer_success',
+					},
+					{
+						name: 'Data IT',
+						value: 'data_it',
+					},
+					{
+						name: 'Data Science Engineer',
+						value: 'data_science_engineer',
+					},
+					{
+						name: 'Database Administrator',
+						value: 'database_administrator',
+					},
+					{
+						name: 'Design Engineer',
+						value: 'design_engineer',
+					},
+					{
+						name: 'Development Specialist',
+						value: 'development_specialist',
+					},
+					{
+						name: 'Devops Engineer',
+						value: 'devops_engineer',
+					},
+					{
+						name: 'Digital Marketing',
+						value: 'digital_marketing',
+					},
+					{
+						name: 'Director of Development',
+						value: 'director_of_development',
+					},
+					{
+						name: 'Editorial',
+						value: 'editorial',
+					},
+					{
+						name: 'Electrical Engineer',
+						value: 'electrical_engineer',
+					},
+					{
+						name: 'Engineering Manager',
+						value: 'engineering_manager',
+					},
+					{
+						name: 'Events',
+						value: 'events',
+					},
+					{
+						name: 'Executive Assistant',
+						value: 'executive_assistant',
+					},
+					{
+						name: 'Facilities',
+						value: 'facilities',
+					},
+					{
+						name: 'Fashion Design',
+						value: 'fashion_design',
+					},
+					{
+						name: 'Field Marketing',
+						value: 'field_marketing',
+					},
+					{
+						name: 'Financial Analyst',
+						value: 'financial_analyst',
+					},
+					{
+						name: 'Financial Controller',
+						value: 'financial_controller',
+					},
+					{
+						name: 'Fitness',
+						value: 'fitness',
+					},
+					{
+						name: 'Founder',
+						value: 'founder',
+					},
+					{
+						name: 'General Counsel',
+						value: 'general_counsel',
+					},
+					{
+						name: 'General Manager',
+						value: 'general_manager',
+					},
+					{
+						name: 'General Partner',
+						value: 'general_partner',
+					},
+					{
+						name: 'Graphic Design',
+						value: 'graphic_design',
+					},
+					{
+						name: 'Human Resources Specialist',
+						value: 'human_resources_specialist',
+					},
+					{
+						name: 'Information Technology Specialist',
+						value: 'information_technology_specialist',
+					},
+					{
+						name: 'Investment',
+						value: 'investment',
+					},
+					{
+						name: 'Investment Banker',
+						value: 'investment_banker',
+					},
+					{
+						name: 'Journalist',
+						value: 'journalist',
+					},
+					{
+						name: 'Key Account Manager',
+						value: 'key_account_manager',
+					},
+					{
+						name: 'Law Enforcement',
+						value: 'law_enforcement',
+					},
+					{
+						name: 'Lawyer',
+						value: 'lawyer',
+					},
+					{
+						name: 'Logistics Manager',
+						value: 'logistics_manager',
+					},
+					{
+						name: 'Management',
+						value: 'management',
+					},
+					{
+						name: 'Marketing Specialist',
+						value: 'marketing_specialist',
+					},
+					{
+						name: 'Mechanical Engineer',
+						value: 'mechanical_engineer',
+					},
+					{
+						name: 'Medical Doctor',
+						value: 'medical_doctor',
+					},
+					{
+						name: 'Network Engineer',
+						value: 'network_engineer',
+					},
+					{
+						name: 'Nurse',
+						value: 'nurse',
+					},
+					{
+						name: 'Office Management',
+						value: 'office_management',
+					},
+					{
+						name: 'Office Manager',
+						value: 'office_manager',
+					},
+					{
+						name: 'Operational Specialist',
+						value: 'operational_specialist',
+					},
+					{
+						name: 'Owner',
+						value: 'owner',
+					},
+					{
+						name: 'Paralegal',
+						value: 'paralegal',
+					},
+					{
+						name: 'Principal',
+						value: 'principal',
+					},
+					{
+						name: 'Product Design',
+						value: 'product_design',
+					},
+					{
+						name: 'Product Manager',
+						value: 'product_manager',
+					},
+					{
+						name: 'Product Marketing',
+						value: 'product_marketing',
+					},
+					{
+						name: 'Production Manager',
+						value: 'production_manager',
+					},
+					{
+						name: 'Professor',
+						value: 'professor',
+					},
+					{
+						name: 'Program Coordinator',
+						value: 'program_coordinator',
+					},
+					{
+						name: 'Program Manager',
+						value: 'program_manager',
+					},
+					{
+						name: 'Project Engineer',
+						value: 'project_engineer',
+					},
+					{
+						name: 'Project Manager',
+						value: 'project_manager',
+					},
+					{
+						name: 'Property Manager',
+						value: 'property_manager',
+					},
+					{
+						name: 'QA Engineer',
+						value: 'qa_engineer',
+					},
+					{
+						name: 'QA IT',
+						value: 'qa_it',
+					},
+					{
+						name: 'Quality Assurance Manager',
+						value: 'quality_assurance_manager',
+					},
+					{
+						name: 'Quality Assurance Specialist',
+						value: 'quality_assurance_specialist',
+					},
+					{
+						name: 'Realtor',
+						value: 'realtor',
+					},
+					{
+						name: 'Recruiter',
+						value: 'recruiter',
+					},
+					{
+						name: 'Relationship Manager',
+						value: 'relationship_manager',
+					},
+					{
+						name: 'Research Analyst',
+						value: 'research_analyst',
+					},
+					{
+						name: 'Retail',
+						value: 'retail',
+					},
+					{
+						name: 'Retired',
+						value: 'retired',
+					},
+					{
+						name: 'Risk Compliance',
+						value: 'risk_compliance',
+					},
+					{
+						name: 'Sales Executive',
+						value: 'sales_executive',
+					},
+					{
+						name: 'Sales Operations',
+						value: 'sales_operations',
+					},
+					{
+						name: 'Sales Specialist',
+						value: 'sales_specialist',
+					},
+					{
+						name: 'Salesperson',
+						value: 'salesperson',
+					},
+					{
+						name: 'Secretary',
+						value: 'secretary',
+					},
+					{
+						name: 'Social Marketing',
+						value: 'social_marketing',
+					},
+					{
+						name: 'Software Engineer',
+						value: 'software_engineer',
+					},
+					{
+						name: 'Strategy',
+						value: 'strategy',
+					},
+					{
+						name: 'Student',
+						value: 'student',
+					},
+					{
+						name: 'Support',
+						value: 'support',
+					},
+					{
+						name: 'Support Specialist',
+						value: 'support_specialist',
+					},
+					{
+						name: 'System Administrator',
+						value: 'system_administrator',
+					},
+					{
+						name: 'System Analyst',
+						value: 'system_analyst',
+					},
+					{
+						name: 'Systems Engineer',
+						value: 'systems_engineer',
+					},
+					{
+						name: 'Talent',
+						value: 'talent',
+					},
+					{
+						name: 'Tax Audit',
+						value: 'tax_audit',
+					},
+					{
+						name: 'Teacher',
+						value: 'teacher',
+					},
+					{
+						name: 'Technical Manager',
+						value: 'technical_manager',
+					},
+					{
+						name: 'Technical Support Specialist',
+						value: 'technical_support_specialist',
+					},
+					{
+						name: 'Therapist',
+						value: 'therapist',
+					},
+					{
+						name: 'Training',
+						value: 'training',
+					},
+					{
+						name: 'Video',
+						value: 'video',
+					},
+					{
+						name: 'Web Developer',
+						value: 'web_developer',
+					},
+					{
+						name: 'Writer',
+						value: 'writer',
+					},
+				],
+			},
+			{
+				displayName: 'Inferred Language Codes',
+				name: 'inferredLanguageCodes',
+				description: 'Inferred languages based on location. ISO 639-1.',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Abkhazian',
+						value: 'ab',
+					},
+					{
+						name: 'Afar',
+						value: 'aa',
+					},
+					{
+						name: 'Afrikaans',
+						value: 'af',
+					},
+					{
+						name: 'Akan',
+						value: 'ak',
+					},
+					{
+						name: 'Albanian',
+						value: 'sq',
+					},
+					{
+						name: 'Amharic',
+						value: 'am',
+					},
+					{
+						name: 'Arabic',
+						value: 'ar',
+					},
+					{
+						name: 'Aragonese',
+						value: 'an',
+					},
+					{
+						name: 'Armenian',
+						value: 'hy',
+					},
+					{
+						name: 'Assamese',
+						value: 'as',
+					},
+					{
+						name: 'Avaric',
+						value: 'av',
+					},
+					{
+						name: 'Avestan',
+						value: 'ae',
+					},
+					{
+						name: 'Aymara',
+						value: 'ay',
+					},
+					{
+						name: 'Azerbaijani',
+						value: 'az',
+					},
+					{
+						name: 'Bambara',
+						value: 'bm',
+					},
+					{
+						name: 'Bashkir',
+						value: 'ba',
+					},
+					{
+						name: 'Basque',
+						value: 'eu',
+					},
+					{
+						name: 'Belarusian',
+						value: 'be',
+					},
+					{
+						name: 'Bengali',
+						value: 'bn',
+					},
+					{
+						name: 'Bislama',
+						value: 'bi',
+					},
+					{
+						name: 'Bokmål, Norwegian; Norwegian Bokmål',
+						value: 'nb',
+					},
+					{
+						name: 'Bosnian',
+						value: 'bs',
+					},
+					{
+						name: 'Breton',
+						value: 'br',
+					},
+					{
+						name: 'Bulgarian',
+						value: 'bg',
+					},
+					{
+						name: 'Burmese',
+						value: 'my',
+					},
+					{
+						name: 'Catalan; Valencian',
+						value: 'ca',
+					},
+					{
+						name: 'Central Khmer',
+						value: 'km',
+					},
+					{
+						name: 'Chamorro',
+						value: 'ch',
+					},
+					{
+						name: 'Chechen',
+						value: 'ce',
+					},
+					{
+						name: 'Chichewa; Chewa; Nyanja',
+						value: 'ny',
+					},
+					{
+						name: 'Chinese',
+						value: 'zh',
+					},
+					{
+						name: 'Church Slavic; Old Slavonic; Church Slavonic; Old Bulgarian; Old Church Slavonic',
+						value: 'cu',
+					},
+					{
+						name: 'Chuvash',
+						value: 'cv',
+					},
+					{
+						name: 'Cornish',
+						value: 'kw',
+					},
+					{
+						name: 'Corsican',
+						value: 'co',
+					},
+					{
+						name: 'Cree',
+						value: 'cr',
+					},
+					{
+						name: 'Croatian',
+						value: 'hr',
+					},
+					{
+						name: 'Czech',
+						value: 'cs',
+					},
+					{
+						name: 'Danish',
+						value: 'da',
+					},
+					{
+						name: 'Divehi; Dhivehi; Maldivian',
+						value: 'dv',
+					},
+					{
+						name: 'Dutch; Flemish',
+						value: 'nl',
+					},
+					{
+						name: 'Dzongkha',
+						value: 'dz',
+					},
+					{
+						name: 'English',
+						value: 'en',
+					},
+					{
+						name: 'Esperanto',
+						value: 'eo',
+					},
+					{
+						name: 'Estonian',
+						value: 'et',
+					},
+					{
+						name: 'Ewe',
+						value: 'ee',
+					},
+					{
+						name: 'Faroese',
+						value: 'fo',
+					},
+					{
+						name: 'Fijian',
+						value: 'fj',
+					},
+					{
+						name: 'Finnish',
+						value: 'fi',
+					},
+					{
+						name: 'French',
+						value: 'fr',
+					},
+					{
+						name: 'Fulah',
+						value: 'ff',
+					},
+					{
+						name: 'Gaelic; Scottish Gaelic',
+						value: 'gd',
+					},
+					{
+						name: 'Galician',
+						value: 'gl',
+					},
+					{
+						name: 'Ganda',
+						value: 'lg',
+					},
+					{
+						name: 'Georgian',
+						value: 'ka',
+					},
+					{
+						name: 'German',
+						value: 'de',
+					},
+					{
+						name: 'Greek, Modern (1453-)',
+						value: 'el',
+					},
+					{
+						name: 'Guarani',
+						value: 'gn',
+					},
+					{
+						name: 'Gujarati',
+						value: 'gu',
+					},
+					{
+						name: 'Haitian; Haitian Creole',
+						value: 'ht',
+					},
+					{
+						name: 'Hausa',
+						value: 'ha',
+					},
+					{
+						name: 'Hebrew',
+						value: 'he',
+					},
+					{
+						name: 'Herero',
+						value: 'hz',
+					},
+					{
+						name: 'Hindi',
+						value: 'hi',
+					},
+					{
+						name: 'Hiri Motu',
+						value: 'ho',
+					},
+					{
+						name: 'Hungarian',
+						value: 'hu',
+					},
+					{
+						name: 'Icelandic',
+						value: 'is',
+					},
+					{
+						name: 'Ido',
+						value: 'io',
+					},
+					{
+						name: 'Igbo',
+						value: 'ig',
+					},
+					{
+						name: 'Indonesian',
+						value: 'id',
+					},
+					{
+						name: 'Interlingua (International Auxiliary Language Association)',
+						value: 'ia',
+					},
+					{
+						name: 'Interlingue; Occidental',
+						value: 'ie',
+					},
+					{
+						name: 'Inuktitut',
+						value: 'iu',
+					},
+					{
+						name: 'Inupiaq',
+						value: 'ik',
+					},
+					{
+						name: 'Irish',
+						value: 'ga',
+					},
+					{
+						name: 'Italian',
+						value: 'it',
+					},
+					{
+						name: 'Japanese',
+						value: 'ja',
+					},
+					{
+						name: 'Javanese',
+						value: 'jv',
+					},
+					{
+						name: 'Kalaallisut; Greenlandic',
+						value: 'kl',
+					},
+					{
+						name: 'Kannada',
+						value: 'kn',
+					},
+					{
+						name: 'Kanuri',
+						value: 'kr',
+					},
+					{
+						name: 'Kashmiri',
+						value: 'ks',
+					},
+					{
+						name: 'Kazakh',
+						value: 'kk',
+					},
+					{
+						name: 'Kikuyu; Gikuyu',
+						value: 'ki',
+					},
+					{
+						name: 'Kinyarwanda',
+						value: 'rw',
+					},
+					{
+						name: 'Kirghiz; Kyrgyz',
+						value: 'ky',
+					},
+					{
+						name: 'Komi',
+						value: 'kv',
+					},
+					{
+						name: 'Kongo',
+						value: 'kg',
+					},
+					{
+						name: 'Korean',
+						value: 'ko',
+					},
+					{
+						name: 'Kuanyama; Kwanyama',
+						value: 'kj',
+					},
+					{
+						name: 'Kurdish',
+						value: 'ku',
+					},
+					{
+						name: 'Lao',
+						value: 'lo',
+					},
+					{
+						name: 'Latin',
+						value: 'la',
+					},
+					{
+						name: 'Latvian',
+						value: 'lv',
+					},
+					{
+						name: 'Limburgan; Limburger; Limburgish',
+						value: 'li',
+					},
+					{
+						name: 'Lingala',
+						value: 'ln',
+					},
+					{
+						name: 'Lithuanian',
+						value: 'lt',
+					},
+					{
+						name: 'Luba-Katanga',
+						value: 'lu',
+					},
+					{
+						name: 'Luxembourgish; Letzeburgesch',
+						value: 'lb',
+					},
+					{
+						name: 'Macedonian',
+						value: 'mk',
+					},
+					{
+						name: 'Malagasy',
+						value: 'mg',
+					},
+					{
+						name: 'Malay (Macrolanguage)',
+						value: 'ms',
+					},
+					{
+						name: 'Malayalam',
+						value: 'ml',
+					},
+					{
+						name: 'Maltese',
+						value: 'mt',
+					},
+					{
+						name: 'Manx',
+						value: 'gv',
+					},
+					{
+						name: 'Maori',
+						value: 'mi',
+					},
+					{
+						name: 'Marathi',
+						value: 'mr',
+					},
+					{
+						name: 'Marshallese',
+						value: 'mh',
+					},
+					{
+						name: 'Mongolian',
+						value: 'mn',
+					},
+					{
+						name: 'Nauru',
+						value: 'na',
+					},
+					{
+						name: 'Navajo; Navaho',
+						value: 'nv',
+					},
+					{
+						name: 'Ndebele, North; North Ndebele',
+						value: 'nd',
+					},
+					{
+						name: 'Ndebele, South; South Ndebele',
+						value: 'nr',
+					},
+					{
+						name: 'Ndonga',
+						value: 'ng',
+					},
+					{
+						name: 'Nepali (Macrolanguage)',
+						value: 'ne',
+					},
+					{
+						name: 'Northern Sami',
+						value: 'se',
+					},
+					{
+						name: 'Norwegian',
+						value: 'no',
+					},
+					{
+						name: 'Norwegian Nynorsk; Nynorsk, Norwegian',
+						value: 'nn',
+					},
+					{
+						name: 'Occitan (Post 1500)',
+						value: 'oc',
+					},
+					{
+						name: 'Ojibwa',
+						value: 'oj',
+					},
+					{
+						name: 'Oriya (Macrolanguage)',
+						value: 'or',
+					},
+					{
+						name: 'Oromo',
+						value: 'om',
+					},
+					{
+						name: 'Ossetian; Ossetic',
+						value: 'os',
+					},
+					{
+						name: 'Pali',
+						value: 'pi',
+					},
+					{
+						name: 'Panjabi; Punjabi',
+						value: 'pa',
+					},
+					{
+						name: 'Persian',
+						value: 'fa',
+					},
+					{
+						name: 'Polish',
+						value: 'pl',
+					},
+					{
+						name: 'Portuguese',
+						value: 'pt',
+					},
+					{
+						name: 'Pushto; Pashto',
+						value: 'ps',
+					},
+					{
+						name: 'Quechua',
+						value: 'qu',
+					},
+					{
+						name: 'Romanian; Moldavian; Moldovan',
+						value: 'ro',
+					},
+					{
+						name: 'Romansh',
+						value: 'rm',
+					},
+					{
+						name: 'Rundi',
+						value: 'rn',
+					},
+					{
+						name: 'Russian',
+						value: 'ru',
+					},
+					{
+						name: 'Samoan',
+						value: 'sm',
+					},
+					{
+						name: 'Sango',
+						value: 'sg',
+					},
+					{
+						name: 'Sanskrit',
+						value: 'sa',
+					},
+					{
+						name: 'Sardinian',
+						value: 'sc',
+					},
+					{
+						name: 'Serbian',
+						value: 'sr',
+					},
+					{
+						name: 'Shona',
+						value: 'sn',
+					},
+					{
+						name: 'Sichuan Yi; Nuosu',
+						value: 'ii',
+					},
+					{
+						name: 'Sindhi',
+						value: 'sd',
+					},
+					{
+						name: 'Sinhala; Sinhalese',
+						value: 'si',
+					},
+					{
+						name: 'Slovak',
+						value: 'sk',
+					},
+					{
+						name: 'Slovenian',
+						value: 'sl',
+					},
+					{
+						name: 'Somali',
+						value: 'so',
+					},
+					{
+						name: 'Sotho, Southern',
+						value: 'st',
+					},
+					{
+						name: 'Spanish; Castilian',
+						value: 'es',
+					},
+					{
+						name: 'Sundanese',
+						value: 'su',
+					},
+					{
+						name: 'Swahili (Macrolanguage)',
+						value: 'sw',
+					},
+					{
+						name: 'Swati',
+						value: 'ss',
+					},
+					{
+						name: 'Swedish',
+						value: 'sv',
+					},
+					{
+						name: 'Tagalog',
+						value: 'tl',
+					},
+					{
+						name: 'Tahitian',
+						value: 'ty',
+					},
+					{
+						name: 'Tajik',
+						value: 'tg',
+					},
+					{
+						name: 'Tamil',
+						value: 'ta',
+					},
+					{
+						name: 'Tatar',
+						value: 'tt',
+					},
+					{
+						name: 'Telugu',
+						value: 'te',
+					},
+					{
+						name: 'Thai',
+						value: 'th',
+					},
+					{
+						name: 'Tibetan',
+						value: 'bo',
+					},
+					{
+						name: 'Tigrinya',
+						value: 'ti',
+					},
+					{
+						name: 'Tonga (Tonga Islands)',
+						value: 'to',
+					},
+					{
+						name: 'Tsonga',
+						value: 'ts',
+					},
+					{
+						name: 'Tswana',
+						value: 'tn',
+					},
+					{
+						name: 'Turkish',
+						value: 'tr',
+					},
+					{
+						name: 'Turkmen',
+						value: 'tk',
+					},
+					{
+						name: 'Twi',
+						value: 'tw',
+					},
+					{
+						name: 'Uighur; Uyghur',
+						value: 'ug',
+					},
+					{
+						name: 'Ukrainian',
+						value: 'uk',
+					},
+					{
+						name: 'Urdu',
+						value: 'ur',
+					},
+					{
+						name: 'Uzbek',
+						value: 'uz',
+					},
+					{
+						name: 'Venda',
+						value: 've',
+					},
+					{
+						name: 'Vietnamese',
+						value: 'vi',
+					},
+					{
+						name: 'Volapük',
+						value: 'vo',
+					},
+					{
+						name: 'Walloon',
+						value: 'wa',
+					},
+					{
+						name: 'Welsh',
+						value: 'cy',
+					},
+					{
+						name: 'Western Frisian',
+						value: 'fy',
+					},
+					{
+						name: 'Wolof',
+						value: 'wo',
+					},
+					{
+						name: 'Xhosa',
+						value: 'xh',
+					},
+					{
+						name: 'Yiddish',
+						value: 'yi',
+					},
+					{
+						name: 'Yoruba',
+						value: 'yo',
+					},
+					{
+						name: 'Zhuang; Chuang',
+						value: 'za',
+					},
+					{
+						name: 'Zulu',
+						value: 'zu',
+					},
+				],
+			},
+			{
+				displayName: 'Latest Traffic Source',
+				name: 'latestTrafficSource',
+				description: 'The source of the latest session for a contact',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Direct Traffic',
+						value: 'DIRECT_TRAFFIC',
+					},
+					{
+						name: 'Email Marketing',
+						value: 'EMAIL_MARKETING',
+					},
+					{
+						name: 'Offline Sources',
+						value: 'OFFLINE',
+					},
+					{
+						name: 'Organic Search',
+						value: 'ORGANIC_SEARCH',
+					},
+					{
+						name: 'Organic Social',
+						value: 'SOCIAL_MEDIA',
+					},
+					{
+						name: 'Other Campaigns',
+						value: 'OTHER_CAMPAIGNS',
+					},
+					{
+						name: 'Paid Search',
+						value: 'PAID_SEARCH',
+					},
+					{
+						name: 'Paid Social',
+						value: 'PAID_SOCIAL',
+					},
+					{
+						name: 'Referrals',
+						value: 'REFERRALS',
+					},
+				],
+			},
 		],
 	},
 	{

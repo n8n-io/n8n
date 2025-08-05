@@ -1480,6 +1480,60 @@ export class HubspotV2 implements INodeType {
 									value: additionalFields.workEmail,
 								});
 							}
+							if (additionalFields.buyingRole) {
+								body.push({
+									property: 'hs_buying_role',
+									value: (additionalFields.buyingRole as string[]).join(';'),
+								});
+							}
+							if (additionalFields.countryRegionCode) {
+								body.push({
+									property: 'hs_country_region_code',
+									value: additionalFields.countryRegionCode,
+								});
+							}
+							if (additionalFields.emailCustomerQuarantinedReason) {
+								body.push({
+									property: 'hs_email_customer_quarantined_reason',
+									value: additionalFields.emailCustomerQuarantinedReason,
+								});
+							}
+							if (additionalFields.employmentRole) {
+								body.push({
+									property: 'hs_role',
+									value: additionalFields.employmentRole,
+								});
+							}
+							if (additionalFields.employmentSeniority) {
+								body.push({
+									property: 'hs_seniority',
+									value: additionalFields.employmentSeniority,
+								});
+							}
+							if (additionalFields.employmentSubRole) {
+								body.push({
+									property: 'hs_sub_role',
+									value: additionalFields.employmentSubRole,
+								});
+							}
+							if (additionalFields.enrichedEmailBounceDetected) {
+								body.push({
+									property: 'hs_enriched_email_bounce_detected',
+									value: additionalFields.enrichedEmailBounceDetected,
+								});
+							}
+							if (additionalFields.inferredLanguageCodes) {
+								body.push({
+									property: 'hs_inferred_language_codes',
+									value: additionalFields.inferredLanguageCodes,
+								});
+							}
+							if (additionalFields.latestTrafficSource) {
+								body.push({
+									property: 'hs_latest_source',
+									value: additionalFields.latestTrafficSource,
+								});
+							}
 
 							if (additionalFields.customPropertiesUi) {
 								const customProperties = (additionalFields.customPropertiesUi as IDataObject)
