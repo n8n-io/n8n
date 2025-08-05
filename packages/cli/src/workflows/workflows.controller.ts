@@ -1428,6 +1428,196 @@ export class WorkflowsController {
 		}
 	}
 
+	/**
+	 * Get available variables for a specific workflow - SUCCESS CRITERIA ENDPOINT
+	 */
+	@Get('/:workflowId/variables')
+	@ProjectScope('workflow:read')
+	async getWorkflowVariables(req: WorkflowRequest.Get) {
+		const { workflowId } = req.params;
+		const { nodeType, context } = req.query as {
+			nodeType?: string;
+			context?: 'input' | 'output' | 'parameters';
+		};
+
+		this.logger.debug('Workflow variables requested', {
+			workflowId,
+			nodeType,
+			context,
+			userId: req.user.id,
+		});
+
+		try {
+			// Get workflow with permissions check
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+				'workflow:read',
+			]);
+
+			if (!workflow) {
+				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			}
+
+			// Get variable documentation from the service
+			const variables = this.expressionDocsService.getVariableDocumentation();
+
+			// If nodeType is specified, get contextual variables
+			let contextualData = null;
+			if (nodeType) {
+				contextualData = this.expressionDocsService.getContextualDocumentation(nodeType, context);
+			}
+
+			// Build workflow-specific variable context
+			const workflowVariables = {
+				$workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					active: workflow.active,
+				},
+				// Add node-specific variables
+				nodes: workflow.nodes.map((node) => ({
+					name: node.name,
+					type: node.type,
+					parameters: Object.keys(node.parameters || {}),
+				})),
+			};
+
+			return {
+				success: true,
+				workflowId,
+				variables: {
+					core: variables,
+					workflow: workflowVariables,
+					contextual: contextualData?.relevantVariables || [],
+				},
+				metadata: {
+					nodeType,
+					context,
+					totalCoreVariables: Array.isArray(variables) ? variables.length : 0,
+					totalNodes: workflow.nodes.length,
+					requestedAt: new Date(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Workflow variables discovery failed', {
+				workflowId,
+				nodeType,
+				context,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Workflow variables discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
+	 * Get available functions for a specific workflow - SUCCESS CRITERIA ENDPOINT
+	 */
+	@Get('/:workflowId/functions')
+	@ProjectScope('workflow:read')
+	async getWorkflowFunctions(req: WorkflowRequest.Get) {
+		const { workflowId } = req.params;
+		const { category, nodeType, search } = req.query as {
+			category?: string;
+			nodeType?: string;
+			search?: string;
+		};
+
+		this.logger.debug('Workflow functions requested', {
+			workflowId,
+			category,
+			nodeType,
+			search,
+			userId: req.user.id,
+		});
+
+		try {
+			// Get workflow with permissions check
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+				'workflow:read',
+			]);
+
+			if (!workflow) {
+				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			}
+
+			// Get function documentation from the service
+			let functions = this.expressionDocsService.getFunctionDocumentation();
+			if (!Array.isArray(functions)) {
+				functions = [];
+			}
+
+			// Filter by category if specified
+			if (category) {
+				functions = functions.filter((func) => func.category === category);
+			}
+
+			// Filter by search term if specified
+			if (search) {
+				const searchTerm = search.toLowerCase();
+				functions = functions.filter(
+					(func) =>
+						func.name.toLowerCase().includes(searchTerm) ||
+						func.description.toLowerCase().includes(searchTerm) ||
+						func.category.toLowerCase().includes(searchTerm),
+				);
+			}
+
+			// Get contextual functions if nodeType is specified
+			let contextualData = null;
+			if (nodeType) {
+				contextualData = this.expressionDocsService.getContextualDocumentation(nodeType);
+				functions = [...functions, ...contextualData.relevantFunctions];
+			}
+
+			// Remove duplicates
+			const uniqueFunctions = functions.reduce((acc, func) => {
+				if (!acc.find((f) => f.name === func.name)) {
+					acc.push(func);
+				}
+				return acc;
+			}, [] as any[]);
+
+			return {
+				success: true,
+				workflowId,
+				functions: uniqueFunctions,
+				metadata: {
+					category,
+					nodeType,
+					search,
+					totalFunctions: uniqueFunctions.length,
+					availableCategories: [...new Set(uniqueFunctions.map((f) => f.category))],
+					workflowNodes: workflow.nodes.length,
+					requestedAt: new Date(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Workflow functions discovery failed', {
+				workflowId,
+				category,
+				nodeType,
+				search,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Workflow functions discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
 	// Helper methods for variable discovery
 
 	private async getNodeSpecificContext(workflowId: string, nodeId: string | undefined, user: any) {

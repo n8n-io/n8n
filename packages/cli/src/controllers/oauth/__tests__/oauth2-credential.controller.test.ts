@@ -396,4 +396,247 @@ describe('OAuth2CredentialController', () => {
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 	});
+
+	describe('refreshToken', () => {
+		it('should refresh expired OAuth2 token successfully', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const expiredTokenData = {
+				access_token: 'old-access-token',
+				refresh_token: 'refresh-token',
+				expires_in: '3600',
+				token_type: 'bearer',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: expiredTokenData,
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				accessTokenUrl: 'https://example.domain/token',
+			});
+
+			nock('https://example.domain').post('/token').reply(200, {
+				access_token: 'new-access-token',
+				refresh_token: 'new-refresh-token',
+				expires_in: '3600',
+				token_type: 'bearer',
+			});
+
+			const result = await controller.refreshToken(req);
+
+			expect(result.success).toBe(true);
+			expect(result.message).toBe('Token refreshed successfully');
+			expect(result.tokenData?.access_token).toBe('new-access-token');
+			expect(result.expiresAt).toBeDefined();
+		});
+
+		it('should return error when no refresh token available', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: {
+					access_token: 'access-token',
+					// no refresh_token
+				},
+			});
+
+			const result = await controller.refreshToken(req);
+
+			expect(result.success).toBe(false);
+			expect(result.message).toBe('No refresh token available. Please re-authenticate.');
+		});
+
+		it('should return success if token is still valid', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const validTokenData = {
+				access_token: 'valid-access-token',
+				refresh_token: 'refresh-token',
+				expires_in: '7200', // 2 hours
+				token_type: 'bearer',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: validTokenData,
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				accessTokenUrl: 'https://example.domain/token',
+			});
+
+			const result = await controller.refreshToken(req);
+
+			expect(result.success).toBe(true);
+			expect(result.message).toBe('Token is still valid');
+			expect(result.tokenData?.access_token).toBe('valid-access-token');
+		});
+	});
+
+	describe('getTokenStatus', () => {
+		it('should return token status for valid token', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const tokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+				expires_in: '3600',
+				token_type: 'bearer',
+				scope: 'read write',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: tokenData,
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				accessTokenUrl: 'https://example.domain/token',
+			});
+
+			const result = await controller.getTokenStatus(req);
+
+			expect(result.isValid).toBe(true);
+			expect(result.isExpired).toBe(false);
+			expect(result.hasRefreshToken).toBe(true);
+			expect(result.scope).toBe('read write');
+			expect(result.tokenType).toBe('bearer');
+			expect(result.message).toBe('Token is valid');
+		});
+
+		it('should return error status when no token data found', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+
+			const result = await controller.getTokenStatus(req);
+
+			expect(result.isValid).toBe(false);
+			expect(result.isExpired).toBe(true);
+			expect(result.hasRefreshToken).toBe(false);
+			expect(result.message).toBe('No OAuth token data found');
+		});
+	});
+
+	describe('completeCredentialFlow', () => {
+		it('should complete OAuth2 flow successfully', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const tokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+				token_type: 'bearer',
+				scope: 'read write',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: tokenData,
+				csrfSecret: 'secret',
+				codeVerifier: 'verifier',
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				accessTokenUrl: 'https://example.domain/token',
+			});
+
+			const result = await controller.completeCredentialFlow(req);
+
+			expect(result.success).toBe(true);
+			expect(result.message).toBe('OAuth2 credential flow completed successfully');
+			expect(result.credentialId).toBe(credential.id);
+			expect(result.flowMetadata?.hasRefreshToken).toBe(true);
+			expect(result.flowMetadata?.scope).toBe('read write');
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.complete', [
+				expect.objectContaining({
+					credentialId: credential.id,
+					userId: user.id,
+				}),
+			]);
+		});
+
+		it('should return error when no token data found', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+
+			const result = await controller.completeCredentialFlow(req);
+
+			expect(result.success).toBe(false);
+			expect(result.message).toBe('OAuth flow not completed. No token data found.');
+		});
+	});
+
+	describe('revokeToken', () => {
+		it('should revoke tokens successfully with provider notification', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const tokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: tokenData,
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				revokeTokenUrl: 'https://example.domain/revoke',
+			});
+
+			nock('https://example.domain').post('/revoke').twice().reply(200);
+
+			const result = await controller.revokeToken(req);
+
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('Provider notified');
+			expect(result.revokedTokens).toEqual(['refresh_token', 'access_token']);
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.revoke', [
+				expect.objectContaining({
+					credentialId: credential.id,
+					userId: user.id,
+					revokedTokens: ['refresh_token', 'access_token'],
+				}),
+			]);
+		});
+
+		it('should clear local tokens when no revoke URL available', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const tokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+			};
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				oauthTokenData: tokenData,
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				// no revokeTokenUrl
+			});
+
+			const result = await controller.revokeToken(req);
+
+			expect(result.success).toBe(true);
+			expect(result.message).toContain('Local tokens cleared');
+			expect(result.revokedTokens).toEqual([]);
+		});
+
+		it('should return error when no token data found', async () => {
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+
+			const result = await controller.revokeToken(req);
+
+			expect(result.success).toBe(false);
+			expect(result.message).toBe('No OAuth token data found to revoke');
+			expect(result.revokedTokens).toEqual([]);
+		});
+	});
 });
