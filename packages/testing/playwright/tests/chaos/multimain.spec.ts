@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/base';
+import { test, expect } from '../../fixtures/base';
 
 test('Leader election @mode:multi-main @chaostest', async ({ chaos }) => {
 	// First get the container (try main 1 first)
