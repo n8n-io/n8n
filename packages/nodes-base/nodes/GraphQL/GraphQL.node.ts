@@ -551,6 +551,7 @@ export class GraphQL implements INodeType {
 						clearTimeout(connectionTimeoutId);
 						connectionEstablished = true;
 
+
 						// Send connection initialization for graphql-transport-ws
 						if (subprotocol === 'graphql-transport-ws') {
 							const initMessage = {
@@ -587,6 +588,34 @@ export class GraphQL implements INodeType {
 
 							ws.send(JSON.stringify(subscriptionMessage));
 						}
+				let response;
+				// Now that the options are all set make the actual http request
+				if (oAuth1Api !== undefined) {
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				} else if (oAuth2Api !== undefined) {
+					response = await this.helpers.requestOAuth2.call(
+						this,
+						'oAuth2Api',
+						{
+							...requestOptions,
+							// needed for the refresh mechanism to work properly
+							resolveWithFullResponse: true,
+						},
+						{
+							tokenType: 'Bearer',
+						},
+					);
+					// since we are using `resolveWithFullResponse: true`, we need to grab the body
+					response = response.body;
+				} else {
+					response = await this.helpers.request(requestOptions);
+				}
+				if (responseFormat === 'string') {
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
+					returnItems.push({
+						json: {
+							[dataPropertyName]: response,
+						},
 					});
 
 					ws.on('message', (data: any) => {

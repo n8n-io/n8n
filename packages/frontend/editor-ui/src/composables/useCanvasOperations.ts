@@ -171,8 +171,8 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const editableWorkflow = computed(() => workflowsStore.workflow);
-	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
+	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
+	const editableWorkflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;
@@ -298,7 +298,7 @@ export function useCanvasOperations() {
 		newName = uniqueNodeName(newName);
 
 		// Rename the node and update the connections
-		const workflow = workflowsStore.getCurrentWorkflow(true);
+		const workflow = workflowsStore.cloneWorkflowObject();
 		try {
 			workflow.renameNode(currentName, newName);
 		} catch (error) {
@@ -477,17 +477,17 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const wf = workflowsStore.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 
 		const inputNodeNames = replaceInputs
-			? uniq(wf.getParentNodes(previousNode.name, 'main', 1))
+			? uniq(workflowObject.getParentNodes(previousNode.name, 'main', 1))
 			: [];
 		const outputNodeNames = replaceOutputs
-			? uniq(wf.getChildNodes(previousNode.name, 'main', 1))
+			? uniq(workflowObject.getChildNodes(previousNode.name, 'main', 1))
 			: [];
 		const connectionPairs = [
-			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
-			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
+			...workflowObject.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
+			...workflowObject.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
 		];
 
 		if (trackHistory && trackBulk) {
@@ -1768,7 +1768,7 @@ export function useCanvasOperations() {
 
 		// Create a workflow with the new nodes and connections that we can use
 		// the rename method
-		const tempWorkflow: Workflow = workflowsStore.getWorkflow(createNodes, newConnections);
+		const tempWorkflow: Workflow = workflowsStore.createWorkflowObject(createNodes, newConnections);
 
 		// Rename all the nodes of which the name changed
 		for (oldName in nodeNameTable) {
@@ -1875,7 +1875,7 @@ export function useCanvasOperations() {
 
 					// Generate new webhookId if workflow already contains a node with the same webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const isDuplicate = Object.values(workflowHelpers.getCurrentWorkflow().nodes).some(
+						const isDuplicate = Object.values(workflowsStore.workflowObject.nodes).some(
 							(n) => n.webhookId === node.webhookId,
 						);
 						if (isDuplicate) {
@@ -2187,12 +2187,12 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflow = workflowsStore.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject; // @TODO Check if we actually need workflowObject here
 
 		logsStore.toggleOpen(true);
 
 		const payload = {
-			workflow_id: workflow.id,
+			workflow_id: workflowObject.id,
 			button_type: source,
 		};
 

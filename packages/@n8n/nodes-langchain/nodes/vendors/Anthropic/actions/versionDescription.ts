@@ -20,7 +20,7 @@ export const versionDescription: INodeTypeDescription = {
 	},
 	usableAsTool: true,
 	codex: {
-		alias: ['LangChain', 'document', 'image', 'assistant'],
+		alias: ['LangChain', 'document', 'image', 'assistant', 'claude'],
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],

@@ -1,5 +1,4 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import * as ndvStore from '@/stores/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
@@ -8,6 +7,10 @@ import { EditorView } from '@codemirror/view';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { autocompletableNodeNames, expressionWithFirstItem, stripExcessParens } from './utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 vi.mock('@/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
@@ -75,6 +78,11 @@ describe('completion utils', () => {
 	});
 
 	describe('autocompletableNodeNames', () => {
+		beforeEach(() => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+		});
+
 		it('should work for normal nodes', () => {
 			const nodes = [
 				createTestNode({ name: 'Node 1' }),
@@ -98,10 +106,8 @@ describe('completion utils', () => {
 				connections,
 			});
 
-			const workflowHelpersMock: MockInstance = vi.spyOn(workflowHelpers, 'useWorkflowHelpers');
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => workflowObject),
-			});
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowObject = workflowObject;
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
@@ -131,10 +137,9 @@ describe('completion utils', () => {
 				connections,
 			});
 
-			const workflowHelpersMock: MockInstance = vi.spyOn(workflowHelpers, 'useWorkflowHelpers');
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => workflowObject),
-			});
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowObject = workflowObject;
+
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 

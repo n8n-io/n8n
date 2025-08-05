@@ -25,6 +25,7 @@ import { useRBACStore } from '@/stores/rbac.store';
 import {
 	registerModuleProjectTabs,
 	registerModuleResources,
+	registerModuleModals,
 } from '@/moduleInitializer/moduleInitializer';
 
 export const state = {
@@ -188,6 +189,7 @@ export async function initializeAuthenticatedFeatures(
 	// Initialize modules
 	registerModuleResources();
 	registerModuleProjectTabs();
+	registerModuleModals();
 
 	authenticatedFeaturesInitialized = true;
 }

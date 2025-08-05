@@ -15,7 +15,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div class="story">
-			<N8nInlineTextEdit v-bind="args" />
+			<InlineTextEdit v-bind="args" />
 		</div>
 	`,
 });

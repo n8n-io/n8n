@@ -30,5 +30,3 @@ const noticeStyles = computed(() => {
 		{{ i18n.baseText('communityNodeUpdateInfo.available') }}
 	</N8nNotice>
 </template>
-
-<style lang="scss" module></style>

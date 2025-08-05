@@ -303,7 +303,7 @@ onMounted(async () => {
 }
 .textContainer {
 	text-align: left;
-	margin: 0px;
+	margin: 0;
 	margin-bottom: 5px;
 }
 

@@ -90,7 +90,8 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			{
 				duration: 200,
 				zoom: maxCanvasZoom.value,
-				interpolate: 'linear',
+				// TODO: restore when re-upgrading vue-flow to >= 1.45
+				// interpolate: 'linear',
 			},
 		);
 	}
@@ -108,11 +109,19 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	function toggleZoomMode(options: ToggleZoomModeOptions) {
 		if (isActive(options.canvasViewport.zoom)) {
 			if (previousViewport.value === undefined) {
-				void options.fitView({ duration: 200, interpolate: 'linear' });
+				void options.fitView({
+					duration: 200,
+					// TODO: restore when re-upgrading vue-flow to >= 1.45
+					// interpolate: 'linear',
+				});
 				return;
 			}
 
-			void options.setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
+			void options.setViewport(previousViewport.value, {
+				duration: 200,
+				// TODO: restore when re-upgrading vue-flow to >= 1.45
+				// interpolate: 'linear'
+			});
 			return;
 		}
 
@@ -129,7 +138,11 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			return;
 		}
 
-		void options.zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
+		void options.zoomTo(maxCanvasZoom.value, {
+			duration: 200,
+			// TODO: restore when re-upgrading vue-flow to >= 1.45
+			// interpolate: 'linear',
+		});
 	}
 
 	return {

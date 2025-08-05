@@ -45,8 +45,8 @@ export function useCalloutHelpers() {
 		const template = getRagStarterWorkflowJson();
 
 		const routeTemplateId = route.query.templateId;
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
-		const workflow = workflowsStore.getWorkflowById(currentWorkflow.id);
+		const workflowObject = workflowsStore.workflowObject;
+		const workflow = workflowsStore.getWorkflowById(workflowObject.id); // @TODO Check if we actually need workflowObject here
 
 		// Hide the RAG starter callout if we're currently on the RAG starter template
 		if ((routeTemplateId ?? workflow?.meta?.templateId) === template.meta.templateId) {

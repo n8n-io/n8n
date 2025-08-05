@@ -12,6 +12,7 @@ import { computed, provide, ref, useTemplateRef } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
+import type { Workflow } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
@@ -79,7 +80,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 			};
 		}
 
-		const inputs = workflow.value.getParentNodesByDepth(nodeName, 1);
+		const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
 
 		if (inputs.length > 0) {
 			return {
@@ -95,7 +96,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	return {
 		localResolve: true,
 		envVars: useEnvironmentsStore().variablesAsObject,
-		workflow: workflow.value,
+		workflow: workflowObject.value,
 		execution,
 		nodeName,
 		additionalKeys: {},
@@ -104,7 +105,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -142,7 +143,7 @@ watchOnce(isVisible, (visible) => {
 		<template v-if="!node || !isOnceVisible" />
 		<ExperimentalEmbeddedNdvMapper
 			v-else-if="isExpanded"
-			:workflow="workflow"
+			:workflow="workflowObject"
 			:node="node"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
 			:container="containerRef"

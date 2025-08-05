@@ -148,4 +148,21 @@ describe('ActiveWorkflowManager', () => {
 			);
 		});
 	});
+
+	describe('addActiveWorkflows', () => {
+		test('should prevent concurrent activations', async () => {
+			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+
+			workflowRepository.getAllActiveIds.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
+			);
+
+			await Promise.all([
+				activeWorkflowManager.addActiveWorkflows('init'),
+				activeWorkflowManager.addActiveWorkflows('leadershipChange'),
+			]);
+
+			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
+		});
+	});
 });

@@ -106,9 +106,7 @@ export class ModuleRegistry {
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
-			if (!moduleSettings) continue;
-
-			this.settings.set(moduleName, moduleSettings);
+			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 

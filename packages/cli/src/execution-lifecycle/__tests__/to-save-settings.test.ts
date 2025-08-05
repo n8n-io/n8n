@@ -153,3 +153,21 @@ describe('execution progress', () => {
 		expect(_saveSettings.progress).toBe(false);
 	});
 });
+
+describe('null workflow settings', () => {
+	it('should handle null workflow settings without throwing', () => {
+		expect(() => toSaveSettings(null)).not.toThrow();
+
+		// Should use defaults from config when settings are null
+		config.set('executions.saveDataOnError', 'all');
+		config.set('executions.saveDataOnSuccess', 'all');
+		config.set('executions.saveDataManualExecutions', true);
+		config.set('executions.saveExecutionProgress', true);
+
+		const settingsWithNull = toSaveSettings(null);
+		expect(settingsWithNull.error).toBe(true);
+		expect(settingsWithNull.success).toBe(true);
+		expect(settingsWithNull.manual).toBe(true);
+		expect(settingsWithNull.progress).toBe(true);
+	});
+});

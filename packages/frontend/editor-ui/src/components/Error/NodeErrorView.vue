@@ -748,6 +748,7 @@ async function onAskAssistantClick() {
 	&__button {
 		margin-left: var(--spacing-s);
 		margin-bottom: var(--spacing-xs);
+		margin-top: var(--spacing-xs);
 		flex-direction: row-reverse;
 		span {
 			margin-right: var(--spacing-5xs);
@@ -886,9 +887,5 @@ async function onAskAssistantClick() {
 			word-wrap: break-word;
 		}
 	}
-}
-
-.node-error-view__button {
-	margin-top: var(--spacing-xs);
 }
 </style>

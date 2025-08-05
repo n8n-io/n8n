@@ -4,7 +4,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
@@ -49,6 +49,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
 	const i18n = useI18n();
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
@@ -108,13 +110,12 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	};
 
 	const isExecutable = (node: INodeUi) => {
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = currentWorkflow.getNode(node.name) as INode;
+		const workflowNode = workflowObject.value.getNode(node.name) as INode;
 		const nodeType = nodeTypesStore.getNodeType(
 			workflowNode.type,
 			workflowNode.typeVersion,
 		) as INodeTypeDescription;
-		return NodeHelpers.isExecutable(currentWorkflow, workflowNode, nodeType);
+		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
 	};
 
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {

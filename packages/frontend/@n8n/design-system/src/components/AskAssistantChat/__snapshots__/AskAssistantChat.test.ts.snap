@@ -171,15 +171,19 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -988,15 +992,19 @@ Testing more code
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -1169,15 +1177,19 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -1438,15 +1450,19 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -1641,15 +1657,19 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -1900,15 +1920,19 @@ catch(e) {
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />
@@ -2092,15 +2116,19 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         rows="1"
         wrap="hard"
       />
-      <n8n-icon-button-stub
+      <n8n-button-stub
         active="false"
+        block="false"
         class="sendButton"
         data-test-id="send-message-button"
         disabled="true"
+        element="button"
         icon="send"
+        label=""
         loading="false"
         outline="false"
         size="large"
+        square="true"
         text="true"
         type="primary"
       />

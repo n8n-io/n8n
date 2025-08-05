@@ -46,7 +46,8 @@ exports[`CanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
     <span
       class="text"
     >
-      Working...
+      Working... 
+      <!--v-if-->
     </span>
   </div>
 </div>

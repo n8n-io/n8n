@@ -262,6 +262,16 @@ export function useBuilderMessages() {
 		} as ChatUI.AssistantMessage;
 	}
 
+	function createAssistantMessage(content: string, id: string): ChatUI.AssistantMessage {
+		return {
+			id,
+			role: 'assistant',
+			type: 'text',
+			content,
+			read: true,
+		} as ChatUI.AssistantMessage;
+	}
+
 	function createErrorMessage(
 		content: string,
 		id: string,
@@ -346,6 +356,7 @@ export function useBuilderMessages() {
 	return {
 		processAssistantMessages,
 		createUserMessage,
+		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
 		addMessages,

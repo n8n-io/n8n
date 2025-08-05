@@ -161,13 +161,35 @@ describe('initModules', () => {
 		expect(moduleRegistry.settings.get(moduleName)).toBe(moduleSettings);
 	});
 
-	it('activates the module', async () => {
+	it('activates module with settings', async () => {
 		// ARRANGE
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
 		const ModuleClass: ModuleInterface = {
 			init: jest.fn(),
 			settings: jest.fn().mockReturnValue(moduleSettings),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
+		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
+	});
+
+	it('activates module without settings', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
 			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),

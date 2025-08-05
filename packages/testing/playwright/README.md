@@ -2,20 +2,25 @@
 
 ## Quick Start
 ```bash
-pnpm test                 # Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
-pnpm test:local           # Creates isolated n8n instance on port 5679 and runs the tests against it
+pnpm test:all                 									# Run all tests (fresh containers, pnpm build:local from root first to ensure local containers)
+pnpm test:local           											# Starts a local server and runs the UI tests
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the UI tests against the instance running
 ```
 
 ## Test Commands
 ```bash
 # By Mode
-pnpm run test:standard    # Basic n8n
-pnpm run test:postgres    # PostgreSQL
-pnpm run test:queue       # Queue mode
-pnpm run test:multi-main  # HA setup
+pnpm test:container:standard    # Sqlite
+pnpm test:container:postgres    # PostgreSQL
+pnpm test:container:queue       # Queue mode
+pnpm test:container:multi-main  # HA setup
+
+pnpm test:performance						# Runs the performance tests against Sqlite container
+pnpm test:chaos									# Runs the chaos tests
+
 
 # Development
-pnpm test --grep "workflow"           # Pattern match
+pnpm test:all --grep "workflow"           # Pattern match, can run across all test types UI/cli-workflow/performance
 ```
 
 ## Test Tags
