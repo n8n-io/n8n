@@ -19,15 +19,15 @@ export class ScheduledTaskManager {
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
-		private readonly config: CronLoggingConfig,
+		{ activeInterval }: CronLoggingConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
-		if (this.config.activeInterval === 0) return;
+		if (activeInterval === 0) return;
 
 		this.logInterval = setInterval(
 			() => this.logActiveCrons(),
-			this.config.activeInterval * Time.minutes.toMilliseconds,
+			activeInterval * Time.minutes.toMilliseconds,
 		);
 	}
 
