@@ -1,68 +1,67 @@
-name: Build & Push n8n (AMD64, ghcr.io, date-tag)
+name: "Build and Push n8n (AMD64, ghcr.io)"
 
 on:
-  workflow_dispatch:   # اجرای دستی
+  workflow_dispatch:   # اجرای دستی از طریق UI یا API
 
 jobs:
   build-and-push:
+    name: "Build & Push image"
     runs-on: ubuntu-latest
 
     steps:
       # 1) دریافت سورس
-      - name: Checkout repository
+      - name: "Checkout repository"
         uses: actions/checkout@v4
 
-      # 2) نصب Node (نسخه‌ی سازگار با n8n)
-      - name: Setup Node.js
+      # 2) نصب Node 22 و فعال‌سازی cache pnpm
+      - name: "Setup Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: 22   # مطابق engines پروژه
+          node-version: '22'
           cache: 'pnpm'
 
       # 3) نصب pnpm با اکشن رسمی
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v2          # ← نسخهٔ پایدار
+      - name: "Setup PNPM (action)"
+        uses: pnpm/action-setup@v2
         with:
-          version: 9                        # یا هر نسخهٔ پایدار مدنظرتان
-          run_install: false
+          version: 9          # نسخهٔ دلخواهِ پایدار
+          run_install: false  # نصب وابستگی انجام نمی‌دهد
 
-      # 3.5) fallback اگر به هر دلیل باینری در PATH نبود
-      - name: Fallback: install pnpm globally
+      # 3.5) fallback اگر به هر دلیل در PATH نبود
+      - name: "Fallback: install pnpm globally"
         run: npm install -g pnpm@9
 
       # 4) نصب وابستگی‌ها
-      - name: Install dependencies
+      - name: "Install dependencies"
         run: pnpm install --frozen-lockfile
 
-      # 5) بیلد n8n → خروجی در ./compiled
-      - name: Build n8n
+      # 5) بیلد n8n → ./compiled
+      - name: "Build n8n"
         run: pnpm run build
 
-      # 6) اطمینان از وجود compiled (اختیاری ولی مفید برای دیباگ)
-      - name: Verify compiled folder
-        run: |
-          echo "Contents of ./compiled:"
-          ls -R compiled
+      # 6) بررسی وجود compiled (اختیاری)
+      - name: "Verify compiled folder"
+        run: ls -R compiled
 
-      # 7) لاگین به GHCR با توکن داخلی گیت‌هاب
-      - name: Log in to GHCR
+      # 7) لاگین به GHCR
+      - name: "Log in to GHCR"
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 8) تنظیم متغیر تگ تاریخ روز
-      - name: Set image tag
-        id: date
-        run: echo "TAG=$(date +'%Y-%m-%d')" >> "$GITHUB_ENV"
+      # 8) ذخیرهٔ تگ تاریخ روز (YYYY-MM-DD)
+      - name: "Set image tag"
+        id: vars
+        run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')" >> "$GITHUB_ENV"
 
       # 9) Build و Push ایمیج
-      - name: Build & Push Docker image
+      - name: "Build & Push Docker image"
         uses: docker/build-push-action@v5
         with:
-          context: .                                 # ریشهٔ مخزن
-          file: ./docker/images/n8n/Dockerfile       # Dockerfile رسمی n8n
-          platforms: linux/amd64                     # فقط AMD64
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ env.TAG }}
+          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ env.IMAGE_TAG }}
