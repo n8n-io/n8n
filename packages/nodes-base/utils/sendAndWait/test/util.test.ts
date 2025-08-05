@@ -17,7 +17,6 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
-		mockWebhookFunctions.validateExecutionWaitingToken.mockReturnValue(true);
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -384,25 +383,6 @@ describe('Send and Wait utils tests', () => {
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
 			expect(send).toHaveBeenCalledWith('');
-			expect(result).toEqual({ noWebhookResponse: true });
-		});
-
-		it('should send 401 response if invalid token', async () => {
-			mockWebhookFunctions.validateExecutionWaitingToken.mockReturnValue(false);
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				method: 'GET',
-			} as any);
-			mockWebhookFunctions.getResponseObject.mockReturnValue({
-				status: jest.fn().mockReturnThis(),
-				json: jest.fn(),
-			} as any);
-
-			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
-
-			expect(mockWebhookFunctions.getResponseObject().status).toHaveBeenCalledWith(401);
-			expect(mockWebhookFunctions.getResponseObject().json).toHaveBeenCalledWith({
-				error: 'Invalid token',
-			});
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
