@@ -7,6 +7,7 @@ import path from 'path';
 const templateFiles = glob.sync(['templates/**/*'], {
 	cwd: path.resolve(import.meta.dirname, '../'),
 	ignore: ['**/node_modules', '**/dist'],
+	dot: true,
 });
 
 (async () => {
