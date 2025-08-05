@@ -4,10 +4,10 @@ import type {
 	DataStoreUserTableName,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { DataStoreEntity } from './data-store.entity';
-import { createUserTableQuery } from './utils/sql-utils';
+import { createUserTableQuery, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStoreEntity> {
@@ -15,13 +15,52 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
-	async createUserTable(tableName: DataStoreUserTableName, columns: DataStoreCreateColumnSchema[]) {
-		const dbType = this.manager.connection.options.type;
-		await this.manager.query(createUserTableQuery(tableName, columns, dbType));
+	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
+		return await this.manager.transaction(async (em) => {
+			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
+			await this.insert(dataStore);
+			const dbType = this.manager.connection.options.type;
+			await this.manager.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
+			return dataStore;
+		});
 	}
 
-	async deleteUserTable(tableName: DataStoreUserTableName) {
-		await this.manager.query(`DROP TABLE ${tableName}`);
+	async deleteUserTable(dataStoreId: string, entityManager?: EntityManager) {
+		const executor = entityManager ?? this.manager;
+		return await executor.transaction(async (em) => {
+			await em.delete(DataStoreEntity, { id: dataStoreId });
+			await em.query(`DROP TABLE ${toTableName(dataStoreId)}`);
+
+			return true;
+		});
+	}
+
+	async deleteDataStoreByProjectId(projectId: string) {
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataStoreEntity, { projectId });
+
+			let changed = false;
+			for (const match of existingTables) {
+				const result = await this.deleteUserTable(match.id, em);
+				changed = changed || result;
+			}
+
+			return changed;
+		});
+	}
+
+	async deleteDataStoreAll() {
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataStoreEntity, {});
+
+			let changed = false;
+			for (const match of existingTables) {
+				const result = await this.deleteUserTable(match.id, em);
+				changed = changed || result;
+			}
+
+			return changed;
+		});
 	}
 
 	async getManyAndCount(options: DataStoreListOptions) {

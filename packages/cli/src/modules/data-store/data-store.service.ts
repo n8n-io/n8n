@@ -6,7 +6,6 @@ import type {
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
 	DataStoreRows,
-	DataStoreUserTableName,
 	IDataStoreService,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
@@ -19,7 +18,6 @@ import { DataStoreConfig } from './data-store';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
-import { DataStoreColumnEntity } from './data-store-column.entity';
 import { toTableName } from './utils/sql-utils';
 
 @Service()
@@ -58,7 +56,6 @@ export class DataStoreService implements IDataStoreService {
 	}
 
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
-		const dataStore = this.dataStoreRepository.create({ ...dto, projectId });
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,
 			projectId,
@@ -66,10 +63,7 @@ export class DataStoreService implements IDataStoreService {
 		if (existingTable !== null) {
 			throw new UserError(`data store name '${dto.name}' already exists in this project`);
 		}
-		await this.dataStoreRepository.insert(dataStore);
-		await this.dataStoreRepository.createUserTable(toTableName(dataStore.id), dto.columns);
-
-		return dataStore;
+		return await this.dataStoreRepository.createUserTable(projectId, dto.name, dto.columns);
 	}
 
 	// Currently only renames data stores
@@ -103,26 +97,11 @@ export class DataStoreService implements IDataStoreService {
 	}
 
 	async deleteDataStoreByProjectId(projectId: string) {
-		const existingTables = await this.dataStoreRepository.findBy({ projectId });
-
-		let changed = false;
-		for (const match of existingTables) {
-			const result = await this.deleteDataStore(match.id);
-			changed = changed || result;
-		}
-
-		return changed;
+		return await this.dataStoreRepository.deleteDataStoreByProjectId(projectId);
 	}
 
 	async deleteDataStoreAll() {
-		const existingMatches = await this.dataStoreRepository.findBy({});
-		let changed = false;
-		for (const match of existingMatches) {
-			const result = await this.deleteDataStore(match.id);
-			changed = changed || result;
-		}
-
-		return changed;
+		return await this.dataStoreRepository.deleteDataStoreAll();
 	}
 
 	async deleteDataStore(dataStoreId: string) {
@@ -134,8 +113,7 @@ export class DataStoreService implements IDataStoreService {
 			throw new Error('tried to delete non-existent data store');
 		}
 
-		await this.dataStoreRepository.delete({ id: dataStoreId });
-		await this.dataStoreRepository.deleteUserTable(toTableName(dataStoreId));
+		await this.dataStoreRepository.deleteUserTable(dataStoreId);
 
 		return true;
 	}

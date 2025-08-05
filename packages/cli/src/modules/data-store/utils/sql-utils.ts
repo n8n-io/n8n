@@ -73,7 +73,6 @@ export function addColumnQuery(
 	tableName: DataStoreUserTableName,
 	column: DataStoreCreateColumnSchema,
 ) {
-	console.log(isValidColumnName(column.name), column.name);
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
 		throw new UnexpectedError('bad column name');
