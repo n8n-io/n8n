@@ -8,7 +8,7 @@ declare module 'n8n-workflow' {
 	}
 }
 
-export { ScheduledTaskManager, SettingsCron as DebugEntry } from './scheduled-task-manager';
+export { ScheduledTaskManager } from './scheduled-task-manager';
 export * from './active-workflows';
 export * from './interfaces';
 export * from './routing-node';
