@@ -45,7 +45,7 @@ const hasAINode = computed(() => {
 	});
 });
 
-const hasEvaluationSetOutputsNode = computed(() => {
+const hasEvaluationSetOutputsNode = computed((): boolean => {
 	return evaluationStore.evaluationSetOutputsNodeExist;
 });
 

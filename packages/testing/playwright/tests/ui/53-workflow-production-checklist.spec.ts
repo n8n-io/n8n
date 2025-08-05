@@ -8,7 +8,7 @@ import {
 	getTimeSavedActionItem,
 } from '../../composables/ProductionChecklist';
 import { closeActivationModal } from '../../composables/WorkflowActivationModal';
-import { openWorkflowSettings } from '../../composables/WorklfowSettingsModal';
+import { openWorkflowSettings } from '../../composables/WorkflowSettingsModal';
 import { test, expect } from '../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
@@ -30,7 +30,7 @@ test.describe('Workflow Production Checklist', () => {
 		await expect(getSuggestedActionsButton(n8n.page)).toBeHidden();
 
 		// Activate the workflow
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 
 		// Activation Modal should be visible since it's first activation
 		await closeActivationModal(n8n.page);
@@ -57,7 +57,7 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.canvas.nodeDisableButton('Create an assistant').click();
 
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions should be open
@@ -78,7 +78,7 @@ test.describe('Workflow Production Checklist', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
@@ -97,7 +97,7 @@ test.describe('Workflow Production Checklist', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
@@ -114,7 +114,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should allow ignoring individual actions', async ({ n8n }) => {
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions popover should be open
@@ -139,7 +139,7 @@ test.describe('Workflow Production Checklist', () => {
 		// Add schedule trigger and activate workflow
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		// Open workflow settings and set error workflow
@@ -165,7 +165,7 @@ test.describe('Workflow Production Checklist', () => {
 		// Add schedule trigger
 		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow(n8n.page);
+		await n8n.canvas.activateWorkflow();
 		await closeActivationModal(n8n.page);
 
 		// Suggested actions should be open

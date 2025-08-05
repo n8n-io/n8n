@@ -162,12 +162,12 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-tags').locator('.el-tag');
 	}
 
-	async activateWorkflow(page: Page) {
-		const responsePromise = page.waitForResponse(
+	async activateWorkflow() {
+		const responsePromise = this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
-		await page.getByTestId('workflow-activate-switch').click();
+		await this.page.getByTestId('workflow-activate-switch').click();
 		await responsePromise;
 	}
 }
