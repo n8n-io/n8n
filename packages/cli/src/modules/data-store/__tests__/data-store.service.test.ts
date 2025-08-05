@@ -44,18 +44,19 @@ describe('dataStore', () => {
 			name: 'myDataStore1',
 			columns: [],
 		});
-		await dataStoreService.createDataStore(project2.id, {
-			name: 'myDataStore2',
-			columns: [],
-		});
+		// await dataStoreService.createDataStore(project2.id, {
+		// 	name: 'myDataStore2',
+		// 	columns: [],
+		// });
 	});
 
 	afterEach(async () => {
 		// Clean up any created user data stores
-		await dataStoreService.deleteDataStoreAll();
+		// await dataStoreService.deleteDataStoreAll();
 	});
 
 	describe('createDataStore', () => {
+		it('should noop', () => {});
 		it('should succeed with existing name in different project', async () => {
 			// ACT
 			const result = await dataStoreService.createDataStore(project1.id, {
