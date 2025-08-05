@@ -238,7 +238,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: () =>
+				text: async () =>
 					Promise.resolve(`
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
@@ -291,7 +291,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: () =>
+				text: async () =>
 					Promise.resolve(`
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
@@ -342,7 +342,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: () =>
+				text: async () =>
 					Promise.resolve(`
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
@@ -391,7 +391,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: () =>
+				text: async () =>
 					Promise.resolve(`
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
@@ -440,7 +440,7 @@ describe('Aws Credential', () => {
 
 			const mockStsResponse = {
 				ok: true,
-				text: () =>
+				text: async () =>
 					Promise.resolve(`
 					<AssumeRoleResponse>
 						<AssumeRoleResult>
@@ -495,7 +495,7 @@ describe('Aws Credential', () => {
 				ok: false,
 				status: 403,
 				statusText: 'Forbidden',
-				text: () => Promise.resolve('<Error><Message>Access Denied</Message></Error>'),
+				text: async () => Promise.resolve('<Error><Message>Access Denied</Message></Error>'),
 			};
 
 			// Mock fetch for role assumption
@@ -647,7 +647,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: () =>
+					text: async () =>
 						Promise.resolve(`
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
@@ -695,7 +695,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: () =>
+					text: async () =>
 						Promise.resolve(`
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
@@ -743,7 +743,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: () =>
+					text: async () =>
 						Promise.resolve(`
 						<AssumeRoleResponse>
 							<AssumeRoleResult>
@@ -818,7 +818,7 @@ describe('Aws Credential', () => {
 
 				const mockStsResponse = {
 					ok: true,
-					text: () =>
+					text: async () =>
 						Promise.resolve(`
 						<AssumeRoleResponse>
 							<AssumeRoleResult>

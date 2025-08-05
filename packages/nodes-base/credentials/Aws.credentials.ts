@@ -10,6 +10,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { isObjectEmpty } from 'n8n-workflow';
+import { parseString } from 'xml2js';
 
 export const regions = [
 	{
@@ -411,6 +412,9 @@ export class Aws implements ICredentialType {
 			},
 			required: true,
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'STS Secret Access Key',
@@ -1075,7 +1079,6 @@ export class Aws implements ICredentialType {
 
 		const responseText = await response.text();
 		const responseData = await new Promise<IDataObject>((resolve, reject) => {
-			const { parseString } = require('xml2js');
 			parseString(responseText, { explicitArray: false }, (err: any, data: IDataObject) => {
 				if (err) {
 					reject(err);
