@@ -13,7 +13,7 @@ import { test, expect } from '../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
-test.describe('Workflow Suggested Actions', () => {
+test.describe('Workflow Production Checklist', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();

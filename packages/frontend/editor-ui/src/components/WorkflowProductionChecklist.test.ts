@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
-import WorkflowSuggestedActions from '@/components/WorkflowSuggestedActions.vue';
+import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
@@ -111,7 +111,7 @@ const mockN8nSuggestedActions = {
 	template: '<div data-test-id="n8n-suggested-actions-stub" />',
 };
 
-const renderComponent = createComponentRenderer(WorkflowSuggestedActions, {
+const renderComponent = createComponentRenderer(WorkflowProductionChecklist, {
 	global: {
 		stubs: {
 			N8nSuggestedActions: mockN8nSuggestedActions,
@@ -119,7 +119,7 @@ const renderComponent = createComponentRenderer(WorkflowSuggestedActions, {
 	},
 });
 
-describe('WorkflowSuggestedActions', () => {
+describe('WorkflowProductionChecklist', () => {
 	let router: ReturnType<typeof useRouter>;
 	let workflowsCache: ReturnType<typeof useWorkflowSettingsCache>;
 	let message: ReturnType<typeof useMessage>;
@@ -218,22 +218,22 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'evaluations',
-						title: 'workflowSuggestedActions.evaluations.title',
-						description: 'workflowSuggestedActions.evaluations.description',
+						title: 'workflowProductionChecklist.evaluations.title',
+						description: 'workflowProductionChecklist.evaluations.description',
 						moreInfoLink: EVALUATIONS_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: false,
 					},
@@ -266,15 +266,15 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: false,
 					},
@@ -294,15 +294,15 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: false,
 					},
@@ -455,7 +455,7 @@ describe('WorkflowSuggestedActions', () => {
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
 				expect(mockN8nSuggestedActionsProps.ignoreAllLabel).toBe(
-					'workflowSuggestedActions.turnOffWorkflowSuggestions',
+					'workflowProductionChecklist.turnOffWorkflowSuggestions',
 				);
 			});
 
@@ -681,22 +681,22 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'evaluations',
-						title: 'workflowSuggestedActions.evaluations.title',
-						description: 'workflowSuggestedActions.evaluations.description',
+						title: 'workflowProductionChecklist.evaluations.title',
+						description: 'workflowProductionChecklist.evaluations.description',
 						moreInfoLink: EVALUATIONS_DOCS_URL,
 						completed: true,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: false,
 					},
@@ -722,15 +722,15 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: true,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: false,
 					},
@@ -756,15 +756,15 @@ describe('WorkflowSuggestedActions', () => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
 					{
 						id: 'errorWorkflow',
-						title: 'workflowSuggestedActions.errorWorkflow.title',
-						description: 'workflowSuggestedActions.errorWorkflow.description',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
 						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 						completed: false,
 					},
 					{
 						id: 'timeSaved',
-						title: 'workflowSuggestedActions.timeSaved.title',
-						description: 'workflowSuggestedActions.timeSaved.description',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
 						moreInfoLink: TIME_SAVED_DOCS_URL,
 						completed: true,
 					},

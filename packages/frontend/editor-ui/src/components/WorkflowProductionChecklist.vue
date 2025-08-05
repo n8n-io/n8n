@@ -79,8 +79,8 @@ const availableActions = computed(() => {
 	if (!suggestedActionSettings.errorWorkflow?.ignored) {
 		actions.push({
 			id: 'errorWorkflow',
-			title: i18n.baseText('workflowSuggestedActions.errorWorkflow.title'),
-			description: i18n.baseText('workflowSuggestedActions.errorWorkflow.description'),
+			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
+			description: i18n.baseText('workflowProductionChecklist.errorWorkflow.description'),
 			moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
 			completed: hasErrorWorkflow.value,
 		});
@@ -94,8 +94,8 @@ const availableActions = computed(() => {
 	) {
 		actions.push({
 			id: 'evaluations',
-			title: i18n.baseText('workflowSuggestedActions.evaluations.title'),
-			description: i18n.baseText('workflowSuggestedActions.evaluations.description'),
+			title: i18n.baseText('workflowProductionChecklist.evaluations.title'),
+			description: i18n.baseText('workflowProductionChecklist.evaluations.description'),
 			moreInfoLink: EVALUATIONS_DOCS_URL,
 			completed: hasEvaluationSetOutputsNode.value,
 		});
@@ -105,8 +105,8 @@ const availableActions = computed(() => {
 	if (!suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
-			title: i18n.baseText('workflowSuggestedActions.timeSaved.title'),
-			description: i18n.baseText('workflowSuggestedActions.timeSaved.description'),
+			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),
+			description: i18n.baseText('workflowProductionChecklist.timeSaved.description'),
 			moreInfoLink: TIME_SAVED_DOCS_URL,
 			completed: hasTimeSaved.value,
 		});
@@ -155,10 +155,10 @@ async function handleIgnoreClick(actionId: string) {
 
 async function handleIgnoreAll() {
 	const ignoreAllConfirmed = await message.confirm(
-		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.description'),
-		i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.title'),
+		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.description'),
+		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.title'),
 		{
-			confirmButtonText: i18n.baseText('workflowSuggestedActions.ignoreAllConfirmation.confirm'),
+			confirmButtonText: i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.confirm'),
 		},
 	);
 
@@ -216,9 +216,9 @@ onMounted(async () => {
 	<N8nSuggestedActions
 		v-if="availableActions.length > 0"
 		:open="isPopoverOpen"
-		:title="i18n.baseText('workflowSuggestedActions.title')"
+		:title="i18n.baseText('workflowProductionChecklist.title')"
 		:actions="availableActions"
-		:ignore-all-label="i18n.baseText('workflowSuggestedActions.turnOffWorkflowSuggestions')"
+		:ignore-all-label="i18n.baseText('workflowProductionChecklist.turnOffWorkflowSuggestions')"
 		popover-alignment="end"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
