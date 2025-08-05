@@ -1,0 +1,25 @@
+# Tiltfile in directory with spaces
+def spaces_resources():
+    """Resources defined in directory with spaces."""
+    
+    # Resource with spaces in all names
+    docker_build(
+        'image name with spaces',
+        '.',
+        dockerfile='Docker file with spaces.dockerfile'
+    )
+    
+    k8s_yaml('deployment with spaces.yaml')
+    
+    k8s_resource(
+        'resource name with spaces',
+        port_forwards='8080:8080',
+        labels=['label with spaces', 'another label']
+    )
+    
+    # Local resource in directory with spaces
+    local_resource(
+        'test in spaces',
+        'cd "nested folder" && python test.py',
+        dir='.'
+    )

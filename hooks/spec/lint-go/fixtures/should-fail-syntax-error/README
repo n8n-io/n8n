@@ -1,0 +1,6 @@
+This fixture contains Go code with syntax errors.
+
+Expected behavior:
+- lint-go.sh should exit with status 2
+- Error output should include "syntax error" or similar
+- Should detect the missing closing braces

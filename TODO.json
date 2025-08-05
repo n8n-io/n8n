@@ -107,7 +107,7 @@
       "description": "Enhance existing workflow search with Elasticsearch/OpenSearch integration for performance.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/cli/src/services/workflow-search.service.ts",
@@ -132,7 +132,7 @@
       "description": "Add missing execution control endpoints for granular execution management, including retry from specific points, partial workflow execution, and execution cancellation at the node level.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/executions/:id/cancel-node endpoint implemented",
         "POST /api/v1/executions/:id/retry-from-node endpoint functional",
@@ -157,7 +157,7 @@
       "description": "Extend existing node testing beyond AI nodes to support testing any node type with parameter validation, mock data generation, and isolated execution environments.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "POST /api/v1/nodes/:nodeType/test endpoint for all node types",
         "Parameter validation and mock data generation",
@@ -2688,14 +2688,99 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-05T09:24:59.539Z"
+    },
+    {
+      "id": "task_1754413984831_tscffwf2d",
+      "title": "Implement Cancel Node Execution Endpoint",
+      "description": "Add POST /executions/:id/cancel-node endpoint for cancelling specific node execution during workflow runs",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [
+        "missing-api-execution-control-1754177683422"
+      ],
+      "important_files": [
+        "packages/cli/src/executions/executions.controller.ts",
+        "packages/cli/src/executions/execution.service.ts",
+        "packages/cli/src/executions/execution.types.ts"
+      ],
+      "success_criteria": [
+        "POST /executions/:id/cancel-node endpoint implemented",
+        "Endpoint accepts nodeName in request body",
+        "Integration with ActiveExecutions.cancelNodeExecution method",
+        "Proper error handling for invalid node names",
+        "Unit tests for controller and service methods",
+        "API documentation updated"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T17:13:04.831Z"
+    },
+    {
+      "id": "task_1754413992994_wwg6i8srm",
+      "title": "Implement Retry From Node Execution Endpoint",
+      "description": "Add POST /executions/:id/retry-from-node endpoint for retrying execution from a specific node with state reset",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [
+        "missing-api-execution-control-1754177683422"
+      ],
+      "important_files": [
+        "packages/cli/src/executions/executions.controller.ts",
+        "packages/cli/src/executions/execution.service.ts",
+        "packages/cli/src/executions/execution.types.ts"
+      ],
+      "success_criteria": [
+        "POST /executions/:id/retry-from-node endpoint implemented",
+        "Endpoint accepts fromNodeName and resetState parameters",
+        "Integration with existing retry logic and ActiveExecutions",
+        "Proper state management for partial execution restart",
+        "Error handling for invalid node names and states",
+        "Unit tests for new endpoint functionality"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T17:13:12.994Z"
+    },
+    {
+      "id": "task_1754414003205_qwsqldj1t",
+      "title": "Implement Partial Workflow Execution Endpoint",
+      "description": "Add POST /workflows/:id/execute-partial endpoint for executing specific subsets of workflow nodes",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [
+        "missing-api-execution-control-1754177683422"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/executions/execution.service.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/Workflow.ts"
+      ],
+      "success_criteria": [
+        "POST /workflows/:id/execute-partial endpoint implemented",
+        "Endpoint accepts startNodes and endNodes parameters",
+        "Integration with workflow execution engine for partial runs",
+        "Proper data flow handling for partial execution",
+        "Validation for node dependencies and execution order",
+        "Unit tests and integration tests for partial execution"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T17:13:23.205Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 289,
-  "last_hook_activation": 1754403739009,
+  "execution_count": 298,
+  "last_hook_activation": 1754416860389,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

@@ -932,17 +932,20 @@ export class ExecutionService {
 		let currentNodeName: string | undefined;
 
 		try {
-			// Check if execution is currently active
-			if (this.activeExecutions.has(executionId)) {
-				// Pause the execution (this would require implementation in the execution engine)
-				// For now, we'll mark it as paused and handle the actual pausing in the workflow execution
-				paused = true;
+			// Check if execution is currently active and can be paused
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canPause(executionId)) {
+				// Pause the execution using ActiveExecutions
+				paused = this.activeExecutions.pauseExecution(executionId);
 
-				// Get current node being executed
-				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
-				const executionData = activeExecution.executionData;
-				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
-					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
+				if (paused) {
+					// Get current node being executed
+					const statusInfo = this.activeExecutions.getExecutionStatus(executionId);
+					currentNodeName = statusInfo?.currentNode;
+
+					// Update execution in database to reflect paused state
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'waiting',
+					} as any);
 				}
 			}
 
@@ -989,12 +992,20 @@ export class ExecutionService {
 		let fromNodeName: string | undefined;
 
 		try {
-			// Resume the execution from where it was paused
-			if (this.activeExecutions.has(executionId)) {
-				resumed = true;
-				// Get the node from which to resume
-				if (execution.data?.resultData?.lastNodeExecuted) {
-					fromNodeName = execution.data.resultData.lastNodeExecuted;
+			// Check if execution is currently active and can be resumed
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canResume(executionId)) {
+				// Resume the execution using ActiveExecutions
+				resumed = this.activeExecutions.resumeExecution(executionId);
+
+				if (resumed) {
+					// Get the node from which to resume
+					const statusInfo = this.activeExecutions.getExecutionStatus(executionId);
+					fromNodeName = statusInfo?.currentNode;
+
+					// Update execution in database to reflect running state
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'running',
+					} as any);
 				}
 			}
 
@@ -1047,24 +1058,23 @@ export class ExecutionService {
 
 		try {
 			// Step through the execution by the specified number of steps
-			if (this.activeExecutions.has(executionId)) {
-				// This would require implementation in the workflow execution engine
-				// to support step-by-step execution
-				stepsExecuted = steps;
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canStep(executionId)) {
+				// Use ActiveExecutions to handle stepping
+				const stepResult = this.activeExecutions.stepExecution(
+					executionId,
+					steps,
+					options.nodeNames,
+				);
 
-				// Get current execution state
-				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
-				const executionData = activeExecution.executionData;
-				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
-					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
-				}
+				stepsExecuted = stepResult.stepsExecuted;
+				currentNodeName = stepResult.currentNode;
+				nextNodeNames = stepResult.nextNodes;
 
-				// Calculate next nodes to be executed
-				if (options.nodeNames) {
-					nextNodeNames = options.nodeNames;
-				} else {
-					// Default: get next nodes in workflow sequence
-					nextNodeNames = this.getNextNodesInSequence(execution.workflowData, currentNodeName);
+				// Update execution status in database if needed
+				if (stepsExecuted > 0) {
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'running',
+					} as any);
 				}
 			}
 
@@ -1105,6 +1115,21 @@ export class ExecutionService {
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
 
+		// Check if execution is active and get real-time status
+		if (this.activeExecutions.has(executionId)) {
+			const nodeStatus = this.activeExecutions.getNodeExecutionStatus(executionId, nodeName);
+			if (nodeStatus) {
+				return {
+					executionId,
+					nodeName,
+					status: nodeStatus.status,
+					executionTime: nodeStatus.executionTime,
+					error: nodeStatus.error,
+				};
+			}
+		}
+
+		// Fall back to database data for inactive executions
 		const runData = execution.data?.resultData?.runData || {};
 		const nodeRunData = runData[nodeName];
 
@@ -1175,18 +1200,38 @@ export class ExecutionService {
 		}
 
 		try {
-			// Apply modified parameters if provided
-			if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
-				node.parameters = {
-					...node.parameters,
-					...options.modifiedParameters,
-				} as any;
-			}
+			// Use ActiveExecutions for retry if execution is active
+			if (this.activeExecutions.has(executionId)) {
+				const retried = this.activeExecutions.retryNodeExecution(
+					executionId,
+					nodeName,
+					options.modifiedParameters,
+					options.resetState,
+				);
 
-			// Reset node state if requested
-			if (options.resetState) {
-				const runData = execution.data?.resultData?.runData || {};
-				delete runData[nodeName];
+				if (!retried) {
+					throw new InternalServerError('Failed to retry node in active execution');
+				}
+			} else {
+				// Handle retry for inactive execution
+				if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
+					node.parameters = {
+						...node.parameters,
+						...options.modifiedParameters,
+					} as any;
+				}
+
+				// Reset node state if requested
+				if (options.resetState) {
+					const runData = execution.data?.resultData?.runData || {};
+					delete runData[nodeName];
+				}
+
+				// Update execution in database
+				await this.executionRepository.updateExistingExecution(executionId, {
+					workflowData: execution.workflowData,
+					data: execution.data,
+				} as any);
 			}
 
 			this.logger.debug('Node retry completed', {
@@ -1236,22 +1281,40 @@ export class ExecutionService {
 		}
 
 		try {
-			// Mark node as skipped by adding mock run data
-			const runData = execution.data?.resultData?.runData || {};
+			// Use ActiveExecutions for skip if execution is active
+			if (this.activeExecutions.has(executionId)) {
+				const skipped = this.activeExecutions.skipNodeExecution(
+					executionId,
+					nodeName,
+					options.mockOutputData,
+				);
 
-			runData[nodeName] = [
-				{
-					startTime: Date.now(),
-					executionIndex: 0,
-					executionTime: 0,
-					data: {
-						main: options.mockOutputData
-							? [[{ json: options.mockOutputData, pairedItem: { item: 0 } }]]
-							: [[]],
+				if (!skipped) {
+					throw new InternalServerError('Failed to skip node in active execution');
+				}
+			} else {
+				// Handle skip for inactive execution
+				const runData = execution.data?.resultData?.runData || {};
+
+				runData[nodeName] = [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 0,
+						data: {
+							main: options.mockOutputData
+								? [[{ json: options.mockOutputData, pairedItem: { item: 0 } }]]
+								: [[]],
+						},
+						source: [],
 					},
-					source: [],
-				},
-			];
+				];
+
+				// Update execution in database
+				await this.executionRepository.updateExistingExecution(executionId, {
+					data: execution.data,
+				} as any);
+			}
 
 			this.logger.debug('Node skipped successfully', {
 				executionId,

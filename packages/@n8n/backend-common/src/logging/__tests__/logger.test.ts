@@ -298,7 +298,7 @@ describe('Logger', () => {
 				});
 				const OriginalFile = winston.transports.File;
 				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
-					return new OriginalFile(...args);
+					return Reflect.construct(OriginalFile, args);
 				});
 
 				// ACT
@@ -330,7 +330,7 @@ describe('Logger', () => {
 				});
 				const OriginalFile = winston.transports.File;
 				const FileSpy = jest.spyOn(winston.transports, 'File').mockImplementation((...args) => {
-					return new OriginalFile(...args);
+					return Reflect.construct(OriginalFile, args);
 				});
 
 				// ACT

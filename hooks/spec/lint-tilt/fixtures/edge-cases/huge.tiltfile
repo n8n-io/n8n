@@ -1,0 +1,401 @@
+# Large Tiltfile for performance testing
+docker_build('service1', './service1')
+k8s_yaml('./service1/k8s.yaml')
+k8s_resource('service1', port_forwards=8001)
+
+docker_build('service2', './service2')
+k8s_yaml('./service2/k8s.yaml')
+k8s_resource('service2', port_forwards=8002)
+
+docker_build('service3', './service3')
+k8s_yaml('./service3/k8s.yaml')
+k8s_resource('service3', port_forwards=8003)
+
+docker_build('service4', './service4')
+k8s_yaml('./service4/k8s.yaml')
+k8s_resource('service4', port_forwards=8004)
+
+docker_build('service5', './service5')
+k8s_yaml('./service5/k8s.yaml')
+k8s_resource('service5', port_forwards=8005)
+
+docker_build('service6', './service6')
+k8s_yaml('./service6/k8s.yaml')
+k8s_resource('service6', port_forwards=8006)
+
+docker_build('service7', './service7')
+k8s_yaml('./service7/k8s.yaml')
+k8s_resource('service7', port_forwards=8007)
+
+docker_build('service8', './service8')
+k8s_yaml('./service8/k8s.yaml')
+k8s_resource('service8', port_forwards=8008)
+
+docker_build('service9', './service9')
+k8s_yaml('./service9/k8s.yaml')
+k8s_resource('service9', port_forwards=8009)
+
+docker_build('service10', './service10')
+k8s_yaml('./service10/k8s.yaml')
+k8s_resource('service10', port_forwards=8010)
+
+docker_build('service11', './service11')
+k8s_yaml('./service11/k8s.yaml')
+k8s_resource('service11', port_forwards=8011)
+
+docker_build('service12', './service12')
+k8s_yaml('./service12/k8s.yaml')
+k8s_resource('service12', port_forwards=8012)
+
+docker_build('service13', './service13')
+k8s_yaml('./service13/k8s.yaml')
+k8s_resource('service13', port_forwards=8013)
+
+docker_build('service14', './service14')
+k8s_yaml('./service14/k8s.yaml')
+k8s_resource('service14', port_forwards=8014)
+
+docker_build('service15', './service15')
+k8s_yaml('./service15/k8s.yaml')
+k8s_resource('service15', port_forwards=8015)
+
+docker_build('service16', './service16')
+k8s_yaml('./service16/k8s.yaml')
+k8s_resource('service16', port_forwards=8016)
+
+docker_build('service17', './service17')
+k8s_yaml('./service17/k8s.yaml')
+k8s_resource('service17', port_forwards=8017)
+
+docker_build('service18', './service18')
+k8s_yaml('./service18/k8s.yaml')
+k8s_resource('service18', port_forwards=8018)
+
+docker_build('service19', './service19')
+k8s_yaml('./service19/k8s.yaml')
+k8s_resource('service19', port_forwards=8019)
+
+docker_build('service20', './service20')
+k8s_yaml('./service20/k8s.yaml')
+k8s_resource('service20', port_forwards=8020)
+
+docker_build('service21', './service21')
+k8s_yaml('./service21/k8s.yaml')
+k8s_resource('service21', port_forwards=8021)
+
+docker_build('service22', './service22')
+k8s_yaml('./service22/k8s.yaml')
+k8s_resource('service22', port_forwards=8022)
+
+docker_build('service23', './service23')
+k8s_yaml('./service23/k8s.yaml')
+k8s_resource('service23', port_forwards=8023)
+
+docker_build('service24', './service24')
+k8s_yaml('./service24/k8s.yaml')
+k8s_resource('service24', port_forwards=8024)
+
+docker_build('service25', './service25')
+k8s_yaml('./service25/k8s.yaml')
+k8s_resource('service25', port_forwards=8025)
+
+docker_build('service26', './service26')
+k8s_yaml('./service26/k8s.yaml')
+k8s_resource('service26', port_forwards=8026)
+
+docker_build('service27', './service27')
+k8s_yaml('./service27/k8s.yaml')
+k8s_resource('service27', port_forwards=8027)
+
+docker_build('service28', './service28')
+k8s_yaml('./service28/k8s.yaml')
+k8s_resource('service28', port_forwards=8028)
+
+docker_build('service29', './service29')
+k8s_yaml('./service29/k8s.yaml')
+k8s_resource('service29', port_forwards=8029)
+
+docker_build('service30', './service30')
+k8s_yaml('./service30/k8s.yaml')
+k8s_resource('service30', port_forwards=8030)
+
+docker_build('service31', './service31')
+k8s_yaml('./service31/k8s.yaml')
+k8s_resource('service31', port_forwards=8031)
+
+docker_build('service32', './service32')
+k8s_yaml('./service32/k8s.yaml')
+k8s_resource('service32', port_forwards=8032)
+
+docker_build('service33', './service33')
+k8s_yaml('./service33/k8s.yaml')
+k8s_resource('service33', port_forwards=8033)
+
+docker_build('service34', './service34')
+k8s_yaml('./service34/k8s.yaml')
+k8s_resource('service34', port_forwards=8034)
+
+docker_build('service35', './service35')
+k8s_yaml('./service35/k8s.yaml')
+k8s_resource('service35', port_forwards=8035)
+
+docker_build('service36', './service36')
+k8s_yaml('./service36/k8s.yaml')
+k8s_resource('service36', port_forwards=8036)
+
+docker_build('service37', './service37')
+k8s_yaml('./service37/k8s.yaml')
+k8s_resource('service37', port_forwards=8037)
+
+docker_build('service38', './service38')
+k8s_yaml('./service38/k8s.yaml')
+k8s_resource('service38', port_forwards=8038)
+
+docker_build('service39', './service39')
+k8s_yaml('./service39/k8s.yaml')
+k8s_resource('service39', port_forwards=8039)
+
+docker_build('service40', './service40')
+k8s_yaml('./service40/k8s.yaml')
+k8s_resource('service40', port_forwards=8040)
+
+docker_build('service41', './service41')
+k8s_yaml('./service41/k8s.yaml')
+k8s_resource('service41', port_forwards=8041)
+
+docker_build('service42', './service42')
+k8s_yaml('./service42/k8s.yaml')
+k8s_resource('service42', port_forwards=8042)
+
+docker_build('service43', './service43')
+k8s_yaml('./service43/k8s.yaml')
+k8s_resource('service43', port_forwards=8043)
+
+docker_build('service44', './service44')
+k8s_yaml('./service44/k8s.yaml')
+k8s_resource('service44', port_forwards=8044)
+
+docker_build('service45', './service45')
+k8s_yaml('./service45/k8s.yaml')
+k8s_resource('service45', port_forwards=8045)
+
+docker_build('service46', './service46')
+k8s_yaml('./service46/k8s.yaml')
+k8s_resource('service46', port_forwards=8046)
+
+docker_build('service47', './service47')
+k8s_yaml('./service47/k8s.yaml')
+k8s_resource('service47', port_forwards=8047)
+
+docker_build('service48', './service48')
+k8s_yaml('./service48/k8s.yaml')
+k8s_resource('service48', port_forwards=8048)
+
+docker_build('service49', './service49')
+k8s_yaml('./service49/k8s.yaml')
+k8s_resource('service49', port_forwards=8049)
+
+docker_build('service50', './service50')
+k8s_yaml('./service50/k8s.yaml')
+k8s_resource('service50', port_forwards=8050)
+
+docker_build('service51', './service51')
+k8s_yaml('./service51/k8s.yaml')
+k8s_resource('service51', port_forwards=8051)
+
+docker_build('service52', './service52')
+k8s_yaml('./service52/k8s.yaml')
+k8s_resource('service52', port_forwards=8052)
+
+docker_build('service53', './service53')
+k8s_yaml('./service53/k8s.yaml')
+k8s_resource('service53', port_forwards=8053)
+
+docker_build('service54', './service54')
+k8s_yaml('./service54/k8s.yaml')
+k8s_resource('service54', port_forwards=8054)
+
+docker_build('service55', './service55')
+k8s_yaml('./service55/k8s.yaml')
+k8s_resource('service55', port_forwards=8055)
+
+docker_build('service56', './service56')
+k8s_yaml('./service56/k8s.yaml')
+k8s_resource('service56', port_forwards=8056)
+
+docker_build('service57', './service57')
+k8s_yaml('./service57/k8s.yaml')
+k8s_resource('service57', port_forwards=8057)
+
+docker_build('service58', './service58')
+k8s_yaml('./service58/k8s.yaml')
+k8s_resource('service58', port_forwards=8058)
+
+docker_build('service59', './service59')
+k8s_yaml('./service59/k8s.yaml')
+k8s_resource('service59', port_forwards=8059)
+
+docker_build('service60', './service60')
+k8s_yaml('./service60/k8s.yaml')
+k8s_resource('service60', port_forwards=8060)
+
+docker_build('service61', './service61')
+k8s_yaml('./service61/k8s.yaml')
+k8s_resource('service61', port_forwards=8061)
+
+docker_build('service62', './service62')
+k8s_yaml('./service62/k8s.yaml')
+k8s_resource('service62', port_forwards=8062)
+
+docker_build('service63', './service63')
+k8s_yaml('./service63/k8s.yaml')
+k8s_resource('service63', port_forwards=8063)
+
+docker_build('service64', './service64')
+k8s_yaml('./service64/k8s.yaml')
+k8s_resource('service64', port_forwards=8064)
+
+docker_build('service65', './service65')
+k8s_yaml('./service65/k8s.yaml')
+k8s_resource('service65', port_forwards=8065)
+
+docker_build('service66', './service66')
+k8s_yaml('./service66/k8s.yaml')
+k8s_resource('service66', port_forwards=8066)
+
+docker_build('service67', './service67')
+k8s_yaml('./service67/k8s.yaml')
+k8s_resource('service67', port_forwards=8067)
+
+docker_build('service68', './service68')
+k8s_yaml('./service68/k8s.yaml')
+k8s_resource('service68', port_forwards=8068)
+
+docker_build('service69', './service69')
+k8s_yaml('./service69/k8s.yaml')
+k8s_resource('service69', port_forwards=8069)
+
+docker_build('service70', './service70')
+k8s_yaml('./service70/k8s.yaml')
+k8s_resource('service70', port_forwards=8070)
+
+docker_build('service71', './service71')
+k8s_yaml('./service71/k8s.yaml')
+k8s_resource('service71', port_forwards=8071)
+
+docker_build('service72', './service72')
+k8s_yaml('./service72/k8s.yaml')
+k8s_resource('service72', port_forwards=8072)
+
+docker_build('service73', './service73')
+k8s_yaml('./service73/k8s.yaml')
+k8s_resource('service73', port_forwards=8073)
+
+docker_build('service74', './service74')
+k8s_yaml('./service74/k8s.yaml')
+k8s_resource('service74', port_forwards=8074)
+
+docker_build('service75', './service75')
+k8s_yaml('./service75/k8s.yaml')
+k8s_resource('service75', port_forwards=8075)
+
+docker_build('service76', './service76')
+k8s_yaml('./service76/k8s.yaml')
+k8s_resource('service76', port_forwards=8076)
+
+docker_build('service77', './service77')
+k8s_yaml('./service77/k8s.yaml')
+k8s_resource('service77', port_forwards=8077)
+
+docker_build('service78', './service78')
+k8s_yaml('./service78/k8s.yaml')
+k8s_resource('service78', port_forwards=8078)
+
+docker_build('service79', './service79')
+k8s_yaml('./service79/k8s.yaml')
+k8s_resource('service79', port_forwards=8079)
+
+docker_build('service80', './service80')
+k8s_yaml('./service80/k8s.yaml')
+k8s_resource('service80', port_forwards=8080)
+
+docker_build('service81', './service81')
+k8s_yaml('./service81/k8s.yaml')
+k8s_resource('service81', port_forwards=8081)
+
+docker_build('service82', './service82')
+k8s_yaml('./service82/k8s.yaml')
+k8s_resource('service82', port_forwards=8082)
+
+docker_build('service83', './service83')
+k8s_yaml('./service83/k8s.yaml')
+k8s_resource('service83', port_forwards=8083)
+
+docker_build('service84', './service84')
+k8s_yaml('./service84/k8s.yaml')
+k8s_resource('service84', port_forwards=8084)
+
+docker_build('service85', './service85')
+k8s_yaml('./service85/k8s.yaml')
+k8s_resource('service85', port_forwards=8085)
+
+docker_build('service86', './service86')
+k8s_yaml('./service86/k8s.yaml')
+k8s_resource('service86', port_forwards=8086)
+
+docker_build('service87', './service87')
+k8s_yaml('./service87/k8s.yaml')
+k8s_resource('service87', port_forwards=8087)
+
+docker_build('service88', './service88')
+k8s_yaml('./service88/k8s.yaml')
+k8s_resource('service88', port_forwards=8088)
+
+docker_build('service89', './service89')
+k8s_yaml('./service89/k8s.yaml')
+k8s_resource('service89', port_forwards=8089)
+
+docker_build('service90', './service90')
+k8s_yaml('./service90/k8s.yaml')
+k8s_resource('service90', port_forwards=8090)
+
+docker_build('service91', './service91')
+k8s_yaml('./service91/k8s.yaml')
+k8s_resource('service91', port_forwards=8091)
+
+docker_build('service92', './service92')
+k8s_yaml('./service92/k8s.yaml')
+k8s_resource('service92', port_forwards=8092)
+
+docker_build('service93', './service93')
+k8s_yaml('./service93/k8s.yaml')
+k8s_resource('service93', port_forwards=8093)
+
+docker_build('service94', './service94')
+k8s_yaml('./service94/k8s.yaml')
+k8s_resource('service94', port_forwards=8094)
+
+docker_build('service95', './service95')
+k8s_yaml('./service95/k8s.yaml')
+k8s_resource('service95', port_forwards=8095)
+
+docker_build('service96', './service96')
+k8s_yaml('./service96/k8s.yaml')
+k8s_resource('service96', port_forwards=8096)
+
+docker_build('service97', './service97')
+k8s_yaml('./service97/k8s.yaml')
+k8s_resource('service97', port_forwards=8097)
+
+docker_build('service98', './service98')
+k8s_yaml('./service98/k8s.yaml')
+k8s_resource('service98', port_forwards=8098)
+
+docker_build('service99', './service99')
+k8s_yaml('./service99/k8s.yaml')
+k8s_resource('service99', port_forwards=8099)
+
+docker_build('service100', './service100')
+k8s_yaml('./service100/k8s.yaml')
+k8s_resource('service100', port_forwards=8100)
+

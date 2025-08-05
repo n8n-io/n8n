@@ -1,0 +1,5 @@
+# Ignore generated files
+*.generated.go
+
+# Ignore specific files
+ignored.go

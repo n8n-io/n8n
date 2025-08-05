@@ -1,0 +1,7 @@
+# Configuration Tiltfile
+config.define_string('environment', args=True)
+config.define_bool('debug', args=True)
+
+cfg = config.parse()
+print('Environment: %s' % cfg.get('environment', 'development'))
+print('Debug: %s' % cfg.get('debug', False))

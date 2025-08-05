@@ -1,0 +1,12 @@
+# Tiltfile with Makefile integration
+load('ext://restart_process', 'docker_build_with_restart')
+
+docker_build('api', '.')
+k8s_yaml('k8s.yaml')
+
+# Reference to Makefile tasks
+local_resource(
+    'run-tests',
+    'make test-tilt',
+    deps=['./src', './tests']
+)

@@ -1,6 +1,6 @@
-import * as ErrorsPackage from '../index';
 import { ApplicationError } from '../application.error';
-import type { ErrorLevel, ErrorTags, ReportingOptions } from '../types';
+import * as ErrorsPackage from '../index';
+import type { ErrorTags } from '../types';
 
 // Mock callsites module
 jest.mock('callsites', () => {
@@ -218,7 +218,7 @@ describe('Package Exports', () => {
 	describe('Default export behavior', () => {
 		it('should not have default export', () => {
 			// This package uses named exports only
-			expect((ErrorsPackage as any).default).toBeUndefined();
+			expect((ErrorsPackage as Record<string, unknown>).default).toBeUndefined();
 		});
 
 		it('should work with destructuring imports', () => {

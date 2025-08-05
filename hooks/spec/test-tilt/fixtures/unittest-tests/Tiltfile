@@ -1,0 +1,36 @@
+# Tiltfile for unittest-based testing
+load('ext://restart_process', 'docker_build_with_restart')
+
+# Build configuration
+compile_cmd = 'go build -o bin/app ./cmd/app'
+
+local_resource(
+    'compile',
+    compile_cmd,
+    deps=['./cmd', './internal', './pkg']
+)
+
+docker_build(
+    'goapp',
+    '.',
+    dockerfile='Dockerfile',
+    only=[
+        './bin',
+        './configs',
+    ],
+    build_args={'VERSION': 'dev'}
+)
+
+k8s_yaml(kustomize('./k8s/overlays/dev'))
+k8s_resource(
+    'goapp',
+    port_forwards=['8080:8080', '9090:9090'],
+    resource_deps=['compile']
+)
+
+# Health check
+local_resource(
+    'health-check',
+    'curl -f http://localhost:8080/health || exit 1',
+    resource_deps=['goapp']
+)

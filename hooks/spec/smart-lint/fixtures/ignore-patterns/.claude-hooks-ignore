@@ -1,0 +1,3 @@
+vendor/
+*.generated.go
+node_modules/

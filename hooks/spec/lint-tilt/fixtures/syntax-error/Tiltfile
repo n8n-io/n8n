@@ -1,0 +1,11 @@
+# Tiltfile with syntax errors
+
+# Missing closing parenthesis
+docker_build('myapp', '.'
+
+# Invalid function definition
+def broken_func(
+    # Missing closing parenthesis and body
+
+# Random invalid syntax
+this is not valid starlark code at all

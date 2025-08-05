@@ -81,7 +81,7 @@ export class ModuleRegistry {
 
 			if (!entities || entities.length === 0) continue;
 
-			this.entities.push(...entities);
+			this.entities.push.apply(this.entities, entities);
 		}
 	}
 

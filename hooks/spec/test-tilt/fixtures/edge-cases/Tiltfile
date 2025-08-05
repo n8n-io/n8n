@@ -1,0 +1,32 @@
+# Root Tiltfile with unicode and special characters
+# 测试 Unicode 文件 🚀 émojis and spëcial characters
+
+load('./directory with spaces/Tiltfile', 'spaces_resources')
+
+# Resource with unicode name
+docker_build('app-文字-emoji-🎯', '.')
+
+# Environment variables with special characters
+os.environ['SPECIAL_ENV'] = 'value with spaces and "quotes"'
+os.environ['UNICODE_ENV'] = '你好世界'
+
+# Local resource with complex command
+local_resource(
+    'edge-case-test',
+    '''echo "Testing quotes: 'single' and \\"double\\"" && \
+    echo "Unicode: 文字 émojis: 🚀 🎯" && \
+    echo "Special chars: \$VAR \`backticks\` ~!@#$%^&*()"''',
+    env={
+        'PATH_WITH_SPACES': '/path/to/directory with spaces',
+        'QUOTED_VALUE': '"quoted value with spaces"',
+    }
+)
+
+# File paths with special characters
+k8s_yaml('./k8s/deployment-🚀.yaml')
+watch_file('./configs/config (production).json')
+
+# Call resources from directory with spaces
+spaces_resources()
+
+print("Tiltfile with edge cases loaded successfully! 🎉")

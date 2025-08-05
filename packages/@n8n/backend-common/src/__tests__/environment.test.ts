@@ -2,8 +2,6 @@
  * Comprehensive test suite for environment detection functionality
  */
 
-import { inTest, inProduction, inDevelopment } from '../environment';
-
 describe('Environment Detection', () => {
 	const originalNodeEnv = process.env.NODE_ENV;
 

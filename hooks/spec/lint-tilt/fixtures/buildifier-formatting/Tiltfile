@@ -1,0 +1,30 @@
+# Tiltfile that needs buildifier formatting
+
+# Unsorted load statements
+load("ext://helm_resource", "helm_resource")
+load("ext://restart_process", "docker_build_with_restart")
+load("ext://config", "get_config")
+
+# Function with poor formatting
+def   setup_k8s(   name,namespace   ):
+        k8s_yaml(  'k8s/' + name + '.yaml'  )
+        k8s_resource(name,
+                namespace=namespace,
+            port_forwards=8080,
+                    labels=['backend']
+        )
+
+# List formatting issues
+docker_build('app','.',
+    build_args={
+'ARG1':'val1',
+        'ARG2':'val2',
+    'ARG3':'val3'}
+)
+
+# Dictionary formatting
+config={
+'debug':True,
+    'port':8080,
+        'host':'0.0.0.0'
+}

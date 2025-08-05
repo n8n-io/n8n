@@ -11,6 +11,8 @@ import type { WorkflowSearchQueryDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import { WorkflowSearchService } from '@/services/workflow-search.service';
+import { SearchEngineService } from '@/services/search-engine.service';
+import { WorkflowIndexingService } from '@/services/workflow-indexing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -23,12 +25,17 @@ describe('WorkflowSearchService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
+	const searchEngineService = mock<SearchEngineService>();
+	const workflowIndexingService = mock<WorkflowIndexingService>();
 
 	let workflowSearchService: WorkflowSearchService;
 	let mockUser: User;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		// Setup search engine service to return false by default
+		searchEngineService.isAvailable.mockReturnValue(false);
 
 		workflowSearchService = new WorkflowSearchService(
 			logger,
@@ -39,6 +46,8 @@ describe('WorkflowSearchService', () => {
 			executionRepository,
 			workflowFinderService,
 			projectService,
+			searchEngineService,
+			workflowIndexingService,
 		);
 
 		mockUser = {
@@ -215,7 +224,7 @@ describe('WorkflowSearchService', () => {
 				setParameters: jest.fn().mockReturnThis(),
 				orderBy: jest.fn().mockReturnThis(),
 				getCount: jest.fn().mockResolvedValue(1),
-				skip: jest.fn().mkReturnThis(),
+				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue(mockWorkflows),
 			});
@@ -275,7 +284,7 @@ describe('WorkflowSearchService', () => {
 			// Assert
 			expect(result.results).toHaveLength(1);
 			expect(result.results[0].highlights).toBeDefined();
-			expect(result.results[0].highlights?.name).toContain('<mark>test</mark>');
+			expect(result.results[0].highlights?.name).toContain('<mark>Test</mark>');
 		});
 
 		it('should handle pagination correctly', async () => {

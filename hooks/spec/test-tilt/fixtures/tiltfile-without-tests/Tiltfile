@@ -1,0 +1,6 @@
+# Simple Tiltfile without any test files
+load('ext://restart_process', 'docker_build_with_restart')
+
+docker_build('myapp', '.')
+k8s_yaml('deployment.yaml')
+k8s_resource('myapp', port_forwards=8080)

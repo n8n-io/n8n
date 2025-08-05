@@ -1,0 +1,20 @@
+# Tiltfile with intentional syntax errors
+load('ext://restart_process', 'docker_build_with_restart')
+
+# Missing closing parenthesis
+docker_build('myapp', '.'
+
+# Invalid indentation
+    k8s_yaml('deployment.yaml')
+
+# Undefined variable
+k8s_resource(undefined_var, port_forwards=8080)
+
+# Missing colon in dict
+config = {
+    'name' 'myapp',
+    'port': 8080
+}
+
+# Invalid function call syntax
+local_resource('test' 'make test')

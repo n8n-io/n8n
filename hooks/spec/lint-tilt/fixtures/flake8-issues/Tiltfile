@@ -1,0 +1,18 @@
+# Tiltfile with flake8 style issues
+
+import os  # F401: imported but unused
+import sys # Another unused import
+
+# E501: Line too long (over 79 characters)
+docker_build('myapp', '.', dockerfile='Dockerfile', entrypoint=['python', 'app.py'], build_args={'ARG1': 'value1', 'ARG2': 'value2', 'ARG3': 'value3'})
+
+# E302: Expected 2 blank lines, found 1
+def custom_func():
+    pass
+def another_func():
+    x=1  # E225: Missing whitespace around operator
+    return x
+
+# W391: Blank line at end of file
+k8s_yaml( 'k8s.yaml' )  # E201, E202: Whitespace after/before parenthesis
+

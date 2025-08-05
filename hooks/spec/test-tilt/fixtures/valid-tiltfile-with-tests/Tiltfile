@@ -1,0 +1,18 @@
+# Example Tiltfile with kubernetes deployments
+load('ext://restart_process', 'docker_build_with_restart')
+
+# Build the docker image
+docker_build_with_restart(
+    'myapp',
+    '.',
+    dockerfile='Dockerfile',
+    entrypoint=['python', 'app.py'],
+    live_update=[
+        sync('.', '/app'),
+        run('pip install -r requirements.txt', trigger=['requirements.txt']),
+    ],
+)
+
+# Deploy to kubernetes
+k8s_yaml('k8s.yaml')
+k8s_resource('myapp', port_forwards='8080:8080')

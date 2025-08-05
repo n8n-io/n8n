@@ -1,0 +1,12 @@
+{
+  "name": "test-node-project",
+  "version": "1.0.0",
+  "description": "Test fixture for node project detection",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

@@ -186,6 +186,8 @@
     "xss": "catalog:",
     "yamljs": "0.3.0",
     "yargs-parser": "21.1.1",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@elastic/elasticsearch": "^8.11.0",
+    "@opensearch-project/opensearch": "^2.5.0"
   }
 }

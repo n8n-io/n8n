@@ -1,0 +1,2 @@
+# Tiltfile with spaces in filename
+docker_build('app', '.')

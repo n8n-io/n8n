@@ -2029,6 +2029,28 @@ export class WorkflowsController {
 			const searchQuery = this.validateSearchQuery(req.query);
 			const result = await this.workflowSearchService.searchWorkflows(searchQuery, req.user);
 
+			// Record search analytics
+			try {
+				const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+				const searchAnalyticsService = Container.get(SearchAnalyticsService);
+
+				await searchAnalyticsService.recordSearchQuery({
+					query: searchQuery.query || '',
+					userId: req.user.id,
+					searchTimeMs: result.metadata.searchTimeMs,
+					resultCount: result.results.length,
+					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					filters: result.query.appliedFilters || {},
+					userAgent: req.headers['user-agent'],
+					sessionId: req.sessionID,
+				});
+			} catch (analyticsError) {
+				// Don't fail the search if analytics recording fails
+				this.logger.warn('Failed to record search analytics', {
+					error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+				});
+			}
+
 			this.logger.debug('Workflow search completed', {
 				userId: req.user.id,
 				resultsCount: result.results.length,
@@ -2069,6 +2091,28 @@ export class WorkflowsController {
 
 		try {
 			const result = await this.workflowSearchService.advancedSearch(req.body, req.user);
+
+			// Record search analytics for advanced search
+			try {
+				const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+				const searchAnalyticsService = Container.get(SearchAnalyticsService);
+
+				await searchAnalyticsService.recordSearchQuery({
+					query: 'advanced', // Mark as advanced search
+					userId: req.user.id,
+					searchTimeMs: result.metadata.searchTimeMs,
+					resultCount: result.results.length,
+					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					filters: { advanced: true, ...result.query.appliedFilters },
+					userAgent: req.headers['user-agent'],
+					sessionId: req.sessionID,
+				});
+			} catch (analyticsError) {
+				// Don't fail the search if analytics recording fails
+				this.logger.warn('Failed to record advanced search analytics', {
+					error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+				});
+			}
 
 			this.logger.debug('Advanced workflow search completed', {
 				userId: req.user.id,
@@ -2238,6 +2282,275 @@ export class WorkflowsController {
 
 			throw new InternalServerError(
 				`Failed to get search facets: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	// ----------------------------------------
+	// Search Analytics Endpoints
+	// ----------------------------------------
+
+	@Get('/search/analytics')
+	async getSearchAnalytics(req: AuthenticatedRequest<{}, {}, {}, { days?: string }>): Promise<{
+		analytics: any;
+		performance: any;
+		suggestions: any[];
+	}> {
+		this.logger.debug('Search analytics requested', {
+			userId: req.user.id,
+			days: req.query.days,
+		});
+
+		try {
+			const days = req.query.days ? parseInt(req.query.days, 10) : 7;
+			if (days < 1 || days > 90) {
+				throw new ApplicationError('Days parameter must be between 1 and 90');
+			}
+
+			const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+			const searchAnalyticsService = Container.get(SearchAnalyticsService);
+
+			// Get analytics data
+			const [analytics, performance, suggestions] = await Promise.all([
+				searchAnalyticsService.getSearchAnalytics(days),
+				searchAnalyticsService.getPerformanceMetrics(),
+				searchAnalyticsService.getOptimizationSuggestions(),
+			]);
+
+			const response = {
+				analytics,
+				performance,
+				suggestions,
+			};
+
+			this.logger.debug('Search analytics completed', {
+				userId: req.user.id,
+				totalSearches: analytics.totalSearches,
+				avgResponseTime: analytics.averageResponseTimeMs,
+				suggestionsCount: suggestions.length,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Search analytics failed', {
+				userId: req.user.id,
+				days: req.query.days,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to get search analytics: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/analytics/popular-queries')
+	async getPopularSearchQueries(
+		req: AuthenticatedRequest<{}, {}, {}, { limit?: string }>,
+	): Promise<{
+		queries: Array<{
+			query: string;
+			count: number;
+			averageResponseTimeMs: number;
+			lastSearched: Date;
+		}>;
+		metadata: {
+			totalQueries: number;
+			dateRange: string;
+		};
+	}> {
+		this.logger.debug('Popular search queries requested', {
+			userId: req.user.id,
+			limit: req.query.limit,
+		});
+
+		try {
+			const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+			if (limit < 1 || limit > 100) {
+				throw new ApplicationError('Limit parameter must be between 1 and 100');
+			}
+
+			const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+			const searchAnalyticsService = Container.get(SearchAnalyticsService);
+
+			const queries = await searchAnalyticsService.getPopularQueries(limit);
+
+			const response = {
+				queries,
+				metadata: {
+					totalQueries: queries.length,
+					dateRange: 'Last 7 days',
+				},
+			};
+
+			this.logger.debug('Popular search queries completed', {
+				userId: req.user.id,
+				queriesCount: queries.length,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Popular search queries failed', {
+				userId: req.user.id,
+				limit: req.query.limit,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to get popular search queries: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/health')
+	async getSearchEngineHealth(req: AuthenticatedRequest): Promise<{
+		searchEngine: any;
+		indexing: any;
+		performance: any;
+		status: 'healthy' | 'degraded' | 'unhealthy';
+	}> {
+		this.logger.debug('Search engine health check requested', {
+			userId: req.user.id,
+		});
+
+		try {
+			const { SearchEngineService } = await import('@/services/search-engine.service');
+			const { WorkflowIndexingService } = await import('@/services/workflow-indexing.service');
+			const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+
+			const [searchEngineService, workflowIndexingService, searchAnalyticsService] = [
+				Container.get(SearchEngineService),
+				Container.get(WorkflowIndexingService),
+				Container.get(SearchAnalyticsService),
+			];
+
+			// Get health information
+			const [searchEngineHealth, indexingHealth, performanceMetrics] = await Promise.all([
+				searchEngineService.getHealth(),
+				workflowIndexingService.getIndexingHealth(),
+				searchAnalyticsService.getPerformanceMetrics(),
+			]);
+
+			// Determine overall status
+			let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+
+			if (searchEngineHealth.status === 'error' || !indexingHealth.indexExists) {
+				status = 'unhealthy';
+			} else if (
+				searchEngineHealth.status === 'yellow' ||
+				performanceMetrics.averageResponseTime > 2000 ||
+				performanceMetrics.searchEngineHealthScore < 50
+			) {
+				status = 'degraded';
+			}
+
+			const response = {
+				searchEngine: {
+					available: searchEngineService.isAvailable(),
+					...searchEngineHealth,
+				},
+				indexing: indexingHealth,
+				performance: performanceMetrics,
+				status,
+			};
+
+			this.logger.debug('Search engine health check completed', {
+				userId: req.user.id,
+				status,
+				searchEngineAvailable: searchEngineService.isAvailable(),
+				indexExists: indexingHealth.indexExists,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Search engine health check failed', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			// Return unhealthy status on error
+			return {
+				searchEngine: {
+					available: false,
+					status: 'error',
+					error: error instanceof Error ? error.message : String(error),
+				},
+				indexing: {
+					indexExists: false,
+					documentCount: 0,
+				},
+				performance: {
+					averageResponseTime: 0,
+					searchEngineHealthScore: 0,
+				},
+				status: 'unhealthy',
+			};
+		}
+	}
+
+	@Post('/search/reindex')
+	async triggerReindexing(req: AuthenticatedRequest<{}, {}, { force?: boolean }>): Promise<{
+		success: boolean;
+		stats: any;
+		message: string;
+	}> {
+		this.logger.debug('Manual reindexing triggered', {
+			userId: req.user.id,
+			force: req.body.force,
+		});
+
+		try {
+			// Check if user has admin permissions (you might want to add proper permission checks)
+			// For now, we'll allow any authenticated user to trigger reindexing
+
+			const { WorkflowIndexingService } = await import('@/services/workflow-indexing.service');
+			const workflowIndexingService = Container.get(WorkflowIndexingService);
+
+			// Trigger reindexing
+			const stats = await workflowIndexingService.reindexAllWorkflows({
+				refresh: true,
+			});
+
+			const response = {
+				success: true,
+				stats,
+				message: `Reindexing completed. Processed ${stats.totalProcessed} workflows with ${stats.successCount} successes and ${stats.errorCount} errors.`,
+			};
+
+			this.logger.info('Manual reindexing completed', {
+				userId: req.user.id,
+				...stats,
+			});
+
+			// Emit event for tracking
+			this.eventService.emit('search-reindexing-completed', {
+				user: req.user,
+				triggeredManually: true,
+				stats,
+			});
+
+			return response;
+		} catch (error) {
+			this.logger.error('Manual reindexing failed', {
+				userId: req.user.id,
+				force: req.body.force,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to trigger reindexing: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

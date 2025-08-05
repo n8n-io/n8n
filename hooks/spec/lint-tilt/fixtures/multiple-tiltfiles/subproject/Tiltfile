@@ -1,0 +1,4 @@
+# Subproject Tiltfile
+docker_build('subproject-service', './subproject')
+k8s_yaml('./subproject/k8s.yaml')
+k8s_resource('subproject-service', port_forwards=9090)

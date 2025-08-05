@@ -1,0 +1,166 @@
+# Example .claude-hooks-ignore file
+# 
+# This file uses gitignore syntax to exclude files from Claude Code hooks
+# Place this as .claude-hooks-ignore in your project root
+#
+# IMPORTANT: Use exclusions sparingly! The goal is 100% clean code.
+# Only exclude code you CAN'T fix, not code you WON'T fix.
+
+# ==============================================================================
+# GENERATED CODE - These files are created by tools and shouldn't be modified
+# ==============================================================================
+
+# Protocol Buffers
+*.pb.go
+*.pb.*.go
+*_pb2.py
+*_pb2_grpc.py
+
+# GraphQL generated files
+*.generated.go
+*.generated.ts
+schema.graphql
+
+# Code generators
+*_generated.go
+*_gen.go
+*.g.dart
+*.g.cs
+*.gen.js
+
+# Build outputs
+*.min.js
+*.min.css
+dist/**
+build/**
+out/**
+target/**
+
+# ==============================================================================
+# VENDOR DEPENDENCIES - Third-party code you don't control
+# ==============================================================================
+
+vendor/**
+node_modules/**
+.yarn/**
+bower_components/**
+
+# Python virtual environments
+venv/**
+.venv/**
+env/**
+.env/**
+
+# Ruby dependencies
+.bundle/**
+
+# ==============================================================================
+# TEST FIXTURES - Intentionally malformed code for testing
+# ==============================================================================
+
+testdata/**
+fixtures/**
+__fixtures__/**
+test_data/**
+
+# Golden files (expected output for tests)
+*.golden
+*.expected
+*.snapshot
+
+# ==============================================================================
+# DATABASE MIGRATIONS - Often have different formatting standards
+# ==============================================================================
+
+migrations/**/*.sql
+db/migrate/**
+database/migrations/**
+
+# But NOT migration generators or utilities
+!migrations/*.go
+!migrations/*.py
+!migrations/*.js
+
+# ==============================================================================
+# LEGACY CODE - Document WHY and include migration timeline!
+# ==============================================================================
+
+# Example exclusions with clear documentation:
+# TODO: Remove after v2.0 migration (ticket #123)
+# legacy/old_api.go
+# 
+# TODO: Deprecate after new auth system is live (Q2 2024)
+# auth/legacy_handler.go
+
+# ==============================================================================
+# SPECIAL TOOLING FILES
+# ==============================================================================
+
+# Lock files (managed by package managers)
+package-lock.json
+yarn.lock
+Gemfile.lock
+Cargo.lock
+poetry.lock
+composer.lock
+
+# IDE and editor configs (project-specific formatting)
+.idea/**
+.vscode/**
+*.swp
+*.swo
+
+# ==============================================================================
+# DOCUMENTATION AND ASSETS
+# ==============================================================================
+
+# Large binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.pdf
+*.zip
+*.tar.gz
+
+# Documentation that might have different standards
+docs/**/*.md
+*.mdx
+
+# But NOT source code in docs
+!docs/**/*.go
+!docs/**/*.py
+!docs/**/*.js
+
+# ==============================================================================
+# PLATFORM-SPECIFIC FILES
+# ==============================================================================
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# ==============================================================================
+# TEMPORARY EXCLUSIONS - REQUIRE JUSTIFICATION!
+# ==============================================================================
+
+# NEVER exclude to avoid fixing issues. Only valid reasons:
+# 1. File is being actively refactored in another branch
+# 2. Waiting for upstream dependency fix
+# 3. Part of phased migration plan
+
+# Bad examples (DON'T DO THIS):
+# main.go              # Too lazy to fix
+# pkg/handlers/*.go    # Don't want to deal with it
+# *.go                 # Disabling everything
+
+# Good examples (WITH TIMELINE):
+# TODO: Remove after security audit completion (2024-01-15)
+# internal/legacy/auth.go
+#
+# TODO: Awaiting upstream fix for formatting bug (issue #456)
+# third_party/broken_formatter.go

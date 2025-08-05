@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Project-specific lint script
+
+FILE="$1"
+
+echo "Running project lint script with FILE=$FILE"
+if [ -n "$FILE" ]; then
+    echo "Linting specific file: $FILE"
+else
+    echo "Linting all files"
+fi
+
+exit 0

@@ -1,0 +1,6 @@
+This fixture contains Go code that uses forbidden patterns: interface{} and any.
+
+Expected behavior:
+- lint-go.sh should exit with status 2
+- Error output should include "FORBIDDEN PATTERN"
+- Should detect both interface{} and any usage

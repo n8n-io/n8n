@@ -1,0 +1,18 @@
+# ShellSpec configuration for Claude Code hooks
+
+# Spec helper file location
+--require spec_helper
+
+# Shell to use for tests
+--shell bash
+
+
+# Output format
+--format documentation
+
+# Default directory for specs
+--default-path spec
+
+# Coverage reporting (optional)
+# --kcov
+# --kcov-options "--include-pattern=*.sh --exclude-pattern=spec/"

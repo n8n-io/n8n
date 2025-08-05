@@ -1,0 +1,2 @@
+# Backup Tiltfile - should be ignored based on *.backup pattern
+docker_build('old-app', '.')

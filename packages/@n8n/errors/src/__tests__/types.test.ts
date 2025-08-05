@@ -1,4 +1,5 @@
 import type { Event } from '@sentry/node';
+
 import type { ErrorLevel, ErrorTags, ReportingOptions } from '../types';
 
 describe('Types', () => {
@@ -229,8 +230,8 @@ describe('Types', () => {
 					method: 'POST',
 					url: '/api/workflows',
 					headers: {
-						'user-agent': 'n8n-client/1.0',
-						'content-type': 'application/json',
+						userAgent: 'n8n-client/1.0',
+						contentType: 'application/json',
 					},
 					body: {
 						name: 'Test Workflow',
@@ -265,8 +266,8 @@ describe('Types', () => {
 				customData: 'test',
 				nestedObject: {
 					key: 'value',
-					number: 42,
-					boolean: true,
+					numberValue: 42,
+					booleanValue: true,
 				},
 			};
 
@@ -325,7 +326,7 @@ describe('Types', () => {
 					shouldBeLogged: true,
 					tags: {
 						source: 'factory',
-						level: level,
+						level,
 					},
 					executionId,
 				};
@@ -384,7 +385,7 @@ describe('Types', () => {
 		});
 
 		it('should support type guards', () => {
-			const isValidErrorLevel = (value: any): value is ErrorLevel => {
+			const isValidErrorLevel = (value: unknown): value is ErrorLevel => {
 				return typeof value === 'string' && ['fatal', 'error', 'warning', 'info'].includes(value);
 			};
 

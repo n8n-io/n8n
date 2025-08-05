@@ -22,6 +22,8 @@ import { ApplicationError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { SearchEngineService, type SearchQuery } from './search-engine.service';
+import { WorkflowIndexingService, type WorkflowSearchDocument } from './workflow-indexing.service';
 
 interface SearchContext {
 	user: User;
@@ -46,6 +48,8 @@ export class WorkflowSearchService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
+		private readonly searchEngineService: SearchEngineService,
+		private readonly workflowIndexingService: WorkflowIndexingService,
 	) {}
 
 	/**
@@ -61,6 +65,7 @@ export class WorkflowSearchService {
 			userId: user.id,
 			query: searchQuery.query,
 			searchIn: searchQuery.searchIn,
+			searchMethod: this.searchEngineService.isAvailable() ? 'search_engine' : 'database',
 			filters: Object.keys(searchQuery).filter(
 				(k) => searchQuery[k as keyof WorkflowSearchQueryDto] !== undefined,
 			),
@@ -80,51 +85,25 @@ export class WorkflowSearchService {
 				startTime,
 			};
 
-			// Build search filters
-			const filters = await this.buildSearchFilters(searchQuery, context);
+			let response: WorkflowSearchResponseDto;
 
-			// Execute search query
-			const { workflows, totalCount } = await this.executeSearch(filters, searchQuery, context);
-
-			// Process and score results
-			const processedResults = await this.processSearchResults(workflows, searchQuery, context);
-
-			// Calculate pagination
-			const pagination = this.calculatePagination(
-				searchQuery.page || 1,
-				searchQuery.limit || 20,
-				totalCount,
-			);
-
-			// Generate facets if needed
-			const facets = searchQuery.includeStats
-				? await this.generateFacets(userWorkflowIds, searchQuery)
-				: undefined;
-
-			const response: WorkflowSearchResponseDto = {
-				results: processedResults,
-				pagination,
-				query: {
-					searchQuery: searchQuery.query,
-					appliedFilters: this.getAppliedFilters(searchQuery),
-					searchIn: searchQuery.searchIn || ['all'],
-					sortBy: searchQuery.sortBy || 'relevance',
-					sortOrder: searchQuery.sortOrder || 'desc',
-				},
-				metadata: {
-					searchTimeMs: Date.now() - startTime,
-					searchedAt: new Date().toISOString(),
-					totalWorkflowsInScope: userWorkflowIds.length,
-					filtersApplied: Object.keys(this.getAppliedFilters(searchQuery)).length,
-				},
-				facets,
-			};
+			// Use search engine if available and query has text search
+			if (this.searchEngineService.isAvailable() && this.shouldUseSearchEngine(searchQuery)) {
+				response = await this.executeSearchEngineQuery(searchQuery, context);
+			} else {
+				// Fallback to database search
+				response = await this.executeDatabaseSearch(searchQuery, context);
+			}
 
 			this.logger.debug('Workflow search completed', {
 				userId: user.id,
-				resultsCount: processedResults.length,
-				totalCount,
+				resultsCount: response.results.length,
+				totalCount: response.pagination.total,
 				searchTimeMs: response.metadata.searchTimeMs,
+				method:
+					this.searchEngineService.isAvailable() && this.shouldUseSearchEngine(searchQuery)
+						? 'search_engine'
+						: 'database',
 			});
 
 			return response;
@@ -315,6 +294,330 @@ export class WorkflowSearchService {
 				type: request.type,
 			};
 		}
+	}
+
+	/**
+	 * Determine if search engine should be used for this query
+	 */
+	private shouldUseSearchEngine(searchQuery: WorkflowSearchQueryDto): boolean {
+		// Use search engine for text queries
+		if (searchQuery.query && searchQuery.query.trim().length > 0) {
+			return true;
+		}
+
+		// Use search engine for complex queries with multiple filters
+		const filterCount = Object.keys(this.getAppliedFilters(searchQuery)).length;
+		if (filterCount > 2) {
+			return true;
+		}
+
+		// Use search engine for node type searches
+		if (searchQuery.nodeTypes && searchQuery.nodeTypes.length > 0) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Execute search using search engine
+	 */
+	private async executeSearchEngineQuery(
+		searchQuery: WorkflowSearchQueryDto,
+		context: SearchContext,
+	): Promise<WorkflowSearchResponseDto> {
+		try {
+			// Build search engine query
+			const engineQuery: SearchQuery = {
+				query: searchQuery.query || '*',
+				filters: this.buildSearchEngineFilters(searchQuery, context),
+				sort: this.buildSearchEngineSort(searchQuery),
+				from: ((searchQuery.page || 1) - 1) * (searchQuery.limit || 20),
+				size: searchQuery.limit || 20,
+				highlight: searchQuery.includeHighlights !== false,
+			};
+
+			// Execute search
+			const searchResult = await this.searchEngineService.search<WorkflowSearchDocument>(
+				'workflows',
+				engineQuery,
+			);
+
+			// Convert search engine results to workflow entities
+			const workflowIds = searchResult.hits.map((hit) => hit.id);
+			const workflows = await this.getWorkflowsByIds(workflowIds, context);
+
+			// Process results with search engine scores and highlights
+			const processedResults = await this.processSearchEngineResults(
+				searchResult,
+				workflows,
+				searchQuery,
+				context,
+			);
+
+			// Calculate pagination
+			const pagination = this.calculatePagination(
+				searchQuery.page || 1,
+				searchQuery.limit || 20,
+				searchResult.total,
+			);
+
+			// Generate facets if needed
+			const facets = searchQuery.includeStats
+				? await this.generateFacets(context.userWorkflowIds, searchQuery)
+				: undefined;
+
+			return {
+				results: processedResults,
+				pagination,
+				query: {
+					searchQuery: searchQuery.query,
+					appliedFilters: this.getAppliedFilters(searchQuery),
+					searchIn: searchQuery.searchIn || ['all'],
+					sortBy: searchQuery.sortBy || 'relevance',
+					sortOrder: searchQuery.sortOrder || 'desc',
+				},
+				metadata: {
+					searchTimeMs: Date.now() - context.startTime,
+					searchedAt: new Date().toISOString(),
+					totalWorkflowsInScope: context.userWorkflowIds.length,
+					filtersApplied: Object.keys(this.getAppliedFilters(searchQuery)).length,
+					searchEngine: {
+						used: true,
+						indexSearchTimeMs: searchResult.searchTimeMs,
+						maxScore: searchResult.maxScore,
+					},
+				},
+				facets,
+			};
+		} catch (error) {
+			this.logger.warn('Search engine query failed, falling back to database search', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			// Fallback to database search
+			return this.executeDatabaseSearch(searchQuery, context);
+		}
+	}
+
+	/**
+	 * Execute search using database (fallback method)
+	 */
+	private async executeDatabaseSearch(
+		searchQuery: WorkflowSearchQueryDto,
+		context: SearchContext,
+	): Promise<WorkflowSearchResponseDto> {
+		// Build search filters
+		const filters = await this.buildSearchFilters(searchQuery, context);
+
+		// Execute search query
+		const { workflows, totalCount } = await this.executeSearch(filters, searchQuery, context);
+
+		// Process and score results
+		const processedResults = await this.processSearchResults(workflows, searchQuery, context);
+
+		// Calculate pagination
+		const pagination = this.calculatePagination(
+			searchQuery.page || 1,
+			searchQuery.limit || 20,
+			totalCount,
+		);
+
+		// Generate facets if needed
+		const facets = searchQuery.includeStats
+			? await this.generateFacets(context.userWorkflowIds, searchQuery)
+			: undefined;
+
+		return {
+			results: processedResults,
+			pagination,
+			query: {
+				searchQuery: searchQuery.query,
+				appliedFilters: this.getAppliedFilters(searchQuery),
+				searchIn: searchQuery.searchIn || ['all'],
+				sortBy: searchQuery.sortBy || 'relevance',
+				sortOrder: searchQuery.sortOrder || 'desc',
+			},
+			metadata: {
+				searchTimeMs: Date.now() - context.startTime,
+				searchedAt: new Date().toISOString(),
+				totalWorkflowsInScope: context.userWorkflowIds.length,
+				filtersApplied: Object.keys(this.getAppliedFilters(searchQuery)).length,
+				searchEngine: {
+					used: false,
+					reason: 'fallback',
+				},
+			},
+			facets,
+		};
+	}
+
+	/**
+	 * Build filters for search engine query
+	 */
+	private buildSearchEngineFilters(
+		searchQuery: WorkflowSearchQueryDto,
+		context: SearchContext,
+	): Record<string, any> {
+		const filters: Record<string, any> = {};
+
+		// User access filter - only search accessible workflows
+		filters.id = context.userWorkflowIds;
+
+		// Active status filter
+		if (typeof searchQuery.active === 'boolean') {
+			filters.active = searchQuery.active;
+		}
+
+		// Archive status filter
+		if (typeof searchQuery.isArchived === 'boolean') {
+			filters.isArchived = searchQuery.isArchived;
+		}
+
+		// Tags filter
+		if (searchQuery.tags && searchQuery.tags.length > 0) {
+			filters['tags.name'] = searchQuery.tags;
+		}
+
+		// Node types filter
+		if (searchQuery.nodeTypes && searchQuery.nodeTypes.length > 0) {
+			filters.nodeTypes = searchQuery.nodeTypes;
+		}
+
+		// Project filter
+		if (searchQuery.projectId) {
+			filters.projectId = searchQuery.projectId;
+		}
+
+		// Folder filter
+		if (searchQuery.folderId) {
+			filters.folderId = searchQuery.folderId;
+		}
+
+		// Webhook filter
+		if (searchQuery.hasWebhooks !== undefined) {
+			filters.hasWebhooks = searchQuery.hasWebhooks;
+		}
+
+		// Cron trigger filter
+		if (searchQuery.hasCronTriggers !== undefined) {
+			filters.hasCronTriggers = searchQuery.hasCronTriggers;
+		}
+
+		return filters;
+	}
+
+	/**
+	 * Build sort configuration for search engine
+	 */
+	private buildSearchEngineSort(
+		searchQuery: WorkflowSearchQueryDto,
+	): Array<{ field: string; order: 'asc' | 'desc' }> {
+		const sortBy = searchQuery.sortBy || 'relevance';
+		const sortOrder = (searchQuery.sortOrder === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc';
+
+		switch (sortBy) {
+			case 'name':
+				return [{ field: 'name.keyword', order: sortOrder }];
+			case 'createdAt':
+				return [{ field: 'createdAt', order: sortOrder }];
+			case 'updatedAt':
+				return [{ field: 'updatedAt', order: sortOrder }];
+			case 'executionCount':
+				return [{ field: 'executionCount', order: sortOrder }];
+			case 'relevance':
+			default:
+				return [{ field: '_score', order: 'desc' }];
+		}
+	}
+
+	/**
+	 * Get workflows by IDs maintaining order
+	 */
+	private async getWorkflowsByIds(
+		workflowIds: string[],
+		context: SearchContext,
+	): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		// Get workflows by IDs
+		const workflows = await this.workflowRepository.find({
+			where: { id: In(workflowIds) },
+			relations: ['tags', 'shared', 'shared.project', 'parentFolder'],
+		});
+
+		// Create a map for quick lookup
+		const workflowMap = new Map<string, WorkflowEntity>();
+		workflows.forEach((workflow) => {
+			workflowMap.set(workflow.id, workflow);
+		});
+
+		// Return workflows in the same order as the search results
+		return workflowIds
+			.map((id) => workflowMap.get(id))
+			.filter((workflow): workflow is WorkflowEntity => workflow !== undefined);
+	}
+
+	/**
+	 * Process search engine results with scores and highlights
+	 */
+	private async processSearchEngineResults(
+		searchResult: any,
+		workflows: WorkflowEntity[],
+		searchQuery: WorkflowSearchQueryDto,
+		context: SearchContext,
+	): Promise<WorkflowSearchResultItemDto[]> {
+		const results: WorkflowSearchResultItemDto[] = [];
+
+		// Create a map of search hits by ID for quick lookup
+		const hitMap = new Map();
+		searchResult.hits.forEach((hit: any) => {
+			hitMap.set(hit.id, hit);
+		});
+
+		for (const workflow of workflows) {
+			const hit = hitMap.get(workflow.id);
+
+			// Build result item
+			const resultItem: WorkflowSearchResultItemDto = {
+				id: workflow.id,
+				name: workflow.name,
+				description: workflow.description || undefined,
+				active: workflow.active,
+				isArchived: workflow.isArchived,
+				createdAt: workflow.createdAt.toISOString(),
+				updatedAt: workflow.updatedAt.toISOString(),
+				projectId: '', // Will be filled from shared workflow info
+				projectName: '', // Will be filled from shared workflow info
+				relevanceScore: hit ? hit.score : 0,
+			};
+
+			// Add optional fields based on query options
+			if (searchQuery.includeContent) {
+				resultItem.content = {
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					settings: workflow.settings,
+				};
+			}
+
+			if (searchQuery.includeStats) {
+				resultItem.stats = await this.getWorkflowStats(workflow.id);
+			}
+
+			if (searchQuery.includeHighlights && hit && hit.highlight) {
+				resultItem.highlights = hit.highlight;
+			}
+
+			// Add metadata
+			this.addWorkflowMetadata(resultItem, workflow);
+
+			results.push(resultItem);
+		}
+
+		return results;
 	}
 
 	/**

@@ -1,0 +1,54 @@
+# Tiltfile for testing tilt alpha tiltfile-result validation
+load('ext://namespace', 'namespace_create', 'namespace_inject')
+
+# Create namespace
+namespace_create('tilt-validation-test')
+
+# Define some intentional issues for validation testing
+
+# 1. Valid resource
+docker_build('valid-app', './docker/valid')
+k8s_yaml('k8s/valid-app.yaml')
+k8s_resource('valid-app', port_forwards='8080:8080')
+
+# 2. Missing Docker context (will cause validation error)
+docker_build('missing-context', './docker/does-not-exist')
+
+# 3. Invalid YAML reference
+k8s_yaml('k8s/missing-file.yaml')
+
+# 4. Circular dependency
+k8s_resource('service-a', resource_deps=['service-b'])
+k8s_resource('service-b', resource_deps=['service-a'])
+
+# 5. Invalid port forward format
+k8s_resource('bad-port', port_forwards='not-a-port')
+
+# 6. Duplicate resource names (error)
+k8s_resource('duplicate-name', port_forwards='9000:9000')
+k8s_resource('duplicate-name', port_forwards='9001:9001')
+
+# Local resource with always-failing command
+local_resource(
+    'failing-check',
+    'exit 1',
+    allow_parallel=True
+)
+
+# Valid but complex configuration
+docker_build(
+    'complex-app',
+    '.',
+    dockerfile='Dockerfile.complex',
+    target='production',
+    build_args={
+        'VERSION': '1.0.0',
+        'BUILD_DATE': str(local('date +%Y%m%d')),
+    },
+    secret=[
+        'id=npm_token,src=.npm_token',
+    ]
+)
+
+# Print to test output capture
+print("Tiltfile loaded with validation test cases")

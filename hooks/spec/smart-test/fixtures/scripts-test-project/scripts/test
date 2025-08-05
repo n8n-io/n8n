@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Project-specific test script
+
+FILE="$1"
+
+echo "Running project test script with FILE=$FILE"
+if [ -n "$FILE" ]; then
+    echo "Testing specific file: $FILE"
+else
+    echo "Running all tests"
+fi
+
+exit 0

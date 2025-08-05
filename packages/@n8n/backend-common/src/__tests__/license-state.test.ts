@@ -437,21 +437,21 @@ describe('LicenseState', () => {
 			expect(result).toBe('not a boolean');
 		});
 
-		it('should handle rapid sequential calls', () => {
+		it('should handle rapid sequential calls', async () => {
 			licenseState.setLicenseProvider(mockLicenseProvider);
 			mockLicenseProvider.isLicensed.mockReturnValue(true);
 			mockLicenseProvider.getValue.mockReturnValue(100);
 
 			// Make many rapid calls
-			const promises = Array.from({ length: 100 }, (_, i) => {
+			const promises = Array.from({ length: 100 }, async (_, i) => {
 				if (i % 2 === 0) {
-					return Promise.resolve(licenseState.isLicensed('feat:sharing'));
+					return licenseState.isLicensed('feat:sharing');
 				} else {
-					return Promise.resolve(licenseState.getValue('quota:users'));
+					return licenseState.getValue('quota:users');
 				}
 			});
 
-			return Promise.all(promises).then((results) => {
+			return await Promise.all(promises).then((results) => {
 				expect(results).toHaveLength(100);
 				expect(mockLicenseProvider.isLicensed).toHaveBeenCalledTimes(50);
 				expect(mockLicenseProvider.getValue).toHaveBeenCalledTimes(50);

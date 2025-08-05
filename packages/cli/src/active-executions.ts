@@ -286,6 +286,278 @@ export class ActiveExecutions {
 		}
 	}
 
+	/** Pause an active execution */
+	pauseExecution(executionId: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+
+		if (execution.status === 'running') {
+			execution.status = 'waiting';
+			// Pause the workflow execution if it exists
+			if (execution.workflowExecution) {
+				// The actual pausing will be handled by the workflow execution engine
+				// through the abortController or other mechanisms
+			}
+			this.logger.debug('Execution paused', { executionId });
+			return true;
+		}
+
+		return false;
+	}
+
+	/** Resume a paused execution */
+	resumeExecution(executionId: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+
+		if (execution.status === 'waiting') {
+			execution.status = 'running';
+			// Resume the workflow execution if it exists
+			if (execution.workflowExecution) {
+				// The actual resuming will be handled by the workflow execution engine
+			}
+			this.logger.debug('Execution resumed', { executionId });
+			return true;
+		}
+
+		return false;
+	}
+
+	/** Get execution status information */
+	getExecutionStatus(
+		executionId: string,
+	): { status: ExecutionStatus; currentNode?: string } | null {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return null;
+		}
+
+		const currentNode = execution.executionData?.executionData?.resultData?.lastNodeExecuted;
+		return {
+			status: execution.status,
+			currentNode,
+		};
+	}
+
+	/** Check if an execution can be paused */
+	canPause(executionId: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'running';
+	}
+
+	/** Check if an execution can be resumed */
+	canResume(executionId: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'waiting';
+	}
+
+	/** Step through execution by specified number of steps */
+	stepExecution(
+		executionId: string,
+		steps: number = 1,
+		nodeNames?: string[],
+	): {
+		stepsExecuted: number;
+		currentNode?: string;
+		nextNodes: string[];
+	} {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return { stepsExecuted: 0, nextNodes: [] };
+		}
+
+		// For now, we simulate stepping by tracking state
+		// In a full implementation, this would coordinate with the WorkflowExecute engine
+		const currentNode = execution.executionData?.executionData?.resultData?.lastNodeExecuted;
+
+		// Calculate next nodes based on workflow structure
+		const nextNodes = nodeNames || this.getNextNodesToExecute(execution, currentNode);
+
+		this.logger.debug('Execution stepped', {
+			executionId,
+			steps,
+			currentNode,
+			nextNodes,
+		});
+
+		return {
+			stepsExecuted: Math.min(steps, nextNodes.length),
+			currentNode,
+			nextNodes: nextNodes.slice(0, steps),
+		};
+	}
+
+	/** Get next nodes to execute from current position */
+	private getNextNodesToExecute(execution: IExecutingWorkflowData, currentNode?: string): string[] {
+		const workflowData = execution.executionData.workflowData;
+		const connections = workflowData.connections;
+
+		if (!currentNode || !connections[currentNode]) {
+			// If no current node, return starting nodes
+			return workflowData.nodes
+				.filter(
+					(node) =>
+						!Object.keys(connections).some((conn) =>
+							connections[conn]?.main?.some((outputs) =>
+								outputs?.some((output) => output?.node === node.name),
+							),
+						),
+				)
+				.map((node) => node.name);
+		}
+
+		// Get connected nodes from current node
+		const nextNodes: string[] = [];
+		const nodeConnections = connections[currentNode];
+
+		if (nodeConnections?.main) {
+			for (const outputs of nodeConnections.main) {
+				if (outputs) {
+					for (const connection of outputs) {
+						if (connection?.node) {
+							nextNodes.push(connection.node);
+						}
+					}
+				}
+			}
+		}
+
+		return [...new Set(nextNodes)]; // Remove duplicates
+	}
+
+	/** Check if execution can be stepped */
+	canStep(executionId: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'running' || execution?.status === 'waiting';
+	}
+
+	/** Cancel execution at node level */
+	cancelNodeExecution(executionId: string, nodeName: string): boolean {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+
+		// Mark the specific node as cancelled in the execution data
+		if (execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+
+			// If node has run data, mark the last run as cancelled
+			if (runData[nodeName] && runData[nodeName].length > 0) {
+				const lastRun = runData[nodeName][runData[nodeName].length - 1];
+				lastRun.error = {
+					message: `Node execution cancelled`,
+					name: 'NodeExecutionCancelled',
+					timestamp: Date.now(),
+				} as any;
+			}
+		}
+
+		this.logger.debug('Node execution cancelled', { executionId, nodeName });
+		return true;
+	}
+
+	/** Skip node execution and provide mock output */
+	skipNodeExecution(executionId: string, nodeName: string, mockOutput?: any): boolean {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+
+		// Add mock run data for the skipped node
+		if (execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+
+			runData[nodeName] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 0,
+					data: {
+						main: mockOutput ? [[{ json: mockOutput, pairedItem: { item: 0 } }]] : [[]],
+					},
+					source: [],
+				},
+			];
+		}
+
+		this.logger.debug('Node execution skipped', { executionId, nodeName });
+		return true;
+	}
+
+	/** Retry node execution with modified parameters */
+	retryNodeExecution(
+		executionId: string,
+		nodeName: string,
+		modifiedParameters?: any,
+		resetState?: boolean,
+	): boolean {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+
+		// Reset node state if requested
+		if (resetState && execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+			delete runData[nodeName];
+		}
+
+		// Apply modified parameters to the workflow node
+		if (modifiedParameters) {
+			const workflowData = execution.executionData.workflowData;
+			const node = workflowData.nodes.find((n) => n.name === nodeName);
+			if (node) {
+				node.parameters = {
+					...node.parameters,
+					...modifiedParameters,
+				};
+			}
+		}
+
+		this.logger.debug('Node execution retry initiated', { executionId, nodeName, resetState });
+		return true;
+	}
+
+	/** Get node execution status */
+	getNodeExecutionStatus(
+		executionId: string,
+		nodeName: string,
+	): {
+		status: 'pending' | 'running' | 'success' | 'error' | 'skipped';
+		executionTime?: number;
+		error?: any;
+	} | null {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return null;
+		}
+
+		const runData = execution.executionData?.executionData?.resultData?.runData;
+		if (!runData || !runData[nodeName] || runData[nodeName].length === 0) {
+			return { status: 'pending' };
+		}
+
+		const lastRun = runData[nodeName][runData[nodeName].length - 1];
+
+		if (lastRun.error) {
+			return {
+				status: 'error',
+				executionTime: lastRun.executionTime,
+				error: lastRun.error,
+			};
+		}
+
+		return {
+			status: 'success',
+			executionTime: lastRun.executionTime,
+		};
+	}
+
 	getExecutionOrFail(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {

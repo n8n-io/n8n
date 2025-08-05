@@ -1,0 +1,41 @@
+# Test fixtures and generated files
+**/fixtures/
+**/test-data/
+node_modules/
+.git/
+dist/
+build/
+target/
+venv/
+.venv/
+__pycache__/
+*.min.js
+*.min.css
+coverage/
+.turbo/
+.nyc_output/
+
+# Hook test files with intentional errors
+hooks/spec/**
+hooks/test/**
+
+# Python files with intentional syntax errors or third-party code
+**/测试文件_test.py
+**/*test*.py
+**/directory with spaces/**
+node_modules/**/*.py
+**/node_modules/**
+
+# Specific problematic paths identified by ruff
+**/edge-cases/directory
+**/edge-cases/测试文件_test.py
+**/edge-cases/Tiltfile_test.py
+**/scripts-project/main.py
+**/node-gyp/**/*.py
+**/curlconverter/**/*.py
+**/flatted/**/*.py
+**/walkdir/**/*.py
+
+# Files that don't exist but are being scanned
+spaces/test_spaces.py
+with

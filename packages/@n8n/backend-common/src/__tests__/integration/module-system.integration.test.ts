@@ -3,16 +3,16 @@
  * Tests how ModuleRegistry, ModulesConfig, LicenseState, and error handling work together
  */
 
+import type { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { ModuleMetadata } from '@n8n/decorators';
 
 import { LicenseState } from '../../license-state';
-import { Logger } from '../../logging/logger';
-import { ModuleRegistry } from '../../modules/module-registry';
-import { ModulesConfig } from '../../modules/modules.config';
+import type { Logger } from '../../logging/logger';
 import { ModuleConfusionError } from '../../modules/errors/module-confusion.error';
 import { UnknownModuleError } from '../../modules/errors/unknown-module.error';
+import { ModuleRegistry } from '../../modules/module-registry';
+import { ModulesConfig } from '../../modules/modules.config';
 import type { LicenseProvider } from '../../types';
 
 describe('Module System Integration Tests', () => {

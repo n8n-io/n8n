@@ -1,0 +1,19 @@
+# Ignore vendor directories
+vendor/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore generated files
+*.generated.go
+
+# Ignore temporary files
+*.tmp
+
+# Ignore build directories
+build/
+
+# Empty line above should be ignored
+
+# Comment lines should be ignored too
+EOF < /dev/null

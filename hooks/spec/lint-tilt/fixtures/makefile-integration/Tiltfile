@@ -1,0 +1,5 @@
+# Tiltfile for Makefile integration test
+docker_build('app', '.')
+k8s_yaml('k8s.yaml')
+
+# This file might have issues that make lint-tilt would catch

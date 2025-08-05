@@ -14,6 +14,8 @@ import type {
 	ITaskData,
 	INodeParameters,
 	INode,
+	IWorkflowExecuteAdditionalData,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { ApplicationError, Workflow } from 'n8n-workflow';
 
@@ -21,6 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { WorkflowExecute } from '@n8n/core';
 
 @RestController('/node-types')
 export class NodeTypesController {
@@ -137,35 +140,14 @@ export class NodeTypesController {
 				settings: {},
 			});
 
-			// Mock execution result (real execution will be implemented in a future update)
+			// Execute the node in an isolated environment
 			const startTime = Date.now();
-			const nodeResult: ITaskData = {
-				startTime,
-				executionTime: Date.now() - startTime + 50, // Simulate some execution time
-				executionIndex: 0, // Required property for ITaskData interface
-				data: {
-					main: [
-						[
-							{
-								json: {
-									message: `Node '${nodeType}' mock execution completed successfully`,
-									nodeType,
-									nodeVersion,
-									parametersReceived: Object.keys(parameters).length,
-									inputItemsReceived: inputData.length,
-									mockExecution: true,
-									timestamp: new Date().toISOString(),
-									testWorkflowGenerated: true,
-									nodeDescription: nodeTypeInstance.description.displayName,
-									testNodeCreated: testNode.name,
-									workflowCreated: testWorkflow.name,
-								},
-							},
-						],
-					],
-				},
-				source: [],
-			};
+			const nodeResult = await this.executeNodeIsolated(
+				testNode,
+				testWorkflow,
+				inputData,
+				req.body.mode || 'test',
+			);
 
 			this.logger.debug('Node test completed successfully', {
 				nodeType,
@@ -176,7 +158,7 @@ export class NodeTypesController {
 
 			// Format the result
 			return {
-				success: true,
+				success: !nodeResult.error,
 				nodeType,
 				nodeVersion,
 				parameters,
@@ -184,13 +166,16 @@ export class NodeTypesController {
 					data: nodeResult.data,
 					executionTime: nodeResult.executionTime,
 					source: nodeResult.source,
+					error: nodeResult.error,
 				},
 				metadata: {
 					executedAt: new Date(),
 					inputItemCount: inputData.length,
 					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
 					nodeDescription: nodeTypeInstance.description,
-					mockExecution: true,
+					mockExecution: false, // Now using real execution
+					isolatedExecution: true,
+					timeoutMs: 30000,
 				},
 			};
 		} catch (error) {
@@ -248,7 +233,7 @@ export class NodeTypesController {
 			const mockParameters: IDataObject = {};
 			const mockInputData: INodeExecutionData[] = [];
 
-			// Generate mock parameters based on node properties
+			// Generate sophisticated mock parameters based on node properties
 			if (description.properties) {
 				for (const property of description.properties) {
 					if (parameterOverrides[property.name] !== undefined) {
@@ -256,34 +241,7 @@ export class NodeTypesController {
 						continue;
 					}
 
-					switch (property.type) {
-						case 'string':
-							if (property.options) {
-								const firstOption = property.options[0];
-								mockParameters[property.name] =
-									firstOption && typeof firstOption === 'object' && 'value' in firstOption
-										? firstOption.value
-										: 'option1';
-							} else {
-								mockParameters[property.name] = property.default || `mock-${property.name}`;
-							}
-							break;
-						case 'number':
-							mockParameters[property.name] = property.default || 42;
-							break;
-						case 'boolean':
-							mockParameters[property.name] =
-								property.default !== undefined ? property.default : true;
-							break;
-						case 'collection':
-							mockParameters[property.name] = property.default || {};
-							break;
-						case 'fixedCollection':
-							mockParameters[property.name] = property.default || {};
-							break;
-						default:
-							mockParameters[property.name] = property.default || null;
-					}
+					mockParameters[property.name] = this.generateMockParameterValue(property, nodeType);
 				}
 			}
 
@@ -505,6 +463,152 @@ export class NodeTypesController {
 		}
 	}
 
+	@Post('/test-safe')
+	async testNodeSafe(
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{
+				nodeType: string;
+				nodeVersion?: number;
+				parameters?: IDataObject;
+				inputData?: INodeExecutionData[];
+				mode?: WorkflowExecuteMode;
+				safetyLevel?: 'strict' | 'moderate' | 'permissive';
+				timeoutMs?: number;
+			}
+		>,
+	) {
+		const {
+			nodeType,
+			nodeVersion = 1,
+			parameters = {},
+			inputData = [],
+			safetyLevel = 'moderate',
+			timeoutMs = 30000,
+		} = req.body;
+
+		if (!nodeType) {
+			throw new BadRequestError('Node type is required');
+		}
+
+		// Safety level restrictions
+		const maxTimeout =
+			safetyLevel === 'strict' ? 10000 : safetyLevel === 'moderate' ? 30000 : 60000;
+		const effectiveTimeout = Math.min(timeoutMs, maxTimeout);
+
+		// Restricted node types for safety
+		const restrictedNodes =
+			safetyLevel === 'strict'
+				? [
+						'n8n-nodes-base.code',
+						'n8n-nodes-base.executeCommand',
+						'n8n-nodes-base.function',
+						'n8n-nodes-base.functionItem',
+					]
+				: [];
+
+		if (restrictedNodes.includes(nodeType)) {
+			throw new BadRequestError(
+				`Node type '${nodeType}' is restricted in ${safetyLevel} safety mode`,
+			);
+		}
+
+		this.logger.debug('Safe node test requested', {
+			nodeType,
+			nodeVersion,
+			userId: req.user.id,
+			safetyLevel,
+			timeoutMs: effectiveTimeout,
+		});
+
+		try {
+			// Get the node type instance
+			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
+			if (!nodeTypeInstance) {
+				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
+			}
+
+			// Create a test node with the provided parameters
+			const testNode: INode = {
+				name: 'Safe Test Node',
+				typeVersion: nodeVersion,
+				type: nodeType,
+				position: [0, 0],
+				parameters: parameters as INodeParameters,
+				disabled: false,
+				id: 'safe-test-node-id',
+			};
+
+			// Create a minimal workflow for testing
+			const testWorkflow = new Workflow({
+				id: 'safe-test-workflow',
+				name: 'Safe Test Workflow',
+				nodes: [testNode],
+				connections: {},
+				active: false,
+				nodeTypes: this.nodeTypes,
+				settings: {},
+			});
+
+			// Execute with safety constraints
+			const nodeResult = await this.executeNodeSafeIsolated(
+				testNode,
+				testWorkflow,
+				inputData,
+				req.body.mode || 'test',
+				effectiveTimeout,
+				safetyLevel,
+			);
+
+			this.logger.debug('Safe node test completed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				success: !nodeResult.error,
+				executionTime: nodeResult.executionTime,
+			});
+
+			return {
+				success: !nodeResult.error,
+				nodeType,
+				nodeVersion,
+				parameters,
+				result: {
+					data: nodeResult.data,
+					executionTime: nodeResult.executionTime,
+					source: nodeResult.source,
+					error: nodeResult.error,
+				},
+				metadata: {
+					executedAt: new Date(),
+					inputItemCount: inputData.length,
+					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
+					nodeDescription: nodeTypeInstance.description,
+					safetyLevel,
+					timeoutMs: effectiveTimeout,
+					isolatedExecution: true,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Safe node test failed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				safetyLevel,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new InternalServerError(
+				`Safe node test failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
 	@Post('/batch-test')
 	async batchTestNodes(
 		req: AuthenticatedRequest<
@@ -661,6 +765,525 @@ export class NodeTypesController {
 			throw new InternalServerError(
 				`Batch testing failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
+		}
+	}
+
+	/**
+	 * Execute a node in an isolated environment with proper error handling and timeouts
+	 */
+	private async executeNodeIsolated(
+		node: INode,
+		workflow: Workflow,
+		inputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+	): Promise<ITaskData> {
+		const startTime = Date.now();
+
+		try {
+			// Create minimal execution data for isolated test
+			const runExecutionData: IRunExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+					pinData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node,
+							data: {
+								main: [inputData],
+							},
+							source: {
+								main: [
+									{
+										previousNode: 'test-input',
+									},
+								],
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			// Create minimal additional data for test execution
+			const additionalData: IWorkflowExecuteAdditionalData = {
+				restApiUrl: 'http://localhost:5678/rest',
+				instanceBaseUrl: 'http://localhost:5678',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				webhookBaseUrl: 'http://localhost:5678/webhook',
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
+				currentNodeParameters: node.parameters,
+				executionTimeoutTimestamp: Date.now() + 30000, // 30 second timeout
+				userId: 'test-user',
+				variables: {},
+			} as IWorkflowExecuteAdditionalData;
+
+			// Create workflow executor with timeout
+			const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
+
+			// Execute with timeout protection
+			const executionTimeout = 30000; // 30 seconds
+			const executionPromise = workflowExecute.runPartialWorkflow(workflow, runExecutionData, [
+				node.name,
+			]);
+
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(() => {
+					reject(new ApplicationError('Node execution timeout after 30 seconds'));
+				}, executionTimeout);
+			});
+
+			const result = await Promise.race([executionPromise, timeoutPromise]);
+
+			// Extract result for the tested node
+			const nodeResult = result.runData[node.name]?.[0];
+			if (!nodeResult) {
+				// Return error result if node didn't execute
+				return {
+					startTime,
+					executionTime: Date.now() - startTime,
+					executionIndex: 0,
+					data: {
+						main: [[]],
+					},
+					source: [],
+					error: {
+						message: 'Node execution failed - no result data',
+						name: 'NodeExecutionError',
+					},
+				};
+			}
+
+			return {
+				startTime,
+				executionTime: Date.now() - startTime,
+				executionIndex: 0,
+				data: nodeResult.data || { main: [[]] },
+				source: nodeResult.source || [],
+				error: nodeResult.error,
+			};
+		} catch (error) {
+			// Return error result with proper error information
+			return {
+				startTime,
+				executionTime: Date.now() - startTime,
+				executionIndex: 0,
+				data: {
+					main: [[]],
+				},
+				source: [],
+				error: {
+					message: error instanceof Error ? error.message : String(error),
+					name: error instanceof Error ? error.name : 'NodeTestError',
+					stack: error instanceof Error ? error.stack : undefined,
+				},
+			};
+		}
+	}
+
+	/**
+	 * Execute a node in a safe isolated environment with additional safety constraints
+	 */
+	private async executeNodeSafeIsolated(
+		node: INode,
+		workflow: Workflow,
+		inputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		timeoutMs: number,
+		safetyLevel: 'strict' | 'moderate' | 'permissive',
+	): Promise<ITaskData> {
+		const startTime = Date.now();
+
+		try {
+			// Apply safety-level specific input data constraints
+			const maxInputItems = safetyLevel === 'strict' ? 10 : safetyLevel === 'moderate' ? 100 : 1000;
+			const constrainedInputData = inputData.slice(0, maxInputItems);
+
+			// Sanitize input data for safety
+			const sanitizedInputData = constrainedInputData.map((item) => ({
+				...item,
+				json: this.sanitizeObjectForSafety(item.json, safetyLevel),
+			}));
+
+			// Create execution data with safety constraints
+			const runExecutionData: IRunExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+					pinData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node,
+							data: {
+								main: [sanitizedInputData],
+							},
+							source: {
+								main: [
+									{
+										previousNode: 'safe-test-input',
+									},
+								],
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			// Create additional data with safety restrictions
+			const additionalData: IWorkflowExecuteAdditionalData = {
+				restApiUrl: 'http://localhost:5678/rest',
+				instanceBaseUrl: 'http://localhost:5678',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				webhookBaseUrl: 'http://localhost:5678/webhook',
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
+				currentNodeParameters: node.parameters,
+				executionTimeoutTimestamp: Date.now() + timeoutMs,
+				userId: 'safe-test-user',
+				variables: {},
+			} as IWorkflowExecuteAdditionalData;
+
+			// Create workflow executor
+			const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
+
+			// Execute with safety timeout
+			const executionPromise = workflowExecute.runPartialWorkflow(workflow, runExecutionData, [
+				node.name,
+			]);
+
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(() => {
+					reject(new ApplicationError(`Safe node execution timeout after ${timeoutMs}ms`));
+				}, timeoutMs);
+			});
+
+			const result = await Promise.race([executionPromise, timeoutPromise]);
+
+			// Extract and validate result
+			const nodeResult = result.runData[node.name]?.[0];
+			if (!nodeResult) {
+				return {
+					startTime,
+					executionTime: Date.now() - startTime,
+					executionIndex: 0,
+					data: { main: [[]] },
+					source: [],
+					error: {
+						message: 'Safe node execution failed - no result data',
+						name: 'SafeNodeExecutionError',
+					},
+				};
+			}
+
+			// Apply output data constraints for safety
+			const sanitizedResult = {
+				...nodeResult,
+				data: this.sanitizeExecutionDataForSafety(nodeResult.data, safetyLevel),
+			};
+
+			return {
+				startTime,
+				executionTime: Date.now() - startTime,
+				executionIndex: 0,
+				data: sanitizedResult.data || { main: [[]] },
+				source: sanitizedResult.source || [],
+				error: sanitizedResult.error,
+			};
+		} catch (error) {
+			return {
+				startTime,
+				executionTime: Date.now() - startTime,
+				executionIndex: 0,
+				data: { main: [[]] },
+				source: [],
+				error: {
+					message: error instanceof Error ? error.message : String(error),
+					name: error instanceof Error ? error.name : 'SafeNodeTestError',
+					stack: safetyLevel === 'permissive' && error instanceof Error ? error.stack : undefined,
+				},
+			};
+		}
+	}
+
+	/**
+	 * Sanitize object data based on safety level
+	 */
+	private sanitizeObjectForSafety(obj: any, safetyLevel: string): any {
+		if (!obj || typeof obj !== 'object') {
+			return obj;
+		}
+
+		const maxDepth = safetyLevel === 'strict' ? 3 : safetyLevel === 'moderate' ? 5 : 10;
+		const maxKeys = safetyLevel === 'strict' ? 50 : safetyLevel === 'moderate' ? 200 : 1000;
+
+		const sanitize = (value: any, depth: number): any => {
+			if (depth > maxDepth) {
+				return '[Object: max depth exceeded]';
+			}
+
+			if (Array.isArray(value)) {
+				const maxItems = safetyLevel === 'strict' ? 100 : safetyLevel === 'moderate' ? 500 : 2000;
+				return value.slice(0, maxItems).map((item) => sanitize(item, depth + 1));
+			}
+
+			if (value && typeof value === 'object') {
+				const keys = Object.keys(value);
+				if (keys.length > maxKeys) {
+					const result: any = {};
+					keys.slice(0, maxKeys).forEach((key) => {
+						result[key] = sanitize(value[key], depth + 1);
+					});
+					result._truncated = `${keys.length - maxKeys} keys removed for safety`;
+					return result;
+				}
+
+				const result: any = {};
+				keys.forEach((key) => {
+					result[key] = sanitize(value[key], depth + 1);
+				});
+				return result;
+			}
+
+			// Sanitize potentially dangerous string values
+			if (typeof value === 'string' && value.length > 10000) {
+				return value.substring(0, 10000) + '... [truncated for safety]';
+			}
+
+			return value;
+		};
+
+		return sanitize(obj, 0);
+	}
+
+	/**
+	 * Sanitize execution data output based on safety level
+	 */
+	private sanitizeExecutionDataForSafety(data: any, safetyLevel: string): any {
+		if (!data || !data.main) {
+			return data;
+		}
+
+		const maxOutputItems = safetyLevel === 'strict' ? 50 : safetyLevel === 'moderate' ? 200 : 1000;
+
+		return {
+			...data,
+			main: data.main.map((output: any[]) => {
+				if (!Array.isArray(output)) {
+					return output;
+				}
+				const truncated = output.slice(0, maxOutputItems);
+				if (output.length > maxOutputItems) {
+					truncated.push({
+						json: {
+							_notice: `Output truncated: ${output.length - maxOutputItems} items removed for safety`,
+							_safetyLevel: safetyLevel,
+						},
+					});
+				}
+				return truncated.map((item) => ({
+					...item,
+					json: this.sanitizeObjectForSafety(item.json, safetyLevel),
+				}));
+			}),
+		};
+	}
+
+	/**
+	 * Generate sophisticated mock parameter values based on property type and context
+	 */
+	private generateMockParameterValue(property: any, nodeType: string): any {
+		// Use parameter overrides if provided by property default
+		if (property.default !== undefined) {
+			return property.default;
+		}
+
+		const paramName = property.name?.toLowerCase() || '';
+		const displayName = property.displayName?.toLowerCase() || '';
+
+		switch (property.type) {
+			case 'string':
+				if (property.options) {
+					const firstOption = property.options[0];
+					return firstOption && typeof firstOption === 'object' && 'value' in firstOption
+						? firstOption.value
+						: firstOption;
+				}
+
+				// Generate contextual mock strings based on parameter name
+				if (paramName.includes('email') || displayName.includes('email')) {
+					return 'test@example.com';
+				}
+				if (
+					paramName.includes('url') ||
+					displayName.includes('url') ||
+					paramName.includes('endpoint')
+				) {
+					return 'https://api.example.com/endpoint';
+				}
+				if (
+					paramName.includes('token') ||
+					paramName.includes('key') ||
+					paramName.includes('secret')
+				) {
+					return 'mock_api_key_123456789';
+				}
+				if (paramName.includes('id') || displayName.includes('id')) {
+					return `mock_id_${Math.random().toString(36).substr(2, 9)}`;
+				}
+				if (paramName.includes('name') || displayName.includes('name')) {
+					return `Mock ${property.displayName || property.name}`;
+				}
+				if (
+					paramName.includes('message') ||
+					paramName.includes('text') ||
+					paramName.includes('content')
+				) {
+					return 'This is a mock message for testing purposes';
+				}
+				if (paramName.includes('path') || paramName.includes('file')) {
+					return '/mock/path/to/file.txt';
+				}
+				if (paramName.includes('query') || paramName.includes('search')) {
+					return 'mock search query';
+				}
+				return `mock-${property.name || 'value'}`;
+
+			case 'number':
+				if (paramName.includes('port')) {
+					return 8080;
+				}
+				if (paramName.includes('timeout')) {
+					return 30000;
+				}
+				if (paramName.includes('limit') || paramName.includes('max')) {
+					return 100;
+				}
+				if (paramName.includes('page')) {
+					return 1;
+				}
+				if (paramName.includes('amount') || paramName.includes('price')) {
+					return 99.99;
+				}
+				return 42;
+
+			case 'boolean':
+				// Contextual boolean defaults
+				if (paramName.includes('enable') || paramName.includes('active')) {
+					return true;
+				}
+				if (paramName.includes('disable') || paramName.includes('ignore')) {
+					return false;
+				}
+				return true;
+
+			case 'collection':
+				// Generate contextual collection data
+				if (paramName.includes('header')) {
+					return {
+						'Content-Type': 'application/json',
+						Authorization: 'Bearer mock_token',
+					};
+				}
+				if (paramName.includes('param') || paramName.includes('query')) {
+					return {
+						page: 1,
+						limit: 10,
+						search: 'mock query',
+					};
+				}
+				return {};
+
+			case 'fixedCollection':
+				// Generate mock fixed collection based on options
+				if (property.options && property.options.length > 0) {
+					const firstOption = property.options[0];
+					if (firstOption.values) {
+						const mockItem: any = {};
+						firstOption.values.forEach((subProperty: any) => {
+							mockItem[subProperty.name] = this.generateMockParameterValue(subProperty, nodeType);
+						});
+						return {
+							[firstOption.name]: [mockItem],
+						};
+					}
+				}
+				return {};
+
+			case 'options':
+				if (property.options && property.options.length > 0) {
+					const firstOption = property.options[0];
+					return typeof firstOption === 'object' && 'value' in firstOption
+						? firstOption.value
+						: firstOption;
+				}
+				return 'option1';
+
+			case 'multiOptions':
+				if (property.options && property.options.length > 0) {
+					const firstOption = property.options[0];
+					const value =
+						typeof firstOption === 'object' && 'value' in firstOption
+							? firstOption.value
+							: firstOption;
+					return [value];
+				}
+				return ['option1'];
+
+			case 'dateTime':
+				return new Date().toISOString();
+
+			case 'color':
+				return '#FF5733';
+
+			case 'json':
+				return JSON.stringify(
+					{
+						key: 'value',
+						number: 123,
+						boolean: true,
+						array: [1, 2, 3],
+					},
+					null,
+					2,
+				);
+
+			case 'notice':
+			case 'hidden':
+				return undefined;
+
+			default:
+				// Node-type specific defaults
+				if (nodeType.includes('Http') || nodeType.includes('API')) {
+					if (paramName.includes('method')) {
+						return 'GET';
+					}
+					if (paramName.includes('url')) {
+						return 'https://api.example.com/endpoint';
+					}
+				}
+
+				if (nodeType.includes('Database') || nodeType.includes('SQL')) {
+					if (paramName.includes('query')) {
+						return 'SELECT * FROM table_name LIMIT 10';
+					}
+					if (paramName.includes('table')) {
+						return 'mock_table';
+					}
+				}
+
+				return null;
 		}
 	}
 }

@@ -1,0 +1,5 @@
+# Frontend Tiltfile
+def frontend_resources():
+    docker_build('frontend', '.', dockerfile='Dockerfile.frontend')
+    k8s_yaml('../k8s/frontend.yaml')
+    k8s_resource('frontend', port_forwards='3000:3000')

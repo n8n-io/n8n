@@ -3,18 +3,18 @@
  * Supplements the existing module-registry.test.ts with comprehensive edge case coverage
  */
 
-import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
+import type { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { existsSync } from 'fs';
+import { mock } from 'jest-mock-extended';
 import path from 'path';
 
-import { LicenseState } from '../../license-state';
-import { Logger } from '../../logging/logger';
+import type { LicenseState } from '../../license-state';
+import type { Logger } from '../../logging/logger';
 import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
-import { ModulesConfig } from '../modules.config';
+import type { ModulesConfig } from '../modules.config';
 
 // Mock filesystem operations
 jest.mock('fs');

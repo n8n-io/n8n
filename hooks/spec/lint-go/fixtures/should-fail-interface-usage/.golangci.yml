@@ -1,0 +1,31 @@
+# Test-specific golangci-lint configuration
+# Tests forbidden patterns detection
+
+version: "2"
+
+linters:
+  disable-all: true
+  enable:
+    - forbidigo
+    - govet
+    - ineffassign
+    - staticcheck
+    
+  settings:
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # CLAUDE.md forbidden patterns
+        - pattern: '^panic$'
+          msg: "NO panic() - return errors instead (CLAUDE.md rule)"
+        - pattern: '^time\.Sleep$'
+          msg: "NO time.Sleep() - use channels for synchronization (CLAUDE.md rule)"
+        # Add interface{} and any detection
+        - pattern: 'interface\{\}'
+          msg: "NO interface{} - use concrete types (CLAUDE.md rule)"
+        - pattern: '\bany\b'
+          msg: "NO any - use concrete types (CLAUDE.md rule)"
+
+run:
+  timeout: 1m
+  tests: false

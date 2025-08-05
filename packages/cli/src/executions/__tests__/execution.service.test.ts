@@ -290,4 +290,475 @@ describe('ExecutionService', () => {
 			});
 		});
 	});
+
+	describe('pause', () => {
+		it('should pause a running execution successfully', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'running',
+				finished: false,
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.canPause.mockReturnValue(true);
+			activeExecutions.pauseExecution.mockReturnValue(true);
+			activeExecutions.getExecutionStatus.mockReturnValue({
+				status: 'waiting',
+				currentNode: 'testNode',
+			});
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.pause('123', ['123']);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.pauseExecution).toHaveBeenCalledWith('123');
+			expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('123', {
+				status: 'waiting',
+			});
+			expect(result.paused).toBe(true);
+			expect(result.currentNodeName).toBe('testNode');
+		});
+
+		it('should throw error when execution is already finished', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'success',
+				finished: true,
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(executionService.pause('123', ['123'])).rejects.toThrow(WorkflowOperationError);
+		});
+	});
+
+	describe('resume', () => {
+		it('should resume a paused execution successfully', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'waiting',
+				finished: false,
+				data: {
+					resultData: {
+						lastNodeExecuted: 'testNode',
+					},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.canResume.mockReturnValue(true);
+			activeExecutions.resumeExecution.mockReturnValue(true);
+			activeExecutions.getExecutionStatus.mockReturnValue({
+				status: 'running',
+				currentNode: 'testNode',
+			});
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.resume('123', ['123']);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.resumeExecution).toHaveBeenCalledWith('123');
+			expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('123', {
+				status: 'running',
+			});
+			expect(result.resumed).toBe(true);
+			expect(result.fromNodeName).toBe('testNode');
+		});
+
+		it('should throw error when execution is already finished', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'success',
+				finished: true,
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(executionService.resume('123', ['123'])).rejects.toThrow(WorkflowOperationError);
+		});
+	});
+
+	describe('step', () => {
+		it('should step through execution successfully', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'running',
+				finished: false,
+				workflowData: {
+					nodes: [
+						{ name: 'node1', type: 'test' },
+						{ name: 'node2', type: 'test' },
+					],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.canStep.mockReturnValue(true);
+			activeExecutions.stepExecution.mockReturnValue({
+				stepsExecuted: 2,
+				currentNode: 'node1',
+				nextNodes: ['node2'],
+			});
+
+			const options = { steps: 2 };
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.step('123', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.stepExecution).toHaveBeenCalledWith('123', 2, undefined);
+			expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('123', {
+				status: 'running',
+			});
+			expect(result.stepsExecuted).toBe(2);
+			expect(result.currentNodeName).toBe('node1');
+			expect(result.nextNodeNames).toEqual(['node2']);
+		});
+
+		it('should step with specific node names', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'running',
+				finished: false,
+				workflowData: {
+					nodes: [
+						{ name: 'node1', type: 'test' },
+						{ name: 'node2', type: 'test' },
+					],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.canStep.mockReturnValue(true);
+			activeExecutions.stepExecution.mockReturnValue({
+				stepsExecuted: 1,
+				currentNode: 'node1',
+				nextNodes: ['node2'],
+			});
+
+			const options = { steps: 1, nodeNames: ['node2'] };
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.step('123', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.stepExecution).toHaveBeenCalledWith('123', 1, ['node2']);
+			expect(result.nextNodeNames).toEqual(['node2']);
+		});
+	});
+
+	describe('retryNode', () => {
+		it('should retry node in active execution successfully', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'running',
+				workflowData: {
+					nodes: [{ name: 'testNode', type: 'test', parameters: { param1: 'value1' } }],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.retryNodeExecution.mockReturnValue(true);
+
+			const options = {
+				modifiedParameters: { param1: 'newValue' },
+				resetState: true,
+			};
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.retryNode('123', 'testNode', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.retryNodeExecution).toHaveBeenCalledWith(
+				'123',
+				'testNode',
+				{ param1: 'newValue' },
+				true,
+			);
+			expect(result.retried).toBe(true);
+			expect(result.nodeName).toBe('testNode');
+		});
+
+		it('should retry node in inactive execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const node = { name: 'testNode', type: 'test', parameters: { param1: 'value1' } };
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'error',
+				workflowData: {
+					nodes: [node],
+					connections: {},
+				},
+				data: {
+					resultData: {
+						runData: {
+							testNode: [{ error: 'some error' }],
+						},
+					},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(false);
+
+			const options = {
+				modifiedParameters: { param1: 'newValue' },
+				resetState: true,
+			};
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.retryNode('123', 'testNode', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(node.parameters).toEqual({ param1: 'newValue' });
+			expect(execution.data.resultData.runData.testNode).toBeUndefined();
+			expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+			expect(result.retried).toBe(true);
+		});
+
+		it('should throw error when node not found', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				workflowData: {
+					nodes: [{ name: 'otherNode', type: 'test' }],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(
+				executionService.retryNode('123', 'nonExistentNode', ['123'], {}),
+			).rejects.toThrow(WorkflowOperationError);
+		});
+	});
+
+	describe('skipNode', () => {
+		it('should skip node in active execution successfully', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'running',
+				workflowData: {
+					nodes: [{ name: 'testNode', type: 'test' }],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.skipNodeExecution.mockReturnValue(true);
+
+			const options = {
+				mockOutputData: { result: 'mocked' },
+				reason: 'Testing skip functionality',
+			};
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.skipNode('123', 'testNode', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.skipNodeExecution).toHaveBeenCalledWith('123', 'testNode', {
+				result: 'mocked',
+			});
+			expect(result.skipped).toBe(true);
+			expect(result.nodeName).toBe('testNode');
+		});
+
+		it('should skip node in inactive execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				status: 'error',
+				workflowData: {
+					nodes: [{ name: 'testNode', type: 'test' }],
+					connections: {},
+				},
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(false);
+
+			const options = {
+				mockOutputData: { result: 'mocked' },
+			};
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.skipNode('123', 'testNode', ['123'], options);
+
+			/**
+			 * Assert
+			 */
+			expect(execution.data.resultData.runData.testNode).toBeDefined();
+			expect(execution.data.resultData.runData.testNode[0].data.main[0][0].json).toEqual({
+				result: 'mocked',
+			});
+			expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+			expect(result.skipped).toBe(true);
+		});
+	});
+
+	describe('getNodeStatus', () => {
+		it('should get node status from active execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				workflowData: {
+					nodes: [{ name: 'testNode', type: 'test' }],
+					connections: {},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.getNodeExecutionStatus.mockReturnValue({
+				status: 'success',
+				executionTime: 150,
+			});
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getNodeStatus('123', 'testNode', ['123']);
+
+			/**
+			 * Assert
+			 */
+			expect(activeExecutions.getNodeExecutionStatus).toHaveBeenCalledWith('123', 'testNode');
+			expect(result.status).toBe('success');
+			expect(result.executionTime).toBe(150);
+		});
+
+		it('should get node status from database for inactive execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				data: {
+					resultData: {
+						runData: {
+							testNode: [
+								{
+									executionTime: 200,
+									error: undefined,
+								},
+							],
+						},
+					},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(false);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getNodeStatus('123', 'testNode', ['123']);
+
+			/**
+			 * Assert
+			 */
+			expect(result.status).toBe('completed');
+			expect(result.executionTime).toBe(200);
+		});
+
+		it('should return pending status for unexecuted node', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+			activeExecutions.has.mockReturnValue(false);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getNodeStatus('123', 'testNode', ['123']);
+
+			/**
+			 * Assert
+			 */
+			expect(result.status).toBe('pending');
+		});
+	});
 });

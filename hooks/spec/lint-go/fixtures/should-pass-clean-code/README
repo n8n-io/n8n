@@ -1,0 +1,6 @@
+This fixture contains clean, well-formatted Go code that follows all best practices.
+
+Expected behavior:
+- lint-go.sh should exit with status 0
+- No output should be produced
+- All linters (golangci-lint, gofmt) should pass

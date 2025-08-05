@@ -1,0 +1,22 @@
+# Test-specific golangci-lint configuration
+# Minimal config for clean code tests - overrides parent config
+
+linters-settings:
+  forbidigo:
+    forbid: []  # Empty list to override parent
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - ineffassign
+  disable:
+    - forbidigo
+    - godot  
+    - revive
+    - mnd
+
+run:
+  skip-dirs-use-default: false
+  skip-dirs: []
+  skip-files: []

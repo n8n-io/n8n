@@ -1,0 +1,8 @@
+# Auth service Tiltfile
+def auth_resources():
+    docker_build('auth-service', '.', dockerfile='Dockerfile.auth')
+    k8s_yaml('../../k8s/auth-service.yaml')
+    k8s_resource('auth-service', port_forwards='9000:9000')
+    
+    # JWT secret generation
+    local_resource('jwt-secret', 'kubectl create secret generic jwt-key --from-literal=key=$(openssl rand -base64 32)')

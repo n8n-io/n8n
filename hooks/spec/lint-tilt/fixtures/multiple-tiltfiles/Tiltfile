@@ -1,0 +1,6 @@
+# Main Tiltfile
+include('./config.tiltfile')
+include('./subproject/Tiltfile')
+
+docker_build('main-app', '.')
+k8s_yaml('k8s/main.yaml')

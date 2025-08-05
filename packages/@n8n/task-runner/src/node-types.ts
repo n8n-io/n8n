@@ -50,7 +50,7 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 		if (!versions) {
 			return undefined as unknown as INodeType;
 		}
-		const nodeVersion = versions.get(version ?? Math.max(...versions.keys()));
+		const nodeVersion = versions.get(version ?? Math.max.apply(Math, versions.keys()));
 		if (!nodeVersion) {
 			return undefined as unknown as INodeType;
 		}

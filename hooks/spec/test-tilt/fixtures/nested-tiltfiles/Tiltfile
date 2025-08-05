@@ -1,0 +1,12 @@
+# Root Tiltfile that includes nested Tiltfiles
+load('./frontend/Tiltfile', 'frontend_resources')
+load('./backend/Tiltfile', 'backend_resources')
+load('./services/auth/Tiltfile', 'auth_resources')
+
+# Apply all resources
+frontend_resources()
+backend_resources()
+auth_resources()
+
+# Root-level configurations
+k8s_yaml('k8s/namespace.yaml')

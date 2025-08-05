@@ -1,0 +1,4 @@
+# Main Tiltfile that should be tested
+docker_build('app', '.')
+k8s_yaml('k8s.yaml')
+k8s_resource('app', port_forwards=8080)

@@ -1,0 +1,72 @@
+# Example Makefile for Claude Code Hooks Integration
+# Copy this to your project root and customize for your needs
+
+.PHONY: lint test
+
+# Lint target - called by smart-lint.sh after file edits
+# Receives FILE= argument with relative path to edited file
+lint:
+	@echo "Running project lint with FILE=$(FILE)"
+	@if [ -n "$(FILE)" ]; then \
+		echo "Linting specific file: $(FILE)"; \
+		# Example: Run your file-specific linters here \
+		# golangci-lint run $(FILE) \
+		# black $(FILE) \
+		# eslint --fix $(FILE) \
+	else \
+		echo "Linting all files"; \
+		# Example: Run your project-wide linters here \
+		# golangci-lint run ./... \
+		# black . \
+		# npm run lint \
+	fi
+
+# Test target - called by smart-test.sh after file edits
+# Receives FILE= argument with relative path to edited file
+test:
+	@echo "Running project tests with FILE=$(FILE)"
+	@if [ -n "$(FILE)" ]; then \
+		echo "Testing specific file: $(FILE)"; \
+		# Example: Run tests for the specific file \
+		# go test -v $(dir $(FILE)) \
+		# pytest -xvs $(FILE) \
+		# jest $(FILE) \
+	else \
+		echo "Running all tests"; \
+		# Example: Run all project tests \
+		# go test -v ./... \
+		# pytest \
+		# npm test \
+	fi
+
+# Optional: Add more specific targets that the main targets can call
+lint-go:
+	@golangci-lint run ./...
+	@gofmt -w .
+
+lint-python:
+	@black .
+	@ruff check --fix .
+
+lint-js:
+	@npm run lint
+	@npm run format
+
+test-go:
+	@go test -v -race ./...
+
+test-python:
+	@pytest -xvs
+
+test-js:
+	@npm test
+
+# Optional: Helper target to check if this Makefile is being detected
+check-integration:
+	@echo "✓ Makefile detected by Claude Code hooks"
+	@echo "  - 'make lint' target: available"
+	@echo "  - 'make test' target: available"
+	@echo ""
+	@echo "Test with:"
+	@echo "  make lint FILE=example.go"
+	@echo "  make test FILE=example_test.go"

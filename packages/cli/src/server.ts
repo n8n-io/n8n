@@ -310,6 +310,41 @@ export class Server extends AbstractServer {
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
 
+		// ----------------------------------------
+		// Search Engine Setup
+		// ----------------------------------------
+		try {
+			const { SearchEngineService } = await import('@/services/search-engine.service');
+			const { WorkflowIndexingService } = await import('@/services/workflow-indexing.service');
+			const { WorkflowIndexingEventHandler } = await import(
+				'@/services/workflow-indexing-event-handler.service'
+			);
+
+			const searchEngineService = Container.get(SearchEngineService);
+			const workflowIndexingService = Container.get(WorkflowIndexingService);
+			const indexingEventHandler = Container.get(WorkflowIndexingEventHandler);
+
+			// Initialize search engine connection
+			await searchEngineService.initialize();
+
+			// Initialize workflow search index
+			if (searchEngineService.isAvailable()) {
+				await workflowIndexingService.initializeIndex();
+
+				// Initialize workflow indexing event handlers
+				indexingEventHandler.init();
+
+				// Schedule periodic index refresh for better performance
+				await indexingEventHandler.schedulePeriodicRefresh();
+
+				this.logger.info('Search engine integration initialized successfully');
+			} else {
+				this.logger.info('Search engine integration disabled or unavailable');
+			}
+		} catch (error) {
+			this.logger.warn(`Search engine initialization failed: ${(error as Error).message}`);
+		}
+
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			this.app.post(

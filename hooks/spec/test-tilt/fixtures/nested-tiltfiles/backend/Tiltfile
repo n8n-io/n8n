@@ -1,0 +1,8 @@
+# Backend Tiltfile
+def backend_resources():
+    docker_build('backend-api', '.', dockerfile='Dockerfile.backend')
+    k8s_yaml('../k8s/backend.yaml')
+    k8s_resource('backend-api', port_forwards='8080:8080')
+    
+    # Database migration
+    local_resource('db-migrate', 'make migrate', deps=['./migrations'])

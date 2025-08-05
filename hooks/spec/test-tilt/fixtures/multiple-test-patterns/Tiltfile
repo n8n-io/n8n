@@ -1,0 +1,11 @@
+# Tiltfile with multiple test file patterns
+load('ext://restart_process', 'docker_build_with_restart')
+
+docker_build('webapp', '.')
+k8s_yaml('k8s/')
+k8s_resource('webapp', port_forwards='3000:3000')
+
+# Local resources for different test patterns
+local_resource('test-tiltfile', 'python Tiltfile_test.py')
+local_resource('test-prefix', 'python test_tiltfile.py')
+local_resource('test-dir', 'python -m pytest tests/')
