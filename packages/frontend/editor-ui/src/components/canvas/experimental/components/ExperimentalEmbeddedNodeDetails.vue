@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExpressionLocalResolveContextSymbol, IsInExperimentalEmbeddedNdvKey } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -118,7 +118,6 @@ function handleOpenNdv() {
 	}
 }
 
-provide(IsInExperimentalEmbeddedNdvKey, true);
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 watchOnce(isVisible, (visible) => {

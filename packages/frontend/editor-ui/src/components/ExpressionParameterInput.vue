@@ -17,7 +17,7 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { N8nPopover } from '@n8n/design-system';
-import { CanvasKey, IsInExperimentalEmbeddedNdvKey } from '@/constants';
+import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
 import { useVueFlow } from '@vue-flow/core';
 
 const isFocused = ref(false);
@@ -59,11 +59,12 @@ const workflowsStore = useWorkflowsStore();
 const { viewportRef } = useVueFlow();
 
 const canvas = inject(CanvasKey, undefined);
-const isInExperimentalNdv = inject(IsInExperimentalEmbeddedNdvKey, false);
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const isInExperimentalNdv = computed(() => expressionLocalResolveCtx?.value !== undefined);
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
 const isOutputPopoverVisible = computed(
-	() => isFocused.value && (!isInExperimentalNdv || !canvas?.isPaneMoving.value),
+	() => isFocused.value && (!isInExperimentalNdv.value || !canvas?.isPaneMoving.value),
 );
 
 function select() {
@@ -177,7 +178,7 @@ onBeforeUnmount(() => {
 
 watch(isDragging, (newIsDragging) => {
 	// The input must stay focused in experimental NDV so that the input panel popover is open while dragging
-	if (newIsDragging && !isInExperimentalNdv) {
+	if (newIsDragging && !isInExperimentalNdv.value) {
 		onBlur();
 	}
 });
