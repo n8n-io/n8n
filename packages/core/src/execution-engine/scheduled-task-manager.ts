@@ -9,8 +9,9 @@ import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
 
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
-type Cron = { job: CronJob; summary: string };
+type Cron = { job: CronJob; summary: string; ctx: CronContext };
 type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
+export type SettingsCron = CronContext & { workflowId: string };
 
 @Service()
 export class ScheduledTaskManager {
@@ -28,10 +29,10 @@ export class ScheduledTaskManager {
 
 		if (activeInterval === 0) return;
 
-		this.logInterval = setInterval(
-			() => this.logActiveCrons(),
-			activeInterval * Time.minutes.toMilliseconds,
-		);
+		this.logInterval = setInterval(() => {
+			if (Object.keys(this.loggableCrons).length === 0) return;
+			this.logger.debug('Currently active crons', { active: this.loggableCrons });
+		}, activeInterval * Time.minutes.toMilliseconds);
 	}
 
 	registerCron(ctx: CronContext, onTick: () => void) {
@@ -78,7 +79,7 @@ export class ScheduledTaskManager {
 			timezone,
 		);
 
-		const cron: Cron = { job, summary };
+		const cron: Cron = { job, summary, ctx };
 
 		if (!workflowCrons) {
 			this.cronsByWorkflow.set(workflowId, new Map([[key, cron]]));
@@ -122,16 +123,30 @@ export class ScheduledTaskManager {
 		clearInterval(this.logInterval);
 	}
 
-	private logActiveCrons() {
-		const active: Record<string, string[]> = {};
+	/** Crons currently active instance-wide, to display in logs. */
+	private get loggableCrons() {
+		const loggableCrons: Record<string, string[]> = {};
 
 		for (const [workflowId, crons] of this.cronsByWorkflow) {
-			active[`workflowId:${workflowId}`] = Array.from(crons.values()).map(({ summary }) => summary);
+			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
+				({ summary }) => summary,
+			);
 		}
 
-		if (Object.keys(active).length === 0) return;
+		return loggableCrons;
+	}
 
-		this.logger.debug('Currently active crons', { active });
+	/** Crons currently active instance-wide, to display via `/rest/settings`. */
+	get settingsCrons() {
+		const debugCrons: SettingsCron[] = [];
+
+		for (const [workflowId, crons] of this.cronsByWorkflow) {
+			for (const cron of crons.values()) {
+				debugCrons.push({ ...cron.ctx, workflowId });
+			}
+		}
+
+		return debugCrons;
 	}
 
 	private toCronKey(ctx: CronContext): CronKey {
