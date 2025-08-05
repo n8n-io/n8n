@@ -146,7 +146,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
-		query.take(options.take ?? 0);
+		if (options?.take) {
+			query.skip(options.skip ?? 0).take(options.take);
+		}
 	}
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataStoreEntity>): void {

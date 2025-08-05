@@ -1,4 +1,5 @@
 import {
+	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
 	DeleteDataStoreColumnDto,
@@ -6,7 +7,6 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -134,7 +134,7 @@ export class DataStoreController {
 		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: DataStoreRows,
+		@Body dto: AddDataStoreRowsDto,
 	) {
 		return await this.dataStoreService.insertRows(dataStoreId, dto);
 	}
