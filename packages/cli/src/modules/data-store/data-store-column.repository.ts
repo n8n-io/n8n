@@ -1,10 +1,10 @@
 import { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
 import { addColumnQuery, deleteColumnQuery, toTableName } from './utils/sql-utils';
-import { UserError } from 'n8n-workflow';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity> {
