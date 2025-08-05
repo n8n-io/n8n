@@ -24,6 +24,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { WorkflowExecute } from '@n8n/core';
+import { NodeTestingService } from '@/services/node-testing.service';
 
 @RestController('/node-types')
 export class NodeTypesController {
@@ -31,6 +32,7 @@ export class NodeTypesController {
 		private readonly nodeTypes: NodeTypes,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly nodeTestingService: NodeTestingService,
 	) {}
 
 	@Post('/')
@@ -94,92 +96,81 @@ export class NodeTypesController {
 				parameters?: IDataObject;
 				inputData?: INodeExecutionData[];
 				mode?: WorkflowExecuteMode;
+				timeoutMs?: number;
+				safetyLevel?: 'strict' | 'moderate' | 'permissive';
+				mockExternalCalls?: boolean;
+				validateCredentials?: boolean;
 			}
 		>,
 	) {
-		const { nodeType, nodeVersion = 1, parameters = {}, inputData = [] } = req.body;
+		const { 
+			nodeType, 
+			nodeVersion = 1, 
+			parameters = {}, 
+			inputData = [],
+			timeoutMs = 30000,
+			safetyLevel = 'moderate',
+			mockExternalCalls = false,
+			validateCredentials = false,
+		} = req.body;
 
 		if (!nodeType) {
 			throw new BadRequestError('Node type is required');
 		}
 
-		this.logger.debug('Node test requested', {
+		this.logger.debug('Enhanced node test requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
 			parametersCount: Object.keys(parameters).length,
 			inputDataCount: inputData.length,
+			safetyLevel,
+			timeoutMs,
 		});
 
 		try {
-			// Get the node type instance
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
-			}
-
-			// Create a test node with the provided parameters
-			const testNode: INode = {
-				name: 'Test Node',
-				typeVersion: nodeVersion,
-				type: nodeType,
-				position: [0, 0],
-				parameters: parameters as INodeParameters,
-				disabled: false,
-				id: 'test-node-id',
-			};
-
-			// Create a minimal workflow for testing
-			const testWorkflow = new Workflow({
-				id: 'test-workflow',
-				name: 'Test Workflow',
-				nodes: [testNode],
-				connections: {},
-				active: false,
-				nodeTypes: this.nodeTypes,
-				settings: {},
-			});
-
-			// Execute the node in an isolated environment
-			const startTime = Date.now();
-			const nodeResult = await this.executeNodeIsolated(
-				testNode,
-				testWorkflow,
+			// Use the enhanced NodeTestingService for comprehensive testing
+			const result = await this.nodeTestingService.testNode(
+				nodeType,
+				nodeVersion,
+				parameters,
 				inputData,
-				req.body.mode || 'test',
+				{
+					timeoutMs,
+					safetyLevel,
+					mockExternalCalls,
+					validateCredentials,
+				}
 			);
 
-			this.logger.debug('Node test completed successfully', {
+			this.logger.debug('Enhanced node test completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
-				outputDataCount: nodeResult.data?.main?.[0]?.length || 0,
+				success: result.success,
+				executionTime: result.executionTime,
+				outputItemCount: result.metadata.outputItemCount,
 			});
 
-			// Format the result
 			return {
-				success: !nodeResult.error,
+				success: result.success,
 				nodeType,
 				nodeVersion,
 				parameters,
 				result: {
-					data: nodeResult.data,
-					executionTime: nodeResult.executionTime,
-					source: nodeResult.source,
-					error: nodeResult.error,
+					data: result.data,
+					executionTime: result.executionTime,
+					error: result.error,
 				},
 				metadata: {
+					...result.metadata,
 					executedAt: new Date(),
-					inputItemCount: inputData.length,
-					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
-					nodeDescription: nodeTypeInstance.description,
-					mockExecution: false, // Now using real execution
-					isolatedExecution: true,
-					timeoutMs: 30000,
+					executedBy: req.user.id,
+					enhancedTesting: true,
 				},
 			};
 		} catch (error) {
-			this.logger.error('Node test failed', {
+			this.logger.error('Enhanced node test failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
@@ -215,59 +206,30 @@ export class NodeTypesController {
 			throw new BadRequestError('Node type is required');
 		}
 
-		this.logger.debug('Mock data generation requested', {
+		this.logger.debug('Enhanced mock data generation requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
 			inputDataCount,
+			overridesCount: Object.keys(parameterOverrides).length,
 		});
 
 		try {
-			// Get the node type instance
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
-			}
+			// Use the enhanced NodeTestingService for sophisticated mock data generation
+			const mockDataResult = await this.nodeTestingService.generateMockData(
+				nodeType,
+				nodeVersion,
+				parameterOverrides,
+				inputDataCount
+			);
 
-			const { description } = nodeTypeInstance;
-			const mockParameters: IDataObject = {};
-			const mockInputData: INodeExecutionData[] = [];
-
-			// Generate sophisticated mock parameters based on node properties
-			if (description.properties) {
-				for (const property of description.properties) {
-					if (parameterOverrides[property.name] !== undefined) {
-						mockParameters[property.name] = parameterOverrides[property.name];
-						continue;
-					}
-
-					mockParameters[property.name] = this.generateMockParameterValue(property, nodeType);
-				}
-			}
-
-			// Generate mock input data
-			for (let i = 0; i < inputDataCount; i++) {
-				mockInputData.push({
-					json: {
-						id: i + 1,
-						name: `Mock Item ${i + 1}`,
-						value: `mock-value-${i + 1}`,
-						timestamp: new Date().toISOString(),
-						data: {
-							sample: `Sample data for item ${i + 1}`,
-							number: Math.floor(Math.random() * 1000),
-							boolean: Math.random() > 0.5,
-						},
-					},
-				});
-			}
-
-			this.logger.debug('Mock data generation completed', {
+			this.logger.debug('Enhanced mock data generation completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
-				parametersGenerated: Object.keys(mockParameters).length,
-				inputItemsGenerated: mockInputData.length,
+				parametersGenerated: Object.keys(mockDataResult.parameters).length,
+				inputItemsGenerated: mockDataResult.inputData.length,
+				hasCredentialData: !!mockDataResult.credentialData,
 			});
 
 			return {
@@ -275,18 +237,21 @@ export class NodeTypesController {
 				nodeType,
 				nodeVersion,
 				mockData: {
-					parameters: mockParameters,
-					inputData: mockInputData,
+					parameters: mockDataResult.parameters,
+					inputData: mockDataResult.inputData,
+					credentialData: mockDataResult.credentialData,
 				},
 				metadata: {
 					generatedAt: new Date(),
-					nodeDescription: description,
-					parameterCount: Object.keys(mockParameters).length,
-					inputDataCount: mockInputData.length,
+					generatedBy: req.user.id,
+					parameterCount: Object.keys(mockDataResult.parameters).length,
+					inputDataCount: mockDataResult.inputData.length,
+					contextualGeneration: true,
+					enhancedMockData: true,
 				},
 			};
 		} catch (error) {
-			this.logger.error('Mock data generation failed', {
+			this.logger.error('Enhanced mock data generation failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
@@ -325,7 +290,7 @@ export class NodeTypesController {
 			throw new BadRequestError('Parameters object is required');
 		}
 
-		this.logger.debug('Node parameter validation requested', {
+		this.logger.debug('Enhanced node parameter validation requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
@@ -333,120 +298,36 @@ export class NodeTypesController {
 		});
 
 		try {
-			// Get the node type instance
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
-			}
-
-			const { description } = nodeTypeInstance;
-			const validationResult = {
-				valid: true,
-				issues: [] as Array<{
-					field: string;
-					message: string;
-					severity: 'error' | 'warning';
-				}>,
+			// Use the enhanced NodeTestingService for comprehensive parameter validation
+			const validationResult = await this.nodeTestingService.validateNodeParameters(
 				nodeType,
 				nodeVersion,
-				validatedParameters: { ...parameters },
-			};
+				parameters
+			);
 
-			// Enhanced parameter validation
-			if (description.properties) {
-				for (const property of description.properties) {
-					const paramValue = parameters[property.name];
-					const isRequired = property.required !== false;
-
-					// Required parameter validation
-					if (
-						isRequired &&
-						(paramValue === undefined || paramValue === null || paramValue === '')
-					) {
-						validationResult.valid = false;
-						validationResult.issues.push({
-							field: property.name,
-							message: `Required parameter '${property.displayName || property.name}' is missing`,
-							severity: 'error',
-						});
-					}
-
-					// Type validation
-					if (paramValue !== undefined && property.type) {
-						const expectedType = property.type;
-						const actualType = typeof paramValue;
-
-						switch (expectedType) {
-							case 'number':
-								if (actualType !== 'number' || isNaN(Number(paramValue))) {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a valid number`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'boolean':
-								if (actualType !== 'boolean') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a boolean`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'string':
-								if (actualType !== 'string') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a string`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'collection':
-							case 'fixedCollection':
-								if (actualType !== 'object') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be an object`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-						}
-					}
-
-					// Options validation
-					if (property.options && paramValue !== undefined) {
-						const validOptions = property.options.map((opt: any) => opt.value || opt.name);
-						if (!validOptions.includes(paramValue)) {
-							validationResult.issues.push({
-								field: property.name,
-								message: `Parameter '${property.displayName || property.name}' has invalid value. Valid options: ${validOptions.join(', ')}`,
-								severity: 'error',
-							});
-							validationResult.valid = false;
-						}
-					}
-				}
-			}
-
-			this.logger.debug('Node parameter validation completed', {
+			this.logger.debug('Enhanced node parameter validation completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
 				valid: validationResult.valid,
 				issuesCount: validationResult.issues.length,
+				suggestionsCount: validationResult.suggestions.length,
 			});
 
-			return validationResult;
+			return {
+				...validationResult,
+				nodeType,
+				nodeVersion,
+				validatedParameters: { ...parameters },
+				metadata: {
+					validatedAt: new Date(),
+					validatedBy: req.user.id,
+					enhancedValidation: true,
+					hasSuggestions: validationResult.suggestions.length > 0,
+				},
+			};
 		} catch (error) {
-			this.logger.error('Node parameter validation failed', {
+			this.logger.error('Enhanced node parameter validation failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
@@ -523,71 +404,46 @@ export class NodeTypesController {
 		});
 
 		try {
-			// Get the node type instance
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new NotFoundError(`Node type '${nodeType}' version ${nodeVersion} not found`);
-			}
-
-			// Create a test node with the provided parameters
-			const testNode: INode = {
-				name: 'Safe Test Node',
-				typeVersion: nodeVersion,
-				type: nodeType,
-				position: [0, 0],
-				parameters: parameters as INodeParameters,
-				disabled: false,
-				id: 'safe-test-node-id',
-			};
-
-			// Create a minimal workflow for testing
-			const testWorkflow = new Workflow({
-				id: 'safe-test-workflow',
-				name: 'Safe Test Workflow',
-				nodes: [testNode],
-				connections: {},
-				active: false,
-				nodeTypes: this.nodeTypes,
-				settings: {},
-			});
-
-			// Execute with safety constraints
-			const nodeResult = await this.executeNodeSafeIsolated(
-				testNode,
-				testWorkflow,
+			// Use the NodeTestingService for safe testing with enhanced safety constraints
+			const result = await this.nodeTestingService.testNode(
+				nodeType,
+				nodeVersion,
+				parameters,
 				inputData,
-				req.body.mode || 'test',
-				effectiveTimeout,
-				safetyLevel,
+				{
+					timeoutMs: effectiveTimeout,
+					safetyLevel,
+					mockExternalCalls: true, // Enable mocking for safety
+					validateCredentials: false, // Skip credential validation for safety
+				}
 			);
 
 			this.logger.debug('Safe node test completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
-				success: !nodeResult.error,
-				executionTime: nodeResult.executionTime,
+				success: result.success,
+				executionTime: result.executionTime,
+				safetyLevel,
 			});
 
 			return {
-				success: !nodeResult.error,
+				success: result.success,
 				nodeType,
 				nodeVersion,
 				parameters,
 				result: {
-					data: nodeResult.data,
-					executionTime: nodeResult.executionTime,
-					source: nodeResult.source,
-					error: nodeResult.error,
+					data: result.data,
+					executionTime: result.executionTime,
+					error: result.error,
 				},
 				metadata: {
+					...result.metadata,
 					executedAt: new Date(),
-					inputItemCount: inputData.length,
-					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
-					nodeDescription: nodeTypeInstance.description,
+					executedBy: req.user.id,
 					safetyLevel,
 					timeoutMs: effectiveTimeout,
-					isolatedExecution: true,
+					enhancedSafeTesting: true,
 				},
 			};
 		} catch (error) {
@@ -768,522 +624,4 @@ export class NodeTypesController {
 		}
 	}
 
-	/**
-	 * Execute a node in an isolated environment with proper error handling and timeouts
-	 */
-	private async executeNodeIsolated(
-		node: INode,
-		workflow: Workflow,
-		inputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-	): Promise<ITaskData> {
-		const startTime = Date.now();
-
-		try {
-			// Create minimal execution data for isolated test
-			const runExecutionData: IRunExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [
-						{
-							node,
-							data: {
-								main: [inputData],
-							},
-							source: {
-								main: [
-									{
-										previousNode: 'test-input',
-									},
-								],
-							},
-						},
-					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
-
-			// Create minimal additional data for test execution
-			const additionalData: IWorkflowExecuteAdditionalData = {
-				restApiUrl: 'http://localhost:5678/rest',
-				instanceBaseUrl: 'http://localhost:5678',
-				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-				webhookBaseUrl: 'http://localhost:5678/webhook',
-				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
-				webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
-				currentNodeParameters: node.parameters,
-				executionTimeoutTimestamp: Date.now() + 30000, // 30 second timeout
-				userId: 'test-user',
-				variables: {},
-			} as IWorkflowExecuteAdditionalData;
-
-			// Create workflow executor with timeout
-			const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
-
-			// Execute with timeout protection
-			const executionTimeout = 30000; // 30 seconds
-			const executionPromise = workflowExecute.runPartialWorkflow(workflow, runExecutionData, [
-				node.name,
-			]);
-
-			const timeoutPromise = new Promise<never>((_, reject) => {
-				setTimeout(() => {
-					reject(new ApplicationError('Node execution timeout after 30 seconds'));
-				}, executionTimeout);
-			});
-
-			const result = await Promise.race([executionPromise, timeoutPromise]);
-
-			// Extract result for the tested node
-			const nodeResult = result.runData[node.name]?.[0];
-			if (!nodeResult) {
-				// Return error result if node didn't execute
-				return {
-					startTime,
-					executionTime: Date.now() - startTime,
-					executionIndex: 0,
-					data: {
-						main: [[]],
-					},
-					source: [],
-					error: {
-						message: 'Node execution failed - no result data',
-						name: 'NodeExecutionError',
-					},
-				};
-			}
-
-			return {
-				startTime,
-				executionTime: Date.now() - startTime,
-				executionIndex: 0,
-				data: nodeResult.data || { main: [[]] },
-				source: nodeResult.source || [],
-				error: nodeResult.error,
-			};
-		} catch (error) {
-			// Return error result with proper error information
-			return {
-				startTime,
-				executionTime: Date.now() - startTime,
-				executionIndex: 0,
-				data: {
-					main: [[]],
-				},
-				source: [],
-				error: {
-					message: error instanceof Error ? error.message : String(error),
-					name: error instanceof Error ? error.name : 'NodeTestError',
-					stack: error instanceof Error ? error.stack : undefined,
-				},
-			};
-		}
-	}
-
-	/**
-	 * Execute a node in a safe isolated environment with additional safety constraints
-	 */
-	private async executeNodeSafeIsolated(
-		node: INode,
-		workflow: Workflow,
-		inputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		timeoutMs: number,
-		safetyLevel: 'strict' | 'moderate' | 'permissive',
-	): Promise<ITaskData> {
-		const startTime = Date.now();
-
-		try {
-			// Apply safety-level specific input data constraints
-			const maxInputItems = safetyLevel === 'strict' ? 10 : safetyLevel === 'moderate' ? 100 : 1000;
-			const constrainedInputData = inputData.slice(0, maxInputItems);
-
-			// Sanitize input data for safety
-			const sanitizedInputData = constrainedInputData.map((item) => ({
-				...item,
-				json: this.sanitizeObjectForSafety(item.json, safetyLevel),
-			}));
-
-			// Create execution data with safety constraints
-			const runExecutionData: IRunExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [
-						{
-							node,
-							data: {
-								main: [sanitizedInputData],
-							},
-							source: {
-								main: [
-									{
-										previousNode: 'safe-test-input',
-									},
-								],
-							},
-						},
-					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
-
-			// Create additional data with safety restrictions
-			const additionalData: IWorkflowExecuteAdditionalData = {
-				restApiUrl: 'http://localhost:5678/rest',
-				instanceBaseUrl: 'http://localhost:5678',
-				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-				webhookBaseUrl: 'http://localhost:5678/webhook',
-				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
-				webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
-				currentNodeParameters: node.parameters,
-				executionTimeoutTimestamp: Date.now() + timeoutMs,
-				userId: 'safe-test-user',
-				variables: {},
-			} as IWorkflowExecuteAdditionalData;
-
-			// Create workflow executor
-			const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
-
-			// Execute with safety timeout
-			const executionPromise = workflowExecute.runPartialWorkflow(workflow, runExecutionData, [
-				node.name,
-			]);
-
-			const timeoutPromise = new Promise<never>((_, reject) => {
-				setTimeout(() => {
-					reject(new ApplicationError(`Safe node execution timeout after ${timeoutMs}ms`));
-				}, timeoutMs);
-			});
-
-			const result = await Promise.race([executionPromise, timeoutPromise]);
-
-			// Extract and validate result
-			const nodeResult = result.runData[node.name]?.[0];
-			if (!nodeResult) {
-				return {
-					startTime,
-					executionTime: Date.now() - startTime,
-					executionIndex: 0,
-					data: { main: [[]] },
-					source: [],
-					error: {
-						message: 'Safe node execution failed - no result data',
-						name: 'SafeNodeExecutionError',
-					},
-				};
-			}
-
-			// Apply output data constraints for safety
-			const sanitizedResult = {
-				...nodeResult,
-				data: this.sanitizeExecutionDataForSafety(nodeResult.data, safetyLevel),
-			};
-
-			return {
-				startTime,
-				executionTime: Date.now() - startTime,
-				executionIndex: 0,
-				data: sanitizedResult.data || { main: [[]] },
-				source: sanitizedResult.source || [],
-				error: sanitizedResult.error,
-			};
-		} catch (error) {
-			return {
-				startTime,
-				executionTime: Date.now() - startTime,
-				executionIndex: 0,
-				data: { main: [[]] },
-				source: [],
-				error: {
-					message: error instanceof Error ? error.message : String(error),
-					name: error instanceof Error ? error.name : 'SafeNodeTestError',
-					stack: safetyLevel === 'permissive' && error instanceof Error ? error.stack : undefined,
-				},
-			};
-		}
-	}
-
-	/**
-	 * Sanitize object data based on safety level
-	 */
-	private sanitizeObjectForSafety(obj: any, safetyLevel: string): any {
-		if (!obj || typeof obj !== 'object') {
-			return obj;
-		}
-
-		const maxDepth = safetyLevel === 'strict' ? 3 : safetyLevel === 'moderate' ? 5 : 10;
-		const maxKeys = safetyLevel === 'strict' ? 50 : safetyLevel === 'moderate' ? 200 : 1000;
-
-		const sanitize = (value: any, depth: number): any => {
-			if (depth > maxDepth) {
-				return '[Object: max depth exceeded]';
-			}
-
-			if (Array.isArray(value)) {
-				const maxItems = safetyLevel === 'strict' ? 100 : safetyLevel === 'moderate' ? 500 : 2000;
-				return value.slice(0, maxItems).map((item) => sanitize(item, depth + 1));
-			}
-
-			if (value && typeof value === 'object') {
-				const keys = Object.keys(value);
-				if (keys.length > maxKeys) {
-					const result: any = {};
-					keys.slice(0, maxKeys).forEach((key) => {
-						result[key] = sanitize(value[key], depth + 1);
-					});
-					result._truncated = `${keys.length - maxKeys} keys removed for safety`;
-					return result;
-				}
-
-				const result: any = {};
-				keys.forEach((key) => {
-					result[key] = sanitize(value[key], depth + 1);
-				});
-				return result;
-			}
-
-			// Sanitize potentially dangerous string values
-			if (typeof value === 'string' && value.length > 10000) {
-				return value.substring(0, 10000) + '... [truncated for safety]';
-			}
-
-			return value;
-		};
-
-		return sanitize(obj, 0);
-	}
-
-	/**
-	 * Sanitize execution data output based on safety level
-	 */
-	private sanitizeExecutionDataForSafety(data: any, safetyLevel: string): any {
-		if (!data || !data.main) {
-			return data;
-		}
-
-		const maxOutputItems = safetyLevel === 'strict' ? 50 : safetyLevel === 'moderate' ? 200 : 1000;
-
-		return {
-			...data,
-			main: data.main.map((output: any[]) => {
-				if (!Array.isArray(output)) {
-					return output;
-				}
-				const truncated = output.slice(0, maxOutputItems);
-				if (output.length > maxOutputItems) {
-					truncated.push({
-						json: {
-							_notice: `Output truncated: ${output.length - maxOutputItems} items removed for safety`,
-							_safetyLevel: safetyLevel,
-						},
-					});
-				}
-				return truncated.map((item) => ({
-					...item,
-					json: this.sanitizeObjectForSafety(item.json, safetyLevel),
-				}));
-			}),
-		};
-	}
-
-	/**
-	 * Generate sophisticated mock parameter values based on property type and context
-	 */
-	private generateMockParameterValue(property: any, nodeType: string): any {
-		// Use parameter overrides if provided by property default
-		if (property.default !== undefined) {
-			return property.default;
-		}
-
-		const paramName = property.name?.toLowerCase() || '';
-		const displayName = property.displayName?.toLowerCase() || '';
-
-		switch (property.type) {
-			case 'string':
-				if (property.options) {
-					const firstOption = property.options[0];
-					return firstOption && typeof firstOption === 'object' && 'value' in firstOption
-						? firstOption.value
-						: firstOption;
-				}
-
-				// Generate contextual mock strings based on parameter name
-				if (paramName.includes('email') || displayName.includes('email')) {
-					return 'test@example.com';
-				}
-				if (
-					paramName.includes('url') ||
-					displayName.includes('url') ||
-					paramName.includes('endpoint')
-				) {
-					return 'https://api.example.com/endpoint';
-				}
-				if (
-					paramName.includes('token') ||
-					paramName.includes('key') ||
-					paramName.includes('secret')
-				) {
-					return 'mock_api_key_123456789';
-				}
-				if (paramName.includes('id') || displayName.includes('id')) {
-					return `mock_id_${Math.random().toString(36).substr(2, 9)}`;
-				}
-				if (paramName.includes('name') || displayName.includes('name')) {
-					return `Mock ${property.displayName || property.name}`;
-				}
-				if (
-					paramName.includes('message') ||
-					paramName.includes('text') ||
-					paramName.includes('content')
-				) {
-					return 'This is a mock message for testing purposes';
-				}
-				if (paramName.includes('path') || paramName.includes('file')) {
-					return '/mock/path/to/file.txt';
-				}
-				if (paramName.includes('query') || paramName.includes('search')) {
-					return 'mock search query';
-				}
-				return `mock-${property.name || 'value'}`;
-
-			case 'number':
-				if (paramName.includes('port')) {
-					return 8080;
-				}
-				if (paramName.includes('timeout')) {
-					return 30000;
-				}
-				if (paramName.includes('limit') || paramName.includes('max')) {
-					return 100;
-				}
-				if (paramName.includes('page')) {
-					return 1;
-				}
-				if (paramName.includes('amount') || paramName.includes('price')) {
-					return 99.99;
-				}
-				return 42;
-
-			case 'boolean':
-				// Contextual boolean defaults
-				if (paramName.includes('enable') || paramName.includes('active')) {
-					return true;
-				}
-				if (paramName.includes('disable') || paramName.includes('ignore')) {
-					return false;
-				}
-				return true;
-
-			case 'collection':
-				// Generate contextual collection data
-				if (paramName.includes('header')) {
-					return {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock_token',
-					};
-				}
-				if (paramName.includes('param') || paramName.includes('query')) {
-					return {
-						page: 1,
-						limit: 10,
-						search: 'mock query',
-					};
-				}
-				return {};
-
-			case 'fixedCollection':
-				// Generate mock fixed collection based on options
-				if (property.options && property.options.length > 0) {
-					const firstOption = property.options[0];
-					if (firstOption.values) {
-						const mockItem: any = {};
-						firstOption.values.forEach((subProperty: any) => {
-							mockItem[subProperty.name] = this.generateMockParameterValue(subProperty, nodeType);
-						});
-						return {
-							[firstOption.name]: [mockItem],
-						};
-					}
-				}
-				return {};
-
-			case 'options':
-				if (property.options && property.options.length > 0) {
-					const firstOption = property.options[0];
-					return typeof firstOption === 'object' && 'value' in firstOption
-						? firstOption.value
-						: firstOption;
-				}
-				return 'option1';
-
-			case 'multiOptions':
-				if (property.options && property.options.length > 0) {
-					const firstOption = property.options[0];
-					const value =
-						typeof firstOption === 'object' && 'value' in firstOption
-							? firstOption.value
-							: firstOption;
-					return [value];
-				}
-				return ['option1'];
-
-			case 'dateTime':
-				return new Date().toISOString();
-
-			case 'color':
-				return '#FF5733';
-
-			case 'json':
-				return JSON.stringify(
-					{
-						key: 'value',
-						number: 123,
-						boolean: true,
-						array: [1, 2, 3],
-					},
-					null,
-					2,
-				);
-
-			case 'notice':
-			case 'hidden':
-				return undefined;
-
-			default:
-				// Node-type specific defaults
-				if (nodeType.includes('Http') || nodeType.includes('API')) {
-					if (paramName.includes('method')) {
-						return 'GET';
-					}
-					if (paramName.includes('url')) {
-						return 'https://api.example.com/endpoint';
-					}
-				}
-
-				if (nodeType.includes('Database') || nodeType.includes('SQL')) {
-					if (paramName.includes('query')) {
-						return 'SELECT * FROM table_name LIMIT 10';
-					}
-					if (paramName.includes('table')) {
-						return 'mock_table';
-					}
-				}
-
-				return null;
-		}
-	}
 }
