@@ -167,7 +167,7 @@ describe('isFilePathBlocked', () => {
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
-		expect(await isFilePathBlocked(filePath)).toBe(true);
+		expect(await isFilePathBlocked(filePath)).toBe(false);
 	});
 });
 
