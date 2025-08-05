@@ -1,16 +1,6 @@
 import { z } from 'zod';
 
-import type {
-	AddDataStoreColumnDto,
-	CreateDataStoreDto,
-	DataStoreColumnResultDto,
-	DataStoreResultDto,
-	DeleteDataStoreColumnDto,
-	ListDataStoreContentQueryDto,
-	ListDataStoreQueryDto,
-	MoveDataStoreColumnDto,
-	UpdateDataStoreDto,
-} from '../dto';
+import type { ListDataStoreQueryDto } from '../dto';
 
 export const dataStoreNameSchema = z.string().trim().min(1).max(128);
 export const dataStoreIdSchema = z.string().max(36);
@@ -23,7 +13,7 @@ export const dataStoreColumnNameSchema = z
 	.min(1)
 	.max(128)
 	.regex(
-		/^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
+		DATA_STORE_COLUMN_REGEX,
 		'Only alphanumeric characters and non-leading dashes are allowed for column names',
 	);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
@@ -64,26 +54,3 @@ export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 export type DataStoreColumnJsType = string | number | boolean | Date;
 
 export type DataStoreRows = Array<Record<PropertyKey, DataStoreColumnJsType | null>>;
-
-export interface IDataStoreService {
-	createDataStore(projectId: string, dto: CreateDataStoreDto): Promise<DataStoreResultDto>;
-	updateDataStore(dataStoreId: string, dto: UpdateDataStoreDto): Promise<boolean>;
-	getManyAndCount(
-		options: DataStoreListOptions,
-	): Promise<{ count: number; data: DataStoreResultDto[] }>;
-
-	deleteDataStoreByProjectId(projectId: string): Promise<boolean>;
-	deleteDataStoreAll(): Promise<boolean>;
-	deleteDataStore(dataStoreId: string): Promise<boolean>;
-
-	getColumns(dataStoreId: string): Promise<DataStoreColumnResultDto[]>;
-	addColumn(dataStoreId: string, dto: AddDataStoreColumnDto): Promise<DataStoreColumnResultDto>;
-	moveColumn(dataStoreId: string, columnId: string, dto: MoveDataStoreColumnDto): Promise<boolean>;
-	deleteColumn(dataStoreId: string, dto: DeleteDataStoreColumnDto): Promise<boolean>;
-
-	getManyRowsAndCount(
-		dataStoreId: string,
-		dto: Partial<ListDataStoreContentQueryDto>,
-	): Promise<{ count: number; data: DataStoreRows[] }>;
-	insertRows(dataStoreId: string, rows: DataStoreRows): Promise<boolean>;
-}

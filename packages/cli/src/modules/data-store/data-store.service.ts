@@ -6,7 +6,6 @@ import type {
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
 	DataStoreRows,
-	IDataStoreService,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
@@ -20,7 +19,7 @@ import { DataStoreRepository } from './data-store.repository';
 import { toTableName } from './utils/sql-utils';
 
 @Service()
-export class DataStoreService implements IDataStoreService {
+export class DataStoreService {
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,

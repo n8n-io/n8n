@@ -56,5 +56,4 @@ export {
 	type DataStoreRows,
 	type DataStoreListOptions,
 	type DataStoreUserTableName,
-	type IDataStoreService,
 } from './schemas/data-store.schema';
