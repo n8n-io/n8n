@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { test, expect } from '../fixtures/base';
+import { test, expect } from '../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
@@ -21,20 +21,13 @@ test.describe('Workflow Suggested Actions', () => {
 	};
 	const getSuggestedActionsPopover = (page: Page) =>
 		page.locator('[data-reka-popper-content-wrapper=""]').filter({ hasText: /./ });
-	const getActionItemByActionId = (page: Page, id: string) =>
-		page.getByTestId('suggested-action-item').filter({ hasText: new RegExp(id, 'i') });
-	const getActionIgnoreButton = (page: Page, actionId: string) =>
-		getActionItemByActionId(page, actionId).getByTestId('suggested-action-ignore');
-	const getIgnoreAllButton = (page: Page) => page.getByTestId('suggested-action-ignore-all');
-	const getActionCompletedIcon = (page: Page, actionId: string) =>
-		getActionItemByActionId(page, actionId).locator('[data-icon="circle-check"]');
-
 	const getActivationModal = (page: Page) => page.getByTestId('activation-modal');
 	const getErrorActionItem = (page: Page) =>
 		getSuggestedActionItem(page, 'Set up error notifications');
 	const getTimeSavedActionItem = (page: Page) => getSuggestedActionItem(page, 'Track time saved');
 	const getEvaluationsActionItem = (page: Page) =>
 		getSuggestedActionItem(page, 'Test reliability of AI steps');
+	const getIgnoreAllButton = (page: Page) => page.getByTestId('suggested-action-ignore-all');
 
 	const closeActivationModal = async (page: Page) => {
 		await expect(getActivationModal(page)).toBeVisible();
@@ -155,113 +148,77 @@ test.describe('Workflow Suggested Actions', () => {
 		await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
-	// test('should allow ignoring individual actions', async ({ n8n }) => {
-	// 	// Add schedule trigger
-	// 	await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
-	// 	await n8n.canvas.saveWorkflow();
-	// 	await activateWorkflow(n8n.page);
-	// 	await closeActivationModal(n8n.page);
+	test('should allow ignoring individual actions', async ({ n8n }) => {
+		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.saveWorkflow();
+		await activateWorkflow(n8n.page);
+		await closeActivationModal(n8n.page);
 
-	// 	// Suggested actions popover should be open
-	// 	await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
+		// Suggested actions popover should be open
+		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
 
-	// 	// Verify error workflow action is visible
-	// 	await expect(getActionItemByActionId(n8n.page, 'errorWorkflow')).toBeVisible();
+		// Verify error workflow action is visible
+		await expect(getSuggestedActionItem(n8n.page).first()).toContainText('error');
+		await getSuggestedActionItem(n8n.page).first().getByTitle('Ignore').click();
+		await n8n.page.waitForTimeout(500); // items disappear after timeout
+		await expect(getErrorActionItem(n8n.page)).toBeHidden();
 
-	// 	// Click ignore button for error workflow
-	// 	await getActionIgnoreButton(n8n.page, 'errorWorkflow').click();
+		// Close and reopen popover
+		await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
+		await getSuggestedActionsButton(n8n.page).click();
 
-	// 	// Close and reopen popover
-	// 	await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
-	// 	await getSuggestedActionsButton(n8n.page).click();
+		// Verify error workflow action is still no longer visible
+		await expect(getErrorActionItem(n8n.page)).toBeHidden();
+		await expect(getTimeSavedActionItem(n8n.page)).toBeVisible();
+	});
 
-	// 	// Verify error workflow action is no longer visible
-	// 	await expect(
-	// 		n8n.page.getByTestId('suggested-action-item').filter({ hasText: /errorWorkflow/i }),
-	// 	).toBeHidden();
-	// 	// But time saved should still be visible
-	// 	await expect(
-	// 		n8n.page.getByTestId('suggested-action-item').filter({ hasText: /time/i }),
-	// 	).toBeVisible();
-	// });
+	test('should show completed state for configured actions', async ({ n8n }) => {
+		// Add schedule trigger and activate workflow
+		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.saveWorkflow();
+		await activateWorkflow(n8n.page);
+		await closeActivationModal(n8n.page);
 
-	// test('should show completed state for configured actions', async ({ n8n }) => {
-	// 	// Add schedule trigger
-	// 	await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
-	// 	await n8n.canvas.saveWorkflow();
-	// 	await activateWorkflow(n8n.page);
-	// 	await closeActivationModal(n8n.page);
+		// Open workflow settings and set error workflow
+		await openWorkflowSettings(n8n.page);
 
-	// 	// Open workflow settings and set error workflow
-	// 	await openWorkflowSettings(n8n.page);
+		// Set an error workflow (we'll use a dummy value)
+		await n8n.page.getByTestId('workflow-settings-error-workflow').click();
+		await n8n.page.getByRole('option', { name: 'My workflow' }).first().click();
+		await n8n.page.getByRole('button', { name: 'Save' }).click();
+		await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
 
-	// 	// Set an error workflow (we'll use a dummy value)
-	// 	await n8n.page.getByTestId('workflow-settings-error-workflow').click();
-	// 	const selectOptions = n8n.page.locator('.el-select-dropdown__item').filter({ hasText: /./ });
-	// 	if ((await selectOptions.count()) > 1) {
-	// 		await selectOptions.nth(1).click();
-	// 	}
+		// Open suggested actions
+		await getSuggestedActionsButton(n8n.page).click();
+		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
 
-	// 	// Save settings
-	// 	await n8n.page.getByTestId('workflow-settings-save-button').click();
-	// 	await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
+		// Verify error workflow action shows as completed
+		await expect(
+			getSuggestedActionItem(n8n.page).first().locator('svg[data-icon="circle-check"]'),
+		).toBeVisible();
+	});
 
-	// 	// Open suggested actions
-	// 	await getSuggestedActionsButton(n8n.page).click();
-	// 	await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
+	test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
+		// Add schedule trigger
+		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.saveWorkflow();
+		await activateWorkflow(n8n.page);
+		await closeActivationModal(n8n.page);
 
-	// 	// Verify error workflow action shows as completed
-	// 	await expect(getActionCompletedIcon(n8n.page, 'errorWorkflow')).toBeVisible();
-	// });
+		// Suggested actions should be open
+		await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
 
-	// test('should not show evaluations action without AI nodes', async ({ n8n, api }) => {
-	// 	// Enable evaluations feature
-	// 	await api.enableFeature('evaluation');
+		// Click ignore all button
+		await getIgnoreAllButton(n8n.page).click();
 
-	// 	// Add schedule trigger (no AI nodes)
-	// 	await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
-	// 	await n8n.canvas.saveWorkflow();
-	// 	await activateWorkflow(n8n.page);
+		// Confirm in the dialog
+		await expect(n8n.page.locator('.el-message-box')).toBeVisible();
+		await n8n.page
+			.locator('.el-message-box__btns button')
+			.filter({ hasText: /ignore for all workflows/i })
+			.click();
 
-	// 	// Open suggested actions
-	// 	await getSuggestedActionsButton(n8n.page).click();
-	// 	await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
-
-	// 	// Verify evaluations action is not present
-	// 	await expect(
-	// 		n8n.page.getByTestId('suggested-action-item').filter({ hasText: /evaluation/i }),
-	// 	).toBeHidden();
-	// 	// But other actions should be visible
-	// 	await expect(
-	// 		n8n.page.getByTestId('suggested-action-item').filter({ hasText: /error/i }),
-	// 	).toBeVisible();
-	// 	await expect(
-	// 		n8n.page.getByTestId('suggested-action-item').filter({ hasText: /time/i }),
-	// 	).toBeVisible();
-	// });
-
-	// test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
-	// 	// Add schedule trigger
-	// 	await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
-	// 	await n8n.canvas.saveWorkflow();
-	// 	await activateWorkflow(n8n.page);
-	// 	await closeActivationModal(n8n.page);
-
-	// 	// Open suggested actions
-	// 	await getSuggestedActionsButton(n8n.page).click();
-	// 	await expect(getSuggestedActionsPopover(n8n.page)).toBeVisible();
-
-	// 	// Click ignore all button
-	// 	await getIgnoreAllButton(n8n.page).click();
-
-	// 	// Confirm in the dialog
-	// 	await expect(n8n.page.locator('.el-message-box')).toBeVisible();
-	// 	await n8n.page
-	// 		.locator('.el-message-box__btns button')
-	// 		.filter({ hasText: /ignore for all workflows/i })
-	// 		.click();
-
-	// 	// Verify suggested actions button is no longer visible
-	// 	await expect(getSuggestedActionsButton(n8n.page)).toBeHidden();
-	// });
+		// Verify suggested actions button is no longer visible
+		await expect(getSuggestedActionsButton(n8n.page)).toBeHidden();
+	});
 });
