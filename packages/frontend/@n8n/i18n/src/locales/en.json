@@ -2818,7 +2818,7 @@
 	"dataStore.error.fetching": "Error loading data stores",
 	"dataStore.add.title": "Create data store",
 	"dataStore.add.description": "Set up a new data store to organize and manage your data.",
-	"dataStore.add.button.label": "Create data store",
+	"dataStore.add.button.label": "Create Data Store",
 	"dataStore.add.input.name.label": "Data Store Name",
 	"dataStore.add.input.name.placeholder": "Enter data store name",
 	"dataStore.add.error": "Error creating data store",
