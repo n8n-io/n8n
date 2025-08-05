@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
 
 interface FunctionDocumentation {
 	name: string;
@@ -11,7 +10,7 @@ interface FunctionDocumentation {
 		type: string;
 		description: string;
 		optional?: boolean;
-		defaultValue?: any;
+		defaultValue?: unknown;
 	}>;
 	returnType: string;
 	examples: Array<{
@@ -77,7 +76,7 @@ export class ExpressionDocsService {
 		const allDocs = this.getAllFunctionDocs();
 
 		if (functionName) {
-			return allDocs.find((doc) => doc.name === functionName) || null;
+			return allDocs.find((doc) => doc.name === functionName) ?? null;
 		}
 
 		return allDocs;
@@ -92,7 +91,7 @@ export class ExpressionDocsService {
 		const allDocs = this.getAllVariableDocs();
 
 		if (variableName) {
-			return allDocs.find((doc) => doc.name === variableName) || null;
+			return allDocs.find((doc) => doc.name === variableName) ?? null;
 		}
 
 		return allDocs;
@@ -105,7 +104,7 @@ export class ExpressionDocsService {
 		const allDocs = this.getAllSyntaxDocs();
 
 		if (topic) {
-			return allDocs.find((doc) => doc.topic === topic) || null;
+			return allDocs.find((doc) => doc.topic === topic) ?? null;
 		}
 
 		return allDocs;
@@ -453,7 +452,7 @@ export class ExpressionDocsService {
 				],
 				category: 'core',
 				properties: {
-					'*': {
+					all: {
 						type: 'any',
 						description: 'Any property from the JSON data',
 						example: '$json.propertyName',
@@ -851,19 +850,19 @@ export class ExpressionDocsService {
 	 */
 	private getNodeSpecificTips(nodeType: string, context?: string): string[] {
 		const tips: Record<string, string[]> = {
-			'HTTP Request': [
+			httpRequest: [
 				'Use $json to access response data',
 				'Check $json.statusCode for HTTP status',
 				'Access headers with $json.headers',
 				'Use expressions in URL parameters',
 			],
-			Set: [
+			setNode: [
 				'Use expressions to transform data',
 				'Access input data with $json',
 				'Combine multiple data sources',
 				'Set conditional values with ternary operators',
 			],
-			Code: [
+			codeNode: [
 				'Access all items with $input.all()',
 				'Return data using return statement',
 				'Use $json for current item in Code node context',
@@ -873,12 +872,12 @@ export class ExpressionDocsService {
 				'Combine conditions with && and ||',
 				'Check for null/undefined with optional chaining',
 			],
-			Switch: [
+			switchNode: [
 				'Compare against $json properties',
 				'Use regular expressions for pattern matching',
 				'Support multiple conditions per output',
 			],
-			Webhook: [
+			webhookNode: [
 				'Access request body with $json',
 				'Get query parameters with $parameter',
 				'Check HTTP method with $parameter.httpMethod',

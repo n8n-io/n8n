@@ -66,6 +66,29 @@ interface WorkflowExecution {
 	pid?: number;
 	memoryStart?: number;
 	cpuStart?: number;
+	resourceSamples?: WorkflowResourceSample[];
+}
+
+interface WorkflowResourceSample {
+	timestamp: number;
+	memoryUsage: number;
+	cpuUsage: number;
+	activeNodes: number;
+}
+
+interface WorkflowResourceMetrics {
+	workflowId: string;
+	workflowName?: string;
+	totalExecutions: number;
+	averageExecutionTime: number;
+	averageMemoryUsage: number;
+	peakMemoryUsage: number;
+	averageCpuUsage: number;
+	peakCpuUsage: number;
+	totalResourceCost: number; // CPU * Memory * Time
+	resourceEfficiency: number; // Output / Resource Cost
+	lastExecuted: Date;
+	samples: WorkflowResourceSample[];
 }
 
 interface NodeExecution {
@@ -132,6 +155,9 @@ export class SystemMonitoringService extends EventEmitter {
 	private liveExecutions = new Map<string, Map<string, NodeExecution>>(); // key: executionId, value: Map of nodeId -> NodeExecution
 	private metricsHistory: SystemMetricsHistoryDto[] = [];
 	private workflowMetricsHistory = new Map<string, WorkflowMetricsHistoryDto>();
+	private workflowResourceMetrics = new Map<string, WorkflowResourceMetrics>();
+	private workflowResourceHistory = new Map<string, WorkflowResourceSample[]>(); // key: workflowId
+	private workflowSamplingInterval?: NodeJS.Timeout;
 	private alerts: ResourceAlertDto[] = [];
 	private alertRules: AlertRule[] = [];
 	private config: MonitoringConfigDto;
@@ -160,6 +186,7 @@ export class SystemMonitoringService extends EventEmitter {
 			// Start monitoring if enabled
 			if (this.config.enabled) {
 				await this.startMonitoring();
+				await this.startWorkflowResourceMonitoring();
 			}
 
 			// Set up event listeners for workflow executions
@@ -314,12 +341,27 @@ export class SystemMonitoringService extends EventEmitter {
 			startTime: Date.now(),
 			pid: process.pid,
 			memoryStart: process.memoryUsage().rss,
+			cpuStart: process.cpuUsage().user + process.cpuUsage().system,
+			resourceSamples: [],
 		};
 
 		this.workflowExecutions.set(executionId, execution);
+
+		// Initialize workflow metrics if not exists
+		if (!this.workflowResourceMetrics.has(workflowId)) {
+			this.initializeWorkflowMetrics(workflowId, workflowData.name);
+		}
+
 		this.logger.debug('Started tracking workflow execution', {
 			executionId,
 			workflowId,
+		});
+
+		// Emit event for workflow start
+		this.emit('workflowExecutionStart', {
+			workflowId,
+			executionId,
+			startTime: execution.startTime,
 		});
 	}
 
@@ -335,6 +377,11 @@ export class SystemMonitoringService extends EventEmitter {
 			const duration = endTime - execution.startTime;
 			const memoryEnd = process.memoryUsage().rss;
 			const memoryUsed = memoryEnd - (execution.memoryStart || 0);
+			const cpuEnd = process.cpuUsage().user + process.cpuUsage().system;
+			const cpuUsed = cpuEnd - (execution.cpuStart || 0);
+
+			// Update workflow resource metrics
+			await this.updateWorkflowResourceMetrics(execution, duration, memoryUsed, cpuUsed, result);
 
 			// Check for resource alerts
 			await this.checkWorkflowResourceAlerts(execution, duration, memoryUsed, result);
@@ -344,11 +391,23 @@ export class SystemMonitoringService extends EventEmitter {
 
 			this.workflowExecutions.delete(executionId);
 
+			// Emit event for workflow completion
+			this.emit('workflowExecutionEnd', {
+				workflowId: execution.workflowId,
+				executionId,
+				duration,
+				memoryUsed,
+				cpuUsed,
+				status: result.finished ? 'success' : 'error',
+				resourceSamples: execution.resourceSamples || [],
+			});
+
 			this.logger.debug('Finished tracking workflow execution', {
 				executionId,
 				workflowId: execution.workflowId,
 				duration,
 				memoryUsed,
+				cpuUsed,
 				status: result.finished ? 'success' : 'error',
 			});
 		} catch (error) {
@@ -1065,6 +1124,80 @@ export class SystemMonitoringService extends EventEmitter {
 	}
 
 	/**
+	 * Get workflow resource metrics
+	 */
+	async getWorkflowResourceMetrics(
+		workflowId: string,
+		timeRange?: string,
+	): Promise<WorkflowResourceMetrics | null> {
+		const metrics = this.workflowResourceMetrics.get(workflowId);
+		if (!metrics) return null;
+
+		// Filter samples by time range if specified
+		if (timeRange) {
+			const cutoffTime = this.getTimeRangeCutoff(timeRange);
+			const filteredSamples = metrics.samples.filter((sample) => sample.timestamp >= cutoffTime);
+			return { ...metrics, samples: filteredSamples };
+		}
+
+		return metrics;
+	}
+
+	/**
+	 * Get all workflow resource metrics
+	 */
+	async getAllWorkflowResourceMetrics(
+		timeRange?: string,
+	): Promise<Map<string, WorkflowResourceMetrics>> {
+		const result = new Map<string, WorkflowResourceMetrics>();
+
+		for (const [workflowId, metrics] of this.workflowResourceMetrics.entries()) {
+			if (timeRange) {
+				const cutoffTime = this.getTimeRangeCutoff(timeRange);
+				const filteredSamples = metrics.samples.filter((sample) => sample.timestamp >= cutoffTime);
+				result.set(workflowId, { ...metrics, samples: filteredSamples });
+			} else {
+				result.set(workflowId, metrics);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Get workflow resource comparison
+	 */
+	async getWorkflowResourceComparison(
+		workflowIds: string[],
+		timeRange?: string,
+	): Promise<WorkflowResourceMetrics[]> {
+		const comparisons: WorkflowResourceMetrics[] = [];
+
+		for (const workflowId of workflowIds) {
+			const metrics = await this.getWorkflowResourceMetrics(workflowId, timeRange);
+			if (metrics) {
+				comparisons.push(metrics);
+			}
+		}
+
+		// Sort by total resource cost (descending)
+		return comparisons.sort((a, b) => b.totalResourceCost - a.totalResourceCost);
+	}
+
+	/**
+	 * Get workflow resource alerts
+	 */
+	getWorkflowResourceAlerts(workflowId?: string): ResourceAlertDto[] {
+		let alerts = this.alerts.filter((alert) => alert.type === 'workflow');
+
+		if (workflowId) {
+			alerts = alerts.filter((alert) => alert.workflowId === workflowId);
+		}
+
+		return alerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+	}
+
+	/**
 	 * Start monitoring service
 	 */
 	private async startMonitoring(): Promise<void> {
@@ -1097,6 +1230,7 @@ export class SystemMonitoringService extends EventEmitter {
 			clearInterval(this.monitoringInterval);
 			this.monitoringInterval = undefined;
 		}
+		this.stopWorkflowResourceMonitoring();
 		this.logger.info('System monitoring stopped');
 	}
 
@@ -1294,6 +1428,48 @@ export class SystemMonitoringService extends EventEmitter {
 				operator: '>',
 				threshold: 85,
 				severity: 'warning',
+				enabled: true,
+				notifications: { email: false, webhook: false },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				triggerCount: 0,
+			},
+			{
+				id: 'workflow-long-execution',
+				name: 'Workflow Long Execution Time',
+				type: 'workflow',
+				metric: 'executionTime',
+				operator: '>',
+				threshold: 300000, // 5 minutes
+				severity: 'warning',
+				enabled: true,
+				notifications: { email: false, webhook: false },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				triggerCount: 0,
+			},
+			{
+				id: 'workflow-high-memory',
+				name: 'Workflow High Memory Usage',
+				type: 'workflow',
+				metric: 'memoryUsage',
+				operator: '>',
+				threshold: 1024 * 1024 * 1024, // 1GB
+				severity: 'warning',
+				enabled: true,
+				notifications: { email: false, webhook: false },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				triggerCount: 0,
+			},
+			{
+				id: 'workflow-excessive-resource-cost',
+				name: 'Workflow Excessive Resource Cost',
+				type: 'workflow',
+				metric: 'resourceCost',
+				operator: '>',
+				threshold: 100, // Arbitrary cost threshold
+				severity: 'critical',
 				enabled: true,
 				notifications: { email: false, webhook: false },
 				createdAt: new Date(),
@@ -2417,6 +2593,22 @@ export class SystemMonitoringService extends EventEmitter {
 			}
 		}
 
+		// Clean up old workflow resource history
+		for (const [workflowId, samples] of this.workflowResourceHistory.entries()) {
+			const recentSamples = samples.filter((sample) => sample.timestamp > cutoffTime);
+			if (recentSamples.length === 0) {
+				this.workflowResourceHistory.delete(workflowId);
+			} else {
+				this.workflowResourceHistory.set(workflowId, recentSamples);
+			}
+		}
+
+		// Clean up workflow resource metrics samples
+		for (const [workflowId, metrics] of this.workflowResourceMetrics.entries()) {
+			const recentSamples = metrics.samples.filter((sample) => sample.timestamp > cutoffTime);
+			metrics.samples = recentSamples;
+		}
+
 		// Clean up completed live executions
 		for (const [executionId, nodeMap] of this.liveExecutions.entries()) {
 			const hasRunningNodes = Array.from(nodeMap.values()).some(
@@ -2433,5 +2625,194 @@ export class SystemMonitoringService extends EventEmitter {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Start workflow resource monitoring
+	 */
+	private async startWorkflowResourceMonitoring(): Promise<void> {
+		if (this.workflowSamplingInterval) {
+			clearInterval(this.workflowSamplingInterval);
+		}
+
+		// Sample workflow resources every 5 seconds
+		this.workflowSamplingInterval = setInterval(async () => {
+			try {
+				await this.sampleWorkflowResources();
+			} catch (error) {
+				this.logger.error('Error during workflow resource sampling', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}, 5000);
+
+		this.logger.info('Workflow resource monitoring started');
+	}
+
+	/**
+	 * Stop workflow resource monitoring
+	 */
+	private stopWorkflowResourceMonitoring(): void {
+		if (this.workflowSamplingInterval) {
+			clearInterval(this.workflowSamplingInterval);
+			this.workflowSamplingInterval = undefined;
+		}
+		this.logger.info('Workflow resource monitoring stopped');
+	}
+
+	/**
+	 * Sample workflow resources
+	 */
+	private async sampleWorkflowResources(): Promise<void> {
+		const currentMemory = process.memoryUsage();
+		const currentCpu = process.cpuUsage();
+		const timestamp = Date.now();
+
+		for (const [executionId, execution] of this.workflowExecutions.entries()) {
+			try {
+				// Calculate current resource usage for this execution
+				const memoryUsage = currentMemory.rss - (execution.memoryStart || 0);
+				const cpuUsage = currentCpu.user + currentCpu.system - (execution.cpuStart || 0);
+				const activeNodes = this.liveExecutions.get(executionId)?.size || 0;
+
+				const sample: WorkflowResourceSample = {
+					timestamp,
+					memoryUsage: Math.max(0, memoryUsage),
+					cpuUsage: Math.max(0, cpuUsage),
+					activeNodes,
+				};
+
+				// Add sample to execution
+				if (!execution.resourceSamples) {
+					execution.resourceSamples = [];
+				}
+				execution.resourceSamples.push(sample);
+
+				// Keep only last 100 samples per execution
+				if (execution.resourceSamples.length > 100) {
+					execution.resourceSamples.shift();
+				}
+
+				// Add sample to workflow history
+				const workflowHistory = this.workflowResourceHistory.get(execution.workflowId) || [];
+				workflowHistory.push(sample);
+
+				// Keep only last 1000 samples per workflow
+				if (workflowHistory.length > 1000) {
+					workflowHistory.shift();
+				}
+				this.workflowResourceHistory.set(execution.workflowId, workflowHistory);
+			} catch (error) {
+				this.logger.error('Failed to sample workflow resources', {
+					executionId,
+					workflowId: execution.workflowId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	/**
+	 * Initialize workflow metrics
+	 */
+	private initializeWorkflowMetrics(workflowId: string, workflowName?: string): void {
+		const metrics: WorkflowResourceMetrics = {
+			workflowId,
+			workflowName,
+			totalExecutions: 0,
+			averageExecutionTime: 0,
+			averageMemoryUsage: 0,
+			peakMemoryUsage: 0,
+			averageCpuUsage: 0,
+			peakCpuUsage: 0,
+			totalResourceCost: 0,
+			resourceEfficiency: 0,
+			lastExecuted: new Date(),
+			samples: [],
+		};
+
+		this.workflowResourceMetrics.set(workflowId, metrics);
+		this.logger.debug('Initialized workflow metrics', { workflowId, workflowName });
+	}
+
+	/**
+	 * Update workflow resource metrics
+	 */
+	private async updateWorkflowResourceMetrics(
+		execution: WorkflowExecution,
+		duration: number,
+		memoryUsed: number,
+		cpuUsed: number,
+		result: IExecutionResponse,
+	): Promise<void> {
+		const workflowId = execution.workflowId;
+		let metrics = this.workflowResourceMetrics.get(workflowId);
+
+		if (!metrics) {
+			this.initializeWorkflowMetrics(workflowId);
+			metrics = this.workflowResourceMetrics.get(workflowId)!;
+		}
+
+		// Update execution count
+		metrics.totalExecutions++;
+
+		// Update execution time (rolling average)
+		metrics.averageExecutionTime =
+			(metrics.averageExecutionTime * (metrics.totalExecutions - 1) + duration) /
+			metrics.totalExecutions;
+
+		// Update memory usage (rolling average)
+		metrics.averageMemoryUsage =
+			(metrics.averageMemoryUsage * (metrics.totalExecutions - 1) + memoryUsed) /
+			metrics.totalExecutions;
+
+		// Update peak memory usage
+		metrics.peakMemoryUsage = Math.max(metrics.peakMemoryUsage, memoryUsed);
+
+		// Update CPU usage (rolling average)
+		const avgCpuForExecution = execution.resourceSamples
+			? this.average(execution.resourceSamples.map((s) => s.cpuUsage))
+			: cpuUsed;
+
+		metrics.averageCpuUsage =
+			(metrics.averageCpuUsage * (metrics.totalExecutions - 1) + avgCpuForExecution) /
+			metrics.totalExecutions;
+
+		// Update peak CPU usage
+		const peakCpuForExecution = execution.resourceSamples
+			? Math.max(...execution.resourceSamples.map((s) => s.cpuUsage))
+			: cpuUsed;
+
+		metrics.peakCpuUsage = Math.max(metrics.peakCpuUsage, peakCpuForExecution);
+
+		// Calculate resource cost (CPU * Memory * Time)
+		const resourceCost =
+			(avgCpuForExecution / 1000000) * (memoryUsed / 1024 / 1024) * (duration / 1000);
+		metrics.totalResourceCost += resourceCost;
+
+		// Calculate resource efficiency (simplified: successful executions / total resource cost)
+		const successfulExecutions = result.finished ? 1 : 0;
+		metrics.resourceEfficiency =
+			metrics.totalResourceCost > 0 ? (successfulExecutions / metrics.totalResourceCost) * 100 : 0;
+
+		// Update last executed
+		metrics.lastExecuted = new Date();
+
+		// Add execution samples to metrics samples
+		if (execution.resourceSamples) {
+			metrics.samples.push(...execution.resourceSamples);
+
+			// Keep only last 10000 samples per workflow
+			if (metrics.samples.length > 10000) {
+				metrics.samples = metrics.samples.slice(-10000);
+			}
+		}
+
+		this.logger.debug('Updated workflow resource metrics', {
+			workflowId,
+			totalExecutions: metrics.totalExecutions,
+			averageExecutionTime: metrics.averageExecutionTime,
+			resourceCost,
+		});
 	}
 }

@@ -951,4 +951,292 @@ export class SystemMonitoringController {
 			throw new InternalServerError('Failed to get node performance history');
 		}
 	}
+
+	/**
+	 * GET /system-monitoring/workflows/:workflowId/resources
+	 * Get resource metrics for a specific workflow
+	 */
+	@Get('/workflows/:workflowId/resources')
+	async getWorkflowResourceMetrics(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Query query: { timeRange?: string },
+	): Promise<{ success: boolean; data: any; metadata: any }> {
+		try {
+			if (!workflowId || workflowId.trim() === '') {
+				throw new BadRequestError('Workflow ID is required');
+			}
+
+			const validTimeRanges = ['1h', '6h', '24h', '7d', '30d'];
+			const timeRange = query.timeRange;
+
+			if (timeRange && !validTimeRanges.includes(timeRange)) {
+				throw new BadRequestError(
+					`Invalid time range. Must be one of: ${validTimeRanges.join(', ')}`,
+				);
+			}
+
+			this.logger.debug('Getting workflow resource metrics', {
+				workflowId,
+				timeRange,
+				userId: req.user.id,
+			});
+
+			const metrics = await this.systemMonitoringService.getWorkflowResourceMetrics(
+				workflowId,
+				timeRange,
+			);
+
+			if (!metrics) {
+				throw new NotFoundError(`Workflow '${workflowId}' not found or has no execution data`);
+			}
+
+			return {
+				success: true,
+				data: {
+					workflowId: metrics.workflowId,
+					workflowName: metrics.workflowName,
+					totalExecutions: metrics.totalExecutions,
+					averageExecutionTime: metrics.averageExecutionTime,
+					averageMemoryUsage: metrics.averageMemoryUsage,
+					peakMemoryUsage: metrics.peakMemoryUsage,
+					averageCpuUsage: metrics.averageCpuUsage,
+					peakCpuUsage: metrics.peakCpuUsage,
+					totalResourceCost: metrics.totalResourceCost,
+					resourceEfficiency: metrics.resourceEfficiency,
+					lastExecuted: metrics.lastExecuted.toISOString(),
+					samples: metrics.samples.map((sample) => ({
+						timestamp: new Date(sample.timestamp).toISOString(),
+						memoryUsage: sample.memoryUsage,
+						cpuUsage: sample.cpuUsage,
+						activeNodes: sample.activeNodes,
+					})),
+				},
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					workflowId,
+					timeRange: timeRange || 'all',
+					sampleCount: metrics.samples.length,
+					userId: req.user.id,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to get workflow resource metrics', {
+				workflowId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError || error instanceof NotFoundError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get workflow resource metrics');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/resources
+	 * Get resource metrics for all workflows
+	 */
+	@Get('/workflows/resources')
+	async getAllWorkflowResourceMetrics(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: { timeRange?: string; limit?: number },
+	): Promise<{ success: boolean; data: any[]; metadata: any }> {
+		try {
+			const validTimeRanges = ['1h', '6h', '24h', '7d', '30d'];
+			const timeRange = query.timeRange;
+
+			if (timeRange && !validTimeRanges.includes(timeRange)) {
+				throw new BadRequestError(
+					`Invalid time range. Must be one of: ${validTimeRanges.join(', ')}`,
+				);
+			}
+
+			const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 20;
+
+			this.logger.debug('Getting all workflow resource metrics', {
+				timeRange,
+				limit,
+				userId: req.user.id,
+			});
+
+			const allMetrics =
+				await this.systemMonitoringService.getAllWorkflowResourceMetrics(timeRange);
+
+			// Convert to array and sort by total resource cost
+			const sortedMetrics = Array.from(allMetrics.values())
+				.sort((a, b) => b.totalResourceCost - a.totalResourceCost)
+				.slice(0, limit);
+
+			const data = sortedMetrics.map((metrics) => ({
+				workflowId: metrics.workflowId,
+				workflowName: metrics.workflowName,
+				totalExecutions: metrics.totalExecutions,
+				averageExecutionTime: metrics.averageExecutionTime,
+				averageMemoryUsage: metrics.averageMemoryUsage,
+				peakMemoryUsage: metrics.peakMemoryUsage,
+				averageCpuUsage: metrics.averageCpuUsage,
+				peakCpuUsage: metrics.peakCpuUsage,
+				totalResourceCost: metrics.totalResourceCost,
+				resourceEfficiency: metrics.resourceEfficiency,
+				lastExecuted: metrics.lastExecuted.toISOString(),
+				sampleCount: metrics.samples.length,
+			}));
+
+			return {
+				success: true,
+				data,
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					timeRange: timeRange || 'all',
+					limit,
+					total: allMetrics.size,
+					returned: data.length,
+					userId: req.user.id,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to get all workflow resource metrics', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to get all workflow resource metrics');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/resources/compare
+	 * Compare resource metrics between multiple workflows
+	 */
+	@Get('/workflows/resources/compare')
+	async compareWorkflowResources(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: { workflowIds: string; timeRange?: string },
+	): Promise<{ success: boolean; data: any[]; metadata: any }> {
+		try {
+			if (!query.workflowIds) {
+				throw new BadRequestError('workflowIds parameter is required');
+			}
+
+			const workflowIds = query.workflowIds
+				.split(',')
+				.map((id) => id.trim())
+				.filter(Boolean);
+
+			if (workflowIds.length === 0) {
+				throw new BadRequestError('At least one workflow ID is required');
+			}
+
+			if (workflowIds.length > 10) {
+				throw new BadRequestError('Cannot compare more than 10 workflows at once');
+			}
+
+			const validTimeRanges = ['1h', '6h', '24h', '7d', '30d'];
+			const timeRange = query.timeRange;
+
+			if (timeRange && !validTimeRanges.includes(timeRange)) {
+				throw new BadRequestError(
+					`Invalid time range. Must be one of: ${validTimeRanges.join(', ')}`,
+				);
+			}
+
+			this.logger.debug('Comparing workflow resources', {
+				workflowIds,
+				timeRange,
+				userId: req.user.id,
+			});
+
+			const comparisons = await this.systemMonitoringService.getWorkflowResourceComparison(
+				workflowIds,
+				timeRange,
+			);
+
+			const data = comparisons.map((metrics, index) => ({
+				workflowId: metrics.workflowId,
+				workflowName: metrics.workflowName,
+				totalExecutions: metrics.totalExecutions,
+				averageExecutionTime: metrics.averageExecutionTime,
+				averageMemoryUsage: metrics.averageMemoryUsage,
+				peakMemoryUsage: metrics.peakMemoryUsage,
+				averageCpuUsage: metrics.averageCpuUsage,
+				peakCpuUsage: metrics.peakCpuUsage,
+				totalResourceCost: metrics.totalResourceCost,
+				resourceEfficiency: metrics.resourceEfficiency,
+				lastExecuted: metrics.lastExecuted.toISOString(),
+				rank: index + 1,
+				sampleCount: metrics.samples.length,
+			}));
+
+			return {
+				success: true,
+				data,
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					workflowIds,
+					timeRange: timeRange || 'all',
+					compared: data.length,
+					userId: req.user.id,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to compare workflow resources', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Failed to compare workflow resources');
+		}
+	}
+
+	/**
+	 * GET /system-monitoring/workflows/alerts
+	 * Get workflow-specific alerts
+	 */
+	@Get('/workflows/alerts')
+	async getWorkflowAlerts(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: { workflowId?: string },
+	): Promise<{ success: boolean; data: any[]; metadata: any }> {
+		try {
+			this.logger.debug('Getting workflow alerts', {
+				workflowId: query.workflowId,
+				userId: req.user.id,
+			});
+
+			const alerts = this.systemMonitoringService.getWorkflowResourceAlerts(query.workflowId);
+
+			return {
+				success: true,
+				data: alerts,
+				metadata: {
+					requestedAt: new Date().toISOString(),
+					workflowId: query.workflowId,
+					total: alerts.length,
+					userId: req.user.id,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to get workflow alerts', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new InternalServerError('Failed to get workflow alerts');
+		}
+	}
 }

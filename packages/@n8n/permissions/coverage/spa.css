@@ -1,0 +1,298 @@
+/* Base */
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    color: #333;
+    background-color: #fcfcfc;
+    font: 14px/14px -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+button {
+    margin: 0;
+    border: none;
+    font: inherit;
+    color: inherit;
+}
+
+button:focus {
+    outline: none;
+}
+
+*,
+*:after,
+*:before {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+/* Typography */
+
+h1 {
+    font-size: 20px;
+    line-height: 20px;
+    margin: 0;
+}
+
+a {
+    color: #0074d9;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.small {
+    font-size: 12px;
+}
+
+.strong {
+    font-weight: bold;
+}
+
+.center {
+    text-align: center;
+}
+
+.quiet {
+    opacity: 0.7;
+}
+
+/* Colors */
+
+.low {
+    background: #fce1e5;
+}
+
+.low--dark {
+    background: #c21f39;
+}
+
+.medium {
+    background: #fff4c2;
+}
+
+.medium--dark {
+    background: #f9cd0b;
+}
+
+.high {
+    background: rgb(230, 245, 208);
+}
+
+.high--dark {
+    background: rgb(77, 146, 33);
+}
+
+/* App */
+
+.app {
+    height: 100%;
+}
+
+/* Layout */
+
+.layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 20px;
+}
+
+.layout__section {
+    flex-grow: 0;
+}
+
+.layout__section--fill {
+    flex-grow: 1;
+}
+
+.layout__section + .layout__section {
+    margin-top: 20px;
+}
+
+@media only screen and (max-width: 640px) {
+    .col3 {
+        width: 100%;
+        max-width: 100%;
+    }
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Toolbar */
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.toolbar__item {
+    margin-right: 40px;
+    margin-bottom: 10px;
+}
+
+/* Toggle */
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+}
+
+.toggle__label {
+    margin-right: 0.5em;
+}
+
+.toggle__options {
+    display: inline-block;
+    border: 1px solid #0074d9;
+    border-radius: 4px;
+    color: #0074d9;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.toggle__option {
+    padding: 4px 8px;
+    background: #fcfcfc;
+}
+
+.toggle__option + .toggle__option {
+    border-left: 1px solid #0074d9;
+}
+
+.toggle__option.is-toggled {
+    color: #fff;
+    background: #0074d9;
+    border-left-color: #fcfcfc;
+}
+
+/* Expand */
+
+.expandbutton {
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.25em;
+    padding: 0;
+    background-color: transparent;
+    font-weight: bold;
+}
+
+/* Fraction */
+
+.fraction {
+    font-size: 12px;
+    color: #666;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* Coverage */
+
+.coverage-summary {
+    border-collapse: collapse;
+}
+
+.coverage-summary tbody tr {
+    border-bottom: 1px solid #fff;
+}
+
+.coverage-summary td,
+.coverage-summary th {
+    padding: 5px;
+}
+
+.coverage-summary th {
+    text-align: center;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.coverage-summary th.abs,
+.coverage-summary td.pct,
+.coverage-summary td.abs {
+    text-align: right;
+}
+
+.coverage-summary th.file {
+    min-width: 300px;
+    text-align: left;
+}
+
+.coverage-summary td.file {
+    white-space: nowrap;
+}
+
+.coverage-summary td.pct {
+    font-weight: 400;
+}
+
+.coverage-summary td.abs {
+    color: #666;
+    font-size: 12px;
+}
+
+.coverage-summary td.empty {
+    opacity: 0.5;
+}
+
+.coverage-summary .headercell {
+    border-top: 1px solid #eee;
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+}
+
+.coverage-summary .headercell:nth-child(5n - 2),
+.coverage-summary td:nth-child(5n - 2) {
+    border-left: 2px solid #fcfcfc;
+    padding-left: 2em;
+}
+
+.filetab {
+    display: inline-block;
+    width: 1em;
+}
+
+/* Sorter */
+
+.sorter {
+    display: inline-block;
+    width: 7px;
+    height: 10px;
+    margin-left: 0.5em;
+    background: url(sort-arrow-sprite.png) no-repeat scroll 0 0 transparent;
+}
+
+.sorted .sorter {
+    background-position: 0 -20px;
+}
+
+.sorted-desc .sorter {
+    background-position: 0 -10px;
+}
+
+.sortable {
+    cursor: pointer;
+}
+
+/* Bar */
+
+.bar {
+    width: 50px;
+    height: 5px;
+    background: #fff;
+}
+
+.bar__data {
+    height: 100%;
+}

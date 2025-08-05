@@ -32,7 +32,7 @@
       "description": "Add endpoints for discovering available variables and accessing built-in function documentation dynamically.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/cli/src/workflows/workflows.controller.ts",
@@ -57,7 +57,7 @@
       "description": "Add detailed error breakdown and statistics per individual node type for optimization insights.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/cli/src/controllers/analytics.controller.ts",
@@ -82,7 +82,7 @@
       "description": "Add per-workflow resource monitoring at the n8n instance level with alerting capabilities.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/cli/src/controllers/system-monitoring.controller.ts",
@@ -2694,8 +2694,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 281,
-  "last_hook_activation": 1754387175244,
+  "execution_count": 289,
+  "last_hook_activation": 1754403739009,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

@@ -238,3 +238,25 @@ export {
 	isValidWorkflowSearchQuery,
 	isValidAdvancedWorkflowSearch,
 } from './workflow-search.dto';
+
+export {
+	FunctionDocumentationQueryDto,
+	FunctionDocumentationResponseDto,
+	VariableDocumentationQueryDto,
+	VariableDocumentationResponseDto,
+	ExpressionSyntaxQueryDto,
+	ExpressionSyntaxResponseDto,
+	ContextualDocumentationQueryDto,
+	ContextualDocumentationResponseDto,
+	DocumentationSearchQueryDto,
+	DocumentationSearchResponseDto,
+	type FunctionParameter,
+	type ExampleType,
+	type FunctionDocumentation,
+	type VariableProperty,
+	type Availability,
+	type VariableDocumentation,
+	type ExpressionSyntaxDoc,
+} from './expressions';
+
+export * from './analytics';
