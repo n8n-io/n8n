@@ -14,6 +14,7 @@ import { Service } from '@n8n/di';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionService } from '@/executions/execution.service';
+import { ExecutionRepository } from '@n8n/db';
 
 @Service()
 export class PerformanceMonitoringService {
@@ -22,6 +23,7 @@ export class PerformanceMonitoringService {
 	constructor(
 		private readonly executionService: ExecutionService,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	/**
@@ -109,29 +111,33 @@ export class PerformanceMonitoringService {
 		try {
 			const { timeRange, startDate, endDate } = this.parseTimeRange(request);
 
-			// Get executions within time range - using alternative approach
-			const executions = [] as any;
-			/* TODO: Implement execution service query when available
-			await this.executionService.findMany({
-				where: {
-					...(request.workflowId && { workflowId: request.workflowId }),
-					...(request.status && {
-						status: request.status.split(',') as ExecutionStatus[],
-					}),
-					startedAt: {
-						gte: startDate,
-						lte: endDate,
-					},
-				},
-				select: {
-					id: true,
-					workflowId: true,
-					status: true,
-					startedAt: true,
-					finishedAt: true,
-				},
-			});
-			*/
+			// Get executions within time range using ExecutionRepository query builder
+			let queryBuilder = this.executionRepository
+				.createQueryBuilder('execution')
+				.where('execution.startedAt >= :start', { start: startDate })
+				.andWhere('execution.startedAt <= :end', { end: endDate })
+				.select([
+					'execution.id',
+					'execution.workflowId',
+					'execution.status',
+					'execution.startedAt',
+					'execution.stoppedAt',
+				]);
+
+			if (request.workflowId) {
+				queryBuilder = queryBuilder.andWhere('execution.workflowId = :workflowId', {
+					workflowId: request.workflowId,
+				});
+			}
+
+			if (request.status) {
+				const statusArray = request.status.split(',') as ExecutionStatus[];
+				queryBuilder = queryBuilder.andWhere('execution.status IN (:...statuses)', {
+					statuses: statusArray,
+				});
+			}
+
+			const executions = await queryBuilder.getMany();
 
 			// Calculate aggregated metrics
 			const metrics = this.calculateAggregatedMetrics(executions, timeRange);
@@ -437,8 +443,8 @@ export class PerformanceMonitoringService {
 
 		// Calculate durations for completed executions
 		const durations = executions
-			.filter((e) => e.startedAt && e.finishedAt)
-			.map((e) => e.finishedAt.getTime() - e.startedAt.getTime())
+			.filter((e) => e.startedAt && e.stoppedAt)
+			.map((e) => e.stoppedAt.getTime() - e.startedAt.getTime())
 			.sort((a, b) => a - b);
 
 		const averageDuration =
@@ -502,8 +508,8 @@ export class PerformanceMonitoringService {
 				const errorRate = totalCount > 0 ? (totalCount - successCount) / totalCount : 0;
 
 				const durations = intervalExecutions
-					.filter((e) => e.startedAt && e.finishedAt)
-					.map((e) => e.finishedAt.getTime() - e.startedAt.getTime());
+					.filter((e) => e.startedAt && e.stoppedAt)
+					.map((e) => e.stoppedAt.getTime() - e.startedAt.getTime());
 
 				const averageDuration =
 					durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) / durations.length : 0;
