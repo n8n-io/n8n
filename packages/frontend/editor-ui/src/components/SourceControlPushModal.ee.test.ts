@@ -371,9 +371,7 @@ describe('SourceControlPushModal', () => {
 		const files = getAllByTestId('source-control-push-modal-file-checkbox');
 		expect(files).toHaveLength(2);
 
-		// Since we provided status data directly, we need to manually select the current workflow
-		// to test the behavior of having a workflow selected
-		await userEvent.click(within(files[0]).getByRole('checkbox'));
+		// The current workflow should be auto-selected now that we fixed the regression
 		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
 		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
 

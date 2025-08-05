@@ -39,7 +39,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
-import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
@@ -642,12 +642,18 @@ function openDiffModal(id: string) {
 	});
 }
 
+// Auto-select current workflow when it becomes available
+watchEffect(() => {
+	if (changes.value.currentWorkflow && !selectedWorkflows.has(changes.value.currentWorkflow.id)) {
+		maybeSelectCurrentWorkflow(changes.value.currentWorkflow);
+	}
+});
+
 // Load data when modal opens
 onMounted(async () => {
 	// Only load fresh data if we don't have any initial data
 	if (!props.data.status || props.data.status.length === 0) {
 		await loadSourceControlStatus();
-		maybeSelectCurrentWorkflow(changes.value.currentWorkflow);
 	}
 });
 </script>

@@ -21,7 +21,7 @@ import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { computed, ref, useCssModule, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -37,6 +37,7 @@ const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -262,7 +263,11 @@ const nodeDiffs = computed(() => {
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
-	router.back();
+	// Remove diff and direction query params to close the modal
+	const newQuery = { ...route.query };
+	delete newQuery.diff;
+	delete newQuery.direction;
+	void router.replace({ query: newQuery });
 }
 
 // Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
