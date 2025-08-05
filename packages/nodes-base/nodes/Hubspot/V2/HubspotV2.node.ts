@@ -1534,6 +1534,68 @@ export class HubspotV2 implements INodeType {
 									value: additionalFields.latestTrafficSource,
 								});
 							}
+							if (additionalFields.latestTrafficSourceDate) {
+								body.push({
+									property: 'hs_latest_source_timestamp',
+									value: new Date(additionalFields.latestTrafficSourceDate as string).getTime(),
+								});
+							}
+							if (additionalFields.linkedinUrl) {
+								body.push({
+									property: 'hs_linkedin_url',
+									value: additionalFields.linkedinUrl,
+								});
+							}
+							if (additionalFields.memberEmail) {
+								body.push({
+									property: 'hs_content_membership_email',
+									value: additionalFields.memberEmail,
+								});
+							}
+							if (additionalFields.militaryStatus) {
+								body.push({
+									property: 'military_status',
+									value: additionalFields.militaryStatus,
+								});
+							}
+							if (additionalFields.persona) {
+								body.push({
+									property: 'hs_persona',
+									value: additionalFields.persona,
+								});
+							}
+							if (additionalFields.prospectingAgentLastEnrolled) {
+								body.push({
+									property: 'hs_prospecting_agent_last_enrolled',
+									value: new Date(
+										additionalFields.prospectingAgentLastEnrolled as string,
+									).getTime(),
+								});
+							}
+							if (additionalFields.prospectingAgentTotalEnrolledCount) {
+								body.push({
+									property: 'hs_prospecting_agent_total_enrolled_count',
+									value: additionalFields.prospectingAgentTotalEnrolledCount,
+								});
+							}
+							if (additionalFields.stateRegionCode) {
+								body.push({
+									property: 'hs_state_code',
+									value: additionalFields.stateRegionCode,
+								});
+							}
+							if (additionalFields.timeZone) {
+								body.push({
+									property: 'hs_timezone',
+									value: additionalFields.timeZone,
+								});
+							}
+							if (additionalFields.whatsappPhoneNumber) {
+								body.push({
+									property: 'hs_whatsapp_phone_number',
+									value: additionalFields.whatsappPhoneNumber,
+								});
+							}
 
 							if (additionalFields.customPropertiesUi) {
 								const customProperties = (additionalFields.customPropertiesUi as IDataObject)
