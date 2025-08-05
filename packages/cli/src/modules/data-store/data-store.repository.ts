@@ -51,8 +51,9 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 			let changed = false;
 			for (const match of existingTables) {
-				const result = await this.deleteUserTable(match.id, em);
-				changed = changed || result;
+				const result = await em.delete(DataStoreEntity, { id: match.id });
+				await em.query(`DROP TABLE ${toTableName(match.id)}`);
+				changed = changed || (result.affected ?? 0) > 0;
 			}
 
 			return changed;

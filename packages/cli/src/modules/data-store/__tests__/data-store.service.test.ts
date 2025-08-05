@@ -434,6 +434,7 @@ describe('dataStore', () => {
 			const rest = await dataStoreService.getManyAndCount({
 				filter: { projectId: project1.id },
 				skip: 6,
+				take: 10,
 			});
 
 			// ASSERT
