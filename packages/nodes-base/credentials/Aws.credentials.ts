@@ -806,7 +806,18 @@ export class Aws implements ICredentialType {
 			);
 		}
 
-		// 3. Try to get credentials from container metadata service (ECS/Fargate)
+		// 3. Try to get credentials from EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
+		try {
+			const podIdentityCredentials = await this.getPodIdentityCredentials();
+			if (podIdentityCredentials) {
+				return podIdentityCredentials;
+			}
+		} catch (error) {
+			// Silently continue to next credential source
+			console.debug('Failed to get credentials from EKS Pod Identity:', error);
+		}
+
+		// 4. Try to get credentials from container metadata service (ECS/Fargate)
 		try {
 			const containerCredentials = await this.getContainerMetadataCredentials();
 			if (containerCredentials) {
@@ -817,7 +828,7 @@ export class Aws implements ICredentialType {
 			console.debug('Failed to get credentials from container metadata:', error);
 		}
 
-		// 4. Try to get credentials from instance metadata service (EC2)
+		// 5. Try to get credentials from instance metadata service (EC2)
 		try {
 			const instanceCredentials = await this.getInstanceMetadataCredentials();
 			if (instanceCredentials) {
@@ -923,6 +934,42 @@ export class Aws implements ICredentialType {
 			};
 		} catch (error) {
 			// Not running in ECS or metadata service unavailable
+			return null;
+		}
+	}
+
+	private async getPodIdentityCredentials(): Promise<{
+		accessKeyId: string;
+		secretAccessKey: string;
+		sessionToken: string;
+	} | null> {
+		const fullUri = process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI;
+		if (!fullUri) {
+			return null;
+		}
+
+		try {
+			const response = await fetch(fullUri, {
+				method: 'GET',
+				headers: {
+					'User-Agent': 'n8n-aws-credential',
+				},
+				signal: AbortSignal.timeout(2000),
+			});
+
+			if (!response.ok) {
+				return null;
+			}
+
+			const credentialsData = await response.json();
+
+			return {
+				accessKeyId: credentialsData.AccessKeyId,
+				secretAccessKey: credentialsData.SecretAccessKey,
+				sessionToken: credentialsData.Token,
+			};
+		} catch (error) {
+			// Not running with EKS Pod Identity or metadata service unavailable
 			return null;
 		}
 	}
