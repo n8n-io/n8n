@@ -28,8 +28,11 @@ const readEnv = (envName: string) => {
 
 export const Config = (ConfigClass: Class): void => {
 	const factory = function (...args: unknown[]) {
-		const config = new (ConfigClass as new (...a: unknown[]) => Record<PropertyKey, unknown>)(
-			...args,
+		const config = Reflect.construct(
+			ConfigClass as new (
+				...a: unknown[]
+			) => Record<PropertyKey, unknown>,
+			args,
 		);
 		const classMetadata = globalMetadata.get(ConfigClass);
 		if (!classMetadata) {

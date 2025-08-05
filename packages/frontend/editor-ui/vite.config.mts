@@ -5,7 +5,7 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 
-import { vitestConfig } from '@n8n/vitest-config/frontend';
+import vitestConfig from './vitest.config';
 import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';

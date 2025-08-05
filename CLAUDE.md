@@ -26,6 +26,11 @@
 - Confirm understanding before beginning complex work
 - Stop immediately when user provides new instructions
 
+**"Continue" Command Protocol:**
+- **"continue"** means continue with the next task in the project's TODO.json file
+- Use TaskManager API to get current active task or next pending task
+- NEVER assume what to continue with - always check TODO.json first
+
 ## 🚨 NEVER MODIFY SETTINGS FILE
 
 The agent MUST NEVER touch, read, modify, or interact with `/Users/jeremyparker/.claude/settings.json` under ANY circumstances. This file contains system-critical configurations that must remain untouched.
@@ -104,6 +109,7 @@ Break work into **SMALLEST POSSIBLE SPECIALIZED UNITS** (30s-2min each) that can
 - **Test Strategy Design** - New testing approaches and frameworks
 - **Edge Case Identification** - Failure scenarios and resilience
 - **Integration Testing** - Cross-component interaction testing
+- **🚨 CRITICAL**: Only ONE subagent may execute tests to prevent conflicts
 
 **User Experience & Interface (2-3 subagents):**
 - **Frontend Components** - UI patterns, component architecture
@@ -302,36 +308,33 @@ The `development/` directory should ONLY contain universal files needed for EVER
 
 ## TaskManager API Reference
 
-### **Core Operations**
+For complete TaskManager API documentation with all methods, examples, and usage patterns, see:
+**[TaskManager API Guide](./development/taskmanager-api-guide.md)**
+
+### **Quick Reference - Most Common Operations**
 
 ```bash
-# Read TODO.json with validation and auto-fix
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.readTodo().then(data => console.log(JSON.stringify(data, null, 2)));"
+# Get current task to work on
+node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.getCurrentTask().then(task => console.log(task ? task.title : 'No active tasks'));"
 
-# Get current active task (first pending or in_progress)
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.getCurrentTask().then(task => console.log(JSON.stringify(task, null, 2)));"
+# Mark current task as completed
+node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.getCurrentTask().then(async task => { if(task) { await tm.updateTaskStatus(task.id, 'completed'); console.log('Task completed:', task.title); } });"
 
-# Update task status by ID
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.updateTaskStatus('task_id', 'completed').then(() => console.log('Task updated'));"
+# Create new development task quickly  
+node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.createTask({title: 'Quick Task', description: 'Task description', mode: 'DEVELOPMENT'}).then(id => console.log('Created:', id));"
 
-# Create and write new task to TODO.json
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.readTodo().then(async (data) => { data.tasks.push({id: 'task_' + Date.now(), title: 'New Task', status: 'pending', priority: 'medium', created_at: new Date().toISOString()}); await tm.writeTodo(data); console.log('Task created'); });"
-```
-
-### **Advanced Operations**
-
-```bash
-# Add important file to task (for task-specific documentation)
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.addImportantFile('task_id', './development/research-reports/task-specific-analysis.md').then(added => console.log('Important file added:', added));"
-
-# Determine next execution mode based on project state
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.readTodo().then(async (data) => { const mode = await tm.getNextMode(data); console.log('Next mode:', mode); });"
-
-# Validate TODO.json without modifications
-node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.validateTodoFile().then(isValid => console.log('Is valid:', isValid));"
+# Check what tasks are ready to execute (no unmet dependencies)
+node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.getExecutableTasks().then(tasks => console.log('Ready to execute:', tasks.length, 'tasks'));"
 ```
 
 ## 🚨 Task Management
+
+### **TODO.json Interaction Protocol**
+
+**🚨 MANDATORY**: ALL TODO.json write operations MUST use TaskManager API exclusively. Reading TODO.json directly is allowed.
+
+**✅ CORRECT**: TaskManager API for writes, direct read for TODO.json allowed
+**❌ FORBIDDEN**: Direct write operations on TODO.json
 
 ### **Task Creation Protocol**
 
@@ -390,5 +393,158 @@ Single-agent complex work | No subagents for research | Under-utilizing parallel
 10. **NEVER bypass linter errors** with ignore files
 11. **CREATE tasks** for all multi-step work
 12. **ASK clarifying questions** when uncertain
+
+## 🚨 Dynamic Mode Selection Intelligence
+
+### **Intelligent Mode Detection Framework**
+
+Agents must automatically select the optimal mode based on project state, error patterns, and task requirements. This intelligence supplements explicit mode assignment.
+
+#### **Mode Selection Decision Tree**
+```
+PROJECT STATE ANALYSIS → MODE RECOMMENDATION
+├── Failing Tests (>5% failure rate) → TESTING mode
+├── Linter Errors (any errors present) → DEVELOPMENT mode  
+├── Performance Issues (response time >2s) → PERFORMANCE mode
+├── Security Vulnerabilities (high/critical) → SECURITY mode
+├── Production Incidents (active alerts) → DEBUGGING mode
+├── Deployment Pipeline Failures → DEPLOYMENT mode
+├── Missing Monitoring/Alerts → MONITORING mode
+├── Code Quality Issues (complexity >10) → REFACTORING mode
+├── Unknown Requirements/Architecture → RESEARCH mode
+├── Vague Tasks Detected → TASK-CREATION mode
+└── Code Review Requests → REVIEWER mode
+```
+
+#### **Automatic Mode Transition Triggers**
+- **DEVELOPMENT → TESTING**: When implementation complete, coverage <80%
+- **TESTING → REVIEWER**: When all tests pass, coverage meets requirements
+- **REVIEWER → DEPLOYMENT**: When all quality gates pass
+- **DEPLOYMENT → MONITORING**: When deployment completes successfully
+- **Any Mode → DEBUGGING**: When critical errors/incidents detected
+- **Any Mode → SECURITY**: When security vulnerabilities discovered
+
+#### **Mode Selection Validation**
+```bash
+# Automatic mode assessment commands
+npm run lint --format=compact 2>/dev/null | wc -l    # Linter error count
+npm test -- --passWithNoTests --silent | grep -c "FAIL"  # Test failure count
+grep -r "TODO\|FIXME\|HACK" --include="*.js" . | wc -l   # Technical debt count
+```
+
+#### **Multi-Mode Coordination Patterns**
+- **Research + Development**: Architecture investigation with parallel prototyping
+- **Security + Performance**: Vulnerability scanning with load testing
+- **Debugging + Monitoring**: Issue investigation with observability enhancement
+- **Deployment + Testing**: Blue-green deployment with comprehensive validation
+
+## 🚨 Cross-Mode Integration Protocols
+
+### **Seamless Mode Handoff Framework**
+
+#### **Mode Transition Checklist Template**
+```
+FROM: [CURRENT_MODE] → TO: [TARGET_MODE]
+
+Pre-Transition Validation:
+- [ ] Current mode objectives completed or blocked
+- [ ] Target mode prerequisites satisfied
+- [ ] Context and artifacts properly documented
+- [ ] Quality gates passed for current mode
+- [ ] Stakeholder communication completed
+
+Transition Actions:
+- [ ] Export current mode context and findings
+- [ ] Initialize target mode environment
+- [ ] Transfer relevant artifacts and documentation
+- [ ] Update project status and tracking systems
+- [ ] Notify team of mode transition and rationale
+
+Post-Transition Validation:
+- [ ] Target mode successfully initialized
+- [ ] All required context successfully transferred
+- [ ] Previous mode work properly documented
+- [ ] Team alignment on new mode objectives
+```
+
+#### **Context Preservation Across Modes**
+- **Research → Development**: Architecture decisions, technology evaluations, proof-of-concept code
+- **Development → Testing**: Implementation artifacts, test requirements, coverage targets
+- **Testing → Reviewer**: Test results, coverage reports, quality metrics
+- **Reviewer → Deployment**: Approval artifacts, deployment readiness checklist
+- **Debugging → Any Mode**: Root cause analysis, fix validation requirements
+
+#### **Cross-Mode Communication Standards**
+- **Handoff Documents**: Standardized transition reports in `./development/mode-handoffs/`
+- **Artifact Linking**: Clear references between mode-specific outputs
+- **Status Updates**: Consistent status reporting across mode transitions
+- **Decision Tracking**: Architecture Decision Records (ADRs) for cross-mode decisions
+
+## 🚨 Advanced Context Management
+
+### **Memory Optimization for Large Codebases**
+
+#### **Context Window Management Strategy**
+- **Priority-Based Loading**: Load most relevant files first based on task context
+- **Incremental Context Building**: Add context iteratively as understanding develops
+- **Context Compression**: Summarize large files while preserving critical information
+- **Smart File Selection**: Use grep/glob patterns to identify relevant files efficiently
+
+#### **Large Project Navigation Patterns**
+```bash
+# Efficient large codebase analysis
+find . -name "*.js" -exec wc -l {} + | sort -nr | head -20    # Find largest files
+grep -r "class\|function\|export" --include="*.js" | head -50 # Find key definitions
+git log --oneline --since="1 week ago" | head -20            # Recent changes context
+```
+
+#### **Context Preservation Strategies**
+- **Session Memory**: Maintain key insights across subagent deployments
+- **Decision Logging**: Record architectural and implementation decisions
+- **Pattern Recognition**: Identify and reuse successful approaches
+- **Knowledge Base**: Build project-specific knowledge for future sessions
+
+## 🚨 System Resilience and Error Recovery
+
+### **Subagent Failure Recovery Framework**
+
+#### **Failure Detection and Classification**
+```
+SUBAGENT FAILURE TYPES:
+├── Timeout Failures: Subagent exceeds time limits
+├── Resource Failures: Insufficient system resources
+├── API Failures: External service dependencies unavailable
+├── Logic Failures: Subagent returns invalid/incomplete results
+├── Coordination Failures: Subagent conflicts or overlaps
+└── Critical Failures: Subagent crashes or becomes unresponsive
+```
+
+#### **Automatic Recovery Strategies**
+- **Retry with Backoff**: Exponential backoff for transient failures
+- **Graceful Degradation**: Continue with reduced functionality
+- **Alternative Routing**: Switch to backup subagent strategies
+- **Partial Recovery**: Salvage completed work from failed subagents
+- **Circuit Breaker**: Temporarily disable failing subagent types
+
+#### **Cascading Failure Prevention**
+- **Isolation Boundaries**: Prevent single subagent failures from affecting others
+- **Resource Limits**: Enforce memory/CPU limits per subagent
+- **Dependency Management**: Identify and break circular dependencies
+- **Health Monitoring**: Continuous health checks for active subagents
+
+#### **Recovery Validation Protocol**
+```bash
+# System health validation after recovery
+echo "Validating system state after recovery..."
+npm run lint --format=compact    # Verify code quality maintained
+npm test -- --passWithNoTests    # Verify functionality preserved
+git status                       # Verify no corruption occurred
+```
+
+### **Coordination Failure Recovery**
+- **Conflict Resolution**: Automatic resolution of overlapping subagent work
+- **Work Deduplication**: Identify and merge duplicate efforts
+- **Priority Arbitration**: Resolve competing subagent priorities
+- **Synchronization Recovery**: Re-establish coordination after failures
 
 **Success Formula:** User Instructions + Maximum Thinking + Maximum Parallel Micro-Specialized Subagent Deployment + Hyper-Focused Domain Separation + Synchronized Coordination + Attentive Waiting = **MAXIMUM SPEED WITH QUALITY**

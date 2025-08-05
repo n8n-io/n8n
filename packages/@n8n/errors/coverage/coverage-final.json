@@ -1,6 +1,6 @@
 {
-	"/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/packages/@n8n/errors/src/application.error.ts": {
-		"path": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n/packages/@n8n/errors/src/application.error.ts",
+	"/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/errors/src/application.error.ts": {
+		"path": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/errors/src/application.error.ts",
 		"statementMap": {
 			"0": { "start": { "line": 2, "column": 0 }, "end": { "line": 2, "column": 34 } },
 			"1": { "start": { "line": 22, "column": 2 }, "end": { "line": 22, "column": 23 } },

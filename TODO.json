@@ -2,6 +2,406 @@
   "project": "n8n-monorepo",
   "tasks": [
     {
+      "id": "task_1754385416783_q8er9f1tb",
+      "title": "Implement Binary Data Management API",
+      "description": "Add endpoints for binary data upload/download and static workflow file management.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "completed",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/controllers/binary-data.controller.ts",
+        "packages/cli/src/services/binary-data.service.ts"
+      ],
+      "success_criteria": [
+        "POST /api/v1/binary-data/upload endpoint implemented",
+        "GET /api/v1/binary-data/:id/download endpoint functional",
+        "DELETE /api/v1/binary-data/:id endpoint working",
+        "Binary data storage optimization and cleanup",
+        "File type validation and security controls",
+        "Integration with existing binary data handling"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:16:56.783Z"
+    },
+    {
+      "id": "task_1754385451512_s77xxxo4x",
+      "title": "Implement Expression Engine Documentation API",
+      "description": "Add endpoints for discovering available variables and accessing built-in function documentation dynamically.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/workflow/src/Expression.ts",
+        "packages/cli/src/services/expression-docs.service.ts"
+      ],
+      "success_criteria": [
+        "GET /api/v1/expressions/functions/:category endpoint implemented",
+        "GET /api/v1/expressions/variables/context endpoint functional",
+        "Dynamic function documentation with examples",
+        "Context-aware variable discovery",
+        "Integration with expression editor capabilities"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:17:31.512Z"
+    },
+    {
+      "id": "task_1754385463742_xcaqdt200",
+      "title": "Implement Node-Specific Error Analytics API",
+      "description": "Add detailed error breakdown and statistics per individual node type for optimization insights.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/controllers/analytics.controller.ts",
+        "packages/cli/src/services/analytics.service.ts",
+        "packages/cli/src/services/error-analytics.service.ts"
+      ],
+      "success_criteria": [
+        "GET /api/v1/analytics/nodes/:nodeType/error-breakdown endpoint",
+        "Error categorization by type, frequency, and resolution",
+        "Node-specific failure pattern analysis",
+        "Performance correlation with error rates",
+        "Actionable optimization recommendations per node type"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:17:43.742Z"
+    },
+    {
+      "id": "task_1754385475235_so9puhg05",
+      "title": "Implement Instance CPU/Memory Monitoring API",
+      "description": "Add per-workflow resource monitoring at the n8n instance level with alerting capabilities.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/controllers/system-monitoring.controller.ts",
+        "packages/cli/src/services/system-monitoring.service.ts",
+        "packages/cli/src/services/resource-monitor.service.ts"
+      ],
+      "success_criteria": [
+        "GET /api/v1/system/workflows/:id/resource-usage endpoint enhanced",
+        "Per-workflow CPU and memory isolation tracking",
+        "Resource limit enforcement and throttling",
+        "Historical resource usage analytics",
+        "Automated scaling recommendations"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:17:55.235Z"
+    },
+    {
+      "id": "task_1754385490616_ox9908by2",
+      "title": "Implement Advanced Search Engine Integration",
+      "description": "Enhance existing workflow search with Elasticsearch/OpenSearch integration for performance.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/src/services/workflow-search.service.ts",
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/services/search-engine.service.ts"
+      ],
+      "success_criteria": [
+        "Elasticsearch/OpenSearch integration for search backend",
+        "Full-text indexing of workflow content and metadata",
+        "Search performance optimization with sub-second response times",
+        "Advanced query capabilities with complex filtering",
+        "Search analytics and query optimization"
+      ],
+      "estimate": "12-15 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:18:10.616Z"
+    },
+    {
+      "id": "missing-api-execution-control-1754177683422",
+      "title": "Implement Advanced Execution Control API",
+      "description": "Add missing execution control endpoints for granular execution management, including retry from specific points, partial workflow execution, and execution cancellation at the node level.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/executions/:id/cancel-node endpoint implemented",
+        "POST /api/v1/executions/:id/retry-from-node endpoint functional",
+        "POST /api/v1/workflows/:id/execute-partial endpoint working",
+        "Real-time execution status updates for granular control",
+        "Integration with existing workflow execution engine",
+        "Proper error handling for mid-execution operations"
+      ],
+      "important_files": [
+        "packages/cli/src/executions/executions.controller.ts",
+        "packages/cli/src/active-executions.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/Workflow.ts"
+      ],
+      "estimate": "8-10 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:34:43.422Z"
+    },
+    {
+      "id": "missing-api-node-testing-1754177683422",
+      "title": "Implement Comprehensive Node Testing API",
+      "description": "Extend existing node testing beyond AI nodes to support testing any node type with parameter validation, mock data generation, and isolated execution environments.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/nodes/:nodeType/test endpoint for all node types",
+        "Parameter validation and mock data generation",
+        "Isolated execution environment for safe testing",
+        "Test result formatting with detailed error reporting",
+        "Integration with node credential validation",
+        "Support for testing custom/community nodes"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/node-types.controller.ts",
+        "packages/core/src/NodeExecuteFunctions.ts",
+        "packages/workflow/src/NodeHelpers.ts",
+        "packages/nodes-base/nodes/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:34:43.422Z"
+    },
+    {
+      "id": "missing-api-workflow-variables-1754177713263",
+      "title": "Implement Dynamic Workflow Variables Discovery API",
+      "description": "Add endpoints for discovering available variables, functions, and context within workflow execution scope for enhanced development experience.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/workflows/:id/variables endpoint implemented",
+        "GET /api/v1/workflows/:id/functions endpoint for available functions",
+        "Context-aware variable discovery based on workflow state",
+        "Documentation generation for built-in functions",
+        "Integration with expression editor capabilities",
+        "Support for node-specific variable scoping"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/workflow/src/Expression.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/workflow/src/WorkflowDataProxy.ts"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-credential-testing-1754177713263",
+      "title": "Implement Credential Testing API",
+      "description": "Add endpoints for testing credential validity outside of workflow execution context, enabling credential validation and troubleshooting.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/credentials/:id/test endpoint implemented",
+        "Credential validation without workflow execution",
+        "Connection testing for various credential types",
+        "Detailed error reporting for credential failures",
+        "Integration with existing credential management",
+        "Support for OAuth2 token refresh testing"
+      ],
+      "important_files": [
+        "packages/cli/src/credentials/credentials.controller.ts",
+        "packages/core/src/CredentialsHelper.ts",
+        "packages/nodes-base/credentials/",
+        "packages/cli/src/services/credentials.service.ts"
+      ],
+      "estimate": "4-5 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-bulk-operations-1754177713263",
+      "title": "Implement Bulk Workflow Operations API",
+      "description": "Add endpoints for bulk workflow operations including activation, deactivation, updates, and batch processing for enterprise workflow management.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/workflows/bulk/activate endpoint implemented",
+        "POST /api/v1/workflows/bulk/deactivate endpoint functional",
+        "PATCH /api/v1/workflows/bulk/update for batch updates",
+        "Transaction support for bulk operations",
+        "Progress tracking for long-running bulk operations",
+        "Comprehensive error handling for partial failures"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/workflows/workflows.service.ts",
+        "packages/cli/src/services/workflow.service.ts",
+        "@n8n/api-types/src/dto/workflows/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-workflow-folders-1754177713263",
+      "title": "Implement Workflow Folder Management API",
+      "description": "Add comprehensive folder management endpoints for organizing workflows hierarchically with proper permissions and inheritance.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/folders endpoint with hierarchical structure",
+        "POST /api/v1/folders endpoint for folder creation",
+        "PATCH /api/v1/folders/:id for folder updates",
+        "DELETE /api/v1/folders/:id with cascade options",
+        "PUT /api/v1/workflows/:id/folder for workflow organization",
+        "Permission inheritance from parent folders"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/folders.controller.ts",
+        "packages/cli/src/services/folders.service.ts",
+        "@n8n/db/src/entities/Folder.ts",
+        "packages/cli/src/workflows/workflows.controller.ts"
+      ],
+      "estimate": "5-7 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-oauth2-callback-1754177713263",
+      "title": "Implement OAuth2 Callback Management API",
+      "description": "Add endpoints for managing OAuth2 authentication callbacks, token refresh, and credential flow completion for enhanced authentication workflows.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/oauth2/callback/:service endpoint implemented",
+        "POST /api/v1/oauth2/refresh endpoint for token refresh",
+        "GET /api/v1/oauth2/auth-url endpoint for authorization URLs",
+        "Proper state validation and CSRF protection",
+        "Integration with existing credential system",
+        "Support for multiple OAuth2 providers"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/oauth/oauth2.controller.ts",
+        "packages/cli/src/services/oauth2.service.ts",
+        "packages/nodes-base/credentials/",
+        "packages/cli/src/controllers/oauth/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:13.263Z"
+    },
+    {
+      "id": "missing-api-intelligent-helpers-1754177739695",
+      "title": "Implement Intelligent Workflow Helpers API",
+      "description": "Add AI-powered endpoints for suggesting node connections, auto-mapping parameters, and providing intelligent workflow development assistance.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "POST /api/v1/workflows/:id/suggest-connections endpoint",
+        "POST /api/v1/nodes/auto-map-parameters endpoint",
+        "GET /api/v1/workflows/:id/optimization-suggestions endpoint",
+        "AI-powered node recommendation engine",
+        "Parameter mapping intelligence based on data types",
+        "Integration with existing AI node infrastructure"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/ai-helpers.controller.ts",
+        "packages/cli/src/services/ai-helpers.service.ts",
+        "packages/nodes-base/nodes/OpenAi/",
+        "packages/workflow/src/NodeHelpers.ts"
+      ],
+      "estimate": "10-12 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-instance-monitoring-1754177739695",
+      "title": "Implement Instance-Level Resource Monitoring API",
+      "description": "Add endpoints for monitoring CPU, memory, and disk usage at the n8n instance level with per-workflow resource tracking and alerting.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/system/cpu-usage endpoint implemented",
+        "GET /api/v1/system/memory-usage endpoint functional",
+        "GET /api/v1/system/disk-usage endpoint working",
+        "GET /api/v1/workflows/:id/resource-usage per-workflow tracking",
+        "Real-time resource monitoring with WebSocket updates",
+        "Resource usage alerting and threshold management"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/system-monitoring.controller.ts",
+        "packages/cli/src/services/system-monitoring.service.ts",
+        "packages/cli/src/services/system-resources.service.ts",
+        "packages/cli/src/metrics/"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-node-metrics-1754177739695",
+      "title": "Implement Node-Specific Performance Metrics API",
+      "description": "Add endpoints for detailed node-level performance metrics including memory usage, execution time, and error statistics for workflow optimization.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/analytics/nodes/:nodeType/metrics endpoint",
+        "GET /api/v1/analytics/nodes/:nodeType/errors endpoint",
+        "Node-level memory usage tracking and reporting",
+        "Execution time breakdown by node type",
+        "Error rate statistics per node with categorization",
+        "Performance comparison across different node versions"
+      ],
+      "important_files": [
+        "packages/cli/src/controllers/analytics.controller.ts",
+        "packages/cli/src/services/analytics.service.ts",
+        "packages/core/src/WorkflowExecute.ts",
+        "packages/cli/src/services/performance-monitoring.service.ts"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
+      "id": "missing-api-workflow-search-1754177739695",
+      "title": "Implement Advanced Workflow Search API",
+      "description": "Add comprehensive workflow search capabilities beyond templates, including full-text search, metadata filtering, and complex query support.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "success_criteria": [
+        "GET /api/v1/workflows/search endpoint with advanced filtering",
+        "Full-text search across workflow content and metadata",
+        "Complex filtering by tags, status, execution history",
+        "Search performance optimization with indexing",
+        "Elasticsearch/OpenSearch integration support",
+        "Saved search queries and bookmarking"
+      ],
+      "important_files": [
+        "packages/cli/src/workflows/workflows.controller.ts",
+        "packages/cli/src/services/workflow-search.service.ts",
+        "@n8n/db/src/repositories/workflow.repository.ts",
+        "packages/cli/src/services/search.service.ts"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": true,
+      "created_at": "2025-08-02T23:35:39.695Z"
+    },
+    {
       "id": "refactor-uproc-tools-1754237737208",
       "title": "Refactor UProc/Json/Tools.ts into Category-Based Modules",
       "description": "Split the 7,967-line UProc/Json/Tools.ts file into logical modules organized by tool categories to improve TypeScript compilation performance and maintainability.",
@@ -874,281 +1274,6 @@
       }
     },
     {
-      "id": "missing-api-execution-control-1754177683422",
-      "title": "Implement Advanced Execution Control API",
-      "description": "Add missing execution control endpoints for granular execution management, including retry from specific points, partial workflow execution, and execution cancellation at the node level.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/executions/:id/cancel-node endpoint implemented",
-        "POST /api/v1/executions/:id/retry-from-node endpoint functional",
-        "POST /api/v1/workflows/:id/execute-partial endpoint working",
-        "Real-time execution status updates for granular control",
-        "Integration with existing workflow execution engine",
-        "Proper error handling for mid-execution operations"
-      ],
-      "important_files": [
-        "packages/cli/src/executions/executions.controller.ts",
-        "packages/cli/src/active-executions.ts",
-        "packages/core/src/WorkflowExecute.ts",
-        "packages/workflow/src/Workflow.ts"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:34:43.422Z"
-    },
-    {
-      "id": "missing-api-node-testing-1754177683422",
-      "title": "Implement Comprehensive Node Testing API",
-      "description": "Extend existing node testing beyond AI nodes to support testing any node type with parameter validation, mock data generation, and isolated execution environments.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/nodes/:nodeType/test endpoint for all node types",
-        "Parameter validation and mock data generation",
-        "Isolated execution environment for safe testing",
-        "Test result formatting with detailed error reporting",
-        "Integration with node credential validation",
-        "Support for testing custom/community nodes"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/node-types.controller.ts",
-        "packages/core/src/NodeExecuteFunctions.ts",
-        "packages/workflow/src/NodeHelpers.ts",
-        "packages/nodes-base/nodes/"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:34:43.422Z"
-    },
-    {
-      "id": "missing-api-workflow-variables-1754177713263",
-      "title": "Implement Dynamic Workflow Variables Discovery API",
-      "description": "Add endpoints for discovering available variables, functions, and context within workflow execution scope for enhanced development experience.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/workflows/:id/variables endpoint implemented",
-        "GET /api/v1/workflows/:id/functions endpoint for available functions",
-        "Context-aware variable discovery based on workflow state",
-        "Documentation generation for built-in functions",
-        "Integration with expression editor capabilities",
-        "Support for node-specific variable scoping"
-      ],
-      "important_files": [
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/workflow/src/Expression.ts",
-        "packages/core/src/WorkflowExecute.ts",
-        "packages/workflow/src/WorkflowDataProxy.ts"
-      ],
-      "estimate": "4-6 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:35:13.263Z"
-    },
-    {
-      "id": "missing-api-credential-testing-1754177713263",
-      "title": "Implement Credential Testing API",
-      "description": "Add endpoints for testing credential validity outside of workflow execution context, enabling credential validation and troubleshooting.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/credentials/:id/test endpoint implemented",
-        "Credential validation without workflow execution",
-        "Connection testing for various credential types",
-        "Detailed error reporting for credential failures",
-        "Integration with existing credential management",
-        "Support for OAuth2 token refresh testing"
-      ],
-      "important_files": [
-        "packages/cli/src/credentials/credentials.controller.ts",
-        "packages/core/src/CredentialsHelper.ts",
-        "packages/nodes-base/credentials/",
-        "packages/cli/src/services/credentials.service.ts"
-      ],
-      "estimate": "4-5 hours",
-      "requires_research": false,
-      "created_at": "2025-08-02T23:35:13.263Z"
-    },
-    {
-      "id": "missing-api-bulk-operations-1754177713263",
-      "title": "Implement Bulk Workflow Operations API",
-      "description": "Add endpoints for bulk workflow operations including activation, deactivation, updates, and batch processing for enterprise workflow management.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/workflows/bulk/activate endpoint implemented",
-        "POST /api/v1/workflows/bulk/deactivate endpoint functional",
-        "PATCH /api/v1/workflows/bulk/update for batch updates",
-        "Transaction support for bulk operations",
-        "Progress tracking for long-running bulk operations",
-        "Comprehensive error handling for partial failures"
-      ],
-      "important_files": [
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/cli/src/workflows/workflows.service.ts",
-        "packages/cli/src/services/workflow.service.ts",
-        "@n8n/api-types/src/dto/workflows/"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "created_at": "2025-08-02T23:35:13.263Z"
-    },
-    {
-      "id": "missing-api-workflow-folders-1754177713263",
-      "title": "Implement Workflow Folder Management API",
-      "description": "Add comprehensive folder management endpoints for organizing workflows hierarchically with proper permissions and inheritance.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/folders endpoint with hierarchical structure",
-        "POST /api/v1/folders endpoint for folder creation",
-        "PATCH /api/v1/folders/:id for folder updates",
-        "DELETE /api/v1/folders/:id with cascade options",
-        "PUT /api/v1/workflows/:id/folder for workflow organization",
-        "Permission inheritance from parent folders"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/folders.controller.ts",
-        "packages/cli/src/services/folders.service.ts",
-        "@n8n/db/src/entities/Folder.ts",
-        "packages/cli/src/workflows/workflows.controller.ts"
-      ],
-      "estimate": "5-7 hours",
-      "requires_research": false,
-      "created_at": "2025-08-02T23:35:13.263Z"
-    },
-    {
-      "id": "missing-api-oauth2-callback-1754177713263",
-      "title": "Implement OAuth2 Callback Management API",
-      "description": "Add endpoints for managing OAuth2 authentication callbacks, token refresh, and credential flow completion for enhanced authentication workflows.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/oauth2/callback/:service endpoint implemented",
-        "POST /api/v1/oauth2/refresh endpoint for token refresh",
-        "GET /api/v1/oauth2/auth-url endpoint for authorization URLs",
-        "Proper state validation and CSRF protection",
-        "Integration with existing credential system",
-        "Support for multiple OAuth2 providers"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/oauth/oauth2.controller.ts",
-        "packages/cli/src/services/oauth2.service.ts",
-        "packages/nodes-base/credentials/",
-        "packages/cli/src/controllers/oauth/"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:35:13.263Z"
-    },
-    {
-      "id": "missing-api-intelligent-helpers-1754177739695",
-      "title": "Implement Intelligent Workflow Helpers API",
-      "description": "Add AI-powered endpoints for suggesting node connections, auto-mapping parameters, and providing intelligent workflow development assistance.",
-      "mode": "DEVELOPMENT",
-      "priority": "low",
-      "status": "completed",
-      "success_criteria": [
-        "POST /api/v1/workflows/:id/suggest-connections endpoint",
-        "POST /api/v1/nodes/auto-map-parameters endpoint",
-        "GET /api/v1/workflows/:id/optimization-suggestions endpoint",
-        "AI-powered node recommendation engine",
-        "Parameter mapping intelligence based on data types",
-        "Integration with existing AI node infrastructure"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/ai-helpers.controller.ts",
-        "packages/cli/src/services/ai-helpers.service.ts",
-        "packages/nodes-base/nodes/OpenAi/",
-        "packages/workflow/src/NodeHelpers.ts"
-      ],
-      "estimate": "10-12 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:35:39.695Z"
-    },
-    {
-      "id": "missing-api-instance-monitoring-1754177739695",
-      "title": "Implement Instance-Level Resource Monitoring API",
-      "description": "Add endpoints for monitoring CPU, memory, and disk usage at the n8n instance level with per-workflow resource tracking and alerting.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/system/cpu-usage endpoint implemented",
-        "GET /api/v1/system/memory-usage endpoint functional",
-        "GET /api/v1/system/disk-usage endpoint working",
-        "GET /api/v1/workflows/:id/resource-usage per-workflow tracking",
-        "Real-time resource monitoring with WebSocket updates",
-        "Resource usage alerting and threshold management"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/system-monitoring.controller.ts",
-        "packages/cli/src/services/system-monitoring.service.ts",
-        "packages/cli/src/services/system-resources.service.ts",
-        "packages/cli/src/metrics/"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "created_at": "2025-08-02T23:35:39.695Z"
-    },
-    {
-      "id": "missing-api-node-metrics-1754177739695",
-      "title": "Implement Node-Specific Performance Metrics API",
-      "description": "Add endpoints for detailed node-level performance metrics including memory usage, execution time, and error statistics for workflow optimization.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/analytics/nodes/:nodeType/metrics endpoint",
-        "GET /api/v1/analytics/nodes/:nodeType/errors endpoint",
-        "Node-level memory usage tracking and reporting",
-        "Execution time breakdown by node type",
-        "Error rate statistics per node with categorization",
-        "Performance comparison across different node versions"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/analytics.controller.ts",
-        "packages/cli/src/services/analytics.service.ts",
-        "packages/core/src/WorkflowExecute.ts",
-        "packages/cli/src/services/performance-monitoring.service.ts"
-      ],
-      "estimate": "4-6 hours",
-      "requires_research": false,
-      "created_at": "2025-08-02T23:35:39.695Z"
-    },
-    {
-      "id": "missing-api-workflow-search-1754177739695",
-      "title": "Implement Advanced Workflow Search API",
-      "description": "Add comprehensive workflow search capabilities beyond templates, including full-text search, metadata filtering, and complex query support.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "GET /api/v1/workflows/search endpoint with advanced filtering",
-        "Full-text search across workflow content and metadata",
-        "Complex filtering by tags, status, execution history",
-        "Search performance optimization with indexing",
-        "Elasticsearch/OpenSearch integration support",
-        "Saved search queries and bookmarking"
-      ],
-      "important_files": [
-        "packages/cli/src/workflows/workflows.controller.ts",
-        "packages/cli/src/services/workflow-search.service.ts",
-        "@n8n/db/src/repositories/workflow.repository.ts",
-        "packages/cli/src/services/search.service.ts"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": true,
-      "created_at": "2025-08-02T23:35:39.695Z"
-    },
-    {
       "id": "remove-pyodide-enable-local-python-1754179589293",
       "title": "Remove Pyodide and Enable Local Python Execution with Virtual Environments",
       "description": "Replace the current Pyodide-based Python execution in Code nodes with native local Python execution using virtual environments for maximum capabilities and performance",
@@ -1738,7 +1863,7 @@
       "description": "Improve @n8n/design-system test coverage from 47% to 80% by adding tests for untested components and improving function coverage from 45%",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "in_progress",
+      "status": "completed",
       "parent_task_id": "frontend-test-coverage-1754084008692",
       "success_criteria": [
         "Design system package reaches 80%+ statement coverage",
@@ -1753,7 +1878,76 @@
         "packages/frontend/@n8n/design-system/vitest.config.ts"
       ],
       "estimate": "4-5 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
+      "created_at": "2025-08-03T14:17:09.258Z",
+      "subtasks": [
+        {
+          "id": "analyze-coverage-baseline-1754370557436",
+          "title": "Analyze Design System Test Coverage Baseline",
+          "description": "Run comprehensive coverage analysis to identify specific components with low/missing test coverage and establish improvement priorities",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "enhance-design-system-coverage-1754230629258",
+          "success_criteria": [
+            "Coverage baseline report generated with specific percentages per component",
+            "Components with low coverage identified and prioritized",
+            "Missing test files documented for untested components",
+            "Coverage improvement roadmap created with specific targets"
+          ],
+          "important_files": [
+            "packages/frontend/@n8n/design-system/coverage-report.json",
+            "packages/frontend/@n8n/design-system/src/components/",
+            "packages/frontend/@n8n/design-system/vitest.config.ts"
+          ],
+          "estimate": "1-2 hours",
+          "created_at": "2025-08-05T05:09:17.436Z"
+        },
+        {
+          "id": "test-critical-components-1754370557436",
+          "title": "Add Tests for Critical UI Components",
+          "description": "Focus on testing the most critical components (Button, Input, Select, Alert, etc.) to achieve quick coverage gains for high-impact components",
+          "mode": "DEVELOPMENT",
+          "priority": "high",
+          "status": "pending",
+          "parent_task_id": "enhance-design-system-coverage-1754230629258",
+          "success_criteria": [
+            "N8nButton, N8nInput, N8nSelect components reach 90%+ coverage",
+            "N8nAlert, N8nCard, N8nTooltip components fully tested",
+            "Component interaction and prop validation tested",
+            "All critical user interaction scenarios covered"
+          ],
+          "important_files": [
+            "packages/frontend/@n8n/design-system/src/components/N8nButton/",
+            "packages/frontend/@n8n/design-system/src/components/N8nInput/",
+            "packages/frontend/@n8n/design-system/src/components/N8nSelect/",
+            "packages/frontend/@n8n/design-system/src/components/N8nAlert/"
+          ],
+          "estimate": "2-3 hours",
+          "created_at": "2025-08-05T05:09:17.436Z"
+        },
+        {
+          "id": "test-utility-functions-1754370557436",
+          "title": "Improve Utility Functions and Directive Test Coverage",
+          "description": "Add comprehensive tests for utility functions, directives, and helper modules to improve function coverage from 45% to 70%+",
+          "mode": "DEVELOPMENT",
+          "priority": "medium",
+          "status": "pending",
+          "parent_task_id": "enhance-design-system-coverage-1754230629258",
+          "success_criteria": [
+            "All utility functions in src/utils/ reach 80%+ coverage",
+            "Directive functions (n8n-html, n8n-truncate, etc.) fully tested",
+            "Helper functions and type guards comprehensively tested",
+            "Function coverage increases from 45% to 70%+"
+          ],
+          "important_files": [
+            "packages/frontend/@n8n/design-system/src/utils/",
+            "packages/frontend/@n8n/design-system/src/directives/",
+            "packages/frontend/@n8n/design-system/src/composables/"
+          ],
+          "estimate": "1-2 hours",
+          "created_at": "2025-08-05T05:09:17.436Z"
+        }
+      ]
     },
     {
       "id": "fix-editor-ui-test-performance-1754230629258",
@@ -2117,14 +2311,391 @@
         "Report on current vs missing bulk operation support"
       ],
       "mode": "DEVELOPMENT"
+    },
+    {
+      "id": "analyze-coverage-baseline-1754370557436",
+      "title": "Analyze Design System Test Coverage Baseline",
+      "description": "Run comprehensive coverage analysis to identify specific components with low/missing test coverage and establish improvement priorities",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "enhance-design-system-coverage-1754230629258",
+      "success_criteria": [
+        "Coverage baseline report generated with specific percentages per component",
+        "Components with low coverage identified and prioritized",
+        "Missing test files documented for untested components",
+        "Coverage improvement roadmap created with specific targets"
+      ],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/coverage-report.json",
+        "packages/frontend/@n8n/design-system/src/components/",
+        "packages/frontend/@n8n/design-system/vitest.config.ts"
+      ],
+      "estimate": "1-2 hours",
+      "created_at": "2025-08-05T05:09:17.436Z"
+    },
+    {
+      "id": "test-critical-components-1754370557436",
+      "title": "Add Tests for Critical UI Components",
+      "description": "Focus on testing the most critical components (Button, Input, Select, Alert, etc.) to achieve quick coverage gains for high-impact components",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "parent_task_id": "enhance-design-system-coverage-1754230629258",
+      "success_criteria": [
+        "N8nButton, N8nInput, N8nSelect components reach 90%+ coverage",
+        "N8nAlert, N8nCard, N8nTooltip components fully tested",
+        "Component interaction and prop validation tested",
+        "All critical user interaction scenarios covered"
+      ],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nButton/",
+        "packages/frontend/@n8n/design-system/src/components/N8nInput/",
+        "packages/frontend/@n8n/design-system/src/components/N8nSelect/",
+        "packages/frontend/@n8n/design-system/src/components/N8nAlert/"
+      ],
+      "estimate": "2-3 hours",
+      "created_at": "2025-08-05T05:09:17.436Z"
+    },
+    {
+      "id": "test-utility-functions-1754370557436",
+      "title": "Improve Utility Functions and Directive Test Coverage",
+      "description": "Add comprehensive tests for utility functions, directives, and helper modules to improve function coverage from 45% to 70%+",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "parent_task_id": "enhance-design-system-coverage-1754230629258",
+      "success_criteria": [
+        "All utility functions in src/utils/ reach 80%+ coverage",
+        "Directive functions (n8n-html, n8n-truncate, etc.) fully tested",
+        "Helper functions and type guards comprehensively tested",
+        "Function coverage increases from 45% to 70%+"
+      ],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/utils/",
+        "packages/frontend/@n8n/design-system/src/directives/",
+        "packages/frontend/@n8n/design-system/src/composables/"
+      ],
+      "estimate": "1-2 hours",
+      "created_at": "2025-08-05T05:09:17.436Z"
+    },
+    {
+      "id": "task_1754383329209_ehjb2gn73",
+      "title": "Add tests for core N8n UI components (Text, Link, Loading, Menu)",
+      "description": "Implement comprehensive test coverage for fundamental UI components: N8nText, N8nLink, N8nLoading, N8nMenu, N8nMenuItem to improve overall package coverage",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nText/",
+        "packages/frontend/@n8n/design-system/src/components/N8nLink/",
+        "packages/frontend/@n8n/design-system/src/components/N8nLoading/",
+        "packages/frontend/@n8n/design-system/src/components/N8nMenu/",
+        "packages/frontend/@n8n/design-system/src/components/N8nMenuItem/"
+      ],
+      "success_criteria": [
+        "N8nText component has comprehensive tests covering all props and slots",
+        "N8nLink component tests cover internal/external links and router integration",
+        "N8nLoading component tests cover all loading states and sizes",
+        "N8nMenu and N8nMenuItem components have complete interaction tests",
+        "All tests follow established testing patterns and best practices",
+        "Component test coverage contributes to overall 80% target"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T08:42:09.209Z"
+    },
+    {
+      "id": "task_1754383329224_eatxqpcen",
+      "title": "Add tests for form and input components (Option, Pagination, Popover)",
+      "description": "Create comprehensive tests for form-related components: N8nOption, N8nPagination, N8nPopover to ensure proper form interaction and validation",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nOption/",
+        "packages/frontend/@n8n/design-system/src/components/N8nPagination/",
+        "packages/frontend/@n8n/design-system/src/components/N8nPopover/"
+      ],
+      "success_criteria": [
+        "N8nOption component tests cover selection, disabled states, and value handling",
+        "N8nPagination component tests cover page navigation, limits, and edge cases",
+        "N8nPopover component tests cover positioning, triggers, and content rendering",
+        "All form interaction behaviors properly tested",
+        "Accessibility features tested where applicable",
+        "Test coverage meets quality standards"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T08:42:09.224Z"
+    },
+    {
+      "id": "task_1754383329234_4uc2uuia8",
+      "title": "Add tests for layout components (Pulse, RadioButtons, ResizeWrapper, Sticky)",
+      "description": "Implement test coverage for layout and positioning components: N8nPulse, N8nRadioButtons, N8nResizeWrapper, N8nResizeableSticky, N8nSticky",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nPulse/",
+        "packages/frontend/@n8n/design-system/src/components/N8nRadioButtons/",
+        "packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/",
+        "packages/frontend/@n8n/design-system/src/components/N8nResizeableSticky/",
+        "packages/frontend/@n8n/design-system/src/components/N8nSticky/"
+      ],
+      "success_criteria": [
+        "N8nPulse component animation and visibility states tested",
+        "N8nRadioButtons component tests cover selection, groups, and validation",
+        "N8nResizeWrapper component resize behaviors and callbacks tested",
+        "N8nSticky and N8nResizeableSticky positioning logic tested",
+        "Component interaction and state management properly covered",
+        "Tests contribute meaningfully to coverage goals"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T08:42:09.234Z"
+    },
+    {
+      "id": "task_1754383329245_d8xs6ad1o",
+      "title": "Add tests for specialized components (NodeCreator, NodeIcon, Tags, UsersList)",
+      "description": "Create comprehensive tests for specialized workflow components: N8nNodeCreatorNode, N8nNodeIcon, N8nTags, N8nUsersList and utility components",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/",
+        "packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/",
+        "packages/frontend/@n8n/design-system/src/components/N8nTags/",
+        "packages/frontend/@n8n/design-system/src/components/N8nUsersList/",
+        "packages/frontend/@n8n/design-system/src/components/ResizeObserver/",
+        "packages/frontend/@n8n/design-system/src/components/TableBase/"
+      ],
+      "success_criteria": [
+        "N8nNodeCreatorNode component workflow integration tests implemented",
+        "N8nNodeIcon component icon rendering and fallback tests added",
+        "N8nTags component tag manipulation and display tests created",
+        "N8nUsersList component user display and interaction tests implemented",
+        "ResizeObserver and TableBase utility component tests added",
+        "All specialized functionality properly tested and documented"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T08:42:09.245Z"
+    },
+    {
+      "id": "task_1754383329257_xtsdsakop",
+      "title": "Add tests for Assistant Chat message components",
+      "description": "Implement comprehensive test coverage for AskAssistantChat message subcomponents: BaseMessage, BlockMessage, CodeDiffMessage, ErrorMessage, EventMessage, MessageRating, MessageWrapper, TextMessage, ToolMessage",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/",
+        "packages/frontend/@n8n/design-system/src/components/InlineAskAssistantButton/"
+      ],
+      "success_criteria": [
+        "All 9 message component types have comprehensive tests",
+        "Message rendering, props, and interaction behaviors tested",
+        "Message state management and event handling covered",
+        "Component composition and slot usage tested",
+        "Assistant chat functionality properly validated",
+        "Tests follow established chat component patterns"
+      ],
+      "estimate": "4-5 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T08:42:09.257Z"
+    },
+    {
+      "id": "task_1754384643394_yza7n1ws7",
+      "title": "Analyze editor-ui test dependencies and imports for performance optimization",
+      "description": "Comprehensive analysis of test infrastructure to identify performance bottlenecks in dependencies, imports, setup files, and test utilities",
+      "mode": "DEVELOPMENT",
+      "priority": "HIGH",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [
+        "Package.json dev dependencies analyzed for heavy testing libraries",
+        "Test setup files examined for expensive imports/initializations",
+        "Common test utilities reviewed for performance bottlenecks",
+        "Mock setup configurations analyzed for complexity",
+        "Test environment setup checked for inefficiencies",
+        "Specific recommendations provided for optimization"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:04:03.394Z"
+    },
+    {
+      "id": "task_1754385889365_ox5encokv",
+      "title": "File Type Validation Security Analysis",
+      "description": "Analyze file type validation, MIME type checking, and extension restrictions for security",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385889365_ox5encokv.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385889365_ox5encokv.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:49.365Z"
+    },
+    {
+      "id": "task_1754385889370_gnrc03tb8",
+      "title": "File Size Limits and Resource Controls",
+      "description": "Research file size restrictions, memory limits, and DoS prevention measures",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385889370_gnrc03tb8.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385889370_gnrc03tb8.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:49.370Z"
+    },
+    {
+      "id": "task_1754385889374_oaa2n6ml1",
+      "title": "Path Traversal Prevention Analysis",
+      "description": "Examine path sanitization, directory traversal prevention, and secure file handling",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385889374_oaa2n6ml1.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385889374_oaa2n6ml1.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:49.374Z"
+    },
+    {
+      "id": "task_1754385889378_499lsd96y",
+      "title": "File Operations Authentication Analysis",
+      "description": "Research authentication requirements, JWT validation, and authorization patterns for file ops",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385889378_499lsd96y.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385889378_499lsd96y.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:49.378Z"
+    },
+    {
+      "id": "task_1754385899525_rljahdb89",
+      "title": "CSRF Protection for File Uploads",
+      "description": "Analyze CSRF token validation, SameSite cookies, and anti-CSRF measures",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385899525_rljahdb89.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385899525_rljahdb89.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:59.525Z"
+    },
+    {
+      "id": "task_1754385899530_chcx0jbmj",
+      "title": "Security Headers and Content-Type Analysis",
+      "description": "Research Content-Type validation, security headers, and response sanitization",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385899530_chcx0jbmj.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385899530_chcx0jbmj.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:59.530Z"
+    },
+    {
+      "id": "task_1754385899534_1sqw5l9lm",
+      "title": "Security Middleware and Decorators Analysis",
+      "description": "Examine security middleware, decorators, and reusable security patterns",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385899534_1sqw5l9lm.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385899534_1sqw5l9lm.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:59.535Z"
+    },
+    {
+      "id": "task_1754385899539_2rnqqbj3z",
+      "title": "Binary Data Security Patterns",
+      "description": "Research binary data handling, encoding security, and storage patterns",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-task_1754385899539_2rnqqbj3z.md"
+      ],
+      "success_criteria": [
+        "Research report created: ./development/research-reports/research-report-task_1754385899539_2rnqqbj3z.md"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-05T09:24:59.539Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "TASK_CREATION",
-  "execution_count": 264,
-  "last_hook_activation": 1754367573911,
+  "last_mode": "DEVELOPMENT",
+  "execution_count": 281,
+  "last_hook_activation": 1754387175244,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

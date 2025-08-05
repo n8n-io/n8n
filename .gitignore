@@ -100,16 +100,6 @@ venv.bak/
 *.temp
 *.orig
 *.rej
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.default.json
-.idea
-nodelinter.config.json
-**/package-lock.json
-packages/**/.turbo
-.turbo
-*.tsbuildinfo
-.stylelintcache
 *.swp
 *.swo
 *~

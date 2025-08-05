@@ -2,8 +2,8 @@ import { Container } from '@n8n/di';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
-import { Config, Env, Nested } from '../src/decorators';
 import { CommaSeparatedStringArray, ColonSeparatedStringArray } from '../src/custom-types';
+import { Config, Env, Nested } from '../src/decorators';
 
 // Mock fs module
 jest.mock('fs');

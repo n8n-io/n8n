@@ -46,7 +46,7 @@ export async function use(l: string) {
 }
 
 export function i18n(fn: N8nLocaleTranslateFn) {
-	i18nHandler = fn || i18nHandler;
+	i18nHandler = fn;
 }
 
 export default { use, t, i18n };
