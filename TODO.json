@@ -2084,14 +2084,47 @@
         "python-documentation"
       ],
       "mode": "DEVELOPMENT"
+    },
+    {
+      "id": "oauth2_research_1754367471409",
+      "title": "Comprehensive OAuth2 and credential testing analysis in n8n codebase",
+      "description": "Analyze OAuth2 callback handling, credential validation APIs, authentication testing tools, and external auth provider integrations",
+      "status": "pending",
+      "priority": "high",
+      "created_at": "2025-08-05T04:17:51.409Z",
+      "subtasks": [
+        "OAuth2 callback routing analysis",
+        "Credential validation API discovery",
+        "Authentication testing framework analysis",
+        "External provider integration patterns",
+        "Credential health checking mechanisms"
+      ],
+      "mode": "DEVELOPMENT"
+    },
+    {
+      "id": "bulk_ops_analysis_1754367488256",
+      "title": "Comprehensive Analysis of n8n Bulk Operation Capabilities",
+      "description": "Search and analyze existing bulk workflow operations vs gaps in n8n codebase",
+      "status": "pending",
+      "priority": "high",
+      "type": "research",
+      "created_at": "2025-08-05T04:18:08.256Z",
+      "estimated_duration": "10-15 minutes",
+      "acceptance_criteria": [
+        "Map all existing bulk workflow activation/deactivation APIs",
+        "Document batch processing capabilities in CLI and controllers",
+        "Identify gaps in multi-workflow management features",
+        "Report on current vs missing bulk operation support"
+      ],
+      "mode": "DEVELOPMENT"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 257,
-  "last_hook_activation": 1754363190807,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 264,
+  "last_hook_activation": 1754367573911,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
