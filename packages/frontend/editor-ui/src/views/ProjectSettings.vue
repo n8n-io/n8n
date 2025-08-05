@@ -8,7 +8,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectIcon, Project, ProjectRelation } from '@/types/projects.types';
+import type { Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -18,8 +18,7 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-
-import { getAllIconNames } from '@/plugins/icons';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type FormDataDiff = {
 	name?: string;
@@ -57,11 +56,9 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 });
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const availableProjectIcons: string[] = getAllIconNames();
-
-const projectIcon = ref<ProjectIcon>({
+const projectIcon = ref<IconOrEmoji>({
 	type: 'icon',
-	value: 'layer-group',
+	value: 'layers',
 });
 
 const usersList = computed(() =>
@@ -102,9 +99,9 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onRoleAction = (user: Partial<IUser>, role: string) => {
+const onRoleAction = (userId: string, role?: string) => {
 	isDirty.value = true;
-	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === user.id);
+	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === userId);
 	if (role === 'remove') {
 		formData.value.relations.splice(index, 1);
 	} else {
@@ -288,7 +285,7 @@ watch(
 			: [];
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
-		if (projectsStore.currentProject?.icon) {
+		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
 		}
 	},
@@ -330,7 +327,6 @@ onMounted(() => {
 					<N8nIconPicker
 						v-model="projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
-						:available-icons="availableProjectIcons"
 						@update:model-value="onIconUpdated"
 					/>
 					<N8nFormInput
@@ -394,7 +390,7 @@ onMounted(() => {
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
 								data-test-id="projects-settings-user-role-select"
-								@update:model-value="onRoleAction(user, $event)"
+								@update:model-value="onRoleAction(user.id, $event)"
 							>
 								<N8nOption
 									v-for="role in projectRoles"
@@ -417,9 +413,9 @@ onMounted(() => {
 								type="tertiary"
 								native-type="button"
 								square
-								icon="trash"
+								icon="trash-2"
 								data-test-id="project-user-remove"
-								@click="onRoleAction(user, 'remove')"
+								@click="onRoleAction(user.id, 'remove')"
 							/>
 						</div>
 					</template>

@@ -211,9 +211,30 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
+			const selectFields: (keyof WorkflowEntity)[] = [
+				'id',
+				'name',
+				'active',
+				'createdAt',
+				'updatedAt',
+				'isArchived',
+				'nodes',
+				'connections',
+				'settings',
+				'staticData',
+				'meta',
+				'versionId',
+				'triggerCount',
+			];
+
+			if (!excludePinnedData) {
+				selectFields.push('pinData');
+			}
+
 			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
+				select: selectFields,
 				where,
 				...(!Container.get(GlobalConfig).tags.disabled && { relations: ['tags'] }),
 			});

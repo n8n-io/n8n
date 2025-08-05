@@ -10,13 +10,15 @@ import {
 	type Workflow,
 	type INode,
 	type ISourceData,
+	parseErrorMetadata,
+	type RelatedExecution,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
-import get from 'lodash-es/get';
-import isEmpty from 'lodash-es/isEmpty';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import { v4 as uuid } from 'uuid';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
@@ -52,8 +54,9 @@ function createNode(
 	return {
 		parent: context.parent,
 		node,
-		id: `${context.workflow.id}:${node.name}:${context.executionId}:${runIndex}`,
-		depth: context.depth,
+		// The ID consists of workflow ID, node ID and run index (including ancestor's), which
+		// makes it possible to identify the same log across different executions
+		id: `${context.workflow.id}:${node.id}:${[...context.ancestorRunIndexes, runIndex].join(':')}`,
 		runIndex,
 		runData,
 		children,
@@ -70,29 +73,28 @@ function getChildNodes(
 	runIndex: number | undefined,
 	context: LogTreeCreationContext,
 ) {
-	if (hasSubExecution(treeNode)) {
-		const workflowId = treeNode.runData?.metadata?.subExecution?.workflowId;
-		const executionId = treeNode.runData?.metadata?.subExecution?.executionId;
-		const workflow = workflowId ? context.workflows[workflowId] : undefined;
-		const subWorkflowRunData = executionId ? context.subWorkflowData[executionId] : undefined;
+	const subExecutionLocator = findSubExecutionLocator(treeNode);
 
-		if (!workflow || !subWorkflowRunData || !executionId) {
+	if (subExecutionLocator !== undefined) {
+		const workflow = context.workflows[subExecutionLocator.workflowId];
+		const subWorkflowRunData = context.subWorkflowData[subExecutionLocator.executionId];
+
+		if (!workflow || !subWorkflowRunData) {
 			return [];
 		}
 
 		return createLogTreeRec({
 			...context,
 			parent: treeNode,
-			depth: context.depth + 1,
+			ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 			workflow,
-			executionId,
+			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
 		});
 	}
 
 	// Get the first level of children
 	const connectedSubNodes = context.workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
-	const isExecutionRoot = !isSubNodeLog(treeNode);
 
 	function isMatchedSource(source: ISourceData | null): boolean {
 		return (
@@ -104,13 +106,12 @@ function getChildNodes(
 
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
-			// At root depth, filter out node executions that weren't triggered by this node
+			// Filter out node executions that weren't triggered by this node
 			// This prevents showing duplicate executions when a sub-node is connected to multiple parents
 			// Only filter nodes that have source information with valid previousNode references
-			const isMatched =
-				isExecutionRoot && t.source.some((source) => source !== null)
-					? t.source.some(isMatchedSource)
-					: runIndex === undefined || index === runIndex;
+			const isMatched = t.source.some((source) => source !== null)
+				? t.source.some(isMatchedSource)
+				: runIndex === undefined || index === runIndex;
 
 			if (!isMatched) {
 				return [];
@@ -121,7 +122,7 @@ function getChildNodes(
 			return subNode
 				? getTreeNodeData(subNode, t, index, {
 						...context,
-						depth: context.depth + 1,
+						ancestorRunIndexes: [...context.ancestorRunIndexes, runIndex ?? 0],
 						parent: treeNode,
 					})
 				: [];
@@ -171,28 +172,25 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
-function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {
-	for (const entry of subTree) {
-		if (entry.runData?.error) {
-			return entry;
-		}
+function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
+	const entryWithError = findLogEntryRec((e) => !!e.runData?.error, subTree);
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(entry.children, depth + 1);
-
-		if (childAutoSelect) {
-			return childAutoSelect;
-		}
-
-		if (entry.node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			if (isPlaceholderLog(entry) && entry.children.length > 0) {
-				return entry.children[0];
-			}
-
-			return entry;
-		}
+	if (entryWithError) {
+		return entryWithError;
 	}
 
-	return depth === 0 ? subTree[0] : undefined;
+	const entryForAiAgent = findLogEntryRec(
+		(entry) =>
+			entry.node.type === AGENT_LANGCHAIN_NODE_TYPE ||
+			(entry.parent?.node.type === AGENT_LANGCHAIN_NODE_TYPE && isPlaceholderLog(entry.parent)),
+		subTree,
+	);
+
+	if (entryForAiAgent) {
+		return entryForAiAgent;
+	}
+
+	return subTree[subTree.length - 1];
 }
 
 export function createLogTree(
@@ -203,7 +201,7 @@ export function createLogTree(
 ) {
 	return createLogTreeRec({
 		parent: undefined,
-		depth: 0,
+		ancestorRunIndexes: [],
 		executionId: response.id,
 		workflow,
 		workflows,
@@ -283,25 +281,37 @@ export function findLogEntryRec(
 export function findSelectedLogEntry(
 	selection: LogEntrySelection,
 	entries: LogEntry[],
+	isExecuting: boolean,
 ): LogEntry | undefined {
 	switch (selection.type) {
 		case 'initial':
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return isExecuting ? undefined : findLogEntryToAutoSelect(entries);
 		case 'none':
 			return undefined;
 		case 'selected': {
-			const entry = findLogEntryRec((e) => e.id === selection.id, entries);
+			const found = findLogEntryRec((e) => e.id === selection.entry.id, entries);
 
-			if (entry) {
-				return entry;
+			if (found === undefined && !isExecuting) {
+				for (let runIndex = selection.entry.runIndex - 1; runIndex >= 0; runIndex--) {
+					const fallback = findLogEntryRec(
+						(e) =>
+							e.workflow.id === selection.entry.workflow.id &&
+							e.node.id === selection.entry.node.id &&
+							e.runIndex === runIndex,
+						entries,
+					);
+
+					if (fallback !== undefined) {
+						return fallback;
+					}
+				}
 			}
 
-			return findLogEntryToAutoSelectRec(entries, 0);
+			return found;
 		}
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deepToRaw<T>(sourceObj: T): T {
 	const seen = new WeakMap();
 
@@ -434,7 +444,17 @@ export function mergeStartData(
 }
 
 export function hasSubExecution(entry: LogEntry): boolean {
-	return !!entry.runData?.metadata?.subExecution;
+	return findSubExecutionLocator(entry) !== undefined;
+}
+
+export function findSubExecutionLocator(entry: LogEntry): RelatedExecution | undefined {
+	const metadata = entry.runData?.metadata?.subExecution;
+
+	if (metadata) {
+		return { workflowId: metadata.workflowId, executionId: metadata.executionId };
+	}
+
+	return parseErrorMetadata(entry.runData?.error)?.subExecution;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
@@ -545,7 +565,7 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 	}
 
 	// Paths where the response message might be located
-	const paths = ['output', 'text', 'response.text'];
+	const paths = ['output', 'text', 'response.text', 'message'];
 	const matchedPath = paths.find((path) => get(responseData, path));
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
@@ -577,6 +597,32 @@ export function restoreChatHistory(
 	);
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
+}
+
+export async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
 }
 
 export function isSubNodeLog(logEntry: LogEntry): boolean {

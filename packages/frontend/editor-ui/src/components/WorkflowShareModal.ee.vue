@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
-
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -9,10 +9,9 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -28,6 +27,8 @@ import { useRolesStore } from '@/stores/roles.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/plugins/telemetry';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	data: {
@@ -49,6 +50,9 @@ const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
+const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
 	data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
@@ -141,15 +145,16 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		return await new Promise<string>((resolve) => {
-			if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				nodeViewEventBus.emit('saveWorkflow', () => {
-					resolve(workflow.value.id);
-				});
-			} else {
-				resolve(workflow.value.id);
+		if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			const parentFolderId = route.query.folderId as string | undefined;
+			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
+			if (!workflowId) {
+				throw new Error(i18n.baseText('workflows.shareModal.onSave.error.title'));
 			}
-		});
+			return workflowId;
+		} else {
+			return workflow.value.id;
+		}
 	};
 
 	try {
@@ -270,7 +275,7 @@ watch(
 							@project-removed="onProjectRemoved"
 						/>
 						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
+							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
 								<template #projectName>
 									{{ workflow.homeProject?.name }}
 								</template>
@@ -286,20 +291,21 @@ watch(
 										}}
 									</strong>
 								</template>
-							</i18n-t>
+							</I18nT>
 						</n8n-info-tip>
 					</div>
 					<template #fallback>
 						<n8n-text>
-							<i18n-t
+							<I18nT
 								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 										.tooltip
 								"
 								tag="span"
+								scope="global"
 							>
 								<template #action />
-							</i18n-t>
+							</I18nT>
 						</n8n-text>
 					</template>
 				</enterprise-edition>

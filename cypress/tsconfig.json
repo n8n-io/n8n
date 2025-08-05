@@ -8,5 +8,5 @@
 	},
 	"include": ["**/*.ts"],
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
-	"references": [{ "path": "../packages/workflow/tsconfig.build.json" }]
+	"references": [{ "path": "../packages/workflow/tsconfig.build.esm.json" }]
 }

@@ -1,7 +1,7 @@
 import * as tsvfs from '@typescript/vfs';
 import { COMPILER_OPTIONS, TYPESCRIPT_FILES } from './constants';
 import ts from 'typescript';
-import type { IndexedDbCache } from './cache';
+import type { IndexedDbCache } from '../../../cache';
 
 import globalTypes from './type-declarations/globals.d.ts?raw';
 import n8nTypes from './type-declarations/n8n.d.ts?raw';

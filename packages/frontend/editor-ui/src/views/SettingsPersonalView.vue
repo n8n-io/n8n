@@ -19,6 +19,7 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useSSOStore } from '@/stores/sso.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -62,32 +63,40 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
 
 const currentUser = computed((): IUser | null => {
 	return usersStore.currentUser;
 });
+
 const isExternalAuthEnabled = computed((): boolean => {
 	const isLdapEnabled =
-		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
-	const isSamlEnabled =
-		settingsStore.isSamlLoginEnabled && settingsStore.isDefaultAuthenticationSaml;
+		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
-		settingsStore.settings.enterprise.oidc && currentUser.value?.signInType === 'oidc';
+		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
 	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
+
 const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
 });
+
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
+});
+const mfaEnforced = computed((): boolean => {
+	return settingsStore.isMFAEnforced;
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
+
 const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
@@ -187,7 +196,8 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	}
 }
 
-async function onSubmit(form: UserBasicDetailsForm) {
+async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
+	const form = data as UserBasicDetailsForm;
 	const emailChanged = usersStore.currentUser?.email !== form.email;
 
 	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
@@ -354,6 +364,11 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice
+					v-if="mfaDisabled && mfaEnforced"
+					:content="i18n.baseText('settings.personal.mfa.enforced')"
+				/>
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"
@@ -413,10 +428,11 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .container {
+	padding-bottom: 100px;
+
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
 }
 
 .header {

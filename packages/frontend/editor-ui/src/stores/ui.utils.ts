@@ -1,11 +1,12 @@
-import type { AppliedThemeOption, ThemeOption } from '@/Interface';
-import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_THEME } from '@/constants';
+import type { AppliedThemeOption, ThemeOption } from '@/Interface';
 
-const themeRef = useStorage(LOCAL_STORAGE_THEME);
-
-export function addThemeToBody(theme: AppliedThemeOption) {
-	window.document.body.setAttribute('data-theme', theme);
+export function applyThemeToBody(theme: ThemeOption, window_?: Window) {
+	if (theme === 'system') {
+		(window_ ?? window).document.body.removeAttribute('data-theme');
+	} else {
+		(window_ ?? window).document.body.setAttribute?.('data-theme', theme); // setAttribute can be missing in jsdom environment
+	}
 }
 
 export function isValidTheme(theme: string | null): theme is AppliedThemeOption {
@@ -13,29 +14,12 @@ export function isValidTheme(theme: string | null): theme is AppliedThemeOption 
 }
 
 // query param allows overriding theme for demo view in preview iframe without flickering
-export function getThemeOverride() {
-	return getQueryParam('theme') || themeRef.value;
+export function getThemeOverride(): AppliedThemeOption | null {
+	const override = getQueryParam('theme') ?? localStorage.getItem(LOCAL_STORAGE_THEME);
+
+	return isValidTheme(override) ? override : null;
 }
 
 function getQueryParam(paramName: string): string | null {
 	return new URLSearchParams(window.location.search).get(paramName);
-}
-
-export function updateTheme(theme: ThemeOption) {
-	if (theme === 'system') {
-		window.document.body.removeAttribute('data-theme');
-		themeRef.value = null;
-	} else {
-		addThemeToBody(theme);
-		themeRef.value = theme;
-	}
-}
-
-export function getPreferredTheme(): { theme: AppliedThemeOption; mediaQuery: MediaQueryList } {
-	const isDarkModeQuery = !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-
-	return {
-		theme: isDarkModeQuery?.matches ? 'dark' : 'light',
-		mediaQuery: isDarkModeQuery,
-	};
 }

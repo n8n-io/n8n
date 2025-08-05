@@ -27,8 +27,8 @@ describe('CategoryItem', () => {
 			props: { name: 'Category Test', isTrigger: true },
 		});
 
-		expect(container.querySelector('[data-icon="bolt"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-icon="bolt-filled"]')).toBeInTheDocument();
 		await rerender({ isTrigger: false });
-		expect(container.querySelector('[data-icon="bolt"]')).not.toBeInTheDocument();
+		expect(container.querySelector('[data-icon="bolt-filled"]')).not.toBeInTheDocument();
 	});
 });

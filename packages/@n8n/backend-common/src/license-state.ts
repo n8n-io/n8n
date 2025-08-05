@@ -1,4 +1,5 @@
-import { UNLIMITED_LICENSE_QUOTA, type BooleanLicenseFeature } from '@n8n/constants';
+import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -60,6 +61,10 @@ export class LicenseState {
 
 	isOidcLicensed() {
 		return this.isLicensed('feat:oidc');
+	}
+
+	isMFAEnforcementLicensed() {
+		return this.isLicensed('feat:mfaEnforcement');
 	}
 
 	isApiKeyScopesLicensed() {

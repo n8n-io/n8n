@@ -73,7 +73,7 @@ export default defineComponent({
 			<!-- <template #header> -->
 			<Checkbox
 				:model-value="group.selected"
-				:indeterminate="!group.selected && group.indeterminate"
+				:indeterminate="group.indeterminate"
 				:disabled="readonly"
 				@update:model-value="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
@@ -85,7 +85,7 @@ export default defineComponent({
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
 				>
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ groupLabelInfo(group.name) }}
 					</template>
@@ -100,7 +100,7 @@ export default defineComponent({
 			>
 				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
@@ -108,15 +108,11 @@ export default defineComponent({
 			</Checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
-				<li
-					v-for="event in group.children"
-					:key="event.name"
-					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
-				>
+				<li v-for="event in group.children" :key="event.name" :class="`${$style.eventListItem}`">
 					<Checkbox
 						:model-value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
-						:disabled="group.selected || readonly"
+						:disabled="readonly"
 						@update:model-value="onInput"
 						@change="onCheckboxChecked(event.name, $event)"
 					>

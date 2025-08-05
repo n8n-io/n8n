@@ -271,11 +271,18 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
+        active="false"
+        block="false"
         data-test-id="replace-code-button"
         disabled="false"
-        icon="refresh"
+        element="button"
+        icon="refresh-cw"
+        label=""
         loading="false"
+        outline="false"
         size="mini"
+        square="false"
+        text="false"
         type="primary"
       />
     </div>
@@ -536,7 +543,8 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <n8n-icon-stub
           class="mr-5xs"
           color="danger"
-          icon="exclamation-triangle"
+          icon="triangle-alert"
+          spin="false"
         />
         <span
           class="infoText"
@@ -800,15 +808,25 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
     >
       <div>
         <n8n-button-stub
+          active="false"
+          block="false"
           data-test-id="undo-replace-button"
-          icon="undo"
+          disabled="false"
+          element="button"
+          icon="undo-2"
+          label=""
+          loading="false"
+          outline="false"
           size="mini"
+          square="false"
+          text="false"
           type="secondary"
         />
         <n8n-icon-stub
           class="ml-xs"
           color="success"
           icon="check"
+          spin="false"
         />
         <span
           class="infoText"
@@ -1072,11 +1090,18 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
+        active="false"
+        block="false"
         data-test-id="replace-code-button"
         disabled="false"
-        icon="refresh"
+        element="button"
+        icon="refresh-cw"
+        label=""
         loading="true"
+        outline="false"
         size="mini"
+        square="false"
+        text="false"
         type="secondary"
       />
     </div>

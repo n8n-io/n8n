@@ -180,22 +180,120 @@ While iterating on n8n modules code, you can run `pnpm dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
 
+### Basic Development Workflow
+
 1. Start n8n in development mode:
    ```
    pnpm dev
    ```
-1. Hack, hack, hack
-1. Check if everything still runs in production mode:
+2. Hack, hack, hack
+3. Check if everything still runs in production mode:
    ```
    pnpm build
    pnpm start
    ```
-1. Create tests
-1. Run all [tests](#test-suite):
+4. Create tests
+5. Run all [tests](#test-suite):
    ```
    pnpm test
    ```
-1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+
+### Hot Reload for Nodes (N8N_DEV_RELOAD)
+
+When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server:
+
+```bash
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Performance considerations:**
+- File watching adds overhead to your system, especially on slower machines
+- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
+- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+
+### Selective Package Development
+
+Running all packages in development mode can be resource-intensive. For better performance, run only the packages relevant to your work:
+
+#### Available Filtered Commands
+
+- **Backend-only development:**
+  ```bash
+  pnpm dev:be
+  ```
+  Excludes frontend packages like editor-ui and design-system
+
+- **Frontend-only development:**
+  ```bash
+  pnpm dev:fe
+  ```
+  Runs the backend server and editor-ui development server
+
+- **AI/LangChain nodes development:**
+  ```bash
+  pnpm dev:ai
+  ```
+  Runs only essential packages for AI node development
+
+#### Custom Selective Development
+
+For even more focused development, you can run packages individually:
+
+**Example 1: Working on custom nodes**
+```bash
+# Terminal 1: Build and watch nodes package
+cd packages/nodes-base
+pnpm dev
+
+# Terminal 2: Run the CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Example 2: Pure frontend development**
+```bash
+# Terminal 1: Start the backend server (no watching)
+pnpm start
+
+# Terminal 2: Run frontend dev server
+cd packages/editor-ui
+pnpm dev
+```
+
+**Example 3: Working on a specific node package**
+```bash
+# Terminal 1: Watch your node package
+cd packages/nodes-base  # or your custom node package
+pnpm watch
+
+# Terminal 2: Run CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+### Performance Considerations
+
+The full development mode (`pnpm dev`) runs multiple processes in parallel:
+
+1. **TypeScript compilation** for each package
+2. **File watchers** monitoring source files
+3. **Nodemon** restarting the backend on changes
+4. **Vite dev server** for the frontend with HMR
+5. **Multiple build processes** for various packages
+
+**Performance impact:**
+- Can consume significant CPU and memory resources
+- File system watching creates overhead, especially on:
+  - Networked file systems
+  - Virtual machines with shared folders
+  - Systems with slower I/O performance
+- The more packages you run in dev mode, the more system resources are consumed
+
+**Recommendations for resource-constrained environments:**
+1. Use selective development commands based on your task
+2. Close unnecessary applications to free up resources
+3. Monitor system performance and adjust your development approach accordingly
 
 ---
 

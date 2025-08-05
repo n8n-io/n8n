@@ -1,5 +1,6 @@
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -12,6 +13,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	constructor(
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super(eventService);
 	}
@@ -65,6 +67,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
 			'runner-task-requested': (event) => this.runnerTaskRequested(event),
 			'runner-response-received': (event) => this.runnerResponseReceived(event),
+			'job-enqueued': (event) => this.jobEnqueued(event),
+			'job-dequeued': (event) => this.jobDequeued(event),
+			'job-stalled': (event) => this.jobStalled(event),
 		});
 	}
 
@@ -143,10 +148,11 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, ...rest } = event;
+		const { runData, workflow, executionId, ...rest } = event;
 
 		const payload = {
 			...rest,
+			executionId,
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			workflowId: workflow.id,
@@ -158,6 +164,18 @@ export class LogStreamingEventRelay extends EventRelay {
 				eventName: 'n8n.workflow.success',
 				payload,
 			});
+
+			if (runData?.jobId) {
+				void this.eventBus.sendQueueEvent({
+					eventName: 'n8n.queue.job.completed',
+					payload: {
+						executionId,
+						workflowId: workflow.id,
+						hostId: this.instanceSettings.hostId,
+						jobId: runData.jobId.toString(),
+					},
+				});
+			}
 
 			return;
 		}
@@ -174,6 +192,18 @@ export class LogStreamingEventRelay extends EventRelay {
 				errorMessage: runData?.data.resultData.error?.message.toString(),
 			},
 		});
+
+		if (runData?.jobId) {
+			void this.eventBus.sendQueueEvent({
+				eventName: 'n8n.queue.job.failed',
+				payload: {
+					executionId,
+					workflowId: workflow.id,
+					hostId: this.instanceSettings.hostId,
+					jobId: runData.jobId.toString(),
+				},
+			});
+		}
 	}
 
 	// #endregion
@@ -553,6 +583,31 @@ export class LogStreamingEventRelay extends EventRelay {
 	private runnerResponseReceived(payload: RelayEventMap['runner-response-received']) {
 		void this.eventBus.sendRunnerEvent({
 			eventName: 'n8n.runner.response.received',
+			payload,
+		});
+	}
+
+	// #endregion
+
+	// #region queue
+
+	private jobEnqueued(payload: RelayEventMap['job-enqueued']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.enqueued',
+			payload,
+		});
+	}
+
+	private jobDequeued(payload: RelayEventMap['job-dequeued']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.dequeued',
+			payload,
+		});
+	}
+
+	private jobStalled(payload: RelayEventMap['job-stalled']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.stalled',
 			payload,
 		});
 	}

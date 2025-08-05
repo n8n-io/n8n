@@ -14,8 +14,8 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	NodeConnectionType,
+	IRunData,
 } from 'n8n-workflow';
-import type { IRunData } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';

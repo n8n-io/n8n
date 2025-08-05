@@ -19,6 +19,7 @@ export class MainSidebar extends BasePage {
 		credentials: () => this.getters.menuItem('credentials'),
 		executions: () => this.getters.menuItem('executions'),
 		adminPanel: () => this.getters.menuItem('cloud-admin'),
+		whatsNew: () => this.getters.menuItem('whats-new'),
 		userMenu: () => cy.getByTestId('user-menu'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};

@@ -147,7 +147,7 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 			{
 				parameters: {
 					content:
-						'### Readme\nLoad your data into a vector database with the 📚 **Load Data** flow, and then use your data as chat context with the 🐕 **Retriever** flow.\n\n**Quick start**\n1. Click on the `Execute Workflow` button to run the 📚 **Load Data** flow.\n2. Click on `Open Chat` button to run the 🐕 **Retriever** flow. Then ask a question about content from your document(s)\n\n\nFor more info, check our docs on RAG in n8n',
+						'### Readme\nLoad your data into a vector database with the 📚 **Load Data** flow, and then use your data as chat context with the 🐕 **Retriever** flow.\n\n**Quick start**\n1. Click on the `Execute Workflow` button to run the 📚 **Load Data** flow.\n2. Click on `Open Chat` button to run the 🐕 **Retriever** flow. Then ask a question about content from your document(s)\n\n\nFor more info, check [our docs on RAG in n8n](https://docs.n8n.io/advanced-ai/rag-in-n8n/).',
 					height: 300,
 					width: 440,
 					color: 4,
@@ -258,6 +258,20 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 				typeVersion: 1,
 				id: '28bc73a1-e64a-47bf-ac1c-ffe644894ea5',
 				name: 'Sticky Note2',
+			},
+			{
+				parameters: {
+					content:
+						'### Embeddings\n\nThe Insert and Retrieve operation use the same embedding node.\n\nThis is to ensure that they are using the **exact same embeddings and settings**.\n\nDifferent embeddings might not work at all, or have unintended consequences.\n',
+					height: 240,
+					width: 320,
+					color: 4,
+				},
+				type: 'n8n-nodes-base.stickyNote',
+				position: [660, 440],
+				typeVersion: 1,
+				id: '0cf8c647-418c-4d1a-8952-766145afca72',
+				name: 'Sticky Note3',
 			},
 		],
 		connections: {

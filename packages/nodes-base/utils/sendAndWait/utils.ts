@@ -24,7 +24,11 @@ import {
 import type { IEmail } from './interfaces';
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import {
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+} from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 
 export type SendAndWaitConfig = {

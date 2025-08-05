@@ -10,6 +10,7 @@ jest.mock('openid-client', () => ({
 }));
 
 import type { OidcConfigDto } from '@n8n/api-types';
+import { testDb } from '@n8n/backend-test-utils';
 import { type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type * as mocked_oidc_client from 'openid-client';
@@ -20,8 +21,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
 import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
 import { createUser } from '@test-integration/db/users';
-
-import * as testDb from '../shared/test-db';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -249,7 +248,7 @@ describe('OIDC service', () => {
 			expect(user.id).toEqual(createdUser.id);
 		});
 
-		it('should throw `BadRequestError` if user already exists out of OIDC system', async () => {
+		it('should sign up the user if user already exists out of OIDC system', async () => {
 			const callbackUrl = new URL(
 				'http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=valid-state',
 			);
@@ -280,10 +279,12 @@ describe('OIDC service', () => {
 				email: 'user1@example.com',
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
+			const user = await oidcService.loginUser(callbackUrl);
+			expect(user).toBeDefined();
+			expect(user.email).toEqual('user1@example.com');
 		});
 
-		it('should throw `BadRequestError` if OIDC Idp does not have email verified', async () => {
+		it('should sign in user if OIDC Idp does not have email verified', async () => {
 			const callbackUrl = new URL(
 				'http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=valid-state',
 			);
@@ -314,7 +315,9 @@ describe('OIDC service', () => {
 				email: 'user3@example.com',
 			});
 
-			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
+			const user = await oidcService.loginUser(callbackUrl);
+			expect(user).toBeDefined();
+			expect(user.email).toEqual('user3@example.com');
 		});
 
 		it('should throw `BadRequestError` if OIDC Idp does not provide an email', async () => {

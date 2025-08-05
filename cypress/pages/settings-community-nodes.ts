@@ -14,9 +14,13 @@ export const installFirstCommunityNode = (nodeName: string) => {
 };
 
 export const confirmCommunityNodeUpdate = () => {
-	cy.getByTestId('communityPackageManageConfirm-modal').find('button').eq(1).click();
+	cy.getByTestId('communityPackageManageConfirm-modal')
+		.contains('button', 'Confirm update')
+		.click();
 };
 
 export const confirmCommunityNodeUninstall = () => {
-	cy.getByTestId('communityPackageManageConfirm-modal').find('button').eq(1).click();
+	cy.getByTestId('communityPackageManageConfirm-modal')
+		.contains('button', 'Confirm uninstall')
+		.click();
 };

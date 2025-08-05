@@ -68,7 +68,7 @@ async function onUpdateConnected(value: boolean) {
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"
-			icon="exclamation-triangle"
+			icon="triangle-alert"
 			class="mr-2xs"
 		/>
 		<n8n-text :color="connectedTextColor" bold class="mr-2xs">

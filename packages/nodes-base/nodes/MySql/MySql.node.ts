@@ -11,7 +11,7 @@ export class MySql extends VersionedNodeType {
 			name: 'mySql',
 			icon: { light: 'file:mysql.svg', dark: 'file:mysql.dark.svg' },
 			group: ['input'],
-			defaultVersion: 2.4,
+			defaultVersion: 2.5,
 			description: 'Get, add and update data in MySQL',
 			parameterPane: 'wide',
 		};
@@ -23,6 +23,7 @@ export class MySql extends VersionedNodeType {
 			2.2: new MySqlV2(baseDescription),
 			2.3: new MySqlV2(baseDescription),
 			2.4: new MySqlV2(baseDescription),
+			2.5: new MySqlV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

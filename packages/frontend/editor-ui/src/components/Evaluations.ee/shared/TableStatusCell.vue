@@ -4,6 +4,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TestTableColumn } from '@/components/Evaluations.ee/shared/TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
+import type { BadgeTheme } from '@n8n/design-system';
 
 defineProps<{
 	column: TestTableColumn<T>;
@@ -31,7 +32,6 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 	TEST_CASES_NOT_FOUND: 'evaluation.listRuns.error.testCasesNotFound',
 	EVALUATION_TRIGGER_NOT_FOUND: 'evaluation.listRuns.error.evaluationTriggerNotFound',
 	EVALUATION_TRIGGER_NOT_CONFIGURED: 'evaluation.listRuns.error.evaluationTriggerNotConfigured',
-	SET_OUTPUTS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setOutputsNodeNotFound',
 	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setOutputsNodeNotConfigured',
 	SET_METRICS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setMetricsNodeNotFound',
 	SET_METRICS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setMetricsNodeNotConfigured',
@@ -39,7 +39,7 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 };
 
 // FIXME: move status logic to a parent component
-const statusThemeMap: Record<string, string> = {
+const statusThemeMap: Record<string, BadgeTheme> = {
 	new: 'default',
 	running: 'warning',
 	evaluation_running: 'warning',
@@ -102,5 +102,3 @@ function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefi
 		</N8nBadge>
 	</N8nTooltip>
 </template>
-
-<style scoped lang="scss"></style>

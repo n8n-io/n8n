@@ -3,6 +3,8 @@ import { VIEWS } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { N8nText, N8nLink } from '@n8n/design-system';
 
@@ -15,6 +17,7 @@ const props = defineProps<Props>();
 const router = useRouter();
 
 const bugsUrl = ref<string>(`https://registry.npmjs.org/${props.packageName}`);
+const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -49,30 +52,45 @@ async function getBugsUrl(packageName: string) {
 onMounted(async () => {
 	if (props.packageName) {
 		await getBugsUrl(props.packageName);
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(props.packageName);
 	}
 });
 </script>
 
 <template>
-	<div :class="$style.container">
-		<template v-if="props.showManage">
-			<N8nLink theme="text" @click="openSettingsPage">
-				<N8nText size="small" color="primary" bold> Manage </N8nText>
+	<div>
+		<div :class="$style.separator"></div>
+		<div :class="$style.container">
+			<N8nText v-if="installedPackage" size="small" color="text-light" style="margin-right: auto">
+				Package version {{ installedPackage.installedVersion }} ({{
+					installedPackage.updateAvailable ? 'Legacy' : 'Latest'
+				}})
+			</N8nText>
+			<template v-if="props.showManage">
+				<N8nLink theme="text" @click="openSettingsPage">
+					<N8nText size="small" color="primary" bold> Manage </N8nText>
+				</N8nLink>
+				<N8nText size="small" style="color: var(--color-foreground-base)" bold>|</N8nText>
+			</template>
+			<N8nLink theme="text" @click="openIssuesPage">
+				<N8nText size="small" color="primary" bold> Report issue </N8nText>
 			</N8nLink>
-			<N8nText size="small" color="primary" bold>|</N8nText>
-		</template>
-		<N8nLink theme="text" @click="openIssuesPage">
-			<N8nText size="small" color="primary" bold> Report issue </N8nText>
-		</N8nLink>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	display: flex;
-	justify-content: center;
+	justify-content: right;
 	align-items: center;
-	gap: var(--spacing-s);
-	padding-bottom: var(--spacing-s);
+	gap: var(--spacing-2xs);
+	padding: var(--spacing-s);
+}
+.separator {
+	height: var(--border-width-base);
+	background: var(--color-foreground-base);
+	margin-right: var(--spacing-s);
+	margin-left: var(--spacing-s);
 }
 </style>

@@ -5,12 +5,16 @@ import { type InsightsDateRange } from './schemas/insights.schema';
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
+	whatsNewEnabled: boolean;
+	whatsNewEndpoint: string;
 	infoUrl: string;
 }
 
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
+	proxy: string;
+	sourceConfig: string;
 }
 
 export interface ITelemetrySettings {
@@ -135,6 +139,7 @@ export interface FrontendSettings {
 		ldap: boolean;
 		saml: boolean;
 		oidc: boolean;
+		mfaEnforcement: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
@@ -165,6 +170,7 @@ export interface FrontendSettings {
 	};
 	mfa: {
 		enabled: boolean;
+		enforced: boolean;
 	};
 	folders: {
 		enabled: boolean;
@@ -192,13 +198,29 @@ export interface FrontendSettings {
 	partialExecution: {
 		version: 1 | 2;
 	};
-	insights: {
-		enabled: boolean;
+	evaluation: {
+		quota: number;
+	};
+
+	/** Backend modules that were initialized during startup. */
+	activeModules: string[];
+	envFeatureFlags: N8nEnvFeatFlags;
+}
+
+export type FrontendModuleSettings = {
+	/**
+	 * Client settings for [insights](https://docs.n8n.io/insights/) module.
+	 *
+	 * - `summary`: Whether the summary banner should be shown.
+	 * - `dashboard`: Whether the full dashboard should be shown.
+	 * - `dateRanges`: Date range filters available to select.
+	 */
+	insights?: {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
 	};
-	evaluation: {
-		quota: number;
-	};
-}
+};
+
+export type N8nEnvFeatFlagValue = boolean | string | number | undefined;
+export type N8nEnvFeatFlags = Record<`N8N_ENV_FEAT_${Uppercase<string>}`, N8nEnvFeatFlagValue>;

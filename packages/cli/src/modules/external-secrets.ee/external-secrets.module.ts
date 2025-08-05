@@ -1,8 +1,8 @@
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@BackendModule({ licenseFlag: 'feat:externalSecrets' })
+@BackendModule({ name: 'external-secrets', licenseFlag: 'feat:externalSecrets' })
 export class ExternalSecretsModule implements ModuleInterface {
 	async init() {
 		await import('./external-secrets.controller.ee');
@@ -15,5 +15,12 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await externalSecretsManager.init();
 		externalSecretsProxy.setManager(externalSecretsManager);
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');
+
+		Container.get(ExternalSecretsManager).shutdown();
 	}
 }

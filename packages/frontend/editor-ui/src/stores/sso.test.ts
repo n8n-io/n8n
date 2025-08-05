@@ -1,20 +1,13 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSSOStore } from '@/stores/sso.store';
-import merge from 'lodash/merge';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import type { FrontendSettings } from '@n8n/api-types';
+import { useSSOStore, SupportedProtocols } from '@/stores/sso.store';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
 
 let ssoStore: ReturnType<typeof useSSOStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
-
-const DEFAULT_SETTINGS: FrontendSettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
 describe('SSO store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		ssoStore = useSSOStore();
-		settingsStore = useSettingsStore();
 	});
 
 	test.each([
@@ -26,23 +19,135 @@ describe('SSO store', () => {
 	])(
 		'should check SSO login button availability when authenticationMethod is %s and enterprise feature is %s and sso login is set to %s',
 		(authenticationMethod, saml, loginEnabled, expectation) => {
-			settingsStore.setSettings(
-				merge({}, DEFAULT_SETTINGS, {
-					userManagement: {
-						authenticationMethod,
+			ssoStore.initialize({
+				authenticationMethod: authenticationMethod as UserManagementAuthenticationMethod,
+				config: {
+					saml: {
+						loginEnabled,
 					},
-					enterprise: {
-						saml,
-					},
-					sso: {
-						saml: {
-							loginEnabled,
-						},
-					},
-				}),
-			);
+				},
+				features: {
+					saml,
+					ldap: false,
+					oidc: false,
+				},
+			});
 
 			expect(ssoStore.showSsoLoginButton).toBe(expectation);
 		},
 	);
+
+	describe('Protocol Selection Initialization', () => {
+		beforeEach(() => {
+			setActivePinia(createPinia());
+			ssoStore = useSSOStore();
+		});
+
+		it('should initialize selectedAuthProtocol to OIDC when default authentication is OIDC', () => {
+			// Initialize with OIDC as default authentication method
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				config: {
+					oidc: { loginEnabled: true },
+				},
+				features: {
+					saml: false,
+					ldap: false,
+					oidc: true,
+				},
+			});
+
+			// selectedAuthProtocol should be undefined initially
+			expect(ssoStore.selectedAuthProtocol).toBeUndefined();
+
+			// Call initializeSelectedProtocol
+			ssoStore.initializeSelectedProtocol();
+
+			// Should now be set to OIDC
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.OIDC);
+		});
+
+		it('should initialize selectedAuthProtocol to SAML when default authentication is SAML', () => {
+			// Initialize with SAML as default authentication method
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				config: {
+					saml: { loginEnabled: true },
+				},
+				features: {
+					saml: true,
+					ldap: false,
+					oidc: false,
+				},
+			});
+
+			// selectedAuthProtocol should be undefined initially
+			expect(ssoStore.selectedAuthProtocol).toBeUndefined();
+
+			// Call initializeSelectedProtocol
+			ssoStore.initializeSelectedProtocol();
+
+			// Should now be set to SAML
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+
+		it('should initialize selectedAuthProtocol to SAML when default authentication is email', () => {
+			// Initialize with email as default authentication method
+			ssoStore.initialize({
+				authenticationMethod: 'email' as UserManagementAuthenticationMethod,
+				config: {},
+				features: {
+					saml: true,
+					ldap: false,
+					oidc: true,
+				},
+			});
+
+			// selectedAuthProtocol should be undefined initially
+			expect(ssoStore.selectedAuthProtocol).toBeUndefined();
+
+			// Call initializeSelectedProtocol
+			ssoStore.initializeSelectedProtocol();
+
+			// Should default to SAML when not OIDC
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+
+		it('should not reinitialize selectedAuthProtocol if already set', () => {
+			// Initialize with SAML as default authentication method
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				config: {
+					saml: { loginEnabled: true },
+				},
+				features: {
+					saml: true,
+					ldap: false,
+					oidc: true,
+				},
+			});
+
+			// Manually set selectedAuthProtocol to OIDC
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
+
+			// Call initializeSelectedProtocol
+			ssoStore.initializeSelectedProtocol();
+
+			// Should remain OIDC (not overwritten)
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.OIDC);
+		});
+
+		it('should handle undefined authentication method gracefully', () => {
+			// Don't initialize the store (authenticationMethod remains undefined)
+
+			// selectedAuthProtocol should be undefined initially
+			expect(ssoStore.selectedAuthProtocol).toBeUndefined();
+
+			// Call initializeSelectedProtocol
+			ssoStore.initializeSelectedProtocol();
+
+			// Should default to SAML when authentication method is undefined
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+	});
 });

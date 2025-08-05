@@ -51,11 +51,13 @@ describe('usePageRedirectionHelper', () => {
 			writable: true,
 		});
 
-		versionStore.setVersionNotificationSettings({
+		versionStore.initialize({
 			enabled: true,
 			endpoint: '',
 			infoUrl:
 				'https://docs.n8n.io/release-notes/#n8n1652?utm_source=n8n_app&utm_medium=instance_upgrade_releases',
+			whatsNewEnabled: true,
+			whatsNewEndpoint: '',
 		});
 	});
 

@@ -5,7 +5,13 @@ import { useUsersStore } from '@/stores/users.store';
 import { ROLE } from '@n8n/api-types';
 import type { IUser } from '@/Interface';
 
-const renderComponent = createComponentRenderer(V1Banner);
+const renderComponent = createComponentRenderer(V1Banner, {
+	global: {
+		stubs: {
+			N8nIcon: true,
+		},
+	},
+});
 
 describe('V1 Banner', () => {
 	let pinia: ReturnType<typeof createPinia>;

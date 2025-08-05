@@ -11,7 +11,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -19,8 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import { insightsRoutes } from '@/features/insights/insights.router';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
+import { MfaRequiredError } from '@n8n/rest-api-client';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -247,7 +246,7 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: ':executionId',
+				path: ':executionId/:nodeId?',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
 					executionPreview: WorkflowExecutionsPreview,
@@ -272,10 +271,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 		meta: {
 			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'custom'],
-			middlewareOptions: {
-				custom: () => useEvaluationStore().isFeatureEnabled,
-			},
+			middleware: ['authenticated'],
 		},
 		children: [
 			{
@@ -722,7 +718,6 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
-	...insightsRoutes,
 	{
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,
@@ -832,6 +827,14 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 		return next();
 	} catch (failure) {
+		const settingsStore = useSettingsStore();
+		if (failure instanceof MfaRequiredError && settingsStore.isMFAEnforced) {
+			if (to.name !== VIEWS.PERSONAL_SETTINGS) {
+				return next({ name: VIEWS.PERSONAL_SETTINGS });
+			} else {
+				return next();
+			}
+		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
 		} else {

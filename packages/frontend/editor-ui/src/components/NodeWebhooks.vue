@@ -188,7 +188,7 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
+			<n8n-icon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>

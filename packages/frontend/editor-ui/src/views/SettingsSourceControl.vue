@@ -11,7 +11,9 @@ import type { SshKeyTypes } from '@/types/sourceControl.types';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
+import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -94,11 +96,11 @@ const onSave = async () => {
 	loadingService.stopLoading();
 };
 
-const onSelect = async (b: string) => {
+const onSelect = (b: Validatable) => {
 	if (b === sourceControlStore.preferences.branchName) {
 		return;
 	}
-	sourceControlStore.preferences.branchName = b;
+	sourceControlStore.preferences.branchName = b as string;
 };
 
 const goToUpgrade = () => {
@@ -180,7 +182,8 @@ const refreshBranches = async () => {
 	}
 };
 
-const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
+const onSelectSshKeyType = (value: Validatable) => {
+	const sshKeyType = value as TupleToUnion<SshKeyTypes>;
 	if (sshKeyType === sourceControlStore.preferences.keyGeneratorType) {
 		return;
 	}
@@ -197,14 +200,14 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 			v-if="sourceControlStore.isEnterpriseSourceControlEnabled"
 			data-test-id="source-control-content-licensed"
 		>
-			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n-t keypath="settings.sourceControl.description" tag="span">
+			<n8n-callout theme="secondary" icon="info" class="mt-2xl mb-l">
+				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
@@ -215,7 +218,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 					<n8n-form-input
 						id="repoUrl"
 						v-model="sourceControlStore.preferences.repositoryUrl"
-						label
+						label=""
 						class="ml-0"
 						name="repoUrl"
 						validate-on-blur
@@ -229,7 +232,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						:class="$style.disconnectButton"
 						type="tertiary"
 						size="large"
-						icon="trash"
+						icon="trash-2"
 						data-test-id="source-control-disconnect-button"
 						@click="onDisconnect"
 						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
@@ -243,7 +246,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						v-if="!isConnected"
 						id="keyGeneratorType"
 						:class="$style.sshKeyTypeSelect"
-						label
+						label=""
 						type="select"
 						name="keyGeneratorType"
 						data-test-id="source-control-ssh-key-type-select"
@@ -265,7 +268,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						v-if="!isConnected"
 						size="large"
 						type="tertiary"
-						icon="sync"
+						icon="refresh-cw"
 						data-test-id="source-control-refresh-ssh-key-button"
 						@click="refreshSshKey"
 					>
@@ -273,7 +276,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
+					<I18nT keypath="settings.sourceControl.sshKeyDescription" tag="span" scope="global">
 						<template #link>
 							<a
 								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
@@ -281,7 +284,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</n8n-notice>
 			</div>
 			<n8n-button
@@ -303,7 +306,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 					<div :class="$style.branchSelection">
 						<n8n-form-input
 							id="branchName"
-							label
+							label=""
 							type="select"
 							name="branchName"
 							class="mb-s"
@@ -324,7 +327,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 							<n8n-button
 								size="small"
 								type="tertiary"
-								icon="sync"
+								icon="refresh-cw"
 								square
 								:class="$style.refreshBranches"
 								data-test-id="source-control-refresh-branches-button"
@@ -336,11 +339,11 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n-t keypath="settings.sourceControl.protected" tag="span">
+						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">

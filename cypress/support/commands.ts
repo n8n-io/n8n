@@ -1,5 +1,5 @@
 import 'cypress-real-events';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import FakeTimers from '@sinonjs/fake-timers';
 
 import {
@@ -115,6 +115,25 @@ Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, 
 Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
 Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
 
+const setEnvFeatureFlags = (flags: N8nEnvFeatFlags) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`, {
+		flags,
+	});
+
+const getEnvFeatureFlags = () =>
+	cy.request('GET', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`);
+
+// Environment feature flags commands (using E2E API)
+Cypress.Commands.add('setEnvFeatureFlags', (flags: N8nEnvFeatFlags) =>
+	setEnvFeatureFlags(flags).then((response) => response.body.data),
+);
+Cypress.Commands.add('clearEnvFeatureFlags', () =>
+	setEnvFeatureFlags({}).then((response) => response.body.data),
+);
+Cypress.Commands.add('getEnvFeatureFlags', () =>
+	getEnvFeatureFlags().then((response) => response.body.data),
+);
+
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
 		cy.wrap(
@@ -130,7 +149,7 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 });
 
 Cypress.Commands.add('readClipboard', () =>
-	cy.window().then((win) => win.navigator.clipboard.readText()),
+	cy.window().then(async (win) => await win.navigator.clipboard.readText()),
 );
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {

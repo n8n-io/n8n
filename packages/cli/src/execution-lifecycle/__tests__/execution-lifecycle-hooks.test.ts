@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { stringify } from 'flatted';
@@ -30,7 +31,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { mockInstance } from '@test/mocking';
 
 import {
 	getLifecycleHooksForSubExecutions,
@@ -84,6 +84,12 @@ describe('Execution Lifecycle Hooks', () => {
 	const taskStartedData = mock<ITaskStartedData>();
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
+
+	const successfulRunWithRewiredDestination = mock<IRun>({
+		status: 'success',
+		finished: true,
+		waitTill: undefined,
+	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
@@ -123,6 +129,15 @@ describe('Execution Lifecycle Hooks', () => {
 				error: expressionError,
 			},
 		};
+		successfulRunWithRewiredDestination.data = {
+			startData: {
+				destinationNode: 'PartialExecutionToolExecutor',
+				originalDestinationNode: nodeName,
+			},
+			resultData: {
+				runData: {},
+			},
+		};
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -153,6 +168,25 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
+
+			it('should reset destination node to original destination', async () => {
+				await lifecycleHooks.runHook('workflowExecuteAfter', [
+					successfulRunWithRewiredDestination,
+					{},
+				]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRunWithRewiredDestination,
+					workflow: workflowData,
+					userId: expectedUserId,
+				});
+
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(
+					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
+				).toBeUndefined();
 			});
 		});
 	};
@@ -260,6 +294,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(5);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('nodeExecuteBefore', () => {
@@ -576,6 +611,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(0);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('workflowExecuteBefore', () => {
@@ -663,6 +699,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
 		describe('saving static data', () => {
@@ -760,6 +797,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
+			expect(handlers.sendChunk).toHaveLength(0);
 		});
 	});
 });

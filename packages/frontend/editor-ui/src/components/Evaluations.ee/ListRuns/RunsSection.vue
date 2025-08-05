@@ -75,7 +75,7 @@ const handleRowClick = (row: TestRunRecord) => {
 
 <template>
 	<div :class="$style.runs">
-		<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
+		<MetricsChart v-model:selected-metric="selectedMetric" :runs="runs" />
 
 		<TestRunsTable
 			:class="$style.runsTable"

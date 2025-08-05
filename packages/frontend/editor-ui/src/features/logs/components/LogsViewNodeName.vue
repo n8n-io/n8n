@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { N8nText } from '@n8n/design-system';
 
-const { name, latestName, isError, isDeleted } = defineProps<{
+const { name, isError, isDeleted } = defineProps<{
 	name: string;
-	latestName: string;
 	isError?: boolean;
 	isDeleted?: boolean;
 }>();
@@ -17,12 +16,12 @@ const { name, latestName, isError, isDeleted } = defineProps<{
 		:class="$style.name"
 		:color="isError ? 'danger' : undefined"
 	>
-		<del v-if="isDeleted || name !== latestName">
+		<del v-if="isDeleted">
 			{{ name }}
 		</del>
-		<span v-if="!isDeleted">
-			{{ latestName }}
-		</span>
+		<template v-else>
+			{{ name }}
+		</template>
 	</N8nText>
 </template>
 

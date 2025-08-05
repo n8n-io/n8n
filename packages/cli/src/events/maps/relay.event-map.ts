@@ -238,7 +238,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -274,7 +275,8 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -511,6 +513,31 @@ export type RelayEventMap = {
 		nodeId: string;
 		workflowId: string;
 		executionId: string;
+	};
+
+	// #endregion
+
+	// #region queue
+
+	'job-enqueued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-dequeued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-stalled': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
 	};
 
 	// #endregion

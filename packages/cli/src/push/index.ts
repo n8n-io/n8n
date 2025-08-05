@@ -94,8 +94,8 @@ export class Push extends TypedEmitter<PushEvents> {
 	setupPushHandler(restEndpoint: string, app: Application) {
 		app.use(
 			`/${restEndpoint}/push`,
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.authService.authMiddleware,
+
+			this.authService.createAuthMiddleware(false),
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
 				this.handleRequest(req, res),
 		);

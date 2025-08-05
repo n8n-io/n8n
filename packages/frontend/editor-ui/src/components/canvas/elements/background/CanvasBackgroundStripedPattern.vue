@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/* eslint-disable vue/no-multiple-template-root */
 /**
  * @see https://github.com/bcakmakoglu/vue-flow/blob/master/packages/background/src/Background.vue
  */

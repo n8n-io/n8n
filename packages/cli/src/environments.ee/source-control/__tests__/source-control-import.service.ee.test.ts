@@ -1,6 +1,11 @@
-import { Project, type ProjectRepository, User, WorkflowEntity } from '@n8n/db';
-import type { FolderRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import {
+	type FolderRepository,
+	type WorkflowRepository,
+	Project,
+	type ProjectRepository,
+	User,
+	WorkflowEntity,
+} from '@n8n/db';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
@@ -66,9 +71,14 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				owner: {
+					type: 'personal',
+					personalEmail: 'email@email.com',
+				},
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+			sourceControlScopedService.getAdminProjectsFromContext.mockResolvedValueOnce([]);
 
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });

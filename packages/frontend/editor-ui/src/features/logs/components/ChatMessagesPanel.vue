@@ -36,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+
 const locale = useI18n();
 const toast = useToast();
 
@@ -149,7 +150,7 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
+				<N8nTooltip v-if="clipboard.isSupported && !isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
@@ -175,7 +176,7 @@ async function copySessionId() {
 						type="secondary"
 						size="small"
 						icon-size="medium"
-						icon="undo"
+						icon="undo-2"
 						:title="locale.baseText('chat.window.session.reset')"
 						@click.stop="onRefreshSession"
 					/>
@@ -201,7 +202,7 @@ async function copySessionId() {
 					<MessageOptionAction
 						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="repost-message-button"
-						icon="redo"
+						icon="redo-2"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 						placement="left"
 						@click.once="repostMessage(message)"
@@ -210,7 +211,7 @@ async function copySessionId() {
 					<MessageOptionAction
 						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="reuse-message-button"
-						icon="copy"
+						icon="files"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 						placement="left"
 						@click="reuseMessage(message)"
@@ -254,7 +255,7 @@ async function copySessionId() {
 .chat {
 	--chat--spacing: var(--spacing-xs);
 	--chat--message--padding: var(--spacing-2xs);
-	--chat--message--font-size: var(--font-size-xs);
+	--chat--message--font-size: var(--font-size-2xs);
 	--chat--input--font-size: var(--font-size-s);
 	--chat--input--placeholder--font-size: var(--font-size-xs);
 	--chat--message--bot--background: transparent;
@@ -268,7 +269,10 @@ async function copySessionId() {
 	--chat--color-typing: var(--color-text-light);
 	--chat--textarea--max-height: calc(var(--panel-height) * 0.3);
 	--chat--message--pre--background: var(--color-foreground-light);
-	--chat--textarea--height: 2.5rem;
+	--chat--textarea--height: calc(
+		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
+			var(--chat--input--line-height)
+	);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -358,13 +362,6 @@ async function copySessionId() {
 	--chat--input--file--button--color: var(--color-button-secondary-font);
 	--chat--input--file--button--color-hover: var(--color-primary);
 
-	[data-theme='dark'] & {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
-	}
-	@media (prefers-color-scheme: dark) {
-		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
-	}
-
 	padding: var(--spacing-5xs);
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
@@ -376,8 +373,23 @@ async function copySessionId() {
 		var(--input-border-style, var(--border-style-base))
 		var(--input-border-width, var(--border-width-base));
 
+	[data-theme='dark'] & {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
+	@media (prefers-color-scheme: dark) {
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	}
+
 	&:focus-within {
 		--input-border-color: #4538a3;
 	}
+}
+
+.messagesHistory {
+	height: var(--chat--textarea--height);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 </style>

@@ -32,7 +32,9 @@ export const useLogsStore = defineStore('logs', () => {
 		LOG_DETAILS_PANEL_STATE.BOTH,
 		{ writeDefaults: false },
 	);
-	const isLogSelectionSyncedWithCanvas = useLocalStorage(LOCAL_STORAGE_LOGS_SYNC_SELECTION, false);
+	const isLogSelectionSyncedWithCanvas = useLocalStorage(LOCAL_STORAGE_LOGS_SYNC_SELECTION, true, {
+		writeDefaults: false,
+	});
 	const isSubNodeSelected = ref(false);
 
 	const telemetry = useTelemetry();

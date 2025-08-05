@@ -195,11 +195,7 @@ export class Telemetry {
 		});
 	}
 
-	track(
-		eventName: string,
-		properties: ITelemetryTrackProperties = {},
-		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
-	) {
+	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -218,10 +214,6 @@ export class Telemetry {
 			properties: updatedProperties,
 			context: {},
 		};
-
-		if (withPostHog) {
-			this.postHog?.track(payload);
-		}
 
 		return this.rudderStack.track({
 			...payload,

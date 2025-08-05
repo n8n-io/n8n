@@ -1,6 +1,6 @@
 import { Tournament } from '@n8n/tournament';
 
-import { PrototypeSanitizer, sanitizer } from '@/expression-sandboxing';
+import { PrototypeSanitizer, sanitizer } from '../src/expression-sandboxing';
 
 const tournament = new Tournament(
 	(e) => {

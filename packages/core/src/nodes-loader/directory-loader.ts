@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { isContainedWithin, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -16,7 +16,7 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, isSubNodeType } from 'n8n-workflow';
+import { ApplicationError, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -80,6 +80,8 @@ export abstract class DirectoryLoader {
 
 	protected readonly logger = Container.get(Logger);
 
+	protected removeNonIncludedNodes = false;
+
 	constructor(
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
@@ -92,6 +94,8 @@ export abstract class DirectoryLoader {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (error.code !== 'ENOENT') throw error;
 		}
+
+		this.removeNonIncludedNodes = this.includeNodes.length > 0;
 	}
 
 	abstract packageName: string;
@@ -133,7 +137,7 @@ export abstract class DirectoryLoader {
 
 		const nodeType = tempNode.description.name;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
+		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 
@@ -242,6 +246,7 @@ export abstract class DirectoryLoader {
 			sourcePath: filePath,
 		};
 
+		if (this.isLazyLoaded) return;
 		this.types.credentials.push(tempCredential);
 	}
 
@@ -382,6 +387,13 @@ export abstract class DirectoryLoader {
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+
+		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+			throw new UnexpectedError(
+				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
+			);
+		}
+
 		return `icons/${this.packageName}/${iconPath}`;
 	}
 

@@ -67,9 +67,7 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -101,7 +99,9 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
 				},
 			},
@@ -132,6 +132,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
@@ -277,7 +278,6 @@ export class AgentV1 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 					name: 'mySql',
 					required: true,
 					testedBy: 'mysqlConnectionTest',

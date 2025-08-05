@@ -1,8 +1,7 @@
+import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+
 import * as helpers from '@/sso.ee/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso.ee/saml/types';
-
-import { getPersonalProject } from '../shared/db/projects';
-import * as testDb from '../shared/test-db';
 
 beforeAll(async () => {
 	await testDb.init();

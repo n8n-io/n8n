@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
+import { useAttrs } from 'vue';
+import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
-defineProps({
-	label: {
-		type: String,
-		required: true,
-	},
-	icon: {
-		type: String,
-		required: true,
-	},
-	placement: {
-		type: String as PropType<'left' | 'right' | 'top' | 'bottom'>,
-		default: 'top',
-	},
-});
+defineProps<{ label: string; icon: IconName; placement: 'left' | 'right' | 'top' | 'bottom' }>();
+
+const attrs = useAttrs();
+
+const onClick = () => {
+	// @ts-expect-error Attrs onClick is not typed
+	attrs.onClick?.();
+};
 </script>
 
 <template>
@@ -23,7 +18,7 @@ defineProps({
 			<template #content>
 				{{ label }}
 			</template>
-			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="$attrs.onClick" />
+			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="onClick" />
 		</n8n-tooltip>
 	</div>
 </template>

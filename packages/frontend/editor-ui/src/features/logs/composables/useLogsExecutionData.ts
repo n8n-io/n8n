@@ -4,7 +4,12 @@ import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
-import { createLogTree, deepToRaw, mergeStartData } from '@/features/logs/logs.utils';
+import {
+	createLogTree,
+	deepToRaw,
+	findSubExecutionLocator,
+	mergeStartData,
+} from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
@@ -68,15 +73,14 @@ export function useLogsExecutionData() {
 	}
 
 	async function loadSubExecution(logEntry: LogEntry) {
-		const executionId = logEntry.runData?.metadata?.subExecution?.executionId;
-		const workflowId = logEntry.runData?.metadata?.subExecution?.workflowId;
+		const locator = findSubExecutionLocator(logEntry);
 
-		if (!execData.value?.data || !executionId || !workflowId) {
+		if (!execData.value?.data || locator === undefined) {
 			return;
 		}
 
 		try {
-			const subExecution = await workflowsStore.fetchExecutionDataById(executionId);
+			const subExecution = await workflowsStore.fetchExecutionDataById(locator.executionId);
 			const data = subExecution?.data
 				? (parse(subExecution.data as unknown as string) as IRunExecutionData)
 				: undefined;
@@ -85,8 +89,8 @@ export function useLogsExecutionData() {
 				throw Error('Data is missing');
 			}
 
-			subWorkflowExecData.value[executionId] = data;
-			subWorkflows.value[workflowId] = new Workflow({
+			subWorkflowExecData.value[locator.executionId] = data;
+			subWorkflows.value[locator.workflowId] = new Workflow({
 				...subExecution.workflowData,
 				nodeTypes: workflowsStore.getNodeTypes(),
 			});

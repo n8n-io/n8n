@@ -1,6 +1,6 @@
 import { DateTime, Settings } from 'luxon';
 
-import { getValueDescription, tryToParseDateTime, validateFieldType } from '@/type-validation';
+import { getValueDescription, tryToParseDateTime, validateFieldType } from '../src/type-validation';
 
 describe('Type Validation', () => {
 	describe('string-alphanumeric', () => {

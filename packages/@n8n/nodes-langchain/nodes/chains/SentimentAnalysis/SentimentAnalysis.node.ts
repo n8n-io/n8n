@@ -292,7 +292,7 @@ export class SentimentAnalysis implements INodeType {
 						} else {
 							throw error;
 						}
-					} else if (result.resultItem && result.sentimentIndex) {
+					} else if (result.resultItem && result.sentimentIndex !== -1) {
 						const sentimentIndex = result.sentimentIndex;
 						const resultItem = result.resultItem;
 						returnData[sentimentIndex].push(resultItem);

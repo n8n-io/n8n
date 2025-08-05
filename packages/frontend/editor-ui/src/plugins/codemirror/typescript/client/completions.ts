@@ -13,6 +13,7 @@ import {
 } from '../../completions/utils';
 import { typescriptWorkerFacet } from './facet';
 import { blockCommentSnippet, snippets } from './snippets';
+import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
 
 const START_CHARACTERS = ['"', "'", '(', '.', '@'];
 const START_CHARACTERS_REGEX = /[\.\(\'\"\@]/;
@@ -30,7 +31,7 @@ export const matchText = (context: CompletionContext) => {
 
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
-
+	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -55,7 +56,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 				if (opt.label === '$()') {
 					return [
 						opt,
-						...autocompletableNodeNames().map((name) => ({
+						...autocompletableNodeNames(targetNodeParameter).map((name) => ({
 							...opt,
 							label: `$('${escapeMappingString(name)}')`,
 						})),

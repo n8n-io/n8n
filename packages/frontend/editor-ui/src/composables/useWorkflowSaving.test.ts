@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -22,7 +22,7 @@ vi.mock('@/composables/useMessage', () => {
 	};
 });
 
-const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
+const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
 	nodes: [

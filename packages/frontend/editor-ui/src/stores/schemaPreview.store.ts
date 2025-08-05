@@ -67,7 +67,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 			getSchemaPreviewKey({ nodeType: type, version: typeVersion, resource, operation }),
 		);
 
-		if (!result || !result.ok) return;
+		if (!result?.ok) return;
 
 		telemetry.track('User executed node with schema preview', {
 			node_id: id,

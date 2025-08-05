@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -8,7 +9,7 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { MANUAL_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
@@ -42,15 +43,7 @@ export class ManualExecutionService {
 			startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
 		}
 
-		if (startNode) {
-			return startNode;
-		}
-
-		const manualTrigger = workflow
-			.getTriggerNodes()
-			.find((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
-
-		return manualTrigger;
+		return startNode;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -151,7 +144,14 @@ export class ManualExecutionService {
 					workflow = graph.toWorkflow({
 						...workflow,
 					});
-					data.destinationNode = graph.getDirectChildConnections(destinationNode).at(0)?.to?.name;
+
+					// Save original destination
+					if (data.executionData) {
+						data.executionData.startData = data.executionData.startData ?? {};
+						data.executionData.startData.originalDestinationNode = data.destinationNode;
+					}
+					// Set destination to Tool Executor
+					data.destinationNode = TOOL_EXECUTOR_NODE_NAME;
 				}
 			}
 

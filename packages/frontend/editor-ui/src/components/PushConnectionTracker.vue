@@ -23,7 +23,7 @@ const showConnectionLostError = computed(() => {
 					<div v-n8n-html="i18n.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
 				</template>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp;
+					<n8n-icon icon="triangle-alert" />&nbsp;
 					{{ i18n.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
 			</n8n-tooltip>
