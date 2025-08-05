@@ -136,7 +136,7 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.insertRows(dataStoreId, dto);
+		return await this.dataStoreService.insertRows(dataStoreId, dto.data);
 	}
 
 	@Post('/:dataStoreId/upsert')
