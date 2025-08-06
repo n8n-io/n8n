@@ -12,13 +12,14 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { TaskOperationType, TodoistProjectType } from './Service';
+import type { TodoistProjectType } from './Service';
 import {
 	TodoistService,
 	isProjectOperationType,
 	isSectionOperationType,
 	isCommentOperationType,
 	isLabelOperationType,
+	isTaskOperationType,
 } from './Service';
 import { todoistApiRequest } from '../GenericFunctions';
 
@@ -1622,10 +1623,16 @@ export class TodoistV2 implements INodeType {
 		const service = new TodoistService();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0) as TaskOperationType;
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
+					if (!isTaskOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for project resource`,
+						);
+					}
 					responseData = await service.executeTask(this, operation, i);
 				} else if (resource === 'project') {
 					if (!isProjectOperationType(operation)) {

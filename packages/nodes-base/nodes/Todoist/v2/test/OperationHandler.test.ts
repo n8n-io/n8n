@@ -56,7 +56,9 @@ const mockTodoistSyncRequest = todoistSyncRequest as jest.MockedFunction<typeof 
 // Mock Context interface
 const createMockContext = (params: Record<string, any> = {}) =>
 	mock<IExecuteFunctions>({
-		getNodeParameter: jest.fn((key: string) => params[key]),
+		getNodeParameter: jest.fn((key: string, _idx?: number, defaultValue?: any) =>
+			key in params ? params[key] : defaultValue,
+		),
 		getNode: jest.fn(() => mock<INode>({ typeVersion: 2.1 })),
 	});
 

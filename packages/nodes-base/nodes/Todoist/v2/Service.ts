@@ -170,6 +170,10 @@ export type CommentOperationType = (typeof COMMENT_OPERATIONS)[number];
 export type LabelOperationType = (typeof LABEL_OPERATIONS)[number];
 
 // Type guards using the same arrays
+export function isTaskOperationType(operation: string): operation is TaskOperationType {
+	return TASK_OPERATIONS.includes(operation as TaskOperationType);
+}
+
 export function isProjectOperationType(operation: string): operation is ProjectOperationType {
 	return PROJECT_OPERATIONS.includes(operation as ProjectOperationType);
 }
